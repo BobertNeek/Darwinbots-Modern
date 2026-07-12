@@ -10,6 +10,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     private IntPtr _engine;
     private readonly float _worldWidth;
     private readonly float _worldHeight;
+    private readonly SeededSpawnPlacement _spawnPlacement;
 
     public NativeEngineClient(
         string backend = "Auto",
@@ -27,6 +28,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     {
         _worldWidth = worldWidth;
         _worldHeight = worldHeight;
+        _spawnPlacement = new SeededSpawnPlacement(seed);
         gravity ??= [0f, 0f];
         ValidatePosition(gravity);
         var config = $$"""
@@ -85,7 +87,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                     reseed = species.Reseed,
                     mutation_rate = species.MutationRate,
                     initial_energy = species.InitialEnergy,
-                    positions = GridPositions(species.InitialCount),
+                    positions = _spawnPlacement.Next(species.InitialCount, _worldWidth, _worldHeight),
                 },
             },
         }, "import species");
@@ -207,17 +209,6 @@ public sealed partial class NativeEngineClient : IEngineClient
         ArgumentNullException.ThrowIfNull(position);
         if (position.Length != 2 || position.Any(value => !float.IsFinite(value)))
             throw new ArgumentException("Position must contain two finite coordinates.", nameof(position));
-    }
-
-    private float[][] GridPositions(int count)
-    {
-        var columns = (int)Math.Ceiling(Math.Sqrt(count));
-        var rows = (int)Math.Ceiling((double)count / columns);
-        return Enumerable.Range(0, count).Select(index => new[]
-        {
-            _worldWidth * ((index % columns) + 1) / (columns + 1),
-            _worldHeight * ((index / columns) + 1) / (rows + 1),
-        }).ToArray();
     }
 
     public EngineCapabilities Capabilities()

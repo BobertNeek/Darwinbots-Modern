@@ -1212,6 +1212,7 @@ impl Engine {
         let mut deaths = Vec::new();
         let positions = &self.kinematics.positions;
         let species = &self.species;
+        let world_size = [self.config.world_width, self.config.world_height];
         let outcomes: Vec<_> = self.slots.par_iter_mut()
             .zip(self.lifecycle.energies.par_iter_mut())
             .zip(self.lifecycle.ages.par_iter_mut())
@@ -1257,7 +1258,7 @@ impl Engine {
                         < configured_rate * 100.0;
                     birth = Some((
                         organism.dna.clone(),
-                        [positions[slot_index][0] + 8.0, positions[slot_index][1]],
+                        offspring_position(positions[slot_index], organism.random_state, world_size),
                         child_energy,
                         mutation_reproduction > 0 || configured_mutation,
                         organism.species,
@@ -1588,6 +1589,15 @@ fn eye_sector(observer: [f32; 2], observer_angle: f32, target: [f32; 2]) -> usiz
 fn eye_strength(distance_squared: f32) -> i32 {
     if !distance_squared.is_finite() || distance_squared <= 0.0 { return 32_000; }
     (1_000_000.0 / distance_squared).round().clamp(1.0, 32_000.0) as i32
+}
+
+fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2]) -> [f32; 2] {
+    let angle = (random_state % 1_257) as f32 / 200.0;
+    let distance = 12.0 + ((random_state >> 16) % 21) as f32;
+    [
+        (parent[0] + angle.sin() * distance).clamp(0.0, world_size[0]),
+        (parent[1] + angle.cos() * distance).clamp(0.0, world_size[1]),
+    ]
 }
 
 fn nearest_corpse(position: [f32; 2], corpses: &[CorpseSnapshot], radius: f32) -> Option<usize> {
