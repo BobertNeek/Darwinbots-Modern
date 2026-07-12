@@ -1,0 +1,48 @@
+name: Modern cross-platform
+
+on:
+  push:
+    paths:
+      - "modern/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/modern-cross-platform.yml"
+  pull_request:
+    paths:
+      - "modern/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/modern-cross-platform.yml"
+
+jobs:
+  verify-and-package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-15-intel
+            rid: osx-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Test Rust workspace
+        run: cargo test --workspace
+      - name: Test desktop core
+        run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release
+      - name: Publish desktop package
+        run: dotnet publish modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained false -o artifacts/${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darwinbots-${{ matrix.rid }}
+          path: artifacts/${{ matrix.rid }}
+          if-no-files-found: error

@@ -1,0 +1,6 @@
+/.codex/
+/target/
+/modern/dist/
+/modern/artifacts/
+**/bin/
+**/obj/

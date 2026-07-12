@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.SetupWindow"
+        x:CompileBindings="False"
+        Title="Darwinbots Modern — New World"
+        Width="1280" Height="820" MinWidth="1080" MinHeight="720"
+        WindowStartupLocation="CenterScreen">
+  <Grid RowDefinitions="64,*,34" ColumnDefinitions="210,*,290">
+    <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="210,*" Margin="18,0">
+        <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift" FontWeight="Bold" FontSize="27" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="26" VerticalAlignment="Center">
+          <TextBlock Text="FILE"/><TextBlock Text="VIEW"/><TextBlock Text="HELP"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Grid.Column="0" Background="#F7F4EC" BorderBrush="#C8C5BB" BorderThickness="0,0,1,0">
+      <StackPanel Margin="0,24" Spacing="2">
+        <Border Background="#E8ECD9" BorderBrush="#47763A" BorderThickness="4,0,0,0" Padding="22,16"><TextBlock Text="⚗  SETUP" FontWeight="Bold"/></Border>
+        <TextBlock Text="◎  ENVIRONMENT" Margin="26,18"/><TextBlock Text="⚛  PHYSICS" Margin="26,18"/>
+        <TextBlock Text="◇  WORLD" Margin="26,18"/><TextBlock Text="▥  DATA" Margin="26,18"/>
+        <TextBlock Text="◴  RUNTIME" Margin="26,18"/><TextBlock Text="▤  OUTPUT" Margin="26,18"/>
+        <TextBlock Text="▣  SUMMARY" Margin="26,18"/>
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" Grid.Column="1">
+      <StackPanel Margin="36,28" Spacing="18">
+        <TextBlock Classes="section" Text="STARTING MODE" FontSize="15"/>
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+          <RadioButton x:Name="StarterMode" GroupName="Mode" IsChecked="True" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
+            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#3E7336"/><TextBlock Text="STARTER BOTS + VEGETABLES" FontWeight="Bold"/></StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="ZerobotMode" Grid.Column="1" GroupName="Mode" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
+            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉" FontSize="30" HorizontalAlignment="Center"/><TextBlock Text="ZEROBOTS" FontWeight="Bold"/></StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="ZerobotVegetableMode" Grid.Column="2" GroupName="Mode" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
+            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#126173"/><TextBlock Text="ZEROBOTS + VEGETABLES" FontWeight="Bold"/></StackPanel>
+          </RadioButton>
+        </Grid>
+
+        <TextBlock Classes="section" Text="SPECIES" FontSize="15" Margin="0,8,0,0"/>
+        <Border Classes="panel">
+          <Grid RowDefinitions="38,*">
+            <Grid ColumnDefinitions="2*,90,110,100,150,80,44" Background="#EEEAE0" Margin="1">
+              <TextBlock Text="SPECIES" Margin="10"/><TextBlock Grid.Column="1" Text="TYPE" Margin="8"/><TextBlock Grid.Column="2" Text="INITIAL COUNT" Margin="8"/><TextBlock Grid.Column="3" Text="ENERGY" Margin="8"/><TextBlock Grid.Column="4" Text="MUTATION %" Margin="8"/><TextBlock Grid.Column="5" Text="RESEED" Margin="8"/>
+            </Grid>
+            <ItemsControl Grid.Row="1" ItemsSource="{Binding Species}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="2*,90,110,100,150,80,44" Margin="6,5">
+                    <TextBox Text="{Binding Name}"/>
+                    <CheckBox Grid.Column="1" IsChecked="{Binding Vegetable}" Content="VEG" VerticalAlignment="Center"/>
+                    <NumericUpDown Grid.Column="2" Value="{Binding InitialCount}" Minimum="1" Maximum="100000"/>
+                    <NumericUpDown Grid.Column="3" Value="{Binding InitialEnergy}" Minimum="1" Maximum="32000"/>
+                    <Grid Grid.Column="4" ColumnDefinitions="*,48" Margin="4,0">
+                      <Slider Minimum="0" Maximum="100" Value="{Binding MutationRate}" TickFrequency="0.5"/>
+                      <TextBlock Grid.Column="1" Text="{Binding MutationRate, StringFormat='{}{0:0.0}%'}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                    <CheckBox Grid.Column="5" IsChecked="{Binding Reseed}" HorizontalAlignment="Center"/>
+                    <Button Grid.Column="6" Content="×" Tag="{Binding}" Click="RemoveSpecies_Click"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+        </Border>
+        <StackPanel Orientation="Horizontal" Spacing="10"><Button Content="＋ ADD DNA FILE" Click="AddDna_Click"/><TextBlock x:Name="SetupStatus" VerticalAlignment="Center" Foreground="#A65A23"/></StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="1" Grid.Column="2" Background="#F8F5ED" BorderBrush="#C8C5BB" BorderThickness="1,0,0,0">
+      <ScrollViewer><StackPanel Margin="24,28" Spacing="10">
+        <TextBlock Classes="section" Text="WORLD SETTINGS" FontSize="15" Margin="0,0,0,8"/>
+        <TextBlock Text="BACKEND" FontWeight="Bold"/><ComboBox x:Name="Backend" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Cpu"/><ComboBoxItem Content="Gpu"/></ComboBox>
+        <TextBlock Text="WORLD SIZE" FontWeight="Bold" Margin="0,10,0,0"/>
+        <Grid ColumnDefinitions="*,12,*"><NumericUpDown x:Name="WorldWidth" Value="16000" Minimum="1000" Maximum="1000000"/><TextBlock Grid.Column="1" Text="×" HorizontalAlignment="Center" VerticalAlignment="Center"/><NumericUpDown Grid.Column="2" x:Name="WorldHeight" Value="12000" Minimum="1000" Maximum="1000000"/></Grid>
+        <TextBlock Text="POPULATION CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="PopulationCap" Value="25000" Minimum="100" Maximum="1000000" Increment="1000"/>
+        <TextBlock Text="SPEED" FontWeight="Bold" Margin="0,10,0,0"/><ComboBox x:Name="Speed" SelectedIndex="3"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAXIMUM"/></ComboBox>
+        <TextBlock Text="ZEROBOT SUSTENANCE" FontWeight="Bold" Margin="0,10,0,0"/>
+        <ComboBox x:Name="Sustenance" SelectedIndex="3"><ComboBoxItem Content="FEEDER + REPRODUCER"/><ComboBoxItem Content="ENERGY-ONLY FEEDER"/><ComboBoxItem Content="PHOTOSYNTHETIC ZEROBOTS"/><ComboBoxItem Content="DISABLED METABOLISM"/><ComboBoxItem Content="NO ASSISTANCE"/></ComboBox>
+        <CheckBox x:Name="AutomaticProgression" IsChecked="True" Content="AUTOMATIC ZEROBOT PROGRESSION" Margin="0,8,0,0"/>
+        <Button Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
+        <Button Content="▶  CREATE WORLD" Background="#4C7D30" Foreground="White" FontWeight="Bold" FontSize="18" Height="58" Margin="0,12,0,0" Click="CreateWorld_Click"/>
+        <Button Content="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
+      </StackPanel></ScrollViewer>
+    </Border>
+
+    <Border Grid.Row="2" Grid.ColumnSpan="3" Background="#E6E2D8" BorderBrush="#BEBBB2" BorderThickness="0,1,0,0" Padding="12,7">
+      <Grid ColumnDefinitions="*,Auto"><TextBlock Text="READY — CONFIGURE A NEW EVOLUTION"/><TextBlock Grid.Column="1" Text="WINDOWS 10 ALPHA"/></Grid>
+    </Border>
+  </Grid>
+</Window>

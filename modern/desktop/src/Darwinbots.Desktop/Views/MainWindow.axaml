@@ -1,0 +1,156 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Darwinbots.Desktop.Controls"
+        xmlns:vm="using:Darwinbots.Desktop.ViewModels"
+        x:Class="Darwinbots.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Darwinbots Modern"
+        Width="940" Height="650" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized">
+  <Grid RowDefinitions="58,*,170,28" ColumnDefinitions="170,*,240">
+    <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="170,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
+        <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="25" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="transport" Content="▶  RUN" Background="#3F8E34" Foreground="White" Click="Run_Click" />
+        <Button Grid.Column="2" Classes="transport" Content="Ⅱ  PAUSE" Margin="8,0,0,0" Click="Pause_Click" />
+        <Button Grid.Column="3" Classes="transport" Content="▶| STEP" Margin="8,0,0,0" Click="Step_Click" />
+        <Button Grid.Column="4" Height="34" Content="IMPORT BOT" Margin="12,0,0,0" Click="Import_Click" />
+        <Button Grid.Column="5" Height="34" Content="RESET" Margin="8,0,0,0" Click="Reset_Click" />
+        <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="12,0,0,0">
+          <ComboBox x:Name="RuntimeSpeed" Width="92" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
+          <Button Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />
+          <Button x:Name="TurboButton" Height="34" Content="TURBO" Click="Turbo_Click" />
+          <Button Height="34" Content="SAVE" Click="Save_Click" />
+          <Button Height="34" Content="LOAD" Click="Load_Click" />
+        </StackPanel>
+        <StackPanel Grid.Column="7" Margin="20,0" VerticalAlignment="Center">
+          <TextBlock Classes="section" Text="TICK" />
+          <TextBlock Text="{Binding Tick}" FontWeight="Bold" FontSize="16" />
+          <TextBlock Text="{Binding TicksPerSecond, StringFormat='{}{0:0.0} t/s'}" FontSize="11" Foreground="#69716D"/>
+          <TextBlock Text="{Binding SnapshotsPerSecond, StringFormat='{}{0:0.0} snap/s'}" FontSize="10" Foreground="#69716D"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="8,8,4,4">
+      <Grid RowDefinitions="42,Auto,*,Auto">
+        <Border BorderBrush="#D0CDC3" BorderThickness="0,0,0,1" Padding="12">
+          <TextBlock Classes="section" Text="SPECIES" />
+        </Border>
+        <Border Grid.Row="1" Background="#E5ECD9" Padding="12,9">
+          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Active species" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding SpeciesCount}"/></Grid>
+        </Border>
+        <ScrollViewer Grid.Row="2">
+          <StackPanel Margin="12,16" Spacing="12">
+            <TextBlock Classes="section" Text="SIMULATION" />
+            <TextBlock Text="⌄  World" FontWeight="SemiBold" />
+            <TextBlock Text="    Parameters" />
+            <TextBlock Text="    Environment" />
+            <Button Content="＋ OBSTACLE" HorizontalAlignment="Stretch" Click="AddObstacle_Click"/>
+            <Button Content="＋ TELEPORTER" HorizontalAlignment="Stretch" Click="AddTeleporter_Click"/>
+            <Button Content="REMOVE FEATURE" HorizontalAlignment="Stretch" Click="RemoveFeature_Click"/>
+            <Button Content="ADVANCE ZEROBOT" HorizontalAlignment="Stretch" Click="AdvanceZerobot_Click"/>
+            <Button Content="ADVANCED LIVE" HorizontalAlignment="Stretch" Click="LiveAdvanced_Click"/>
+            <TextBlock Text="    Physics" />
+            <TextBlock Text="    Senses" />
+            <TextBlock Text="    Energy" />
+            <TextBlock Text="›  History" FontWeight="SemiBold" />
+            <TextBlock Text="›  Statistics" FontWeight="SemiBold" />
+            <TextBlock Text="›  Experiments" FontWeight="SemiBold" />
+          </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="3" BorderBrush="#D0CDC3" BorderThickness="0,1,0,0" Padding="12">
+          <TextBlock Text="Legacy DNA compatible" Foreground="#69716D" FontSize="11" />
+        </Border>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Grid.Column="1" Classes="panel" Margin="4,8,4,4" ClipToBounds="True">
+      <controls:WorldViewport x:Name="Viewport" />
+    </Border>
+
+    <Border Grid.Row="1" Grid.Column="2" Classes="panel" Margin="4,8,8,4">
+      <ScrollViewer>
+        <StackPanel>
+          <Border BorderBrush="#D0CDC3" BorderThickness="0,0,0,1" Padding="14"><TextBlock Classes="section" Text="ORGANISM" /></Border>
+          <Grid ColumnDefinitions="90,*" Margin="16" RowDefinitions="Auto,Auto,Auto">
+            <Ellipse Width="62" Height="62" Fill="#62A844" Stroke="#202725" StrokeThickness="2" />
+            <StackPanel Grid.Column="1" Spacing="6">
+              <TextBlock Classes="section" Text="STABLE ID" />
+              <TextBlock Text="{Binding SelectedId}" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="Selected organism follows stable slot:generation identity" TextWrapping="Wrap" Foreground="#69716D" FontSize="11" />
+            </StackPanel>
+          </Grid>
+          <Border BorderBrush="#D0CDC3" BorderThickness="0,1,0,0" Padding="16">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="ENERGY" />
+              <ProgressBar Minimum="0" Maximum="1000" Value="{Binding SelectedEnergy}" Foreground="#4C963B" />
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Current reserve"/><TextBlock Grid.Column="1" Text="{Binding SelectedEnergy}" FontWeight="Bold"/></Grid>
+            </StackPanel>
+          </Border>
+          <Border BorderBrush="#D0CDC3" BorderThickness="0,1,0,0" Padding="16">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="DNA" />
+              <Border Height="34" Background="#DDE8D2"><TextBlock Text="▌▏▌▌▏▏▌▏▌▌▏▏▏▌▌▏▌▏▌" Foreground="#3E7B36" FontSize="21" VerticalAlignment="Center" HorizontalAlignment="Center" /></Border>
+              <Button Content="EDIT / EXPORT DNA" HorizontalAlignment="Stretch" Click="EditDna_Click" />
+            </StackPanel>
+          </Border>
+          <Border BorderBrush="#D0CDC3" BorderThickness="0,1,0,0" Padding="16">
+            <StackPanel Spacing="9">
+              <TextBlock Classes="section" Text="STATE" />
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Age"/><TextBlock Grid.Column="1" Text="{Binding SelectedAge}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Species"/><TextBlock Grid.Column="1" Text="{Binding SelectedSpecies}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Body"/><TextBlock Grid.Column="1" Text="{Binding SelectedBody}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Waste"/><TextBlock Grid.Column="1" Text="{Binding SelectedWaste}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Chloroplasts"/><TextBlock Grid.Column="1" Text="{Binding SelectedChloroplasts}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Shell / Slime"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{Binding SelectedShell}"/><TextBlock Text="/"/><TextBlock Text="{Binding SelectedSlime}"/></StackPanel></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Poison / Venom"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{Binding SelectedPoison}"/><TextBlock Text="/"/><TextBlock Text="{Binding SelectedVenom}"/></StackPanel></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Aim"/><TextBlock Grid.Column="1" Text="{Binding SelectedAim}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Paralyzed / Poisoned"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{Binding SelectedParalyzed}"/><TextBlock Text="/"/><TextBlock Text="{Binding SelectedPoisoned}"/></StackPanel></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Action"/><TextBlock Grid.Column="1" Text="Observing" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Senses"/><TextBlock Grid.Column="1" Text="Online" Foreground="#2D826F" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="6" RowSpacing="6" Margin="0,10,0,0">
+                <Button Content="MOVE" Click="Move_Click"/><Button Grid.Column="1" Content="CLONE" Click="Clone_Click"/>
+                <Button Grid.Row="1" Content="REPRODUCE" Click="Reproduce_Click"/><Button Grid.Row="1" Grid.Column="1" Content="KILL" Background="#A84A3A" Foreground="White" Click="Kill_Click"/>
+                <Button Grid.Row="2" Grid.ColumnSpan="2" Content="FOLLOW" Click="Follow_Click"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <Grid Grid.Row="2" Grid.ColumnSpan="3" ColumnDefinitions="1*,1*,1.2*" Margin="8,4,8,6">
+      <Border Grid.Column="0" Classes="panel" Margin="0,0,4,0" Padding="14">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+          <TextBlock Classes="section" Text="POPULATION"/>
+          <controls:HistoryChart x:Name="PopulationChart" Grid.Row="1" Metric="Population" MinHeight="78"/>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12"><TextBlock Text="{Binding PopulationSummary}" FontWeight="SemiBold"/><TextBlock Text="{Binding LifecycleSummary}" Foreground="#69716D"/></StackPanel>
+        </Grid>
+      </Border>
+      <Border Grid.Column="1" Classes="panel" Margin="4,0" Padding="14">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+          <TextBlock Classes="section" Text="ENERGY"/>
+          <controls:HistoryChart x:Name="EnergyChart" Grid.Row="1" Metric="Energy" MinHeight="78"/>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12"><TextBlock Text="{Binding TotalEnergy, StringFormat='{}{0:N0} total'}" FontWeight="SemiBold"/><TextBlock Text="{Binding CombatSummary}" Foreground="#69716D"/></StackPanel>
+        </Grid>
+      </Border>
+      <Border Grid.Column="2" Classes="panel" Margin="4,0,0,0" Padding="14">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Classes="section" Text="EVENT LOG" />
+          <StackPanel Grid.Row="1" Margin="0,14,0,0" Spacing="8">
+            <TextBlock Text="SYSTEM   Modern engine initialized" />
+            <TextBlock Text="{Binding LifecycleSummary}" Foreground="#2D826F" />
+            <TextBlock Text="{Binding CombatSummary}" Foreground="#A65A23" />
+            <TextBlock Text="{Binding MutationSummary}" />
+            <TextBlock Text="{Binding LimitingPhase}" Foreground="#69716D" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="3" Grid.ColumnSpan="3" Background="#E6E2D8" BorderBrush="#BEBBB2" BorderThickness="0,1,0,0" Padding="10,4">
+      <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Status}" FontSize="11"/><Ellipse Grid.Column="1" Width="8" Height="8" Fill="#45A23D" VerticalAlignment="Center"/></Grid>
+    </Border>
+  </Grid>
+</Window>

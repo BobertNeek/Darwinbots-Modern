@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.AdvancedSettingsWindow" Title="Advanced Physics and Environment"
+        Width="520" Height="500" WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="54,*,52">
+    <Border Background="#FBF9F2" BorderBrush="#C8C5BB" BorderThickness="0,0,0,1" Padding="16"><TextBlock Text="ADVANCED PHYSICS + ENVIRONMENT" FontFamily="Bahnschrift" FontSize="18" FontWeight="Bold"/></Border>
+    <ScrollViewer Grid.Row="1"><StackPanel Margin="22" Spacing="10">
+      <TextBlock Classes="section" Text="ENERGY"/>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Metabolism per tick"/><NumericUpDown Grid.Column="1" x:Name="Metabolism" Minimum="0" Maximum="100"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable baseline"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Sunlight intensity"/><NumericUpDown Grid.Column="1" x:Name="Sunlight" Minimum="0" Maximum="10000"/></Grid>
+      <TextBlock Classes="section" Text="PHYSICS" Margin="0,14,0,0"/>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity X"/><NumericUpDown Grid.Column="1" x:Name="GravityX" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity Y"/><NumericUpDown Grid.Column="1" x:Name="GravityY" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag (0–1)"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Brownian motion"/><NumericUpDown Grid.Column="1" x:Name="Brownian" Minimum="0" Maximum="100" Increment="0.1"/></Grid>
+      <TextBlock Text="Obstacles and teleporters can be added from the running world's environment tools." TextWrapping="Wrap" Foreground="#69716D" Margin="0,16,0,0"/>
+    </StackPanel></ScrollViewer>
+    <Border Grid.Row="2" Background="#E6E2D8" BorderBrush="#C8C5BB" BorderThickness="0,1,0,0" Padding="10,8">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button Content="CANCEL" Click="Cancel_Click"/><Button Content="APPLY" Background="#4C7D30" Foreground="White" Click="Apply_Click"/></StackPanel>
+    </Border>
+  </Grid>
+</Window>
+

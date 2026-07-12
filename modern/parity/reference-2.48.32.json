@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "authority": "Darwinbots 2 final released executable",
+  "release": "2.48.32",
+  "file_version": "2.48.0032",
+  "product_version": "2.48.0032",
+  "filename": "Darwin2.48.32.exe",
+  "size_bytes": 4759552,
+  "sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "local_reference_path": "C:/Users/PC/Downloads/Darwin2.48.32.exe",
+  "released": "2016-11-04",
+  "release_notes": [
+    "Bug fix in shot array",
+    "Crash prevention in fittest feature",
+    "Update to zerobot and survival algorithms"
+  ],
+  "sources": [
+    "http://wiki.darwinbots.com/w/Main_FTP#2.48.32",
+    "http://wiki.darwinbots.com/w/Main_Page"
+  ]
+}

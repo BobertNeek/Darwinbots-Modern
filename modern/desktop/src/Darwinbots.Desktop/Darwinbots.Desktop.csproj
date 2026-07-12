@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
+    <NativeCargoArguments Condition="'$(Configuration)' == 'Release'">--release</NativeCargoArguments>
+    <NativeCargoProfile Condition="'$(Configuration)' == 'Release'">release</NativeCargoProfile>
+    <NativeCargoProfile Condition="'$(NativeCargoProfile)' == ''">debug</NativeCargoProfile>
+    <NativeLibraryName Condition="$([MSBuild]::IsOSPlatform('Windows'))">darwinbots_engine.dll</NativeLibraryName>
+    <NativeLibraryName Condition="$([MSBuild]::IsOSPlatform('Linux'))">libdarwinbots_engine.so</NativeLibraryName>
+    <NativeLibraryName Condition="$([MSBuild]::IsOSPlatform('OSX'))">libdarwinbots_engine.dylib</NativeLibraryName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Darwinbots.Desktop.Core\Darwinbots.Desktop.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\..\..\Installer\bots\Alga_Minimalis_Chloroplastus.txt" Link="Bots\Alga_Minimalis_Chloroplastus.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\..\..\Installer\bots\Animal_Minimalis.txt" Link="Bots\Animal_Minimalis.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="BuildNativeEngine" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="cargo build -p darwinbots-engine $(NativeCargoArguments)" WorkingDirectory="$(MSBuildProjectDirectory)\..\..\..\.." />
+  </Target>
+  <Target Name="CopyNativeEngine" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(NativeLibraryName)' == ''" Text="Unsupported host platform for the Darwinbots native engine." />
+    <PropertyGroup>
+      <NativeLibraryPath>$(MSBuildProjectDirectory)\..\..\..\..\target\$(NativeCargoProfile)\$(NativeLibraryName)</NativeLibraryPath>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(NativeLibraryPath)')" Text="Native engine was not produced at $(NativeLibraryPath)." />
+    <Copy SourceFiles="$(NativeLibraryPath)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyNativeEngineToPublish" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <NativePublishLibraryPath>$(MSBuildProjectDirectory)\..\..\..\..\target\$(NativeCargoProfile)\$(NativeLibraryName)</NativePublishLibraryPath>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(NativePublishLibraryPath)')" Text="Native engine was not produced at $(NativePublishLibraryPath)." />
+    <Copy SourceFiles="$(NativePublishLibraryPath)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
