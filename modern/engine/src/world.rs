@@ -224,6 +224,8 @@ pub struct Engine {
     physics: RuntimePhysics,
     #[serde(skip, default)]
     spatial: SpatialIndex,
+    #[serde(skip, default)]
+    sensing_spatial: SpatialIndex,
     pending_mutations: Vec<OrganismId>,
     ties: Vec<TieSnapshot>,
     #[serde(default = "default_species")]
@@ -282,6 +284,7 @@ impl Engine {
             capabilities,
             physics,
             spatial: SpatialIndex::default(),
+            sensing_spatial: SpatialIndex::default(),
             pending_mutations: Vec::new(),
             ties: Vec::new(),
             species: default_species(),
@@ -334,7 +337,11 @@ impl Engine {
         positions: impl IntoIterator<Item = [f32; 2]>,
         initial_energy: i32,
     ) -> Result<Vec<OrganismId>, EngineError> {
-        let positions: Vec<_> = positions.into_iter().collect();
+        let mut positions: Vec<_> = positions.into_iter().collect();
+        if self.species.get(species.0 as usize).is_some_and(|value| value.vegetable) {
+            let available = self.config.vegetable_population_cap.saturating_sub(self.vegetable_population());
+            positions.truncate(available);
+        }
         if self.population().saturating_add(positions.len()) > self.config.organism_capacity {
             return Err(EngineError::CapacityReached);
         }
@@ -661,6 +668,12 @@ impl Engine {
         self.slots.iter().filter(|slot| slot.organism.is_some()).count()
     }
 
+    pub fn vegetable_population(&self) -> usize {
+        self.slots.iter().filter_map(|slot| slot.organism.as_ref())
+            .filter(|organism| self.species.get(organism.species.0 as usize).is_some_and(|species| species.vegetable))
+            .count()
+    }
+
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
         let slot_count = self.slots.len();
         for (name, length) in [
@@ -779,6 +792,7 @@ impl Engine {
 
     fn spatial_index_phase(&mut self) {
         self.spatial.rebuild_from_soa(&self.kinematics.positions, &self.kinematics.alive, 64.0);
+        self.sensing_spatial.rebuild_from_soa(&self.kinematics.positions, &self.kinematics.alive, 1_000.0);
     }
 
     fn sensing_phase(&mut self) -> Result<(), EngineError> {
@@ -830,55 +844,53 @@ impl Engine {
             Some(Err(error)) => return Err(error),
             None => None,
         };
-        let senses: Vec<_> = if let Some(targets) = gpu_targets {
+        if let Some(targets) = gpu_targets {
             self.pending_gpu_collision_pairs = Some(targets.iter().enumerate().filter_map(|(first, second)| {
                 let second = (*second)?;
                 (first < second).then_some((first, second))
             }).collect());
-            targets.into_iter().enumerate().map(|(observer_slot, target_slot)| {
-                self.slots[observer_slot].organism.as_ref()?;
-                let target = target_slot.and_then(|slot| self.slots[slot].organism.as_ref().map(|target| (slot, target)));
-                Some((observer_slot, target.map(|(slot, target)| (
-                    self.kinematics.positions[slot],
-                    self.kinematics.velocities[slot],
-                    self.lifecycle.energies[slot],
-                    self.lifecycle.ages[slot],
-                    target.memory.read(MEM_MY_EYE),
-                ))))
-            }).collect()
-        } else {
-            (0..self.slots.len()).into_par_iter().map(|observer_slot| {
-                self.slots[observer_slot].organism.as_ref()?;
-                let observer_position = self.kinematics.positions[observer_slot];
-                let Some(target_slot) = self.spatial.nearest(observer_position, Some(observer_slot), 1_000.0) else {
-                    return Some((observer_slot, None));
-                };
+        }
+        let senses: Vec<_> = (0..self.slots.len()).into_par_iter().map(|observer_slot| {
+            self.slots[observer_slot].organism.as_ref()?;
+            let observer_position = self.kinematics.positions[observer_slot];
+            let observer_angle = self.biology[observer_slot].aim as f32 / 200.0;
+            let mut nearest_by_eye = [None; 9];
+            for target_slot in self.sensing_spatial.neighbors(observer_position, 1_000.0) {
+                if target_slot == observer_slot || self.slots[target_slot].organism.is_none() { continue; }
+                let target_position = self.kinematics.positions[target_slot];
+                let target_distance = distance_squared(observer_position, target_position);
+                let sector = eye_sector(observer_position, observer_angle, target_position);
+                if nearest_by_eye[sector].is_none_or(|(_, best_distance)| target_distance < best_distance) {
+                    nearest_by_eye[sector] = Some((target_slot, target_distance));
+                }
+            }
+            let mut eye_values = [0; 9];
+            for (sector, target) in nearest_by_eye.iter().enumerate() {
+                if let Some((_, target_distance)) = target {
+                    eye_values[sector] = eye_strength(*target_distance);
+                }
+            }
+            let reference = nearest_by_eye[4].and_then(|(target_slot, _)| {
                 let target = self.slots[target_slot].organism.as_ref()?;
-                Some((observer_slot, Some((
+                Some((
                     self.kinematics.positions[target_slot],
                     self.kinematics.velocities[target_slot],
                     self.lifecycle.energies[target_slot],
                     self.lifecycle.ages[target_slot],
                     target.memory.read(MEM_MY_EYE),
-                ))))
-            }).collect()
-        };
+                ))
+            });
+            Some((observer_slot, eye_values, reference))
+        }).collect();
         for sense in senses.into_iter().flatten() {
             let observer = self.slots[sense.0].organism.as_mut().unwrap();
-            for eye in MEM_EYE1..=MEM_EYE9 { observer.memory.write(eye, 0); }
-            let Some((target_position, target_velocity, target_energy, target_age, target_eye_references)) = sense.1 else {
+            for (sector, value) in sense.1.into_iter().enumerate() {
+                observer.memory.write(MEM_EYE1 + sector as i32, value);
+            }
+            let Some((target_position, target_velocity, target_energy, target_age, target_eye_references)) = sense.2 else {
                 continue;
             };
-            let distance = distance_squared(self.kinematics.positions[sense.0], target_position).sqrt();
-            let delta_x = target_position[0] - self.kinematics.positions[sense.0][0];
-            let delta_y = target_position[1] - self.kinematics.positions[sense.0][1];
-            let target_angle = delta_x.atan2(delta_y);
             let observer_angle = self.biology[sense.0].aim as f32 / 200.0;
-            let relative = (target_angle - observer_angle + std::f32::consts::PI)
-                .rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
-            let sector = (((relative + std::f32::consts::PI) / std::f32::consts::TAU) * 9.0)
-                .floor().clamp(0.0, 8.0) as i32;
-            observer.memory.write(MEM_EYE1 + sector, (1_000.0 - distance).max(1.0).round() as i32);
             observer.memory.write(MEM_REF_X, target_position[0].round() as i32);
             observer.memory.write(MEM_REF_Y, target_position[1].round() as i32);
             let target_forward = target_velocity[0] * observer_angle.sin() + target_velocity[1] * observer_angle.cos();
@@ -911,12 +923,18 @@ impl Engine {
             }
             let shot_type = attacker.memory.read(MEM_SHOOT);
             if shot_type == 0 { continue; }
+            let requested_value = attacker.memory.read(MEM_SHOOTVAL);
+            let shot_value = if shot_type == -1 && requested_value == 0 {
+                20_i32.saturating_add(self.biology[attacker_slot].body.max(0) / 5)
+            } else {
+                requested_value.abs().max(1)
+            };
             let target = self.spatial.nearest(self.kinematics.positions[attacker_slot], Some(attacker_slot), 1_000.0);
             if let Some(target) = target {
-                shots.push((attacker_slot, target, shot_type, attacker.memory.read(MEM_SHOOTVAL).abs().max(1)));
+                shots.push((attacker_slot, target, shot_type, shot_value));
             } else if shot_type == -1 {
                 if let Some(target) = nearest_corpse(self.kinematics.positions[attacker_slot], &self.corpses, 1_000.0) {
-                    corpse_shots.push((attacker_slot, target, attacker.memory.read(MEM_SHOOTVAL).abs().max(1)));
+                    corpse_shots.push((attacker_slot, target, shot_value));
                 }
             }
         }
@@ -1214,6 +1232,7 @@ impl Engine {
                 if species.get(organism.species.0 as usize).is_some_and(|value| value.vegetable) {
                     *energy = energy.saturating_add(self.config.vegetable_energy_per_tick.max(0));
                 }
+                *energy = (*energy).min(32_000);
                 organism.memory.write(MEM_ROBAGE, (*age).min(i32::MAX as u64) as i32);
                 organism.memory.write(MEM_NRG, *energy);
                 organism.memory.write(MEM_XPOS, positions[slot_index][0].round() as i32);
@@ -1270,9 +1289,13 @@ impl Engine {
                 self.stats.deaths = self.stats.deaths.saturating_add(1);
             }
         }
-        let available_births = self.config.organism_capacity.saturating_sub(self.population());
-        for (ordinal, (dna, position, energy, mutate, species, parent, self_reproduction)) in births.into_iter().enumerate() {
-            if ordinal >= available_births {
+        let mut available_births = self.config.organism_capacity.saturating_sub(self.population());
+        let mut vegetable_population = self.vegetable_population();
+        for (dna, position, energy, mutate, species, parent, self_reproduction) in births {
+            let vegetable_birth = self.species.get(species.0 as usize).is_some_and(|value| value.vegetable);
+            if available_births == 0
+                || (vegetable_birth && vegetable_population >= self.config.vegetable_population_cap)
+            {
                 if let Some(parent_slot) = self.slots.get_mut(parent.slot() as usize)
                     && parent_slot.generation == parent.generation()
                     && let Some(parent_organism) = parent_slot.organism.as_mut()
@@ -1284,6 +1307,8 @@ impl Engine {
                 continue;
             }
             let child = self.spawn_species_at_unpublished(dna, species, position)?;
+            available_births -= 1;
+            if vegetable_birth { vegetable_population += 1; }
             self.slots[child.slot() as usize].organism.as_mut().unwrap().parents = [Some(parent), None];
             self.lifecycle.energies[child.slot() as usize] = energy.max(1);
             self.slots[child.slot() as usize].organism.as_mut().unwrap().memory.write(MEM_NRG, energy.max(1));
@@ -1299,12 +1324,18 @@ impl Engine {
         }
         let definitions = self.species.clone();
         let templates = self.species_templates.clone();
+        let mut vegetable_population = self.vegetable_population();
         for (species_index, definition) in definitions.iter().enumerate() {
             if !definition.reseed || counts[species_index] >= definition.minimum_population { continue; }
             let Some(template) = templates.get(species_index).and_then(Option::as_ref) else { continue };
             let missing = definition.minimum_population - counts[species_index];
             let available = self.config.organism_capacity.saturating_sub(self.population());
-            for ordinal in 0..missing.min(available) {
+            let vegetable_available = if definition.vegetable {
+                self.config.vegetable_population_cap.saturating_sub(vegetable_population)
+            } else {
+                usize::MAX
+            };
+            for ordinal in 0..missing.min(available).min(vegetable_available) {
                 let serial = self.tick.wrapping_mul(1_103).wrapping_add((species_index * 97 + ordinal) as u64);
                 let position = [
                     (serial % 10_000) as f32 / 10_000.0 * self.config.world_width,
@@ -1315,6 +1346,7 @@ impl Engine {
                 self.lifecycle.energies[slot] = template.initial_energy;
                 self.slots[slot].organism.as_mut().unwrap().memory.write(MEM_NRG, template.initial_energy);
                 self.stats.reseeds = self.stats.reseeds.saturating_add(1);
+                if definition.vegetable { vegetable_population += 1; }
             }
         }
         let slots = &self.slots;
@@ -1543,6 +1575,19 @@ fn distance_squared(left: [f32; 2], right: [f32; 2]) -> f32 {
     let x = right[0] - left[0];
     let y = right[1] - left[1];
     x * x + y * y
+}
+
+fn eye_sector(observer: [f32; 2], observer_angle: f32, target: [f32; 2]) -> usize {
+    let target_angle = (target[0] - observer[0]).atan2(target[1] - observer[1]);
+    let relative = (target_angle - observer_angle + std::f32::consts::PI)
+        .rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
+    (((relative + std::f32::consts::PI) / std::f32::consts::TAU) * 9.0)
+        .floor().clamp(0.0, 8.0) as usize
+}
+
+fn eye_strength(distance_squared: f32) -> i32 {
+    if !distance_squared.is_finite() || distance_squared <= 0.0 { return 32_000; }
+    (1_000_000.0 / distance_squared).round().clamp(1.0, 32_000.0) as i32
 }
 
 fn nearest_corpse(position: [f32; 2], corpses: &[CorpseSnapshot], radius: f32) -> Option<usize> {

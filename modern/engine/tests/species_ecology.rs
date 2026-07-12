@@ -168,6 +168,49 @@ fn chloroplasts_generate_environmental_energy_for_any_species() {
 }
 
 #[test]
+fn feeding_shots_without_shootval_use_legacy_body_based_strength() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let predator = LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap();
+    let prey = LegacyDna::parse("start\nstop").unwrap();
+    let attacker = engine.spawn_at(predator, [100.0, 100.0]).unwrap();
+    engine.spawn_at(prey, [120.0, 100.0]).unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.snapshot().stats.energy_harvested, 30);
+    assert!(engine.organism(attacker).unwrap().energy > 1_000);
+}
+
+#[test]
+fn vegetable_cap_applies_to_initial_imports_and_reproduction() {
+    let mut engine = Engine::new(EngineConfig {
+        organism_capacity: 32,
+        vegetable_population_cap: 3,
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    }).unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        name: "Capped vegetables".to_owned(),
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let dna = LegacyDna::parse("start\n50 .repro store\nstop").unwrap();
+
+    let imported = engine.spawn_species_batch(
+        dna,
+        vegetables,
+        [[100.0, 100.0], [200.0, 100.0], [300.0, 100.0], [400.0, 100.0]],
+        1_000,
+    ).unwrap();
+    assert_eq!(imported.len(), 3);
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.vegetable_population(), 3);
+    assert_eq!(engine.population(), 3);
+}
+
+#[test]
 fn animal_minimalis_recognizes_and_moves_toward_non_family_targets() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

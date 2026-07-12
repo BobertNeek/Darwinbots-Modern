@@ -24,6 +24,7 @@ public sealed record WorldSetupOptions
     public string Backend { get; init; } = "Auto";
     public ulong Seed { get; init; } = 1;
     public int PopulationCapacity { get; init; } = 25_000;
+    public int VegetablePopulationCap { get; init; } = 500;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
     public int MetabolismCost { get; init; } = 1;

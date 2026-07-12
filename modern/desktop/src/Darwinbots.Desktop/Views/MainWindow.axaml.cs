@@ -127,7 +127,8 @@ public sealed partial class MainWindow : Window
                 _setup.SunlightEnergy,
                 _setup.Gravity,
                 _setup.Drag,
-                _setup.BrownianMotion));
+                _setup.BrownianMotion,
+                _setup.VegetablePopulationCap));
             _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
             {
                 _viewModel.Update(snapshot);

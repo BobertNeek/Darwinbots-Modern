@@ -22,14 +22,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         int sunlightEnergy = 100,
         float[]? gravity = null,
         float drag = 0f,
-        float brownianMotion = 0f)
+        float brownianMotion = 0f,
+        int vegetablePopulationCap = 500)
     {
         _worldWidth = worldWidth;
         _worldHeight = worldHeight;
         gravity ??= [0f, 0f];
         ValidatePosition(gravity);
         var config = $$"""
-            {"seed":{{seed}},"organism_capacity":{{capacity}},"world_width":{{worldWidth}},"world_height":{{worldHeight}},"backend":"{{backend}}","allow_cpu_fallback":true,"metabolism_cost":{{metabolismCost}},"vegetable_energy_per_tick":{{vegetableEnergyPerTick}},"sunlight_energy":{{sunlightEnergy}},"gravity":[{{gravity[0]}},{{gravity[1]}}],"drag":{{drag}},"brownian_motion":{{brownianMotion}}}
+            {"seed":{{seed}},"organism_capacity":{{capacity}},"vegetable_population_cap":{{vegetablePopulationCap}},"world_width":{{worldWidth}},"world_height":{{worldHeight}},"backend":"{{backend}}","allow_cpu_fallback":true,"metabolism_cost":{{metabolismCost}},"vegetable_energy_per_tick":{{vegetableEnergyPerTick}},"sunlight_energy":{{sunlightEnergy}},"gravity":[{{gravity[0]}},{{gravity[1]}}],"drag":{{drag}},"brownian_motion":{{brownianMotion}}}
             """;
         var bytes = Encoding.UTF8.GetBytes(config);
         ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");

@@ -12,14 +12,14 @@ fn uniform_spatial_index_returns_sorted_nearby_slots() {
 fn sensing_writes_nearest_organism_reference_sysvars() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let observer = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let observer = engine.spawn_at(LegacyDna::parse("start\n314 .setaim store\nstop").unwrap(), [100.0, 100.0]).unwrap();
     engine.spawn_at(idle, [130.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
 
     assert_eq!(engine.memory(observer, "refxpos").unwrap(), 130);
     assert_eq!(engine.memory(observer, "refypos").unwrap(), 100);
-    assert!(engine.memory(observer, "eye7").unwrap() > 0);
+    assert!(engine.memory(observer, "eye5").unwrap() > 0);
 }
 
 #[test]

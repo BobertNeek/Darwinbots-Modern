@@ -101,6 +101,7 @@ public sealed partial class SetupWindow : Window
             AutomaticZerobotProgression = AutomaticProgression.IsChecked == true,
             Backend = ((ComboBoxItem)Backend.SelectedItem!).Content?.ToString() ?? "Auto",
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
+            VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = (float)(WorldWidth.Value ?? 16_000),
             WorldHeight = (float)(WorldHeight.Value ?? 12_000),
             MetabolismCost = sustenance == ZerobotSustenance.DisabledMetabolism ? 0 : _metabolismCost,

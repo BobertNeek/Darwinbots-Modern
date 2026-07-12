@@ -100,7 +100,7 @@ impl DnaVm {
                         continue;
                     }
                     FlowInstruction::Start => {
-                        branch_condition = booleans.last().copied().unwrap_or(true);
+                        branch_condition = booleans.iter().copied().all(|condition| condition);
                         flow = if branch_condition { Flow::Body } else { Flow::Clear };
                         booleans.clear();
                         continue;
