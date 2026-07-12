@@ -168,6 +168,60 @@ fn chloroplasts_generate_environmental_energy_for_any_species() {
 }
 
 #[test]
+fn animal_minimalis_recognizes_and_moves_toward_non_family_targets() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    }).unwrap();
+    let animal = LegacyDna::parse("cond\n*.eye5 0 >\n*.refeye *.myeye !=\nstart\n*.refveldx .dx store\n*.refvelup 30 add .up store\nstop\nend").unwrap();
+    let alga = LegacyDna::parse("start\nstop\nend").unwrap();
+    let animal_id = engine.spawn_at(animal, [500.0, 500.0]).unwrap();
+    engine.spawn_at(alga, [500.0, 550.0]).unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(animal_id, 728).unwrap(), 1);
+    assert_eq!(engine.memory_at(animal_id, 708).unwrap(), 0);
+    engine.tick().unwrap();
+
+    assert!(engine.organism(animal_id).unwrap().position[1] > 500.0);
+}
+
+#[test]
+fn reproduction_synchronizes_energy_memory_before_the_next_dna_cycle() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        vegetable_energy_per_tick: 0,
+        sunlight_energy: 0,
+        ..EngineConfig::testing()
+    }).unwrap();
+    let dna = LegacyDna::parse("cond\n*.nrg 6000 >\nstart\n50 .repro store\nstop\nend").unwrap();
+    engine.spawn_species_batch(dna, Default::default(), [[500.0, 500.0]], 7_000).unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.population(), 2);
+    engine.tick().unwrap();
+
+    assert_eq!(engine.population(), 2);
+}
+
+#[test]
+fn reproduction_wave_stops_cleanly_at_population_capacity() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    }).unwrap();
+    let dna = LegacyDna::parse("start\n50 .repro store\nstop").unwrap();
+    for index in 0..20 {
+        engine.spawn_at(dna.clone(), [100.0 + index as f32 * 10.0, 500.0]).unwrap();
+    }
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.population(), 32);
+    assert_eq!(engine.snapshot().stats.births, 12);
+}
+
+#[test]
 fn minus_two_shots_donate_energy_to_zerobots() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let feeder = LegacyDna::parse("start\n-2 .shoot store\n50 .shootval store\nstop").unwrap();

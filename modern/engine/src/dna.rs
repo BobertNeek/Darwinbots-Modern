@@ -105,6 +105,18 @@ impl LegacyDna {
         &self.compatibility_warnings
     }
 
+    pub fn address_reference_count(&self, first: i32, last: i32) -> i32 {
+        self.instructions.iter().filter(|instruction| {
+            let address = match instruction {
+                Instruction::ReadAddress(address)
+                | Instruction::ReadResolved(address)
+                | Instruction::AddressResolved(address) => *address,
+                _ => return false,
+            };
+            (first..=last).contains(&address)
+        }).count().min(i32::MAX as usize) as i32
+    }
+
     pub(crate) fn instructions_mut(&mut self) -> &mut Vec<Instruction> {
         &mut self.instructions
     }

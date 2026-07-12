@@ -22,6 +22,11 @@ const MEM_BODY: i32 = 311;
 const MEM_TIE: i32 = 330;
 const MEM_REF_X: i32 = 689;
 const MEM_REF_Y: i32 = 690;
+const MEM_REF_VEL_SX: i32 = 696;
+const MEM_REF_VEL_DX: i32 = 697;
+const MEM_REF_VEL_DN: i32 = 698;
+const MEM_REF_VEL_UP: i32 = 699;
+const MEM_REF_EYE: i32 = 708;
 const MEM_REF_NRG: i32 = 709;
 const MEM_REF_AGE: i32 = 710;
 const MEM_EYE1: i32 = 501;
@@ -42,9 +47,11 @@ const MEM_READ_TIE: i32 = 471;
 const MEM_TIE_MEMORY_VALUE: i32 = 475;
 const MEM_TIE_MEMORY_LOCATION: i32 = 476;
 const MEM_MY_TIES: i32 = 729;
+const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_LIGHT: i32 = 253;
+const CHLOROPLAST_ENERGY_SCALE: i32 = 8_000;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrganismSnapshot {
@@ -383,6 +390,7 @@ impl Engine {
         memory.write(MEM_BODY, 100);
         memory.write(MEM_XPOS, position[0].round() as i32);
         memory.write(MEM_YPOS, position[1].round() as i32);
+        memory.write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
         let organism = Organism {
             dna,
             memory,
@@ -452,7 +460,9 @@ impl Engine {
     }
 
     pub fn replace_dna(&mut self, id: OrganismId, dna: LegacyDna) -> Result<(), EngineError> {
-        self.valid_slot_mut(id)?.organism.as_mut().unwrap().dna = dna;
+        let organism = self.valid_slot_mut(id)?.organism.as_mut().unwrap();
+        organism.memory.write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
+        organism.dna = dna;
         self.publish_snapshot();
         Ok(())
     }
@@ -828,7 +838,13 @@ impl Engine {
             targets.into_iter().enumerate().map(|(observer_slot, target_slot)| {
                 self.slots[observer_slot].organism.as_ref()?;
                 let target = target_slot.and_then(|slot| self.slots[slot].organism.as_ref().map(|target| (slot, target)));
-                Some((observer_slot, target.map(|(slot, _)| (self.kinematics.positions[slot], self.lifecycle.energies[slot], self.lifecycle.ages[slot]))))
+                Some((observer_slot, target.map(|(slot, target)| (
+                    self.kinematics.positions[slot],
+                    self.kinematics.velocities[slot],
+                    self.lifecycle.energies[slot],
+                    self.lifecycle.ages[slot],
+                    target.memory.read(MEM_MY_EYE),
+                ))))
             }).collect()
         } else {
             (0..self.slots.len()).into_par_iter().map(|observer_slot| {
@@ -837,13 +853,20 @@ impl Engine {
                 let Some(target_slot) = self.spatial.nearest(observer_position, Some(observer_slot), 1_000.0) else {
                     return Some((observer_slot, None));
                 };
-                Some((observer_slot, Some((self.kinematics.positions[target_slot], self.lifecycle.energies[target_slot], self.lifecycle.ages[target_slot]))))
+                let target = self.slots[target_slot].organism.as_ref()?;
+                Some((observer_slot, Some((
+                    self.kinematics.positions[target_slot],
+                    self.kinematics.velocities[target_slot],
+                    self.lifecycle.energies[target_slot],
+                    self.lifecycle.ages[target_slot],
+                    target.memory.read(MEM_MY_EYE),
+                ))))
             }).collect()
         };
         for sense in senses.into_iter().flatten() {
             let observer = self.slots[sense.0].organism.as_mut().unwrap();
             for eye in MEM_EYE1..=MEM_EYE9 { observer.memory.write(eye, 0); }
-            let Some((target_position, target_energy, target_age)) = sense.1 else {
+            let Some((target_position, target_velocity, target_energy, target_age, target_eye_references)) = sense.1 else {
                 continue;
             };
             let distance = distance_squared(self.kinematics.positions[sense.0], target_position).sqrt();
@@ -858,6 +881,13 @@ impl Engine {
             observer.memory.write(MEM_EYE1 + sector, (1_000.0 - distance).max(1.0).round() as i32);
             observer.memory.write(MEM_REF_X, target_position[0].round() as i32);
             observer.memory.write(MEM_REF_Y, target_position[1].round() as i32);
+            let target_forward = target_velocity[0] * observer_angle.sin() + target_velocity[1] * observer_angle.cos();
+            let target_lateral = target_velocity[0] * observer_angle.cos() - target_velocity[1] * observer_angle.sin();
+            observer.memory.write(MEM_REF_VEL_UP, target_forward.max(0.0).round() as i32);
+            observer.memory.write(MEM_REF_VEL_DN, (-target_forward).max(0.0).round() as i32);
+            observer.memory.write(MEM_REF_VEL_DX, target_lateral.max(0.0).round() as i32);
+            observer.memory.write(MEM_REF_VEL_SX, (-target_lateral).max(0.0).round() as i32);
+            observer.memory.write(MEM_REF_EYE, target_eye_references);
             observer.memory.write(MEM_REF_NRG, target_energy);
             observer.memory.write(MEM_REF_AGE, target_age.min(i32::MAX as u64) as i32);
         }
@@ -1173,7 +1203,8 @@ impl Engine {
             let organism = slot.organism.as_mut()?;
                 *age += 1;
                 *energy = energy.saturating_sub(self.config.metabolism_cost.max(0));
-                let sunlight = biology.chloroplasts.saturating_mul(self.config.sunlight_energy.max(0)) / 1_000;
+                let sunlight = biology.chloroplasts.saturating_mul(self.config.sunlight_energy.max(0))
+                    / CHLOROPLAST_ENERGY_SCALE;
                 *energy = energy.saturating_add(sunlight);
                 if biology.poisoned > 0 {
                     *energy = energy.saturating_sub(biology.poisoned.min(10));
@@ -1197,6 +1228,7 @@ impl Engine {
                 if reproduction > 0 && *energy > 200 {
                     let child_energy = (*energy as i64 * reproduction.clamp(1, 99) as i64 / 100) as i32;
                     *energy -= child_energy;
+                    organism.memory.write(MEM_NRG, *energy);
                     organism.memory.write(MEM_REPRO, 0);
                     organism.memory.write(MEM_MREPRO, 0);
                     organism.random_state = advance_random(organism.random_state);
@@ -1220,16 +1252,6 @@ impl Engine {
             if let Some(birth) = birth { births.push(birth); }
             if dead { deaths.push(slot_index); }
         }
-        for (dna, position, energy, mutate, species, parent, self_reproduction) in births {
-            let child = self.spawn_species_at_unpublished(dna, species, position)?;
-            self.slots[child.slot() as usize].organism.as_mut().unwrap().parents = [Some(parent), None];
-            self.lifecycle.energies[child.slot() as usize] = energy.max(1);
-            if mutate { self.pending_mutations.push(child); }
-            self.stats.births = self.stats.births.saturating_add(1);
-            if self_reproduction {
-                self.stats.self_reproductions = self.stats.self_reproductions.saturating_add(1);
-            }
-        }
         for slot_index in deaths {
             let slot = &mut self.slots[slot_index];
             if slot.organism.take().is_some() {
@@ -1246,6 +1268,29 @@ impl Engine {
                 slot.generation = slot.generation.wrapping_add(1);
                 self.free_slots.push(slot_index as u32);
                 self.stats.deaths = self.stats.deaths.saturating_add(1);
+            }
+        }
+        let available_births = self.config.organism_capacity.saturating_sub(self.population());
+        for (ordinal, (dna, position, energy, mutate, species, parent, self_reproduction)) in births.into_iter().enumerate() {
+            if ordinal >= available_births {
+                if let Some(parent_slot) = self.slots.get_mut(parent.slot() as usize)
+                    && parent_slot.generation == parent.generation()
+                    && let Some(parent_organism) = parent_slot.organism.as_mut()
+                {
+                    let parent_energy = &mut self.lifecycle.energies[parent.slot() as usize];
+                    *parent_energy = parent_energy.saturating_add(energy.max(1));
+                    parent_organism.memory.write(MEM_NRG, *parent_energy);
+                }
+                continue;
+            }
+            let child = self.spawn_species_at_unpublished(dna, species, position)?;
+            self.slots[child.slot() as usize].organism.as_mut().unwrap().parents = [Some(parent), None];
+            self.lifecycle.energies[child.slot() as usize] = energy.max(1);
+            self.slots[child.slot() as usize].organism.as_mut().unwrap().memory.write(MEM_NRG, energy.max(1));
+            if mutate { self.pending_mutations.push(child); }
+            self.stats.births = self.stats.births.saturating_add(1);
+            if self_reproduction {
+                self.stats.self_reproductions = self.stats.self_reproductions.saturating_add(1);
             }
         }
         let mut counts = vec![0usize; self.species.len()];
@@ -1284,6 +1329,7 @@ impl Engine {
             let Some(organism) = slot.organism.as_mut() else { continue };
             let mut mutator = GenomeMutator::new(organism.random_state);
             let report = mutator.mutate(&mut organism.dna);
+            organism.memory.write(MEM_MY_EYE, organism.dna.address_reference_count(MEM_EYE1, MEM_EYE9));
             organism.random_state = mutator.random_state();
             self.stats.mutations = self.stats.mutations.saturating_add(report.changes as u64);
         }
@@ -1388,6 +1434,11 @@ impl Engine {
         engine.species_templates.resize(engine.species.len(), None);
         engine.biology.resize(engine.slots.len(), BiologyState::default());
         engine.forced_reproductions.resize(engine.slots.len(), false);
+        for slot in &mut engine.slots {
+            if let Some(organism) = slot.organism.as_mut() {
+                organism.memory.write(MEM_MY_EYE, organism.dna.address_reference_count(MEM_EYE1, MEM_EYE9));
+            }
+        }
         let (capabilities, physics) = select_backend(&engine.config)?;
         engine.capabilities = capabilities;
         engine.physics = physics;
