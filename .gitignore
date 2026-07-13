@@ -1,4 +1,5 @@
 /.codex/
+/.worktrees/
 /target/
 /modern/dist/
 /modern/artifacts/
