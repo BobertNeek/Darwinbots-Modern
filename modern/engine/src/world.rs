@@ -2,7 +2,7 @@ use crate::{
     BackendCapabilities, BackendKind, BackendPreference, CpuPhysicsBackend, DnaVm, EngineConfig,
     EngineError, GpuPhysicsBackend, LegacyDna, OrganismId, PhysicsBackend, PhysicsBatch, RenderInstance, VmMemory,
     BiologyState, GenomeMutator, Obstacle, PhaseTimings, SimulationStats, SpatialIndex, SpeciesDefinition,
-    CorpseSnapshot, HistorySample, ShotSnapshot, SpeciesId, Teleporter,
+    CorpseSnapshot, HistorySample, ProjectilePool, ProjectileSpawn, ShotSnapshot, SpeciesId, Teleporter,
 };
 use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
@@ -56,6 +56,8 @@ const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_LIGHT: i32 = 923;
+const MEM_BACKSHOT: i32 = 900;
+const MEM_AIM_SHOOT: i32 = 901;
 const CHLOROPLAST_ENERGY_SCALE: i32 = 8_000;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -145,6 +147,14 @@ struct Organism {
 struct SpeciesTemplate {
     dna: LegacyDna,
     initial_energy: i32,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct PendingProjectileRequest {
+    owner_slot: usize,
+    kind: i32,
+    value: i32,
+    angle: f32,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -255,6 +265,10 @@ pub struct Engine {
     #[serde(default)]
     shot_trails: Vec<ShotSnapshot>,
     #[serde(default)]
+    projectiles: ProjectilePool,
+    #[serde(skip, default)]
+    pending_projectile_requests: Vec<PendingProjectileRequest>,
+    #[serde(default)]
     history: Vec<HistorySample>,
     #[serde(skip, default)]
     phase_timings: PhaseTimings,
@@ -307,6 +321,8 @@ impl Engine {
             teleporters: Vec::new(),
             corpses: Vec::new(),
             shot_trails: Vec::new(),
+            projectiles: ProjectilePool::default(),
+            pending_projectile_requests: Vec::new(),
             history: Vec::new(),
             phase_timings: PhaseTimings::default(),
             pending_gpu_positions: None,
@@ -542,6 +558,7 @@ impl Engine {
         let started = Instant::now();
         self.physics_phase()?;
         self.phase_timings.physics = elapsed_ms(started);
+        self.projectile_spawn_phase();
         let started = Instant::now();
         self.lifecycle_phase()?;
         self.phase_timings.lifecycle = elapsed_ms(started);
@@ -963,11 +980,11 @@ impl Engine {
     }
 
     fn interactions_phase(&mut self) {
-        self.shot_trails.clear();
+        self.pending_projectile_requests.clear();
         let mut tie_requests = Vec::new();
         let mut tie_deletions = Vec::new();
-        let mut shots = Vec::new();
-        let mut corpse_shots = Vec::new();
+        let shots: Vec<(usize, usize, i32, i32)> = Vec::new();
+        let corpse_shots: Vec<(usize, usize, i32)> = Vec::new();
         for attacker_slot in 0..self.slots.len() {
             let Some(attacker) = self.slots[attacker_slot].organism.as_ref() else { continue };
             if attacker.memory.read(MEM_DELETE_TIE) != 0 {
@@ -985,14 +1002,30 @@ impl Engine {
             } else {
                 requested_value.abs().max(1)
             };
-            let target = self.spatial.nearest(self.kinematics.positions[attacker_slot], Some(attacker_slot), 1_000.0);
-            if let Some(target) = target {
-                shots.push((attacker_slot, target, shot_type, shot_value));
-            } else if shot_type == -1 {
-                if let Some(target) = nearest_corpse(self.kinematics.positions[attacker_slot], &self.corpses, 1_000.0) {
-                    corpse_shots.push((attacker_slot, target, shot_value));
-                }
+            let mut angle = self.biology[attacker_slot].aim as f32 / 200.0;
+            if attacker.memory.read(MEM_BACKSHOT) != 0 {
+                angle -= std::f32::consts::PI;
             }
+            let aimed = attacker.memory.read(MEM_AIM_SHOOT);
+            if aimed != 0 {
+                angle = self.biology[attacker_slot].aim as f32 / 200.0
+                    - (aimed % 1_256) as f32 / 200.0;
+            }
+            let random = advance_random(
+                self.config.seed ^ self.tick.rotate_left(19) ^ (attacker_slot as u64).rotate_left(37),
+            );
+            angle += ((random % 41) as i32 - 20) as f32 / 200.0;
+            self.pending_projectile_requests.push(PendingProjectileRequest {
+                owner_slot: attacker_slot,
+                kind: shot_type,
+                value: shot_value,
+                angle,
+            });
+            let memory = &mut self.slots[attacker_slot].organism.as_mut().unwrap().memory;
+            for output in [MEM_SHOOT, MEM_SHOOTVAL, MEM_BACKSHOT, MEM_AIM_SHOOT] {
+                memory.write(output, 0);
+            }
+            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
         self.ties.retain(|tie| {
             !tie_deletions.contains(&(tie.first.slot() as usize))
@@ -1088,8 +1121,13 @@ impl Engine {
                 owner: OrganismId::new(attacker as u32, self.slots[attacker].generation),
                 start: self.kinematics.positions[attacker],
                 end: self.kinematics.positions[target],
+                velocity: [0.0; 2],
+                age: 0,
+                range: 0,
+                energy: 0.0,
                 kind: shot_type,
                 value: damage,
+                impact_flash: false,
             });
             if shot_type == 302 {
                 if let Some(target) = self.slots[target].organism.as_mut() {
@@ -1157,8 +1195,13 @@ impl Engine {
                 owner: OrganismId::new(attacker as u32, self.slots[attacker].generation),
                 start: self.kinematics.positions[attacker],
                 end: self.corpses[corpse].position,
+                velocity: [0.0; 2],
+                age: 0,
+                range: 0,
+                energy: 0.0,
                 kind: -1,
                 value: damage,
+                impact_flash: false,
             });
             let applied = damage.min(self.corpses[corpse].energy.max(0));
             self.corpses[corpse].energy = self.corpses[corpse].energy.saturating_sub(applied);
@@ -1210,6 +1253,29 @@ impl Engine {
         self.apply_environment_features();
         self.record_actual_velocities();
         Ok(())
+    }
+
+    fn projectile_spawn_phase(&mut self) {
+        for request in std::mem::take(&mut self.pending_projectile_requests) {
+            let slot = request.owner_slot;
+            if !self.kinematics.alive.get(slot).copied().unwrap_or(false) {
+                continue;
+            }
+            self.projectiles.spawn(
+                ProjectileSpawn {
+                    owner: OrganismId::new(slot as u32, self.slots[slot].generation),
+                    owner_position: self.kinematics.positions[slot],
+                    owner_actual_velocity: self.kinematics.actual_velocities[slot],
+                    owner_radius: crate::physics::organism_radius(self.lifecycle.energies[slot]),
+                    owner_virtual_body: self.biology[slot].body as f32,
+                    angle: request.angle,
+                    kind: request.kind,
+                    value: request.value,
+                },
+                &self.config.shots,
+            );
+        }
+        self.projectiles.advance();
     }
 
     fn capture_previous_positions(&mut self) {
@@ -1498,7 +1564,7 @@ impl Engine {
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
             corpses: self.corpses.clone(),
-            shots: self.shot_trails.clone(),
+            shots: self.projectiles.snapshots(),
             history: self.history.clone(),
             stats: self.stats.clone(),
             ties: self.ties.clone(),
@@ -1683,6 +1749,7 @@ fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2])
     ]
 }
 
+#[allow(dead_code)]
 fn nearest_corpse(position: [f32; 2], corpses: &[CorpseSnapshot], radius: f32) -> Option<usize> {
     let limit = radius * radius;
     corpses.iter().enumerate()
