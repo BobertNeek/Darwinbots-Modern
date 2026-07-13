@@ -72,6 +72,12 @@ enum EngineCommand {
         gravity: [f32; 2],
         drag: f32,
         brownian_motion: f32,
+        #[serde(default)]
+        physics: Option<crate::PhysicsSettings>,
+        #[serde(default)]
+        shots: Option<crate::ShotSettings>,
+        #[serde(default)]
+        vegetation: Option<crate::VegetationSettings>,
     },
 }
 
@@ -317,9 +323,27 @@ fn db_engine_command_batch_impl(
                 engine.add_teleporter(crate::Teleporter { id, center, radius, destination }).map(|_| serde_json::Value::Null),
             EngineCommand::RemoveTeleporter { id } => engine.remove_teleporter(id).map(|_| serde_json::Value::Null),
             EngineCommand::SetBrownianMotion { value } => engine.set_brownian_motion(value).map(|_| serde_json::Value::Null),
-            EngineCommand::UpdateEnvironment { metabolism_cost, vegetable_energy_per_tick, sunlight_energy, gravity, drag, brownian_motion } =>
-                engine.update_environment(metabolism_cost, vegetable_energy_per_tick, sunlight_energy, gravity, drag, brownian_motion)
-                    .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateEnvironment {
+                metabolism_cost,
+                vegetable_energy_per_tick,
+                sunlight_energy,
+                gravity,
+                drag,
+                brownian_motion,
+                physics,
+                shots,
+                vegetation,
+            } => engine
+                .update_environment(
+                    metabolism_cost,
+                    vegetable_energy_per_tick,
+                    sunlight_energy,
+                    gravity,
+                    drag,
+                    brownian_motion,
+                )
+                .and_then(|_| engine.update_db2_settings(physics, shots, vegetation))
+                .map(|_| serde_json::Value::Null),
         };
         match result {
             Ok(value) => command_results.push(value),

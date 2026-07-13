@@ -371,3 +371,27 @@ fn ffi_binary_save_load_round_trip_replaces_engine_atomically() {
     assert_eq!(db_buffer_free(&mut save), DbStatus::Ok);
     assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
 }
+#[test]
+fn ffi_environment_updates_preserve_optional_db2_settings() {
+    let mut engine = std::ptr::null_mut();
+    assert_eq!(db_engine_create(std::ptr::null(), 0, &mut engine), DbStatus::Ok);
+
+    let update = br#"{"version":1,"commands":[{"type":"update_environment","metabolism_cost":2,"vegetable_energy_per_tick":3,"sunlight_energy":4,"gravity":[1.0,2.0],"drag":0.1,"brownian_motion":0.2,"physics":{"max_velocity":42.0,"movement_efficiency":0.5,"surface_gravity":0.3,"static_friction":0.4,"kinetic_friction":0.2,"density":0.000001,"viscosity":0.00002,"elasticity":0.8},"shots":{"speed":35.0,"range_multiplier":1.5,"decay":20.0,"energy_shots_do_not_decay":true,"waste_shots_do_not_decay":true},"vegetation":{"start_chloroplasts":12000,"max_energy_per_tick":80,"minimum_chloroplast_equivalents":40,"repopulation_amount":7,"repopulation_cooldown":12,"feeding_to_body":0.6,"daytime":false,"day_night_enabled":true,"cycle_length":5000}},{"type":"update_environment","metabolism_cost":5,"vegetable_energy_per_tick":6,"sunlight_energy":7,"gravity":[0.0,0.0],"drag":0.0,"brownian_motion":0.0}]}"#;
+    let mut result = DbBuffer::default();
+    assert_eq!(
+        db_engine_command_batch(engine, update.as_ptr(), update.len(), &mut result),
+        DbStatus::Ok
+    );
+    assert_eq!(db_buffer_free(&mut result), DbStatus::Ok);
+
+    let mut save = DbBuffer::default();
+    assert_eq!(db_engine_save(engine, &mut save), DbStatus::Ok);
+    let bytes = unsafe { std::slice::from_raw_parts(save.data, save.len) };
+    let payload: serde_json::Value = serde_json::from_slice(&bytes[10..]).unwrap();
+    assert_eq!(payload["config"]["physics"]["max_velocity"], 42.0);
+    assert_eq!(payload["config"]["shots"]["speed"], 35.0);
+    assert_eq!(payload["config"]["vegetation"]["start_chloroplasts"], 12_000);
+
+    assert_eq!(db_buffer_free(&mut save), DbStatus::Ok);
+    assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
+}

@@ -165,3 +165,26 @@ fn unavailable_gpu_is_an_error_when_fallback_is_disabled() {
 
     assert!(matches!(Engine::new(config), Err(EngineError::GpuUnavailable(_))));
 }
+#[test]
+fn db2_defaults_are_exposed_by_engine_config() {
+    let config = EngineConfig::default();
+    assert_eq!(config.physics.max_velocity, 60.0);
+    assert_eq!(config.physics.movement_efficiency, 0.66);
+    assert_eq!(config.shots.speed, 40.0);
+    assert_eq!(config.vegetation.start_chloroplasts, 16_000);
+    assert_eq!(config.vegetation.repopulation_amount, 10);
+    assert_eq!(config.vegetation.repopulation_cooldown, 10);
+}
+
+#[test]
+fn save_version_one_is_rejected_after_db2_state_upgrade() {
+    let engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut bytes = SaveFile::encode(&engine).unwrap();
+    bytes[4..6].copy_from_slice(&1u16.to_le_bytes());
+
+    let error = match SaveFile::decode(&bytes) {
+        Ok(_) => panic!("save version 1 was accepted"),
+        Err(error) => error,
+    };
+    assert!(error.to_string().contains("unsupported version 1"));
+}

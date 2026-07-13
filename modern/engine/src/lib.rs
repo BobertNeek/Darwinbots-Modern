@@ -23,7 +23,7 @@ pub mod ffi;
 
 pub use backend::{BackendCapabilities, BackendKind, BackendPreference};
 pub use biology::BiologyState;
-pub use config::EngineConfig;
+pub use config::{EngineConfig, PhysicsSettings, ShotSettings, VegetationSettings};
 pub use corpse::CorpseSnapshot;
 pub use dna::{Instruction, LegacyDna};
 pub use error::EngineError;

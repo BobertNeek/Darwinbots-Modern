@@ -660,6 +660,25 @@ impl Engine {
         Ok(())
     }
 
+    pub fn update_db2_settings(
+        &mut self,
+        physics: Option<crate::PhysicsSettings>,
+        shots: Option<crate::ShotSettings>,
+        vegetation: Option<crate::VegetationSettings>,
+    ) -> Result<(), EngineError> {
+        if let Some(physics) = physics {
+            self.config.physics = physics;
+        }
+        if let Some(shots) = shots {
+            self.config.shots = shots;
+        }
+        if let Some(vegetation) = vegetation {
+            self.config.vegetation = vegetation;
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn last_phase_timings(&self) -> &PhaseTimings {
         &self.phase_timings
     }
