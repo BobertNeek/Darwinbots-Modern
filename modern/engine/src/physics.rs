@@ -3,6 +3,12 @@ use bytemuck::{Pod, Zeroable};
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
+mod movement;
+
+pub(crate) use movement::{
+    MovementInput, MovementState, apply_voluntary_impulse, derived_mass,
+};
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuSenseParticle {

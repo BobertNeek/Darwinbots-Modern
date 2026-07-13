@@ -123,7 +123,7 @@ fn engine_uses_vm_flow_semantics_for_movement_intents() {
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.organism(id).unwrap().position[1], 10.0);
+    assert!((engine.organism(id).unwrap().position[1] - 6.6).abs() < 0.01);
 }
 
 #[test]

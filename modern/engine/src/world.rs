@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
 use std::time::Instant;
 
+use crate::physics::{MovementInput, MovementState, apply_voluntary_impulse, derived_mass};
+
 const MEM_UP: i32 = 1;
 const MEM_DN: i32 = 2;
 const MEM_SX: i32 = 3;
@@ -761,6 +763,7 @@ impl Engine {
 
     fn execute_dna_phase(&mut self) -> Result<(), EngineError> {
         let metabolism = self.config.metabolism_cost;
+        let physics_settings = &self.config.physics;
         self.slots.par_iter_mut()
             .zip(self.kinematics.pending_velocities.par_iter_mut())
             .zip(self.biology.par_iter_mut())
@@ -771,12 +774,24 @@ impl Engine {
             vm.execute(&organism.dna, &mut organism.memory)?;
             organism.random_state = vm.random_state();
             biology.apply_outputs(&mut organism.memory, energy, metabolism);
-            let lateral = (organism.memory.read(MEM_DX) - organism.memory.read(MEM_SX)) as f32;
-            let forward = (organism.memory.read(MEM_UP) - organism.memory.read(MEM_DN)) as f32;
-            let angle = biology.aim as f32 / 200.0;
-            *pending_velocity = if biology.paralyzed > 0 { [0.0, 0.0] } else {
-                [forward * angle.sin() + lateral * angle.cos(), forward * angle.cos() - lateral * angle.sin()]
+            let input = MovementInput {
+                up: organism.memory.read(MEM_UP),
+                down: organism.memory.read(MEM_DN),
+                left: organism.memory.read(MEM_SX),
+                right: organism.memory.read(MEM_DX),
+                aim_radians: biology.aim as f32 / 200.0,
+                new_move: organism.dna.uses_new_move(),
             };
+            let mut movement = MovementState::default();
+            if biology.paralyzed == 0 {
+                apply_voluntary_impulse(
+                    &mut movement,
+                    input,
+                    derived_mass(biology.body, biology.shell, biology.chloroplasts),
+                    physics_settings,
+                );
+            }
+            *pending_velocity = movement.velocity;
             for output in [MEM_UP, MEM_DN, MEM_SX, MEM_DX] { organism.memory.write(output, 0); }
             Ok(())
         })?;
@@ -784,10 +799,6 @@ impl Engine {
     }
 
     fn intent_phase(&mut self) {
-        let gravity = self.config.gravity;
-        let retention = 1.0 - self.config.drag.clamp(0.0, 1.0);
-        let brownian = self.config.brownian_motion.max(0.0);
-        let seed = self.config.seed ^ self.tick;
         let movement_events = self.kinematics.pending_velocities.iter().zip(&self.kinematics.alive)
             .filter(|(velocity, alive)| **alive && (velocity[0].abs() > f32::EPSILON || velocity[1].abs() > f32::EPSILON))
             .count() as u64;
@@ -795,15 +806,10 @@ impl Engine {
         self.kinematics.velocities.par_iter_mut()
             .zip(self.kinematics.pending_velocities.par_iter_mut())
             .zip(self.kinematics.alive.par_iter())
-            .enumerate().for_each(|(slot, ((velocity, pending), alive))| {
+            .for_each(|((velocity, pending), alive)| {
             if *alive {
-                let random = advance_random(seed ^ slot as u64);
-                let noise_x = (((random & 0xffff) as f32 / 32_767.5) - 1.0) * brownian;
-                let noise_y = ((((random >> 16) & 0xffff) as f32 / 32_767.5) - 1.0) * brownian;
-                *velocity = [
-                    (pending[0] + gravity[0] + noise_x) * retention,
-                    (pending[1] + gravity[1] + noise_y) * retention,
-                ];
+                velocity[0] += pending[0];
+                velocity[1] += pending[1];
             }
             *pending = [0.0; 2];
         });
