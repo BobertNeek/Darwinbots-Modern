@@ -115,7 +115,13 @@ fn invariant_checker_accepts_slot_reuse_and_seeded_ticks() {
 
 #[test]
 fn engine_uses_vm_flow_semantics_for_movement_intents() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        physics: darwinbots_engine::PhysicsSettings {
+            density: 0.0,
+            ..darwinbots_engine::PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    }).unwrap();
     let dna = LegacyDna::parse(
         "cond\n2 1 >\nstart\n10 .up store\nelse\n25 .up store\nstop",
     ).unwrap();

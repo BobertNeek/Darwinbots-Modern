@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
 use std::time::Instant;
 
-use crate::physics::{MovementInput, MovementState, apply_voluntary_impulse, derived_mass};
+use crate::physics::{
+    MovementInput, MovementState, apply_resistance, apply_voluntary_impulse, derived_mass,
+    environment_impulse,
+};
 
 const MEM_UP: i32 = 1;
 const MEM_DN: i32 = 2;
@@ -147,7 +150,11 @@ struct SpeciesTemplate {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct KinematicsSoa {
     positions: Vec<[f32; 2]>,
+    #[serde(default)]
+    previous_positions: Vec<[f32; 2]>,
     velocities: Vec<[f32; 2]>,
+    #[serde(default)]
+    actual_velocities: Vec<[f32; 2]>,
     pending_velocities: Vec<[f32; 2]>,
     alive: Vec<bool>,
 }
@@ -157,12 +164,16 @@ impl KinematicsSoa {
         if self.positions.len() <= slot {
             let len = slot + 1;
             self.positions.resize(len, [0.0; 2]);
+            self.previous_positions.resize(len, [0.0; 2]);
             self.velocities.resize(len, [0.0; 2]);
+            self.actual_velocities.resize(len, [0.0; 2]);
             self.pending_velocities.resize(len, [0.0; 2]);
             self.alive.resize(len, false);
         }
         self.positions[slot] = position;
+        self.previous_positions[slot] = position;
         self.velocities[slot] = [0.0; 2];
+        self.actual_velocities[slot] = [0.0; 2];
         self.pending_velocities[slot] = [0.0; 2];
         self.alive[slot] = true;
     }
@@ -171,6 +182,7 @@ impl KinematicsSoa {
         if slot < self.alive.len() {
             self.alive[slot] = false;
             self.velocities[slot] = [0.0; 2];
+            self.actual_velocities[slot] = [0.0; 2];
             self.pending_velocities[slot] = [0.0; 2];
         }
     }
@@ -777,8 +789,8 @@ impl Engine {
             let input = MovementInput {
                 up: organism.memory.read(MEM_UP),
                 down: organism.memory.read(MEM_DN),
-                left: organism.memory.read(MEM_SX),
-                right: organism.memory.read(MEM_DX),
+                left: organism.memory.read(MEM_DX),
+                right: organism.memory.read(MEM_SX),
                 aim_radians: biology.aim as f32 / 200.0,
                 new_move: organism.dna.uses_new_move(),
             };
@@ -799,6 +811,12 @@ impl Engine {
     }
 
     fn intent_phase(&mut self) {
+        let gravity = self.config.gravity;
+        let drag = self.config.drag;
+        let brownian = self.config.brownian_motion.max(0.0);
+        let seed = self.config.seed;
+        let tick = self.tick;
+        let settings = &self.config.physics;
         let movement_events = self.kinematics.pending_velocities.iter().zip(&self.kinematics.alive)
             .filter(|(velocity, alive)| **alive && (velocity[0].abs() > f32::EPSILON || velocity[1].abs() > f32::EPSILON))
             .count() as u64;
@@ -806,10 +824,23 @@ impl Engine {
         self.kinematics.velocities.par_iter_mut()
             .zip(self.kinematics.pending_velocities.par_iter_mut())
             .zip(self.kinematics.alive.par_iter())
-            .for_each(|((velocity, pending), alive)| {
+            .zip(self.biology.par_iter())
+            .zip(self.lifecycle.energies.par_iter())
+            .enumerate()
+            .for_each(|(slot, ((((velocity, pending), alive), biology), energy))| {
             if *alive {
                 velocity[0] += pending[0];
                 velocity[1] += pending[1];
+                let impulse = environment_impulse(gravity, brownian, seed, tick, slot);
+                velocity[0] += impulse[0];
+                velocity[1] += impulse[1];
+                apply_resistance(
+                    velocity,
+                    derived_mass(biology.body, biology.shell, biology.chloroplasts).clamp(1.0, 32_000.0),
+                    crate::physics::organism_radius(*energy),
+                    drag,
+                    settings,
+                );
             }
             *pending = [0.0; 2];
         });
@@ -1142,6 +1173,7 @@ impl Engine {
     }
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
+        self.capture_previous_positions();
         if let Some(positions) = self.pending_gpu_positions.take() {
             for (slot, position) in positions.into_iter().enumerate() {
                 if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
@@ -1151,6 +1183,7 @@ impl Engine {
             self.apply_tie_constraints();
             self.apply_organism_collisions();
             self.apply_environment_features();
+            self.record_actual_velocities();
             return Ok(());
         }
         let active_slots: Vec<_> = self.slots.iter().enumerate()
@@ -1175,7 +1208,27 @@ impl Engine {
         self.apply_tie_constraints();
         self.apply_organism_collisions();
         self.apply_environment_features();
+        self.record_actual_velocities();
         Ok(())
+    }
+
+    fn capture_previous_positions(&mut self) {
+        for slot in 0..self.kinematics.positions.len() {
+            if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
+                self.kinematics.previous_positions[slot] = self.kinematics.positions[slot];
+            }
+        }
+    }
+
+    fn record_actual_velocities(&mut self) {
+        for slot in 0..self.kinematics.positions.len() {
+            if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
+                self.kinematics.actual_velocities[slot] = [
+                    self.kinematics.positions[slot][0] - self.kinematics.previous_positions[slot][0],
+                    self.kinematics.positions[slot][1] - self.kinematics.previous_positions[slot][1],
+                ];
+            }
+        }
     }
 
     fn apply_environment_features(&mut self) {
@@ -1200,11 +1253,16 @@ impl Engine {
             }
             pairs
         });
+        let masses: Vec<_> = self.biology.iter().map(|biology| {
+            derived_mass(biology.body, biology.shell, biology.chloroplasts).clamp(1.0, 32_000.0)
+        }).collect();
         crate::physics::resolve_collisions(
             &mut self.kinematics.positions,
             &mut self.kinematics.velocities,
             &self.lifecycle.energies,
+            &masses,
             &pairs,
+            self.config.physics.elasticity,
         );
     }
 
