@@ -2,10 +2,12 @@ use darwinbots_engine::{sysvar_address, Engine, EngineConfig, LegacyDna, Species
 
 #[test]
 fn modern_chloroplast_sysvars_use_the_latest_vb6_addresses() {
-    assert_eq!(sysvar_address("chlr"), Some(250));
-    assert_eq!(sysvar_address("mkchlr"), Some(251));
-    assert_eq!(sysvar_address("rmchlr"), Some(252));
-    assert_eq!(sysvar_address("sharechlr"), Some(255));
+    assert_eq!(sysvar_address("chlr"), Some(920));
+    assert_eq!(sysvar_address("mkchlr"), Some(921));
+    assert_eq!(sysvar_address("rmchlr"), Some(922));
+    assert_eq!(sysvar_address("light"), Some(923));
+    assert_eq!(sysvar_address("availability"), Some(923));
+    assert_eq!(sysvar_address("sharechlr"), Some(924));
 }
 
 #[test]

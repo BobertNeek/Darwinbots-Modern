@@ -12,7 +12,14 @@ pub fn sysvar_address(name: &str) -> Option<i32> {
                 variables.insert(name.to_ascii_lowercase(), address);
             }
         }
-        for (name, address) in [("chlr", 250), ("mkchlr", 251), ("rmchlr", 252), ("light", 253), ("sharechlr", 255)] {
+        for (name, address) in [
+            ("chlr", 920),
+            ("mkchlr", 921),
+            ("rmchlr", 922),
+            ("light", 923),
+            ("availability", 923),
+            ("sharechlr", 924),
+        ] {
             variables.insert(name.to_owned(), address);
         }
         variables
@@ -29,7 +36,13 @@ pub(crate) fn sysvar_name(address: i32) -> Option<String> {
                 variables.entry(address).or_insert_with(|| name.to_ascii_lowercase());
             }
         }
-        for (name, address) in [("chlr", 250), ("mkchlr", 251), ("rmchlr", 252), ("light", 253), ("sharechlr", 255)] {
+        for (name, address) in [
+            ("chlr", 920),
+            ("mkchlr", 921),
+            ("rmchlr", 922),
+            ("light", 923),
+            ("sharechlr", 924),
+        ] {
             variables.insert(address, name.to_owned());
         }
         variables
@@ -38,6 +51,6 @@ pub(crate) fn sysvar_name(address: i32) -> Option<String> {
 
 pub(crate) fn sysvar_is_active(address: i32) -> bool {
     matches!(address,
-        1..=10 | 18..=19 | 203..=204 | 217 | 219 | 250..=255 |
+        1..=10 | 18..=19 | 203..=204 | 217 | 219 | 920..=924 |
         300..=313 | 330..=331 | 450..=476 | 501..=509 | 686..=715 | 729 | 820..=838)
 }

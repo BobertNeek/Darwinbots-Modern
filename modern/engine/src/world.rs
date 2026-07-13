@@ -36,7 +36,7 @@ const MEM_SHARE_NRG: i32 = 830;
 const MEM_SHARE_WASTE: i32 = 831;
 const MEM_SHARE_SHELL: i32 = 832;
 const MEM_SHARE_SLIME: i32 = 833;
-const MEM_SHARE_CHLOROPLASTS: i32 = 255;
+const MEM_SHARE_CHLOROPLASTS: i32 = 924;
 const MEM_TIE_LOCATION: i32 = 452;
 const MEM_TIE_VALUE: i32 = 453;
 const MEM_TIE_PRESENT: i32 = 454;
@@ -50,7 +50,7 @@ const MEM_MY_TIES: i32 = 729;
 const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
-const MEM_LIGHT: i32 = 253;
+const MEM_LIGHT: i32 = 923;
 const CHLOROPLAST_ENERGY_SCALE: i32 = 8_000;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
