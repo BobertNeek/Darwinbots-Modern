@@ -284,6 +284,7 @@ fn db_engine_command_batch_impl(
                     minimum_population,
                     reseed,
                     mutation_rate,
+                    ..SpeciesDefinition::default()
                 });
                 engine.spawn_species_batch(dna, species, positions, initial_energy).map(|ids| serde_json::json!({
                     "species": species.0,

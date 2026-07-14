@@ -17,6 +17,7 @@ mod stats;
 mod vegetation;
 mod sysvars;
 mod timing;
+mod visual_phenotype;
 mod vm;
 mod world;
 
@@ -45,5 +46,6 @@ pub use stats::SimulationStats;
 pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use sysvars::sysvar_address;
 pub use timing::PhaseTimings;
+pub use visual_phenotype::{SkinPoint, VisualPhenotype, default_skin, generated_skin};
 pub use vm::{DnaVm, VmMemory, VmReport};
 pub use world::{Engine, OrganismSnapshot, Snapshot, TieSnapshot};
