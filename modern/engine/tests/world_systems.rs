@@ -6,6 +6,7 @@ fn uniform_spatial_index_returns_sorted_nearby_slots() {
 
     assert_eq!(index.neighbors([10.0, 10.0], 40.0), vec![0, 1]);
     assert_eq!(index.nearest([10.0, 10.0], Some(0), 40.0), Some(1));
+    assert_eq!(index.segment_candidates([0.0, 10.0], [40.0, 10.0], 4.0), vec![0, 1]);
 }
 
 #[test]

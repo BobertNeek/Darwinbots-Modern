@@ -1,4 +1,6 @@
-use darwinbots_engine::{sysvar_address, Engine, EngineConfig, LegacyDna, SpeciesDefinition};
+use darwinbots_engine::{
+    sysvar_address, Engine, EngineConfig, LegacyDna, PhysicsSettings, SpeciesDefinition,
+};
 
 #[test]
 fn modern_chloroplast_sysvars_use_the_latest_vb6_addresses() {
@@ -144,14 +146,17 @@ fn dna_controls_body_defenses_chloroplasts_waste_and_aim() {
 
 #[test]
 fn aim_rotates_forward_movement() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        ..EngineConfig::testing()
+    }).unwrap();
     let dna = LegacyDna::parse("start\n314 .setaim store\n10 .up store\nstop").unwrap();
     let id = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
 
     let position = engine.organism(id).unwrap().position;
-    assert!(position[0] > 509.0);
+    assert!((position[0] - 506.6).abs() < 0.01);
     assert!((position[1] - 500.0).abs() < 1.0);
 }
 
@@ -327,12 +332,12 @@ fn poison_drains_energy_and_venom_suppresses_movement() {
 
     let mut venom_engine = Engine::new(EngineConfig::testing()).unwrap();
     let venomous = venom_engine.spawn_at(LegacyDna::parse("start\n100 .strvenom store\nstop").unwrap(), [100.0, 100.0]).unwrap();
-    let mover = venom_engine.spawn_at(LegacyDna::parse("start\n10 .up store\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let mover = venom_engine.spawn_at(LegacyDna::parse("start\n10 .dx store\nstop").unwrap(), [120.0, 100.0]).unwrap();
     venom_engine.tick().unwrap();
     venom_engine.replace_dna(venomous, LegacyDna::parse("start\n-3 .shoot store\n20 .shootval store\nstop").unwrap()).unwrap();
-    let before = venom_engine.organism(mover).unwrap().position;
     venom_engine.tick().unwrap();
-    let after = venom_engine.organism(mover).unwrap();
-    assert_eq!(after.position, before);
-    assert!(after.paralyzed > 0);
+    let after_impact = venom_engine.organism(mover).unwrap();
+    assert!(after_impact.paralyzed > 0);
+    venom_engine.tick().unwrap();
+    assert_eq!(venom_engine.organism(mover).unwrap().position, after_impact.position);
 }

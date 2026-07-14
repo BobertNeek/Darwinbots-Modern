@@ -18,13 +18,11 @@ fn fired_shots_publish_visible_persisted_world_state() {
     assert_ne!(shot.start, [100.0, 100.0]);
     assert_ne!(shot.end, [120.0, 100.0]);
     assert!(shot.start[0].hypot(shot.start[1]).is_finite());
-    let first_end = shot.end;
+    assert!(shot.impact_flash);
     let restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
     assert_eq!(restored.snapshot().shots, engine.snapshot().shots);
 
     engine.replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap()).unwrap();
     engine.tick().unwrap();
-    assert_eq!(engine.snapshot().shots.len(), 1);
-    assert_eq!(engine.snapshot().shots[0].start, first_end);
-    assert_ne!(engine.snapshot().shots[0].end, first_end);
+    assert!(engine.snapshot().shots.is_empty());
 }

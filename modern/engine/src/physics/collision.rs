@@ -1,5 +1,63 @@
 use super::organism_radius;
 
+pub(crate) fn segment_circle_fraction(
+    start: [f32; 2],
+    end: [f32; 2],
+    center: [f32; 2],
+    radius: f32,
+) -> Option<f32> {
+    let delta = [end[0] - start[0], end[1] - start[1]];
+    let offset = [start[0] - center[0], start[1] - center[1]];
+    let a = delta[0] * delta[0] + delta[1] * delta[1];
+    let c = offset[0] * offset[0] + offset[1] * offset[1] - radius * radius;
+    if c <= 0.0 {
+        return Some(0.0);
+    }
+    if a <= f32::EPSILON {
+        return None;
+    }
+    let b = 2.0 * (offset[0] * delta[0] + offset[1] * delta[1]);
+    let discriminant = b * b - 4.0 * a * c;
+    if discriminant < 0.0 {
+        return None;
+    }
+    let denominator = 2.0 * a;
+    let near = (-b - discriminant.sqrt()) / denominator;
+    let far = (-b + discriminant.sqrt()) / denominator;
+    [near, far].into_iter().find(|root| (0.0..=1.0).contains(root))
+}
+
+pub(crate) fn segment_aabb_fraction(
+    start: [f32; 2],
+    end: [f32; 2],
+    minimum: [f32; 2],
+    maximum: [f32; 2],
+) -> Option<f32> {
+    let delta = [end[0] - start[0], end[1] - start[1]];
+    let mut entry = 0.0_f32;
+    let mut exit = 1.0_f32;
+    for axis in 0..2 {
+        if delta[axis].abs() <= f32::EPSILON {
+            if start[axis] < minimum[axis] || start[axis] > maximum[axis] {
+                return None;
+            }
+            continue;
+        }
+        let inverse = delta[axis].recip();
+        let mut first = (minimum[axis] - start[axis]) * inverse;
+        let mut second = (maximum[axis] - start[axis]) * inverse;
+        if first > second {
+            std::mem::swap(&mut first, &mut second);
+        }
+        entry = entry.max(first);
+        exit = exit.min(second);
+        if entry > exit {
+            return None;
+        }
+    }
+    (0.0..=1.0).contains(&entry).then_some(entry)
+}
+
 pub(crate) fn resolve_collisions(
     positions: &mut [[f32; 2]],
     velocities: &mut [[f32; 2]],

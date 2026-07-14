@@ -7,6 +7,10 @@ pub struct SimulationStats {
     pub deaths: u64,
     pub shots_fired: u64,
     #[serde(default)]
+    pub projectile_impacts: u64,
+    #[serde(default)]
+    pub projectile_effects: u64,
+    #[serde(default)]
     pub energy_harvested: u64,
     #[serde(default)]
     pub energy_donated: u64,

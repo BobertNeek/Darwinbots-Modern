@@ -2,7 +2,8 @@ use crate::{
     BackendCapabilities, BackendKind, BackendPreference, CpuPhysicsBackend, DnaVm, EngineConfig,
     EngineError, GpuPhysicsBackend, LegacyDna, OrganismId, PhysicsBackend, PhysicsBatch, RenderInstance, VmMemory,
     BiologyState, GenomeMutator, Obstacle, PhaseTimings, SimulationStats, SpatialIndex, SpeciesDefinition,
-    CorpseSnapshot, HistorySample, ProjectilePool, ProjectileSpawn, ShotSnapshot, SpeciesId, Teleporter,
+    CorpseSnapshot, HistorySample, ProjectileEffect, ProjectileImpact, ProjectilePool,
+    ProjectileSpawn, ProjectileTarget, ShotSnapshot, SpeciesId, Teleporter, projectile_effect,
 };
 use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
@@ -263,8 +264,6 @@ pub struct Engine {
     #[serde(default)]
     corpses: Vec<CorpseSnapshot>,
     #[serde(default)]
-    shot_trails: Vec<ShotSnapshot>,
-    #[serde(default)]
     projectiles: ProjectilePool,
     #[serde(skip, default)]
     pending_projectile_requests: Vec<PendingProjectileRequest>,
@@ -320,7 +319,6 @@ impl Engine {
             obstacles: Vec::new(),
             teleporters: Vec::new(),
             corpses: Vec::new(),
-            shot_trails: Vec::new(),
             projectiles: ProjectilePool::default(),
             pending_projectile_requests: Vec::new(),
             history: Vec::new(),
@@ -983,8 +981,6 @@ impl Engine {
         self.pending_projectile_requests.clear();
         let mut tie_requests = Vec::new();
         let mut tie_deletions = Vec::new();
-        let shots: Vec<(usize, usize, i32, i32)> = Vec::new();
-        let corpse_shots: Vec<(usize, usize, i32)> = Vec::new();
         for attacker_slot in 0..self.slots.len() {
             let Some(attacker) = self.slots[attacker_slot].organism.as_ref() else { continue };
             if attacker.memory.read(MEM_DELETE_TIE) != 0 {
@@ -1116,103 +1112,6 @@ impl Engine {
                 source_memory.write(output, 0);
             }
         }
-        for (attacker, target, shot_type, damage) in shots {
-            self.shot_trails.push(ShotSnapshot {
-                owner: OrganismId::new(attacker as u32, self.slots[attacker].generation),
-                start: self.kinematics.positions[attacker],
-                end: self.kinematics.positions[target],
-                velocity: [0.0; 2],
-                age: 0,
-                range: 0,
-                energy: 0.0,
-                kind: shot_type,
-                value: damage,
-                impact_flash: false,
-            });
-            if shot_type == 302 {
-                if let Some(target) = self.slots[target].organism.as_mut() {
-                    target.memory.write(MEM_REPRO, damage.clamp(1, 99));
-                }
-                self.forced_reproductions[target] = true;
-                if let Some(attacker) = self.slots[attacker].organism.as_mut() {
-                    attacker.memory.write(MEM_SHOOT, 0);
-                }
-                self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-                continue;
-            }
-            if shot_type == -2 {
-                let donated = damage.min(self.lifecycle.energies[attacker].max(0));
-                self.lifecycle.energies[attacker] = self.lifecycle.energies[attacker].saturating_sub(donated);
-                self.lifecycle.energies[target] = self.lifecycle.energies[target].saturating_add(donated);
-                self.stats.energy_donated = self.stats.energy_donated.saturating_add(donated as u64);
-                if let Some(attacker) = self.slots[attacker].organism.as_mut() {
-                    attacker.memory.write(MEM_SHOOT, 0);
-                }
-                self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-                continue;
-            }
-            if shot_type == -3 {
-                let transferred = damage.min(self.biology[attacker].venom.max(0));
-                self.biology[attacker].venom -= transferred;
-                self.biology[target].paralyzed = self.biology[target].paralyzed.saturating_add(transferred);
-                self.kinematics.velocities[target] = [0.0, 0.0];
-                self.slots[attacker].organism.as_mut().unwrap().memory.write(MEM_SHOOT, 0);
-                self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-                continue;
-            }
-            if shot_type == -4 {
-                self.biology[target].waste = self.biology[target].waste.saturating_add(damage);
-                self.slots[attacker].organism.as_mut().unwrap().memory.write(MEM_SHOOT, 0);
-                self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-                continue;
-            }
-            if shot_type == -5 {
-                let transferred = damage.min(self.biology[attacker].poison.max(0));
-                self.biology[attacker].poison -= transferred;
-                self.biology[target].poisoned = self.biology[target].poisoned.saturating_add(transferred);
-                self.slots[attacker].organism.as_mut().unwrap().memory.write(MEM_SHOOT, 0);
-                self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-                continue;
-            }
-            let absorbed = damage.min(self.biology[target].shell.max(0));
-            self.biology[target].shell -= absorbed;
-            let remaining_damage = damage - absorbed;
-            let applied = remaining_damage.min(self.lifecycle.energies[target].max(0));
-            self.lifecycle.energies[target] = self.lifecycle.energies[target].saturating_sub(applied);
-            if shot_type == -1 {
-                let harvested = applied.saturating_mul(3) / 4;
-                self.lifecycle.energies[attacker] = self.lifecycle.energies[attacker].saturating_add(harvested);
-                self.stats.energy_harvested = self.stats.energy_harvested.saturating_add(harvested as u64);
-                if harvested > 0 { self.stats.feeding_events = self.stats.feeding_events.saturating_add(1); }
-            }
-            if let Some(attacker) = self.slots[attacker].organism.as_mut() {
-                attacker.memory.write(MEM_SHOOT, 0);
-            }
-            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-        }
-        for (attacker, corpse, damage) in corpse_shots {
-            self.shot_trails.push(ShotSnapshot {
-                owner: OrganismId::new(attacker as u32, self.slots[attacker].generation),
-                start: self.kinematics.positions[attacker],
-                end: self.corpses[corpse].position,
-                velocity: [0.0; 2],
-                age: 0,
-                range: 0,
-                energy: 0.0,
-                kind: -1,
-                value: damage,
-                impact_flash: false,
-            });
-            let applied = damage.min(self.corpses[corpse].energy.max(0));
-            self.corpses[corpse].energy = self.corpses[corpse].energy.saturating_sub(applied);
-            self.corpses[corpse].body = self.corpses[corpse].body.min(self.corpses[corpse].energy).max(0);
-            let harvested = applied.saturating_mul(3) / 4;
-            self.lifecycle.energies[attacker] = self.lifecycle.energies[attacker].saturating_add(harvested);
-            self.stats.energy_harvested = self.stats.energy_harvested.saturating_add(harvested as u64);
-            if harvested > 0 { self.stats.feeding_events = self.stats.feeding_events.saturating_add(1); }
-            self.slots[attacker].organism.as_mut().unwrap().memory.write(MEM_SHOOT, 0);
-            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-        }
     }
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
@@ -1261,6 +1160,8 @@ impl Engine {
             if !self.kinematics.alive.get(slot).copied().unwrap_or(false) {
                 continue;
             }
+            let payload = matches!(request.kind, -7 | -8)
+                .then(|| self.slots[slot].organism.as_ref().unwrap().dna.clone());
             self.projectiles.spawn(
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
@@ -1271,11 +1172,260 @@ impl Engine {
                     angle: request.angle,
                     kind: request.kind,
                     value: request.value,
+                    payload,
                 },
                 &self.config.shots,
             );
         }
-        self.projectiles.advance();
+        self.projectiles.advance(
+            &self.config.shots,
+            [self.config.world_width, self.config.world_height],
+        );
+        self.resolve_projectile_impacts();
+    }
+
+    fn resolve_projectile_impacts(&mut self) {
+        self.spatial.rebuild_from_soa(
+            &self.kinematics.positions,
+            &self.kinematics.alive,
+            64.0,
+        );
+        let mut impacts = Vec::new();
+        for projectile_slot in self.projectiles.live_slots() {
+            let shot = projectile_slot as usize;
+            let start = self.projectiles.previous_positions[shot];
+            let end = self.projectiles.positions[shot];
+            let owner = self.projectiles.owners[shot];
+            let mut nearest: Option<(f32, ProjectileTarget)> = None;
+
+            for target in self.spatial.segment_candidates(start, end, 24.0) {
+                if !self.kinematics.alive.get(target).copied().unwrap_or(false) {
+                    continue;
+                }
+                let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+                if target_id == owner {
+                    continue;
+                }
+                let newborn_is_immune = self.lifecycle.ages[target] <= 1
+                    && self.slots[target]
+                        .organism
+                        .as_ref()
+                        .is_some_and(|organism| organism.parents.contains(&Some(owner)));
+                if newborn_is_immune {
+                    continue;
+                }
+                let radius = crate::physics::organism_radius(self.lifecycle.energies[target]);
+                let Some(fraction) = crate::physics::segment_circle_fraction(
+                    start,
+                    end,
+                    self.kinematics.positions[target],
+                    radius,
+                ) else {
+                    continue;
+                };
+                if nearest.as_ref().is_none_or(|(best, _)| fraction < *best) {
+                    nearest = Some((fraction, ProjectileTarget::Organism(target)));
+                }
+            }
+
+            for (corpse, state) in self.corpses.iter().enumerate() {
+                let radius = crate::physics::organism_radius(state.energy.max(1));
+                let Some(fraction) = crate::physics::segment_circle_fraction(
+                    start,
+                    end,
+                    state.position,
+                    radius,
+                ) else {
+                    continue;
+                };
+                if nearest.as_ref().is_none_or(|(best, _)| fraction < *best) {
+                    nearest = Some((fraction, ProjectileTarget::Corpse(corpse)));
+                }
+            }
+
+            for obstacle in &self.obstacles {
+                let Some(fraction) = crate::physics::segment_aabb_fraction(
+                    start,
+                    end,
+                    obstacle.minimum,
+                    obstacle.maximum,
+                ) else {
+                    continue;
+                };
+                if nearest.as_ref().is_none_or(|(best, _)| fraction < *best) {
+                    nearest = Some((fraction, ProjectileTarget::Obstacle));
+                }
+            }
+
+            if let Some((fraction, target)) = nearest {
+                impacts.push(ProjectileImpact {
+                    projectile_slot,
+                    fraction,
+                    target,
+                    effect: projectile_effect(
+                        self.projectiles.kinds[shot],
+                        self.projectiles.values[shot],
+                    ),
+                });
+            }
+        }
+
+        for impact in impacts {
+            let shot = impact.projectile_slot as usize;
+            let owner = self.projectiles.owners[shot];
+            let payload = self.projectiles.payloads[shot].clone();
+            self.projectiles.mark_impact(
+                impact.projectile_slot,
+                impact.fraction,
+                &self.config.shots,
+            );
+            let power = self.projectiles.impact_power(impact.projectile_slot);
+            self.stats.projectile_impacts = self.stats.projectile_impacts.saturating_add(1);
+            if self.apply_projectile_effect(owner, impact.target, impact.effect, power, payload) {
+                self.stats.projectile_effects = self.stats.projectile_effects.saturating_add(1);
+            }
+        }
+    }
+
+    fn apply_projectile_effect(
+        &mut self,
+        owner: OrganismId,
+        target: ProjectileTarget,
+        effect: ProjectileEffect,
+        power: i32,
+        payload: Option<LegacyDna>,
+    ) -> bool {
+        let owner_slot = owner.slot() as usize;
+        let owner_is_live = self.slots.get(owner_slot).is_some_and(|slot| {
+            slot.generation == owner.generation() && slot.organism.is_some()
+        });
+        match target {
+            ProjectileTarget::Obstacle => false,
+            ProjectileTarget::Corpse(corpse) => {
+                let Some(corpse_state) = self.corpses.get_mut(corpse) else { return false };
+                if !matches!(effect, ProjectileEffect::ReleaseEnergy | ProjectileEffect::ReleaseBody) {
+                    return false;
+                }
+                let applied = power.min(corpse_state.energy.max(0));
+                corpse_state.energy = corpse_state.energy.saturating_sub(applied);
+                corpse_state.body = corpse_state.body.min(corpse_state.energy).max(0);
+                if owner_is_live {
+                    let harvested = applied.saturating_mul(3) / 4;
+                    self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
+                        .saturating_add(harvested);
+                    self.stats.energy_harvested = self.stats.energy_harvested
+                        .saturating_add(harvested as u64);
+                    if harvested > 0 {
+                        self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
+                    }
+                }
+                applied > 0
+            }
+            ProjectileTarget::Organism(target) => {
+                if !self.kinematics.alive.get(target).copied().unwrap_or(false) {
+                    return false;
+                }
+                match effect {
+                    ProjectileEffect::ReleaseEnergy => {
+                        let absorbed = power.min(self.biology[target].shell.max(0));
+                        self.biology[target].shell -= absorbed;
+                        let applied = (power - absorbed).min(self.lifecycle.energies[target].max(0));
+                        self.lifecycle.energies[target] = self.lifecycle.energies[target]
+                            .saturating_sub(applied);
+                        if owner_is_live {
+                            let harvested = applied.saturating_mul(3) / 4;
+                            self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
+                                .saturating_add(harvested);
+                            self.stats.energy_harvested = self.stats.energy_harvested
+                                .saturating_add(harvested as u64);
+                            if harvested > 0 {
+                                self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
+                            }
+                        }
+                        applied > 0 || absorbed > 0
+                    }
+                    ProjectileEffect::DonateEnergy => {
+                        if !owner_is_live {
+                            return false;
+                        }
+                        let donated = power.min(self.lifecycle.energies[owner_slot].max(0));
+                        self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
+                            .saturating_sub(donated);
+                        self.lifecycle.energies[target] = self.lifecycle.energies[target]
+                            .saturating_add(donated);
+                        self.stats.energy_donated = self.stats.energy_donated
+                            .saturating_add(donated as u64);
+                        donated > 0
+                    }
+                    ProjectileEffect::Venom => {
+                        if !owner_is_live {
+                            return false;
+                        }
+                        let transferred = power.min(self.biology[owner_slot].venom.max(0));
+                        self.biology[owner_slot].venom -= transferred;
+                        self.biology[target].paralyzed = self.biology[target].paralyzed
+                            .saturating_add(transferred);
+                        if transferred > 0 {
+                            self.kinematics.velocities[target] = [0.0; 2];
+                        }
+                        transferred > 0
+                    }
+                    ProjectileEffect::Waste => {
+                        self.biology[target].waste = self.biology[target].waste.saturating_add(power);
+                        power > 0
+                    }
+                    ProjectileEffect::Poison => {
+                        if !owner_is_live {
+                            return false;
+                        }
+                        let transferred = power.min(self.biology[owner_slot].poison.max(0));
+                        self.biology[owner_slot].poison -= transferred;
+                        self.biology[target].poisoned = self.biology[target].poisoned
+                            .saturating_add(transferred);
+                        transferred > 0
+                    }
+                    ProjectileEffect::ReleaseBody => {
+                        let applied = power.min(self.biology[target].body.max(0));
+                        self.biology[target].body -= applied;
+                        if owner_is_live {
+                            let harvested = applied.saturating_mul(3) / 4;
+                            self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
+                                .saturating_add(harvested);
+                            self.stats.energy_harvested = self.stats.energy_harvested
+                                .saturating_add(harvested as u64);
+                        }
+                        applied > 0
+                    }
+                    ProjectileEffect::AddGene => {
+                        let Some(dna) = payload else { return false };
+                        self.slots[target].organism.as_mut().unwrap().dna = dna;
+                        let references = self.slots[target].organism.as_ref().unwrap().dna
+                            .address_reference_count(MEM_EYE1, MEM_EYE9);
+                        self.slots[target].organism.as_mut().unwrap().memory
+                            .write(MEM_MY_EYE, references);
+                        true
+                    }
+                    ProjectileEffect::Sperm => {
+                        let Some(dna) = payload else { return false };
+                        let target_dna = self.slots[target].organism.as_ref().unwrap().dna.clone();
+                        self.slots[target].organism.as_mut().unwrap().dna = target_dna.crossover(&dna);
+                        self.slots[target].organism.as_mut().unwrap().memory.write(MEM_REPRO, 50);
+                        self.forced_reproductions[target] = true;
+                        true
+                    }
+                    ProjectileEffect::WriteMemory { address, value } => {
+                        self.slots[target].organism.as_mut().unwrap().memory.write(address, value);
+                        true
+                    }
+                    ProjectileEffect::ForceReproduction { percentage } => {
+                        self.slots[target].organism.as_mut().unwrap().memory
+                            .write(MEM_REPRO, percentage);
+                        self.forced_reproductions[target] = true;
+                        true
+                    }
+                }
+            }
+        }
     }
 
     fn capture_previous_positions(&mut self) {
@@ -1749,17 +1899,6 @@ fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2])
     ]
 }
 
-#[allow(dead_code)]
-fn nearest_corpse(position: [f32; 2], corpses: &[CorpseSnapshot], radius: f32) -> Option<usize> {
-    let limit = radius * radius;
-    corpses.iter().enumerate()
-        .filter_map(|(index, corpse)| {
-            let distance = distance_squared(position, corpse.position);
-            (corpse.energy > 0 && distance <= limit).then_some((index, distance))
-        })
-        .min_by(|left, right| left.1.total_cmp(&right.1))
-        .map(|(index, _)| index)
-}
 
 fn transfer_percent(values: &mut [i32], source: usize, target: usize, percent: i32) {
     if percent <= 0 || source == target || source >= values.len() || target >= values.len() { return; }

@@ -34,7 +34,10 @@ pub use mutation::{GenomeMutator, MutationKind, MutationReport, PointMutator};
 pub use persistence::SaveFile;
 pub use physics::{CpuPhysicsBackend, GpuPhysicsBackend, PhysicsBackend, PhysicsBatch, RenderInstance};
 pub use shot::ShotSnapshot;
-pub(crate) use shot::{ProjectilePool, ProjectileSpawn};
+pub(crate) use shot::{
+    ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
+    projectile_effect,
+};
 pub use spatial::SpatialIndex;
 pub use species::{SpeciesDefinition, SpeciesId};
 pub use stats::SimulationStats;

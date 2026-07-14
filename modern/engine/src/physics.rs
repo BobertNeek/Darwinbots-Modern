@@ -11,7 +11,7 @@ pub(crate) use movement::{
     MovementInput, MovementState, apply_voluntary_impulse, derived_mass,
 };
 pub(crate) use environment::{apply_resistance, environment_impulse, integrate_body};
-pub(crate) use collision::resolve_collisions;
+pub(crate) use collision::{resolve_collisions, segment_aabb_fraction, segment_circle_fraction};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
