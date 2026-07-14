@@ -1,4 +1,6 @@
-use darwinbots_engine::{Engine, EngineConfig, GenomeMutator, LegacyDna, MutationKind, PointMutator};
+use darwinbots_engine::{
+    Engine, EngineConfig, GenomeMutator, LegacyDna, MutationKind, PhysicsSettings, PointMutator,
+};
 
 #[test]
 fn point_mutation_is_seeded_and_preserves_program_structure() {
@@ -54,11 +56,15 @@ fn mutation_reproduction_creates_mutated_child_and_records_change() {
 
 #[test]
 fn depleted_organisms_die_and_increment_death_statistics() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
     let attacker = LegacyDna::parse("start\n-1 .shoot store\n2000 .shootval store\nstop").unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    engine.spawn_at(attacker, [10.0, 10.0]).unwrap();
-    let target = engine.spawn_at(idle, [20.0, 10.0]).unwrap();
+    engine.spawn_at(attacker, [100.0, 100.0]).unwrap();
+    let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
 
