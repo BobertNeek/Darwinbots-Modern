@@ -1,5 +1,30 @@
 namespace Darwinbots.Desktop.Core;
 
+public sealed record SkinPointSnapshot(float Radius, int Angle);
+
+public sealed record EyeSnapshot(
+    int Direction,
+    int Width,
+    float CenterRadians,
+    float HalfWidthRadians,
+    float Range,
+    int Value);
+
+public sealed record VisionSnapshot(byte FocusEye, EyeSnapshot[] Eyes)
+{
+    public static VisionSnapshot Default => new(4, VisualSnapshotDefaults.DefaultEyes());
+}
+
+public sealed record VisualPhenotypeSnapshot(
+    ulong LineageId,
+    uint Color,
+    SkinPointSnapshot[] Skin,
+    uint AccumulatedMutations)
+{
+    public static VisualPhenotypeSnapshot Default =>
+        new(0, 0xff62a844, VisualSnapshotDefaults.DefaultSkin(), 0);
+}
+
 public sealed record OrganismSnapshot(
     uint Slot,
     uint Generation,
@@ -19,7 +44,11 @@ public sealed record OrganismSnapshot(
     int Aim = 0,
     int Paralyzed = 0,
     int Poisoned = 0,
-    OrganismKey?[]? Parents = null);
+    OrganismKey?[]? Parents = null)
+{
+    public VisualPhenotypeSnapshot Phenotype { get; init; } = VisualPhenotypeSnapshot.Default;
+    public VisionSnapshot Vision { get; init; } = VisionSnapshot.Default;
+}
 
 public sealed record SpeciesSnapshot(
     string Name,
@@ -52,7 +81,38 @@ public sealed record RenderInstanceSnapshot(
     uint Slot,
     float[] Position,
     float Radius,
-    uint Color);
+    uint Color)
+{
+    public uint Generation { get; init; }
+    public int Aim { get; init; }
+    public SkinPointSnapshot[] Skin { get; init; } = VisualSnapshotDefaults.DefaultSkin();
+    public ulong LineageId { get; init; }
+    public bool Vegetable { get; init; }
+}
+
+internal static class VisualSnapshotDefaults
+{
+    public static SkinPointSnapshot[] DefaultSkin() =>
+    [
+        new(0.45f, 0),
+        new(0.55f, 314),
+        new(0.45f, 628),
+        new(0.55f, 942),
+    ];
+
+    public static EyeSnapshot[] DefaultEyes() => Enumerable.Range(0, 9)
+        .Select(index => new EyeSnapshot(
+            0,
+            0,
+            NormalizeRadians((4 - index) * MathF.PI / 18f),
+            MathF.PI / 36f,
+            1_440f,
+            0))
+        .ToArray();
+
+    private static float NormalizeRadians(float value) =>
+        (value % MathF.Tau + MathF.Tau) % MathF.Tau;
+}
 
 public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum);
 public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination);

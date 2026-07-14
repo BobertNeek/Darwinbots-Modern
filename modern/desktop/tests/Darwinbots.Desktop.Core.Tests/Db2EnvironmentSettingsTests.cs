@@ -43,6 +43,21 @@ public sealed class Db2EnvironmentSettingsTests
     }
 
     [Fact]
+    public void AutomaticSpeciationSettingsSerializeIntoEnvironmentCommand()
+    {
+        var update = EnvironmentUpdate.Default with
+        {
+            AutoSpeciation = true,
+            SpeciationGeneticDistancePercent = 12.5f,
+        };
+
+        var json = NativeCommandSerializer.SerializeEnvironment(update);
+
+        Assert.Contains("\"auto_speciation\":true", json);
+        Assert.Contains("\"speciation_genetic_distance_percent\":12.5", json);
+    }
+
+    [Fact]
     public void DesktopDefaultsMatchDb2NormalSimulationDefaults()
     {
         var update = EnvironmentUpdate.Default;
@@ -51,6 +66,8 @@ public sealed class Db2EnvironmentSettingsTests
         Assert.Equal(new Db2PhysicsOptions(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f), update.Physics);
         Assert.Equal(new Db2ShotOptions(40f, 1f, 40f, false, false), update.Shots);
         Assert.Equal(new Db2VegetationOptions(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000), update.Vegetation);
+        Assert.False(update.AutoSpeciation);
+        Assert.Equal(20f, update.SpeciationGeneticDistancePercent);
 
         var setup = new WorldSetupOptions();
         Assert.Equal(16_000f, setup.WorldWidth);
@@ -59,5 +76,7 @@ public sealed class Db2EnvironmentSettingsTests
         Assert.Equal(update.Physics, setup.Physics);
         Assert.Equal(update.Shots, setup.Shots);
         Assert.Equal(update.Vegetation, setup.Vegetation);
+        Assert.False(setup.AutoSpeciation);
+        Assert.Equal(20f, setup.SpeciationGeneticDistancePercent);
     }
 }

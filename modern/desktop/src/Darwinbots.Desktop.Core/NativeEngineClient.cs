@@ -27,7 +27,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         options.VegetablePopulationCap,
         options.Physics,
         options.Shots,
-        options.Vegetation)
+        options.Vegetation,
+        options.AutoSpeciation,
+        options.SpeciationGeneticDistancePercent)
     {
     }
 
@@ -46,7 +48,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         int vegetablePopulationCap = 500,
         Db2PhysicsOptions? physics = null,
         Db2ShotOptions? shots = null,
-        Db2VegetationOptions? vegetation = null)
+        Db2VegetationOptions? vegetation = null,
+        bool autoSpeciation = false,
+        float speciationGeneticDistancePercent = 20f)
     {
         _worldWidth = worldWidth;
         _worldHeight = worldHeight;
@@ -74,6 +78,8 @@ public sealed partial class NativeEngineClient : IEngineClient
             physics = NativeCommandSerializer.Physics(physics),
             shots = NativeCommandSerializer.Shots(shots),
             vegetation = NativeCommandSerializer.Vegetation(vegetation),
+            auto_speciation = autoSpeciation,
+            speciation_genetic_distance_percent = speciationGeneticDistancePercent,
         });
         ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
         if (_engine == IntPtr.Zero)

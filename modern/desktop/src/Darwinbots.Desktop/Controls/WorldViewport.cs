@@ -76,34 +76,185 @@ public sealed class WorldViewport : Control
         var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
         if (_snapshot.RenderInstances.Count > 0)
         {
-            var radiusScale = Math.Min(scaleX, scaleY);
-            var stride = _snapshot.RenderInstances.Count > 100_000 && _zoom < 1 ? 8
-                : _snapshot.RenderInstances.Count > 50_000 && _zoom < 2 ? 4
-                : _snapshot.RenderInstances.Count > 20_000 && _zoom < 1 ? 2 : 1;
-            for (var index = 0; index < _snapshot.RenderInstances.Count; index += stride)
-            {
-                var instance = _snapshot.RenderInstances[index];
-                var x = instance.Position[0] * scaleX * _zoom + _pan.X;
-                var y = instance.Position[1] * scaleY * _zoom + _pan.Y;
-                var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 10.0);
-                var color = Color.FromUInt32(instance.Color);
-                var outline = _selectedSlot == instance.Slot ? new Pen(Brushes.Black, 2.2) : new Pen(Brushes.White, 0.8);
-                context.DrawEllipse(new SolidColorBrush(color), outline, new Point(x, y), radius, radius);
-            }
+            DrawOrganisms(context, scaleX, scaleY);
+            DrawSelectedVision(context, scaleX, scaleY);
             return;
         }
 
+        DrawFallbackOrganisms(context, scaleX, scaleY);
+        DrawSelectedVision(context, scaleX, scaleY);
+    }
+
+    private void DrawOrganisms(DrawingContext context, double scaleX, double scaleY)
+    {
+        var radiusScale = Math.Min(scaleX, scaleY);
+        var stride = _snapshot.RenderInstances.Count > 100_000 && _zoom < 1 ? 8
+            : _snapshot.RenderInstances.Count > 50_000 && _zoom < 2 ? 4
+            : _snapshot.RenderInstances.Count > 20_000 && _zoom < 1 ? 2 : 1;
+        var selectedDrawn = false;
+        for (var index = 0; index < _snapshot.RenderInstances.Count; index += stride)
+        {
+            var instance = _snapshot.RenderInstances[index];
+            var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
+            var details = radius >= 3.25
+                && !(_snapshot.RenderInstances.Count > 20_000 && _zoom < 1)
+                && stride == 1;
+            DrawOrganism(context, instance, scaleX, scaleY, details);
+            selectedDrawn |= _selectedSlot == instance.Slot;
+        }
+
+        if (!selectedDrawn && _selectedSlot is { } selected
+            && _snapshot.RenderInstances.FirstOrDefault(candidate => candidate.Slot == selected) is { } selectedInstance)
+        {
+            DrawOrganism(context, selectedInstance, scaleX, scaleY, details: true);
+        }
+    }
+
+    private void DrawOrganism(
+        DrawingContext context,
+        RenderInstanceSnapshot instance,
+        double scaleX,
+        double scaleY,
+        bool details)
+    {
+        var center = ScreenPoint(instance.Position, scaleX, scaleY);
+        var radiusScale = Math.Min(scaleX, scaleY);
+        var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
+        var color = Color.FromUInt32(instance.Color);
+        var selected = _selectedSlot == instance.Slot;
+        var edgeColor = ContrastColor(color, strong: false);
+        context.DrawEllipse(
+            new SolidColorBrush(color),
+            new Pen(new SolidColorBrush(edgeColor), selected ? 1.1 : 0.65),
+            center,
+            radius,
+            radius);
+
+        if (selected)
+        {
+            context.DrawEllipse(null, new Pen(Brushes.Black, 2.2), center, radius + 2.2, radius + 2.2);
+        }
+        if (!details)
+        {
+            return;
+        }
+
+        DrawSkin(context, instance, center, radius, color);
+        DrawHeading(context, instance, center, radius, color);
+    }
+
+    private static void DrawSkin(
+        DrawingContext context,
+        RenderInstanceSnapshot instance,
+        Point center,
+        double radius,
+        Color fill)
+    {
+        var points = OrganismVisualGeometry.SkinPoints(instance.Skin, (float)radius, instance.Aim);
+        if (points.Length < 2)
+        {
+            return;
+        }
+        var pen = new Pen(new SolidColorBrush(ContrastColor(fill, strong: true)), Math.Clamp(radius * 0.09, 0.65, 1.35));
+        for (var index = 1; index < points.Length; index++)
+        {
+            context.DrawLine(
+                pen,
+                new Point(center.X + points[index - 1].X, center.Y - points[index - 1].Y),
+                new Point(center.X + points[index].X, center.Y - points[index].Y));
+        }
+    }
+
+    private static void DrawHeading(
+        DrawingContext context,
+        RenderInstanceSnapshot instance,
+        Point center,
+        double radius,
+        Color fill)
+    {
+        var inner = OrganismVisualGeometry.HeadingPoint((float)(radius * 0.78), instance.Aim);
+        var outer = OrganismVisualGeometry.HeadingPoint((float)(radius + Math.Clamp(radius * 0.28, 2.0, 4.0)), instance.Aim);
+        context.DrawLine(
+            new Pen(new SolidColorBrush(ContrastColor(fill, strong: true)), 1.15),
+            new Point(center.X + inner.X, center.Y - inner.Y),
+            new Point(center.X + outer.X, center.Y - outer.Y));
+    }
+
+    private void DrawSelectedVision(DrawingContext context, double scaleX, double scaleY)
+    {
+        if (_selectedSlot is not { } selected
+            || _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == selected) is not { } organism)
+        {
+            return;
+        }
+        var center = ScreenPoint(organism.Position, scaleX, scaleY);
+        var radiusScale = Math.Min(scaleX, scaleY) * _zoom;
+        var organismRadius = _snapshot.RenderInstances
+            .FirstOrDefault(instance => instance.Slot == selected)?.Radius ?? 8f;
+        var sectors = OrganismVisualGeometry.EyeSectors(organism.Vision, organism.Aim, organismRadius);
+        foreach (var sector in sectors)
+        {
+            var screenRange = Math.Clamp(
+                sector.Range * radiusScale,
+                18.0,
+                Math.Max(18.0, Math.Min(Bounds.Width, Bounds.Height) * 0.46));
+            DrawVisionSector(context, center, screenRange, sector);
+        }
+    }
+
+    private static void DrawVisionSector(
+        DrawingContext context,
+        Point center,
+        double range,
+        EyeSectorGeometry sector)
+    {
+        const int curveSteps = 8;
+        var geometry = new StreamGeometry();
+        using (var geometryContext = geometry.Open())
+        {
+            geometryContext.BeginFigure(center, true);
+            for (var step = 0; step <= curveSteps; step++)
+            {
+                var angle = sector.StartRadians + sector.SweepRadians * step / curveSteps;
+                geometryContext.LineTo(new Point(
+                    center.X + Math.Sin(angle) * range,
+                    center.Y - Math.Cos(angle) * range));
+            }
+            geometryContext.EndFigure(true);
+        }
+        var fill = new SolidColorBrush(Color.Parse(sector.Focused ? "#28E26722" : "#1E239AC0"));
+        var edge = new Pen(new SolidColorBrush(Color.Parse(sector.Focused ? "#A8E26722" : "#7A239AC0")), 0.65);
+        context.DrawGeometry(fill, edge, geometry);
+    }
+
+    private void DrawFallbackOrganisms(DrawingContext context, double scaleX, double scaleY)
+    {
         foreach (var organism in _snapshot.Organisms)
         {
-            var x = organism.Position[0] * scaleX * _zoom + _pan.X;
-            var y = organism.Position[1] * scaleY * _zoom + _pan.Y;
-            var hue = (organism.Slot * 47) % 360;
-            var color = Hsv(hue, 0.68, 0.72);
-            var outline = _selectedSlot == organism.Slot ? new Pen(Brushes.Black, 2.2) : new Pen(Brushes.White, 0.8);
-            context.DrawEllipse(new SolidColorBrush(color), outline, new Point(x, y), 3.2, 3.2);
-            var velocity = organism.Velocity;
-            context.DrawLine(new Pen(new SolidColorBrush(color), 1), new Point(x, y), new Point(x + velocity[0] * 0.35, y + velocity[1] * 0.35));
+            var center = ScreenPoint(organism.Position, scaleX, scaleY);
+            var color = Color.FromUInt32(organism.Phenotype.Color);
+            var selected = _selectedSlot == organism.Slot;
+            context.DrawEllipse(
+                new SolidColorBrush(color),
+                new Pen(selected ? Brushes.Black : new SolidColorBrush(ContrastColor(color, false)), selected ? 2.2 : 0.8),
+                center,
+                3.2,
+                3.2);
         }
+    }
+
+    private Point ScreenPoint(float[] position, double scaleX, double scaleY) => new(
+        position[0] * scaleX * _zoom + _pan.X,
+        position[1] * scaleY * _zoom + _pan.Y);
+
+    private static Color ContrastColor(Color color, bool strong)
+    {
+        var luminance = (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255.0;
+        if (luminance > 0.58)
+        {
+            return Color.Parse(strong ? "#26302C" : "#4C5752");
+        }
+        return Color.Parse(strong ? "#F4F2E8" : "#D8D8CF");
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -298,22 +449,6 @@ public sealed class WorldViewport : Control
         }
     }
 
-    private static Color Hsv(double hue, double saturation, double value)
-    {
-        var chroma = value * saturation;
-        var component = chroma * (1 - Math.Abs((hue / 60 % 2) - 1));
-        var match = value - chroma;
-        var (r, g, b) = hue switch
-        {
-            < 60 => (chroma, component, 0d),
-            < 120 => (component, chroma, 0d),
-            < 180 => (0d, chroma, component),
-            < 240 => (0d, component, chroma),
-            < 300 => (component, 0d, chroma),
-            _ => (chroma, 0d, component),
-        };
-        return Color.FromRgb((byte)((r + match) * 255), (byte)((g + match) * 255), (byte)((b + match) * 255));
-    }
 }
 
 public enum WorldFeatureKind { Obstacle, Teleporter }

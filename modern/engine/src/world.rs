@@ -5,6 +5,8 @@ use crate::{
     CorpseSnapshot, HistorySample, ProjectileEffect, ProjectileImpact, ProjectilePool,
     PlantLightInput, ProjectileSpawn, ProjectileTarget, ShotSnapshot, SpeciesId, Teleporter,
     VegetationRuntime, projectile_effect,
+    VisualPhenotype, generated_skin,
+    VisionSnapshot, eye_value,
 };
 use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
@@ -80,6 +82,10 @@ pub struct OrganismSnapshot {
     pub aim: i32,
     pub paralyzed: i32,
     pub poisoned: i32,
+    #[serde(default)]
+    pub phenotype: VisualPhenotype,
+    #[serde(default)]
+    pub vision: VisionSnapshot,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -141,6 +147,8 @@ struct Organism {
     species: SpeciesId,
     #[serde(default)]
     parents: [Option<OrganismId>; 2],
+    #[serde(default)]
+    phenotype: VisualPhenotype,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -257,6 +265,8 @@ pub struct Engine {
     #[serde(default = "default_species_templates")]
     species_templates: Vec<Option<SpeciesTemplate>>,
     #[serde(default)]
+    next_lineage_id: u64,
+    #[serde(default)]
     obstacles: Vec<Obstacle>,
     #[serde(default)]
     teleporters: Vec<Teleporter>,
@@ -315,6 +325,7 @@ impl Engine {
             ties: Vec::new(),
             species: default_species(),
             species_templates: default_species_templates(),
+            next_lineage_id: 2,
             obstacles: Vec::new(),
             teleporters: Vec::new(),
             corpses: Vec::new(),
@@ -338,7 +349,14 @@ impl Engine {
         Ok(id)
     }
 
-    pub fn register_species(&mut self, species: SpeciesDefinition) -> SpeciesId {
+    pub fn register_species(&mut self, mut species: SpeciesDefinition) -> SpeciesId {
+        if species.lineage_id == 0 {
+            species.lineage_id = self.next_lineage_id.max(1);
+            species.skin = generated_skin(&species.name, species.lineage_id);
+            self.next_lineage_id = species.lineage_id.saturating_add(1);
+        } else {
+            self.next_lineage_id = self.next_lineage_id.max(species.lineage_id.saturating_add(1));
+        }
         let id = SpeciesId(self.species.len() as u32);
         self.species.push(species);
         self.species_templates.push(None);
@@ -420,6 +438,10 @@ impl Engine {
         }
 
         let vegetable = self.species[species.0 as usize].vegetable;
+        let phenotype = {
+            let definition = &self.species[species.0 as usize];
+            VisualPhenotype::new(definition.lineage_id, definition.color, definition.skin)
+        };
         let initial_biology = BiologyState::for_species(
             vegetable,
             self.config.vegetation.start_chloroplasts,
@@ -436,6 +458,7 @@ impl Engine {
             random_state: self.config.seed ^ (self.tick + self.population() as u64 + 1),
             species,
             parents: [None, None],
+            phenotype,
         };
 
         let slot_index = if let Some(slot_index) = self.free_slots.pop() {
@@ -492,7 +515,9 @@ impl Engine {
         let source = self.valid_slot(id)?.organism.as_ref().unwrap().clone();
         let clone = self.spawn_species_at_unpublished(source.dna, source.species, position)?;
         let slot = clone.slot() as usize;
-        self.slots[slot].organism.as_mut().unwrap().parents = [Some(id), None];
+        let clone_organism = self.slots[slot].organism.as_mut().unwrap();
+        clone_organism.parents = [Some(id), None];
+        clone_organism.phenotype = source.phenotype;
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(clone)
@@ -524,7 +549,9 @@ impl Engine {
             first_organism.dna.clone()
         };
         let child = self.spawn_species_at_unpublished(dna, first_organism.species, position)?;
-        self.slots[child.slot() as usize].organism.as_mut().unwrap().parents = [Some(first), second];
+        let child_organism = self.slots[child.slot() as usize].organism.as_mut().unwrap();
+        child_organism.parents = [Some(first), second];
+        child_organism.phenotype = first_organism.phenotype;
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(child)
@@ -717,6 +744,26 @@ impl Engine {
         }
         if let Some(vegetation) = vegetation {
             self.config.vegetation = vegetation;
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn update_speciation_settings(
+        &mut self,
+        auto_speciation: Option<bool>,
+        genetic_distance_percent: Option<f32>,
+    ) -> Result<(), EngineError> {
+        if let Some(percent) = genetic_distance_percent {
+            if !percent.is_finite() || percent <= 0.0 {
+                return Err(EngineError::Invariant(
+                    "speciation genetic distance must be a finite positive percentage".to_owned(),
+                ));
+            }
+            self.config.speciation_genetic_distance_percent = percent;
+        }
+        if let Some(enabled) = auto_speciation {
+            self.config.auto_speciation = enabled;
         }
         self.publish_snapshot();
         Ok(())
@@ -931,9 +978,12 @@ impl Engine {
             }).collect());
         }
         let senses: Vec<_> = (0..self.slots.len()).into_par_iter().map(|observer_slot| {
-            self.slots[observer_slot].organism.as_ref()?;
+            let observer = self.slots[observer_slot].organism.as_ref()?;
             let observer_position = self.kinematics.positions[observer_slot];
-            let observer_angle = self.biology[observer_slot].aim as f32 / 200.0;
+            let vision = VisionSnapshot::from_memory(
+                &observer.memory,
+                self.biology[observer_slot].aim,
+            );
             let observer_radius = crate::physics::organism_radius(
                 self.biology[observer_slot].body,
                 self.biology[observer_slot].chloroplasts,
@@ -941,7 +991,7 @@ impl Engine {
             let mut nearest_by_eye = [None; 9];
             for target_slot in self.sensing_spatial.neighbors(
                 observer_position,
-                1_440.0 + observer_radius + max_organism_radius,
+                vision.max_range() + observer_radius + max_organism_radius,
             ) {
                 if target_slot == observer_slot || self.slots[target_slot].organism.is_none() { continue; }
                 let target_position = self.kinematics.positions[target_slot];
@@ -950,11 +1000,23 @@ impl Engine {
                     self.biology[target_slot].body,
                     self.biology[target_slot].chloroplasts,
                 );
-                let strength = eye_strength(target_distance, observer_radius, target_radius);
-                if strength == 0 { continue; }
-                let sector = eye_sector(observer_position, observer_angle, target_position);
-                if nearest_by_eye[sector].is_none_or(|(_, best_strength)| strength > best_strength) {
-                    nearest_by_eye[sector] = Some((target_slot, strength));
+                let center_distance = target_distance.sqrt();
+                let edge_distance = (center_distance - observer_radius - target_radius).max(0.0);
+                let matching = vision.matching_eyes(
+                    observer_position,
+                    target_position,
+                    observer_radius,
+                    target_radius,
+                );
+                for (eye_index, matches) in matching.into_iter().enumerate() {
+                    if !matches { continue; }
+                    let strength = eye_value(vision.eyes[eye_index].range, edge_distance);
+                    if strength > 0
+                        && nearest_by_eye[eye_index]
+                            .is_none_or(|(_, best_strength)| strength > best_strength)
+                    {
+                        nearest_by_eye[eye_index] = Some((target_slot, strength));
+                    }
                 }
             }
             let mut eye_values = [0; 9];
@@ -963,7 +1025,7 @@ impl Engine {
                     eye_values[sector] = *strength;
                 }
             }
-            let reference = nearest_by_eye[4].and_then(|(target_slot, _)| {
+            let reference = nearest_by_eye[vision.focus_eye as usize].and_then(|(target_slot, _)| {
                 let target = self.slots[target_slot].organism.as_ref()?;
                 Some((
                     self.kinematics.positions[target_slot],
@@ -1742,7 +1804,16 @@ impl Engine {
             let child = self.spawn_species_at_unpublished(dna, species, position)?;
             available_births -= 1;
             if vegetable_birth { vegetable_population += 1; }
-            self.slots[child.slot() as usize].organism.as_mut().unwrap().parents = [Some(parent), None];
+            let parent_phenotype = self.slots
+                .get(parent.slot() as usize)
+                .filter(|slot| slot.generation == parent.generation())
+                .and_then(|slot| slot.organism.as_ref())
+                .map(|organism| organism.phenotype.clone());
+            let child_organism = self.slots[child.slot() as usize].organism.as_mut().unwrap();
+            child_organism.parents = [Some(parent), None];
+            if let Some(phenotype) = parent_phenotype {
+                child_organism.phenotype = phenotype;
+            }
             self.lifecycle.energies[child.slot() as usize] = energy.max(1);
             self.slots[child.slot() as usize].organism.as_mut().unwrap().memory.write(MEM_NRG, energy.max(1));
             self.biology[child.slot() as usize] = child_biology;
@@ -1796,7 +1867,8 @@ impl Engine {
     }
 
     fn mutation_phase(&mut self) {
-        for id in self.pending_mutations.drain(..) {
+        let pending_mutations = std::mem::take(&mut self.pending_mutations);
+        for id in pending_mutations {
             let Some(slot) = self.slots.get_mut(id.slot() as usize) else { continue };
             if slot.generation != id.generation() { continue; }
             let Some(organism) = slot.organism.as_mut() else { continue };
@@ -1804,6 +1876,33 @@ impl Engine {
             let report = mutator.mutate(&mut organism.dna);
             organism.memory.write(MEM_MY_EYE, organism.dna.address_reference_count(MEM_EYE1, MEM_EYE9));
             organism.random_state = mutator.random_state();
+            if report.changes > 0 {
+                let vegetable = self.species
+                    .get(organism.species.0 as usize)
+                    .is_some_and(|species| species.vegetable);
+                organism.phenotype.apply_color_mutation(
+                    report.changes,
+                    vegetable,
+                    &mut organism.random_state,
+                );
+                organism.phenotype.accumulated_mutations = organism
+                    .phenotype
+                    .accumulated_mutations
+                    .saturating_add(report.changes);
+                let threshold = ((organism.dna.instructions().len().max(1) as f32)
+                    * self.config.speciation_genetic_distance_percent.clamp(0.1, 10_000.0)
+                    / 100.0)
+                    .ceil() as u32;
+                if self.config.auto_speciation
+                    && organism.phenotype.accumulated_mutations >= threshold.max(1)
+                {
+                    let lineage_id = self.next_lineage_id.max(1);
+                    self.next_lineage_id = lineage_id.saturating_add(1);
+                    organism
+                        .phenotype
+                        .apply_speciation(lineage_id, &mut organism.random_state);
+                }
+            }
             self.stats.mutations = self.stats.mutations.saturating_add(report.changes as u64);
         }
     }
@@ -1854,8 +1953,13 @@ impl Engine {
                 self.biology[slot].chloroplasts,
             );
             if let Some(organism) = self.slots.get(instance.slot as usize).and_then(|slot| slot.organism.as_ref()) {
+                instance.generation = self.slots[slot].generation;
+                instance.aim = self.biology[slot].aim;
+                instance.skin = organism.phenotype.skin;
+                instance.lineage_id = organism.phenotype.lineage_id;
+                instance.color = organism.phenotype.color;
                 if let Some(species) = self.species.get(organism.species.0 as usize) {
-                    instance.color = species.color;
+                    instance.vegetable = species.vegetable;
                 }
             }
         }
@@ -1897,14 +2001,36 @@ impl Engine {
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
         if engine.species.is_empty() { engine.species = default_species(); }
+        let mut next_lineage_id = engine.next_lineage_id.max(1);
+        for species in &mut engine.species {
+            if species.lineage_id == 0 {
+                species.lineage_id = next_lineage_id;
+                species.skin = generated_skin(&species.name, species.lineage_id);
+                next_lineage_id = next_lineage_id.saturating_add(1);
+            } else {
+                next_lineage_id = next_lineage_id.max(species.lineage_id.saturating_add(1));
+            }
+        }
         engine.species_templates.resize(engine.species.len(), None);
         engine.biology.resize(engine.slots.len(), BiologyState::default());
         engine.forced_reproductions.resize(engine.slots.len(), false);
         for slot in &mut engine.slots {
             if let Some(organism) = slot.organism.as_mut() {
                 organism.memory.write(MEM_MY_EYE, organism.dna.address_reference_count(MEM_EYE1, MEM_EYE9));
+                if organism.phenotype.lineage_id == 0
+                    && let Some(species) = engine.species.get(organism.species.0 as usize)
+                {
+                    organism.phenotype = VisualPhenotype::new(
+                        species.lineage_id,
+                        species.color,
+                        species.skin,
+                    );
+                }
+                next_lineage_id = next_lineage_id
+                    .max(organism.phenotype.lineage_id.saturating_add(1));
             }
         }
+        engine.next_lineage_id = next_lineage_id;
         let (capabilities, physics) = select_backend(&engine.config)?;
         engine.capabilities = capabilities;
         engine.physics = physics;
@@ -2002,6 +2128,8 @@ fn snapshot_organism(
         aim: biology[slot].aim,
         paralyzed: biology[slot].paralyzed,
         poisoned: biology[slot].poisoned,
+        phenotype: organism.phenotype.clone(),
+        vision: VisionSnapshot::from_memory(&organism.memory, biology[slot].aim),
     }
 }
 
@@ -2015,24 +2143,6 @@ fn unit_coordinate(random: u64, extent: f32) -> f32 {
     let margin = 60.0_f32.min(extent.max(0.0) * 0.5);
     let usable = (extent - margin * 2.0).max(0.0);
     margin + (random >> 40) as f32 / ((1_u32 << 24) - 1) as f32 * usable
-}
-
-fn eye_sector(observer: [f32; 2], observer_angle: f32, target: [f32; 2]) -> usize {
-    let target_angle = (target[0] - observer[0]).atan2(target[1] - observer[1]);
-    let relative = (target_angle - observer_angle + std::f32::consts::PI)
-        .rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
-    (((relative + std::f32::consts::PI) / std::f32::consts::TAU) * 9.0)
-        .floor().clamp(0.0, 8.0) as usize
-}
-
-fn eye_strength(distance_squared: f32, observer_radius: f32, target_radius: f32) -> i32 {
-    const SIGHT_DISTANCE: f32 = 1_440.0;
-    if !distance_squared.is_finite() || distance_squared <= 0.0 { return 32_000; }
-    let edge_distance = distance_squared.sqrt() - observer_radius - target_radius;
-    if edge_distance <= 0.0 { return 32_000; }
-    if edge_distance > SIGHT_DISTANCE { return 0; }
-    let percent_distance = (edge_distance + 10.0) / SIGHT_DISTANCE;
-    percent_distance.recip().powi(2).round().clamp(1.0, 32_000.0) as i32
 }
 
 fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2]) -> [f32; 2] {
@@ -2079,7 +2189,17 @@ fn cpu_render_instance(
 ) -> RenderInstance {
     let radius = crate::physics::organism_radius(body, chloroplasts);
     let energy_color = (energy.clamp(0, 4_000) * 255 / 4_000) as u32;
-    RenderInstance { slot: slot as u32, position, radius, color: 0xff2f8020 + (energy_color << 8) }
+    RenderInstance {
+        slot: slot as u32,
+        position,
+        radius,
+        color: 0xff2f8020 + (energy_color << 8),
+        generation: 0,
+        aim: 0,
+        skin: crate::default_skin(),
+        lineage_id: 0,
+        vegetable: false,
+    }
 }
 
 fn slot_id_valid(slots: &[Slot], id: OrganismId) -> bool {
@@ -2100,7 +2220,10 @@ fn advance_random(mut value: u64) -> u64 {
 }
 
 fn default_species() -> Vec<SpeciesDefinition> {
-    vec![SpeciesDefinition::default()]
+    let mut species = SpeciesDefinition::default();
+    species.lineage_id = 1;
+    species.skin = generated_skin(&species.name, species.lineage_id);
+    vec![species]
 }
 
 fn default_species_templates() -> Vec<Option<SpeciesTemplate>> {

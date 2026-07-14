@@ -54,6 +54,16 @@ pub struct RenderInstance {
     pub position: [f32; 2],
     pub radius: f32,
     pub color: u32,
+    #[serde(default)]
+    pub generation: u32,
+    #[serde(default)]
+    pub aim: i32,
+    #[serde(default = "crate::default_skin")]
+    pub skin: [crate::SkinPoint; 4],
+    #[serde(default)]
+    pub lineage_id: u64,
+    #[serde(default)]
+    pub vegetable: bool,
 }
 
 struct GpuSensingBuffers {
@@ -594,6 +604,11 @@ impl GpuPhysicsBackend {
                 position: output.position,
                 radius: output.radius,
                 color: output.color,
+                generation: 0,
+                aim: 0,
+                skin: crate::default_skin(),
+                lineage_id: 0,
+                vegetable: false,
             })
         }).collect();
         drop(mapped);

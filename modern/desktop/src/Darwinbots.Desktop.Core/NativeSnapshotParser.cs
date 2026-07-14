@@ -34,12 +34,23 @@ public static class NativeSnapshotParser
             organism.Aim,
             organism.Paralyzed,
             organism.Poisoned,
-            organism.Parents?.Select(parent => parent is null ? (OrganismKey?)null : new OrganismKey(parent.Slot, parent.Generation)).ToArray())).ToArray();
+            organism.Parents?.Select(parent => parent is null ? (OrganismKey?)null : new OrganismKey(parent.Slot, parent.Generation)).ToArray())
+        {
+            Phenotype = ParsePhenotype(organism.Phenotype),
+            Vision = ParseVision(organism.Vision),
+        }).ToArray();
         var renderInstances = (native.RenderInstances ?? []).Select(instance => new RenderInstanceSnapshot(
             instance.Slot,
             instance.Position,
             instance.Radius,
-            instance.Color)).ToArray();
+            instance.Color)
+        {
+            Generation = instance.Generation,
+            Aim = instance.Aim,
+            Skin = ParseSkin(instance.Skin),
+            LineageId = instance.LineageId,
+            Vegetable = instance.Vegetable,
+        }).ToArray();
         var species = (native.Species ?? []).Select(value => new SpeciesSnapshot(
             value.Name,
             value.Vegetable,
@@ -100,6 +111,51 @@ public static class NativeSnapshotParser
             Ties = ties,
             PhaseTimings = timings,
         };
+    }
+
+    private static VisualPhenotypeSnapshot ParsePhenotype(NativeVisualPhenotype? phenotype) =>
+        phenotype is null
+            ? VisualPhenotypeSnapshot.Default
+            : new VisualPhenotypeSnapshot(
+                phenotype.LineageId,
+                phenotype.Color,
+                ParseSkin(phenotype.Skin),
+                phenotype.AccumulatedMutations);
+
+    private static VisionSnapshot ParseVision(NativeVision? vision)
+    {
+        var defaults = VisualSnapshotDefaults.DefaultEyes();
+        if (vision?.Eyes is { } eyes)
+        {
+            for (var index = 0; index < Math.Min(defaults.Length, eyes.Length); index++)
+            {
+                var eye = eyes[index];
+                defaults[index] = new EyeSnapshot(
+                    eye.Direction,
+                    eye.Width,
+                    eye.CenterRadians,
+                    eye.HalfWidthRadians,
+                    eye.Range,
+                    eye.Value);
+            }
+        }
+        return new VisionSnapshot((byte)Math.Clamp(vision?.FocusEye ?? 4, 0, 8), defaults);
+    }
+
+    private static SkinPointSnapshot[] ParseSkin(NativeSkinPoint[]? skin)
+    {
+        var defaults = VisualSnapshotDefaults.DefaultSkin();
+        if (skin is null)
+        {
+            return defaults;
+        }
+        for (var index = 0; index < Math.Min(defaults.Length, skin.Length); index++)
+        {
+            defaults[index] = new SkinPointSnapshot(
+                Math.Clamp(skin[index].Radius, 0.15f, 0.82f),
+                ((skin[index].Angle % 1257) + 1257) % 1257);
+        }
+        return defaults;
     }
 
     private sealed record NativeSnapshot(
@@ -200,7 +256,12 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("slot")] uint Slot,
         [property: JsonPropertyName("position")] float[] Position,
         [property: JsonPropertyName("radius")] float Radius,
-        [property: JsonPropertyName("color")] uint Color);
+        [property: JsonPropertyName("color")] uint Color,
+        [property: JsonPropertyName("generation")] uint Generation,
+        [property: JsonPropertyName("aim")] int Aim,
+        [property: JsonPropertyName("skin")] NativeSkinPoint[]? Skin,
+        [property: JsonPropertyName("lineage_id")] ulong LineageId,
+        [property: JsonPropertyName("vegetable")] bool Vegetable);
 
     private sealed record NativeOrganism(
         [property: JsonPropertyName("id")] NativeId Id,
@@ -220,7 +281,31 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("aim")] int Aim,
         [property: JsonPropertyName("paralyzed")] int Paralyzed,
         [property: JsonPropertyName("poisoned")] int Poisoned,
-        [property: JsonPropertyName("parents")] NativeId?[]? Parents);
+        [property: JsonPropertyName("parents")] NativeId?[]? Parents,
+        [property: JsonPropertyName("phenotype")] NativeVisualPhenotype? Phenotype,
+        [property: JsonPropertyName("vision")] NativeVision? Vision);
+
+    private sealed record NativeSkinPoint(
+        [property: JsonPropertyName("radius")] float Radius,
+        [property: JsonPropertyName("angle")] int Angle);
+
+    private sealed record NativeVisualPhenotype(
+        [property: JsonPropertyName("lineage_id")] ulong LineageId,
+        [property: JsonPropertyName("color")] uint Color,
+        [property: JsonPropertyName("skin")] NativeSkinPoint[]? Skin,
+        [property: JsonPropertyName("accumulated_mutations")] uint AccumulatedMutations);
+
+    private sealed record NativeVision(
+        [property: JsonPropertyName("focus_eye")] int FocusEye,
+        [property: JsonPropertyName("eyes")] NativeEye[]? Eyes);
+
+    private sealed record NativeEye(
+        [property: JsonPropertyName("direction")] int Direction,
+        [property: JsonPropertyName("width")] int Width,
+        [property: JsonPropertyName("center_radians")] float CenterRadians,
+        [property: JsonPropertyName("half_width_radians")] float HalfWidthRadians,
+        [property: JsonPropertyName("range")] float Range,
+        [property: JsonPropertyName("value")] int Value);
 
     private sealed record NativeId(
         [property: JsonPropertyName("slot")] uint Slot,

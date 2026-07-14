@@ -48,13 +48,17 @@ public sealed record EnvironmentUpdate(
     float BrownianMotion,
     Db2PhysicsOptions Physics,
     Db2ShotOptions Shots,
-    Db2VegetationOptions Vegetation)
+    Db2VegetationOptions Vegetation,
+    bool AutoSpeciation,
+    float SpeciationGeneticDistancePercent)
 {
     public static EnvironmentUpdate Default { get; } = new(
         1, 0, 100, [0f, 0f], 0f, 0.5f,
         Db2PhysicsOptions.Default,
         Db2ShotOptions.Default,
-        Db2VegetationOptions.Default);
+        Db2VegetationOptions.Default,
+        false,
+        20f);
 }
 
 public static class NativeCommandSerializer
@@ -79,6 +83,8 @@ public static class NativeCommandSerializer
                 physics = Physics(update.Physics),
                 shots = Shots(update.Shots),
                 vegetation = Vegetation(update.Vegetation),
+                auto_speciation = update.AutoSpeciation,
+                speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
             },
         },
     };

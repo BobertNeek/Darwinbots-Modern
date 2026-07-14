@@ -39,7 +39,9 @@ public sealed partial class AdvancedSettingsWindow : Window
             (float)(FeedingToBody.Value ?? 0.75m),
             Daytime.IsChecked == true,
             DayNightEnabled.IsChecked == true,
-            (ulong)(CycleLength.Value ?? 10_000)));
+            (ulong)(CycleLength.Value ?? 10_000)),
+        AutoSpeciation.IsChecked == true,
+        (float)(SpeciationDistance.Value ?? 20));
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default)
     {
@@ -77,6 +79,8 @@ public sealed partial class AdvancedSettingsWindow : Window
         Daytime.IsChecked = update.Vegetation.Daytime;
         DayNightEnabled.IsChecked = update.Vegetation.DayNightEnabled;
         CycleLength.Value = update.Vegetation.CycleLength;
+        AutoSpeciation.IsChecked = update.AutoSpeciation;
+        SpeciationDistance.Value = (decimal)update.SpeciationGeneticDistancePercent;
     }
 
     private void Apply_Click(object? sender, RoutedEventArgs e) { Accepted = true; Close(); }

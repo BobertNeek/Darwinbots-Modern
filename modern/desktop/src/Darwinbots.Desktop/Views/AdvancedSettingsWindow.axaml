@@ -9,6 +9,14 @@
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable compatibility bonus"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Sunlight intensity"/><NumericUpDown Grid.Column="1" x:Name="Sunlight" Minimum="0" Maximum="10000"/></Grid>
 
+      <TextBlock Classes="section" Text="LINEAGES" Margin="0,14,0,0"/>
+      <CheckBox x:Name="AutoSpeciation" Content="Automatic speciation after accumulated DNA mutations"/>
+      <Grid ColumnDefinitions="*,150">
+        <TextBlock Text="Genetic distance threshold (%)" TextWrapping="Wrap"/>
+        <NumericUpDown Grid.Column="1" x:Name="SpeciationDistance" Minimum="0.1" Maximum="10000" Increment="0.5" FormatString="0.0"/>
+      </Grid>
+      <TextBlock Text="When enabled, a lineage receives a modest inherited skin change after this percentage of its DNA length has mutated." TextWrapping="Wrap" Foreground="#69716D"/>
+
       <TextBlock Classes="section" Text="MOVEMENT + ENVIRONMENT" Margin="0,14,0,0"/>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum velocity"/><NumericUpDown Grid.Column="1" x:Name="MaxVelocity" Minimum="1" Maximum="10000" Increment="1"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Movement efficiency"/><NumericUpDown Grid.Column="1" x:Name="MovementEfficiency" Minimum="0.01" Maximum="10" Increment="0.01"/></Grid>

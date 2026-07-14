@@ -78,6 +78,10 @@ enum EngineCommand {
         shots: Option<crate::ShotSettings>,
         #[serde(default)]
         vegetation: Option<crate::VegetationSettings>,
+        #[serde(default)]
+        auto_speciation: Option<bool>,
+        #[serde(default)]
+        speciation_genetic_distance_percent: Option<f32>,
     },
 }
 
@@ -284,6 +288,7 @@ fn db_engine_command_batch_impl(
                     minimum_population,
                     reseed,
                     mutation_rate,
+                    ..SpeciesDefinition::default()
                 });
                 engine.spawn_species_batch(dna, species, positions, initial_energy).map(|ids| serde_json::json!({
                     "species": species.0,
@@ -333,6 +338,8 @@ fn db_engine_command_batch_impl(
                 physics,
                 shots,
                 vegetation,
+                auto_speciation,
+                speciation_genetic_distance_percent,
             } => engine
                 .update_environment(
                     metabolism_cost,
@@ -343,6 +350,10 @@ fn db_engine_command_batch_impl(
                     brownian_motion,
                 )
                 .and_then(|_| engine.update_db2_settings(physics, shots, vegetation))
+                .and_then(|_| engine.update_speciation_settings(
+                    auto_speciation,
+                    speciation_genetic_distance_percent,
+                ))
                 .map(|_| serde_json::Value::Null),
         };
         match result {
