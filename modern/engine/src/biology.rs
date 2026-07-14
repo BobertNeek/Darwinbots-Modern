@@ -64,6 +64,52 @@ impl Default for BiologyState {
 }
 
 impl BiologyState {
+    pub(crate) fn for_species(vegetable: bool, start_chloroplasts: i32) -> Self {
+        Self {
+            chloroplasts: if vegetable {
+                start_chloroplasts.clamp(0, 32_000)
+            } else {
+                0
+            },
+            ..Self::default()
+        }
+    }
+
+    pub(crate) fn split_for_offspring(&mut self, percentage: i32) -> Self {
+        let percentage = percentage.clamp(1, 99);
+        let mut child = Self {
+            body: split_resource(&mut self.body, percentage, true),
+            waste: split_resource(&mut self.waste, percentage, false),
+            shell: split_resource(&mut self.shell, percentage, false),
+            slime: split_resource(&mut self.slime, percentage, false),
+            venom: split_resource(&mut self.venom, percentage, false),
+            poison: split_resource(&mut self.poison, percentage, false),
+            chloroplasts: split_resource(&mut self.chloroplasts, percentage, false),
+            aim: self.aim,
+            pain: 0,
+            pleasure: 0,
+            paralyzed: 0,
+            poisoned: 0,
+            previous_energy: 0,
+        };
+        child.body = child.body.max(1);
+        child
+    }
+
+    pub(crate) fn absorb_offspring(&mut self, child: Self) {
+        self.body = self.body.saturating_add(child.body);
+        self.waste = self.waste.saturating_add(child.waste);
+        self.shell = self.shell.saturating_add(child.shell);
+        self.slime = self.slime.saturating_add(child.slime);
+        self.venom = self.venom.saturating_add(child.venom);
+        self.poison = self.poison.saturating_add(child.poison);
+        self.chloroplasts = self.chloroplasts.saturating_add(child.chloroplasts);
+    }
+
+    pub(crate) fn synchronize_energy(&mut self, energy: i32) {
+        self.previous_energy = energy;
+    }
+
     pub fn apply_outputs(&mut self, memory: &mut VmMemory, energy: &mut i32, metabolism: i32) {
         let prior = self.previous_energy;
         let absolute = memory.read(MEM_SET_AIM);
@@ -110,6 +156,24 @@ impl BiologyState {
         memory.write(MEM_PLEASURE, self.pleasure);
         memory.write(MEM_PARALYZED, self.paralyzed);
         memory.write(MEM_POISONED, self.poisoned);
+    }
+}
+
+fn split_resource(resource: &mut i32, percentage: i32, preserve_living_body: bool) -> i32 {
+    let total = (*resource).max(0);
+    if preserve_living_body {
+        if total <= 1 {
+            *resource = 1;
+            return 1;
+        }
+        let child = ((total as i64 * percentage as i64) / 100)
+            .clamp(1, (total - 1) as i64) as i32;
+        *resource = total - child;
+        child
+    } else {
+        let child = (total as i64 * percentage as i64 / 100) as i32;
+        *resource = total - child;
+        child
     }
 }
 

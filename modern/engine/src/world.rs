@@ -24,7 +24,6 @@ const MEM_ROBAGE: i32 = 9;
 const MEM_REPRO: i32 = 300;
 const MEM_MREPRO: i32 = 301;
 const MEM_NRG: i32 = 310;
-const MEM_BODY: i32 = 311;
 const MEM_TIE: i32 = 330;
 const MEM_REF_X: i32 = 689;
 const MEM_REF_Y: i32 = 690;
@@ -420,12 +419,17 @@ impl Engine {
             return Err(EngineError::Invariant(format!("species {} does not exist", species.0)));
         }
 
+        let vegetable = self.species[species.0 as usize].vegetable;
+        let initial_biology = BiologyState::for_species(
+            vegetable,
+            self.config.vegetation.start_chloroplasts,
+        );
         let mut memory = VmMemory::default();
         memory.write(MEM_NRG, 1_000);
-        memory.write(MEM_BODY, 100);
         memory.write(MEM_XPOS, position[0].round() as i32);
         memory.write(MEM_YPOS, position[1].round() as i32);
         memory.write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
+        initial_biology.publish(&mut memory);
         let organism = Organism {
             dna,
             memory,
@@ -445,7 +449,7 @@ impl Engine {
         self.kinematics.activate(slot_index as usize, position);
         self.lifecycle.activate(slot_index as usize, 1_000);
         if self.biology.len() <= slot_index as usize { self.biology.resize(slot_index as usize + 1, BiologyState::default()); }
-        self.biology[slot_index as usize] = BiologyState::default();
+        self.biology[slot_index as usize] = initial_biology;
         if self.forced_reproductions.len() <= slot_index as usize { self.forced_reproductions.resize(slot_index as usize + 1, false); }
         self.forced_reproductions[slot_index as usize] = false;
         let id = OrganismId::new(slot_index, self.slots[slot_index as usize].generation);
@@ -1547,6 +1551,8 @@ impl Engine {
                 if reproduction > 0 && *energy > 200 {
                     let child_energy = (*energy as i64 * reproduction.clamp(1, 99) as i64 / 100) as i32;
                     *energy -= child_energy;
+                    let mut child_biology = biology.split_for_offspring(reproduction);
+                    child_biology.synchronize_energy(child_energy);
                     organism.memory.write(MEM_NRG, *energy);
                     organism.memory.write(MEM_REPRO, 0);
                     organism.memory.write(MEM_MREPRO, 0);
@@ -1563,6 +1569,7 @@ impl Engine {
                         organism.species,
                         OrganismId::new(slot_index as u32, slot.generation),
                         !assisted_reproduction,
+                        child_biology,
                     ));
                 }
                 Some((slot_index, birth, *energy <= 0))
@@ -1591,7 +1598,7 @@ impl Engine {
         }
         let mut available_births = self.config.organism_capacity.saturating_sub(self.population());
         let mut vegetable_population = self.vegetable_population();
-        for (dna, position, energy, mutate, species, parent, self_reproduction) in births {
+        for (dna, position, energy, mutate, species, parent, self_reproduction, child_biology) in births {
             let vegetable_birth = self.species.get(species.0 as usize).is_some_and(|value| value.vegetable);
             if available_births == 0
                 || (vegetable_birth && vegetable_population >= self.config.vegetable_population_cap)
@@ -1603,6 +1610,7 @@ impl Engine {
                     let parent_energy = &mut self.lifecycle.energies[parent.slot() as usize];
                     *parent_energy = parent_energy.saturating_add(energy.max(1));
                     parent_organism.memory.write(MEM_NRG, *parent_energy);
+                    self.biology[parent.slot() as usize].absorb_offspring(child_biology);
                 }
                 continue;
             }
@@ -1612,6 +1620,9 @@ impl Engine {
             self.slots[child.slot() as usize].organism.as_mut().unwrap().parents = [Some(parent), None];
             self.lifecycle.energies[child.slot() as usize] = energy.max(1);
             self.slots[child.slot() as usize].organism.as_mut().unwrap().memory.write(MEM_NRG, energy.max(1));
+            self.biology[child.slot() as usize] = child_biology;
+            self.biology[child.slot() as usize]
+                .publish(&mut self.slots[child.slot() as usize].organism.as_mut().unwrap().memory);
             if mutate { self.pending_mutations.push(child); }
             self.stats.births = self.stats.births.saturating_add(1);
             if self_reproduction {

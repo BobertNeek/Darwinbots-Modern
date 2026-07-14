@@ -17,6 +17,7 @@ fn species_identity_and_vegetable_energy_are_part_of_the_world_state() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 1,
         vegetable_energy_per_tick: 4,
+        sunlight_energy: 0,
         ..EngineConfig::testing()
     }).unwrap();
     let vegetable = engine.register_species(SpeciesDefinition {
