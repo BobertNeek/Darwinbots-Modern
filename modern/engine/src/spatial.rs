@@ -169,6 +169,29 @@ impl SpatialIndex {
         best.map(|(slot, _)| slot)
     }
 
+    pub fn segment_candidates(
+        &self,
+        start: [f32; 2],
+        end: [f32; 2],
+        padding: f32,
+    ) -> Vec<usize> {
+        let padding = padding.max(0.0);
+        let minimum = [start[0].min(end[0]) - padding, start[1].min(end[1]) - padding];
+        let maximum = [start[0].max(end[0]) + padding, start[1].max(end[1]) + padding];
+        let min_cell = cell(minimum, self.cell_size);
+        let max_cell = cell(maximum, self.cell_size);
+        let mut candidates = Vec::new();
+        for y in min_cell.1..=max_cell.1 {
+            for x in min_cell.0..=max_cell.0 {
+                let Some(entries) = self.cell_entries((x, y)) else { continue };
+                candidates.extend(entries.iter().map(|entry| self.slots[*entry]));
+            }
+        }
+        candidates.sort_unstable();
+        candidates.dedup();
+        candidates
+    }
+
     fn dense_index(&self, coordinate: (i32, i32)) -> Option<usize> {
         let x = coordinate.0 - self.origin.0;
         let y = coordinate.1 - self.origin.1;

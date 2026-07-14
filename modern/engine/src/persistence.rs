@@ -4,7 +4,7 @@ pub struct SaveFile;
 
 impl SaveFile {
     const MAGIC: &'static [u8; 4] = b"DB3S";
-    const VERSION: u16 = 1;
+    const VERSION: u16 = 2;
 
     pub fn encode(engine: &Engine) -> Result<Vec<u8>, EngineError> {
         let payload = serde_json::to_vec(engine)?;

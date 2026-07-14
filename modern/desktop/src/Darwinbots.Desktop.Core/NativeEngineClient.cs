@@ -12,6 +12,25 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly float _worldHeight;
     private readonly SeededSpawnPlacement _spawnPlacement;
 
+    public NativeEngineClient(WorldSetupOptions options) : this(
+        options.Backend,
+        options.PopulationCapacity,
+        options.Seed,
+        options.WorldWidth,
+        options.WorldHeight,
+        options.EffectiveMetabolismCost,
+        options.VegetableEnergyPerTick,
+        options.SunlightEnergy,
+        options.Gravity,
+        options.Drag,
+        options.BrownianMotion,
+        options.VegetablePopulationCap,
+        options.Physics,
+        options.Shots,
+        options.Vegetation)
+    {
+    }
+
     public NativeEngineClient(
         string backend = "Auto",
         int capacity = 100_000,
@@ -24,17 +43,38 @@ public sealed partial class NativeEngineClient : IEngineClient
         float[]? gravity = null,
         float drag = 0f,
         float brownianMotion = 0f,
-        int vegetablePopulationCap = 500)
+        int vegetablePopulationCap = 500,
+        Db2PhysicsOptions? physics = null,
+        Db2ShotOptions? shots = null,
+        Db2VegetationOptions? vegetation = null)
     {
         _worldWidth = worldWidth;
         _worldHeight = worldHeight;
         _spawnPlacement = new SeededSpawnPlacement(seed);
         gravity ??= [0f, 0f];
+        physics ??= Db2PhysicsOptions.Default;
+        shots ??= Db2ShotOptions.Default;
+        vegetation ??= Db2VegetationOptions.Default;
         ValidatePosition(gravity);
-        var config = $$"""
-            {"seed":{{seed}},"organism_capacity":{{capacity}},"vegetable_population_cap":{{vegetablePopulationCap}},"world_width":{{worldWidth}},"world_height":{{worldHeight}},"backend":"{{backend}}","allow_cpu_fallback":true,"metabolism_cost":{{metabolismCost}},"vegetable_energy_per_tick":{{vegetableEnergyPerTick}},"sunlight_energy":{{sunlightEnergy}},"gravity":[{{gravity[0]}},{{gravity[1]}}],"drag":{{drag}},"brownian_motion":{{brownianMotion}}}
-            """;
-        var bytes = Encoding.UTF8.GetBytes(config);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            seed,
+            organism_capacity = capacity,
+            vegetable_population_cap = vegetablePopulationCap,
+            world_width = worldWidth,
+            world_height = worldHeight,
+            backend,
+            allow_cpu_fallback = true,
+            metabolism_cost = metabolismCost,
+            vegetable_energy_per_tick = vegetableEnergyPerTick,
+            sunlight_energy = sunlightEnergy,
+            gravity,
+            drag,
+            brownian_motion = brownianMotion,
+            physics = NativeCommandSerializer.Physics(physics),
+            shots = NativeCommandSerializer.Shots(shots),
+            vegetation = NativeCommandSerializer.Vegetation(vegetation),
+        });
         ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
         if (_engine == IntPtr.Zero)
         {
@@ -189,15 +229,7 @@ public sealed partial class NativeEngineClient : IEngineClient
     {
         ArgumentNullException.ThrowIfNull(update);
         ValidatePosition(update.Gravity);
-        ExecuteBatch(new { version = 1, commands = new[] { new {
-            type = "update_environment",
-            metabolism_cost = update.MetabolismCost,
-            vegetable_energy_per_tick = update.VegetableEnergyPerTick,
-            sunlight_energy = update.SunlightEnergy,
-            gravity = update.Gravity,
-            drag = update.Drag,
-            brownian_motion = update.BrownianMotion,
-        } } }, "update environment");
+        ExecuteBatch(NativeCommandSerializer.CreateEnvironmentBatch(update), "update environment");
     }
 
     private static OrganismKey ReadKey(JsonElement value) => new(

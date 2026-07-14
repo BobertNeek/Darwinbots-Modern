@@ -28,12 +28,30 @@ public sealed record WorldSetupOptions
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
     public int MetabolismCost { get; init; } = 1;
-    public int VegetableEnergyPerTick { get; init; } = 4;
+    public int VegetableEnergyPerTick { get; init; }
     public int SunlightEnergy { get; init; } = 100;
     public float[] Gravity { get; init; } = [0f, 0f];
     public float Drag { get; init; }
-    public float BrownianMotion { get; init; }
+    public float BrownianMotion { get; init; } = 0.5f;
+    public Db2PhysicsOptions Physics { get; init; } = Db2PhysicsOptions.Default;
+    public Db2ShotOptions Shots { get; init; } = Db2ShotOptions.Default;
+    public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public string? LoadSavePath { get; init; }
+
+    public int EffectiveMetabolismCost => StartingMode == StartingMode.StarterBotsAndVegetables
+        ? MetabolismCost
+        : ZerobotSustenance == ZerobotSustenance.DisabledMetabolism ? 0 : MetabolismCost;
+
+    public EnvironmentUpdate ToEnvironmentUpdate() => new(
+        EffectiveMetabolismCost,
+        VegetableEnergyPerTick,
+        SunlightEnergy,
+        Gravity.ToArray(),
+        Drag,
+        BrownianMotion,
+        Physics,
+        Shots,
+        Vegetation);
 }

@@ -7,6 +7,10 @@ pub struct SimulationStats {
     pub deaths: u64,
     pub shots_fired: u64,
     #[serde(default)]
+    pub projectile_impacts: u64,
+    #[serde(default)]
+    pub projectile_effects: u64,
+    #[serde(default)]
     pub energy_harvested: u64,
     #[serde(default)]
     pub energy_donated: u64,
@@ -18,6 +22,10 @@ pub struct SimulationStats {
     pub self_reproductions: u64,
     #[serde(default)]
     pub feeding_events: u64,
+    #[serde(default, alias = "plant_energy_produced")]
+    pub plant_energy_generated: u64,
+    #[serde(default)]
+    pub plant_body_produced: u64,
     #[serde(default)]
     pub intentional_movement_events: u64,
     pub total_energy: i64,

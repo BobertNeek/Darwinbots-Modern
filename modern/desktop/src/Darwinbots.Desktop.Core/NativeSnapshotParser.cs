@@ -58,12 +58,24 @@ public static class NativeSnapshotParser
             native.Stats.Reseeds,
             native.Stats.SelfReproductions,
             native.Stats.FeedingEvents,
-            native.Stats.IntentionalMovementEvents);
+            native.Stats.IntentionalMovementEvents,
+            native.Stats.ProjectileImpacts,
+            native.Stats.ProjectileEffects,
+            native.Stats.PlantEnergyGenerated);
         var obstacles = (native.Obstacles ?? []).Select(value => new ObstacleSnapshot(value.Id, value.Minimum, value.Maximum)).ToArray();
         var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)).ToArray();
         var corpses = (native.Corpses ?? []).Select(value => new CorpseSnapshot(value.Position, value.Velocity, value.Energy, value.Body, value.Age)).ToArray();
         var shots = (native.Shots ?? []).Select(value => new ShotSnapshot(
-            new OrganismKey(value.Owner.Slot, value.Owner.Generation), value.Start, value.End, value.Kind, value.Value)).ToArray();
+            new OrganismKey(value.Owner.Slot, value.Owner.Generation),
+            value.Start,
+            value.End,
+            value.Velocity is { Length: 2 } ? value.Velocity : [0f, 0f],
+            value.Kind,
+            value.Value,
+            value.Age,
+            value.Range,
+            value.Energy,
+            value.ImpactFlash)).ToArray();
         var history = (native.History ?? []).Select(value => new HistorySampleSnapshot(
             value.Tick, value.Population, value.TotalEnergy, value.Births, value.Deaths, value.Mutations, value.ShotsFired)).ToArray();
         var ties = (native.Ties ?? []).Select(value => new TieSnapshot(
@@ -116,8 +128,13 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("owner")] NativeId Owner,
         [property: JsonPropertyName("start")] float[] Start,
         [property: JsonPropertyName("end")] float[] End,
+        [property: JsonPropertyName("velocity")] float[]? Velocity,
+        [property: JsonPropertyName("age")] uint Age,
+        [property: JsonPropertyName("range")] uint Range,
+        [property: JsonPropertyName("energy")] float Energy,
         [property: JsonPropertyName("kind")] int Kind,
-        [property: JsonPropertyName("value")] int Value);
+        [property: JsonPropertyName("value")] int Value,
+        [property: JsonPropertyName("impact_flash")] bool ImpactFlash);
 
     private sealed record NativeHistorySample(
         [property: JsonPropertyName("tick")] ulong Tick,
@@ -174,7 +191,10 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("reseeds")] ulong Reseeds,
         [property: JsonPropertyName("self_reproductions")] ulong SelfReproductions,
         [property: JsonPropertyName("feeding_events")] ulong FeedingEvents,
-        [property: JsonPropertyName("intentional_movement_events")] ulong IntentionalMovementEvents);
+        [property: JsonPropertyName("intentional_movement_events")] ulong IntentionalMovementEvents,
+        [property: JsonPropertyName("projectile_impacts")] ulong ProjectileImpacts,
+        [property: JsonPropertyName("projectile_effects")] ulong ProjectileEffects,
+        [property: JsonPropertyName("plant_energy_generated")] ulong PlantEnergyGenerated);
 
     private sealed record NativeRenderInstance(
         [property: JsonPropertyName("slot")] uint Slot,

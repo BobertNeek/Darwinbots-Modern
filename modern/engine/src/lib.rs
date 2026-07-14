@@ -14,6 +14,7 @@ mod shot;
 mod spatial;
 mod species;
 mod stats;
+mod vegetation;
 mod sysvars;
 mod timing;
 mod vm;
@@ -23,7 +24,7 @@ pub mod ffi;
 
 pub use backend::{BackendCapabilities, BackendKind, BackendPreference};
 pub use biology::BiologyState;
-pub use config::EngineConfig;
+pub use config::{EngineConfig, PhysicsSettings, ShotSettings, VegetationSettings};
 pub use corpse::CorpseSnapshot;
 pub use dna::{Instruction, LegacyDna};
 pub use error::EngineError;
@@ -34,9 +35,14 @@ pub use mutation::{GenomeMutator, MutationKind, MutationReport, PointMutator};
 pub use persistence::SaveFile;
 pub use physics::{CpuPhysicsBackend, GpuPhysicsBackend, PhysicsBackend, PhysicsBatch, RenderInstance};
 pub use shot::ShotSnapshot;
+pub(crate) use shot::{
+    ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
+    projectile_effect,
+};
 pub use spatial::SpatialIndex;
 pub use species::{SpeciesDefinition, SpeciesId};
 pub use stats::SimulationStats;
+pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use sysvars::sysvar_address;
 pub use timing::PhaseTimings;
 pub use vm::{DnaVm, VmMemory, VmReport};

@@ -4,7 +4,7 @@ struct Particle {
     slot: u32,
     alive: u32,
     energy: i32,
-    padding: u32,
+    radius: f32,
 };
 
 struct Params {

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
@@ -8,12 +9,7 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed partial class SetupWindow : Window
 {
-    private int _metabolismCost = 1;
-    private int _vegetableEnergy = 4;
-    private int _sunlightEnergy = 100;
-    private float[] _gravity = [0f, 0f];
-    private float _drag;
-    private float _brownian;
+    private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
     private const string FeederReproducerDna = "cond\nstart\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
@@ -36,6 +32,7 @@ public sealed partial class SetupWindow : Window
 
     private void LoadMode(StartingMode mode)
     {
+        UpdateSustenanceAvailability(mode);
         Species.Clear();
         try
         {
@@ -104,12 +101,15 @@ public sealed partial class SetupWindow : Window
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = (float)(WorldWidth.Value ?? 16_000),
             WorldHeight = (float)(WorldHeight.Value ?? 12_000),
-            MetabolismCost = sustenance == ZerobotSustenance.DisabledMetabolism ? 0 : _metabolismCost,
-            VegetableEnergyPerTick = _vegetableEnergy,
-            SunlightEnergy = _sunlightEnergy,
-            Gravity = _gravity,
-            Drag = _drag,
-            BrownianMotion = _brownian,
+            MetabolismCost = _environment.MetabolismCost,
+            VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
+            SunlightEnergy = _environment.SunlightEnergy,
+            Gravity = _environment.Gravity.ToArray(),
+            Drag = _environment.Drag,
+            BrownianMotion = _environment.BrownianMotion,
+            Physics = _environment.Physics,
+            Shots = _environment.Shots,
+            Vegetation = _environment.Vegetation,
             TicksPerUpdate = speed,
             Species = species,
         });
@@ -117,16 +117,113 @@ public sealed partial class SetupWindow : Window
 
     private async void Advanced_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new AdvancedSettingsWindow(_metabolismCost, _vegetableEnergy, _sunlightEnergy, _gravity, _drag, _brownian);
+        try
+        {
+            var dialog = new AdvancedSettingsWindow(_environment);
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return;
+            _environment = dialog.Update;
+            SetupStatus.Text = "ADVANCED SETTINGS APPLIED";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"ADVANCED SETTINGS FAILED: {error.Message}";
+        }
+    }
+
+    private void NewWorld_Click(object? sender, RoutedEventArgs e)
+    {
+        StarterMode.IsChecked = true;
+        Mode_Checked(StarterMode, e);
+        SetupStatus.Text = "New world defaults restored.";
+    }
+
+    private async void OpenSave_Click(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open Darwinbots Modern save",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Darwinbots Modern save") { Patterns = ["*.db3s"] }],
+        });
+        var file = files.FirstOrDefault();
+        if (file is null) return;
+        WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = file.Path.LocalPath });
+    }
+
+    private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
+
+    private async void About_Click(object? sender, RoutedEventArgs e)
+    {
+        var close = new Button { Content = "CLOSE", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
+        var dialog = new Window
+        {
+            Title = "About Darwinbots Modern",
+            Width = 440,
+            Height = 270,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(28),
+                Spacing = 14,
+                Children =
+                {
+                    new TextBlock { Text = "DARWINBOTS MODERN", FontSize = 25, FontWeight = Avalonia.Media.FontWeight.Bold },
+                    new TextBlock { Text = "Windows 10 alpha", FontWeight = Avalonia.Media.FontWeight.SemiBold },
+                    new TextBlock
+                    {
+                        Text = "A modern, legacy-DNA-compatible artificial life simulator with CPU and portable GPU backends.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
+                    close,
+                },
+            },
+        };
+        close.Click += (_, _) => dialog.Close();
         await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return;
-        _metabolismCost = dialog.MetabolismCost;
-        _vegetableEnergy = dialog.VegetableEnergyPerTick;
-        _sunlightEnergy = dialog.SunlightEnergy;
-        _gravity = dialog.GravityVector;
-        _drag = dialog.DragValue;
-        _brownian = dialog.BrownianValue;
-        SetupStatus.Text = "ADVANCED SETTINGS APPLIED";
+    }
+
+    private void SetupWindow_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F1)
+        {
+            About_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+        switch (e.Key)
+        {
+            case Key.Enter:
+                CreateWorld_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.N:
+                NewWorld_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.O:
+                OpenSave_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.OemComma:
+                Advanced_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void UpdateSustenanceAvailability(StartingMode mode)
+    {
+        var enabled = mode != StartingMode.StarterBotsAndVegetables;
+        Sustenance.IsEnabled = enabled;
+        AutomaticProgression.IsEnabled = enabled;
+        SustenanceLabel.Text = "ZEROBOT SUSTENANCE";
+        SustenanceHint.Text = enabled
+            ? "Optional assistance while functional DNA evolves."
+            : "Starter bots always use normal metabolism and DB2 vegetable feeding.";
     }
 
     private void Recover_Click(object? sender, RoutedEventArgs e)

@@ -40,7 +40,10 @@ public sealed record SimulationStatsSnapshot(
     ulong Reseeds = 0,
     ulong SelfReproductions = 0,
     ulong FeedingEvents = 0,
-    ulong IntentionalMovementEvents = 0)
+    ulong IntentionalMovementEvents = 0,
+    ulong ProjectileImpacts = 0,
+    ulong ProjectileEffects = 0,
+    ulong PlantEnergyGenerated = 0)
 {
     public static SimulationStatsSnapshot Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
 }
@@ -54,7 +57,17 @@ public sealed record RenderInstanceSnapshot(
 public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum);
 public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination);
 public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age);
-public sealed record ShotSnapshot(OrganismKey Owner, float[] Start, float[] End, int Kind, int Value);
+public sealed record ShotSnapshot(
+    OrganismKey Owner,
+    float[] Start,
+    float[] End,
+    float[] Velocity,
+    int Kind,
+    int Value,
+    uint Age,
+    uint Range,
+    float Energy,
+    bool ImpactFlash);
 public sealed record TieSnapshot(OrganismKey First, OrganismKey Second, float RestLength);
 public sealed record HistorySampleSnapshot(
     ulong Tick, int Population, long TotalEnergy, ulong Births, ulong Deaths, ulong Mutations, ulong ShotsFired);

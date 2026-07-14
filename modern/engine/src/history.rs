@@ -9,4 +9,8 @@ pub struct HistorySample {
     pub deaths: u64,
     pub mutations: u64,
     pub shots_fired: u64,
+    #[serde(default)]
+    pub projectile_impacts: u64,
+    #[serde(default, alias = "plant_energy_produced")]
+    pub plant_energy_generated: u64,
 }

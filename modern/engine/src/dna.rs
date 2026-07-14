@@ -29,6 +29,8 @@ pub struct LegacyDna {
     instructions: Vec<Instruction>,
     user_variables: BTreeMap<String, i32>,
     #[serde(default)]
+    new_move: bool,
+    #[serde(default)]
     compatibility_warnings: Vec<String>,
 }
 
@@ -37,6 +39,7 @@ impl LegacyDna {
         let mut instructions = Vec::new();
         let mut user_variables = BTreeMap::new();
         let mut compatibility_warnings = BTreeSet::new();
+        let mut new_move = false;
 
         for (line_index, raw_line) in source.lines().enumerate() {
             let line_number = line_index + 1;
@@ -44,6 +47,10 @@ impl LegacyDna {
                 .trim_start_matches('\u{feff}')
                 .trim();
             if code.is_empty() {
+                continue;
+            }
+            if code.eq_ignore_ascii_case("newmove") {
+                new_move = true;
                 continue;
             }
 
@@ -90,7 +97,12 @@ impl LegacyDna {
             }
         }
 
-        Ok(Self { instructions, user_variables, compatibility_warnings: compatibility_warnings.into_iter().collect() })
+        Ok(Self {
+            instructions,
+            user_variables,
+            new_move,
+            compatibility_warnings: compatibility_warnings.into_iter().collect(),
+        })
     }
 
     pub fn instructions(&self) -> &[Instruction] {
@@ -103,6 +115,10 @@ impl LegacyDna {
 
     pub fn compatibility_warnings(&self) -> &[String] {
         &self.compatibility_warnings
+    }
+
+    pub fn uses_new_move(&self) -> bool {
+        self.new_move
     }
 
     pub fn address_reference_count(&self, first: i32, last: i32) -> i32 {
@@ -134,11 +150,21 @@ impl LegacyDna {
         compatibility_warnings.extend(other.compatibility_warnings.iter().cloned());
         compatibility_warnings.sort();
         compatibility_warnings.dedup();
-        Self { instructions, user_variables, compatibility_warnings }
+        Self {
+            instructions,
+            user_variables,
+            new_move: self.new_move || other.new_move,
+            compatibility_warnings,
+        }
     }
 
     pub fn to_source(&self) -> String {
-        self.instructions.iter().map(instruction_token).collect::<Vec<_>>().join(" ")
+        let instructions = self.instructions.iter().map(instruction_token).collect::<Vec<_>>().join(" ");
+        if self.new_move {
+            format!("NewMove\n{instructions}")
+        } else {
+            instructions
+        }
     }
 }
 

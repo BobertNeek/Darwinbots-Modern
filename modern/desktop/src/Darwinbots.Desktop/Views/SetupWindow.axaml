@@ -4,14 +4,27 @@
         x:CompileBindings="False"
         Title="Darwinbots Modern — New World"
         Width="1280" Height="820" MinWidth="1080" MinHeight="720"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        KeyDown="SetupWindow_KeyDown">
   <Grid RowDefinitions="64,*,34" ColumnDefinitions="210,*,290">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="210,*" Margin="18,0">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift" FontWeight="Bold" FontSize="27" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="26" VerticalAlignment="Center">
-          <TextBlock Text="FILE"/><TextBlock Text="VIEW"/><TextBlock Text="HELP"/>
-        </StackPanel>
+        <Menu Grid.Column="1" Background="Transparent" VerticalAlignment="Center">
+          <MenuItem Header="_FILE">
+            <MenuItem Header="NEW WORLD" HotKey="Ctrl+N" Click="NewWorld_Click"/>
+            <MenuItem Header="OPEN SAVE..." HotKey="Ctrl+O" Click="OpenSave_Click"/>
+            <MenuItem Header="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
+            <Separator/>
+            <MenuItem Header="EXIT" HotKey="Alt+F4" Click="Exit_Click"/>
+          </MenuItem>
+          <MenuItem Header="_VIEW">
+            <MenuItem Header="ADVANCED SETTINGS" HotKey="Ctrl+," Click="Advanced_Click"/>
+          </MenuItem>
+          <MenuItem Header="_HELP">
+            <MenuItem Header="ABOUT DARWINBOTS MODERN" HotKey="F1" Click="About_Click"/>
+          </MenuItem>
+        </Menu>
       </Grid>
     </Border>
 
@@ -80,8 +93,9 @@
         <TextBlock Text="VEGETABLE CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="VegetablePopulationCap" Value="500" Minimum="0" Maximum="1000000" Increment="50"/>
         <TextBlock Text="Maximum living vegetables" Foreground="#6F716D" FontSize="12"/>
         <TextBlock Text="SPEED" FontWeight="Bold" Margin="0,10,0,0"/><ComboBox x:Name="Speed" SelectedIndex="3"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAXIMUM"/></ComboBox>
-        <TextBlock Text="ZEROBOT SUSTENANCE" FontWeight="Bold" Margin="0,10,0,0"/>
+        <TextBlock x:Name="SustenanceLabel" Text="ZEROBOT SUSTENANCE" FontWeight="Bold" Margin="0,10,0,0"/>
         <ComboBox x:Name="Sustenance" SelectedIndex="3"><ComboBoxItem Content="FEEDER + REPRODUCER"/><ComboBoxItem Content="ENERGY-ONLY FEEDER"/><ComboBoxItem Content="PHOTOSYNTHETIC ZEROBOTS"/><ComboBoxItem Content="DISABLED METABOLISM"/><ComboBoxItem Content="NO ASSISTANCE"/></ComboBox>
+        <TextBlock x:Name="SustenanceHint" TextWrapping="Wrap" Foreground="#6F716D" FontSize="12"/>
         <CheckBox x:Name="AutomaticProgression" IsChecked="True" Content="AUTOMATIC ZEROBOT PROGRESSION" Margin="0,8,0,0"/>
         <Button Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
         <Button Content="▶  CREATE WORLD" Background="#4C7D30" Foreground="White" FontWeight="Bold" FontSize="18" Height="58" Margin="0,12,0,0" Click="CreateWorld_Click"/>

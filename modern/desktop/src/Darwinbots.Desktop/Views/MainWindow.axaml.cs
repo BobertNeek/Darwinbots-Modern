@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -10,6 +11,48 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed partial class MainWindow : Window
 {
+    private void MainWindow_KeyDown(object? sender, KeyEventArgs e)
+    {
+        var routed = new RoutedEventArgs();
+        if (e.Key == Key.F5) Run_Click(sender, routed);
+        else if (e.Key == Key.F6) Pause_Click(sender, routed);
+        else if (e.Key == Key.F7) Step_Click(sender, routed);
+        else if (e.Key == Key.F8) Turbo_Click(sender, routed);
+        else if (e.Key == Key.F9)
+            RuntimeSpeed.SelectedIndex = (RuntimeSpeed.SelectedIndex + 1) % 4;
+        else if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            switch (e.Key)
+            {
+                case Key.B: SwitchBackend_Click(sender, routed); break;
+                case Key.I: Import_Click(sender, routed); break;
+                case Key.S: Save_Click(sender, routed); break;
+                case Key.L: Load_Click(sender, routed); break;
+                case Key.R: Reset_Click(sender, routed); break;
+                case Key.E: EditDna_Click(sender, routed); break;
+                case Key.OemComma: LiveAdvanced_Click(sender, routed); break;
+                case Key.D1: AddObstacle_Click(sender, routed); break;
+                case Key.D2: AddTeleporter_Click(sender, routed); break;
+                case Key.Delete: RemoveFeature_Click(sender, routed); break;
+                default: return;
+            }
+        }
+        else if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            switch (e.Key)
+            {
+                case Key.M: Move_Click(sender, routed); break;
+                case Key.C: Clone_Click(sender, routed); break;
+                case Key.R: Reproduce_Click(sender, routed); break;
+                case Key.K: Kill_Click(sender, routed); break;
+                case Key.F: Follow_Click(sender, routed); break;
+                default: return;
+            }
+        }
+        else return;
+        e.Handled = true;
+    }
+
     private readonly MainWindowViewModel _viewModel = new();
     private SimulationSession? _session;
     private readonly DispatcherTimer _runTimer;
@@ -28,12 +71,7 @@ public sealed partial class MainWindow : Window
     private const string EnergyOnlyFeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
     private uint _ticksPerUpdate;
     private bool _following;
-    private int _liveMetabolism;
-    private int _liveVegetableEnergy;
-    private int _liveSunlight;
-    private float[] _liveGravity;
-    private float _liveDrag;
-    private float _liveBrownian;
+    private EnvironmentUpdate _liveEnvironment;
 
     public MainWindow() : this([], new WorldSetupOptions()) { }
 
@@ -48,12 +86,7 @@ public sealed partial class MainWindow : Window
             : null;
         InitializeComponent();
         _ticksPerUpdate = setup.TicksPerUpdate;
-        _liveMetabolism = setup.MetabolismCost;
-        _liveVegetableEnergy = setup.VegetableEnergyPerTick;
-        _liveSunlight = setup.SunlightEnergy;
-        _liveGravity = setup.Gravity.ToArray();
-        _liveDrag = setup.Drag;
-        _liveBrownian = setup.BrownianMotion;
+        _liveEnvironment = setup.ToEnvironmentUpdate();
         RuntimeSpeed.SelectedIndex = _ticksPerUpdate switch { <= 1 => 0, <= 5 => 1, <= 20 => 2, _ => 3 };
         Viewport.OrganismSelected += slot =>
         {
@@ -116,19 +149,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            _session = new SimulationSession(new NativeEngineClient(
-                _setup.Backend,
-                _setup.PopulationCapacity,
-                _setup.Seed,
-                _setup.WorldWidth,
-                _setup.WorldHeight,
-                _setup.MetabolismCost,
-                _setup.VegetableEnergyPerTick,
-                _setup.SunlightEnergy,
-                _setup.Gravity,
-                _setup.Drag,
-                _setup.BrownianMotion,
-                _setup.VegetablePopulationCap));
+            _session = new SimulationSession(new NativeEngineClient(_setup));
             _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
             {
                 _viewModel.Update(snapshot);
@@ -319,23 +340,12 @@ public sealed partial class MainWindow : Window
     private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        var dialog = new AdvancedSettingsWindow(_liveMetabolism, _liveVegetableEnergy, _liveSunlight, _liveGravity, _liveDrag, _liveBrownian);
+        var dialog = new AdvancedSettingsWindow(_liveEnvironment);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return;
-        var update = new EnvironmentUpdate(
-            dialog.MetabolismCost,
-            dialog.VegetableEnergyPerTick,
-            dialog.SunlightEnergy,
-            dialog.GravityVector,
-            dialog.DragValue,
-            dialog.BrownianValue);
+        var update = dialog.Update;
         await _session.UpdateEnvironmentAsync(update);
-        _liveMetabolism = update.MetabolismCost;
-        _liveVegetableEnergy = update.VegetableEnergyPerTick;
-        _liveSunlight = update.SunlightEnergy;
-        _liveGravity = update.Gravity;
-        _liveDrag = update.Drag;
-        _liveBrownian = update.BrownianMotion;
+        _liveEnvironment = update;
         _viewModel.Status = "LIVE ENVIRONMENT SETTINGS APPLIED";
     }
 
@@ -362,7 +372,7 @@ public sealed partial class MainWindow : Window
                     break;
                 case ZerobotProgressionAction.DisableBrownianMotion:
                     await _session.SetBrownianMotionAsync(0f);
-                    _liveBrownian = 0f;
+                    _liveEnvironment = _liveEnvironment with { BrownianMotion = 0f };
                     break;
             }
             _viewModel.Status = $"ZEROBOT · {transition.Message.ToUpperInvariant()}";

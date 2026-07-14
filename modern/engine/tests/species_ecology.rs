@@ -1,18 +1,22 @@
-use darwinbots_engine::{sysvar_address, Engine, EngineConfig, LegacyDna, SpeciesDefinition};
+use darwinbots_engine::{
+    sysvar_address, Engine, EngineConfig, LegacyDna, PhysicsSettings, SpeciesDefinition,
+};
 
 #[test]
 fn modern_chloroplast_sysvars_use_the_latest_vb6_addresses() {
-    assert_eq!(sysvar_address("chlr"), Some(250));
-    assert_eq!(sysvar_address("mkchlr"), Some(251));
-    assert_eq!(sysvar_address("rmchlr"), Some(252));
-    assert_eq!(sysvar_address("sharechlr"), Some(255));
+    assert_eq!(sysvar_address("chlr"), Some(920));
+    assert_eq!(sysvar_address("mkchlr"), Some(921));
+    assert_eq!(sysvar_address("rmchlr"), Some(922));
+    assert_eq!(sysvar_address("light"), Some(923));
+    assert_eq!(sysvar_address("availability"), Some(923));
+    assert_eq!(sysvar_address("sharechlr"), Some(924));
 }
 
 #[test]
 fn species_identity_and_vegetable_energy_are_part_of_the_world_state() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 1,
-        vegetable_energy_per_tick: 4,
+        vegetable_energy_per_tick: 0,
         ..EngineConfig::testing()
     }).unwrap();
     let vegetable = engine.register_species(SpeciesDefinition {
@@ -38,7 +42,8 @@ fn species_identity_and_vegetable_energy_are_part_of_the_world_state() {
     assert_eq!(snapshot.species.len(), 3);
     assert_eq!(snapshot.organisms[0].species, vegetable);
     assert!(snapshot.organisms[0].vegetable);
-    assert_eq!(snapshot.organisms[0].energy, 1_003);
+    assert!(snapshot.organisms[0].energy > 1_000);
+    assert!(snapshot.organisms[0].body > 1_000);
     assert_eq!(snapshot.organisms[1].species, animal);
     assert!(!snapshot.organisms[1].vegetable);
     assert_eq!(snapshot.organisms[1].energy, 999);
@@ -50,7 +55,7 @@ fn negative_shots_feed_the_attacker_from_the_target() {
     let predator = LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap();
     let prey = LegacyDna::parse("start\nstop").unwrap();
     let attacker = engine.spawn_at(predator, [100.0, 100.0]).unwrap();
-    engine.spawn_at(prey, [120.0, 100.0]).unwrap();
+    engine.spawn_at(prey, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
 
@@ -132,7 +137,7 @@ fn dna_controls_body_defenses_chloroplasts_waste_and_aim() {
     engine.tick().unwrap();
 
     let organism = engine.organism(id).unwrap();
-    assert_eq!(organism.body, 110);
+    assert_eq!(organism.body, 1_010);
     assert_eq!(organism.shell, 25);
     assert_eq!(organism.chloroplasts, 30);
     assert_eq!(organism.aim, 314);
@@ -142,27 +147,33 @@ fn dna_controls_body_defenses_chloroplasts_waste_and_aim() {
 
 #[test]
 fn aim_rotates_forward_movement() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        ..EngineConfig::testing()
+    }).unwrap();
     let dna = LegacyDna::parse("start\n314 .setaim store\n10 .up store\nstop").unwrap();
     let id = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
 
     let position = engine.organism(id).unwrap().position;
-    assert!(position[0] > 509.0);
+    assert!((position[0] - 506.6).abs() < 0.01);
     assert!((position[1] - 500.0).abs() < 1.0);
 }
 
 #[test]
 fn chloroplasts_generate_environmental_energy_for_any_species() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    }).unwrap();
     let builder = LegacyDna::parse("start\n160 .mkchlr store\nstop").unwrap();
     let id = engine.spawn_at(builder, [500.0, 500.0]).unwrap();
     engine.tick().unwrap();
     engine.replace_dna(id, LegacyDna::parse("start\nstop").unwrap()).unwrap();
     let before = engine.organism(id).unwrap().energy;
 
-    engine.tick().unwrap();
+    engine.tick_many(4).unwrap();
 
     assert!(engine.organism(id).unwrap().energy > before);
 }
@@ -173,11 +184,11 @@ fn feeding_shots_without_shootval_use_legacy_body_based_strength() {
     let predator = LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap();
     let prey = LegacyDna::parse("start\nstop").unwrap();
     let attacker = engine.spawn_at(predator, [100.0, 100.0]).unwrap();
-    engine.spawn_at(prey, [120.0, 100.0]).unwrap();
+    engine.spawn_at(prey, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.snapshot().stats.energy_harvested, 30);
+    assert_eq!(engine.snapshot().stats.energy_harvested, 165);
     assert!(engine.organism(attacker).unwrap().energy > 1_000);
 }
 
@@ -219,7 +230,7 @@ fn animal_minimalis_recognizes_and_moves_toward_non_family_targets() {
     let animal = LegacyDna::parse("cond\n*.eye5 0 >\n*.refeye *.myeye !=\nstart\n*.refveldx .dx store\n*.refvelup 30 add .up store\nstop\nend").unwrap();
     let alga = LegacyDna::parse("start\nstop\nend").unwrap();
     let animal_id = engine.spawn_at(animal, [500.0, 500.0]).unwrap();
-    engine.spawn_at(alga, [500.0, 550.0]).unwrap();
+    engine.spawn_at(alga, [500.0, 800.0]).unwrap();
 
     engine.tick().unwrap();
     assert_eq!(engine.memory_at(animal_id, 728).unwrap(), 1);
@@ -270,7 +281,7 @@ fn minus_two_shots_donate_energy_to_zerobots() {
     let feeder = LegacyDna::parse("start\n-2 .shoot store\n50 .shootval store\nstop").unwrap();
     let zerobot = LegacyDna::parse("0 0 0 0 0").unwrap();
     let source = engine.spawn_at(feeder, [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(zerobot, [120.0, 100.0]).unwrap();
+    let target = engine.spawn_at(zerobot, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
 
@@ -285,7 +296,7 @@ fn shot_302_forces_target_reproduction_for_zerobot_feeding() {
     let feeder = LegacyDna::parse("start\n302 .shoot store\n50 .shootval store\nstop").unwrap();
     let zerobot = LegacyDna::parse("0 0 0 0 0").unwrap();
     engine.spawn_at(feeder, [100.0, 100.0]).unwrap();
-    engine.spawn_at(zerobot, [120.0, 100.0]).unwrap();
+    engine.spawn_at(zerobot, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
 
@@ -325,12 +336,31 @@ fn poison_drains_energy_and_venom_suppresses_movement() {
 
     let mut venom_engine = Engine::new(EngineConfig::testing()).unwrap();
     let venomous = venom_engine.spawn_at(LegacyDna::parse("start\n100 .strvenom store\nstop").unwrap(), [100.0, 100.0]).unwrap();
-    let mover = venom_engine.spawn_at(LegacyDna::parse("start\n10 .up store\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let mover = venom_engine.spawn_at(LegacyDna::parse("start\n10 .dx store\nstop").unwrap(), [120.0, 100.0]).unwrap();
     venom_engine.tick().unwrap();
     venom_engine.replace_dna(venomous, LegacyDna::parse("start\n-3 .shoot store\n20 .shootval store\nstop").unwrap()).unwrap();
-    let before = venom_engine.organism(mover).unwrap().position;
     venom_engine.tick().unwrap();
-    let after = venom_engine.organism(mover).unwrap();
-    assert_eq!(after.position, before);
-    assert!(after.paralyzed > 0);
+    let after_impact = venom_engine.organism(mover).unwrap();
+    assert!(after_impact.paralyzed > 0);
+    venom_engine.tick().unwrap();
+    assert_eq!(venom_engine.organism(mover).unwrap().position, after_impact.position);
+}
+
+#[test]
+fn eye_strength_uses_db2_edge_to_edge_distance() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    }).unwrap();
+    let observer = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 850.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let eye5 = engine.memory_at(observer, 505).unwrap();
+    assert!((120..=122).contains(&eye5), "expected DB2 eye strength near 121, got {eye5}");
 }

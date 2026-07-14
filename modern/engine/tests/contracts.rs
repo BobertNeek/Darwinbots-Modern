@@ -115,7 +115,13 @@ fn invariant_checker_accepts_slot_reuse_and_seeded_ticks() {
 
 #[test]
 fn engine_uses_vm_flow_semantics_for_movement_intents() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        physics: darwinbots_engine::PhysicsSettings {
+            density: 0.0,
+            ..darwinbots_engine::PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    }).unwrap();
     let dna = LegacyDna::parse(
         "cond\n2 1 >\nstart\n10 .up store\nelse\n25 .up store\nstop",
     ).unwrap();
@@ -123,7 +129,7 @@ fn engine_uses_vm_flow_semantics_for_movement_intents() {
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.organism(id).unwrap().position[1], 10.0);
+    assert!((engine.organism(id).unwrap().position[1] - 6.6).abs() < 0.01);
 }
 
 #[test]
@@ -164,4 +170,45 @@ fn unavailable_gpu_is_an_error_when_fallback_is_disabled() {
     };
 
     assert!(matches!(Engine::new(config), Err(EngineError::GpuUnavailable(_))));
+}
+#[test]
+fn db2_defaults_are_exposed_by_engine_config() {
+    let config = EngineConfig::default();
+    assert_eq!(config.world_width, 16_000.0);
+    assert_eq!(config.world_height, 12_000.0);
+    assert_eq!(config.brownian_motion, 0.5);
+    assert_eq!(config.physics.max_velocity, 60.0);
+    assert_eq!(config.physics.movement_efficiency, 0.66);
+    assert_eq!(config.physics.surface_gravity, 0.0);
+    assert_eq!(config.physics.static_friction, 0.0);
+    assert_eq!(config.physics.kinetic_friction, 0.0);
+    assert_eq!(config.physics.density, 0.0);
+    assert_eq!(config.physics.viscosity, 0.0);
+    assert_eq!(config.physics.elasticity, 0.0);
+    assert_eq!(config.shots.speed, 40.0);
+    assert_eq!(config.shots.range_multiplier, 1.0);
+    assert_eq!(config.shots.decay, 40.0);
+    assert!(!config.shots.energy_shots_do_not_decay);
+    assert!(!config.shots.waste_shots_do_not_decay);
+    assert_eq!(config.vegetation.start_chloroplasts, 16_000);
+    assert_eq!(config.vegetation.max_energy_per_tick, 100);
+    assert_eq!(config.vegetation.minimum_chloroplast_equivalents, 50);
+    assert_eq!(config.vegetation.repopulation_amount, 10);
+    assert_eq!(config.vegetation.repopulation_cooldown, 10);
+    assert_eq!(config.vegetation.feeding_to_body, 0.75);
+    assert!(config.vegetation.daytime);
+    assert!(!config.vegetation.day_night_enabled);
+}
+
+#[test]
+fn save_version_one_is_rejected_after_db2_state_upgrade() {
+    let engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut bytes = SaveFile::encode(&engine).unwrap();
+    bytes[4..6].copy_from_slice(&1u16.to_le_bytes());
+
+    let error = match SaveFile::decode(&bytes) {
+        Ok(_) => panic!("save version 1 was accepted"),
+        Err(error) => error,
+    };
+    assert!(error.to_string().contains("unsupported version 1"));
 }

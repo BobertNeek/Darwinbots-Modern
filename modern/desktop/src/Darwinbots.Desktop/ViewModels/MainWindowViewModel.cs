@@ -21,6 +21,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private ulong _deaths;
     private ulong _mutations;
     private ulong _shots;
+    private ulong _projectileImpacts;
+    private ulong _plantEnergyGenerated;
     private long _totalEnergy;
     private ulong _energyHarvested;
     private int _selectedBody;
@@ -50,6 +52,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ulong Deaths { get => _deaths; private set => Set(ref _deaths, value); }
     public ulong Mutations { get => _mutations; private set => Set(ref _mutations, value); }
     public ulong Shots { get => _shots; private set => Set(ref _shots, value); }
+    public ulong ProjectileImpacts { get => _projectileImpacts; private set => Set(ref _projectileImpacts, value); }
+    public ulong PlantEnergyGenerated { get => _plantEnergyGenerated; private set => Set(ref _plantEnergyGenerated, value); }
     public long TotalEnergy { get => _totalEnergy; private set => Set(ref _totalEnergy, value); }
     public ulong EnergyHarvested { get => _energyHarvested; private set => Set(ref _energyHarvested, value); }
     public int SelectedBody { get => _selectedBody; private set => Set(ref _selectedBody, value); }
@@ -67,7 +71,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string LimitingPhase { get => _limitingPhase; private set => Set(ref _limitingPhase, value); }
     public string PopulationSummary => $"{Population:N0} organisms · {SpeciesCount:N0} species";
     public string LifecycleSummary => $"BIRTH {Births:N0}    DEATH {Deaths:N0}";
-    public string CombatSummary => $"SHOTS {Shots:N0}    HARVEST {EnergyHarvested:N0}    DONATED {_snapshot.Stats.EnergyDonated:N0}";
+    public string CombatSummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    HARVEST {EnergyHarvested:N0}    DONATED {_snapshot.Stats.EnergyDonated:N0}";
+    public string EnergyActivitySummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    PLANT {PlantEnergyGenerated:N0}";
+    public string PlantSummary => $"PLANT ENERGY {PlantEnergyGenerated:N0}";
     public string MutationSummary => $"MUTATIONS {Mutations:N0}";
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -103,6 +109,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Deaths = snapshot.Stats.Deaths;
         Mutations = snapshot.Stats.Mutations;
         Shots = snapshot.Stats.ShotsFired;
+        ProjectileImpacts = snapshot.Stats.ProjectileImpacts;
+        PlantEnergyGenerated = snapshot.Stats.PlantEnergyGenerated;
         TotalEnergy = snapshot.Stats.TotalEnergy;
         EnergyHarvested = snapshot.Stats.EnergyHarvested;
         TicksPerSecond = snapshot.TicksPerSecond;
@@ -122,6 +130,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PopulationSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LifecycleSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CombatSummary)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EnergyActivitySummary)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlantSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MutationSummary)));
     }
 

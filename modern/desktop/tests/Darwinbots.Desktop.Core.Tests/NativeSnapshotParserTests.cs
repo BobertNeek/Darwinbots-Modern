@@ -148,6 +148,53 @@ public sealed class NativeSnapshotParserTests
     }
 
     [Fact]
+    public void ParsesProjectileVelocityAgeRangeImpactAndDb2Telemetry()
+    {
+        const string json = """
+            {
+              "tick": 24,
+              "organisms": [],
+              "shots": [
+                {
+                  "owner": { "slot": 4, "generation": 2 },
+                  "start": [10.0, 20.0],
+                  "end": [30.0, 20.0],
+                  "velocity": [40.0, 0.0],
+                  "age": 2,
+                  "range": 7,
+                  "energy": 80.5,
+                  "kind": -1,
+                  "value": 25,
+                  "impact_flash": false
+                }
+              ],
+              "stats": {
+                "births": 0,
+                "deaths": 0,
+                "shots_fired": 8,
+                "projectile_impacts": 3,
+                "energy_harvested": 0,
+                "mutations": 0,
+                "ties_created": 0,
+                "total_energy": 0,
+                "plant_energy_generated": 99
+              }
+            }
+            """;
+
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+        var shot = Assert.Single(snapshot.Shots);
+
+        Assert.Equal([40f, 0f], shot.Velocity);
+        Assert.Equal(2U, shot.Age);
+        Assert.Equal(7U, shot.Range);
+        Assert.Equal(80.5f, shot.Energy);
+        Assert.False(shot.ImpactFlash);
+        Assert.Equal(3UL, snapshot.Stats.ProjectileImpacts);
+        Assert.Equal(99UL, snapshot.Stats.PlantEnergyGenerated);
+    }
+
+    [Fact]
     public void ParsesHistoricalPopulationAndEnergyRecords()
     {
         const string json = """

@@ -1,6 +1,86 @@
 use crate::BackendPreference;
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PhysicsSettings {
+    pub max_velocity: f32,
+    pub movement_efficiency: f32,
+    pub surface_gravity: f32,
+    pub static_friction: f32,
+    pub kinetic_friction: f32,
+    pub density: f64,
+    pub viscosity: f64,
+    pub elasticity: f32,
+}
+
+impl Default for PhysicsSettings {
+    fn default() -> Self {
+        Self {
+            max_velocity: 60.0,
+            movement_efficiency: 0.66,
+            surface_gravity: 0.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
+            density: 0.0,
+            viscosity: 0.0,
+            elasticity: 0.0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ShotSettings {
+    pub speed: f32,
+    pub range_multiplier: f32,
+    pub decay: f32,
+    pub energy_shots_do_not_decay: bool,
+    pub waste_shots_do_not_decay: bool,
+}
+
+impl Default for ShotSettings {
+    fn default() -> Self {
+        Self {
+            speed: 40.0,
+            range_multiplier: 1.0,
+            decay: 40.0,
+            energy_shots_do_not_decay: false,
+            waste_shots_do_not_decay: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct VegetationSettings {
+    pub start_chloroplasts: i32,
+    pub max_energy_per_tick: i32,
+    pub minimum_chloroplast_equivalents: usize,
+    pub repopulation_amount: usize,
+    pub repopulation_cooldown: u64,
+    pub feeding_to_body: f32,
+    pub daytime: bool,
+    pub day_night_enabled: bool,
+    pub cycle_length: u64,
+}
+
+impl Default for VegetationSettings {
+    fn default() -> Self {
+        Self {
+            start_chloroplasts: 16_000,
+            max_energy_per_tick: 100,
+            minimum_chloroplast_equivalents: 50,
+            repopulation_amount: 10,
+            repopulation_cooldown: 10,
+            feeding_to_body: 0.75,
+            daytime: true,
+            day_night_enabled: false,
+            cycle_length: 10_000,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EngineConfig {
     pub seed: u64,
@@ -23,6 +103,12 @@ pub struct EngineConfig {
     pub drag: f32,
     #[serde(default)]
     pub brownian_motion: f32,
+    #[serde(default)]
+    pub physics: PhysicsSettings,
+    #[serde(default)]
+    pub shots: ShotSettings,
+    #[serde(default)]
+    pub vegetation: VegetationSettings,
     #[serde(skip)]
     pub force_gpu_unavailable_for_tests: bool,
     #[serde(skip)]
@@ -44,7 +130,10 @@ impl Default for EngineConfig {
             sunlight_energy: default_sunlight_energy(),
             gravity: [0.0, 0.0],
             drag: 0.0,
-            brownian_motion: 0.0,
+            brownian_motion: 0.5,
+            physics: PhysicsSettings::default(),
+            shots: ShotSettings::default(),
+            vegetation: VegetationSettings::default(),
             force_gpu_unavailable_for_tests: false,
             force_gpu_runtime_failure_for_tests: false,
         }
@@ -52,7 +141,7 @@ impl Default for EngineConfig {
 }
 
 fn default_metabolism_cost() -> i32 { 1 }
-fn default_vegetable_energy_per_tick() -> i32 { 4 }
+fn default_vegetable_energy_per_tick() -> i32 { 0 }
 fn default_sunlight_energy() -> i32 { 100 }
 fn default_vegetable_population_cap() -> usize { 500 }
 
@@ -63,6 +152,7 @@ impl EngineConfig {
             world_width: 1_000.0,
             world_height: 1_000.0,
             backend: BackendPreference::Cpu,
+            brownian_motion: 0.0,
             ..Self::default()
         }
     }

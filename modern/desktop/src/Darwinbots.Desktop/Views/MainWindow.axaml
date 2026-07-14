@@ -6,30 +6,33 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Darwinbots Modern"
         Width="940" Height="650" MinWidth="900" MinHeight="600"
-        WindowStartupLocation="CenterScreen" WindowState="Maximized">
+        WindowStartupLocation="CenterScreen" WindowState="Maximized"
+        KeyDown="MainWindow_KeyDown">
   <Grid RowDefinitions="58,*,170,28" ColumnDefinitions="170,*,240">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="170,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
+      <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+      <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="25" VerticalAlignment="Center" />
         <Button Grid.Column="1" Classes="transport" Content="▶  RUN" Background="#3F8E34" Foreground="White" Click="Run_Click" />
-        <Button Grid.Column="2" Classes="transport" Content="Ⅱ  PAUSE" Margin="8,0,0,0" Click="Pause_Click" />
-        <Button Grid.Column="3" Classes="transport" Content="▶| STEP" Margin="8,0,0,0" Click="Step_Click" />
-        <Button Grid.Column="4" Height="34" Content="IMPORT BOT" Margin="12,0,0,0" Click="Import_Click" />
-        <Button Grid.Column="5" Height="34" Content="RESET" Margin="8,0,0,0" Click="Reset_Click" />
-        <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="12,0,0,0">
-          <ComboBox x:Name="RuntimeSpeed" Width="92" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
+        <Button Grid.Column="2" Classes="transport" Content="Ⅱ  PAUSE" Margin="4,0,0,0" Click="Pause_Click" />
+        <Button Grid.Column="3" Classes="transport" Content="▶| STEP" Margin="4,0,0,0" Click="Step_Click" />
+        <Button Grid.Column="4" x:Name="TurboButton" Height="34" Content="TURBO" Margin="4,0,0,0" Click="Turbo_Click" />
+        <Button Grid.Column="5" Height="34" Content="IMPORT BOT" Margin="6,0,0,0" Click="Import_Click" />
+        <Button Grid.Column="6" Height="34" Content="RESET" Margin="4,0,0,0" Click="Reset_Click" />
+        <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" Margin="6,0,0,0">
+          <ComboBox x:Name="RuntimeSpeed" Width="84" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
           <Button Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />
-          <Button x:Name="TurboButton" Height="34" Content="TURBO" Click="Turbo_Click" />
           <Button Height="34" Content="SAVE" Click="Save_Click" />
           <Button Height="34" Content="LOAD" Click="Load_Click" />
         </StackPanel>
-        <StackPanel Grid.Column="7" Margin="20,0" VerticalAlignment="Center">
+        <StackPanel Grid.Column="8" Margin="8,0,0,0" VerticalAlignment="Center">
           <TextBlock Classes="section" Text="TICK" />
           <TextBlock Text="{Binding Tick}" FontWeight="Bold" FontSize="16" />
           <TextBlock Text="{Binding TicksPerSecond, StringFormat='{}{0:0.0} t/s'}" FontSize="11" Foreground="#69716D"/>
           <TextBlock Text="{Binding SnapshotsPerSecond, StringFormat='{}{0:0.0} snap/s'}" FontSize="10" Foreground="#69716D"/>
         </StackPanel>
       </Grid>
+      </Viewbox>
     </Border>
 
     <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="8,8,4,4">
@@ -132,7 +135,7 @@
         <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
           <TextBlock Classes="section" Text="ENERGY"/>
           <controls:HistoryChart x:Name="EnergyChart" Grid.Row="1" Metric="Energy" MinHeight="78"/>
-          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12"><TextBlock Text="{Binding TotalEnergy, StringFormat='{}{0:N0} total'}" FontWeight="SemiBold"/><TextBlock Text="{Binding CombatSummary}" Foreground="#69716D"/></StackPanel>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12"><TextBlock Text="{Binding TotalEnergy, StringFormat='{}{0:N0} total'}" FontWeight="SemiBold"/><TextBlock Text="{Binding EnergyActivitySummary}" Foreground="#69716D"/></StackPanel>
         </Grid>
       </Border>
       <Border Grid.Column="2" Classes="panel" Margin="4,0,0,0" Padding="14">
@@ -142,6 +145,7 @@
             <TextBlock Text="SYSTEM   Modern engine initialized" />
             <TextBlock Text="{Binding LifecycleSummary}" Foreground="#2D826F" />
             <TextBlock Text="{Binding CombatSummary}" Foreground="#A65A23" />
+            <TextBlock Text="{Binding PlantSummary}" Foreground="#3E8E36" />
             <TextBlock Text="{Binding MutationSummary}" />
             <TextBlock Text="{Binding LimitingPhase}" Foreground="#69716D" />
           </StackPanel>

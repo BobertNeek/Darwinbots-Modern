@@ -3,6 +3,16 @@ use bytemuck::{Pod, Zeroable};
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
+mod movement;
+mod environment;
+mod collision;
+
+pub(crate) use movement::{
+    MovementInput, MovementState, apply_voluntary_impulse, derived_mass,
+};
+pub(crate) use environment::{apply_resistance, environment_impulse, integrate_body};
+pub(crate) use collision::{resolve_collisions, segment_aabb_fraction, segment_circle_fraction};
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuSenseParticle {
@@ -11,7 +21,7 @@ struct GpuSenseParticle {
     slot: u32,
     alive: u32,
     energy: i32,
-    _padding: u32,
+    radius: f32,
 }
 
 #[repr(C)]
@@ -165,44 +175,18 @@ pub trait PhysicsBackend {
     fn step(&mut self, batch: &mut PhysicsBatch) -> Result<(), EngineError>;
 }
 
-pub(crate) fn resolve_collisions(
-    positions: &mut [[f32; 2]],
-    velocities: &mut [[f32; 2]],
-    energies: &[i32],
-    pairs: &[(usize, usize)],
-) {
-    for &(first, second) in pairs {
-        if first == second || first >= positions.len() || second >= positions.len() { continue; }
-        let minimum_distance = organism_radius(energies.get(first).copied().unwrap_or(1))
-            + organism_radius(energies.get(second).copied().unwrap_or(1));
-        let delta = [positions[second][0] - positions[first][0], positions[second][1] - positions[first][1]];
-        let distance_squared = delta[0] * delta[0] + delta[1] * delta[1];
-        if distance_squared >= minimum_distance * minimum_distance { continue; }
-        let (normal, distance) = if distance_squared <= f32::EPSILON {
-            ([if (first ^ second) & 1 == 0 { 1.0 } else { -1.0 }, 0.0], 0.0)
-        } else {
-            let distance = distance_squared.sqrt();
-            ([delta[0] / distance, delta[1] / distance], distance)
-        };
-        let correction = (minimum_distance - distance) * 0.5;
-        positions[first][0] -= normal[0] * correction;
-        positions[first][1] -= normal[1] * correction;
-        positions[second][0] += normal[0] * correction;
-        positions[second][1] += normal[1] * correction;
-        let relative_speed = (velocities[second][0] - velocities[first][0]) * normal[0]
-            + (velocities[second][1] - velocities[first][1]) * normal[1];
-        if relative_speed < 0.0 {
-            let impulse = relative_speed * 0.5;
-            velocities[first][0] += normal[0] * impulse;
-            velocities[first][1] += normal[1] * impulse;
-            velocities[second][0] -= normal[0] * impulse;
-            velocities[second][1] -= normal[1] * impulse;
-        }
-    }
-}
+pub(crate) fn organism_radius(body: i32, chloroplasts: i32) -> f32 {
+    const CUBIC_TWIPS_PER_BODY: f32 = 905.0;
+    const FULL_CHLOROPLAST_RADIUS: f32 = 415.0;
 
-pub(crate) fn organism_radius(energy: i32) -> f32 {
-    (energy.max(1) as f32).sqrt().mul_add(0.45, 0.0).clamp(2.0, 24.0)
+    let body_points = body.max(1) as f32;
+    let body_radius = (body_points.ln() * body_points * CUBIC_TWIPS_PER_BODY * 3.0 * 0.25
+        / std::f32::consts::PI)
+        .max(0.0)
+        .cbrt()
+        .max(1.0);
+    let chloroplast_fraction = chloroplasts.clamp(0, 32_000) as f32 / 32_000.0;
+    (body_radius + (FULL_CHLOROPLAST_RADIUS - body_radius) * chloroplast_fraction).max(1.0)
 }
 
 #[derive(Default)]
@@ -212,8 +196,7 @@ impl PhysicsBackend for CpuPhysicsBackend {
     fn step(&mut self, batch: &mut PhysicsBatch) -> Result<(), EngineError> {
         validate_batch(batch)?;
         for (position, velocity) in batch.positions.iter_mut().zip(&batch.velocities) {
-            position[0] = (position[0] + velocity[0]).clamp(0.0, batch.world_size[0]);
-            position[1] = (position[1] + velocity[1]).clamp(0.0, batch.world_size[1]);
+            integrate_body(position, *velocity, batch.world_size);
         }
         Ok(())
     }
@@ -435,8 +418,29 @@ impl GpuPhysicsBackend {
         ];
         self.sense_integrate_render_impl(
             positions, velocities, energies, alive, &[], &[], grid_size,
-            cell_size, radius, world_size, true,
+            cell_size, radius, world_size, None, true,
         )
+    }
+
+    pub fn sense_and_render_gpu_grid(
+        &self,
+        positions: &[[f32; 2]],
+        energies: &[i32],
+        radii: &[f32],
+        alive: &[bool],
+        world_size: [f32; 2],
+        cell_size: f32,
+        radius: f32,
+    ) -> Result<(Vec<Option<usize>>, Vec<RenderInstance>), EngineError> {
+        let grid_size = [
+            (world_size[0] / cell_size).ceil().max(1.0) as u32,
+            (world_size[1] / cell_size).ceil().max(1.0) as u32,
+        ];
+        let velocities = vec![[0.0; 2]; positions.len()];
+        self.sense_integrate_render_impl(
+            positions, &velocities, energies, alive, &[], &[], grid_size,
+            cell_size, radius, world_size, Some(radii), true,
+        ).map(|(targets, _, instances)| (targets, instances))
     }
 
     pub fn sense_and_integrate(
@@ -473,7 +477,7 @@ impl GpuPhysicsBackend {
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>, Vec<RenderInstance>), EngineError> {
         self.sense_integrate_render_impl(
             positions, velocities, energies, alive, cell_offsets, cell_members, grid_size,
-            cell_size, radius, world_size, false,
+            cell_size, radius, world_size, None, false,
         )
     }
 
@@ -489,6 +493,7 @@ impl GpuPhysicsBackend {
         cell_size: f32,
         radius: f32,
         world_size: [f32; 2],
+        radii: Option<&[f32]>,
         gpu_build_grid: bool,
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>, Vec<RenderInstance>), EngineError> {
         if positions.is_empty() {
@@ -500,7 +505,10 @@ impl GpuPhysicsBackend {
             slot: slot as u32,
             alive: alive.get(slot).copied().unwrap_or(false) as u32,
             energy: energies.get(slot).copied().unwrap_or(0),
-            _padding: 0,
+            radius: radii.and_then(|values| values.get(slot)).copied().unwrap_or_else(|| {
+                ((energies.get(slot).copied().unwrap_or(0).max(1) as f32).sqrt() * 0.45)
+                    .clamp(2.0, 24.0)
+            }),
         }).collect();
         let params = GpuSenseParams {
             count: particles.len() as u32,

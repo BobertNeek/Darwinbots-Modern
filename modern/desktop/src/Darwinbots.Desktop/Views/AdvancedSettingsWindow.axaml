@@ -1,18 +1,45 @@
 <Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Darwinbots.Desktop.Views.AdvancedSettingsWindow" Title="Advanced Physics and Environment"
-        Width="520" Height="500" WindowStartupLocation="CenterOwner">
+        Width="520" Height="700" WindowStartupLocation="CenterOwner">
   <Grid RowDefinitions="54,*,52">
     <Border Background="#FBF9F2" BorderBrush="#C8C5BB" BorderThickness="0,0,0,1" Padding="16"><TextBlock Text="ADVANCED PHYSICS + ENVIRONMENT" FontFamily="Bahnschrift" FontSize="18" FontWeight="Bold"/></Border>
     <ScrollViewer Grid.Row="1"><StackPanel Margin="22" Spacing="10">
       <TextBlock Classes="section" Text="ENERGY"/>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Metabolism per tick"/><NumericUpDown Grid.Column="1" x:Name="Metabolism" Minimum="0" Maximum="100"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable baseline"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable compatibility bonus"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Sunlight intensity"/><NumericUpDown Grid.Column="1" x:Name="Sunlight" Minimum="0" Maximum="10000"/></Grid>
-      <TextBlock Classes="section" Text="PHYSICS" Margin="0,14,0,0"/>
+
+      <TextBlock Classes="section" Text="MOVEMENT + ENVIRONMENT" Margin="0,14,0,0"/>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum velocity"/><NumericUpDown Grid.Column="1" x:Name="MaxVelocity" Minimum="1" Maximum="10000" Increment="1"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Movement efficiency"/><NumericUpDown Grid.Column="1" x:Name="MovementEfficiency" Minimum="0.01" Maximum="10" Increment="0.01"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity X"/><NumericUpDown Grid.Column="1" x:Name="GravityX" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity Y"/><NumericUpDown Grid.Column="1" x:Name="GravityY" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag (0–1)"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Surface gravity"/><NumericUpDown Grid.Column="1" x:Name="SurfaceGravity" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Static friction"/><NumericUpDown Grid.Column="1" x:Name="StaticFriction" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Kinetic friction"/><NumericUpDown Grid.Column="1" x:Name="KineticFriction" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Fluid density"/><NumericUpDown Grid.Column="1" x:Name="Density" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Viscosity"/><NumericUpDown Grid.Column="1" x:Name="Viscosity" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Collision elasticity"/><NumericUpDown Grid.Column="1" x:Name="Elasticity" Minimum="0" Maximum="2" Increment="0.01"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag (0-1)"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Brownian motion"/><NumericUpDown Grid.Column="1" x:Name="Brownian" Minimum="0" Maximum="100" Increment="0.1"/></Grid>
+
+      <TextBlock Classes="section" Text="SHOTS" Margin="0,14,0,0"/>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Speed"/><NumericUpDown Grid.Column="1" x:Name="ShotSpeed" Minimum="1" Maximum="1000" Increment="1"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Range multiplier"/><NumericUpDown Grid.Column="1" x:Name="ShotRangeMultiplier" Minimum="0.01" Maximum="100" Increment="0.1"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Decay"/><NumericUpDown Grid.Column="1" x:Name="ShotDecay" Minimum="0" Maximum="10000" Increment="1"/></Grid>
+      <CheckBox x:Name="EnergyShotsNoDecay" Content="Energy shots do not decay"/>
+      <CheckBox x:Name="WasteShotsNoDecay" Content="Waste shots do not decay"/>
+
+      <TextBlock Classes="section" Text="VEGETATION" Margin="0,14,0,0"/>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Starting chloroplasts"/><NumericUpDown Grid.Column="1" x:Name="StartChloroplasts" Minimum="0" Maximum="32000" Increment="100"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Max energy per tick"/><NumericUpDown Grid.Column="1" x:Name="MaxPlantEnergy" Minimum="0" Maximum="32000" Increment="10"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Minimum chloroplast equivalents" TextWrapping="Wrap"/><NumericUpDown Grid.Column="1" x:Name="MinimumChloroplastEquivalents" Minimum="0" Maximum="1000000" Increment="10"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Repopulation amount"/><NumericUpDown Grid.Column="1" x:Name="RepopulationAmount" Minimum="0" Maximum="100000" Increment="1"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Repopulation cooldown"/><NumericUpDown Grid.Column="1" x:Name="RepopulationCooldown" Minimum="0" Maximum="100000000" Increment="100"/></Grid>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Feeding to body"/><NumericUpDown Grid.Column="1" x:Name="FeedingToBody" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
+      <CheckBox x:Name="Daytime" Content="Daytime"/>
+      <CheckBox x:Name="DayNightEnabled" Content="Day/night cycle"/>
+      <Grid ColumnDefinitions="*,150"><TextBlock Text="Cycle length"/><NumericUpDown Grid.Column="1" x:Name="CycleLength" Minimum="1" Maximum="100000000" Increment="100"/></Grid>
       <TextBlock Text="Obstacles and teleporters can be added from the running world's environment tools." TextWrapping="Wrap" Foreground="#69716D" Margin="0,16,0,0"/>
     </StackPanel></ScrollViewer>
     <Border Grid.Row="2" Background="#E6E2D8" BorderBrush="#C8C5BB" BorderThickness="0,1,0,0" Padding="10,8">
@@ -20,4 +47,3 @@
     </Border>
   </Grid>
 </Window>
-
