@@ -132,7 +132,7 @@
         <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
           <TextBlock Classes="section" Text="ENERGY"/>
           <controls:HistoryChart x:Name="EnergyChart" Grid.Row="1" Metric="Energy" MinHeight="78"/>
-          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12"><TextBlock Text="{Binding TotalEnergy, StringFormat='{}{0:N0} total'}" FontWeight="SemiBold"/><TextBlock Text="{Binding CombatSummary}" Foreground="#69716D"/></StackPanel>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12"><TextBlock Text="{Binding TotalEnergy, StringFormat='{}{0:N0} total'}" FontWeight="SemiBold"/><TextBlock Text="{Binding EnergyActivitySummary}" Foreground="#69716D"/></StackPanel>
         </Grid>
       </Border>
       <Border Grid.Column="2" Classes="panel" Margin="4,0,0,0" Padding="14">
@@ -142,6 +142,7 @@
             <TextBlock Text="SYSTEM   Modern engine initialized" />
             <TextBlock Text="{Binding LifecycleSummary}" Foreground="#2D826F" />
             <TextBlock Text="{Binding CombatSummary}" Foreground="#A65A23" />
+            <TextBlock Text="{Binding PlantSummary}" Foreground="#3E8E36" />
             <TextBlock Text="{Binding MutationSummary}" />
             <TextBlock Text="{Binding LimitingPhase}" Foreground="#69716D" />
           </StackPanel>

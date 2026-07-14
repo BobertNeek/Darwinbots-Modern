@@ -251,10 +251,20 @@ public sealed class WorldViewport : Control
                 -5 => "#D9AA24",
                 _ => "#D8483E",
             };
-            context.DrawLine(
-                new Pen(new SolidColorBrush(Color.Parse(color)), 1.4),
-                new Point(shot.Start[0] * scaleX + _pan.X, shot.Start[1] * scaleY + _pan.Y),
-                new Point(shot.End[0] * scaleX + _pan.X, shot.End[1] * scaleY + _pan.Y));
+            var pen = new Pen(new SolidColorBrush(Color.Parse(color)), shot.ImpactFlash ? 1.2 : 1.0);
+            var end = new Point(shot.End[0] * scaleX + _pan.X, shot.End[1] * scaleY + _pan.Y);
+            if (shot.ImpactFlash)
+            {
+                var radius = Math.Clamp(20.0 * Math.Min(scaleX, scaleY), 2.0, 8.0);
+                context.DrawEllipse(null, pen, end, radius, radius);
+            }
+            else
+            {
+                context.DrawLine(
+                    pen,
+                    new Point(shot.Start[0] * scaleX + _pan.X, shot.Start[1] * scaleY + _pan.Y),
+                    end);
+            }
         }
         foreach (var obstacle in _snapshot.Obstacles)
         {
