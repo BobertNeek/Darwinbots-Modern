@@ -154,6 +154,7 @@ public sealed partial class MainWindow : Window
             {
                 _viewModel.Update(snapshot);
                 Viewport.SetSnapshot(snapshot);
+                Viewport.SelectSlot(_viewModel.SelectedSlot);
                 PopulationChart.SetSnapshot(snapshot);
                 EnergyChart.SetSnapshot(snapshot);
                 if (_zerobotProgression is not null && !_progressionInFlight
