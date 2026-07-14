@@ -36,6 +36,8 @@ public sealed record WorldSetupOptions
     public Db2PhysicsOptions Physics { get; init; } = Db2PhysicsOptions.Default;
     public Db2ShotOptions Shots { get; init; } = Db2ShotOptions.Default;
     public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
+    public bool AutoSpeciation { get; init; }
+    public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public string? LoadSavePath { get; init; }
@@ -53,5 +55,7 @@ public sealed record WorldSetupOptions
         BrownianMotion,
         Physics,
         Shots,
-        Vegetation);
+        Vegetation,
+        AutoSpeciation,
+        SpeciationGeneticDistancePercent);
 }
