@@ -6,6 +6,7 @@ use crate::{
     PlantLightInput, ProjectileSpawn, ProjectileTarget, ShotSnapshot, SpeciesId, Teleporter,
     VegetationRuntime, projectile_effect,
     VisualPhenotype, generated_skin,
+    VisionSnapshot, eye_value,
 };
 use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
@@ -83,6 +84,8 @@ pub struct OrganismSnapshot {
     pub poisoned: i32,
     #[serde(default)]
     pub phenotype: VisualPhenotype,
+    #[serde(default)]
+    pub vision: VisionSnapshot,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -975,9 +978,12 @@ impl Engine {
             }).collect());
         }
         let senses: Vec<_> = (0..self.slots.len()).into_par_iter().map(|observer_slot| {
-            self.slots[observer_slot].organism.as_ref()?;
+            let observer = self.slots[observer_slot].organism.as_ref()?;
             let observer_position = self.kinematics.positions[observer_slot];
-            let observer_angle = self.biology[observer_slot].aim as f32 / 200.0;
+            let vision = VisionSnapshot::from_memory(
+                &observer.memory,
+                self.biology[observer_slot].aim,
+            );
             let observer_radius = crate::physics::organism_radius(
                 self.biology[observer_slot].body,
                 self.biology[observer_slot].chloroplasts,
@@ -985,7 +991,7 @@ impl Engine {
             let mut nearest_by_eye = [None; 9];
             for target_slot in self.sensing_spatial.neighbors(
                 observer_position,
-                1_440.0 + observer_radius + max_organism_radius,
+                vision.max_range() + observer_radius + max_organism_radius,
             ) {
                 if target_slot == observer_slot || self.slots[target_slot].organism.is_none() { continue; }
                 let target_position = self.kinematics.positions[target_slot];
@@ -994,11 +1000,23 @@ impl Engine {
                     self.biology[target_slot].body,
                     self.biology[target_slot].chloroplasts,
                 );
-                let strength = eye_strength(target_distance, observer_radius, target_radius);
-                if strength == 0 { continue; }
-                let sector = eye_sector(observer_position, observer_angle, target_position);
-                if nearest_by_eye[sector].is_none_or(|(_, best_strength)| strength > best_strength) {
-                    nearest_by_eye[sector] = Some((target_slot, strength));
+                let center_distance = target_distance.sqrt();
+                let edge_distance = (center_distance - observer_radius - target_radius).max(0.0);
+                let matching = vision.matching_eyes(
+                    observer_position,
+                    target_position,
+                    observer_radius,
+                    target_radius,
+                );
+                for (eye_index, matches) in matching.into_iter().enumerate() {
+                    if !matches { continue; }
+                    let strength = eye_value(vision.eyes[eye_index].range, edge_distance);
+                    if strength > 0
+                        && nearest_by_eye[eye_index]
+                            .is_none_or(|(_, best_strength)| strength > best_strength)
+                    {
+                        nearest_by_eye[eye_index] = Some((target_slot, strength));
+                    }
                 }
             }
             let mut eye_values = [0; 9];
@@ -1007,7 +1025,7 @@ impl Engine {
                     eye_values[sector] = *strength;
                 }
             }
-            let reference = nearest_by_eye[4].and_then(|(target_slot, _)| {
+            let reference = nearest_by_eye[vision.focus_eye as usize].and_then(|(target_slot, _)| {
                 let target = self.slots[target_slot].organism.as_ref()?;
                 Some((
                     self.kinematics.positions[target_slot],
@@ -2106,6 +2124,7 @@ fn snapshot_organism(
         paralyzed: biology[slot].paralyzed,
         poisoned: biology[slot].poisoned,
         phenotype: organism.phenotype.clone(),
+        vision: VisionSnapshot::from_memory(&organism.memory, biology[slot].aim),
     }
 }
 
@@ -2119,24 +2138,6 @@ fn unit_coordinate(random: u64, extent: f32) -> f32 {
     let margin = 60.0_f32.min(extent.max(0.0) * 0.5);
     let usable = (extent - margin * 2.0).max(0.0);
     margin + (random >> 40) as f32 / ((1_u32 << 24) - 1) as f32 * usable
-}
-
-fn eye_sector(observer: [f32; 2], observer_angle: f32, target: [f32; 2]) -> usize {
-    let target_angle = (target[0] - observer[0]).atan2(target[1] - observer[1]);
-    let relative = (target_angle - observer_angle + std::f32::consts::PI)
-        .rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
-    (((relative + std::f32::consts::PI) / std::f32::consts::TAU) * 9.0)
-        .floor().clamp(0.0, 8.0) as usize
-}
-
-fn eye_strength(distance_squared: f32, observer_radius: f32, target_radius: f32) -> i32 {
-    const SIGHT_DISTANCE: f32 = 1_440.0;
-    if !distance_squared.is_finite() || distance_squared <= 0.0 { return 32_000; }
-    let edge_distance = distance_squared.sqrt() - observer_radius - target_radius;
-    if edge_distance <= 0.0 { return 32_000; }
-    if edge_distance > SIGHT_DISTANCE { return 0; }
-    let percent_distance = (edge_distance + 10.0) / SIGHT_DISTANCE;
-    percent_distance.recip().powi(2).round().clamp(1.0, 32_000.0) as i32
 }
 
 fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2]) -> [f32; 2] {
