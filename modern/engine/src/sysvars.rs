@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::OnceLock};
 
-const LEGACY_SYSVARS: &str = include_str!("../../../Darwinbots2/sysvars2.21.txt");
+const LEGACY_SYSVARS: &str = include_str!("db2_sysvars_248.txt");
 
 pub fn sysvar_address(name: &str) -> Option<i32> {
     static SYSVARS: OnceLock<HashMap<String, i32>> = OnceLock::new();

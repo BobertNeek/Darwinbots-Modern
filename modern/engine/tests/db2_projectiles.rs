@@ -1,6 +1,8 @@
 mod support;
 
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings};
+use darwinbots_engine::{
+    Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SpeciesDefinition,
+};
 use support::db2_fixtures::SHOT_SPEED;
 
 #[test]
@@ -107,6 +109,41 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
     assert!(engine.organism(target).unwrap().energy < before);
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
     assert_eq!(engine.snapshot().stats.projectile_effects, 1);
+}
+
+#[test]
+fn lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        name: "Killable vegetables".to_owned(),
+        vegetable: true,
+        reseed: false,
+        ..SpeciesDefinition::default()
+    });
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_species_batch(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [[518.0, 100.0]],
+            1,
+        )
+        .unwrap()[0];
+
+    engine.tick().unwrap();
+
+    assert!(engine.organism(target).is_err());
+    assert_eq!(engine.snapshot().stats.deaths, 1);
 }
 
 #[test]

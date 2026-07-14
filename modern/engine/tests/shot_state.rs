@@ -18,7 +18,7 @@ fn fired_shots_publish_visible_persisted_world_state() {
     assert_ne!(shot.start, [100.0, 100.0]);
     assert_ne!(shot.end, [120.0, 100.0]);
     assert!(shot.start[0].hypot(shot.start[1]).is_finite());
-    assert!(shot.impact_flash);
+    assert!(!shot.impact_flash);
     let restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
     assert_eq!(restored.snapshot().shots, engine.snapshot().shots);
 

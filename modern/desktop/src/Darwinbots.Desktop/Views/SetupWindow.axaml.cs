@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
@@ -127,6 +128,90 @@ public sealed partial class SetupWindow : Window
         catch (Exception error)
         {
             SetupStatus.Text = $"ADVANCED SETTINGS FAILED: {error.Message}";
+        }
+    }
+
+    private void NewWorld_Click(object? sender, RoutedEventArgs e)
+    {
+        StarterMode.IsChecked = true;
+        Mode_Checked(StarterMode, e);
+        SetupStatus.Text = "New world defaults restored.";
+    }
+
+    private async void OpenSave_Click(object? sender, RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open Darwinbots Modern save",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("Darwinbots Modern save") { Patterns = ["*.db3s"] }],
+        });
+        var file = files.FirstOrDefault();
+        if (file is null) return;
+        WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = file.Path.LocalPath });
+    }
+
+    private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
+
+    private async void About_Click(object? sender, RoutedEventArgs e)
+    {
+        var close = new Button { Content = "CLOSE", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
+        var dialog = new Window
+        {
+            Title = "About Darwinbots Modern",
+            Width = 440,
+            Height = 270,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(28),
+                Spacing = 14,
+                Children =
+                {
+                    new TextBlock { Text = "DARWINBOTS MODERN", FontSize = 25, FontWeight = Avalonia.Media.FontWeight.Bold },
+                    new TextBlock { Text = "Windows 10 alpha", FontWeight = Avalonia.Media.FontWeight.SemiBold },
+                    new TextBlock
+                    {
+                        Text = "A modern, legacy-DNA-compatible artificial life simulator with CPU and portable GPU backends.",
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    },
+                    close,
+                },
+            },
+        };
+        close.Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(this);
+    }
+
+    private void SetupWindow_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F1)
+        {
+            About_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+        switch (e.Key)
+        {
+            case Key.Enter:
+                CreateWorld_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.N:
+                NewWorld_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.O:
+                OpenSave_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.OemComma:
+                Advanced_Click(sender, new RoutedEventArgs());
+                e.Handled = true;
+                break;
         }
     }
 

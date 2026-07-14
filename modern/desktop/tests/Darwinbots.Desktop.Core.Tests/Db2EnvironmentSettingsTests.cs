@@ -41,4 +41,23 @@ public sealed class Db2EnvironmentSettingsTests
         Assert.Contains("\"speed\":40", json);
         Assert.Contains("\"start_chloroplasts\":16000", json);
     }
+
+    [Fact]
+    public void DesktopDefaultsMatchDb2NormalSimulationDefaults()
+    {
+        var update = EnvironmentUpdate.Default;
+
+        Assert.Equal(0.5f, update.BrownianMotion);
+        Assert.Equal(new Db2PhysicsOptions(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f), update.Physics);
+        Assert.Equal(new Db2ShotOptions(40f, 1f, 40f, false, false), update.Shots);
+        Assert.Equal(new Db2VegetationOptions(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000), update.Vegetation);
+
+        var setup = new WorldSetupOptions();
+        Assert.Equal(16_000f, setup.WorldWidth);
+        Assert.Equal(12_000f, setup.WorldHeight);
+        Assert.Equal(0.5f, setup.BrownianMotion);
+        Assert.Equal(update.Physics, setup.Physics);
+        Assert.Equal(update.Shots, setup.Shots);
+        Assert.Equal(update.Vegetation, setup.Vegetation);
+    }
 }

@@ -19,6 +19,37 @@ fn chloroplast_sysvars_use_db2_memory_addresses() {
 }
 
 #[test]
+fn every_db2_248_sysvar_resolves_to_its_vb6_address() {
+    let source = include_str!("../../../Darwinbots2/DNATokenizing.bas");
+    let mut pending_name = None;
+    let mut checked = 0;
+
+    for line in source.lines().map(str::trim) {
+        if let Some((_, remainder)) = line
+            .strip_prefix("sysvar(")
+            .and_then(|line| line.split_once(".Name = \""))
+        {
+            pending_name = Some(remainder.trim_end_matches('"').to_ascii_lowercase());
+            continue;
+        }
+
+        let Some(name) = pending_name.take() else { continue };
+        let Some((_, value)) = line
+            .strip_prefix("sysvar(")
+            .and_then(|line| line.split_once(".value = "))
+        else {
+            pending_name = Some(name);
+            continue;
+        };
+        let expected: i32 = value.trim().parse().expect("VB6 sysvar address");
+        assert_eq!(sysvar_address(&name), Some(expected), "DB2 sysvar .{name}");
+        checked += 1;
+    }
+
+    assert_eq!(checked, 255, "the DB2 2.48 source sysvar table changed");
+}
+
+#[test]
 fn initial_and_reseeded_vegetables_start_with_db2_chloroplasts() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

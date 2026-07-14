@@ -4,14 +4,27 @@
         x:CompileBindings="False"
         Title="Darwinbots Modern — New World"
         Width="1280" Height="820" MinWidth="1080" MinHeight="720"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        KeyDown="SetupWindow_KeyDown">
   <Grid RowDefinitions="64,*,34" ColumnDefinitions="210,*,290">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="210,*" Margin="18,0">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift" FontWeight="Bold" FontSize="27" VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="26" VerticalAlignment="Center">
-          <TextBlock Text="FILE"/><TextBlock Text="VIEW"/><TextBlock Text="HELP"/>
-        </StackPanel>
+        <Menu Grid.Column="1" Background="Transparent" VerticalAlignment="Center">
+          <MenuItem Header="_FILE">
+            <MenuItem Header="NEW WORLD" HotKey="Ctrl+N" Click="NewWorld_Click"/>
+            <MenuItem Header="OPEN SAVE..." HotKey="Ctrl+O" Click="OpenSave_Click"/>
+            <MenuItem Header="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
+            <Separator/>
+            <MenuItem Header="EXIT" HotKey="Alt+F4" Click="Exit_Click"/>
+          </MenuItem>
+          <MenuItem Header="_VIEW">
+            <MenuItem Header="ADVANCED SETTINGS" HotKey="Ctrl+," Click="Advanced_Click"/>
+          </MenuItem>
+          <MenuItem Header="_HELP">
+            <MenuItem Header="ABOUT DARWINBOTS MODERN" HotKey="F1" Click="About_Click"/>
+          </MenuItem>
+        </Menu>
       </Grid>
     </Border>
 

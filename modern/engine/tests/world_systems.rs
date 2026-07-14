@@ -14,11 +14,11 @@ fn sensing_writes_nearest_organism_reference_sysvars() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let observer = engine.spawn_at(LegacyDna::parse("start\n314 .setaim store\nstop").unwrap(), [100.0, 100.0]).unwrap();
-    engine.spawn_at(idle, [130.0, 100.0]).unwrap();
+    engine.spawn_at(idle, [400.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.memory(observer, "refxpos").unwrap(), 130);
+    assert_eq!(engine.memory(observer, "refxpos").unwrap(), 400);
     assert_eq!(engine.memory(observer, "refypos").unwrap(), 100);
     assert!(engine.memory(observer, "eye5").unwrap() > 0);
 }

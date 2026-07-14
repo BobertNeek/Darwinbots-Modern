@@ -12,7 +12,7 @@ public sealed record Db2PhysicsOptions(
     double Viscosity,
     float Elasticity)
 {
-    public static Db2PhysicsOptions Default { get; } = new(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0.8f);
+    public static Db2PhysicsOptions Default { get; } = new(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f);
 }
 
 public sealed record Db2ShotOptions(
@@ -22,7 +22,7 @@ public sealed record Db2ShotOptions(
     bool EnergyShotsDoNotDecay,
     bool WasteShotsDoNotDecay)
 {
-    public static Db2ShotOptions Default { get; } = new(40f, 1f, 20f, false, false);
+    public static Db2ShotOptions Default { get; } = new(40f, 1f, 40f, false, false);
 }
 
 public sealed record Db2VegetationOptions(
@@ -36,7 +36,7 @@ public sealed record Db2VegetationOptions(
     bool DayNightEnabled,
     ulong CycleLength)
 {
-    public static Db2VegetationOptions Default { get; } = new(16_000, 100, 0, 10, 1_000, 0f, true, false, 10_000);
+    public static Db2VegetationOptions Default { get; } = new(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000);
 }
 
 public sealed record EnvironmentUpdate(
@@ -51,7 +51,7 @@ public sealed record EnvironmentUpdate(
     Db2VegetationOptions Vegetation)
 {
     public static EnvironmentUpdate Default { get; } = new(
-        1, 0, 100, [0f, 0f], 0f, 0f,
+        1, 0, 100, [0f, 0f], 0f, 0.5f,
         Db2PhysicsOptions.Default,
         Db2ShotOptions.Default,
         Db2VegetationOptions.Default);

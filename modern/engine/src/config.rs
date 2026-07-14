@@ -20,10 +20,10 @@ impl Default for PhysicsSettings {
             max_velocity: 60.0,
             movement_efficiency: 0.66,
             surface_gravity: 0.0,
-            static_friction: 0.6,
-            kinetic_friction: 0.4,
-            density: 0.000_000_1,
-            viscosity: 0.000_025,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
+            density: 0.0,
+            viscosity: 0.0,
             elasticity: 0.0,
         }
     }
@@ -130,7 +130,7 @@ impl Default for EngineConfig {
             sunlight_energy: default_sunlight_energy(),
             gravity: [0.0, 0.0],
             drag: 0.0,
-            brownian_motion: 0.0,
+            brownian_motion: 0.5,
             physics: PhysicsSettings::default(),
             shots: ShotSettings::default(),
             vegetation: VegetationSettings::default(),
@@ -152,6 +152,7 @@ impl EngineConfig {
             world_width: 1_000.0,
             world_height: 1_000.0,
             backend: BackendPreference::Cpu,
+            brownian_motion: 0.0,
             ..Self::default()
         }
     }

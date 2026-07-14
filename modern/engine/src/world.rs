@@ -1552,6 +1552,10 @@ impl Engine {
         let flat_bonus = self.config.vegetable_energy_per_tick.max(0);
         for slot in 0..self.slots.len() {
             let Some(organism) = self.slots[slot].organism.as_mut() else { continue };
+            if self.lifecycle.energies[slot] <= 0 {
+                organism.memory.write(MEM_LIGHT, 0);
+                continue;
+            }
             let feeding = self.vegetation_runtime.feed(PlantLightInput {
                 daytime,
                 chloroplasts: self.biology[slot].chloroplasts,

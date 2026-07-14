@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -10,6 +11,48 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed partial class MainWindow : Window
 {
+    private void MainWindow_KeyDown(object? sender, KeyEventArgs e)
+    {
+        var routed = new RoutedEventArgs();
+        if (e.Key == Key.F5) Run_Click(sender, routed);
+        else if (e.Key == Key.F6) Pause_Click(sender, routed);
+        else if (e.Key == Key.F7) Step_Click(sender, routed);
+        else if (e.Key == Key.F8) Turbo_Click(sender, routed);
+        else if (e.Key == Key.F9)
+            RuntimeSpeed.SelectedIndex = (RuntimeSpeed.SelectedIndex + 1) % 4;
+        else if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            switch (e.Key)
+            {
+                case Key.B: SwitchBackend_Click(sender, routed); break;
+                case Key.I: Import_Click(sender, routed); break;
+                case Key.S: Save_Click(sender, routed); break;
+                case Key.L: Load_Click(sender, routed); break;
+                case Key.R: Reset_Click(sender, routed); break;
+                case Key.E: EditDna_Click(sender, routed); break;
+                case Key.OemComma: LiveAdvanced_Click(sender, routed); break;
+                case Key.D1: AddObstacle_Click(sender, routed); break;
+                case Key.D2: AddTeleporter_Click(sender, routed); break;
+                case Key.Delete: RemoveFeature_Click(sender, routed); break;
+                default: return;
+            }
+        }
+        else if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            switch (e.Key)
+            {
+                case Key.M: Move_Click(sender, routed); break;
+                case Key.C: Clone_Click(sender, routed); break;
+                case Key.R: Reproduce_Click(sender, routed); break;
+                case Key.K: Kill_Click(sender, routed); break;
+                case Key.F: Follow_Click(sender, routed); break;
+                default: return;
+            }
+        }
+        else return;
+        e.Handled = true;
+    }
+
     private readonly MainWindowViewModel _viewModel = new();
     private SimulationSession? _session;
     private readonly DispatcherTimer _runTimer;
