@@ -172,7 +172,15 @@ public sealed class SimulationSessionTests
     {
         var engine = new FakeEngineClient();
         await using var session = new SimulationSession(engine);
-        var update = new EnvironmentUpdate(0, 10, 200, [0f, 2f], 0.5f, 3f);
+        var update = EnvironmentUpdate.Default with
+        {
+            MetabolismCost = 0,
+            VegetableEnergyPerTick = 10,
+            SunlightEnergy = 200,
+            Gravity = [0f, 2f],
+            Drag = 0.5f,
+            BrownianMotion = 3f,
+        };
 
         await session.UpdateEnvironmentAsync(update);
 
