@@ -22,8 +22,8 @@ pub struct SimulationStats {
     pub self_reproductions: u64,
     #[serde(default)]
     pub feeding_events: u64,
-    #[serde(default)]
-    pub plant_energy_produced: u64,
+    #[serde(default, alias = "plant_energy_produced")]
+    pub plant_energy_generated: u64,
     #[serde(default)]
     pub plant_body_produced: u64,
     #[serde(default)]

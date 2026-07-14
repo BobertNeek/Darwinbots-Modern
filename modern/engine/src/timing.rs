@@ -8,6 +8,10 @@ pub struct PhaseTimings {
     pub sensing: f64,
     pub interactions: f64,
     pub physics: f64,
+    #[serde(default)]
+    pub projectiles: f64,
+    #[serde(default)]
+    pub vegetation: f64,
     pub lifecycle: f64,
     pub mutation: f64,
     pub snapshot: f64,

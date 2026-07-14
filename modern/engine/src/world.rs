@@ -555,20 +555,29 @@ impl Engine {
         self.spatial_index_phase();
         self.phase_timings.spatial = elapsed_ms(started);
         let started = Instant::now();
-        self.sensing_phase()?;
-        self.phase_timings.sensing = elapsed_ms(started);
-        let started = Instant::now();
         self.interactions_phase();
         self.phase_timings.interactions = elapsed_ms(started);
         let started = Instant::now();
         self.physics_phase()?;
         self.phase_timings.physics = elapsed_ms(started);
+        let started = Instant::now();
+        self.spatial_index_phase();
+        self.phase_timings.spatial += elapsed_ms(started);
+        let started = Instant::now();
+        self.sensing_phase()?;
+        self.phase_timings.sensing = elapsed_ms(started);
+        let started = Instant::now();
         self.projectile_spawn_phase();
+        self.phase_timings.projectiles = elapsed_ms(started);
+        let started = Instant::now();
         self.vegetation_feed_phase();
+        self.phase_timings.vegetation = elapsed_ms(started);
         let started = Instant::now();
         self.lifecycle_phase()?;
         self.phase_timings.lifecycle = elapsed_ms(started);
+        let started = Instant::now();
         self.vegetation_repopulation_phase()?;
+        self.phase_timings.vegetation += elapsed_ms(started);
         let started = Instant::now();
         self.mutation_phase();
         self.phase_timings.mutation = elapsed_ms(started);
@@ -735,7 +744,9 @@ impl Engine {
         let slot_count = self.slots.len();
         for (name, length) in [
             ("positions", self.kinematics.positions.len()),
+            ("previous positions", self.kinematics.previous_positions.len()),
             ("velocities", self.kinematics.velocities.len()),
+            ("actual velocities", self.kinematics.actual_velocities.len()),
             ("pending velocities", self.kinematics.pending_velocities.len()),
             ("alive flags", self.kinematics.alive.len()),
             ("energies", self.lifecycle.energies.len()),
@@ -878,7 +889,7 @@ impl Engine {
         self.pending_gpu_positions = None;
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
-        let fusion_safe = self.gpu_fusion_safe();
+        let fusion_safe = self.gpu_fusion_safe() && false;
         let gpu_result = if self.config.force_gpu_runtime_failure_for_tests
             && matches!(self.physics, RuntimePhysics::Gpu(_))
         {
@@ -1591,7 +1602,7 @@ impl Engine {
                     .saturating_add(flat_bonus)
                     .min(32_000);
             }
-            self.stats.plant_energy_produced = self.stats.plant_energy_produced
+            self.stats.plant_energy_generated = self.stats.plant_energy_generated
                 .saturating_add(energy_gain.max(0) as u64);
             self.stats.plant_body_produced = self.stats.plant_body_produced
                 .saturating_add(body_gain.max(0) as u64);
@@ -1831,6 +1842,8 @@ impl Engine {
             deaths: self.stats.deaths,
             mutations: self.stats.mutations,
             shots_fired: self.stats.shots_fired,
+            projectile_impacts: self.stats.projectile_impacts,
+            plant_energy_generated: self.stats.plant_energy_generated,
         });
     }
 
