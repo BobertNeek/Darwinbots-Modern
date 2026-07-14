@@ -141,7 +141,7 @@ impl Default for EngineConfig {
 }
 
 fn default_metabolism_cost() -> i32 { 1 }
-fn default_vegetable_energy_per_tick() -> i32 { 4 }
+fn default_vegetable_energy_per_tick() -> i32 { 0 }
 fn default_sunlight_energy() -> i32 { 100 }
 fn default_vegetable_population_cap() -> usize { 500 }
 

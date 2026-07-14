@@ -11,7 +11,7 @@ fn starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce() {
         world_width: 16_000.0,
         world_height: 12_000.0,
         metabolism_cost: 1,
-        vegetable_energy_per_tick: 4,
+        vegetable_energy_per_tick: 0,
         sunlight_energy: 100,
         ..EngineConfig::testing()
     }).unwrap();
@@ -28,8 +28,18 @@ fn starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce() {
         reseed: true,
         ..SpeciesDefinition::default()
     });
-    engine.spawn_species_batch(LegacyDna::parse(ALGA_MINIMALIS).unwrap(), alga, grid(300, 16_000.0, 12_000.0), 1_000).unwrap();
-    engine.spawn_species_batch(LegacyDna::parse(ANIMAL_MINIMALIS).unwrap(), animal, grid(100, 16_000.0, 12_000.0), 1_000).unwrap();
+    engine.spawn_species_batch(
+        LegacyDna::parse(ALGA_MINIMALIS).unwrap(),
+        alga,
+        random_positions(300, 16_000.0, 12_000.0, 7),
+        1_000,
+    ).unwrap();
+    engine.spawn_species_batch(
+        LegacyDna::parse(ANIMAL_MINIMALIS).unwrap(),
+        animal,
+        random_positions(100, 16_000.0, 12_000.0, 13),
+        1_000,
+    ).unwrap();
 
     engine.tick_many(10_000).unwrap();
 
@@ -40,11 +50,17 @@ fn starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce() {
     assert!(snapshot.organisms.iter().any(|organism| organism.species == animal && organism.parents[0].is_some()));
 }
 
-fn grid(count: usize, width: f32, height: f32) -> Vec<[f32; 2]> {
-    let columns = (count as f64).sqrt().ceil() as usize;
-    let rows = count.div_ceil(columns);
-    (0..count).map(|index| [
-        width * ((index % columns) + 1) as f32 / (columns + 1) as f32,
-        height * ((index / columns) + 1) as f32 / (rows + 1) as f32,
-    ]).collect()
+fn random_positions(count: usize, width: f32, height: f32, seed: u64) -> Vec<[f32; 2]> {
+    let mut state = seed.max(1);
+    (0..count).map(|_| {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        let x = (state as u32) as f32 / u32::MAX as f32;
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        let y = (state as u32) as f32 / u32::MAX as f32;
+        [x * width, y * height]
+    }).collect()
 }

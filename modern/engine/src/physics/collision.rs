@@ -1,5 +1,3 @@
-use super::organism_radius;
-
 pub(crate) fn segment_circle_fraction(
     start: [f32; 2],
     end: [f32; 2],
@@ -61,7 +59,7 @@ pub(crate) fn segment_aabb_fraction(
 pub(crate) fn resolve_collisions(
     positions: &mut [[f32; 2]],
     velocities: &mut [[f32; 2]],
-    energies: &[i32],
+    radii: &[f32],
     masses: &[f32],
     pairs: &[(usize, usize)],
     elasticity: f32,
@@ -71,8 +69,8 @@ pub(crate) fn resolve_collisions(
         if first == second || first >= positions.len() || second >= positions.len() {
             continue;
         }
-        let minimum_distance = organism_radius(energies.get(first).copied().unwrap_or(1))
-            + organism_radius(energies.get(second).copied().unwrap_or(1));
+        let minimum_distance = radii.get(first).copied().unwrap_or(1.0)
+            + radii.get(second).copied().unwrap_or(1.0);
         let delta = [
             positions[second][0] - positions[first][0],
             positions[second][1] - positions[first][1],

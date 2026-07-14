@@ -4,6 +4,27 @@ use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings};
 use support::db2_fixtures::{DEFAULT_MAX_VELOCITY, DEFAULT_MOVEMENT_EFFICIENCY};
 
 #[test]
+fn newly_loaded_bots_start_with_db2_body_reserve() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let id = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+
+    assert_eq!(engine.organism(id).unwrap().body, 1_000);
+}
+
+#[test]
+fn physical_radius_is_derived_from_body_like_db2() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+
+    let radius = engine.snapshot().render_instances[0].radius;
+    assert!((radius - 114.28).abs() < 0.1, "expected DB2 radius 114.28, got {radius}");
+}
+
+#[test]
 fn movement_command_adds_impulse_and_bot_coasts_without_new_thrust() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

@@ -14,6 +14,7 @@ mod shot;
 mod spatial;
 mod species;
 mod stats;
+mod vegetation;
 mod sysvars;
 mod timing;
 mod vm;
@@ -41,6 +42,7 @@ pub(crate) use shot::{
 pub use spatial::SpatialIndex;
 pub use species::{SpeciesDefinition, SpeciesId};
 pub use stats::SimulationStats;
+pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use sysvars::sysvar_address;
 pub use timing::PhaseTimings;
 pub use vm::{DnaVm, VmMemory, VmReport};

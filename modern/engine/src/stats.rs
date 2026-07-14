@@ -23,6 +23,10 @@ pub struct SimulationStats {
     #[serde(default)]
     pub feeding_events: u64,
     #[serde(default)]
+    pub plant_energy_produced: u64,
+    #[serde(default)]
+    pub plant_body_produced: u64,
+    #[serde(default)]
     pub intentional_movement_events: u64,
     pub total_energy: i64,
 }

@@ -19,7 +19,7 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
     engine
         .spawn_at(
             LegacyDna::parse("start\nstop").unwrap(),
-            [300.0, 100.0],
+            [500.0, 100.0],
         )
         .unwrap();
 
@@ -28,7 +28,7 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
     let shot = &engine.snapshot().shots[0];
     assert_eq!(shot.owner, attacker);
     assert!((segment_length(shot.start, shot.end) - SHOT_SPEED).abs() < 0.01);
-    assert_ne!(shot.end, [300.0, 100.0]);
+    assert_ne!(shot.end, [500.0, 100.0]);
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
     let target = engine
         .spawn_at(
             LegacyDna::parse("start\nstop").unwrap(),
-            [140.0, 100.0],
+            [350.0, 100.0],
         )
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
@@ -123,7 +123,7 @@ fn newborn_is_immune_to_parent_stream_for_one_tick() {
             [100.0, 100.0],
         )
         .unwrap();
-    let newborn = engine.manual_reproduce(parent, None, [140.0, 100.0]).unwrap();
+    let newborn = engine.manual_reproduce(parent, None, [350.0, 100.0]).unwrap();
     let initial_energy = engine.organism(newborn).unwrap().energy;
 
     engine.tick().unwrap();
@@ -146,7 +146,7 @@ fn positive_memory_shot_writes_the_target_address() {
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -165,8 +165,8 @@ fn obstacle_intercepts_projectile_before_target() {
     engine
         .add_obstacle(Obstacle {
             id: 1,
-            minimum: [125.0, 90.0],
-            maximum: [130.0, 110.0],
+            minimum: [230.0, 90.0],
+            maximum: [240.0, 110.0],
         })
         .unwrap();
     engine
@@ -176,7 +176,7 @@ fn obstacle_intercepts_projectile_before_target() {
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
 
@@ -197,7 +197,7 @@ fn virus_shot_transfers_the_firers_dna() {
     let virus = LegacyDna::parse("start\n-7 .shoot store\nstop").unwrap();
     let owner = engine.spawn_at(virus.clone(), [100.0, 100.0]).unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -220,7 +220,7 @@ fn sperm_shot_forces_target_reproduction() {
         )
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
 
     engine.tick().unwrap();

@@ -3,7 +3,8 @@ use crate::{
     EngineError, GpuPhysicsBackend, LegacyDna, OrganismId, PhysicsBackend, PhysicsBatch, RenderInstance, VmMemory,
     BiologyState, GenomeMutator, Obstacle, PhaseTimings, SimulationStats, SpatialIndex, SpeciesDefinition,
     CorpseSnapshot, HistorySample, ProjectileEffect, ProjectileImpact, ProjectilePool,
-    ProjectileSpawn, ProjectileTarget, ShotSnapshot, SpeciesId, Teleporter, projectile_effect,
+    PlantLightInput, ProjectileSpawn, ProjectileTarget, ShotSnapshot, SpeciesId, Teleporter,
+    VegetationRuntime, projectile_effect,
 };
 use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
@@ -58,7 +59,6 @@ const MEM_YPOS: i32 = 217;
 const MEM_LIGHT: i32 = 923;
 const MEM_BACKSHOT: i32 = 900;
 const MEM_AIM_SHOOT: i32 = 901;
-const CHLOROPLAST_ENERGY_SCALE: i32 = 8_000;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrganismSnapshot {
@@ -264,6 +264,8 @@ pub struct Engine {
     corpses: Vec<CorpseSnapshot>,
     #[serde(default)]
     projectiles: ProjectilePool,
+    #[serde(default)]
+    vegetation_runtime: VegetationRuntime,
     #[serde(skip, default)]
     pending_projectile_requests: Vec<PendingProjectileRequest>,
     #[serde(default)]
@@ -319,6 +321,7 @@ impl Engine {
             teleporters: Vec::new(),
             corpses: Vec::new(),
             projectiles: ProjectilePool::default(),
+            vegetation_runtime: VegetationRuntime::default(),
             pending_projectile_requests: Vec::new(),
             history: Vec::new(),
             phase_timings: PhaseTimings::default(),
@@ -561,9 +564,11 @@ impl Engine {
         self.physics_phase()?;
         self.phase_timings.physics = elapsed_ms(started);
         self.projectile_spawn_phase();
+        self.vegetation_feed_phase();
         let started = Instant::now();
         self.lifecycle_phase()?;
         self.phase_timings.lifecycle = elapsed_ms(started);
+        self.vegetation_repopulation_phase()?;
         let started = Instant::now();
         self.mutation_phase();
         self.phase_timings.mutation = elapsed_ms(started);
@@ -844,9 +849,8 @@ impl Engine {
             .zip(self.kinematics.pending_velocities.par_iter_mut())
             .zip(self.kinematics.alive.par_iter())
             .zip(self.biology.par_iter())
-            .zip(self.lifecycle.energies.par_iter())
             .enumerate()
-            .for_each(|(slot, ((((velocity, pending), alive), biology), energy))| {
+            .for_each(|(slot, (((velocity, pending), alive), biology))| {
             if *alive {
                 velocity[0] += pending[0];
                 velocity[1] += pending[1];
@@ -856,7 +860,7 @@ impl Engine {
                 apply_resistance(
                     velocity,
                     derived_mass(biology.body, biology.shell, biology.chloroplasts).clamp(1.0, 32_000.0),
-                    crate::physics::organism_radius(*energy),
+                    crate::physics::organism_radius(biology.body, biology.chloroplasts),
                     drag,
                     settings,
                 );
@@ -904,6 +908,10 @@ impl Engine {
         } else {
             None
         };
+        let max_organism_radius = self.biology.iter().enumerate()
+            .filter(|(slot, _)| self.kinematics.alive.get(*slot).copied().unwrap_or(false))
+            .map(|(_, biology)| crate::physics::organism_radius(biology.body, biology.chloroplasts))
+            .fold(1.0_f32, f32::max);
         let gpu_targets = match gpu_result {
             Some(Ok((targets, fused))) => {
                 if let Some((positions, instances)) = fused {
@@ -929,20 +937,33 @@ impl Engine {
             self.slots[observer_slot].organism.as_ref()?;
             let observer_position = self.kinematics.positions[observer_slot];
             let observer_angle = self.biology[observer_slot].aim as f32 / 200.0;
+            let observer_radius = crate::physics::organism_radius(
+                self.biology[observer_slot].body,
+                self.biology[observer_slot].chloroplasts,
+            );
             let mut nearest_by_eye = [None; 9];
-            for target_slot in self.sensing_spatial.neighbors(observer_position, 1_000.0) {
+            for target_slot in self.sensing_spatial.neighbors(
+                observer_position,
+                1_440.0 + observer_radius + max_organism_radius,
+            ) {
                 if target_slot == observer_slot || self.slots[target_slot].organism.is_none() { continue; }
                 let target_position = self.kinematics.positions[target_slot];
                 let target_distance = distance_squared(observer_position, target_position);
+                let target_radius = crate::physics::organism_radius(
+                    self.biology[target_slot].body,
+                    self.biology[target_slot].chloroplasts,
+                );
+                let strength = eye_strength(target_distance, observer_radius, target_radius);
+                if strength == 0 { continue; }
                 let sector = eye_sector(observer_position, observer_angle, target_position);
-                if nearest_by_eye[sector].is_none_or(|(_, best_distance)| target_distance < best_distance) {
-                    nearest_by_eye[sector] = Some((target_slot, target_distance));
+                if nearest_by_eye[sector].is_none_or(|(_, best_strength)| strength > best_strength) {
+                    nearest_by_eye[sector] = Some((target_slot, strength));
                 }
             }
             let mut eye_values = [0; 9];
             for (sector, target) in nearest_by_eye.iter().enumerate() {
-                if let Some((_, target_distance)) = target {
-                    eye_values[sector] = eye_strength(*target_distance);
+                if let Some((_, strength)) = target {
+                    eye_values[sector] = *strength;
                 }
             }
             let reference = nearest_by_eye[4].and_then(|(target_slot, _)| {
@@ -1171,7 +1192,10 @@ impl Engine {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
                     owner_position: self.kinematics.positions[slot],
                     owner_actual_velocity: self.kinematics.actual_velocities[slot],
-                    owner_radius: crate::physics::organism_radius(self.lifecycle.energies[slot]),
+                    owner_radius: crate::physics::organism_radius(
+                        self.biology[slot].body,
+                        self.biology[slot].chloroplasts,
+                    ),
                     owner_virtual_body: self.biology[slot].body as f32,
                     angle: request.angle,
                     kind: request.kind,
@@ -1194,6 +1218,10 @@ impl Engine {
             &self.kinematics.alive,
             64.0,
         );
+        let max_organism_radius = self.biology.iter().enumerate()
+            .filter(|(slot, _)| self.kinematics.alive.get(*slot).copied().unwrap_or(false))
+            .map(|(_, biology)| crate::physics::organism_radius(biology.body, biology.chloroplasts))
+            .fold(1.0_f32, f32::max);
         let mut impacts = Vec::new();
         for projectile_slot in self.projectiles.live_slots() {
             let shot = projectile_slot as usize;
@@ -1202,7 +1230,7 @@ impl Engine {
             let owner = self.projectiles.owners[shot];
             let mut nearest: Option<(f32, ProjectileTarget)> = None;
 
-            for target in self.spatial.segment_candidates(start, end, 24.0) {
+            for target in self.spatial.segment_candidates(start, end, max_organism_radius) {
                 if !self.kinematics.alive.get(target).copied().unwrap_or(false) {
                     continue;
                 }
@@ -1218,7 +1246,10 @@ impl Engine {
                 if newborn_is_immune {
                     continue;
                 }
-                let radius = crate::physics::organism_radius(self.lifecycle.energies[target]);
+                let radius = crate::physics::organism_radius(
+                    self.biology[target].body,
+                    self.biology[target].chloroplasts,
+                );
                 let Some(fraction) = crate::physics::segment_circle_fraction(
                     start,
                     end,
@@ -1233,7 +1264,7 @@ impl Engine {
             }
 
             for (corpse, state) in self.corpses.iter().enumerate() {
-                let radius = crate::physics::organism_radius(state.energy.max(1));
+                let radius = crate::physics::organism_radius(state.body, 0);
                 let Some(fraction) = crate::physics::segment_circle_fraction(
                     start,
                     end,
@@ -1463,11 +1494,19 @@ impl Engine {
     }
 
     fn apply_organism_collisions(&mut self) {
+        let radii: Vec<_> = self.biology.iter().map(|biology| {
+            crate::physics::organism_radius(biology.body, biology.chloroplasts)
+        }).collect();
+        let max_radius = radii.iter().copied().fold(1.0_f32, f32::max);
         let pairs = self.pending_gpu_collision_pairs.take().unwrap_or_else(|| {
             let mut pairs = Vec::new();
             for first in 0..self.slots.len() {
                 if self.slots[first].organism.is_none() { continue; }
-                if let Some(second) = self.spatial.nearest(self.kinematics.positions[first], Some(first), 64.0) {
+                if let Some(second) = self.spatial.nearest(
+                    self.kinematics.positions[first],
+                    Some(first),
+                    radii[first] + max_radius,
+                ) {
                     if first < second { pairs.push((first, second)); }
                 }
             }
@@ -1479,7 +1518,7 @@ impl Engine {
         crate::physics::resolve_collisions(
             &mut self.kinematics.positions,
             &mut self.kinematics.velocities,
-            &self.lifecycle.energies,
+            &radii,
             &masses,
             &pairs,
             self.config.physics.elasticity,
@@ -1506,6 +1545,110 @@ impl Engine {
         }
     }
 
+    fn vegetation_feed_phase(&mut self) {
+        let daytime = self.vegetation_runtime.advance_daylight(&mut self.config.vegetation);
+        let world_area = self.config.world_width.max(0.0) * self.config.world_height.max(0.0);
+        let obstacle_area: f32 = self.obstacles.iter().map(|obstacle| {
+            (obstacle.maximum[0] - obstacle.minimum[0]).max(0.0)
+                * (obstacle.maximum[1] - obstacle.minimum[1]).max(0.0)
+        }).sum();
+        let usable_world_area = (world_area - obstacle_area).max(1.0);
+        let total_robot_area: f32 = self.kinematics.alive.iter().enumerate()
+            .filter(|(_, alive)| **alive)
+            .map(|(slot, _)| {
+                let radius = crate::physics::organism_radius(
+                    self.biology[slot].body,
+                    self.biology[slot].chloroplasts,
+                );
+                std::f32::consts::PI * radius * radius
+            })
+            .sum();
+        let settings = self.config.vegetation.clone();
+        let flat_bonus = self.config.vegetable_energy_per_tick.max(0);
+        for slot in 0..self.slots.len() {
+            let Some(organism) = self.slots[slot].organism.as_mut() else { continue };
+            let feeding = self.vegetation_runtime.feed(PlantLightInput {
+                daytime,
+                chloroplasts: self.biology[slot].chloroplasts,
+                age: self.lifecycle.ages[slot],
+                total_robot_area,
+                usable_world_area,
+                max_energy_per_tick: settings.max_energy_per_tick,
+                pond_mode: false,
+                light_intensity: self.config.sunlight_energy.max(0) as f32,
+                depth: self.kinematics.positions[slot][1] / 2_000.0 + 1.0,
+                gradient: 1.0,
+            });
+            organism.memory.write(MEM_LIGHT, i32::from(feeding.light));
+            let _availability = feeding.availability;
+            let (energy_gain, body_gain) = self.biology[slot].apply_plant_delta(
+                &mut self.lifecycle.energies[slot],
+                feeding.delta,
+                settings.feeding_to_body,
+            );
+            if self.species.get(organism.species.0 as usize).is_some_and(|species| species.vegetable) {
+                self.lifecycle.energies[slot] = self.lifecycle.energies[slot]
+                    .saturating_add(flat_bonus)
+                    .min(32_000);
+            }
+            self.stats.plant_energy_produced = self.stats.plant_energy_produced
+                .saturating_add(energy_gain.max(0) as u64);
+            self.stats.plant_body_produced = self.stats.plant_body_produced
+                .saturating_add(body_gain.max(0) as u64);
+            organism.memory.write(MEM_NRG, self.lifecycle.energies[slot]);
+            self.biology[slot].publish(&mut organism.memory);
+        }
+    }
+
+    fn vegetation_repopulation_phase(&mut self) -> Result<(), EngineError> {
+        let total_chloroplasts: i64 = self.biology.iter().enumerate()
+            .filter(|(slot, _)| self.kinematics.alive.get(*slot).copied().unwrap_or(false))
+            .map(|(_, biology)| biology.chloroplasts.max(0) as i64)
+            .sum();
+        let equivalents = (total_chloroplasts / 16_000).max(0) as usize;
+        if !self.vegetation_runtime.advance_repopulation(equivalents, &self.config.vegetation) {
+            return Ok(());
+        }
+        let eligible: Vec<_> = self.species.iter().enumerate().filter_map(|(index, species)| {
+            (species.vegetable && species.reseed
+                && self.species_templates.get(index).and_then(Option::as_ref).is_some())
+                .then_some(index)
+        }).collect();
+        if eligible.is_empty() {
+            return Ok(());
+        }
+        let capacity = self.config.organism_capacity.saturating_sub(self.population());
+        let vegetable_capacity = self.config.vegetable_population_cap
+            .saturating_sub(self.vegetable_population());
+        let amount = self.config.vegetation.repopulation_amount
+            .min(capacity)
+            .min(vegetable_capacity);
+        for ordinal in 0..amount {
+            let random = advance_random(
+                self.config.seed ^ self.tick.rotate_left(23) ^ (ordinal as u64).rotate_left(41),
+            );
+            let species_index = eligible[random as usize % eligible.len()];
+            let template = self.species_templates[species_index].as_ref().unwrap().clone();
+            let x_random = advance_random(random);
+            let y_random = advance_random(x_random);
+            let position = [
+                unit_coordinate(x_random, self.config.world_width),
+                unit_coordinate(y_random, self.config.world_height),
+            ];
+            let id = self.spawn_species_at_unpublished(
+                template.dna,
+                SpeciesId(species_index as u32),
+                position,
+            )?;
+            let slot = id.slot() as usize;
+            self.lifecycle.energies[slot] = template.initial_energy;
+            self.slots[slot].organism.as_mut().unwrap().memory
+                .write(MEM_NRG, template.initial_energy);
+            self.stats.reseeds = self.stats.reseeds.saturating_add(1);
+        }
+        Ok(())
+    }
+
     fn lifecycle_phase(&mut self) -> Result<(), EngineError> {
         for corpse in &mut self.corpses {
             corpse.advance(self.config.gravity, self.config.drag, [self.config.world_width, self.config.world_height]);
@@ -1525,23 +1668,16 @@ impl Engine {
             let organism = slot.organism.as_mut()?;
                 *age += 1;
                 *energy = energy.saturating_sub(self.config.metabolism_cost.max(0));
-                let sunlight = biology.chloroplasts.saturating_mul(self.config.sunlight_energy.max(0))
-                    / CHLOROPLAST_ENERGY_SCALE;
-                *energy = energy.saturating_add(sunlight);
                 if biology.poisoned > 0 {
                     *energy = energy.saturating_sub(biology.poisoned.min(10));
                     biology.poisoned = biology.poisoned.saturating_sub(1);
                 }
                 biology.paralyzed = biology.paralyzed.saturating_sub(1).max(0);
-                if species.get(organism.species.0 as usize).is_some_and(|value| value.vegetable) {
-                    *energy = energy.saturating_add(self.config.vegetable_energy_per_tick.max(0));
-                }
                 *energy = (*energy).min(32_000);
                 organism.memory.write(MEM_ROBAGE, (*age).min(i32::MAX as u64) as i32);
                 organism.memory.write(MEM_NRG, *energy);
                 organism.memory.write(MEM_XPOS, positions[slot_index][0].round() as i32);
                 organism.memory.write(MEM_YPOS, positions[slot_index][1].round() as i32);
-                organism.memory.write(MEM_LIGHT, self.config.sunlight_energy.max(0));
                 biology.publish(&mut organism.memory);
                 let mutation_reproduction = organism.memory.read(MEM_MREPRO);
                 let reproduction = organism.memory.read(MEM_REPRO).max(mutation_reproduction);
@@ -1637,7 +1773,12 @@ impl Engine {
         let templates = self.species_templates.clone();
         let mut vegetable_population = self.vegetable_population();
         for (species_index, definition) in definitions.iter().enumerate() {
-            if !definition.reseed || counts[species_index] >= definition.minimum_population { continue; }
+            if definition.vegetable
+                || !definition.reseed
+                || counts[species_index] >= definition.minimum_population
+            {
+                continue;
+            }
             let Some(template) = templates.get(species_index).and_then(Option::as_ref) else { continue };
             let missing = definition.minimum_population - counts[species_index];
             let available = self.config.organism_capacity.saturating_sub(self.population());
@@ -1707,6 +1848,8 @@ impl Engine {
                     slot,
                     self.kinematics.positions[slot],
                     self.lifecycle.energies[slot],
+                    self.biology[slot].body,
+                    self.biology[slot].chloroplasts,
                 ))
             }).collect()
         });
@@ -1714,6 +1857,11 @@ impl Engine {
             self.kinematics.alive.get(instance.slot as usize).copied().unwrap_or(false)
         });
         for instance in &mut render_instances {
+            let slot = instance.slot as usize;
+            instance.radius = crate::physics::organism_radius(
+                self.biology[slot].body,
+                self.biology[slot].chloroplasts,
+            );
             if let Some(organism) = self.slots.get(instance.slot as usize).and_then(|slot| slot.organism.as_ref()) {
                 if let Some(species) = self.species.get(organism.species.0 as usize) {
                     instance.color = species.color;
@@ -1888,6 +2036,12 @@ fn distance_squared(left: [f32; 2], right: [f32; 2]) -> f32 {
     x * x + y * y
 }
 
+fn unit_coordinate(random: u64, extent: f32) -> f32 {
+    let margin = 60.0_f32.min(extent.max(0.0) * 0.5);
+    let usable = (extent - margin * 2.0).max(0.0);
+    margin + (random >> 40) as f32 / ((1_u32 << 24) - 1) as f32 * usable
+}
+
 fn eye_sector(observer: [f32; 2], observer_angle: f32, target: [f32; 2]) -> usize {
     let target_angle = (target[0] - observer[0]).atan2(target[1] - observer[1]);
     let relative = (target_angle - observer_angle + std::f32::consts::PI)
@@ -1896,9 +2050,14 @@ fn eye_sector(observer: [f32; 2], observer_angle: f32, target: [f32; 2]) -> usiz
         .floor().clamp(0.0, 8.0) as usize
 }
 
-fn eye_strength(distance_squared: f32) -> i32 {
+fn eye_strength(distance_squared: f32, observer_radius: f32, target_radius: f32) -> i32 {
+    const SIGHT_DISTANCE: f32 = 1_440.0;
     if !distance_squared.is_finite() || distance_squared <= 0.0 { return 32_000; }
-    (1_000_000.0 / distance_squared).round().clamp(1.0, 32_000.0) as i32
+    let edge_distance = distance_squared.sqrt() - observer_radius - target_radius;
+    if edge_distance <= 0.0 { return 32_000; }
+    if edge_distance > SIGHT_DISTANCE { return 0; }
+    let percent_distance = (edge_distance + 10.0) / SIGHT_DISTANCE;
+    percent_distance.recip().powi(2).round().clamp(1.0, 32_000.0) as i32
 }
 
 fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2]) -> [f32; 2] {
@@ -1936,8 +2095,14 @@ fn transfer_biology_percent(
     *target_value = target_value.saturating_add(amount);
 }
 
-fn cpu_render_instance(slot: usize, position: [f32; 2], energy: i32) -> RenderInstance {
-    let radius = crate::physics::organism_radius(energy);
+fn cpu_render_instance(
+    slot: usize,
+    position: [f32; 2],
+    energy: i32,
+    body: i32,
+    chloroplasts: i32,
+) -> RenderInstance {
+    let radius = crate::physics::organism_radius(body, chloroplasts);
     let energy_color = (energy.clamp(0, 4_000) * 255 / 4_000) as u32;
     RenderInstance { slot: slot as u32, position, radius, color: 0xff2f8020 + (energy_color << 8) }
 }

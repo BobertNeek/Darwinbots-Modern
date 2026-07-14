@@ -41,12 +41,16 @@ pub struct BiologyState {
     pub paralyzed: i32,
     pub poisoned: i32,
     previous_energy: i32,
+    #[serde(default)]
+    plant_energy_carry_micros: i64,
+    #[serde(default)]
+    plant_body_carry_micros: i64,
 }
 
 impl Default for BiologyState {
     fn default() -> Self {
         Self {
-            body: 100,
+            body: 1_000,
             waste: 0,
             shell: 0,
             slime: 0,
@@ -59,6 +63,8 @@ impl Default for BiologyState {
             paralyzed: 0,
             poisoned: 0,
             previous_energy: 1_000,
+            plant_energy_carry_micros: 0,
+            plant_body_carry_micros: 0,
         }
     }
 }
@@ -91,6 +97,14 @@ impl BiologyState {
             paralyzed: 0,
             poisoned: 0,
             previous_energy: 0,
+            plant_energy_carry_micros: split_i64_resource(
+                &mut self.plant_energy_carry_micros,
+                percentage,
+            ),
+            plant_body_carry_micros: split_i64_resource(
+                &mut self.plant_body_carry_micros,
+                percentage,
+            ),
         };
         child.body = child.body.max(1);
         child
@@ -104,10 +118,39 @@ impl BiologyState {
         self.venom = self.venom.saturating_add(child.venom);
         self.poison = self.poison.saturating_add(child.poison);
         self.chloroplasts = self.chloroplasts.saturating_add(child.chloroplasts);
+        self.plant_energy_carry_micros = self.plant_energy_carry_micros
+            .saturating_add(child.plant_energy_carry_micros);
+        self.plant_body_carry_micros = self.plant_body_carry_micros
+            .saturating_add(child.plant_body_carry_micros);
     }
 
     pub(crate) fn synchronize_energy(&mut self, energy: i32) {
         self.previous_energy = energy;
+    }
+
+    pub(crate) fn apply_plant_delta(
+        &mut self,
+        energy: &mut i32,
+        delta: f32,
+        feeding_to_body: f32,
+    ) -> (i32, i32) {
+        let body_fraction = feeding_to_body.clamp(0.0, 1.0);
+        let energy_micros = (delta * (1.0 - body_fraction) * 1_000_000.0).round() as i64;
+        let body_micros = (delta * body_fraction / 10.0 * 1_000_000.0).round() as i64;
+        self.plant_energy_carry_micros = self.plant_energy_carry_micros
+            .saturating_add(energy_micros);
+        self.plant_body_carry_micros = self.plant_body_carry_micros
+            .saturating_add(body_micros);
+
+        let energy_whole = self.plant_energy_carry_micros / 1_000_000;
+        let body_whole = self.plant_body_carry_micros / 1_000_000;
+        self.plant_energy_carry_micros %= 1_000_000;
+        self.plant_body_carry_micros %= 1_000_000;
+        let prior_energy = *energy;
+        let prior_body = self.body;
+        *energy = (*energy as i64 + energy_whole).clamp(0, 32_000) as i32;
+        self.body = (self.body as i64 + body_whole).clamp(1, 32_000) as i32;
+        (energy.saturating_sub(prior_energy), self.body.saturating_sub(prior_body))
     }
 
     pub fn apply_outputs(&mut self, memory: &mut VmMemory, energy: &mut i32, metabolism: i32) {
@@ -175,6 +218,12 @@ fn split_resource(resource: &mut i32, percentage: i32, preserve_living_body: boo
         *resource = total - child;
         child
     }
+}
+
+fn split_i64_resource(resource: &mut i64, percentage: i32) -> i64 {
+    let child = resource.saturating_mul(percentage as i64) / 100;
+    *resource = resource.saturating_sub(child);
+    child
 }
 
 fn spend(energy: &mut i32, requested: i32, unit_cost: i32) -> i32 {
