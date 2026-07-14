@@ -275,6 +275,22 @@ fn ffi_exposes_versioned_engine_and_owned_snapshot_buffers() {
     let snapshot: serde_json::Value = serde_json::from_slice(bytes).unwrap();
     assert_eq!(snapshot["tick"], 1);
     assert_eq!(snapshot["organisms"].as_array().unwrap().len(), 1);
+    assert!(snapshot["render_instances"][0]["aim"].is_number());
+    assert_eq!(
+        snapshot["render_instances"][0]["skin"]
+            .as_array()
+            .unwrap()
+            .len(),
+        4
+    );
+    assert!(snapshot["render_instances"][0]["lineage_id"].is_number());
+    assert_eq!(
+        snapshot["organisms"][0]["vision"]["eyes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        9
+    );
 
     assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
     assert!(buffer.data.is_null());

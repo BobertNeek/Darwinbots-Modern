@@ -31,6 +31,9 @@ public sealed class NativeSnapshotParserTests
         Assert.Equal(7U, snapshot.Organisms[0].Slot);
         Assert.Equal(3U, snapshot.Organisms[0].Generation);
         Assert.Equal(12.5f, snapshot.Organisms[0].Position[0]);
+        Assert.Equal(4, snapshot.Organisms[0].Phenotype.Skin.Length);
+        Assert.Equal(9, snapshot.Organisms[0].Vision.Eyes.Length);
+        Assert.Equal(4, snapshot.Organisms[0].Vision.FocusEye);
     }
 
     [Fact]
@@ -52,6 +55,82 @@ public sealed class NativeSnapshotParserTests
         Assert.Equal(9U, snapshot.RenderInstances[0].Slot);
         Assert.Equal(4.5f, snapshot.RenderInstances[0].Radius);
         Assert.Equal(200f, snapshot.RenderInstances[0].Position[1]);
+        Assert.Equal(0U, snapshot.RenderInstances[0].Generation);
+        Assert.Equal(0, snapshot.RenderInstances[0].Aim);
+        Assert.Equal(0UL, snapshot.RenderInstances[0].LineageId);
+        Assert.Equal(4, snapshot.RenderInstances[0].Skin.Length);
+    }
+
+    [Fact]
+    public void ParsesPhenotypeSkinAndNineEyeVision()
+    {
+        const string json = """
+            {
+              "tick": 8,
+              "organisms": [
+                {
+                  "id": { "slot": 3, "generation": 2 },
+                  "position": [100.0, 200.0],
+                  "velocity": [0.0, 0.0],
+                  "energy": 900,
+                  "age": 4,
+                  "phenotype": {
+                    "lineage_id": 77,
+                    "color": 4280527552,
+                    "skin": [
+                      { "radius": 0.2, "angle": 0 },
+                      { "radius": 0.4, "angle": 314 },
+                      { "radius": 0.6, "angle": 628 },
+                      { "radius": 0.8, "angle": 942 }
+                    ],
+                    "accumulated_mutations": 5
+                  },
+                  "vision": {
+                    "focus_eye": 4,
+                    "eyes": [
+                      { "direction": 0, "width": 0, "center_radians": 0.7, "half_width_radians": 0.087, "range": 1440.0, "value": 1 },
+                      { "direction": 0, "width": 0, "center_radians": 0.5, "half_width_radians": 0.087, "range": 1440.0, "value": 2 },
+                      { "direction": 0, "width": 0, "center_radians": 0.3, "half_width_radians": 0.087, "range": 1440.0, "value": 3 },
+                      { "direction": 0, "width": 0, "center_radians": 0.2, "half_width_radians": 0.087, "range": 1440.0, "value": 4 },
+                      { "direction": 314, "width": 70, "center_radians": 1.57, "half_width_radians": 0.262, "range": 1044.0, "value": 32000 },
+                      { "direction": 0, "width": 0, "center_radians": 6.1, "half_width_radians": 0.087, "range": 1440.0, "value": 6 },
+                      { "direction": 0, "width": 0, "center_radians": 5.9, "half_width_radians": 0.087, "range": 1440.0, "value": 7 },
+                      { "direction": 0, "width": 0, "center_radians": 5.7, "half_width_radians": 0.087, "range": 1440.0, "value": 8 },
+                      { "direction": 0, "width": 0, "center_radians": 5.5, "half_width_radians": 0.087, "range": 1440.0, "value": 9 }
+                    ]
+                  }
+                }
+              ],
+              "render_instances": [
+                {
+                  "slot": 3,
+                  "generation": 2,
+                  "position": [100.0, 200.0],
+                  "radius": 8.0,
+                  "color": 4280527552,
+                  "aim": 314,
+                  "skin": [
+                    { "radius": 0.2, "angle": 0 },
+                    { "radius": 0.4, "angle": 314 },
+                    { "radius": 0.6, "angle": 628 },
+                    { "radius": 0.8, "angle": 942 }
+                  ],
+                  "lineage_id": 77,
+                  "vegetable": false
+                }
+              ]
+            }
+            """;
+
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+
+        Assert.Equal(77UL, snapshot.RenderInstances[0].LineageId);
+        Assert.Equal(4, snapshot.RenderInstances[0].Skin.Length);
+        Assert.Equal(314, snapshot.RenderInstances[0].Aim);
+        Assert.Equal(9, snapshot.Organisms[0].Vision.Eyes.Length);
+        Assert.Equal(4, snapshot.Organisms[0].Vision.FocusEye);
+        Assert.Equal(32000, snapshot.Organisms[0].Vision.Eyes[4].Value);
+        Assert.Equal(5U, snapshot.Organisms[0].Phenotype.AccumulatedMutations);
     }
 
     [Fact]

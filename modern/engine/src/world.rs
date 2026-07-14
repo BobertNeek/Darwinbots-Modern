@@ -1953,8 +1953,13 @@ impl Engine {
                 self.biology[slot].chloroplasts,
             );
             if let Some(organism) = self.slots.get(instance.slot as usize).and_then(|slot| slot.organism.as_ref()) {
+                instance.generation = self.slots[slot].generation;
+                instance.aim = self.biology[slot].aim;
+                instance.skin = organism.phenotype.skin;
+                instance.lineage_id = organism.phenotype.lineage_id;
+                instance.color = organism.phenotype.color;
                 if let Some(species) = self.species.get(organism.species.0 as usize) {
-                    instance.color = species.color;
+                    instance.vegetable = species.vegetable;
                 }
             }
         }
@@ -2184,7 +2189,17 @@ fn cpu_render_instance(
 ) -> RenderInstance {
     let radius = crate::physics::organism_radius(body, chloroplasts);
     let energy_color = (energy.clamp(0, 4_000) * 255 / 4_000) as u32;
-    RenderInstance { slot: slot as u32, position, radius, color: 0xff2f8020 + (energy_color << 8) }
+    RenderInstance {
+        slot: slot as u32,
+        position,
+        radius,
+        color: 0xff2f8020 + (energy_color << 8),
+        generation: 0,
+        aim: 0,
+        skin: crate::default_skin(),
+        lineage_id: 0,
+        vegetable: false,
+    }
 }
 
 fn slot_id_valid(slots: &[Slot], id: OrganismId) -> bool {
