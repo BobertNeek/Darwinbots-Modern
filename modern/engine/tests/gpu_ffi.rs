@@ -114,21 +114,90 @@ fn gpu_prepares_render_instances_with_integrated_positions() {
 }
 
 #[test]
+fn gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_available() {
+    let Ok(gpu) = GpuPhysicsBackend::new() else { return };
+    let positions = [[20.0, 30.0], [70.0, 30.0]];
+    let (targets, instances) = gpu.sense_and_render_gpu_grid(
+        &positions,
+        &[400, 100],
+        &[114.25, 57.5],
+        &[true, true],
+        [200.0, 200.0],
+        64.0,
+        100.0,
+    ).unwrap();
+
+    assert_eq!(targets, vec![Some(1), Some(0)]);
+    assert_eq!(instances.len(), 2);
+    assert_eq!(instances[0].position, positions[0]);
+    assert_eq!(instances[1].position, positions[1]);
+    assert!((instances[0].radius - 114.25).abs() < 0.001);
+    assert!((instances[1].radius - 57.5).abs() < 0.001);
+}
+
+#[test]
+fn gpu_position_integration_matches_cpu_after_db2_forces_when_adapter_is_available() {
+    if GpuPhysicsBackend::new().is_err() {
+        return;
+    }
+    let config = EngineConfig {
+        gravity: [0.01, 0.02],
+        drag: 0.001,
+        brownian_motion: 0.0,
+        world_width: 10_000.0,
+        world_height: 10_000.0,
+        ..EngineConfig::testing()
+    };
+    let mut cpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Cpu,
+        ..config.clone()
+    }).unwrap();
+    let mut gpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        ..config
+    }).unwrap();
+    let dna = LegacyDna::parse(
+        "cond\n*.robage 0 =\nstart\n10 .up store\nstop",
+    ).unwrap();
+    cpu.spawn_at(dna.clone(), [5_000.0, 5_000.0]).unwrap();
+    gpu.spawn_at(dna, [5_000.0, 5_000.0]).unwrap();
+
+    cpu.tick_many(200).unwrap();
+    gpu.tick_many(200).unwrap();
+
+    let left = &cpu.snapshot().organisms[0];
+    let right = &gpu.snapshot().organisms[0];
+    assert!((left.position[0] - right.position[0]).abs() < 0.05);
+    assert!((left.position[1] - right.position[1]).abs() < 0.05);
+    assert!((left.velocity[0] - right.velocity[0]).abs() < 0.05);
+    assert!((left.velocity[1] - right.velocity[1]).abs() < 0.05);
+    assert!(right.velocity[0].abs() > 0.01 || right.velocity[1].abs() > 0.01);
+}
+
+#[test]
 fn engine_retains_gpu_backend_and_uses_it_for_tick_physics() {
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
-    let mut engine = Engine::new(EngineConfig {
+    let mut gpu = Engine::new(EngineConfig {
         backend: BackendPreference::Gpu,
         allow_cpu_fallback: false,
         ..EngineConfig::testing()
     }).unwrap();
-    let id = engine.spawn(LegacyDna::parse("start\n10 .up store\nstop").unwrap()).unwrap();
+    let mut cpu = Engine::new(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\n10 .up store\nstop").unwrap();
+    let gpu_id = gpu.spawn(dna.clone()).unwrap();
+    let cpu_id = cpu.spawn(dna).unwrap();
 
-    engine.tick().unwrap();
+    gpu.tick().unwrap();
+    cpu.tick().unwrap();
 
-    assert_eq!(engine.backend(), BackendKind::Gpu);
-    assert_eq!(engine.organism(id).unwrap().position[1], 10.0);
+    assert_eq!(gpu.backend(), BackendKind::Gpu);
+    let gpu_position = gpu.organism(gpu_id).unwrap().position;
+    let cpu_position = cpu.organism(cpu_id).unwrap().position;
+    assert!((gpu_position[0] - cpu_position[0]).abs() < 0.0001);
+    assert!((gpu_position[1] - cpu_position[1]).abs() < 0.0001);
 }
 
 #[test]

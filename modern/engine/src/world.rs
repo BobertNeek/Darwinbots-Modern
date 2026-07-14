@@ -273,8 +273,6 @@ pub struct Engine {
     #[serde(skip, default)]
     phase_timings: PhaseTimings,
     #[serde(skip, default)]
-    pending_gpu_positions: Option<Vec<[f32; 2]>>,
-    #[serde(skip, default)]
     pending_gpu_render_instances: Option<Vec<RenderInstance>>,
     #[serde(skip, default)]
     pending_gpu_collision_pairs: Option<Vec<(usize, usize)>>,
@@ -325,7 +323,6 @@ impl Engine {
             pending_projectile_requests: Vec::new(),
             history: Vec::new(),
             phase_timings: PhaseTimings::default(),
-            pending_gpu_positions: None,
             pending_gpu_render_instances: None,
             pending_gpu_collision_pairs: None,
         })
@@ -614,7 +611,6 @@ impl Engine {
         };
         self.capabilities = capabilities;
         self.physics = physics;
-        self.pending_gpu_positions = None;
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
         self.publish_snapshot();
@@ -886,10 +882,8 @@ impl Engine {
     }
 
     fn sensing_phase(&mut self) -> Result<(), EngineError> {
-        self.pending_gpu_positions = None;
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
-        let fusion_safe = self.gpu_fusion_safe() && false;
         let gpu_result = if self.config.force_gpu_runtime_failure_for_tests
             && matches!(self.physics, RuntimePhysics::Gpu(_))
         {
@@ -897,25 +891,18 @@ impl Engine {
         } else if let RuntimePhysics::Gpu(backend) = &self.physics {
             let positions = self.kinematics.positions.clone();
             let alive = self.kinematics.alive.clone();
-            if fusion_safe {
-                Some(backend.sense_integrate_render_gpu_grid(
-                    &positions,
-                    &self.kinematics.velocities,
-                    &self.lifecycle.energies,
-                    &alive,
-                    [self.config.world_width, self.config.world_height],
-                    1_000.0,
-                    1_000.0,
-                ).map(|(targets, positions, instances)| (targets, Some((positions, instances)))))
-            } else {
-                Some(backend.sense_nearest_gpu_grid(
-                    &positions,
-                    &alive,
-                    [self.config.world_width, self.config.world_height],
-                    1_000.0,
-                    1_000.0,
-                ).map(|targets| (targets, None)))
-            }
+            let radii: Vec<_> = self.biology.iter()
+                .map(|biology| crate::physics::organism_radius(biology.body, biology.chloroplasts))
+                .collect();
+            Some(backend.sense_and_render_gpu_grid(
+                &positions,
+                &self.lifecycle.energies,
+                &radii,
+                &alive,
+                [self.config.world_width, self.config.world_height],
+                1_000.0,
+                1_000.0,
+            ).map(|(targets, instances)| (targets, Some(instances))))
         } else {
             None
         };
@@ -924,9 +911,8 @@ impl Engine {
             .map(|(_, biology)| crate::physics::organism_radius(biology.body, biology.chloroplasts))
             .fold(1.0_f32, f32::max);
         let gpu_targets = match gpu_result {
-            Some(Ok((targets, fused))) => {
-                if let Some((positions, instances)) = fused {
-                    self.pending_gpu_positions = Some(positions);
+            Some(Ok((targets, render_instances))) => {
+                if let Some(instances) = render_instances {
                     self.pending_gpu_render_instances = Some(instances);
                 }
                 Some(targets)
@@ -1152,18 +1138,6 @@ impl Engine {
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
         self.capture_previous_positions();
-        if let Some(positions) = self.pending_gpu_positions.take() {
-            for (slot, position) in positions.into_iter().enumerate() {
-                if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
-                    self.kinematics.positions[slot] = position;
-                }
-            }
-            self.apply_tie_constraints();
-            self.apply_organism_collisions();
-            self.apply_environment_features();
-            self.record_actual_velocities();
-            return Ok(());
-        }
         let active_slots: Vec<_> = self.slots.iter().enumerate()
             .filter_map(|(index, slot)| slot.organism.as_ref().map(|_| index))
             .collect();
@@ -1909,22 +1883,6 @@ impl Engine {
         self.capabilities.active = BackendKind::Cpu;
         self.capabilities.gpu_available = false;
         self.capabilities.fallback_reason = Some(error.to_string());
-    }
-
-    fn gpu_fusion_safe(&self) -> bool {
-        self.ties.is_empty() && self.slots.iter().all(|slot| {
-            slot.organism.as_ref().is_none_or(|organism| {
-                organism.memory.read(MEM_SHOOT) == 0
-                    && organism.memory.read(MEM_TIE) == 0
-                    && organism.memory.read(MEM_DELETE_TIE) == 0
-                    && organism.memory.read(MEM_SHARE_NRG) == 0
-                    && organism.memory.read(MEM_SHARE_WASTE) == 0
-                    && organism.memory.read(MEM_SHARE_SHELL) == 0
-                    && organism.memory.read(MEM_SHARE_SLIME) == 0
-                    && organism.memory.read(MEM_SHARE_CHLOROPLASTS) == 0
-                    && organism.memory.read(MEM_TIE_LOCATION) == 0
-            })
-        })
     }
 
     fn valid_slot_mut(&mut self, id: OrganismId) -> Result<&mut Slot, EngineError> {

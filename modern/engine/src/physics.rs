@@ -21,7 +21,7 @@ struct GpuSenseParticle {
     slot: u32,
     alive: u32,
     energy: i32,
-    _padding: u32,
+    radius: f32,
 }
 
 #[repr(C)]
@@ -418,8 +418,29 @@ impl GpuPhysicsBackend {
         ];
         self.sense_integrate_render_impl(
             positions, velocities, energies, alive, &[], &[], grid_size,
-            cell_size, radius, world_size, true,
+            cell_size, radius, world_size, None, true,
         )
+    }
+
+    pub fn sense_and_render_gpu_grid(
+        &self,
+        positions: &[[f32; 2]],
+        energies: &[i32],
+        radii: &[f32],
+        alive: &[bool],
+        world_size: [f32; 2],
+        cell_size: f32,
+        radius: f32,
+    ) -> Result<(Vec<Option<usize>>, Vec<RenderInstance>), EngineError> {
+        let grid_size = [
+            (world_size[0] / cell_size).ceil().max(1.0) as u32,
+            (world_size[1] / cell_size).ceil().max(1.0) as u32,
+        ];
+        let velocities = vec![[0.0; 2]; positions.len()];
+        self.sense_integrate_render_impl(
+            positions, &velocities, energies, alive, &[], &[], grid_size,
+            cell_size, radius, world_size, Some(radii), true,
+        ).map(|(targets, _, instances)| (targets, instances))
     }
 
     pub fn sense_and_integrate(
@@ -456,7 +477,7 @@ impl GpuPhysicsBackend {
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>, Vec<RenderInstance>), EngineError> {
         self.sense_integrate_render_impl(
             positions, velocities, energies, alive, cell_offsets, cell_members, grid_size,
-            cell_size, radius, world_size, false,
+            cell_size, radius, world_size, None, false,
         )
     }
 
@@ -472,6 +493,7 @@ impl GpuPhysicsBackend {
         cell_size: f32,
         radius: f32,
         world_size: [f32; 2],
+        radii: Option<&[f32]>,
         gpu_build_grid: bool,
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>, Vec<RenderInstance>), EngineError> {
         if positions.is_empty() {
@@ -483,7 +505,10 @@ impl GpuPhysicsBackend {
             slot: slot as u32,
             alive: alive.get(slot).copied().unwrap_or(false) as u32,
             energy: energies.get(slot).copied().unwrap_or(0),
-            _padding: 0,
+            radius: radii.and_then(|values| values.get(slot)).copied().unwrap_or_else(|| {
+                ((energies.get(slot).copied().unwrap_or(0).max(1) as f32).sqrt() * 0.45)
+                    .clamp(2.0, 24.0)
+            }),
         }).collect();
         let params = GpuSenseParams {
             count: particles.len() as u32,

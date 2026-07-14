@@ -57,5 +57,6 @@ fn complete_environment_settings_can_change_while_running() {
     engine.tick().unwrap();
 
     assert_eq!(engine.brownian_motion(), 3.0);
-    assert_eq!(engine.organism(id).unwrap().energy, 1_010);
+    assert_eq!(engine.organism(id).unwrap().energy, 1_029);
+    assert_eq!(engine.snapshot().stats.plant_energy_generated, 19);
 }

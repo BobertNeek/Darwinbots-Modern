@@ -4,7 +4,7 @@ struct Particle {
     slot: u32,
     alive: u32,
     energy: i32,
-    _padding: u32,
+    radius: f32,
 };
 
 struct Params {
@@ -92,7 +92,7 @@ fn main(
             clamp(observer.position + observer.velocity, vec2<f32>(0.0), params.world_size),
             observer.alive != 0u,
         );
-        outputs[index].radius = clamp(sqrt(f32(max(observer.energy, 1))) * 0.45, 2.0, 24.0);
+        outputs[index].radius = observer.radius;
         let energy_color = u32(clamp(observer.energy, 0, 4000) * 255 / 4000);
         outputs[index].color = 0xff2f8020u + (energy_color << 8u);
         outputs[index].slot = observer.slot;
