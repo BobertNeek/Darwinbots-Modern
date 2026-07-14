@@ -40,6 +40,9 @@ public static class OrganismVisualGeometry
             MathF.Cos(angle) * radius);
     }
 
+    public static float SelectionRingRadius(float renderedRadius) =>
+        MathF.Max(renderedRadius + 2.2f, 5.5f);
+
     public static EyeSectorGeometry[] EyeSectors(
         VisionSnapshot vision,
         int aim,

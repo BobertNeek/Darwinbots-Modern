@@ -132,7 +132,8 @@ public sealed class WorldViewport : Control
 
         if (selected)
         {
-            context.DrawEllipse(null, new Pen(Brushes.Black, 2.2), center, radius + 2.2, radius + 2.2);
+            var selectionRadius = OrganismVisualGeometry.SelectionRingRadius((float)radius);
+            context.DrawEllipse(null, new Pen(Brushes.Black, 2.2), center, selectionRadius, selectionRadius);
         }
         if (!details)
         {

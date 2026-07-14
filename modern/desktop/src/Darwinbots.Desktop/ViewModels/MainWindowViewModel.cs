@@ -13,6 +13,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _backend = "STARTING";
     private string _status = "INITIALIZING ENGINE";
     private string _selectedId = "NONE";
+    private string _selectedColor = "#858982";
     private int _selectedEnergy;
     private ulong _selectedAge;
     private string _selectedSpecies = "NONE";
@@ -44,6 +45,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string Backend { get => _backend; private set => Set(ref _backend, value); }
     public string Status { get => _status; set => Set(ref _status, value); }
     public string SelectedId { get => _selectedId; private set => Set(ref _selectedId, value); }
+    public string SelectedColor { get => _selectedColor; private set => Set(ref _selectedColor, value); }
     public int SelectedEnergy { get => _selectedEnergy; private set => Set(ref _selectedEnergy, value); }
     public ulong SelectedAge { get => _selectedAge; private set => Set(ref _selectedAge, value); }
     public string SelectedSpecies { get => _selectedSpecies; private set => Set(ref _selectedSpecies, value); }
@@ -81,6 +83,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public OrganismSnapshot? SelectedOrganism => _selectedSlot is { } slot
         ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == slot)
         : null;
+    public uint? SelectedSlot => _selectedSlot;
 
     public void Select(uint slot)
     {
@@ -96,15 +99,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Backend = snapshot.Backend;
         Status = $"READY · {snapshot.Backend} BACKEND";
         if (_selectedSlot is null || snapshot.Organisms.All(organism => organism.Slot != _selectedSlot))
-            _selectedSlot = snapshot.Organisms.FirstOrDefault()?.Slot;
-        var selected = SelectedOrganism;
-        SelectedId = selected is null ? "NONE" : $"{selected.Slot}:{selected.Generation}";
-        SelectedEnergy = selected?.Energy ?? 0;
-        SelectedAge = selected?.Age ?? 0;
+            _selectedSlot = SelectDefaultOrganism(snapshot);
         SpeciesCount = Math.Max(0, snapshot.Species.Count - 1);
-        SelectedSpecies = selected is null || selected.Species >= snapshot.Species.Count
-            ? "NONE"
-            : snapshot.Species[(int)selected.Species].Name;
+        ApplySelection();
         Births = snapshot.Stats.Births;
         Deaths = snapshot.Stats.Deaths;
         Mutations = snapshot.Stats.Mutations;
@@ -139,6 +136,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var selected = SelectedOrganism;
         SelectedId = selected is null ? "NONE" : $"{selected.Slot}:{selected.Generation}";
+        SelectedColor = selected is null ? "#858982" : $"#{selected.Phenotype.Color & 0x00ffffff:X6}";
         SelectedEnergy = selected?.Energy ?? 0;
         SelectedAge = selected?.Age ?? 0;
         SelectedSpecies = selected is null || selected.Species >= _snapshot.Species.Count
@@ -154,6 +152,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedAim = selected?.Aim ?? 0;
         SelectedParalyzed = selected?.Paralyzed ?? 0;
         SelectedPoisoned = selected?.Poisoned ?? 0;
+    }
+
+    private static uint? SelectDefaultOrganism(EngineSnapshot snapshot)
+    {
+        var animals = snapshot.Organisms.Where(organism => !organism.Vegetable).ToArray();
+        var candidates = animals.Length > 0 ? animals : snapshot.Organisms;
+        var centerX = snapshot.WorldSize.ElementAtOrDefault(0) * 0.5f;
+        var centerY = snapshot.WorldSize.ElementAtOrDefault(1) * 0.5f;
+        return candidates.MinBy(organism =>
+        {
+            var offsetX = organism.Position.ElementAtOrDefault(0) - centerX;
+            var offsetY = organism.Position.ElementAtOrDefault(1) - centerY;
+            return offsetX * offsetX + offsetY * offsetY;
+        })?.Slot;
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
