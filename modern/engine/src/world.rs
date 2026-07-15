@@ -494,6 +494,11 @@ impl Engine {
         Ok(())
     }
 
+    pub fn set_toroidal_world(&mut self, enabled: bool) {
+        self.config.toroidal_world = enabled;
+        self.publish_snapshot();
+    }
+
     pub fn organism(&self, id: OrganismId) -> Result<OrganismSnapshot, EngineError> {
         let slot = self.valid_slot(id)?;
         let organism = slot.organism.as_ref().ok_or(EngineError::StaleOrganismId)?;
@@ -1207,6 +1212,7 @@ impl Engine {
             positions: active_slots.iter().map(|index| self.kinematics.positions[*index]).collect(),
             velocities: active_slots.iter().map(|index| self.kinematics.velocities[*index]).collect(),
             world_size: [self.config.world_width, self.config.world_height],
+            toroidal: self.config.toroidal_world,
         };
         if let Err(error) = self.physics.step(&mut batch) {
             if self.config.allow_cpu_fallback && matches!(self.physics, RuntimePhysics::Gpu(_)) {
@@ -1255,6 +1261,7 @@ impl Engine {
         self.projectiles.advance(
             &self.config.shots,
             [self.config.world_width, self.config.world_height],
+            self.config.toroidal_world,
         );
         self.resolve_projectile_impacts();
     }

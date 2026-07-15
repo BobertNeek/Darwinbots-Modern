@@ -17,10 +17,20 @@ public sealed class WorldViewport : Control
     private uint? _selectedSlot;
     private WorldFeatureSelection? _selectedFeature;
     private uint? _followSlot;
+    private uint? _dragSlot;
+    private float[]? _dragPosition;
+    private bool _renderWaste = true;
+    private bool _showSelectedVision = true;
+    private bool _toroidalWorld = true;
 
     public event Action<uint>? OrganismSelected;
     public event Action<float[]>? WorldClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
+    public event Action<uint, float[]>? OrganismDragCompleted;
+
+    public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
+    public bool ShowSelectedVision { get => _showSelectedVision; set { _showSelectedVision = value; InvalidateVisual(); } }
+    public bool ToroidalWorld { get => _toroidalWorld; set { _toroidalWorld = value; InvalidateVisual(); } }
 
     public void SelectSlot(uint? slot)
     {
@@ -58,6 +68,7 @@ public sealed class WorldViewport : Control
         base.Render(context);
         context.FillRectangle(new SolidColorBrush(Color.Parse("#F9F8F2")), Bounds);
         DrawGrid(context);
+        DrawToroidalEdges(context);
         DrawWorldFeatures(context);
         if (_snapshot.Organisms.Count == 0)
         {
@@ -117,7 +128,8 @@ public sealed class WorldViewport : Control
         double scaleY,
         bool details)
     {
-        var center = ScreenPoint(instance.Position, scaleX, scaleY);
+        var position = _dragSlot == instance.Slot && _dragPosition is not null ? _dragPosition : instance.Position;
+        var center = ScreenPoint(position, scaleX, scaleY);
         var radiusScale = Math.Min(scaleX, scaleY);
         var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
         var color = Color.FromUInt32(instance.Color);
@@ -183,6 +195,7 @@ public sealed class WorldViewport : Control
 
     private void DrawSelectedVision(DrawingContext context, double scaleX, double scaleY)
     {
+        if (!ShowSelectedVision) return;
         if (_selectedSlot is not { } selected
             || _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == selected) is not { } organism)
         {
@@ -291,12 +304,22 @@ public sealed class WorldViewport : Control
         }
         SelectSlot(selected);
         OrganismSelected?.Invoke(selected.Value);
+        _dragSlot = selected;
+        _dragPosition = WorldPoint(point.Position);
+        e.Pointer.Capture(this);
         e.Handled = true;
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        if (_dragSlot is not null)
+        {
+            _dragPosition = WorldPoint(e.GetPosition(this));
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
         if (_panAnchor is not { } anchor) return;
         _followSlot = null;
         var point = e.GetPosition(this);
@@ -308,6 +331,10 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerReleased(e);
         _panAnchor = null;
+        if (_dragSlot is { } slot && _dragPosition is { } position)
+            OrganismDragCompleted?.Invoke(slot, position);
+        _dragSlot = null;
+        _dragPosition = null;
         e.Pointer.Capture(null);
     }
 
@@ -339,6 +366,26 @@ public sealed class WorldViewport : Control
             best = organism.Slot;
         }
         return best;
+    }
+
+    private float[] WorldPoint(Point point)
+    {
+        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
+        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+        return [
+            (float)Math.Clamp((point.X - _pan.X) / (scaleX * _zoom), 0, _snapshot.WorldSize[0]),
+            (float)Math.Clamp((point.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
+        ];
+    }
+
+    private void DrawToroidalEdges(DrawingContext context)
+    {
+        if (!ToroidalWorld) return;
+        var pen = new Pen(new SolidColorBrush(Color.Parse("#239AC0"), 0.35), 2);
+        context.DrawLine(pen, new Point(1, 0), new Point(1, Bounds.Height));
+        context.DrawLine(pen, new Point(Bounds.Width - 1, 0), new Point(Bounds.Width - 1, Bounds.Height));
+        context.DrawLine(pen, new Point(0, 1), new Point(Bounds.Width, 1));
+        context.DrawLine(pen, new Point(0, Bounds.Height - 1), new Point(Bounds.Width, Bounds.Height - 1));
     }
 
     private WorldFeatureSelection? FindFeature(Point pointer)
@@ -394,6 +441,7 @@ public sealed class WorldViewport : Control
         }
         foreach (var shot in _snapshot.Shots)
         {
+            if (!RenderWaste && shot.Kind == -4) continue;
             var color = shot.Kind switch
             {
                 -1 => "#E26722",

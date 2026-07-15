@@ -87,6 +87,12 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         _ticksPerUpdate = setup.TicksPerUpdate;
         _liveEnvironment = setup.ToEnvironmentUpdate();
+        ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
+        LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
+        LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
+        LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
+        WorldParametersText.Text = $"{setup.WorldWidth:N0} × {setup.WorldHeight:N0}\nCapacity {setup.PopulationCapacity:N0}\nVegetables {setup.VegetablePopulationCap:N0}";
+        Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
         RuntimeSpeed.SelectedIndex = _ticksPerUpdate switch { <= 1 => 0, <= 5 => 1, <= 20 => 2, _ => 3 };
         Viewport.OrganismSelected += slot =>
         {
@@ -135,6 +141,14 @@ public sealed partial class MainWindow : Window
         {
             _selectedFeature = feature;
             _viewModel.Status = $"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} SELECTED";
+        };
+        Viewport.OrganismDragCompleted += async (slot, position) =>
+        {
+            if (_session is null) return;
+            var organism = _session.LatestSnapshot.Organisms.FirstOrDefault(value => value.Slot == slot);
+            if (organism is null) return;
+            await _session.MoveAsync(organism.Slot, organism.Generation, position);
+            _viewModel.Status = $"ORGANISM {organism.Slot}:{organism.Generation} MOVED";
         };
         DataContext = _viewModel;
         _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
@@ -348,6 +362,47 @@ public sealed partial class MainWindow : Window
         await _session.UpdateEnvironmentAsync(update);
         _liveEnvironment = update;
         _viewModel.Status = "LIVE ENVIRONMENT SETTINGS APPLIED";
+    }
+
+    private async void ToroidalWorld_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded || _session is null) return;
+        var update = _liveEnvironment with { ToroidalWorld = ToroidalWorldToggle.IsChecked == true };
+        await _session.UpdateEnvironmentAsync(update);
+        _liveEnvironment = update;
+        Viewport.ToroidalWorld = update.ToroidalWorld;
+        _viewModel.Status = update.ToroidalWorld ? "TOROIDAL WORLD ON" : "TOROIDAL WORLD OFF";
+    }
+
+    private void RenderWaste_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        Viewport.RenderWaste = RenderWasteToggle.IsChecked == true;
+        _viewModel.Status = Viewport.RenderWaste ? "WASTE RENDERING ON" : "WASTE RENDERING OFF";
+    }
+
+    private void ShowVision_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        Viewport.ShowSelectedVision = ShowVisionToggle.IsChecked == true;
+    }
+
+    private async void ApplyEnergy_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null) return;
+        var vegetation = _liveEnvironment.Vegetation with
+        {
+            MaxEnergyPerTick = (int)(LivePlantEnergy.Value ?? 100),
+            FeedingToBody = (float)(LiveFeedingToBody.Value ?? 0.75m),
+        };
+        var update = _liveEnvironment with
+        {
+            MetabolismCost = (int)(LiveMetabolism.Value ?? 0),
+            Vegetation = vegetation,
+        };
+        await _session.UpdateEnvironmentAsync(update);
+        _liveEnvironment = update;
+        _viewModel.Status = $"ENERGY APPLIED · METABOLISM {update.MetabolismCost} · PLANTS {vegetation.MaxEnergyPerTick}";
     }
 
     private async Task ApplyZerobotTransitionAsync(ZerobotProgressionTransition transition)

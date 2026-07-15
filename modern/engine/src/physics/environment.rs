@@ -85,9 +85,16 @@ pub(crate) fn integrate_body(
     position: &mut [f32; 2],
     velocity: [f32; 2],
     world_size: [f32; 2],
+    toroidal: bool,
 ) {
-    position[0] = (position[0] + velocity[0]).clamp(0.0, world_size[0]);
-    position[1] = (position[1] + velocity[1]).clamp(0.0, world_size[1]);
+    let next = [position[0] + velocity[0], position[1] + velocity[1]];
+    if toroidal {
+        position[0] = next[0].rem_euclid(world_size[0].max(1.0));
+        position[1] = next[1].rem_euclid(world_size[1].max(1.0));
+    } else {
+        position[0] = next[0].clamp(0.0, world_size[0]);
+        position[1] = next[1].clamp(0.0, world_size[1]);
+    }
 }
 
 fn sphere_drag_coefficient(speed: f64, radius: f64, density: f64, viscosity: f64) -> f64 {

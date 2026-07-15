@@ -18,6 +18,7 @@
       <TextBlock Text="When enabled, a lineage receives a modest inherited skin change after this percentage of its DNA length has mutated." TextWrapping="Wrap" Foreground="#69716D"/>
 
       <TextBlock Classes="section" Text="MOVEMENT + ENVIRONMENT" Margin="0,14,0,0"/>
+      <CheckBox x:Name="ToroidalWorld" Content="Toroidal world (wrap opposite edges)"/>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum velocity"/><NumericUpDown Grid.Column="1" x:Name="MaxVelocity" Minimum="1" Maximum="10000" Increment="1"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Movement efficiency"/><NumericUpDown Grid.Column="1" x:Name="MovementEfficiency" Minimum="0.01" Maximum="10" Increment="0.01"/></Grid>
       <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity X"/><NumericUpDown Grid.Column="1" x:Name="GravityX" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>

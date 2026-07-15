@@ -89,6 +89,8 @@ pub struct EngineConfig {
     pub vegetable_population_cap: usize,
     pub world_width: f32,
     pub world_height: f32,
+    #[serde(default = "default_toroidal_world")]
+    pub toroidal_world: bool,
     pub backend: BackendPreference,
     pub allow_cpu_fallback: bool,
     #[serde(default = "default_metabolism_cost")]
@@ -127,6 +129,7 @@ impl Default for EngineConfig {
             vegetable_population_cap: default_vegetable_population_cap(),
             world_width: 16_000.0,
             world_height: 12_000.0,
+            toroidal_world: default_toroidal_world(),
             backend: BackendPreference::Auto,
             allow_cpu_fallback: true,
             metabolism_cost: default_metabolism_cost(),
@@ -146,7 +149,8 @@ impl Default for EngineConfig {
     }
 }
 
-fn default_metabolism_cost() -> i32 { 1 }
+fn default_metabolism_cost() -> i32 { 0 }
+fn default_toroidal_world() -> bool { true }
 fn default_vegetable_energy_per_tick() -> i32 { 0 }
 fn default_sunlight_energy() -> i32 { 100 }
 fn default_vegetable_population_cap() -> usize { 500 }

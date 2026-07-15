@@ -68,7 +68,7 @@
                     <NumericUpDown Grid.Column="2" Value="{Binding InitialCount}" Minimum="1" Maximum="100000"/>
                     <NumericUpDown Grid.Column="3" Value="{Binding InitialEnergy}" Minimum="1" Maximum="32000"/>
                     <Grid Grid.Column="4" ColumnDefinitions="*,48" Margin="4,0">
-                      <Slider Minimum="0" Maximum="100" Value="{Binding MutationRate}" TickFrequency="0.5"/>
+                      <Slider Minimum="0" Maximum="100" Value="{Binding MutationRate, Mode=TwoWay}" TickFrequency="0.1"/>
                       <TextBlock Grid.Column="1" Text="{Binding MutationRate, StringFormat='{}{0:0.0}%'}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
                     <CheckBox Grid.Column="5" IsChecked="{Binding Reseed}" HorizontalAlignment="Center"/>

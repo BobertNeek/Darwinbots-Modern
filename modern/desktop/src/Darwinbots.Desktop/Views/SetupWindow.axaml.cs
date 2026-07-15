@@ -242,22 +242,3 @@ public sealed partial class SetupWindow : Window
             ? StartingMode.ZerobotsAndVegetables
             : StartingMode.StarterBotsAndVegetables;
 }
-
-public sealed class SetupSpeciesRow(
-    string name, string dna, bool vegetable, uint color, int initialCount,
-    int initialEnergy, double mutationRate, bool reseed)
-{
-    public string Name { get; set; } = name;
-    public string Dna { get; } = dna;
-    public bool Vegetable { get; set; } = vegetable;
-    public uint Color { get; set; } = color;
-    public int InitialCount { get; set; } = initialCount;
-    public int InitialEnergy { get; set; } = initialEnergy;
-    public double MutationRate { get; set; } = mutationRate;
-    public bool Reseed { get; set; } = reseed;
-
-    public SpeciesImport ToImport(int index) => new(
-        Name, Dna, Vegetable, Color, InitialCount, InitialEnergy,
-        Reseed ? Math.Min(InitialCount, Math.Max(1, InitialCount / 5)) : 0,
-        Reseed, (float)MutationRate);
-}

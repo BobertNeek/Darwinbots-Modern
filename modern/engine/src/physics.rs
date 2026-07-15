@@ -179,6 +179,7 @@ pub struct PhysicsBatch {
     pub positions: Vec<[f32; 2]>,
     pub velocities: Vec<[f32; 2]>,
     pub world_size: [f32; 2],
+    pub toroidal: bool,
 }
 
 pub trait PhysicsBackend {
@@ -206,7 +207,7 @@ impl PhysicsBackend for CpuPhysicsBackend {
     fn step(&mut self, batch: &mut PhysicsBatch) -> Result<(), EngineError> {
         validate_batch(batch)?;
         for (position, velocity) in batch.positions.iter_mut().zip(&batch.velocities) {
-            integrate_body(position, *velocity, batch.world_size);
+            integrate_body(position, *velocity, batch.world_size, batch.toroidal);
         }
         Ok(())
     }
@@ -630,7 +631,7 @@ impl PhysicsBackend for GpuPhysicsBackend {
         let params = GpuParams {
             world_size: batch.world_size,
             count: particles.len() as u32,
-            _padding: 0,
+            toroidal: u32::from(batch.toroidal),
         };
         let particle_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("darwinbots particles"),
@@ -714,7 +715,7 @@ struct GpuParticle {
 struct GpuParams {
     world_size: [f32; 2],
     count: u32,
-    _padding: u32,
+    toroidal: u32,
 }
 
 const PHYSICS_SHADER: &str = r#"
@@ -726,7 +727,7 @@ struct Particle {
 struct Params {
     world_size: vec2<f32>,
     count: u32,
-    padding: u32,
+    toroidal: u32,
 };
 
 @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -738,6 +739,13 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
     let next = particles[id.x].position + particles[id.x].velocity;
-    particles[id.x].position = clamp(next, vec2<f32>(0.0), params.world_size);
+    if (params.toroidal != 0u) {
+        particles[id.x].position = vec2<f32>(
+            ((next.x % params.world_size.x) + params.world_size.x) % params.world_size.x,
+            ((next.y % params.world_size.y) + params.world_size.y) % params.world_size.y
+        );
+    } else {
+        particles[id.x].position = clamp(next, vec2<f32>(0.0), params.world_size);
+    }
 }
 "#;
