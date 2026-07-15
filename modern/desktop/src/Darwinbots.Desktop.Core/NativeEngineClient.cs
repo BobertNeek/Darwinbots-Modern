@@ -29,7 +29,8 @@ public sealed partial class NativeEngineClient : IEngineClient
         options.Shots,
         options.Vegetation,
         options.AutoSpeciation,
-        options.SpeciationGeneticDistancePercent)
+        options.SpeciationGeneticDistancePercent,
+        options.ToroidalWorld)
     {
     }
 
@@ -39,7 +40,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         ulong seed = 1,
         float worldWidth = 16_000f,
         float worldHeight = 12_000f,
-        int metabolismCost = 1,
+        int metabolismCost = 0,
         int vegetableEnergyPerTick = 4,
         int sunlightEnergy = 100,
         float[]? gravity = null,
@@ -50,7 +51,8 @@ public sealed partial class NativeEngineClient : IEngineClient
         Db2ShotOptions? shots = null,
         Db2VegetationOptions? vegetation = null,
         bool autoSpeciation = false,
-        float speciationGeneticDistancePercent = 20f)
+        float speciationGeneticDistancePercent = 20f,
+        bool toroidalWorld = true)
     {
         _worldWidth = worldWidth;
         _worldHeight = worldHeight;
@@ -80,6 +82,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             vegetation = NativeCommandSerializer.Vegetation(vegetation),
             auto_speciation = autoSpeciation,
             speciation_genetic_distance_percent = speciationGeneticDistancePercent,
+            toroidal_world = toroidalWorld,
         });
         ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
         if (_engine == IntPtr.Zero)

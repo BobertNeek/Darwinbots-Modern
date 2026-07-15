@@ -27,7 +27,7 @@ public sealed record WorldSetupOptions
     public int VegetablePopulationCap { get; init; } = 500;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
-    public int MetabolismCost { get; init; } = 1;
+    public int MetabolismCost { get; init; }
     public int VegetableEnergyPerTick { get; init; }
     public int SunlightEnergy { get; init; } = 100;
     public float[] Gravity { get; init; } = [0f, 0f];
@@ -38,6 +38,7 @@ public sealed record WorldSetupOptions
     public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
+    public bool ToroidalWorld { get; init; } = true;
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public string? LoadSavePath { get; init; }
@@ -57,5 +58,6 @@ public sealed record WorldSetupOptions
         Shots,
         Vegetation,
         AutoSpeciation,
-        SpeciationGeneticDistancePercent);
+        SpeciationGeneticDistancePercent,
+        ToroidalWorld);
 }

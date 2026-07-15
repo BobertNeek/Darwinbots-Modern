@@ -44,22 +44,44 @@
           <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Active species" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding SpeciesCount}"/></Grid>
         </Border>
         <ScrollViewer Grid.Row="2">
-          <StackPanel Margin="12,16" Spacing="12">
+          <StackPanel Margin="12,16" Spacing="8">
             <TextBlock Classes="section" Text="SIMULATION" />
-            <TextBlock Text="⌄  World" FontWeight="SemiBold" />
-            <TextBlock Text="    Parameters" />
-            <TextBlock Text="    Environment" />
-            <Button Content="＋ OBSTACLE" HorizontalAlignment="Stretch" Click="AddObstacle_Click"/>
-            <Button Content="＋ TELEPORTER" HorizontalAlignment="Stretch" Click="AddTeleporter_Click"/>
-            <Button Content="REMOVE FEATURE" HorizontalAlignment="Stretch" Click="RemoveFeature_Click"/>
-            <Button Content="ADVANCE ZEROBOT" HorizontalAlignment="Stretch" Click="AdvanceZerobot_Click"/>
-            <Button Content="ADVANCED LIVE" HorizontalAlignment="Stretch" Click="LiveAdvanced_Click"/>
-            <TextBlock Text="    Physics" />
-            <TextBlock Text="    Senses" />
-            <TextBlock Text="    Energy" />
-            <TextBlock Text="›  History" FontWeight="SemiBold" />
-            <TextBlock Text="›  Statistics" FontWeight="SemiBold" />
-            <TextBlock Text="›  Experiments" FontWeight="SemiBold" />
+            <Expander Header="World" IsExpanded="True">
+              <StackPanel Spacing="7" Margin="8,6,0,4">
+                <Expander Header="Parameters">
+                  <TextBlock x:Name="WorldParametersText" Margin="8,4" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+                </Expander>
+                <Expander Header="Environment" IsExpanded="True">
+                  <StackPanel Spacing="7" Margin="8,5,0,4">
+                    <CheckBox x:Name="ToroidalWorldToggle" Content="TOROIDAL WORLD" IsCheckedChanged="ToroidalWorld_Changed"/>
+                    <CheckBox x:Name="RenderWasteToggle" Content="RENDER WASTE" IsChecked="True" IsCheckedChanged="RenderWaste_Changed"/>
+                    <Button Content="＋ OBSTACLE" HorizontalAlignment="Stretch" Click="AddObstacle_Click"/>
+                    <Button Content="＋ TELEPORTER" HorizontalAlignment="Stretch" Click="AddTeleporter_Click"/>
+                    <Button Content="REMOVE FEATURE" HorizontalAlignment="Stretch" Click="RemoveFeature_Click"/>
+                  </StackPanel>
+                </Expander>
+                <Expander Header="Physics">
+                  <Button Content="OPEN LIVE PHYSICS" Margin="8,5,0,4" HorizontalAlignment="Stretch" Click="LiveAdvanced_Click"/>
+                </Expander>
+                <Expander Header="Senses">
+                  <CheckBox x:Name="ShowVisionToggle" Margin="8,5,0,4" Content="SHOW SELECTED VISION" IsChecked="True" IsCheckedChanged="ShowVision_Changed"/>
+                </Expander>
+                <Expander Header="Energy">
+                  <StackPanel Spacing="6" Margin="8,5,0,4">
+                    <TextBlock Text="Metabolism / tick" FontSize="11"/>
+                    <NumericUpDown x:Name="LiveMetabolism" Minimum="0" Maximum="100"/>
+                    <TextBlock Text="Plant energy ceiling" FontSize="11"/>
+                    <NumericUpDown x:Name="LivePlantEnergy" Minimum="0" Maximum="32000" Increment="10"/>
+                    <TextBlock Text="Plant feeding to body" FontSize="11"/>
+                    <NumericUpDown x:Name="LiveFeedingToBody" Minimum="0" Maximum="1" Increment="0.05" FormatString="0.00"/>
+                    <Button Content="APPLY ENERGY" Click="ApplyEnergy_Click"/>
+                  </StackPanel>
+                </Expander>
+              </StackPanel>
+            </Expander>
+            <Expander Header="History"><TextBlock Margin="8,5" Text="Population and energy history are shown below." TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
+            <Expander Header="Statistics"><TextBlock Margin="8,5" Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
+            <Expander Header="Experiments"><Button Margin="8,5,0,4" Content="ADVANCE ZEROBOT" HorizontalAlignment="Stretch" Click="AdvanceZerobot_Click"/></Expander>
           </StackPanel>
         </ScrollViewer>
         <Border Grid.Row="3" BorderBrush="#D0CDC3" BorderThickness="0,1,0,0" Padding="12">

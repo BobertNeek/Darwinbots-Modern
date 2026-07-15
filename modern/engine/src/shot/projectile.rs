@@ -85,7 +85,7 @@ impl ProjectilePool {
         slot as u32
     }
 
-    pub(crate) fn advance(&mut self, settings: &ShotSettings, world_size: [f32; 2]) {
+    pub(crate) fn advance(&mut self, settings: &ShotSettings, world_size: [f32; 2], toroidal: bool) {
         let mut expired = Vec::new();
         for slot in 0..self.alive.len() {
             if !self.alive[slot] {
@@ -98,6 +98,16 @@ impl ProjectilePool {
             self.previous_positions[slot] = self.positions[slot];
             self.positions[slot][0] += self.velocities[slot][0];
             self.positions[slot][1] += self.velocities[slot][1];
+            if toroidal {
+                for axis in 0..2 {
+                    let extent = world_size[axis].max(1.0);
+                    let unwrapped = self.positions[slot][axis];
+                    let wrapped = unwrapped.rem_euclid(extent);
+                    let wrap_offset = unwrapped - wrapped;
+                    self.positions[slot][axis] = wrapped;
+                    self.previous_positions[slot][axis] -= wrap_offset;
+                }
+            }
             let no_decay = (self.kinds[slot] == -2 && settings.energy_shots_do_not_decay)
                 || (self.kinds[slot] == -4 && settings.waste_shots_do_not_decay);
             if !no_decay {
@@ -105,11 +115,10 @@ impl ProjectilePool {
             }
             if self.ages[slot] > self.ranges[slot] {
                 expired.push(slot as u32);
-            } else if self.positions[slot][0] < 0.0
+            } else if !toroidal && (self.positions[slot][0] < 0.0
                 || self.positions[slot][1] < 0.0
                 || self.positions[slot][0] > world_size[0]
-                || self.positions[slot][1] > world_size[1]
-            {
+                || self.positions[slot][1] > world_size[1]) {
                 expired.push(slot as u32);
             }
         }

@@ -41,7 +41,8 @@ public sealed partial class AdvancedSettingsWindow : Window
             DayNightEnabled.IsChecked == true,
             (ulong)(CycleLength.Value ?? 10_000)),
         AutoSpeciation.IsChecked == true,
-        (float)(SpeciationDistance.Value ?? 20));
+        (float)(SpeciationDistance.Value ?? 20),
+        ToroidalWorld.IsChecked == true);
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default)
     {
@@ -81,6 +82,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         CycleLength.Value = update.Vegetation.CycleLength;
         AutoSpeciation.IsChecked = update.AutoSpeciation;
         SpeciationDistance.Value = (decimal)update.SpeciationGeneticDistancePercent;
+        ToroidalWorld.IsChecked = update.ToroidalWorld;
     }
 
     private void Apply_Click(object? sender, RoutedEventArgs e) { Accepted = true; Close(); }

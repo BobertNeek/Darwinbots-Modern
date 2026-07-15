@@ -24,6 +24,7 @@
   <ItemGroup>
     <Content Include="..\..\..\..\Installer\bots\Alga_Minimalis_Chloroplastus.txt" Link="Bots\Alga_Minimalis_Chloroplastus.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\..\..\Installer\bots\Animal_Minimalis.txt" Link="Bots\Animal_Minimalis.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\..\..\Installer\bots\Historical\*.txt" Link="Bots\Historical\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="BuildNativeEngine" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec Command="cargo build -p darwinbots-engine $(NativeCargoArguments)" WorkingDirectory="$(MSBuildProjectDirectory)\..\..\..\.." />

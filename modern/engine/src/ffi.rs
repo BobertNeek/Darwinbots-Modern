@@ -82,6 +82,8 @@ enum EngineCommand {
         auto_speciation: Option<bool>,
         #[serde(default)]
         speciation_genetic_distance_percent: Option<f32>,
+        #[serde(default)]
+        toroidal_world: Option<bool>,
     },
 }
 
@@ -340,6 +342,7 @@ fn db_engine_command_batch_impl(
                 vegetation,
                 auto_speciation,
                 speciation_genetic_distance_percent,
+                toroidal_world,
             } => engine
                 .update_environment(
                     metabolism_cost,
@@ -354,6 +357,11 @@ fn db_engine_command_batch_impl(
                     auto_speciation,
                     speciation_genetic_distance_percent,
                 ))
+                .map(|_| {
+                    if let Some(enabled) = toroidal_world {
+                        engine.set_toroidal_world(enabled);
+                    }
+                })
                 .map(|_| serde_json::Value::Null),
         };
         match result {
