@@ -1,0 +1,9 @@
+  Determining projects to restore...
+  Restored /workspace/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj (in 2.14 sec).
+  1 of 2 projects are up-to-date for restore.
+  Darwinbots.Desktop.Core -> /workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop.Core/bin/Debug/net10.0/Darwinbots.Desktop.Core.dll
+  Darwinbots.Desktop.Core.Tests -> /workspace/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/bin/Debug/net10.0/Darwinbots.Desktop.Core.Tests.dll
+Test run for /workspace/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/bin/Debug/net10.0/Darwinbots.Desktop.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    40, Skipped:     0, Total:    40, Duration: 1 s - Darwinbots.Desktop.Core.Tests.dll (net10.0)

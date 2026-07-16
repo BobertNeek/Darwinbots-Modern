@@ -1,0 +1,17 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Darwinbots.Desktop.Core -> /workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop.Core/bin/Debug/net10.0/Darwinbots.Desktop.Core.dll
+  Darwinbots.Desktop -> /workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/bin/Debug/net10.0/Darwinbots.Desktop.dll
+EXEC : error : rustc 1.89.0 is not supported by the following package: [/workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj]
+    darwinbots-engine@0.1.0 requires rustc 1.96
+  
+/workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj(30,5): error MSB3073: The command "cargo build -p darwinbots-engine " exited with code 101.
+
+Build FAILED.
+
+EXEC : error : rustc 1.89.0 is not supported by the following package: [/workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj]
+/workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj(30,5): error MSB3073: The command "cargo build -p darwinbots-engine " exited with code 101.
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:15.33

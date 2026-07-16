@@ -1,0 +1,11 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Darwinbots.Desktop.Core -> /workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop.Core/bin/Debug/net10.0/Darwinbots.Desktop.Core.dll
+  Darwinbots.Desktop -> /workspace/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/bin/Debug/net10.0/Darwinbots.Desktop.dll
+      Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.27s
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.65

@@ -1,0 +1,2 @@
+/usr/bin/wine-stable: 40: exec: /usr/lib/wine/wine: Exec format error
+/usr/bin/wine: 40: exec: /usr/lib/wine/wine: Exec format error
