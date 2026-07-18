@@ -1614,12 +1614,22 @@ impl Engine {
     }
 
     fn record_actual_velocities(&mut self) {
+        let world_size = [self.config.world_width, self.config.world_height];
         for slot in 0..self.kinematics.positions.len() {
             if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
-                self.kinematics.actual_velocities[slot] = [
+                let mut displacement = [
                     self.kinematics.positions[slot][0] - self.kinematics.previous_positions[slot][0],
                     self.kinematics.positions[slot][1] - self.kinematics.previous_positions[slot][1],
                 ];
+                if self.config.toroidal_world {
+                    for axis in 0..2 {
+                        let extent = world_size[axis].max(1.0);
+                        let half_extent = extent * 0.5;
+                        displacement[axis] =
+                            (displacement[axis] + half_extent).rem_euclid(extent) - half_extent;
+                    }
+                }
+                self.kinematics.actual_velocities[slot] = displacement;
             }
         }
     }
