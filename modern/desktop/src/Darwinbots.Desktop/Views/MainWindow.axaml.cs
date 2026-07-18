@@ -1,10 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Controls;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using System.Diagnostics;
 
@@ -60,6 +60,8 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _autosaveTimer;
     private readonly IReadOnlyList<string> _startupBots;
     private readonly WorldSetupOptions _setup;
+    private readonly IEngineClientFactory _engineFactory;
+    private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
     private OrganismKey? _moveOrganism;
     private bool _turbo;
@@ -76,14 +78,25 @@ public sealed partial class MainWindow : Window
     private bool _controlsReady;
     private EnvironmentUpdate _liveEnvironment;
 
-    public MainWindow() : this([], new WorldSetupOptions()) { }
+    public MainWindow() : this([], new WorldSetupOptions(), NativeEngineClientFactory.Instance, AvaloniaDesktopStorageService.Instance) { }
 
-    public MainWindow(IReadOnlyList<string> arguments) : this(arguments, new WorldSetupOptions()) { }
+    public MainWindow(IReadOnlyList<string> arguments) : this(arguments, new WorldSetupOptions(), NativeEngineClientFactory.Instance, AvaloniaDesktopStorageService.Instance) { }
 
-    public MainWindow(IReadOnlyList<string> arguments, WorldSetupOptions setup)
+    public MainWindow(IReadOnlyList<string> arguments, WorldSetupOptions setup) :
+        this(arguments, setup, NativeEngineClientFactory.Instance, AvaloniaDesktopStorageService.Instance)
+    {
+    }
+
+    public MainWindow(
+        IReadOnlyList<string> arguments,
+        WorldSetupOptions setup,
+        IEngineClientFactory engineFactory,
+        IDesktopStorageService storage)
     {
         _startupBots = ParseStartupBots(arguments);
         _setup = setup;
+        _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _zerobotProgression = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables
             ? new ZerobotProgressionController(setup.AutomaticZerobotProgression)
             : null;
@@ -149,7 +162,10 @@ public sealed partial class MainWindow : Window
         Viewport.OrganismDragCompleted += async (slot, position) =>
         {
             if (_session is null) return;
-            var organism = _session.LatestSnapshot.Organisms.FirstOrDefault(value => value.Slot == slot);
+            var selected = _viewModel.SelectedOrganism;
+            var organism = selected is not null && selected.Slot == slot
+                ? selected
+                : _session.LatestSnapshot.Organisms.FirstOrDefault(value => value.Slot == slot);
             if (organism is null) return;
             await _session.MoveAsync(organism.Slot, organism.Generation, position);
             _viewModel.Status = $"ORGANISM {organism.Slot}:{organism.Generation} MOVED";
@@ -168,7 +184,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            _session = new SimulationSession(new NativeEngineClient(_setup));
+            _session = new SimulationSession(_engineFactory.Create(_setup));
             _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
             {
                 _viewModel.Update(snapshot);
@@ -256,7 +272,7 @@ public sealed partial class MainWindow : Window
     private async void EditDna_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _viewModel.SelectedOrganism is not { } organism) return;
-        await new DnaEditorWindow(_session, organism).ShowDialog(this);
+        await new DnaEditorWindow(_session, organism, _storage).ShowDialog(this);
     }
 
     private void Run_Click(object? sender, RoutedEventArgs e)
@@ -274,7 +290,7 @@ public sealed partial class MainWindow : Window
     private void Reset_Click(object? sender, RoutedEventArgs e)
     {
         _runTimer.Stop();
-        var replacement = new MainWindow(_startupBots, _setup);
+        var replacement = new MainWindow(_startupBots, _setup, _engineFactory, _storage);
         replacement.Show();
         Close();
     }
@@ -447,19 +463,11 @@ public sealed partial class MainWindow : Window
     private async void Import_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        foreach (var file in await _storage.OpenDnaFilesAsync(this))
         {
-            Title = "Import Darwinbots robot DNA",
-            AllowMultiple = true,
-            FileTypeFilter = [new FilePickerFileType("Darwinbots robot") { Patterns = ["*.txt"] }],
-        });
-        foreach (var file in files)
-        {
-            await using var stream = await file.OpenReadAsync();
-            using var reader = new StreamReader(stream);
             var report = await _session.ImportSpeciesAsync(new SpeciesImport(
                 Path.GetFileNameWithoutExtension(file.Name),
-                await reader.ReadToEndAsync(),
+                file.Content,
                 false,
                 0xffd07a2d,
                 1,
@@ -476,35 +484,15 @@ public sealed partial class MainWindow : Window
     private async void Save_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Save Darwinbots simulation",
-            SuggestedFileName = "simulation.db3s",
-            FileTypeChoices = [new FilePickerFileType("Darwinbots 3 simulation") { Patterns = ["*.db3s"] }],
-        });
-        if (file is null) return;
-        var save = await _session.SaveAsync();
-        await using var stream = await file.OpenWriteAsync();
-        stream.SetLength(0);
-        await stream.WriteAsync(save);
-        _viewModel.Status = "SAVED";
+        if (await _storage.SaveSimulationAsync(this, await _session.SaveAsync()))
+            _viewModel.Status = "SAVED";
     }
 
     private async void Load_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Load Darwinbots simulation",
-            AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Darwinbots 3 simulation") { Patterns = ["*.db3s"] }],
-        });
-        var file = files.FirstOrDefault();
-        if (file is null) return;
-        await using var stream = await file.OpenReadAsync();
-        using var memory = new MemoryStream();
-        await stream.CopyToAsync(memory);
-        await _session.LoadAsync(memory.ToArray());
+        if (await _storage.OpenSimulationAsync(this) is not { } save) return;
+        await _session.LoadAsync(save);
         _viewModel.Status = "LOADED";
     }
 
@@ -529,14 +517,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return;
         try
         {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern", "Autosaves");
-            Directory.CreateDirectory(directory);
-            var path = Path.Combine(directory, $"autosave-{DateTime.UtcNow:yyyyMMdd-HHmmss}.db3s");
-            var temporary = path + ".tmp";
-            await File.WriteAllBytesAsync(temporary, await _session.SaveAsync());
-            File.Move(temporary, path, true);
-            foreach (var stale in Directory.GetFiles(directory, "*.db3s").OrderByDescending(File.GetLastWriteTimeUtc).Skip(5))
-                File.Delete(stale);
+            await _storage.SaveAutosaveAsync(await _session.SaveAsync());
             _viewModel.Status = "AUTOSAVED";
         }
         catch (Exception error) { _viewModel.Status = $"AUTOSAVE ERROR · {error.Message}"; }

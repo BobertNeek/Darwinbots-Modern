@@ -2,14 +2,15 @@ using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 
 namespace Darwinbots.Desktop.Views;
 
 public sealed partial class SetupWindow : Window
 {
     private bool _controlsReady;
+    private readonly IDesktopStorageService _storage;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
@@ -18,8 +19,13 @@ public sealed partial class SetupWindow : Window
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
 
-    public SetupWindow()
+    public SetupWindow() : this(AvaloniaDesktopStorageService.Instance)
     {
+    }
+
+    public SetupWindow(IDesktopStorageService storage)
+    {
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         InitializeComponent();
         DataContext = this;
         _controlsReady = true;
@@ -58,18 +64,8 @@ public sealed partial class SetupWindow : Window
 
     private async void AddDna_Click(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Add Darwinbots DNA species",
-            AllowMultiple = true,
-            FileTypeFilter = [new FilePickerFileType("Darwinbots robot") { Patterns = ["*.txt"] }],
-        });
-        foreach (var file in files)
-        {
-            await using var stream = await file.OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), await reader.ReadToEndAsync(), false, 0xffd07a2d, 50, 1_000, 1.0, false));
-        }
+        foreach (var file in await _storage.OpenDnaFilesAsync(this))
+            Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false));
     }
 
     private void RemoveSpecies_Click(object? sender, RoutedEventArgs e)
@@ -154,15 +150,8 @@ public sealed partial class SetupWindow : Window
 
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open Darwinbots Modern save",
-            AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Darwinbots Modern save") { Patterns = ["*.db3s"] }],
-        });
-        var file = files.FirstOrDefault();
-        if (file is null) return;
-        WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = file.Path.LocalPath });
+        if (await _storage.PickSimulationPathAsync(this) is { } path)
+            WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = path });
     }
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
@@ -242,10 +231,7 @@ public sealed partial class SetupWindow : Window
 
     private void Recover_Click(object? sender, RoutedEventArgs e)
     {
-        var autosaveDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern", "Autosaves");
-        var latest = Directory.Exists(autosaveDirectory)
-            ? Directory.GetFiles(autosaveDirectory, "*.db3s").OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()
-            : null;
+        var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
         WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = latest });
     }

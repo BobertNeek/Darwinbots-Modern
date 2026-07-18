@@ -8,22 +8,22 @@
         Width="940" Height="650" MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen" WindowState="Maximized"
         KeyDown="MainWindow_KeyDown">
-  <Grid RowDefinitions="58,*,170,28" ColumnDefinitions="170,*,240">
+  <Grid RowDefinitions="58,*,170,28" ColumnDefinitions="250,*,280">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
       <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="25" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="transport" Content="▶  RUN" Background="#3F8E34" Foreground="White" Click="Run_Click" />
-        <Button Grid.Column="2" Classes="transport" Content="Ⅱ  PAUSE" Margin="4,0,0,0" Click="Pause_Click" />
-        <Button Grid.Column="3" Classes="transport" Content="▶| STEP" Margin="4,0,0,0" Click="Step_Click" />
+        <Button x:Name="RunButton" Grid.Column="1" Classes="transport" Content="▶  RUN" Background="#3F8E34" Foreground="White" Click="Run_Click" />
+        <Button x:Name="PauseButton" Grid.Column="2" Classes="transport" Content="Ⅱ  PAUSE" Margin="4,0,0,0" Click="Pause_Click" />
+        <Button x:Name="StepButton" Grid.Column="3" Classes="transport" Content="▶| STEP" Margin="4,0,0,0" Click="Step_Click" />
         <Button Grid.Column="4" x:Name="TurboButton" Height="34" Content="TURBO" Margin="4,0,0,0" Click="Turbo_Click" />
-        <Button Grid.Column="5" Height="34" Content="IMPORT BOT" Margin="6,0,0,0" Click="Import_Click" />
-        <Button Grid.Column="6" Height="34" Content="RESET" Margin="4,0,0,0" Click="Reset_Click" />
+        <Button x:Name="ImportButton" Grid.Column="5" Height="34" Content="IMPORT BOT" Margin="6,0,0,0" Click="Import_Click" />
+        <Button x:Name="ResetButton" Grid.Column="6" Height="34" Content="RESET" Margin="4,0,0,0" Click="Reset_Click" />
         <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" Margin="6,0,0,0">
           <ComboBox x:Name="RuntimeSpeed" Width="84" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
-          <Button Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />
-          <Button Height="34" Content="SAVE" Click="Save_Click" />
-          <Button Height="34" Content="LOAD" Click="Load_Click" />
+          <Button x:Name="BackendButton" Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />
+          <Button x:Name="SaveButton" Height="34" Content="SAVE" Click="Save_Click" />
+          <Button x:Name="LoadButton" Height="34" Content="LOAD" Click="Load_Click" />
         </StackPanel>
         <StackPanel Grid.Column="8" Margin="8,0,0,0" VerticalAlignment="Center">
           <TextBlock Classes="section" Text="TICK" />
@@ -43,45 +43,45 @@
         <Border Grid.Row="1" Background="#E5ECD9" Padding="12,9">
           <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Active species" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding SpeciesCount}"/></Grid>
         </Border>
-        <ScrollViewer Grid.Row="2">
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="12,16" Spacing="8">
             <TextBlock Classes="section" Text="SIMULATION" />
-            <Expander Header="World" IsExpanded="True">
-              <StackPanel Spacing="7" Margin="8,6,0,4">
-                <Expander Header="Parameters">
-                  <TextBlock x:Name="WorldParametersText" Margin="8,4" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+            <Expander x:Name="WorldExpander" Header="World" IsExpanded="True" HorizontalContentAlignment="Stretch">
+              <StackPanel Spacing="7" Margin="4,6,0,4">
+                <Expander x:Name="ParametersExpander" Header="Parameters" HorizontalContentAlignment="Stretch">
+                  <TextBlock x:Name="WorldParametersText" Margin="4" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
                 </Expander>
-                <Expander Header="Environment" IsExpanded="True">
-                  <StackPanel Spacing="7" Margin="8,5,0,4">
-                    <CheckBox x:Name="ToroidalWorldToggle" Content="TOROIDAL WORLD" IsCheckedChanged="ToroidalWorld_Changed"/>
-                    <CheckBox x:Name="RenderWasteToggle" Content="RENDER WASTE" IsChecked="True" IsCheckedChanged="RenderWaste_Changed"/>
-                    <Button Content="＋ OBSTACLE" HorizontalAlignment="Stretch" Click="AddObstacle_Click"/>
-                    <Button Content="＋ TELEPORTER" HorizontalAlignment="Stretch" Click="AddTeleporter_Click"/>
-                    <Button Content="REMOVE FEATURE" HorizontalAlignment="Stretch" Click="RemoveFeature_Click"/>
+                <Expander x:Name="EnvironmentExpander" Header="Environment" IsExpanded="True" HorizontalContentAlignment="Stretch">
+                  <StackPanel Spacing="7" Margin="4,5,0,4">
+                    <CheckBox x:Name="ToroidalWorldToggle" Content="TOROIDAL WORLD" FontSize="11" IsCheckedChanged="ToroidalWorld_Changed"/>
+                    <CheckBox x:Name="RenderWasteToggle" Content="RENDER WASTE" FontSize="11" IsChecked="True" IsCheckedChanged="RenderWaste_Changed"/>
+                    <Button x:Name="AddObstacleButton" Content="＋ OBSTACLE" FontSize="11" HorizontalAlignment="Stretch" Click="AddObstacle_Click"/>
+                    <Button x:Name="AddTeleporterButton" Content="＋ TELEPORTER" FontSize="11" HorizontalAlignment="Stretch" Click="AddTeleporter_Click"/>
+                    <Button x:Name="RemoveFeatureButton" Content="REMOVE FEATURE" FontSize="11" HorizontalAlignment="Stretch" Click="RemoveFeature_Click"/>
                   </StackPanel>
                 </Expander>
-                <Expander Header="Physics">
-                  <Button Content="OPEN LIVE PHYSICS" Margin="8,5,0,4" HorizontalAlignment="Stretch" Click="LiveAdvanced_Click"/>
+                <Expander x:Name="PhysicsExpander" Header="Physics" HorizontalContentAlignment="Stretch">
+                  <Button x:Name="LiveAdvancedButton" Content="OPEN LIVE PHYSICS" Margin="4,5,0,4" HorizontalAlignment="Stretch" Click="LiveAdvanced_Click"/>
                 </Expander>
-                <Expander Header="Senses">
-                  <CheckBox x:Name="ShowVisionToggle" Margin="8,5,0,4" Content="SHOW SELECTED VISION" IsChecked="True" IsCheckedChanged="ShowVision_Changed"/>
+                <Expander x:Name="SensesExpander" Header="Senses" HorizontalContentAlignment="Stretch">
+                  <CheckBox x:Name="ShowVisionToggle" Margin="4,5,0,4" Content="SHOW SELECTED VISION" IsChecked="True" IsCheckedChanged="ShowVision_Changed"/>
                 </Expander>
-                <Expander Header="Energy">
-                  <StackPanel Spacing="6" Margin="8,5,0,4">
+                <Expander x:Name="EnergyExpander" Header="Energy" HorizontalContentAlignment="Stretch">
+                  <StackPanel Spacing="6" Margin="4,5,0,4">
                     <TextBlock Text="Metabolism / tick" FontSize="11"/>
                     <NumericUpDown x:Name="LiveMetabolism" Minimum="0" Maximum="100"/>
                     <TextBlock Text="Plant energy ceiling" FontSize="11"/>
                     <NumericUpDown x:Name="LivePlantEnergy" Minimum="0" Maximum="32000" Increment="10"/>
                     <TextBlock Text="Plant feeding to body" FontSize="11"/>
                     <NumericUpDown x:Name="LiveFeedingToBody" Minimum="0" Maximum="1" Increment="0.05" FormatString="0.00"/>
-                    <Button Content="APPLY ENERGY" Click="ApplyEnergy_Click"/>
+                    <Button x:Name="ApplyEnergyButton" Content="APPLY ENERGY" Click="ApplyEnergy_Click"/>
                   </StackPanel>
                 </Expander>
               </StackPanel>
             </Expander>
-            <Expander Header="History"><TextBlock Margin="8,5" Text="Population and energy history are shown below." TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
-            <Expander Header="Statistics"><TextBlock Margin="8,5" Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
-            <Expander Header="Experiments"><Button Margin="8,5,0,4" Content="ADVANCE ZEROBOT" HorizontalAlignment="Stretch" Click="AdvanceZerobot_Click"/></Expander>
+            <Expander x:Name="HistoryExpander" Header="History" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="Population and energy history are shown below." TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
+            <Expander x:Name="StatisticsExpander" Header="Statistics" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
+            <Expander x:Name="ExperimentsExpander" Header="Experiments" HorizontalContentAlignment="Stretch"><Button x:Name="AdvanceZerobotButton" Margin="4,5,0,4" Content="ADVANCE ZEROBOT" HorizontalAlignment="Stretch" Click="AdvanceZerobot_Click"/></Expander>
           </StackPanel>
         </ScrollViewer>
         <Border Grid.Row="3" BorderBrush="#D0CDC3" BorderThickness="0,1,0,0" Padding="12">
@@ -117,7 +117,7 @@
             <StackPanel Spacing="8">
               <TextBlock Classes="section" Text="DNA" />
               <Border Height="34" Background="#DDE8D2"><TextBlock Text="▌▏▌▌▏▏▌▏▌▌▏▏▏▌▌▏▌▏▌" Foreground="#3E7B36" FontSize="21" VerticalAlignment="Center" HorizontalAlignment="Center" /></Border>
-              <Button Content="EDIT / EXPORT DNA" HorizontalAlignment="Stretch" Click="EditDna_Click" />
+              <Button x:Name="EditDnaButton" Content="EDIT / EXPORT DNA" HorizontalAlignment="Stretch" Click="EditDna_Click" />
             </StackPanel>
           </Border>
           <Border BorderBrush="#D0CDC3" BorderThickness="0,1,0,0" Padding="16">
@@ -136,9 +136,9 @@
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Activity"/><TextBlock Grid.Column="1" Text="{Binding SelectedActivity}" Foreground="#2D826F" FontWeight="SemiBold"/></Grid>
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Paralyzed / Poisoned"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{Binding SelectedParalyzed}"/><TextBlock Text="/"/><TextBlock Text="{Binding SelectedPoisoned}"/></StackPanel></Grid>
               <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="6" RowSpacing="6" Margin="0,10,0,0">
-                <Button Content="MOVE" Click="Move_Click"/><Button Grid.Column="1" Content="CLONE" Click="Clone_Click"/>
-                <Button Grid.Row="1" Content="REPRODUCE" Click="Reproduce_Click"/><Button Grid.Row="1" Grid.Column="1" Content="KILL" Background="#A84A3A" Foreground="White" Click="Kill_Click"/>
-                <Button Grid.Row="2" Grid.ColumnSpan="2" Content="FOLLOW" Click="Follow_Click"/>
+                <Button x:Name="MoveButton" Content="MOVE" Click="Move_Click"/><Button x:Name="CloneButton" Grid.Column="1" Content="CLONE" Click="Clone_Click"/>
+                <Button x:Name="ReproduceButton" Grid.Row="1" Content="REPRODUCE" Click="Reproduce_Click"/><Button x:Name="KillButton" Grid.Row="1" Grid.Column="1" Content="KILL" Background="#A84A3A" Foreground="White" Click="Kill_Click"/>
+                <Button x:Name="FollowButton" Grid.Row="2" Grid.ColumnSpan="2" Content="FOLLOW" Click="Follow_Click"/>
               </Grid>
             </StackPanel>
           </Border>

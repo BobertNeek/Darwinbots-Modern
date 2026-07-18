@@ -9,9 +9,9 @@
     <Border Grid.Row="2" Background="#E6E2D8" BorderBrush="#C8C5BB" BorderThickness="0,1,0,0" Padding="10,8">
       <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
         <TextBlock x:Name="Status" VerticalAlignment="Center"/>
-        <Button Grid.Column="1" Content="SAVE BOT" Click="Save_Click"/>
-        <Button Grid.Column="2" Content="APPLY + CLONE" Click="Clone_Click"/>
-        <Button Grid.Column="3" Content="APPLY DNA" Background="#4C7D30" Foreground="White" Click="Apply_Click"/>
+        <Button x:Name="SaveBotButton" Grid.Column="1" Content="SAVE BOT" Click="Save_Click"/>
+        <Button x:Name="ApplyCloneButton" Grid.Column="2" Content="APPLY + CLONE" Click="Clone_Click"/>
+        <Button x:Name="ApplyDnaButton" Grid.Column="3" Content="APPLY DNA" Background="#4C7D30" Foreground="White" Click="Apply_Click"/>
       </Grid>
     </Border>
   </Grid>

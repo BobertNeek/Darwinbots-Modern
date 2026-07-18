@@ -13,7 +13,7 @@ public sealed class SetupControlSurfaceTests
     [Fact]
     public async Task SetupModesMutationAndAdvancedSettingsReachTheCreatedWorld()
     {
-        using var session = HeadlessUnitTestSession.StartNew(typeof(App));
+        var session = DesktopTestApplication.Session;
         await session.Dispatch(() =>
         {
             var window = new SetupWindow();
@@ -55,7 +55,7 @@ public sealed class SetupControlSurfaceTests
     [Fact]
     public async Task NewWorldRestoresEverySetupDefaultAndAdvancedDialogRoundTripsAllValues()
     {
-        using var session = HeadlessUnitTestSession.StartNew(typeof(App));
+        var session = DesktopTestApplication.Session;
         await session.Dispatch(() =>
         {
             var window = new SetupWindow();

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -9,10 +9,27 @@ public sealed partial class DnaEditorWindow : Window
 {
     private SimulationSession _session = null!;
     private OrganismSnapshot _organism = null!;
+    private readonly IDesktopStorageService _storage;
 
-    public DnaEditorWindow() => InitializeComponent();
+    public DnaEditorWindow() : this(AvaloniaDesktopStorageService.Instance)
+    {
+    }
 
-    public DnaEditorWindow(SimulationSession session, OrganismSnapshot organism) : this()
+    private DnaEditorWindow(IDesktopStorageService storage)
+    {
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        InitializeComponent();
+    }
+
+    public DnaEditorWindow(SimulationSession session, OrganismSnapshot organism) :
+        this(session, organism, AvaloniaDesktopStorageService.Instance)
+    {
+    }
+
+    public DnaEditorWindow(
+        SimulationSession session,
+        OrganismSnapshot organism,
+        IDesktopStorageService storage) : this(storage)
     {
         _session = session;
         _organism = organism;
@@ -52,17 +69,10 @@ public sealed partial class DnaEditorWindow : Window
 
     private async void Save_Click(object? sender, RoutedEventArgs e)
     {
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Export Darwinbots robot DNA",
-            SuggestedFileName = $"bot-{_organism.Slot}-{_organism.Generation}.txt",
-            FileTypeChoices = [new FilePickerFileType("Darwinbots robot") { Patterns = ["*.txt"] }],
-        });
-        if (file is null) return;
-        await using var stream = await file.OpenWriteAsync();
-        stream.SetLength(0);
-        await using var writer = new StreamWriter(stream);
-        await writer.WriteAsync(Editor.Text ?? string.Empty);
-        Status.Text = "BOT EXPORTED";
+        if (await _storage.SaveDnaAsync(
+                this,
+                $"bot-{_organism.Slot}-{_organism.Generation}.txt",
+                Editor.Text ?? string.Empty))
+            Status.Text = "BOT EXPORTED";
     }
 }

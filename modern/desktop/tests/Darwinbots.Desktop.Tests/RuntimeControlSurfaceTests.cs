@@ -17,7 +17,7 @@ public sealed class RuntimeControlSurfaceTests
     [Fact]
     public async Task TransportSpeedDisplayPlacementAndManualSelectionControlsChangeLiveUiState()
     {
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(App));
+        var headless = DesktopTestApplication.Session;
         await headless.Dispatch(() =>
         {
             var window = new MainWindow([], new WorldSetupOptions { TicksPerUpdate = 1 });
@@ -80,7 +80,7 @@ public sealed class RuntimeControlSurfaceTests
     {
         var engine = new RecordingEngineClient();
         await using var simulation = new SimulationSession(engine);
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(App));
+        var headless = DesktopTestApplication.Session;
         MainWindow? window = null;
 
         await headless.Dispatch(() =>
@@ -129,7 +129,7 @@ public sealed class RuntimeControlSurfaceTests
     {
         var engine = new RecordingEngineClient();
         await using var simulation = new SimulationSession(engine);
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(App));
+        var headless = DesktopTestApplication.Session;
 
         await headless.Dispatch(() =>
         {
@@ -147,7 +147,7 @@ public sealed class RuntimeControlSurfaceTests
     {
         var engine = new RecordingEngineClient();
         await using var simulation = new SimulationSession(engine);
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(App));
+        var headless = DesktopTestApplication.Session;
 
         await headless.Dispatch(() =>
         {
@@ -165,7 +165,7 @@ public sealed class RuntimeControlSurfaceTests
     {
         var engine = new RecordingEngineClient();
         await using var simulation = new SimulationSession(engine);
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(App));
+        var headless = DesktopTestApplication.Session;
 
         await headless.Dispatch(() =>
         {

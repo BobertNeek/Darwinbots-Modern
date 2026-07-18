@@ -39,6 +39,10 @@ jobs:
         run: cargo test --workspace
       - name: Test desktop core
         run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release
+      - name: Test rendered desktop controls
+        env:
+          DARWINBOTS_GUI_AUDIT_DIR: ${{ github.workspace }}/artifacts/gui-audit/${{ matrix.rid }}
+        run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release
       - name: Publish desktop package
         run: dotnet publish modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained false -o artifacts/${{ matrix.rid }}
       - uses: actions/upload-artifact@v4
