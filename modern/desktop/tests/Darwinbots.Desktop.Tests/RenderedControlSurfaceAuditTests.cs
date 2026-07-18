@@ -84,7 +84,7 @@ public sealed class RenderedControlSurfaceAuditTests
             PickedSimulationPath = Path.Combine(Path.GetTempPath(), "audit-open.db3s"),
             LatestAutosave = Path.Combine(Path.GetTempPath(), "audit-autosave.db3s"),
         };
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(DesktopTestApplication));
+        var headless = DesktopTestApplication.Session;
         SetupWindow? window = null;
         var created = new List<WorldSetupOptions>();
 
@@ -203,7 +203,7 @@ public sealed class RenderedControlSurfaceAuditTests
     [Fact]
     public async Task AdvancedSettingsRenderedControlsRoundTripEveryField()
     {
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(DesktopTestApplication));
+        var headless = DesktopTestApplication.Session;
         await headless.Dispatch(() =>
         {
             var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default);
@@ -254,7 +254,7 @@ public sealed class RenderedControlSurfaceAuditTests
         var engine = new AuditEngineClient();
         await using var simulation = new SimulationSession(engine);
         var storage = new AuditStorageService();
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(DesktopTestApplication));
+        var headless = DesktopTestApplication.Session;
         await headless.Dispatch(async () =>
         {
             var window = new DnaEditorWindow(simulation, engine.Organism, storage);
@@ -296,7 +296,7 @@ public sealed class RenderedControlSurfaceAuditTests
             TicksPerUpdate = 1,
             Species = [new SpeciesImport("Audit Species", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
         };
-        using var headless = HeadlessUnitTestSession.StartNew(typeof(DesktopTestApplication));
+        var headless = DesktopTestApplication.Session;
         await headless.Dispatch(async () =>
         {
             var window = new MainWindow([], setup, factory, storage);
