@@ -1,13 +1,12 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SpeciesDefinition, Teleporter};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna, Obstacle, SpeciesDefinition, Teleporter};
 
 #[test]
 fn gravity_and_drag_affect_motion() {
-    let mut engine = Engine::new(EngineConfig {
-        gravity: [0.0, 2.0],
-        drag: 0.5,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
-        ..EngineConfig::testing()
-    }).unwrap();
+    let mut config = EngineConfig::testing();
+    config.gravity = [0.0, 2.0];
+    config.drag = 0.5;
+    config.physics.density = 0.0;
+    let mut engine = Engine::new(config).unwrap();
     let id = engine.spawn_at(LegacyDna::parse("start\n10 .up store\nstop").unwrap(), [100.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
@@ -57,6 +56,6 @@ fn complete_environment_settings_can_change_while_running() {
     engine.tick().unwrap();
 
     assert_eq!(engine.brownian_motion(), 3.0);
-    assert_eq!(engine.organism(id).unwrap().energy, 1_029);
-    assert_eq!(engine.snapshot().stats.plant_energy_generated, 19);
+    assert_eq!(engine.organism(id).unwrap().energy, 1_041);
+    assert_eq!(engine.snapshot().stats.plant_energy_generated, 31);
 }

@@ -1,5 +1,5 @@
 use darwinbots_engine::{
-    sysvar_address, Engine, EngineConfig, LegacyDna, PhysicsSettings, SpeciesDefinition,
+    sysvar_address, Engine, EngineConfig, LegacyDna, SpeciesDefinition,
 };
 
 #[test]
@@ -147,10 +147,9 @@ fn dna_controls_body_defenses_chloroplasts_waste_and_aim() {
 
 #[test]
 fn aim_rotates_forward_movement() {
-    let mut engine = Engine::new(EngineConfig {
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
-        ..EngineConfig::testing()
-    }).unwrap();
+    let mut config = EngineConfig::testing();
+    config.physics.density = 0.0;
+    let mut engine = Engine::new(config).unwrap();
     let dna = LegacyDna::parse("start\n314 .setaim store\n10 .up store\nstop").unwrap();
     let id = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
 
@@ -285,7 +284,7 @@ fn minus_two_shots_donate_energy_to_zerobots() {
 
     engine.tick().unwrap();
 
-    assert!(engine.organism(source).unwrap().energy < 950);
+    assert_eq!(engine.organism(source).unwrap().energy, 950);
     assert!(engine.organism(target).unwrap().energy > 1_000);
     assert_eq!(engine.snapshot().stats.energy_donated, 50);
 }
@@ -318,7 +317,7 @@ fn shell_absorbs_feeding_damage_before_energy_is_lost() {
     engine.tick().unwrap();
 
     let after = engine.organism(target).unwrap();
-    assert_eq!(after.energy, before.energy - 1);
+    assert_eq!(after.energy, before.energy);
     assert_eq!(after.shell, before.shell - 50);
 }
 

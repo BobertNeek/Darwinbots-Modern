@@ -29,13 +29,14 @@ fn negative_shot_damages_nearest_target_and_records_event() {
     let attacker = LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
     engine.spawn_at(attacker, [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(idle, [120.0, 100.0]).unwrap();
+    let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
     let before = engine.organism(target).unwrap().energy;
 
     engine.tick().unwrap();
 
     assert!(engine.organism(target).unwrap().energy < before);
     assert_eq!(engine.snapshot().stats.shots_fired, 1);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
 }
 
 #[test]
