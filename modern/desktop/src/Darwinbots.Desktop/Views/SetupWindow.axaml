@@ -4,7 +4,7 @@
         x:CompileBindings="False"
         Title="Darwinbots Modern — New World"
         Width="1280" Height="820" MinWidth="1080" MinHeight="720"
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized"
         KeyDown="SetupWindow_KeyDown">
   <Grid RowDefinitions="64,*,34" ColumnDefinitions="210,*,290">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
@@ -38,7 +38,7 @@
       </StackPanel>
     </Border>
 
-    <ScrollViewer Grid.Row="1" Grid.Column="1">
+    <ScrollViewer Grid.Row="1" Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="36,28" Spacing="18">
         <TextBlock Classes="section" Text="STARTING MODE" FontSize="15"/>
         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">

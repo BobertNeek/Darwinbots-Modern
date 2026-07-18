@@ -29,7 +29,7 @@ fn movement_command_adds_impulse_and_bot_coasts_without_new_thrust() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         drag: 0.0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings { surface_gravity: 0.0, density: 0.0, ..PhysicsSettings::default() },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -51,7 +51,7 @@ fn voluntary_acceleration_is_clamped_before_efficiency_multiplier() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         drag: 0.0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings { surface_gravity: 0.0, density: 0.0, ..PhysicsSettings::default() },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -81,7 +81,7 @@ fn drag_reduces_retained_momentum_instead_of_replacing_it() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         drag: 0.25,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings { surface_gravity: 0.0, density: 0.0, ..PhysicsSettings::default() },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -128,4 +128,58 @@ fn elasticity_rebounds_colliding_bots_with_finite_velocity() {
     assert!(organisms.iter().flat_map(|bot| bot.velocity).all(f32::is_finite));
     assert!(organisms[0].velocity[0] < 0.0);
     assert!(organisms[1].velocity[0] > 0.0);
+}
+
+#[test]
+fn static_friction_blocks_impulses_below_the_breakaway_threshold() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        drag: 0.0,
+        physics: PhysicsSettings {
+            max_velocity: 180.0,
+            movement_efficiency: 1.0,
+            surface_gravity: 2.0,
+            static_friction: 0.6,
+            kinetic_friction: 0.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let id = engine
+        .spawn_at(
+            LegacyDna::parse("cond\n*.robage 1 <\nstart\n1 .up store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.organism(id).unwrap().velocity, [0.0, 0.0]);
+}
+
+#[test]
+fn maximum_velocity_caps_total_velocity_after_environment_impulses() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        gravity: [0.0, 100.0],
+        drag: 0.0,
+        physics: PhysicsSettings {
+            max_velocity: 10.0,
+            movement_efficiency: 1.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let id = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let velocity = engine.organism(id).unwrap().velocity;
+    assert!(velocity[0].hypot(velocity[1]) <= 10.001, "velocity: {velocity:?}");
 }

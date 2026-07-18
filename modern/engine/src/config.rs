@@ -17,11 +17,11 @@ pub struct PhysicsSettings {
 impl Default for PhysicsSettings {
     fn default() -> Self {
         Self {
-            max_velocity: 60.0,
+            max_velocity: 180.0,
             movement_efficiency: 0.66,
-            surface_gravity: 0.0,
-            static_friction: 0.0,
-            kinetic_friction: 0.0,
+            surface_gravity: 2.0,
+            static_friction: 0.6,
+            kinetic_friction: 0.4,
             density: 0.0,
             viscosity: 0.0,
             elasticity: 0.0,
@@ -69,11 +69,11 @@ impl Default for VegetationSettings {
     fn default() -> Self {
         Self {
             start_chloroplasts: 16_000,
-            max_energy_per_tick: 100,
-            minimum_chloroplast_equivalents: 50,
+            max_energy_per_tick: 40,
+            minimum_chloroplast_equivalents: 10,
             repopulation_amount: 10,
-            repopulation_cooldown: 10,
-            feeding_to_body: 0.75,
+            repopulation_cooldown: 25,
+            feeding_to_body: 0.5,
             daytime: true,
             day_night_enabled: false,
             cycle_length: 10_000,
@@ -137,7 +137,7 @@ impl Default for EngineConfig {
             sunlight_energy: default_sunlight_energy(),
             gravity: [0.0, 0.0],
             drag: 0.0,
-            brownian_motion: 0.5,
+            brownian_motion: 0.0,
             physics: PhysicsSettings::default(),
             shots: ShotSettings::default(),
             vegetation: VegetationSettings::default(),
@@ -164,6 +164,12 @@ impl EngineConfig {
             world_height: 1_000.0,
             backend: BackendPreference::Cpu,
             brownian_motion: 0.0,
+            physics: PhysicsSettings {
+                surface_gravity: 0.0,
+                static_friction: 0.0,
+                kinetic_friction: 0.0,
+                ..PhysicsSettings::default()
+            },
             ..Self::default()
         }
     }

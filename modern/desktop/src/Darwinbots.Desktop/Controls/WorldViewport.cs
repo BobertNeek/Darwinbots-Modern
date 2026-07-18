@@ -19,6 +19,8 @@ public sealed class WorldViewport : Control
     private uint? _followSlot;
     private uint? _dragSlot;
     private float[]? _dragPosition;
+    private Point? _dragOrigin;
+    private bool _dragMoved;
     private bool _renderWaste = true;
     private bool _showSelectedVision = true;
     private bool _toroidalWorld = true;
@@ -306,6 +308,8 @@ public sealed class WorldViewport : Control
         OrganismSelected?.Invoke(selected.Value);
         _dragSlot = selected;
         _dragPosition = WorldPoint(point.Position);
+        _dragOrigin = point.Position;
+        _dragMoved = false;
         e.Pointer.Capture(this);
         e.Handled = true;
     }
@@ -315,7 +319,11 @@ public sealed class WorldViewport : Control
         base.OnPointerMoved(e);
         if (_dragSlot is not null)
         {
-            _dragPosition = WorldPoint(e.GetPosition(this));
+            var pointer = e.GetPosition(this);
+            if (_dragOrigin is { } origin && DesktopControlRules.IsDragGesture(pointer.X - origin.X, pointer.Y - origin.Y))
+                _dragMoved = true;
+            if (!_dragMoved) return;
+            _dragPosition = WorldPoint(pointer);
             InvalidateVisual();
             e.Handled = true;
             return;
@@ -331,10 +339,12 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerReleased(e);
         _panAnchor = null;
-        if (_dragSlot is { } slot && _dragPosition is { } position)
+        if (_dragMoved && _dragSlot is { } slot && _dragPosition is { } position)
             OrganismDragCompleted?.Invoke(slot, position);
         _dragSlot = null;
         _dragPosition = null;
+        _dragOrigin = null;
+        _dragMoved = false;
         e.Pointer.Capture(null);
     }
 

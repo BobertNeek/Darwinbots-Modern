@@ -40,6 +40,11 @@ pub(crate) fn apply_surface_friction(
     if speed <= f32::EPSILON {
         return;
     }
+    let static_limit = mass * settings.surface_gravity * settings.static_friction;
+    if speed <= static_limit {
+        *velocity = [0.0; 2];
+        return;
+    }
     let impulse = (mass * settings.surface_gravity * settings.kinetic_friction).min(speed);
     velocity[0] -= velocity[0] / speed * impulse;
     velocity[1] -= velocity[1] / speed * impulse;
@@ -79,6 +84,12 @@ pub(crate) fn apply_resistance(
     apply_surface_friction(velocity, mass, settings);
     apply_fluid_drag(velocity, radius, settings);
     apply_linear_drag(velocity, linear_drag);
+    let speed = velocity[0].hypot(velocity[1]);
+    let maximum = settings.max_velocity.max(0.0);
+    if speed > maximum && speed > f32::EPSILON {
+        velocity[0] = velocity[0] / speed * maximum;
+        velocity[1] = velocity[1] / speed * maximum;
+    }
 }
 
 pub(crate) fn integrate_body(

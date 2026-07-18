@@ -12,7 +12,7 @@ public sealed record Db2PhysicsOptions(
     double Viscosity,
     float Elasticity)
 {
-    public static Db2PhysicsOptions Default { get; } = new(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f);
+    public static Db2PhysicsOptions Default { get; } = new(180f, 0.66f, 2f, 0.6f, 0.4f, 0d, 0d, 0f);
 }
 
 public sealed record Db2ShotOptions(
@@ -36,7 +36,7 @@ public sealed record Db2VegetationOptions(
     bool DayNightEnabled,
     ulong CycleLength)
 {
-    public static Db2VegetationOptions Default { get; } = new(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000);
+    public static Db2VegetationOptions Default { get; } = new(16_000, 40, 10, 10, 25, 0.5f, true, false, 10_000);
 }
 
 public sealed record EnvironmentUpdate(
@@ -54,7 +54,7 @@ public sealed record EnvironmentUpdate(
     bool ToroidalWorld = true)
 {
     public static EnvironmentUpdate Default { get; } = new(
-        0, 0, 100, [0f, 0f], 0f, 0.5f,
+        0, 0, 100, [0f, 0f], 0f, 0f,
         Db2PhysicsOptions.Default,
         Db2ShotOptions.Default,
         Db2VegetationOptions.Default,

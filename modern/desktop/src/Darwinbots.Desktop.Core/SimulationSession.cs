@@ -63,6 +63,18 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no clone ID.");
     }
 
+    public async Task<OrganismKey> CloneWithDnaAsync(
+        uint slot,
+        uint generation,
+        float[] position,
+        string dna,
+        CancellationToken cancellationToken = default)
+    {
+        var clone = await CloneAsync(slot, generation, position, cancellationToken).ConfigureAwait(false);
+        await ReplaceDnaAsync(clone.Slot, clone.Generation, dna, cancellationToken).ConfigureAwait(false);
+        return clone;
+    }
+
     public Task ReplaceDnaAsync(uint slot, uint generation, string dna, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.ReplaceDna(slot, generation, dna), cancellationToken);
 

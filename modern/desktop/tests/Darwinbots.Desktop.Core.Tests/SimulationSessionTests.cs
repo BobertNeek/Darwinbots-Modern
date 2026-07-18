@@ -124,6 +124,19 @@ public sealed class SimulationSessionTests
     }
 
     [Fact]
+    public async Task CloneWithDnaAppliesEditsToTheChildWithoutReplacingTheSource()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        await session.ImportDnaAsync("start\nstop");
+
+        var clone = await session.CloneWithDnaAsync(0, 0, [24f, 24f], "start\n10 .up store\nstop");
+
+        Assert.Equal(new OrganismKey(1, 0), clone);
+        Assert.Equal((1U, 0U, "start\n10 .up store\nstop"), engine.LastDnaReplacement);
+    }
+
+    [Fact]
     public async Task BackendSwitchRunsAtTheSerializedCommandBoundary()
     {
         var engine = new FakeEngineClient();
@@ -222,6 +235,7 @@ internal sealed class FakeEngineClient : IEngineClient
     public uint? LastTeleporterRemoved { get; private set; }
     public float? LastBrownianMotion { get; private set; }
     public EnvironmentUpdate? LastEnvironmentUpdate { get; private set; }
+    public (uint Slot, uint Generation, string Dna)? LastDnaReplacement { get; private set; }
     private string _dna = "start\nstop";
     public HashSet<int> ExecutionThreads { get; } = [];
 
@@ -275,7 +289,11 @@ internal sealed class FakeEngineClient : IEngineClient
         return new OrganismKey((uint)(_population - 1), 0);
     }
 
-    public void ReplaceDna(uint slot, uint generation, string dna) => _dna = dna;
+    public void ReplaceDna(uint slot, uint generation, string dna)
+    {
+        _dna = dna;
+        LastDnaReplacement = (slot, generation, dna);
+    }
 
     public string ExportDna(uint slot, uint generation) => _dna;
 

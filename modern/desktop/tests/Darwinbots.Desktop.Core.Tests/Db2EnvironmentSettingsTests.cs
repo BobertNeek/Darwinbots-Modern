@@ -36,7 +36,7 @@ public sealed class Db2EnvironmentSettingsTests
     {
         var json = NativeCommandSerializer.SerializeEnvironment(EnvironmentUpdate.Default);
 
-        Assert.Contains("\"max_velocity\":60", json);
+        Assert.Contains("\"max_velocity\":180", json);
         Assert.Contains("\"movement_efficiency\":0.66", json);
         Assert.Contains("\"speed\":40", json);
         Assert.Contains("\"start_chloroplasts\":16000", json);
@@ -62,10 +62,10 @@ public sealed class Db2EnvironmentSettingsTests
     {
         var update = EnvironmentUpdate.Default;
 
-        Assert.Equal(0.5f, update.BrownianMotion);
-        Assert.Equal(new Db2PhysicsOptions(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f), update.Physics);
+        Assert.Equal(0f, update.BrownianMotion);
+        Assert.Equal(new Db2PhysicsOptions(180f, 0.66f, 2f, 0.6f, 0.4f, 0d, 0d, 0f), update.Physics);
         Assert.Equal(new Db2ShotOptions(40f, 1f, 40f, false, false), update.Shots);
-        Assert.Equal(new Db2VegetationOptions(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000), update.Vegetation);
+        Assert.Equal(new Db2VegetationOptions(16_000, 40, 10, 10, 25, 0.5f, true, false, 10_000), update.Vegetation);
         Assert.False(update.AutoSpeciation);
         Assert.Equal(20f, update.SpeciationGeneticDistancePercent);
 

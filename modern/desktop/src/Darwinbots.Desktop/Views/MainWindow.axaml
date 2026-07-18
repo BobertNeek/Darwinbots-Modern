@@ -131,9 +131,10 @@
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Shell / Slime"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{Binding SelectedShell}"/><TextBlock Text="/"/><TextBlock Text="{Binding SelectedSlime}"/></StackPanel></Grid>
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Poison / Venom"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{Binding SelectedPoison}"/><TextBlock Text="/"/><TextBlock Text="{Binding SelectedVenom}"/></StackPanel></Grid>
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Aim"/><TextBlock Grid.Column="1" Text="{Binding SelectedAim}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Velocity"/><TextBlock Grid.Column="1" Text="{Binding SelectedVelocity}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Parents"/><TextBlock Grid.Column="1" Text="{Binding SelectedParents}" FontWeight="SemiBold"/></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Activity"/><TextBlock Grid.Column="1" Text="{Binding SelectedActivity}" Foreground="#2D826F" FontWeight="SemiBold"/></Grid>
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Paralyzed / Poisoned"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{Binding SelectedParalyzed}"/><TextBlock Text="/"/><TextBlock Text="{Binding SelectedPoisoned}"/></StackPanel></Grid>
-              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Action"/><TextBlock Grid.Column="1" Text="Observing" FontWeight="SemiBold"/></Grid>
-              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Senses"/><TextBlock Grid.Column="1" Text="Online" Foreground="#2D826F" FontWeight="SemiBold"/></Grid>
               <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="6" RowSpacing="6" Margin="0,10,0,0">
                 <Button Content="MOVE" Click="Move_Click"/><Button Grid.Column="1" Content="CLONE" Click="Clone_Click"/>
                 <Button Grid.Row="1" Content="REPRODUCE" Click="Reproduce_Click"/><Button Grid.Row="1" Grid.Column="1" Content="KILL" Background="#A84A3A" Foreground="White" Click="Kill_Click"/>

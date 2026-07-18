@@ -36,6 +36,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int _selectedAim;
     private int _selectedParalyzed;
     private int _selectedPoisoned;
+    private string _selectedVelocity = "0.0, 0.0";
+    private string _selectedParents = "NONE / NONE";
+    private string _selectedActivity = "NONE";
     private double _ticksPerSecond;
     private double _snapshotsPerSecond;
     private string _limitingPhase = "WAITING";
@@ -68,6 +71,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int SelectedAim { get => _selectedAim; private set => Set(ref _selectedAim, value); }
     public int SelectedParalyzed { get => _selectedParalyzed; private set => Set(ref _selectedParalyzed, value); }
     public int SelectedPoisoned { get => _selectedPoisoned; private set => Set(ref _selectedPoisoned, value); }
+    public string SelectedVelocity { get => _selectedVelocity; private set => Set(ref _selectedVelocity, value); }
+    public string SelectedParents { get => _selectedParents; private set => Set(ref _selectedParents, value); }
+    public string SelectedActivity { get => _selectedActivity; private set => Set(ref _selectedActivity, value); }
     public double TicksPerSecond { get => _ticksPerSecond; private set => Set(ref _ticksPerSecond, value); }
     public double SnapshotsPerSecond { get => _snapshotsPerSecond; private set => Set(ref _snapshotsPerSecond, value); }
     public string LimitingPhase { get => _limitingPhase; private set => Set(ref _limitingPhase, value); }
@@ -97,7 +103,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Tick = snapshot.Tick;
         Population = snapshot.Population;
         Backend = snapshot.Backend;
-        Status = $"READY · {snapshot.Backend} BACKEND";
         if (_selectedSlot is null || snapshot.Organisms.All(organism => organism.Slot != _selectedSlot))
             _selectedSlot = SelectDefaultOrganism(snapshot);
         SpeciesCount = Math.Max(0, snapshot.Species.Count - 1);
@@ -152,6 +157,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedAim = selected?.Aim ?? 0;
         SelectedParalyzed = selected?.Paralyzed ?? 0;
         SelectedPoisoned = selected?.Poisoned ?? 0;
+        var velocityX = selected?.Velocity.ElementAtOrDefault(0) ?? 0f;
+        var velocityY = selected?.Velocity.ElementAtOrDefault(1) ?? 0f;
+        SelectedVelocity = $"{velocityX:0.0}, {velocityY:0.0}";
+        SelectedParents = selected?.Parents is { Length: > 0 } parents
+            ? string.Join(" / ", parents.Take(2).Select(parent => parent is { } value ? $"{value.Slot}:{value.Generation}" : "NONE"))
+            : "NONE / NONE";
+        SelectedActivity = selected is null
+            ? "NONE"
+            : selected.Paralyzed > 0
+                ? "PARALYZED"
+                : velocityX * velocityX + velocityY * velocityY > 0.0025f
+                    ? "MOVING"
+                    : "IDLE";
     }
 
     private static uint? SelectDefaultOrganism(EngineSnapshot snapshot)
