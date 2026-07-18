@@ -1,5 +1,7 @@
 # Rendered GUI and DB2 Control-Parity Audit
 
+Last verified: 2026-07-18, merged in [PR #3](https://github.com/BobertNeek/Darwinbots-Modern/pull/3)
+
 ## Outcome
 
 The current Darwinbots Modern desktop surface contains 109 interactive controls. Every control has a stable audit ID, a mapped handler or binding, a DB2/VB6 intent classification, and a passing rendered interaction result.
@@ -19,6 +21,8 @@ The machine-readable inventory is `docs/parity/control-surface-matrix.json`. The
 Control intent was compared with the original VB6 handlers in `Darwinbots2/MDIForm1.frm` and `Darwinbots2/OptionsForm.frm`. The comparison covers setup, simulation transport, robot commands, world-feature tools, settings, DNA inspection, DNA export, and new-species workflows.
 
 The exact DB2 2.48.32 GUI could not be executed in the Linux cloud runner because its 32-bit Wine environment remained unavailable. This report therefore claims source-intent parity and rendered modern behavior, not pixel parity or exhaustive runtime comparison with the VB6 executable.
+
+This audit inventories controls that exist in Darwinbots Modern. It does not claim that every historical DB2 window, menu item, or auxiliary tool has already been recreated.
 
 ## Rendered interaction coverage
 

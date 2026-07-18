@@ -1,7 +1,9 @@
 # Live Controls, Toroidal World, and Ecology Design
 
 Date: 2026-07-14
-Status: Approved
+Status: Implemented; retained as historical design rationale
+
+> Current behavior and verification are recorded in `modern/docs/verification.md`. This document preserves the approved design intent and is not a current task list.
 
 The running simulation rail becomes a functional control surface without redesigning the setup wizard. It exposes live world, environment, physics, sensing, energy, history, statistics, and experiment controls while preserving the DB2-style layout.
 

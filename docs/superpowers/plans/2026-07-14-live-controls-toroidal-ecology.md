@@ -1,5 +1,7 @@
 # Live Controls, Toroidal World, and Ecology Implementation Plan
 
+> **Status: Completed and archived.** This file preserves the original implementation sequence. Use `modern/docs/verification.md` and `docs/parity/gui-parity-report.md` for current evidence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans.
 
 **Goal:** Make the live simulation rail functional, add toroidal movement and bot dragging, repair mutation configuration, and restore viable DNA-driven ecology.

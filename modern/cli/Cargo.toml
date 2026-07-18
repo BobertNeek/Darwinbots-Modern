@@ -1,9 +1,11 @@
 [package]
 name = "darwinbots-cli"
 version = "0.1.0"
+description = "Headless command-line runner for Darwinbots Modern simulations"
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 rust-version.workspace = true
+repository.workspace = true
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
