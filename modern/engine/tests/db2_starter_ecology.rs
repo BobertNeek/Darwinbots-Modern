@@ -5,7 +5,7 @@ const ANIMAL_MINIMALIS: &str = include_str!("../../../Installer/bots/Animal_Mini
 
 #[test]
 fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
-    let mut engine = Engine::new(EngineConfig {
+    let config = EngineConfig {
         organism_capacity: 25_000,
         vegetable_population_cap: 500,
         world_width: 16_000.0,
@@ -13,7 +13,9 @@ fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
         metabolism_cost: 1,
         vegetable_energy_per_tick: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    };
+    let maximum_shot_segment = config.physics.max_velocity + config.shots.speed + 0.01;
+    let mut engine = Engine::new(config).unwrap();
     let alga = engine.register_species(SpeciesDefinition {
         name: "Alga Minimalis".to_owned(),
         vegetable: true,
@@ -52,7 +54,9 @@ fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
     assert!(!animals.is_empty());
     assert!(moving > animals.len() / 20);
     assert!(animals.iter().any(|organism| organism.parents[0].is_some()));
-    assert!(snapshot.shots.iter().all(|shot| segment_length(shot.start, shot.end) <= 200.0));
+    assert!(snapshot.shots.iter().all(|shot| {
+        segment_length(shot.start, shot.end) <= maximum_shot_segment
+    }));
     assert!(snapshot.shots.len() < snapshot.stats.shots_fired as usize);
     assert!(engine.vegetable_population() <= 500);
     assert!(snapshot.stats.projectile_impacts > 0);
