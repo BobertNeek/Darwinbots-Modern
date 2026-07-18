@@ -214,3 +214,39 @@ fn repopulation_waits_for_cooldown_and_spawns_configured_batch() {
     engine.tick().unwrap();
     assert_eq!(engine.vegetable_population(), 2);
 }
+
+#[test]
+fn sunlight_intensity_scales_non_pond_photosynthesis() {
+    fn energy_after_one_tick(sunlight_energy: i32) -> i32 {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 0,
+            sunlight_energy,
+            vegetation: VegetationSettings {
+                max_energy_per_tick: 40,
+                feeding_to_body: 0.0,
+                ..VegetationSettings::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let vegetables = engine.register_species(SpeciesDefinition {
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let plant = engine
+            .spawn_species_at(
+                LegacyDna::parse("start\nstop").unwrap(),
+                vegetables,
+                [500.0, 500.0],
+            )
+            .unwrap();
+        engine.tick().unwrap();
+        engine.organism(plant).unwrap().energy
+    }
+
+    let darkness = energy_after_one_tick(0);
+    let full_light = energy_after_one_tick(100);
+
+    assert_eq!(darkness, 1_000);
+    assert!(full_light > darkness);
+}

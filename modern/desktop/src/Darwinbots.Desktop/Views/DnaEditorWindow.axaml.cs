@@ -40,9 +40,12 @@ public sealed partial class DnaEditorWindow : Window
     {
         try
         {
-            await _session.ReplaceDnaAsync(_organism.Slot, _organism.Generation, Editor.Text ?? string.Empty);
-            await _session.CloneAsync(_organism.Slot, _organism.Generation, [_organism.Position[0] + 24f, _organism.Position[1] + 24f]);
-            Status.Text = "DNA APPLIED AND CLONED";
+            await _session.CloneWithDnaAsync(
+                _organism.Slot,
+                _organism.Generation,
+                [_organism.Position[0] + 24f, _organism.Position[1] + 24f],
+                Editor.Text ?? string.Empty);
+            Status.Text = "EDITED DNA APPLIED TO CLONE";
         }
         catch (Exception error) { Status.Text = error.Message; }
     }

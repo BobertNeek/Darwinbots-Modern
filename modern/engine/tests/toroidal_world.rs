@@ -56,3 +56,20 @@ fn projectile_wrap_preserves_its_travel_segment() {
     assert!((0.0..100.0).contains(&shot.end[0]));
     assert!((segment_length - velocity_length).abs() < 0.01);
 }
+
+#[test]
+fn shot_inherits_shortest_toroidal_firer_displacement() {
+    let mut engine = Engine::new(toroidal_test_config()).unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n10 .dx store\n-1 .shoot store\nstop").unwrap(),
+            [99.0, 50.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let shot = &engine.snapshot().shots[0];
+    assert!(shot.velocity[0] > 0.0, "wrapped firer velocity was inverted: {shot:?}");
+    assert!(shot.velocity[0] < 100.0, "wrapped firer inherited a world-sized jump: {shot:?}");
+}

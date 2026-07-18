@@ -47,3 +47,35 @@ fn slime_is_consumed_to_resist_new_ties() {
     assert!(engine.snapshot().ties.is_empty());
     assert!(engine.organism(target).unwrap().slime < 50);
 }
+
+#[test]
+fn dragging_one_member_moves_the_tied_organism_and_clears_momentum() {
+    let mut engine = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n1 .tie store\n25 .up store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0])
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    let source_before = engine.organism(source).unwrap();
+    let target_before = engine.organism(target).unwrap();
+    let destination = [400.0, 450.0];
+
+    engine.move_organism(source, destination).unwrap();
+
+    let source_after = engine.organism(source).unwrap();
+    let target_after = engine.organism(target).unwrap();
+    let delta = [destination[0] - source_before.position[0], destination[1] - source_before.position[1]];
+    assert_eq!(source_after.position, destination);
+    assert_eq!(
+        target_after.position,
+        [target_before.position[0] + delta[0], target_before.position[1] + delta[1]],
+    );
+    assert_eq!(source_after.velocity, [0.0, 0.0]);
+    assert_eq!(target_after.velocity, [0.0, 0.0]);
+}

@@ -118,6 +118,7 @@ fn engine_uses_vm_flow_semantics_for_movement_intents() {
     let mut engine = Engine::new(EngineConfig {
         physics: darwinbots_engine::PhysicsSettings {
             density: 0.0,
+            surface_gravity: 0.0,
             ..darwinbots_engine::PhysicsSettings::default()
         },
         ..EngineConfig::testing()
@@ -176,12 +177,12 @@ fn db2_defaults_are_exposed_by_engine_config() {
     let config = EngineConfig::default();
     assert_eq!(config.world_width, 16_000.0);
     assert_eq!(config.world_height, 12_000.0);
-    assert_eq!(config.brownian_motion, 0.5);
-    assert_eq!(config.physics.max_velocity, 60.0);
+    assert_eq!(config.brownian_motion, 0.0);
+    assert_eq!(config.physics.max_velocity, 180.0);
     assert_eq!(config.physics.movement_efficiency, 0.66);
-    assert_eq!(config.physics.surface_gravity, 0.0);
-    assert_eq!(config.physics.static_friction, 0.0);
-    assert_eq!(config.physics.kinetic_friction, 0.0);
+    assert_eq!(config.physics.surface_gravity, 2.0);
+    assert_eq!(config.physics.static_friction, 0.6);
+    assert_eq!(config.physics.kinetic_friction, 0.4);
     assert_eq!(config.physics.density, 0.0);
     assert_eq!(config.physics.viscosity, 0.0);
     assert_eq!(config.physics.elasticity, 0.0);
@@ -191,11 +192,11 @@ fn db2_defaults_are_exposed_by_engine_config() {
     assert!(!config.shots.energy_shots_do_not_decay);
     assert!(!config.shots.waste_shots_do_not_decay);
     assert_eq!(config.vegetation.start_chloroplasts, 16_000);
-    assert_eq!(config.vegetation.max_energy_per_tick, 100);
-    assert_eq!(config.vegetation.minimum_chloroplast_equivalents, 50);
+    assert_eq!(config.vegetation.max_energy_per_tick, 40);
+    assert_eq!(config.vegetation.minimum_chloroplast_equivalents, 10);
     assert_eq!(config.vegetation.repopulation_amount, 10);
-    assert_eq!(config.vegetation.repopulation_cooldown, 10);
-    assert_eq!(config.vegetation.feeding_to_body, 0.75);
+    assert_eq!(config.vegetation.repopulation_cooldown, 25);
+    assert_eq!(config.vegetation.feeding_to_body, 0.5);
     assert!(config.vegetation.daytime);
     assert!(!config.vegetation.day_night_enabled);
 }

@@ -70,4 +70,46 @@ public sealed class MainWindowViewModelTests
 
         Assert.Equal(2U, viewModel.SelectedSlot);
     }
+
+    [Fact]
+    public void SnapshotUpdatesDoNotEraseTheLastOperationStatus()
+    {
+        var viewModel = new MainWindowViewModel
+        {
+            Status = "BOT MOVED",
+        };
+
+        viewModel.Update(new EngineSnapshot(1, 0, "CPU", []));
+
+        Assert.Equal("BOT MOVED", viewModel.Status);
+    }
+
+    [Fact]
+    public void InspectorReportsPublishedMotionParentageAndActivityInsteadOfStaticLabels()
+    {
+        var organism = new OrganismSnapshot(
+            9,
+            2,
+            [100f, 200f],
+            [3f, 4f],
+            500,
+            12,
+            Species: 1,
+            Parents: [new OrganismKey(4, 1), null]);
+        var snapshot = new EngineSnapshot(12, 1, "CPU", [organism])
+        {
+            Species =
+            [
+                new SpeciesSnapshot("Unassigned", false, 0xff858982, 0, false),
+                new SpeciesSnapshot("Animal Minimalis", false, 0xff239ac0, 0, false),
+            ],
+        };
+        var viewModel = new MainWindowViewModel();
+
+        viewModel.Update(snapshot);
+
+        Assert.Equal("3.0, 4.0", viewModel.SelectedVelocity);
+        Assert.Equal("4:1 / NONE", viewModel.SelectedParents);
+        Assert.Equal("MOVING", viewModel.SelectedActivity);
+    }
 }

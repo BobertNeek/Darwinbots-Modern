@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.ViewModels;
+using System.Diagnostics;
 
 namespace Darwinbots.Desktop.Views;
 
@@ -61,7 +62,6 @@ public sealed partial class MainWindow : Window
     private readonly WorldSetupOptions _setup;
     private bool _tickInFlight;
     private OrganismKey? _moveOrganism;
-    private OrganismKey? _firstParent;
     private bool _turbo;
     private EnvironmentPlacement _environmentPlacement;
     private float[]? _placementOrigin;
@@ -70,7 +70,10 @@ public sealed partial class MainWindow : Window
     private bool _progressionInFlight;
     private const string EnergyOnlyFeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
     private uint _ticksPerUpdate;
+    private uint _maximumBatch = 100;
+    private bool _maximumSpeed;
     private bool _following;
+    private bool _controlsReady;
     private EnvironmentUpdate _liveEnvironment;
 
     public MainWindow() : this([], new WorldSetupOptions()) { }
@@ -94,6 +97,7 @@ public sealed partial class MainWindow : Window
         WorldParametersText.Text = $"{setup.WorldWidth:N0} × {setup.WorldHeight:N0}\nCapacity {setup.PopulationCapacity:N0}\nVegetables {setup.VegetablePopulationCap:N0}";
         Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
         RuntimeSpeed.SelectedIndex = _ticksPerUpdate switch { <= 1 => 0, <= 5 => 1, <= 20 => 2, _ => 3 };
+        _maximumSpeed = DesktopControlRules.IsMaximumSpeed(RuntimeSpeed.SelectedIndex);
         Viewport.OrganismSelected += slot =>
         {
             _viewModel.Select(slot);
@@ -151,12 +155,13 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = $"ORGANISM {organism.Slot}:{organism.Generation} MOVED";
         };
         DataContext = _viewModel;
-        _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_maximumSpeed ? 1 : 16) };
         _runTimer.Tick += RunTimer_Tick;
         _autosaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _autosaveTimer.Tick += AutosaveTimer_Tick;
         Opened += Window_Opened;
         Closed += Window_Closed;
+        _controlsReady = true;
     }
 
     private async void Window_Opened(object? sender, EventArgs e)
@@ -239,17 +244,13 @@ public sealed partial class MainWindow : Window
     private async void Reproduce_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _viewModel.SelectedOrganism is not { } organism) return;
-        var current = new OrganismKey(organism.Slot, organism.Generation);
-        if (_firstParent is null)
-        {
-            _firstParent = current;
-            _viewModel.Status = "FIRST PARENT SET · SELECT SECOND PARENT";
-            return;
-        }
-        var first = _firstParent.Value;
-        _firstParent = null;
-        await _session.ReproduceAsync(first.Slot, first.Generation, current.Slot, current.Generation, [organism.Position[0] + 20f, organism.Position[1] + 20f]);
-        _viewModel.Status = "MANUAL REPRODUCTION COMPLETE";
+        await _session.ReproduceAsync(
+            organism.Slot,
+            organism.Generation,
+            null,
+            null,
+            [organism.Position[0] + 20f, organism.Position[1] + 20f]);
+        _viewModel.Status = "MANUAL REPRODUCTION COMPLETE · 50% SPLIT";
     }
 
     private async void EditDna_Click(object? sender, RoutedEventArgs e)
@@ -280,9 +281,12 @@ public sealed partial class MainWindow : Window
 
     private void Speed_Changed(object? sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded) return;
-        _ticksPerUpdate = RuntimeSpeed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u };
-        _viewModel.Status = $"THROTTLE · {(_ticksPerUpdate == 100 ? "MAX" : $"{_ticksPerUpdate} TICKS/FRAME")}";
+        if (!_controlsReady) return;
+        _ticksPerUpdate = DesktopControlRules.TicksForSelection(RuntimeSpeed.SelectedIndex);
+        _maximumSpeed = DesktopControlRules.IsMaximumSpeed(RuntimeSpeed.SelectedIndex);
+        if (_maximumSpeed) _maximumBatch = _ticksPerUpdate;
+        _runTimer.Interval = TimeSpan.FromMilliseconds(_turbo || _maximumSpeed ? 1 : 16);
+        _viewModel.Status = _maximumSpeed ? "THROTTLE · MAXIMUM" : $"THROTTLE · {_ticksPerUpdate} TICKS/FRAME";
     }
 
     private void Follow_Click(object? sender, RoutedEventArgs e)
@@ -296,7 +300,7 @@ public sealed partial class MainWindow : Window
     private void Turbo_Click(object? sender, RoutedEventArgs e)
     {
         _turbo = !_turbo;
-        _runTimer.Interval = TimeSpan.FromMilliseconds(_turbo ? 1 : 16);
+        _runTimer.Interval = TimeSpan.FromMilliseconds(_turbo || _maximumSpeed ? 1 : 16);
         Viewport.IsVisible = !_turbo;
         TurboButton.Content = _turbo ? "SHOW WORLD" : "TURBO";
         _viewModel.Status = _turbo ? "TURBO · RENDERING SUSPENDED" : "VIEWPORT RESTORED";
@@ -366,7 +370,7 @@ public sealed partial class MainWindow : Window
 
     private async void ToroidalWorld_Changed(object? sender, RoutedEventArgs e)
     {
-        if (!IsLoaded || _session is null) return;
+        if (!_controlsReady || _session is null) return;
         var update = _liveEnvironment with { ToroidalWorld = ToroidalWorldToggle.IsChecked == true };
         await _session.UpdateEnvironmentAsync(update);
         _liveEnvironment = update;
@@ -376,14 +380,14 @@ public sealed partial class MainWindow : Window
 
     private void RenderWaste_Changed(object? sender, RoutedEventArgs e)
     {
-        if (!IsLoaded) return;
+        if (!_controlsReady) return;
         Viewport.RenderWaste = RenderWasteToggle.IsChecked == true;
         _viewModel.Status = Viewport.RenderWaste ? "WASTE RENDERING ON" : "WASTE RENDERING OFF";
     }
 
     private void ShowVision_Changed(object? sender, RoutedEventArgs e)
     {
-        if (!IsLoaded) return;
+        if (!_controlsReady) return;
         Viewport.ShowSelectedVision = ShowVisionToggle.IsChecked == true;
     }
 
@@ -508,7 +512,15 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null || _tickInFlight) return;
         _tickInFlight = true;
-        try { await _session.StepAsync(_turbo ? 1_000u : _ticksPerUpdate); }
+        var adaptive = _turbo || _maximumSpeed;
+        var batch = adaptive ? _maximumBatch : _ticksPerUpdate;
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            await _session.StepAsync(batch);
+            if (adaptive)
+                _maximumBatch = DesktopControlRules.AdaptMaximumBatch(batch, Stopwatch.GetElapsedTime(started), _turbo);
+        }
         finally { _tickInFlight = false; }
     }
 

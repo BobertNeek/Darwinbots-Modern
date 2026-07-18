@@ -9,6 +9,6 @@ pub const MEM_SHARE_CHLR: i32 = 924;
 
 pub const START_CHLR: i32 = 16_000;
 pub const MAX_BOT_VALUE: i32 = 32_000;
-pub const DEFAULT_MAX_VELOCITY: f32 = 60.0;
+pub const DEFAULT_MAX_VELOCITY: f32 = 180.0;
 pub const DEFAULT_MOVEMENT_EFFICIENCY: f32 = 0.66;
 pub const SHOT_SPEED: f32 = 40.0;

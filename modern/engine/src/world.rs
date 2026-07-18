@@ -507,22 +507,89 @@ impl Engine {
 
     pub fn move_organism(&mut self, id: OrganismId, position: [f32; 2]) -> Result<(), EngineError> {
         self.valid_slot(id)?;
-        let slot = id.slot() as usize;
-        self.kinematics.positions[slot] = [
+        let selected_slot = id.slot() as usize;
+        let target = [
             position[0].clamp(0.0, self.config.world_width),
             position[1].clamp(0.0, self.config.world_height),
         ];
+        let mut connected = vec![id];
+        let mut cursor = 0;
+        while cursor < connected.len() {
+            let current = connected[cursor];
+            for tie in &self.ties {
+                let neighbor = if tie.first == current {
+                    Some(tie.second)
+                } else if tie.second == current {
+                    Some(tie.first)
+                } else {
+                    None
+                };
+                if let Some(neighbor) = neighbor {
+                    if !connected.contains(&neighbor) {
+                        connected.push(neighbor);
+                    }
+                }
+            }
+            cursor += 1;
+        }
+
+        let mut delta = [
+            target[0] - self.kinematics.positions[selected_slot][0],
+            target[1] - self.kinematics.positions[selected_slot][1],
+        ];
+        let (mut minimum, mut maximum) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
+        for member in &connected {
+            let member_position = self.kinematics.positions[member.slot() as usize];
+            for axis in 0..2 {
+                minimum[axis] = minimum[axis].min(member_position[axis]);
+                maximum[axis] = maximum[axis].max(member_position[axis]);
+            }
+        }
+        delta[0] = delta[0].clamp(-minimum[0], self.config.world_width - maximum[0]);
+        delta[1] = delta[1].clamp(-minimum[1], self.config.world_height - maximum[1]);
+
+        for member in connected {
+            let slot = member.slot() as usize;
+            self.kinematics.positions[slot][0] += delta[0];
+            self.kinematics.positions[slot][1] += delta[1];
+            self.kinematics.previous_positions[slot] = self.kinematics.positions[slot];
+            self.kinematics.velocities[slot] = [0.0; 2];
+            self.kinematics.actual_velocities[slot] = [0.0; 2];
+            self.kinematics.pending_velocities[slot] = [0.0; 2];
+            if let Some(organism) = self.slots[slot].organism.as_mut() {
+                organism.memory.write(MEM_XPOS, self.kinematics.positions[slot][0].round() as i32);
+                organism.memory.write(MEM_YPOS, self.kinematics.positions[slot][1].round() as i32);
+            }
+        }
         self.publish_snapshot();
         Ok(())
     }
 
     pub fn clone_organism(&mut self, id: OrganismId, position: [f32; 2]) -> Result<OrganismId, EngineError> {
+        let source_slot = id.slot() as usize;
         let source = self.valid_slot(id)?.organism.as_ref().unwrap().clone();
-        let clone = self.spawn_species_at_unpublished(source.dna, source.species, position)?;
-        let slot = clone.slot() as usize;
-        let clone_organism = self.slots[slot].organism.as_mut().unwrap();
-        clone_organism.parents = [Some(id), None];
-        clone_organism.phenotype = source.phenotype;
+        let source_energy = self.lifecycle.energies[source_slot];
+        let source_age = self.lifecycle.ages[source_slot];
+        let source_biology = self.biology[source_slot].clone();
+        let source_velocity = self.kinematics.velocities[source_slot];
+        let source_actual_velocity = self.kinematics.actual_velocities[source_slot];
+        let source_pending_velocity = self.kinematics.pending_velocities[source_slot];
+        let clone = self.spawn_species_at_unpublished(source.dna.clone(), source.species, position)?;
+        let clone_slot = clone.slot() as usize;
+        let clone_position = self.kinematics.positions[clone_slot];
+        let mut cloned_organism = source;
+        cloned_organism.parents = [Some(id), None];
+        cloned_organism.memory.write(MEM_NRG, source_energy);
+        cloned_organism.memory.write(MEM_XPOS, clone_position[0].round() as i32);
+        cloned_organism.memory.write(MEM_YPOS, clone_position[1].round() as i32);
+        self.slots[clone_slot].organism = Some(cloned_organism);
+        self.lifecycle.energies[clone_slot] = source_energy;
+        self.lifecycle.ages[clone_slot] = source_age;
+        self.biology[clone_slot] = source_biology;
+        self.kinematics.previous_positions[clone_slot] = clone_position;
+        self.kinematics.velocities[clone_slot] = source_velocity;
+        self.kinematics.actual_velocities[clone_slot] = source_actual_velocity;
+        self.kinematics.pending_velocities[clone_slot] = source_pending_velocity;
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(clone)
@@ -547,16 +614,37 @@ impl Engine {
         position: [f32; 2],
     ) -> Result<OrganismId, EngineError> {
         let first_organism = self.valid_slot(first)?.organism.as_ref().unwrap().clone();
+        let first_slot = first.slot() as usize;
         let dna = if let Some(second) = second {
             let second_dna = &self.valid_slot(second)?.organism.as_ref().unwrap().dna;
             first_organism.dna.crossover(second_dna)
         } else {
+            if self.lifecycle.energies[first_slot] < 2 {
+                return Err(EngineError::Invariant("manual reproduction requires at least two energy units".to_owned()));
+            }
             first_organism.dna.clone()
         };
         let child = self.spawn_species_at_unpublished(dna, first_organism.species, position)?;
-        let child_organism = self.slots[child.slot() as usize].organism.as_mut().unwrap();
+        let child_slot = child.slot() as usize;
+        let child_organism = self.slots[child_slot].organism.as_mut().unwrap();
         child_organism.parents = [Some(first), second];
         child_organism.phenotype = first_organism.phenotype;
+        if second.is_none() {
+            let child_energy = self.lifecycle.energies[first_slot] / 2;
+            self.lifecycle.energies[first_slot] -= child_energy;
+            self.lifecycle.energies[child_slot] = child_energy;
+            let mut child_biology = self.biology[first_slot].split_for_offspring(50);
+            self.biology[first_slot].synchronize_energy(self.lifecycle.energies[first_slot]);
+            child_biology.synchronize_energy(child_energy);
+            self.biology[child_slot] = child_biology;
+
+            let parent = self.slots[first_slot].organism.as_mut().unwrap();
+            parent.memory.write(MEM_NRG, self.lifecycle.energies[first_slot]);
+            self.biology[first_slot].publish(&mut parent.memory);
+            let child_organism = self.slots[child_slot].organism.as_mut().unwrap();
+            child_organism.memory.write(MEM_NRG, child_energy);
+            self.biology[child_slot].publish(&mut child_organism.memory);
+        }
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(child)
@@ -1526,12 +1614,22 @@ impl Engine {
     }
 
     fn record_actual_velocities(&mut self) {
+        let world_size = [self.config.world_width, self.config.world_height];
         for slot in 0..self.kinematics.positions.len() {
             if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
-                self.kinematics.actual_velocities[slot] = [
+                let mut displacement = [
                     self.kinematics.positions[slot][0] - self.kinematics.previous_positions[slot][0],
                     self.kinematics.positions[slot][1] - self.kinematics.previous_positions[slot][1],
                 ];
+                if self.config.toroidal_world {
+                    for axis in 0..2 {
+                        let extent = world_size[axis].max(1.0);
+                        let half_extent = extent * 0.5;
+                        displacement[axis] =
+                            (displacement[axis] + half_extent).rem_euclid(extent) - half_extent;
+                    }
+                }
+                self.kinematics.actual_velocities[slot] = displacement;
             }
         }
     }
