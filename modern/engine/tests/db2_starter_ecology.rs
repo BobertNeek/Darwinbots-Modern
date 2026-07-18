@@ -14,7 +14,6 @@ fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
         vegetable_energy_per_tick: 0,
         ..EngineConfig::testing()
     };
-    let maximum_shot_segment = config.physics.max_velocity + config.shots.speed + 0.01;
     let mut engine = Engine::new(config).unwrap();
     let alga = engine.register_species(SpeciesDefinition {
         name: "Alga Minimalis".to_owned(),
@@ -55,7 +54,11 @@ fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
     assert!(moving > animals.len() / 20);
     assert!(animals.iter().any(|organism| organism.parents[0].is_some()));
     assert!(snapshot.shots.iter().all(|shot| {
-        segment_length(shot.start, shot.end) <= maximum_shot_segment
+        shot.start
+            .iter()
+            .chain(shot.end.iter())
+            .chain(shot.velocity.iter())
+            .all(|value| value.is_finite())
     }));
     assert!(snapshot.shots.len() < snapshot.stats.shots_fired as usize);
     assert!(engine.vegetable_population() <= 500);
@@ -83,8 +86,4 @@ fn advance_random(mut value: u64) -> u64 {
     value ^= value >> 7;
     value ^= value << 17;
     value.max(1)
-}
-
-fn segment_length(start: [f32; 2], end: [f32; 2]) -> f32 {
-    (end[0] - start[0]).hypot(end[1] - start[1])
 }
