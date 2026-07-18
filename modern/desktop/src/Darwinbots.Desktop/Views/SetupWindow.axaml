@@ -11,18 +11,18 @@
       <Grid ColumnDefinitions="210,*" Margin="18,0">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift" FontWeight="Bold" FontSize="27" VerticalAlignment="Center" />
         <Menu Grid.Column="1" Background="Transparent" VerticalAlignment="Center">
-          <MenuItem Header="_FILE">
-            <MenuItem Header="NEW WORLD" HotKey="Ctrl+N" Click="NewWorld_Click"/>
-            <MenuItem Header="OPEN SAVE..." HotKey="Ctrl+O" Click="OpenSave_Click"/>
-            <MenuItem Header="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
+          <MenuItem x:Name="FileMenu" Header="_FILE">
+            <MenuItem x:Name="NewWorldMenuItem" Header="NEW WORLD" HotKey="Ctrl+N" Click="NewWorld_Click"/>
+            <MenuItem x:Name="OpenSaveMenuItem" Header="OPEN SAVE..." HotKey="Ctrl+O" Click="OpenSave_Click"/>
+            <MenuItem x:Name="RecoverMenuItem" Header="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
             <Separator/>
-            <MenuItem Header="EXIT" HotKey="Alt+F4" Click="Exit_Click"/>
+            <MenuItem x:Name="ExitMenuItem" Header="EXIT" HotKey="Alt+F4" Click="Exit_Click"/>
           </MenuItem>
-          <MenuItem Header="_VIEW">
-            <MenuItem Header="ADVANCED SETTINGS" HotKey="Ctrl+," Click="Advanced_Click"/>
+          <MenuItem x:Name="ViewMenu" Header="_VIEW">
+            <MenuItem x:Name="AdvancedMenuItem" Header="ADVANCED SETTINGS" HotKey="Ctrl+," Click="Advanced_Click"/>
           </MenuItem>
-          <MenuItem Header="_HELP">
-            <MenuItem Header="ABOUT DARWINBOTS MODERN" HotKey="F1" Click="About_Click"/>
+          <MenuItem x:Name="HelpMenu" Header="_HELP">
+            <MenuItem x:Name="AboutMenuItem" Header="ABOUT DARWINBOTS MODERN" HotKey="F1" Click="About_Click"/>
           </MenuItem>
         </Menu>
       </Grid>
@@ -59,7 +59,7 @@
             <Grid ColumnDefinitions="2*,90,110,100,150,80,44" Background="#EEEAE0" Margin="1">
               <TextBlock Text="SPECIES" Margin="10"/><TextBlock Grid.Column="1" Text="TYPE" Margin="8"/><TextBlock Grid.Column="2" Text="INITIAL COUNT" Margin="8"/><TextBlock Grid.Column="3" Text="ENERGY" Margin="8"/><TextBlock Grid.Column="4" Text="MUTATION %" Margin="8"/><TextBlock Grid.Column="5" Text="RESEED" Margin="8"/>
             </Grid>
-            <ItemsControl Grid.Row="1" ItemsSource="{Binding Species}">
+            <ItemsControl x:Name="SpeciesList" Grid.Row="1" ItemsSource="{Binding Species}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <Grid ColumnDefinitions="2*,90,110,100,150,80,44" Margin="6,5">
@@ -79,7 +79,7 @@
             </ItemsControl>
           </Grid>
         </Border>
-        <StackPanel Orientation="Horizontal" Spacing="10"><Button Content="＋ ADD DNA FILE" Click="AddDna_Click"/><TextBlock x:Name="SetupStatus" VerticalAlignment="Center" Foreground="#A65A23"/></StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="10"><Button x:Name="AddDnaButton" Content="＋ ADD DNA FILE" Click="AddDna_Click"/><TextBlock x:Name="SetupStatus" VerticalAlignment="Center" Foreground="#A65A23"/></StackPanel>
       </StackPanel>
     </ScrollViewer>
 
@@ -97,9 +97,9 @@
         <ComboBox x:Name="Sustenance" SelectedIndex="3"><ComboBoxItem Content="FEEDER + REPRODUCER"/><ComboBoxItem Content="ENERGY-ONLY FEEDER"/><ComboBoxItem Content="PHOTOSYNTHETIC ZEROBOTS"/><ComboBoxItem Content="DISABLED METABOLISM"/><ComboBoxItem Content="NO ASSISTANCE"/></ComboBox>
         <TextBlock x:Name="SustenanceHint" TextWrapping="Wrap" Foreground="#6F716D" FontSize="12"/>
         <CheckBox x:Name="AutomaticProgression" IsChecked="True" Content="AUTOMATIC ZEROBOT PROGRESSION" Margin="0,8,0,0"/>
-        <Button Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
-        <Button Content="▶  CREATE WORLD" Background="#4C7D30" Foreground="White" FontWeight="Bold" FontSize="18" Height="58" Margin="0,12,0,0" Click="CreateWorld_Click"/>
-        <Button Content="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
+        <Button x:Name="AdvancedSettingsButton" Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
+        <Button x:Name="CreateWorldButton" Content="▶  CREATE WORLD" Background="#4C7D30" Foreground="White" FontWeight="Bold" FontSize="18" Height="58" Margin="0,12,0,0" Click="CreateWorld_Click"/>
+        <Button x:Name="RecoverButton" Content="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
       </StackPanel></ScrollViewer>
     </Border>
 

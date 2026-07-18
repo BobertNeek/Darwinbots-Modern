@@ -52,7 +52,7 @@
       <TextBlock Text="Obstacles and teleporters can be added from the running world's environment tools." TextWrapping="Wrap" Foreground="#69716D" Margin="0,16,0,0"/>
     </StackPanel></ScrollViewer>
     <Border Grid.Row="2" Background="#E6E2D8" BorderBrush="#C8C5BB" BorderThickness="0,1,0,0" Padding="10,8">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button Content="CANCEL" Click="Cancel_Click"/><Button Content="APPLY" Background="#4C7D30" Foreground="White" Click="Apply_Click"/></StackPanel>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/><Button x:Name="ApplyButton" Content="APPLY" Background="#4C7D30" Foreground="White" Click="Apply_Click"/></StackPanel>
     </Border>
   </Grid>
 </Window>
