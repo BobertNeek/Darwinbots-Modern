@@ -1,7 +1,9 @@
 # DB2 Physics, Shots, and Vegetables Design
 
 Date: 2026-07-12
-Status: Approved design, pending implementation plan
+Status: Implemented; retained as historical design rationale
+
+> Current behavior and verification are recorded in `modern/docs/verification.md`. Version numbers and proposed implementation details below reflect the planning baseline at the time this document was approved.
 
 ## Objective
 

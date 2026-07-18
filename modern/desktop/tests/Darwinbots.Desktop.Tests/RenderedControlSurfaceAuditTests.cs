@@ -259,12 +259,14 @@ public sealed class RenderedControlSurfaceAuditTests
         {
             var window = new DnaEditorWindow(simulation, engine.Organism, storage);
             ShowAndCapture(window, 760, 620, "dna-initial.png");
-            await WaitFor(() => engine.Calls.Contains("ExportDna"));
-
             var editor = Named<TextBox>(window, "Editor");
+            await WaitFor(() =>
+                engine.Calls.Contains("ExportDna")
+                && editor.Text == "start\nstop");
             editor.Focus();
             editor.SelectAll();
             window.KeyTextInput("start\n20 .up store\nstop");
+            await WaitFor(() => editor.Text?.Contains("20 .up store", StringComparison.Ordinal) == true);
             Click(window, Named<Button>(window, "ApplyDnaButton"));
             await WaitFor(() => engine.Calls.Contains("ReplaceDna:3:2"));
             Click(window, Named<Button>(window, "ApplyCloneButton"));

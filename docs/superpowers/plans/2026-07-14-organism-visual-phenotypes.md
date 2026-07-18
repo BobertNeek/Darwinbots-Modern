@@ -1,5 +1,7 @@
 # Organism Visual Phenotypes Implementation Plan
 
+> **Status: Archived after implementation.** The unchecked boxes preserve the original execution plan; they do not indicate current missing product work. Use `modern/docs/verification.md` for current evidence and open gates.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Restore DB2-style inherited skins, mutation-driven lineage colors, body/chloroplast sizing, and selected-bot nine-eye visualization in the modern engine and Avalonia viewport.

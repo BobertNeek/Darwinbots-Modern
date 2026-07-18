@@ -1,9 +1,11 @@
 [package]
 name = "darwinbots-engine"
 version = "0.1.0"
+description = "Headless CPU and GPU simulation engine for Darwinbots Modern"
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 rust-version.workspace = true
+repository.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]

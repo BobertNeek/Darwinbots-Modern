@@ -1,6 +1,9 @@
 # DB2 Defaults and Sysvars Audit
 
 Date: 2026-07-13
+Status: Current source audit; last reviewed 2026-07-18
+
+This document verifies clean DB2 2.48 defaults and symbolic sysvar addresses from VB6 source. It does not claim complete black-box parity with a running DB2 executable.
 
 ## Authority
 

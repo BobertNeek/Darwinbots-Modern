@@ -2,6 +2,8 @@
 
 All 109 current interactive surfaces are mapped to DB2/VB6 command intent and exercised by the rendered Avalonia audit. `source-parity` means the modern command preserves the original user-facing intent; `intentional-difference` records an approved modern-only surface such as GPU selection, turbo rendering suspension, autosave recovery, or integrated navigation.
 
+Last verified: 2026-07-18. This is an inventory of the current modern UI, not a claim that every historical DB2 surface exists in the modern application. Generated screenshot paths remain in the matrix for reproducibility even though the PNG files are ignored by Git.
+
 | ID | Surface | Label | Type | Handler / binding | State affected | DB2 / VB6 intent | Status | Test result | Evidence |
 |---|---|---|---|---|---|---|---|---|---|
 | setup.file | SetupWindow | FILE menu | menu/menu-item | MenuItem | Window command | DB2 OptionsForm and MDIForm1 setup/menu command with the same user intent. | source-parity | pass | docs/verification/control-surface-audit/modern/setup-initial.png |

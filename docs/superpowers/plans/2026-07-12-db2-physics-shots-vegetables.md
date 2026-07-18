@@ -1,5 +1,7 @@
 # DB2 Physics, Shots, and Vegetables Implementation Plan
 
+> **Status: Archived after implementation.** The unchecked boxes preserve the original execution plan; they do not indicate current missing product work. Use `modern/docs/verification.md` for current evidence and open gates.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Port Darwinbots 2 impulse physics, persistent projectiles, and chloroplast-driven vegetable ecology into the modern Rust engine and expose their settings through the existing Avalonia application.

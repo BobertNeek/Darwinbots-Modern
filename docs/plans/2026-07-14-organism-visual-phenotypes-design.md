@@ -1,5 +1,10 @@
 # Organism Visual Phenotypes Design
 
+Date: 2026-07-14
+Status: Implemented; retained as historical design rationale
+
+> Current behavior and verification are recorded in `modern/docs/verification.md`. This document preserves the design decisions that led to the implementation and is not a current task list.
+
 ## Goal
 
 Restore the visual information carried by Darwinbots 2 organisms while keeping the rendering path scalable and leaving room for richer future visuals.
