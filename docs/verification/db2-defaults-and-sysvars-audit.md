@@ -22,7 +22,7 @@ Saved `lastran.set` and `lastexit.set` files are user state, not clean defaults.
 | World height | 12000 | 12000 |
 | Maximum velocity | 60 | 60 |
 | Movement efficiency (`PhysMoving`) | 0.66 | 0.66 |
-| Brownian motion (`PhysBrown`) | 0.5 | 0.5 |
+| Brownian motion (`PhysBrown`) | 0.5 | 0 |
 | X/Y gravity | 0 / 0 | 0 / 0 |
 | Surface gravity | 0 | 0 |
 | Static/kinetic friction | 0 / 0 | 0 / 0 |
@@ -41,6 +41,8 @@ Saved `lastran.set` and `lastexit.set` files are user state, not clean defaults.
 | Day/night enabled | false | false |
 
 DB2 calls `feedvegs SimOpts.MaxEnergy`; the default `100` is therefore intentional. The engine does not lower this value to compensate for population size. Per-organism energy and body remain capped at `32000`, matching `Vegs.bas`.
+
+Brownian motion is an intentional modern-default deviation. DB2's `MDIForm_Load` assigns `0.5`, but normal modern worlds start at `0` so organisms only move when DNA or an explicitly enabled environmental force moves them. The advanced control preserves DB2's presets on a more usable percentage scale: `0%` maps to `PhysBrown = 0`, `75%` maps to DB2 medium (`0.5`), and `100%` maps to DB2 high (`7`). The engine also follows `Robots.bas`, `UpdatePosition`, by dividing Brownian impulse by organism mass before adding it to velocity.
 
 ## Modern-only defaults
 

@@ -1001,12 +1001,14 @@ impl Engine {
             if *alive {
                 velocity[0] += pending[0];
                 velocity[1] += pending[1];
-                let impulse = environment_impulse(gravity, brownian, seed, tick, slot);
+                let mass = derived_mass(biology.body, biology.shell, biology.chloroplasts)
+                    .clamp(1.0, 32_000.0);
+                let impulse = environment_impulse(gravity, brownian, mass, seed, tick, slot);
                 velocity[0] += impulse[0];
                 velocity[1] += impulse[1];
                 apply_resistance(
                     velocity,
-                    derived_mass(biology.body, biology.shell, biology.chloroplasts).clamp(1.0, 32_000.0),
+                    mass,
                     crate::physics::organism_radius(biology.body, biology.chloroplasts),
                     drag,
                     settings,

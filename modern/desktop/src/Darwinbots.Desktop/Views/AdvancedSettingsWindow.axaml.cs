@@ -14,7 +14,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         (int)(Sunlight.Value ?? 100),
         [(float)(GravityX.Value ?? 0), (float)(GravityY.Value ?? 0)],
         (float)(Drag.Value ?? 0),
-        (float)(Brownian.Value ?? 0),
+        Db2BrownianScale.FromPercent(Brownian.Value ?? 0),
         new Db2PhysicsOptions(
             (float)(MaxVelocity.Value ?? 180),
             (float)(MovementEfficiency.Value ?? 0.66m),
@@ -57,7 +57,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         GravityX.Value = (decimal)update.Gravity[0];
         GravityY.Value = (decimal)update.Gravity[1];
         Drag.Value = (decimal)update.Drag;
-        Brownian.Value = (decimal)update.BrownianMotion;
+        Brownian.Value = Db2BrownianScale.ToPercent(update.BrownianMotion);
         MaxVelocity.Value = (decimal)update.Physics.MaxVelocity;
         MovementEfficiency.Value = (decimal)update.Physics.MovementEfficiency;
         SurfaceGravity.Value = (decimal)update.Physics.SurfaceGravity;
