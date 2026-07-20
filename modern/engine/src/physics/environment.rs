@@ -5,6 +5,7 @@ const VELOCITY_EPSILON: f32 = 0.000_000_1;
 pub(crate) fn environment_impulse(
     gravity: [f32; 2],
     brownian_motion: f32,
+    mass: f32,
     seed: u64,
     tick: u64,
     stable_slot: usize,
@@ -13,7 +14,7 @@ pub(crate) fn environment_impulse(
         return gravity;
     }
     let random = splitmix64(seed ^ tick.rotate_left(17) ^ (stable_slot as u64).rotate_left(33));
-    let magnitude = brownian_motion * 0.5 * unit_float(random);
+    let magnitude = brownian_motion * 0.5 * unit_float(random) / mass.max(1.0);
     let angle = unit_float(splitmix64(random)) * std::f32::consts::TAU;
     [
         gravity[0] + angle.cos() * magnitude,

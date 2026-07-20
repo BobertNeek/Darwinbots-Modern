@@ -32,7 +32,7 @@ public sealed record WorldSetupOptions
     public int SunlightEnergy { get; init; } = 100;
     public float[] Gravity { get; init; } = [0f, 0f];
     public float Drag { get; init; }
-    public float BrownianMotion { get; init; } = 0.5f;
+    public float BrownianMotion { get; init; }
     public Db2PhysicsOptions Physics { get; init; } = Db2PhysicsOptions.Default;
     public Db2ShotOptions Shots { get; init; } = Db2ShotOptions.Default;
     public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;

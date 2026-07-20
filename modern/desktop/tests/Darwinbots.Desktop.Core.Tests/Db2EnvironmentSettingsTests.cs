@@ -72,7 +72,7 @@ public sealed class Db2EnvironmentSettingsTests
         var setup = new WorldSetupOptions();
         Assert.Equal(16_000f, setup.WorldWidth);
         Assert.Equal(12_000f, setup.WorldHeight);
-        Assert.Equal(0.5f, setup.BrownianMotion);
+        Assert.Equal(0f, setup.BrownianMotion);
         Assert.Equal(update.Physics, setup.Physics);
         Assert.Equal(update.Shots, setup.Shots);
         Assert.Equal(update.Vegetation, setup.Vegetation);
