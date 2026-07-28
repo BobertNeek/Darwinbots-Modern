@@ -217,10 +217,10 @@ public sealed partial class MainWindow : Window
             async _ => await LoadSimulationCommandAsync());
         handlers[LegacyCommandId.FileSaveSimulation] = Handler(
             EngineState,
-            async _ => await SaveSimulationCommandAsync("SAVED"));
+            async _ => await SaveSimulationCommandAsync("SAVED", withoutMutations: false));
         handlers[LegacyCommandId.FileSaveWithoutMutations] = Handler(
             EngineState,
-            async _ => await SaveSimulationCommandAsync("SAVED WITHOUT MUTATION SETTINGS"));
+            async _ => await SaveSimulationCommandAsync("SAVED WITHOUT MUTATION SETTINGS", withoutMutations: true));
         handlers[LegacyCommandId.FileQuit] = Handler(
             () => LegacyCommandState.Available,
             _ => Task.FromResult(QuitApplication()));
@@ -503,10 +503,13 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("QUIT");
     }
 
-    private async Task<LegacyCommandResult> SaveSimulationCommandAsync(string status)
+    private async Task<LegacyCommandResult> SaveSimulationCommandAsync(string status, bool withoutMutations)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        return await _storage.SaveSimulationAsync(this, await _session.SaveAsync())
+        var bytes = withoutMutations
+            ? await _session.SaveWithoutMutationsAsync()
+            : await _session.SaveAsync();
+        return await _storage.SaveSimulationAsync(this, bytes)
             ? LegacyCommandResult.Success(status)
             : LegacyCommandResult.Cancel();
     }

@@ -143,6 +143,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no save data.");
     }
 
+    public async Task<byte[]> SaveWithoutMutationsAsync(CancellationToken cancellationToken = default)
+    {
+        byte[]? save = null;
+        await Enqueue(engine => save = engine.SaveWithoutMutations(), cancellationToken).ConfigureAwait(false);
+        return save ?? throw new InvalidDataException("Engine returned no mutation-free save data.");
+    }
+
     public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(save);

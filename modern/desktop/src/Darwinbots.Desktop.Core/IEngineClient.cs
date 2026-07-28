@@ -27,6 +27,7 @@ public interface IEngineClient : IDisposable
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
     byte[] Save();
+    byte[] SaveWithoutMutations();
     void Load(byte[] save);
     EngineSnapshot Snapshot();
 }

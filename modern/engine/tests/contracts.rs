@@ -147,6 +147,22 @@ fn save_files_are_versioned_and_round_trip_reference_state() {
 }
 
 #[test]
+fn mutation_free_save_disables_saved_mutations_without_changing_live_engine() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine.update_mutation_settings(true, 2.5, &[(darwinbots_engine::SpeciesId(0), 3.5)]).unwrap();
+
+    let bytes = SaveFile::encode_without_mutations(&engine).unwrap();
+    let restored = SaveFile::decode(&bytes).unwrap();
+
+    assert!(!restored.snapshot().mutations_enabled);
+    assert_eq!(restored.snapshot().global_mutation_multiplier, 0.0);
+    assert!(restored.snapshot().species.iter().all(|species| species.mutation_rate == 0.0));
+    assert!(engine.snapshot().mutations_enabled);
+    assert_eq!(engine.snapshot().global_mutation_multiplier, 2.5);
+    assert_eq!(engine.snapshot().species[0].mutation_rate, 3.5);
+}
+
+#[test]
 fn unavailable_gpu_falls_back_to_cpu_when_allowed() {
     let config = EngineConfig {
         backend: BackendPreference::Gpu,

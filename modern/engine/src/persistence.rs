@@ -8,12 +8,37 @@ impl SaveFile {
 
     pub fn encode(engine: &Engine) -> Result<Vec<u8>, EngineError> {
         let payload = serde_json::to_vec(engine)?;
+        Ok(Self::frame_payload(payload))
+    }
+
+    pub fn encode_without_mutations(engine: &Engine) -> Result<Vec<u8>, EngineError> {
+        let mut value = serde_json::to_value(engine)?;
+        let object = value.as_object_mut().ok_or_else(|| {
+            EngineError::Invariant("serialized engine must be an object".to_owned())
+        })?;
+        object.insert("mutations_enabled".to_owned(), serde_json::Value::Bool(false));
+        object.insert("global_mutation_multiplier".to_owned(), serde_json::json!(0.0));
+        let species = object
+            .get_mut("species")
+            .and_then(serde_json::Value::as_array_mut)
+            .ok_or_else(|| EngineError::Invariant("serialized engine species must be an array".to_owned()))?;
+        for definition in species {
+            let definition = definition.as_object_mut().ok_or_else(|| {
+                EngineError::Invariant("serialized species must be an object".to_owned())
+            })?;
+            definition.insert("mutation_rate".to_owned(), serde_json::json!(0.0));
+        }
+
+        Ok(Self::frame_payload(serde_json::to_vec(&value)?))
+    }
+
+    fn frame_payload(payload: Vec<u8>) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(10 + payload.len());
         bytes.extend_from_slice(Self::MAGIC);
         bytes.extend_from_slice(&Self::VERSION.to_le_bytes());
         bytes.extend_from_slice(&(payload.len() as u32).to_le_bytes());
         bytes.extend_from_slice(&payload);
-        Ok(bytes)
+        bytes
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Engine, EngineError> {

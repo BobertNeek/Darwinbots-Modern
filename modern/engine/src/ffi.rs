@@ -454,6 +454,23 @@ pub extern "C" fn db_engine_save(engine: *const Engine, out_buffer: *mut DbBuffe
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn db_engine_save_without_mutations(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    ffi_guard("save engine without mutations", || {
+        let (Some(engine), Some(out_buffer)) = (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() }) else {
+            return DbStatus::NullPointer;
+        };
+        if !out_buffer.data.is_null() { return fail(DbStatus::EngineError, "output buffer must be empty"); }
+        match SaveFile::encode_without_mutations(engine) {
+            Ok(bytes) => write_buffer(out_buffer, bytes),
+            Err(error) => fail(DbStatus::EngineError, error),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn db_engine_load(engine: *mut Engine, save_data: *const u8, save_len: usize) -> DbStatus {
     ffi_guard("load engine", || db_engine_load_impl(engine, save_data, save_len))
 }

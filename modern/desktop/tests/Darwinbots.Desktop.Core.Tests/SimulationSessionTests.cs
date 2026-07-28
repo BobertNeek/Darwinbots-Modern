@@ -229,6 +229,20 @@ public sealed class SimulationSessionTests
         Assert.Equal(7UL, session.LatestSnapshot.Tick);
         Assert.Single(engine.ExecutionThreads);
     }
+
+    [Fact]
+    public async Task SaveWithoutMutationsRunsOnEngineThreadWithoutUsingOrdinarySave()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+
+        var save = await session.SaveWithoutMutationsAsync();
+
+        Assert.Equal([9, 8, 7], save);
+        Assert.True(engine.SavedWithoutMutations);
+        Assert.False(engine.SavedNormally);
+        Assert.Single(engine.ExecutionThreads);
+    }
 }
 
 internal sealed class FakeEngineClient : IEngineClient
@@ -253,6 +267,8 @@ internal sealed class FakeEngineClient : IEngineClient
     public (uint Slot, uint Generation, string Dna)? LastDnaReplacement { get; private set; }
     private string _dna = "start\nstop";
     public HashSet<int> ExecutionThreads { get; } = [];
+    public bool SavedNormally { get; private set; }
+    public bool SavedWithoutMutations { get; private set; }
 
     public EngineSnapshot Snapshot()
     {
@@ -262,7 +278,19 @@ internal sealed class FakeEngineClient : IEngineClient
 
     public EngineCapabilities Capabilities() => new(1, Backend, false, null);
 
-    public byte[] Save() => BitConverter.GetBytes(_tick);
+    public byte[] Save()
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        SavedNormally = true;
+        return BitConverter.GetBytes(_tick);
+    }
+
+    public byte[] SaveWithoutMutations()
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        SavedWithoutMutations = true;
+        return [9, 8, 7];
+    }
 
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
 

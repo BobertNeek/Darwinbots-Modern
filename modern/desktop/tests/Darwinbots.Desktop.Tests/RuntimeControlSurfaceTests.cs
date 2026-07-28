@@ -242,6 +242,31 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task SaveWithoutMutationsUsesTheMutationFreeEnginePath()
+    {
+        var engine = new RecordingEngineClient();
+        await using var simulation = new SimulationSession(engine);
+        var storage = new AuditStorageService();
+
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
+            SetField(window, "_session", simulation);
+            Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
+            window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, null);
+            window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                .FindCommandItem(Core.LegacyMenus.LegacyCommandId.FileSaveWithoutMutations)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            return Task.CompletedTask;
+        }, CancellationToken.None);
+
+        await WaitFor(() => engine.Calls.Contains("SaveWithoutMutations"));
+        Assert.Equal([9, 8, 7], storage.SavedSimulation);
+        Assert.DoesNotContain("Save", engine.Calls);
+    }
+
+    [Fact]
     public async Task TeleporterPlacementDispatchesTheDb2SourceDestinationWorkflow()
     {
         var engine = new RecordingEngineClient();
@@ -368,7 +393,8 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
-    public byte[] Save() => BitConverter.GetBytes(_tick);
+    public byte[] Save() { Calls.Enqueue("Save"); return BitConverter.GetBytes(_tick); }
+    public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [9, 8, 7]; }
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
     public EngineSnapshot Snapshot()
     {

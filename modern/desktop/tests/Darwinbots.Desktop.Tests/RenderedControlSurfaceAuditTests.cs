@@ -699,6 +699,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return [1, 2, 3, 4]; }
+    public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }
     public void Load(byte[] save) => Calls.Enqueue("Load");
     public EngineSnapshot Snapshot() => _snapshot with { Tick = _tick, Backend = _backend };
     public void Dispose() => Calls.Enqueue("Dispose");
