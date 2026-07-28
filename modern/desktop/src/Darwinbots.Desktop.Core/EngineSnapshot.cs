@@ -55,7 +55,13 @@ public sealed record SpeciesSnapshot(
     bool Vegetable,
     uint Color,
     int MinimumPopulation,
-    bool Reseed);
+    bool Reseed,
+    float MutationRate = 0f);
+
+public sealed record MutationSettingsSnapshot(bool Enabled, float GlobalMultiplier)
+{
+    public static MutationSettingsSnapshot Default { get; } = new(true, 1f);
+}
 
 public sealed record SimulationStatsSnapshot(
     ulong Births,
@@ -116,7 +122,7 @@ internal static class VisualSnapshotDefaults
 
 public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum);
 public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination);
-public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age);
+public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age, uint Species = 0, bool Repopulating = false);
 public sealed record ShotSnapshot(
     OrganismKey Owner,
     float[] Start,
@@ -146,6 +152,10 @@ public sealed record EngineSnapshot(
 {
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
+    public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;
+    public bool TiesEnabled { get; init; } = true;
+    public bool RobotFixingAllowed { get; init; } = true;
+    public bool AsexualReproductionAllowed { get; init; } = true;
     public SimulationStatsSnapshot Stats { get; init; } = SimulationStatsSnapshot.Empty;
     public float[] WorldSize { get; init; } = [16_000f, 12_000f];
     public IReadOnlyList<ObstacleSnapshot> Obstacles { get; init; } = [];

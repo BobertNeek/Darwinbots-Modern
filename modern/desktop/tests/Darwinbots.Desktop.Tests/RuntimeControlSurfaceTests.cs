@@ -15,6 +15,105 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class RuntimeControlSurfaceTests
 {
     [Fact]
+    public async Task HistoricMenuDispatchesRuntimeCommandsAndExposesUnavailableOnlineState()
+    {
+        var engine = new RecordingEngineClient();
+        await using var simulation = new SimulationSession(engine);
+        var headless = DesktopTestApplication.Session;
+
+        await headless.Dispatch(async () =>
+        {
+            var window = RuntimeWindow(simulation);
+            window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, null);
+            var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+            var timer = Field<DispatcherTimer>(window, "_runTimer");
+            var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+
+            Invoke(window, "Run_Click");
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.FilePauseSimulation)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.False(timer.IsEnabled);
+            Assert.Equal("PAUSED", viewModel.Status);
+
+            var vision = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ViewShowVisionGrid)!;
+            Assert.True(vision.IsChecked);
+            vision.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            var viewport = window.FindControl<WorldViewport>("Viewport")!;
+            Assert.False(viewport.ShowSelectedVision);
+
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ViewDisplayMovementVectors)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ViewDisplayShotImpacts)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ViewDisplayResourceGuages)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsHilightTeleporters)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EGridEnable)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EGridMedium)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.True(viewport.ShowMovementVectors);
+            Assert.False(viewport.ShowShotImpacts);
+            Assert.True(viewport.ShowResourceGauges);
+            Assert.True(viewport.HighlightTeleporters);
+            Assert.True(viewport.EnergyGridEnabled);
+            Assert.Equal(EnergyGridSize.Medium, viewport.EnergyGridSize);
+
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsNewTeleporter)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal("Teleporter", Field<object>(window, "_environmentPlacement").ToString());
+
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayNrgShots)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayWasteShots)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDisableTies)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsHorizontalMaze)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKill)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            var internet = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!;
+            Assert.False(internet.IsEnabled);
+            Assert.Contains("online", ToolTip.GetTip(internet)!.ToString()!, StringComparison.OrdinalIgnoreCase);
+            await WaitFor(() =>
+                engine.Calls.Contains("Remove:3:2")
+                && engine.Calls.Count(call => call.StartsWith("AddObstacle:", StringComparison.Ordinal)) >= 4
+                && engine.Calls.Count(call => call == "Environment") >= 2
+                && engine.Calls.Contains("Ties:False"),
+                () => string.Join(", ", engine.Calls));
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task EveryHistoricMenuLeafIsPresentAndNoneUsesThePendingImplementationState()
+    {
+        var engine = new RecordingEngineClient();
+        await using var simulation = new SimulationSession(engine);
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = RuntimeWindow(simulation);
+            window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, null);
+            var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+            foreach (var command in Enum.GetValues<Core.LegacyMenus.LegacyCommandId>())
+            {
+                var item = menu.FindCommandItem(command);
+                Assert.NotNull(item);
+                var reason = ToolTip.GetTip(item)?.ToString() ?? string.Empty;
+                Assert.DoesNotContain("not implemented", reason, StringComparison.OrdinalIgnoreCase);
+            }
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task TransportSpeedDisplayPlacementAndManualSelectionControlsChangeLiveUiState()
     {
         var headless = DesktopTestApplication.Session;
@@ -220,6 +319,7 @@ internal sealed class RecordingEngineClient : IEngineClient
 
     public ConcurrentQueue<string> Calls { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
+    public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation, string Dna)> DnaReplacements { get; } = [];
     public string Backend { get; private set; } = "CPU";
     private ulong _tick;
@@ -262,6 +362,12 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void RemoveTeleporter(uint id) => Calls.Enqueue($"RemoveTeleporter:{id}");
     public void SetBrownianMotion(float value) => Calls.Enqueue($"Brownian:{value}");
     public void UpdateEnvironment(EnvironmentUpdate update) { EnvironmentUpdates.Enqueue(update); Calls.Enqueue("Environment"); }
+    public void UpdateMutationSettings(MutationSettingsUpdate update) { MutationUpdates.Enqueue(update); Calls.Enqueue("Mutations"); }
+    public void SetTiesEnabled(bool enabled) => Calls.Enqueue($"Ties:{enabled}");
+    public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
+    public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");
+    public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
+    public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() => BitConverter.GetBytes(_tick);
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
     public EngineSnapshot Snapshot()

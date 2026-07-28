@@ -202,6 +202,19 @@ public sealed class SimulationSessionTests
     }
 
     [Fact]
+    public async Task MutationSettingsRunOnTheEngineThread()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        var update = new MutationSettingsUpdate(false, 2.25f, [new SpeciesMutationRateUpdate(1, 3.5f)]);
+
+        await session.UpdateMutationSettingsAsync(update);
+
+        Assert.Equal(update, engine.LastMutationSettings);
+        Assert.Single(engine.ExecutionThreads);
+    }
+
+    [Fact]
     public async Task SaveAndLoadRunOnEngineThreadAndRepublishLoadedSnapshot()
     {
         var engine = new FakeEngineClient();
@@ -235,6 +248,8 @@ internal sealed class FakeEngineClient : IEngineClient
     public uint? LastTeleporterRemoved { get; private set; }
     public float? LastBrownianMotion { get; private set; }
     public EnvironmentUpdate? LastEnvironmentUpdate { get; private set; }
+    public MutationSettingsUpdate? LastMutationSettings { get; private set; }
+    public bool? LastTiesEnabled { get; private set; }
     public (uint Slot, uint Generation, string Dna)? LastDnaReplacement { get; private set; }
     private string _dna = "start\nstop";
     public HashSet<int> ExecutionThreads { get; } = [];
@@ -344,6 +359,22 @@ internal sealed class FakeEngineClient : IEngineClient
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastEnvironmentUpdate = update;
     }
+
+    public void UpdateMutationSettings(MutationSettingsUpdate update)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastMutationSettings = update;
+    }
+
+    public void SetTiesEnabled(bool enabled)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastTiesEnabled = enabled;
+    }
+    public void SetSpeciesColor(uint species, uint color) { }
+    public void MakeNewSpecies(uint slot, uint generation, string name, uint color) { }
+    public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) { }
+    public void SetOrganismAim(uint slot, uint generation, int aim) { }
 
     public void Dispose() { }
 }

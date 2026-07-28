@@ -1,10 +1,10 @@
 # Rendered GUI and DB2 Control-Parity Audit
 
-Last verified: 2026-07-18, merged in [PR #3](https://github.com/BobertNeek/Darwinbots-Modern/pull/3)
+Last verified: 2026-07-23
 
 ## Outcome
 
-The current Darwinbots Modern desktop surface contains 109 interactive controls. Every control has a stable audit ID, a mapped handler or binding, a DB2/VB6 intent classification, and a passing rendered interaction result.
+The original rendered audit baseline contains 109 interactive controls. The historical-menu restoration adds 74 DB2 menu leaf commands across nine top-level menus. Every historical command has a typed command ID, catalog entry, routed handler, enabled-state policy, and automated coverage proving that no command remains on the fail-closed pending implementation handler.
 
 | Surface | Controls | Rendered result |
 |---|---:|---:|
@@ -12,9 +12,10 @@ The current Darwinbots Modern desktop surface contains 109 interactive controls.
 | MainWindow | 39 | 39 pass |
 | AdvancedSettingsWindow | 34 | 34 pass |
 | DnaEditorWindow | 4 | 4 pass |
-| Total | 109 | 109 pass |
+| Historical menu leaf commands | 74 | 74 routed |
+| Original rendered baseline | 109 | 109 pass |
 
-The machine-readable inventory is `docs/parity/control-surface-matrix.json`. The review table is `docs/parity/control-surface-matrix.md`.
+The machine-readable baseline inventory is `docs/parity/control-surface-matrix.json`. The review table is `docs/parity/control-surface-matrix.md`. The current menu-specific result is `docs/parity/historic-menu-parity-report.md`.
 
 ## Behavioral authority and limits
 
@@ -22,7 +23,7 @@ Control intent was compared with the original VB6 handlers in `Darwinbots2/MDIFo
 
 The exact DB2 2.48.32 GUI could not be executed in the Linux cloud runner because its 32-bit Wine environment remained unavailable. This report therefore claims source-intent parity and rendered modern behavior, not pixel parity or exhaustive runtime comparison with the VB6 executable.
 
-This audit inventories controls that exist in Darwinbots Modern. It does not claim that every historical DB2 window, menu item, or auxiliary tool has already been recreated.
+The menu audit claims functional coverage for the restored historical menu catalog. It does not claim pixel-identical VB6 dialogs, online play, or restoration of obsolete external utilities.
 
 ## Rendered interaction coverage
 
@@ -30,6 +31,9 @@ This audit inventories controls that exist in Darwinbots Modern. It does not cla
 - Runtime transport, throttle, turbo, backend switching, import, save, load, environment toggles, all nine expanders, live settings, viewport selection, click-to-move, drag-to-move, obstacle placement/removal, teleporter placement, clone, reproduce, follow, DNA editor launch, kill, and reset.
 - Every advanced numeric setting, every advanced boolean setting, Apply, and Cancel.
 - DNA text input, Apply DNA, Apply and Clone, and Save Bot.
+- All nine historical top-level menus opening through the rendered Avalonia visual tree.
+- Every one of the 74 historical leaf commands resolving to an explicit production handler and enabled-state policy.
+- Live mutation enable, global multiplier, and per-species mutation rates applying through the simulation thread.
 
 Inputs are delivered through Avalonia's rendered headless window with pointer and keyboard events. Asynchronous engine and storage effects are asserted through injected production interfaces, so file pickers and the engine thread are tested without bypassing their window handlers.
 

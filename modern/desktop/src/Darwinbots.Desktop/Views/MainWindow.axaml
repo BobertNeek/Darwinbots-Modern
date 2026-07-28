@@ -8,7 +8,9 @@
         Width="940" Height="650" MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen" WindowState="Maximized"
         KeyDown="MainWindow_KeyDown">
-  <Grid RowDefinitions="58,*,170,28" ColumnDefinitions="250,*,280">
+  <Grid RowDefinitions="34,*">
+    <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
+    <Grid Grid.Row="1" RowDefinitions="58,*,170,28" ColumnDefinitions="250,*,280">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
       <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
@@ -179,5 +181,6 @@
     <Border Grid.Row="3" Grid.ColumnSpan="3" Background="#E6E2D8" BorderBrush="#BEBBB2" BorderThickness="0,1,0,0" Padding="10,4">
       <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Status}" FontSize="11"/><Ellipse Grid.Column="1" Width="8" Height="8" Fill="#45A23D" VerticalAlignment="Center"/></Grid>
     </Border>
+    </Grid>
   </Grid>
 </Window>

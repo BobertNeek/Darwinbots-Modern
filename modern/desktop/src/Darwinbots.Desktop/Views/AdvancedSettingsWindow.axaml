@@ -1,59 +1,82 @@
 <Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="Darwinbots.Desktop.Views.AdvancedSettingsWindow" Title="Advanced Physics and Environment"
-        Width="520" Height="700" WindowStartupLocation="CenterOwner">
-  <Grid RowDefinitions="54,*,52">
-    <Border Background="#FBF9F2" BorderBrush="#C8C5BB" BorderThickness="0,0,0,1" Padding="16"><TextBlock Text="ADVANCED PHYSICS + ENVIRONMENT" FontFamily="Bahnschrift" FontSize="18" FontWeight="Bold"/></Border>
-    <ScrollViewer Grid.Row="1"><StackPanel Margin="22" Spacing="10">
-      <TextBlock Classes="section" Text="ENERGY"/>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Metabolism per tick"/><NumericUpDown Grid.Column="1" x:Name="Metabolism" Minimum="0" Maximum="100"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable compatibility bonus"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Sunlight intensity"/><NumericUpDown Grid.Column="1" x:Name="Sunlight" Minimum="0" Maximum="10000"/></Grid>
-
-      <TextBlock Classes="section" Text="LINEAGES" Margin="0,14,0,0"/>
-      <CheckBox x:Name="AutoSpeciation" Content="Automatic speciation after accumulated DNA mutations"/>
-      <Grid ColumnDefinitions="*,150">
-        <TextBlock Text="Genetic distance threshold (%)" TextWrapping="Wrap"/>
-        <NumericUpDown Grid.Column="1" x:Name="SpeciationDistance" Minimum="0.1" Maximum="10000" Increment="0.5" FormatString="0.0"/>
+        x:Class="Darwinbots.Desktop.Views.AdvancedSettingsWindow"
+        Title="Darwinbots Live Settings" Width="900" Height="760" MinWidth="760" MinHeight="620"
+        WindowStartupLocation="CenterOwner" Background="#F4F0E6">
+  <Window.Styles>
+    <Style Selector="TextBlock.section"><Setter Property="FontFamily" Value="Bahnschrift"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#1D2824"/><Setter Property="LetterSpacing" Value="1.5"/></Style>
+    <Style Selector="Border.card"><Setter Property="Background" Value="#FFFCF5"/><Setter Property="BorderBrush" Value="#D4CFC1"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Padding" Value="18"/></Style>
+    <Style Selector="TabItem"><Setter Property="FontFamily" Value="Bahnschrift"/><Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="18,14"/><Setter Property="HorizontalContentAlignment" Value="Left"/></Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#416E35"/><Setter Property="Foreground" Value="White"/><Setter Property="FontWeight" Value="Bold"/></Style>
+  </Window.Styles>
+  <Grid RowDefinitions="68,*,62">
+    <Border Background="#FBF9F2" BorderBrush="#C8C3B6" BorderThickness="0,0,0,1" Padding="22,13">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="2"><TextBlock Text="LIVE SETTINGS" FontFamily="Bahnschrift" FontSize="23" FontWeight="Bold" LetterSpacing="1.5"/><TextBlock Text="Tune the running ecosystem without interrupting evolution" Foreground="#66706B" FontSize="12"/></StackPanel>
+        <Border x:Name="DirtyBadge" Grid.Column="1" Background="#E7EEDC" BorderBrush="#AEBE9D" BorderThickness="1" CornerRadius="12" Padding="10,4" VerticalAlignment="Center" IsVisible="False"><TextBlock x:Name="DirtyIndicator" Text="●  STAGED CHANGES" Foreground="#416E35" FontFamily="Bahnschrift" FontSize="11" FontWeight="Bold"/></Border>
       </Grid>
-      <TextBlock Text="When enabled, a lineage receives a modest inherited skin change after this percentage of its DNA length has mutated." TextWrapping="Wrap" Foreground="#69716D"/>
-
-      <TextBlock Classes="section" Text="MOVEMENT + ENVIRONMENT" Margin="0,14,0,0"/>
-      <CheckBox x:Name="ToroidalWorld" Content="Toroidal world (wrap opposite edges)"/>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum velocity"/><NumericUpDown Grid.Column="1" x:Name="MaxVelocity" Minimum="1" Maximum="10000" Increment="1"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Movement efficiency"/><NumericUpDown Grid.Column="1" x:Name="MovementEfficiency" Minimum="0.01" Maximum="10" Increment="0.01"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity X"/><NumericUpDown Grid.Column="1" x:Name="GravityX" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity Y"/><NumericUpDown Grid.Column="1" x:Name="GravityY" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Surface gravity"/><NumericUpDown Grid.Column="1" x:Name="SurfaceGravity" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Static friction"/><NumericUpDown Grid.Column="1" x:Name="StaticFriction" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Kinetic friction"/><NumericUpDown Grid.Column="1" x:Name="KineticFriction" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Fluid density"/><NumericUpDown Grid.Column="1" x:Name="Density" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Viscosity"/><NumericUpDown Grid.Column="1" x:Name="Viscosity" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Collision elasticity"/><NumericUpDown Grid.Column="1" x:Name="Elasticity" Minimum="0" Maximum="2" Increment="0.01"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag (0-1)"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Brownian motion (%)"/><NumericUpDown Grid.Column="1" x:Name="Brownian" Minimum="0" Maximum="100" Increment="1"/></Grid>
-      <TextBlock Text="0% off · 75% DB2 medium · 100% DB2 high" Foreground="#74746D" FontSize="12" Margin="0,-6,0,2"/>
-
-      <TextBlock Classes="section" Text="SHOTS" Margin="0,14,0,0"/>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Speed"/><NumericUpDown Grid.Column="1" x:Name="ShotSpeed" Minimum="1" Maximum="1000" Increment="1"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Range multiplier"/><NumericUpDown Grid.Column="1" x:Name="ShotRangeMultiplier" Minimum="0.01" Maximum="100" Increment="0.1"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Decay"/><NumericUpDown Grid.Column="1" x:Name="ShotDecay" Minimum="0" Maximum="10000" Increment="1"/></Grid>
-      <CheckBox x:Name="EnergyShotsNoDecay" Content="Energy shots do not decay"/>
-      <CheckBox x:Name="WasteShotsNoDecay" Content="Waste shots do not decay"/>
-
-      <TextBlock Classes="section" Text="VEGETATION" Margin="0,14,0,0"/>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Starting chloroplasts"/><NumericUpDown Grid.Column="1" x:Name="StartChloroplasts" Minimum="0" Maximum="32000" Increment="100"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Max energy per tick"/><NumericUpDown Grid.Column="1" x:Name="MaxPlantEnergy" Minimum="0" Maximum="32000" Increment="10"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Minimum chloroplast equivalents" TextWrapping="Wrap"/><NumericUpDown Grid.Column="1" x:Name="MinimumChloroplastEquivalents" Minimum="0" Maximum="1000000" Increment="10"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Repopulation amount"/><NumericUpDown Grid.Column="1" x:Name="RepopulationAmount" Minimum="0" Maximum="100000" Increment="1"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Repopulation cooldown"/><NumericUpDown Grid.Column="1" x:Name="RepopulationCooldown" Minimum="0" Maximum="100000000" Increment="100"/></Grid>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Feeding to body"/><NumericUpDown Grid.Column="1" x:Name="FeedingToBody" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
-      <CheckBox x:Name="Daytime" Content="Daytime"/>
-      <CheckBox x:Name="DayNightEnabled" Content="Day/night cycle"/>
-      <Grid ColumnDefinitions="*,150"><TextBlock Text="Cycle length"/><NumericUpDown Grid.Column="1" x:Name="CycleLength" Minimum="1" Maximum="100000000" Increment="100"/></Grid>
-      <TextBlock Text="Obstacles and teleporters can be added from the running world's environment tools." TextWrapping="Wrap" Foreground="#69716D" Margin="0,16,0,0"/>
-    </StackPanel></ScrollViewer>
-    <Border Grid.Row="2" Background="#E6E2D8" BorderBrush="#C8C5BB" BorderThickness="0,1,0,0" Padding="10,8">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/><Button x:Name="ApplyButton" Content="APPLY" Background="#4C7D30" Foreground="White" Click="Apply_Click"/></StackPanel>
     </Border>
+
+    <TabControl Grid.Row="1" TabStripPlacement="Left" Margin="16" Background="Transparent">
+      <TabItem Header="MUTATION"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+        <Border Classes="card"><StackPanel Spacing="12">
+          <TextBlock Classes="section" Text="GLOBAL MUTATION PRESSURE"/>
+          <CheckBox x:Name="MutationsEnabled" Content="Enable configured random mutations"/>
+          <Grid ColumnDefinitions="180,*,118" ColumnSpacing="12"><StackPanel><TextBlock Text="Global multiplier"/><TextBlock Text="Scales every species rate" Foreground="#758078" FontSize="11"/></StackPanel><Slider Grid.Column="1" x:Name="GlobalMutationSlider" Minimum="0" Maximum="5" TickFrequency="0.05"/><NumericUpDown Grid.Column="2" x:Name="GlobalMutationRate" Minimum="0" Maximum="5" Increment="0.05" FormatString="0.00x"/></Grid>
+        </StackPanel></Border>
+        <Border Classes="card"><StackPanel Spacing="12">
+          <TextBlock Classes="section" Text="SPECIES MUTATION RATES"/>
+          <TextBlock Text="Each percentage is tested when that species reproduces. DNA-requested mutation remains under the bot's own control." TextWrapping="Wrap" Foreground="#66706B"/>
+          <StackPanel x:Name="SpeciesMutationRows" Spacing="10"/>
+        </StackPanel></Border>
+      </StackPanel></ScrollViewer></TabItem>
+
+      <TabItem Header="ENERGY"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="ENERGY ECONOMY"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Metabolism per tick"/><NumericUpDown Grid.Column="1" x:Name="Metabolism" Minimum="0" Maximum="100"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Vegetable compatibility bonus"/><NumericUpDown Grid.Column="1" x:Name="VegetableEnergy" Minimum="0" Maximum="1000"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Sunlight intensity"/><NumericUpDown Grid.Column="1" x:Name="Sunlight" Minimum="0" Maximum="10000"/></Grid>
+        </StackPanel></Border>
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="VEGETATION"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Starting chloroplasts"/><NumericUpDown Grid.Column="1" x:Name="StartChloroplasts" Minimum="0" Maximum="32000" Increment="100"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Max energy per tick"/><NumericUpDown Grid.Column="1" x:Name="MaxPlantEnergy" Minimum="0" Maximum="32000" Increment="10"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Minimum chloroplast equivalents"/><NumericUpDown Grid.Column="1" x:Name="MinimumChloroplastEquivalents" Minimum="0" Maximum="1000000" Increment="10"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Repopulation amount"/><NumericUpDown Grid.Column="1" x:Name="RepopulationAmount" Minimum="0" Maximum="100000"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Repopulation cooldown"/><NumericUpDown Grid.Column="1" x:Name="RepopulationCooldown" Minimum="0" Maximum="100000000" Increment="100"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Feeding to body"/><NumericUpDown Grid.Column="1" x:Name="FeedingToBody" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
+          <CheckBox x:Name="Daytime" Content="Daytime"/><CheckBox x:Name="DayNightEnabled" Content="Day/night cycle"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Cycle length"/><NumericUpDown Grid.Column="1" x:Name="CycleLength" Minimum="1" Maximum="100000000" Increment="100"/></Grid>
+        </StackPanel></Border>
+      </StackPanel></ScrollViewer></TabItem>
+
+      <TabItem Header="PHYSICS"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="MOTION + MEDIUM"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum velocity"/><NumericUpDown Grid.Column="1" x:Name="MaxVelocity" Minimum="1" Maximum="10000"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Movement efficiency"/><NumericUpDown Grid.Column="1" x:Name="MovementEfficiency" Minimum="0.01" Maximum="10" Increment="0.01"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity X"/><NumericUpDown Grid.Column="1" x:Name="GravityX" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity Y"/><NumericUpDown Grid.Column="1" x:Name="GravityY" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Surface gravity"/><NumericUpDown Grid.Column="1" x:Name="SurfaceGravity" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Static friction"/><NumericUpDown Grid.Column="1" x:Name="StaticFriction" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Kinetic friction"/><NumericUpDown Grid.Column="1" x:Name="KineticFriction" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Fluid density"/><NumericUpDown Grid.Column="1" x:Name="Density" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Viscosity"/><NumericUpDown Grid.Column="1" x:Name="Viscosity" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Collision elasticity"/><NumericUpDown Grid.Column="1" x:Name="Elasticity" Minimum="0" Maximum="2" Increment="0.01"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
+          <Grid ColumnDefinitions="*,150"><StackPanel><TextBlock Text="Brownian motion"/><TextBlock Text="0% off · 75% DB2 medium · 100% high" Foreground="#758078" FontSize="11"/></StackPanel><NumericUpDown Grid.Column="1" x:Name="Brownian" Minimum="0" Maximum="100"/></Grid>
+        </StackPanel></Border>
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="SHOTS"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Speed"/><NumericUpDown Grid.Column="1" x:Name="ShotSpeed" Minimum="1" Maximum="1000"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Range multiplier"/><NumericUpDown Grid.Column="1" x:Name="ShotRangeMultiplier" Minimum="0.01" Maximum="100" Increment="0.1"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Decay"/><NumericUpDown Grid.Column="1" x:Name="ShotDecay" Minimum="0" Maximum="10000"/></Grid>
+          <CheckBox x:Name="EnergyShotsNoDecay" Content="Energy shots do not decay"/><CheckBox x:Name="WasteShotsNoDecay" Content="Waste shots do not decay"/>
+        </StackPanel></Border>
+      </StackPanel></ScrollViewer></TabItem>
+
+      <TabItem Header="WORLD"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="WORLD TOPOLOGY"/><CheckBox x:Name="ToroidalWorld" Content="Wrap opposite edges (toroidal world)"/><TextBlock Text="This is the default DB2-style continuous world: bots leaving one edge return from the opposite edge." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="LINEAGES"/><CheckBox x:Name="AutoSpeciation" Content="Automatic speciation after accumulated DNA mutations"/><Grid ColumnDefinitions="*,150"><TextBlock Text="Genetic distance threshold (%)"/><NumericUpDown Grid.Column="1" x:Name="SpeciationDistance" Minimum="0.1" Maximum="10000" Increment="0.5" FormatString="0.0"/></Grid><TextBlock Text="A lineage receives a modest inherited skin-color change after this percentage of its DNA has mutated." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
+      </StackPanel></ScrollViewer></TabItem>
+    </TabControl>
+
+    <Border Grid.Row="2" Background="#E5E0D4" BorderBrush="#C8C3B6" BorderThickness="0,1,0,0" Padding="16,10"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Changes apply to the running simulation on the engine thread." VerticalAlignment="Center" Foreground="#66706B"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/><Button x:Name="ApplyButton" Classes="primary" Content="APPLY CHANGES" Click="Apply_Click"/></StackPanel></Grid></Border>
   </Grid>
 </Window>

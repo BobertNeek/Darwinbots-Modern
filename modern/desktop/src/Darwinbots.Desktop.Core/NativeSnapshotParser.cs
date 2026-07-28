@@ -56,7 +56,8 @@ public static class NativeSnapshotParser
             value.Vegetable,
             value.Color,
             value.MinimumPopulation,
-            value.Reseed)).ToArray();
+            value.Reseed,
+            value.MutationRate)).ToArray();
         var stats = native.Stats is null ? SimulationStatsSnapshot.Empty : new SimulationStatsSnapshot(
             native.Stats.Births,
             native.Stats.Deaths,
@@ -75,7 +76,7 @@ public static class NativeSnapshotParser
             native.Stats.PlantEnergyGenerated);
         var obstacles = (native.Obstacles ?? []).Select(value => new ObstacleSnapshot(value.Id, value.Minimum, value.Maximum)).ToArray();
         var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)).ToArray();
-        var corpses = (native.Corpses ?? []).Select(value => new CorpseSnapshot(value.Position, value.Velocity, value.Energy, value.Body, value.Age)).ToArray();
+        var corpses = (native.Corpses ?? []).Select(value => new CorpseSnapshot(value.Position, value.Velocity, value.Energy, value.Body, value.Age, value.Species, value.Repopulating)).ToArray();
         var shots = (native.Shots ?? []).Select(value => new ShotSnapshot(
             new OrganismKey(value.Owner.Slot, value.Owner.Generation),
             value.Start,
@@ -101,6 +102,12 @@ public static class NativeSnapshotParser
         {
             RenderInstances = renderInstances,
             Species = species,
+            MutationSettings = new MutationSettingsSnapshot(
+                native.MutationsEnabled ?? true,
+                native.GlobalMutationMultiplier ?? 1f),
+            TiesEnabled = native.TiesEnabled ?? true,
+            RobotFixingAllowed = native.RobotFixingAllowed ?? true,
+            AsexualReproductionAllowed = native.AsexualReproductionAllowed ?? true,
             Stats = stats,
             WorldSize = native.WorldSize is { Length: 2 } ? native.WorldSize : [16_000f, 12_000f],
             Obstacles = obstacles,
@@ -164,6 +171,11 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("organisms")] NativeOrganism[] Organisms,
         [property: JsonPropertyName("render_instances")] NativeRenderInstance[]? RenderInstances,
         [property: JsonPropertyName("species")] NativeSpecies[]? Species,
+        [property: JsonPropertyName("mutations_enabled")] bool? MutationsEnabled,
+        [property: JsonPropertyName("global_mutation_multiplier")] float? GlobalMutationMultiplier,
+        [property: JsonPropertyName("ties_enabled")] bool? TiesEnabled,
+        [property: JsonPropertyName("robot_fixing_allowed")] bool? RobotFixingAllowed,
+        [property: JsonPropertyName("asexual_reproduction_allowed")] bool? AsexualReproductionAllowed,
         [property: JsonPropertyName("stats")] NativeStats? Stats,
         [property: JsonPropertyName("obstacles")] NativeObstacle[]? Obstacles,
         [property: JsonPropertyName("teleporters")] NativeTeleporter[]? Teleporters,
@@ -178,7 +190,9 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("velocity")] float[] Velocity,
         [property: JsonPropertyName("energy")] int Energy,
         [property: JsonPropertyName("body")] int Body,
-        [property: JsonPropertyName("age")] ulong Age);
+        [property: JsonPropertyName("age")] ulong Age,
+        [property: JsonPropertyName("species")] uint Species,
+        [property: JsonPropertyName("repopulating")] bool Repopulating);
 
     private sealed record NativeShot(
         [property: JsonPropertyName("owner")] NativeId Owner,
@@ -233,7 +247,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("vegetable")] bool Vegetable,
         [property: JsonPropertyName("color")] uint Color,
         [property: JsonPropertyName("minimum_population")] int MinimumPopulation,
-        [property: JsonPropertyName("reseed")] bool Reseed);
+        [property: JsonPropertyName("reseed")] bool Reseed,
+        [property: JsonPropertyName("mutation_rate")] float MutationRate);
 
     private sealed record NativeStats(
         [property: JsonPropertyName("births")] ulong Births,

@@ -234,6 +234,51 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_brownian_motion", value } } }, "set Brownian motion");
     }
 
+    public void UpdateMutationSettings(MutationSettingsUpdate update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        if (!float.IsFinite(update.GlobalMultiplier) || update.GlobalMultiplier is < 0 or > 100)
+            throw new ArgumentOutOfRangeException(nameof(update));
+        if (update.SpeciesRates.Any(value => !float.IsFinite(value.Rate) || value.Rate is < 0 or > 100))
+            throw new ArgumentOutOfRangeException(nameof(update));
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "update_mutation_settings",
+                    enabled = update.Enabled,
+                    global_multiplier = update.GlobalMultiplier,
+                    species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
+                },
+            },
+        }, "update mutation settings");
+    }
+
+    public void SetTiesEnabled(bool enabled) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_ties_enabled", enabled } } },
+        "update tie policy");
+
+    public void SetSpeciesColor(uint species, uint color) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_species_color", species, color } } },
+        "change species color");
+
+    public void MakeNewSpecies(uint slot, uint generation, string name, uint color)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "make_new_species", slot, generation, name, color } } }, "make new species");
+    }
+
+    public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
+        "update legacy restrictions");
+
+    public void SetOrganismAim(uint slot, uint generation, int aim) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_organism_aim", slot, generation, aim } } },
+        "set organism aim");
+
     public void UpdateEnvironment(EnvironmentUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);

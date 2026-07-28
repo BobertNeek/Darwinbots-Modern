@@ -31,6 +31,12 @@ struct CommandBatch {
 }
 
 #[derive(Deserialize)]
+struct SpeciesMutationRateCommand {
+    species: u32,
+    rate: f32,
+}
+
+#[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum EngineCommand {
     Tick { count: u32 },
@@ -65,6 +71,16 @@ enum EngineCommand {
     AddTeleporter { id: u32, center: [f32; 2], radius: f32, destination: [f32; 2] },
     RemoveTeleporter { id: u32 },
     SetBrownianMotion { value: f32 },
+    UpdateMutationSettings {
+        enabled: bool,
+        global_multiplier: f32,
+        species_rates: Vec<SpeciesMutationRateCommand>,
+    },
+    SetTiesEnabled { enabled: bool },
+    SetSpeciesColor { species: u32, color: u32 },
+    MakeNewSpecies { slot: u32, generation: u32, name: String, color: u32 },
+    UpdateLegacyRestrictions { robot_fixing_allowed: bool, asexual_reproduction_allowed: bool },
+    SetOrganismAim { slot: u32, generation: u32, aim: i32 },
     UpdateEnvironment {
         metabolism_cost: i32,
         vegetable_energy_per_tick: i32,
@@ -330,6 +346,30 @@ fn db_engine_command_batch_impl(
                 engine.add_teleporter(crate::Teleporter { id, center, radius, destination }).map(|_| serde_json::Value::Null),
             EngineCommand::RemoveTeleporter { id } => engine.remove_teleporter(id).map(|_| serde_json::Value::Null),
             EngineCommand::SetBrownianMotion { value } => engine.set_brownian_motion(value).map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateMutationSettings { enabled, global_multiplier, species_rates } => {
+                let rates: Vec<_> = species_rates.into_iter()
+                    .map(|value| (crate::SpeciesId(value.species), value.rate))
+                    .collect();
+                engine.update_mutation_settings(enabled, global_multiplier, &rates)
+                    .map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::SetTiesEnabled { enabled } => {
+                engine.set_ties_enabled(enabled);
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::SetSpeciesColor { species, color } => engine
+                .set_species_color(crate::SpeciesId(species), color)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::MakeNewSpecies { slot, generation, name, color } => engine
+                .make_new_species(OrganismId::new(slot, generation), name, color)
+                .map(|species| serde_json::json!({ "species": species.0 })),
+            EngineCommand::UpdateLegacyRestrictions { robot_fixing_allowed, asexual_reproduction_allowed } => {
+                engine.update_legacy_restrictions(robot_fixing_allowed, asexual_reproduction_allowed);
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::SetOrganismAim { slot, generation, aim } => engine
+                .set_organism_aim(OrganismId::new(slot, generation), aim)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateEnvironment {
                 metabolism_cost,
                 vegetable_energy_per_tick,

@@ -115,6 +115,24 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetBrownianMotionAsync(float value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetBrownianMotion(value), cancellationToken);
 
+    public Task UpdateMutationSettingsAsync(MutationSettingsUpdate update, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateMutationSettings(update), cancellationToken);
+
+    public Task SetTiesEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetTiesEnabled(enabled), cancellationToken);
+
+    public Task SetSpeciesColorAsync(uint species, uint color, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetSpeciesColor(species, color), cancellationToken);
+
+    public Task MakeNewSpeciesAsync(uint slot, uint generation, string name, uint color, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.MakeNewSpecies(slot, generation, name, color), cancellationToken);
+
+    public Task UpdateLegacyRestrictionsAsync(bool robotFixingAllowed, bool asexualReproductionAllowed, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateLegacyRestrictions(robotFixingAllowed, asexualReproductionAllowed), cancellationToken);
+
+    public Task SetOrganismAimAsync(uint slot, uint generation, int aim, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrganismAim(slot, generation, aim), cancellationToken);
+
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 

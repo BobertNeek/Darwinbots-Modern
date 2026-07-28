@@ -106,6 +106,16 @@ pub struct Snapshot {
     pub render_instances: Vec<RenderInstance>,
     #[serde(default)]
     pub species: Vec<SpeciesDefinition>,
+    #[serde(default = "default_mutations_enabled")]
+    pub mutations_enabled: bool,
+    #[serde(default = "default_mutation_multiplier")]
+    pub global_mutation_multiplier: f32,
+    #[serde(default = "default_ties_enabled")]
+    pub ties_enabled: bool,
+    #[serde(default = "default_true")]
+    pub robot_fixing_allowed: bool,
+    #[serde(default = "default_true")]
+    pub asexual_reproduction_allowed: bool,
     #[serde(default)]
     pub obstacles: Vec<Obstacle>,
     #[serde(default)]
@@ -264,6 +274,16 @@ pub struct Engine {
     species: Vec<SpeciesDefinition>,
     #[serde(default = "default_species_templates")]
     species_templates: Vec<Option<SpeciesTemplate>>,
+    #[serde(default = "default_mutations_enabled")]
+    mutations_enabled: bool,
+    #[serde(default = "default_mutation_multiplier")]
+    global_mutation_multiplier: f32,
+    #[serde(default = "default_ties_enabled")]
+    ties_enabled: bool,
+    #[serde(default = "default_true")]
+    robot_fixing_allowed: bool,
+    #[serde(default = "default_true")]
+    asexual_reproduction_allowed: bool,
     #[serde(default)]
     next_lineage_id: u64,
     #[serde(default)]
@@ -312,6 +332,11 @@ impl Engine {
                 ties: Vec::new(),
                 render_instances: Vec::new(),
                 species: default_species(),
+                mutations_enabled: true,
+                global_mutation_multiplier: 1.0,
+                ties_enabled: true,
+                robot_fixing_allowed: true,
+                asexual_reproduction_allowed: true,
                 obstacles: Vec::new(),
                 teleporters: Vec::new(),
                 phase_timings: PhaseTimings::default(),
@@ -325,6 +350,11 @@ impl Engine {
             ties: Vec::new(),
             species: default_species(),
             species_templates: default_species_templates(),
+            mutations_enabled: true,
+            global_mutation_multiplier: 1.0,
+            ties_enabled: true,
+            robot_fixing_allowed: true,
+            asexual_reproduction_allowed: true,
             next_lineage_id: 2,
             obstacles: Vec::new(),
             teleporters: Vec::new(),
@@ -362,6 +392,95 @@ impl Engine {
         self.species_templates.push(None);
         self.publish_snapshot();
         id
+    }
+
+    pub fn update_mutation_settings(
+        &mut self,
+        enabled: bool,
+        global_multiplier: f32,
+        species_rates: &[(SpeciesId, f32)],
+    ) -> Result<(), EngineError> {
+        if !global_multiplier.is_finite() || !(0.0..=100.0).contains(&global_multiplier) {
+            return Err(EngineError::Invariant("global mutation multiplier must be between 0 and 100".to_owned()));
+        }
+        for (species, rate) in species_rates {
+            if !rate.is_finite() || !(0.0..=100.0).contains(rate) {
+                return Err(EngineError::Invariant(format!("mutation rate for species {} must be between 0 and 100", species.0)));
+            }
+            if self.species.get(species.0 as usize).is_none() {
+                return Err(EngineError::Invariant(format!("species {} does not exist", species.0)));
+            }
+        }
+        self.mutations_enabled = enabled;
+        self.global_mutation_multiplier = global_multiplier;
+        for (species, rate) in species_rates {
+            self.species[species.0 as usize].mutation_rate = *rate;
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn set_ties_enabled(&mut self, enabled: bool) {
+        self.ties_enabled = enabled;
+        if !enabled {
+            self.ties.clear();
+        }
+        self.publish_snapshot();
+    }
+
+    pub fn set_species_color(&mut self, species: SpeciesId, color: u32) -> Result<(), EngineError> {
+        let definition = self.species.get_mut(species.0 as usize)
+            .ok_or_else(|| EngineError::Invariant(format!("species {} does not exist", species.0)))?;
+        definition.color = color;
+        for slot in &mut self.slots {
+            if let Some(organism) = slot.organism.as_mut().filter(|value| value.species == species) {
+                organism.phenotype.color = color;
+            }
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn make_new_species(&mut self, id: OrganismId, name: String, color: u32) -> Result<SpeciesId, EngineError> {
+        let current_species = self.valid_slot(id)?.organism.as_ref().unwrap().species;
+        let mut definition = self.species.get(current_species.0 as usize)
+            .cloned()
+            .ok_or_else(|| EngineError::Invariant(format!("species {} does not exist", current_species.0)))?;
+        definition.name = name;
+        definition.color = color;
+        definition.minimum_population = 0;
+        definition.reseed = false;
+        definition.lineage_id = 0;
+        let new_species = self.register_species(definition);
+        let lineage = self.species[new_species.0 as usize].lineage_id;
+        let skin = self.species[new_species.0 as usize].skin;
+        let organism = self.slots[id.slot() as usize].organism.as_mut().unwrap();
+        organism.species = new_species;
+        organism.phenotype = VisualPhenotype::new(lineage, color, skin);
+        self.publish_snapshot();
+        Ok(new_species)
+    }
+
+    pub fn update_legacy_restrictions(&mut self, robot_fixing_allowed: bool, asexual_reproduction_allowed: bool) {
+        self.robot_fixing_allowed = robot_fixing_allowed;
+        self.asexual_reproduction_allowed = asexual_reproduction_allowed;
+        if !robot_fixing_allowed {
+            for slot in &mut self.slots {
+                if let Some(organism) = slot.organism.as_mut() {
+                    organism.memory.write(216, 0);
+                    organism.memory.write(215, 0);
+                }
+            }
+        }
+        self.publish_snapshot();
+    }
+
+    pub fn set_organism_aim(&mut self, id: OrganismId, aim: i32) -> Result<(), EngineError> {
+        self.valid_slot(id)?;
+        let normalized = ((aim % 1257) + 1257) % 1257;
+        self.biology[id.slot() as usize].aim = normalized;
+        self.publish_snapshot();
+        Ok(())
     }
 
     pub fn spawn_species_at(
@@ -1212,6 +1331,10 @@ impl Engine {
             }
         }
         for (first_slot, second_slot) in tie_requests {
+            if !self.ties_enabled {
+                self.slots[first_slot].organism.as_mut().unwrap().memory.write(MEM_TIE, 0);
+                continue;
+            }
             if self.biology[second_slot].slime > 0 {
                 self.biology[second_slot].slime = self.biology[second_slot].slime.saturating_sub(10);
                 self.slots[first_slot].organism.as_mut().unwrap().memory.write(MEM_TIE, 0);
@@ -1298,6 +1421,9 @@ impl Engine {
         let active_slots: Vec<_> = self.slots.iter().enumerate()
             .filter_map(|(index, slot)| slot.organism.as_ref().map(|_| index))
             .collect();
+        let fixed: Vec<_> = active_slots.iter().map(|index| {
+            self.robot_fixing_allowed && self.slots[*index].organism.as_ref().is_some_and(|organism| organism.memory.read(216) != 0)
+        }).collect();
         let mut batch = PhysicsBatch {
             positions: active_slots.iter().map(|index| self.kinematics.positions[*index]).collect(),
             velocities: active_slots.iter().map(|index| self.kinematics.velocities[*index]).collect(),
@@ -1312,8 +1438,13 @@ impl Engine {
                 return Err(error);
             }
         }
-        for (index, position) in active_slots.into_iter().zip(batch.positions) {
-            self.kinematics.positions[index] = position;
+        for ((index, position), fixed) in active_slots.into_iter().zip(batch.positions).zip(fixed) {
+            if fixed {
+                self.kinematics.velocities[index] = [0.0; 2];
+                self.kinematics.pending_velocities[index] = [0.0; 2];
+            } else {
+                self.kinematics.positions[index] = position;
+            }
         }
         self.apply_tie_constraints();
         self.apply_organism_collisions();
@@ -1816,6 +1947,7 @@ impl Engine {
         let mut deaths = Vec::new();
         let positions = &self.kinematics.positions;
         let species = &self.species;
+        let asexual_reproduction_allowed = self.asexual_reproduction_allowed;
         let world_size = [self.config.world_width, self.config.world_height];
         let outcomes: Vec<_> = self.slots.par_iter_mut()
             .zip(self.lifecycle.energies.par_iter_mut())
@@ -1842,7 +1974,8 @@ impl Engine {
                 let assisted_reproduction = *forced_reproduction;
                 *forced_reproduction = false;
                 let mut birth = None;
-                if reproduction > 0 && *energy > 200 {
+                let species_repopulates = species.get(organism.species.0 as usize).is_some_and(|value| value.reseed);
+                if reproduction > 0 && *energy > 200 && (asexual_reproduction_allowed || assisted_reproduction || species_repopulates) {
                     let child_energy = (*energy as i64 * reproduction.clamp(1, 99) as i64 / 100) as i32;
                     *energy -= child_energy;
                     let mut child_biology = biology.split_for_offspring(reproduction);
@@ -1851,8 +1984,12 @@ impl Engine {
                     organism.memory.write(MEM_REPRO, 0);
                     organism.memory.write(MEM_MREPRO, 0);
                     organism.random_state = advance_random(organism.random_state);
-                    let configured_rate = species.get(organism.species.0 as usize)
-                        .map_or(0.0, |value| value.mutation_rate.clamp(0.0, 100.0));
+                    let configured_rate = if self.mutations_enabled {
+                        species.get(organism.species.0 as usize)
+                            .map_or(0.0, |value| (value.mutation_rate * self.global_mutation_multiplier).clamp(0.0, 100.0))
+                    } else {
+                        0.0
+                    };
                     let configured_mutation = ((organism.random_state % 10_000) as f32)
                         < configured_rate * 100.0;
                     birth = Some((
@@ -1874,12 +2011,16 @@ impl Engine {
         }
         for slot_index in deaths {
             let slot = &mut self.slots[slot_index];
-            if slot.organism.take().is_some() {
+            if let Some(organism) = slot.organism.take() {
+                let species = organism.species.0;
+                let repopulating = self.species.get(species as usize).is_some_and(|value| value.reseed);
                 self.corpses.push(CorpseSnapshot::new(
                     self.kinematics.positions[slot_index],
                     self.kinematics.velocities[slot_index],
                     self.biology[slot_index].body,
                     self.biology[slot_index].waste,
+                    species,
+                    repopulating,
                 ));
                 self.kinematics.deactivate(slot_index);
                 self.lifecycle.deactivate(slot_index);
@@ -2081,6 +2222,11 @@ impl Engine {
             ties: self.ties.clone(),
             render_instances,
             species: self.species.clone(),
+            mutations_enabled: self.mutations_enabled,
+            global_mutation_multiplier: self.global_mutation_multiplier,
+            ties_enabled: self.ties_enabled,
+            robot_fixing_allowed: self.robot_fixing_allowed,
+            asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             obstacles: self.obstacles.clone(),
             teleporters: self.teleporters.clone(),
             phase_timings: self.phase_timings.clone(),
@@ -2332,6 +2478,14 @@ fn default_species() -> Vec<SpeciesDefinition> {
     species.skin = generated_skin(&species.name, species.lineage_id);
     vec![species]
 }
+
+fn default_mutations_enabled() -> bool { true }
+
+fn default_mutation_multiplier() -> f32 { 1.0 }
+
+fn default_ties_enabled() -> bool { true }
+
+fn default_true() -> bool { true }
 
 fn default_species_templates() -> Vec<Option<SpeciesTemplate>> {
     vec![None]

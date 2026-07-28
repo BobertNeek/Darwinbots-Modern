@@ -206,36 +206,44 @@ public sealed class RenderedControlSurfaceAuditTests
         var headless = DesktopTestApplication.Session;
         await headless.Dispatch(() =>
         {
-            var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default);
-            ShowAndCapture(window, 860, 760, "advanced-initial.png");
-
-            string[] numericNames =
-            [
-                "Metabolism", "VegetableEnergy", "Sunlight", "SpeciationDistance", "MaxVelocity",
-                "MovementEfficiency", "GravityX", "GravityY", "SurfaceGravity", "StaticFriction",
-                "KineticFriction", "Density", "Viscosity", "Elasticity", "Drag", "Brownian",
-                "ShotSpeed", "ShotRangeMultiplier", "ShotDecay", "StartChloroplasts", "MaxPlantEnergy",
-                "MinimumChloroplastEquivalents", "RepopulationAmount", "RepopulationCooldown",
-                "FeedingToBody", "CycleLength",
-            ];
-            foreach (var name in numericNames)
-                AssertKeyboardIncrement(window, Named<NumericUpDown>(window, name), resetToMinimum: true);
-
-            string[] checkNames =
-            [
-                "AutoSpeciation", "ToroidalWorld", "EnergyShotsNoDecay", "WasteShotsNoDecay",
-                "Daytime", "DayNightEnabled",
-            ];
-            foreach (var name in checkNames)
+            var snapshot = EngineSnapshot.Empty with
             {
-                var check = Named<CheckBox>(window, name);
-                var before = check.IsChecked;
-                Click(window, check);
-                Assert.True(before != check.IsChecked, $"{name} did not toggle from {before}.");
+                Species =
+                [
+                    new SpeciesSnapshot("Unassigned", false, 0xff858982, 0, false),
+                    new SpeciesSnapshot("Animal Minimalis", false, 0xff239ac0, 0, false, 1f),
+                    new SpeciesSnapshot("Alga Minimalis", true, 0xff4f9f45, 0, false, 0.5f),
+                ],
+            };
+            var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default, snapshot);
+            ShowAndCapture(window, 860, 760, "advanced-initial.png");
+            var tabs = window.GetVisualDescendants().OfType<TabControl>().Single();
+            (int Tab, string[] Numeric, string[] Checks)[] groups =
+            [
+                (0, ["GlobalMutationRate"], ["MutationsEnabled"]),
+                (1, ["Metabolism", "VegetableEnergy", "Sunlight", "StartChloroplasts", "MaxPlantEnergy", "MinimumChloroplastEquivalents", "RepopulationAmount", "RepopulationCooldown", "FeedingToBody", "CycleLength"], ["Daytime", "DayNightEnabled"]),
+                (2, ["MaxVelocity", "MovementEfficiency", "GravityX", "GravityY", "SurfaceGravity", "StaticFriction", "KineticFriction", "Density", "Viscosity", "Elasticity", "Drag", "Brownian", "ShotSpeed", "ShotRangeMultiplier", "ShotDecay"], ["EnergyShotsNoDecay", "WasteShotsNoDecay"]),
+                (3, ["SpeciationDistance"], ["AutoSpeciation", "ToroidalWorld"]),
+            ];
+            foreach (var group in groups)
+            {
+                tabs.SelectedIndex = group.Tab;
+                window.UpdateLayout();
+                foreach (var name in group.Numeric) AssertKeyboardIncrement(window, Named<NumericUpDown>(window, name), resetToMinimum: true);
+                foreach (var name in group.Checks)
+                {
+                    var check = Named<CheckBox>(window, name);
+                    var before = check.IsChecked;
+                    Click(window, check);
+                    Assert.True(before != check.IsChecked, $"{name} did not toggle from {before}.");
+                }
             }
 
             var update = window.Update;
             Assert.NotEqual(EnvironmentUpdate.Default, update);
+            Assert.NotEqual(MutationSettingsUpdate.Default, window.MutationUpdate);
+            Assert.Equal(2, window.MutationUpdate.SpeciesRates.Count);
+            Assert.True(Named<Border>(window, "DirtyBadge").IsVisible);
             Click(window, Named<Button>(window, "ApplyButton"));
             Assert.True(window.Accepted);
             Assert.False(window.IsVisible);
@@ -303,6 +311,14 @@ public sealed class RenderedControlSurfaceAuditTests
         {
             var window = new MainWindow([], setup, factory, storage);
             ShowAndCapture(window, 1500, 900, "runtime-initial.png");
+            var historicMenu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+            foreach (var topLevel in historicMenu.TopLevelItems)
+            {
+                topLevel.IsSubMenuOpen = true;
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Assert.True(topLevel.IsSubMenuOpen, $"Historic menu {topLevel.Header} did not open.");
+                topLevel.IsSubMenuOpen = false;
+            }
             await WaitFor(
                 () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Audit Species"),
                 () => factory.Clients.TryPeek(out var client) ? string.Join(", ", client.Calls) : "Engine client was not created.");
@@ -652,6 +668,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public OrganismSnapshot Organism { get; }
     public ConcurrentQueue<string> Calls { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
+    public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public string Backend => _backend;
 
     public EngineCapabilities Capabilities() => new(1, _backend, true, null);
@@ -675,6 +692,12 @@ internal sealed class AuditEngineClient : IEngineClient
     public void RemoveTeleporter(uint id) { Calls.Enqueue($"RemoveTeleporter:{id}"); _snapshot = _snapshot with { Teleporters = _snapshot.Teleporters.Where(value => value.Id != id).ToArray() }; }
     public void SetBrownianMotion(float value) => Calls.Enqueue($"Brownian:{value}");
     public void UpdateEnvironment(EnvironmentUpdate update) { EnvironmentUpdates.Enqueue(update); Calls.Enqueue("Environment"); }
+    public void UpdateMutationSettings(MutationSettingsUpdate update) { MutationUpdates.Enqueue(update); Calls.Enqueue("Mutations"); }
+    public void SetTiesEnabled(bool enabled) => Calls.Enqueue($"Ties:{enabled}");
+    public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
+    public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");
+    public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
+    public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return [1, 2, 3, 4]; }
     public void Load(byte[] save) => Calls.Enqueue("Load");
     public EngineSnapshot Snapshot() => _snapshot with { Tick = _tick, Backend = _backend };

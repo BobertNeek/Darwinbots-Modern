@@ -19,6 +19,12 @@ public interface IEngineClient : IDisposable
     void AddTeleporter(TeleporterSnapshot teleporter);
     void RemoveTeleporter(uint id);
     void SetBrownianMotion(float value);
+    void UpdateMutationSettings(MutationSettingsUpdate update);
+    void SetTiesEnabled(bool enabled);
+    void SetSpeciesColor(uint species, uint color);
+    void MakeNewSpecies(uint slot, uint generation, string name, uint color);
+    void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
+    void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
     byte[] Save();
     void Load(byte[] save);

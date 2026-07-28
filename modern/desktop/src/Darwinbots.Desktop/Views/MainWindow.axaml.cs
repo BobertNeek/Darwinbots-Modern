@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
@@ -77,6 +78,18 @@ public sealed partial class MainWindow : Window
     private bool _following;
     private bool _controlsReady;
     private EnvironmentUpdate _liveEnvironment;
+    private readonly LegacyCommandRouter _legacyCommands;
+    private bool _safemodeBackup = true;
+    private bool _hasBackgroundImage;
+    private bool _deadRecordingEnabled;
+    private bool _excludeRepopulatingDead;
+    private int _recordedCorpseCount;
+    private bool _automaticTagByName;
+    private bool _playerBotEnabled;
+    private float _playerBotThrust = 30f;
+    private bool _rgbMemoryMonitorEnabled;
+    private string _rgbMemoryChannels = ".nrg, .body, .waste";
+    private LegacyDocumentWindow? _rgbMonitorWindow;
 
     public MainWindow() : this([], new WorldSetupOptions(), NativeEngineClientFactory.Instance, AvaloniaDesktopStorageService.Instance) { }
 
@@ -101,6 +114,9 @@ public sealed partial class MainWindow : Window
             ? new ZerobotProgressionController(setup.AutomaticZerobotProgression)
             : null;
         InitializeComponent();
+        KeyDown += PlayerBot_KeyDown;
+        _legacyCommands = CreateLegacyCommandRouter();
+        HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
         _liveEnvironment = setup.ToEnvironmentUpdate();
         ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
@@ -115,6 +131,7 @@ public sealed partial class MainWindow : Window
         {
             _viewModel.Select(slot);
             Viewport.SelectSlot(slot);
+            RefreshLegacyMenuStates();
         };
         Viewport.WorldClicked += async position =>
         {
@@ -178,8 +195,881 @@ public sealed partial class MainWindow : Window
         Opened += Window_Opened;
         Closed += Window_Closed;
         _controlsReady = true;
+        RefreshLegacyMenuStates();
     }
 
+    private LegacyCommandRouter CreateLegacyCommandRouter()
+    {
+        const string pending = "This historical command is not implemented in the modern runtime yet.";
+        const string offline = "Online play is outside the modern compatibility scope.";
+        var handlers = LegacyMenuCatalog.FlattenLeaves().ToDictionary(
+            item => item.Command!.Value,
+            _ => (ILegacyCommandHandler)DelegateLegacyCommandHandler.Disabled(pending));
+
+        handlers[LegacyCommandId.FilePauseSimulation] = Handler(
+            () => LegacyCommandState.Available,
+            _ => Task.FromResult(PauseSimulation()));
+        handlers[LegacyCommandId.FileNewSimulation] = Handler(
+            () => LegacyCommandState.Available,
+            _ => Task.FromResult(OpenNewSimulationSetup()));
+        handlers[LegacyCommandId.FileLoadSimulation] = Handler(
+            EngineState,
+            async _ => await LoadSimulationCommandAsync());
+        handlers[LegacyCommandId.FileSaveSimulation] = Handler(
+            EngineState,
+            async _ => await SaveSimulationCommandAsync("SAVED"));
+        handlers[LegacyCommandId.FileSaveWithoutMutations] = Handler(
+            EngineState,
+            async _ => await SaveSimulationCommandAsync("SAVED WITHOUT MUTATION SETTINGS"));
+        handlers[LegacyCommandId.FileQuit] = Handler(
+            () => LegacyCommandState.Available,
+            _ => Task.FromResult(QuitApplication()));
+        handlers[LegacyCommandId.EditInsertOrganism] = Handler(
+            EngineState,
+            async _ => await ImportOrganismsCommandAsync());
+        handlers[LegacyCommandId.EditRestartAndLeagues] = Handler(
+            () => new LegacyCommandState(true, false),
+            _ => Task.FromResult(OpenNewSimulationSetup()));
+        handlers[LegacyCommandId.EditDisallowFixing] = Handler(
+            () => new LegacyCommandState(_session is not null, _session?.LatestSnapshot.RobotFixingAllowed == false, _session is null ? "Start a simulation first." : null),
+            async _ => await ToggleLegacyRestrictionAsync(true));
+        handlers[LegacyCommandId.EditDisableAsexualReproduction] = Handler(
+            () => new LegacyCommandState(_session is not null, _session?.LatestSnapshot.AsexualReproductionAllowed == false, _session is null ? "Start a simulation first." : null),
+            async _ => await ToggleLegacyRestrictionAsync(false));
+        handlers[LegacyCommandId.EditAutomaticallyTagByName] = Handler(
+            () => new LegacyCommandState(true, _automaticTagByName),
+            _ => Task.FromResult(ToggleAutomaticTagging()));
+        handlers[LegacyCommandId.EditEnableAutomaticForking] = Handler(
+            () => new LegacyCommandState(_session is not null, _liveEnvironment.AutoSpeciation, _session is null ? "Start a simulation first." : null),
+            async _ => await ToggleAutomaticForkingAsync());
+        handlers[LegacyCommandId.EditPlayerBotSettings] = Handler(
+            SelectedRobotState,
+            async _ => await OpenPlayerBotSettingsAsync());
+        handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
+            () => SelectedRobotState() with { Checked = _playerBotEnabled },
+            _ => Task.FromResult(TogglePlayerBot()));
+        handlers[LegacyCommandId.EditEyeDesigner] = Handler(
+            SelectedRobotState,
+            async _ => await OpenEyeDesignerAsync());
+        handlers[LegacyCommandId.EditRestrictionOverwrites] = Handler(
+            EngineState,
+            async _ => await ShowRestrictionOverridesAsync());
+        foreach (var command in new[]
+                 {
+                     LegacyCommandId.EditSpecies,
+                     LegacyCommandId.EditGeneralSettings,
+                     LegacyCommandId.EditPhysicsAndCosts,
+                     LegacyCommandId.EditGlobalMutationRates,
+                     LegacyCommandId.RobotMutationRates,
+                 })
+            handlers[command] = Handler(EngineState, async _ => await OpenAdvancedSettingsCommandAsync());
+        handlers[LegacyCommandId.ViewShowVisionGrid] = Handler(
+            () => new LegacyCommandState(true, Viewport.ShowSelectedVision),
+            _ => Task.FromResult(ToggleVisionGrid()));
+        handlers[LegacyCommandId.ViewDisplayMovementVectors] = ViewportToggle(
+            () => Viewport.ShowMovementVectors,
+            value => Viewport.ShowMovementVectors = value,
+            "MOVEMENT VECTORS");
+        handlers[LegacyCommandId.ViewDisplayShotImpacts] = ViewportToggle(
+            () => Viewport.ShowShotImpacts,
+            value => Viewport.ShowShotImpacts = value,
+            "SHOT IMPACTS");
+        handlers[LegacyCommandId.ViewDisplayResourceGuages] = ViewportToggle(
+            () => Viewport.ShowResourceGauges,
+            value => Viewport.ShowResourceGauges = value,
+            "RESOURCE GAUGES");
+        handlers[LegacyCommandId.ViewRgbMemoryMonitorSettings] = Handler(
+            SelectedRobotState,
+            async _ => await OpenRgbMonitorSettingsAsync());
+        handlers[LegacyCommandId.ViewRgbMemoryMonitor] = Handler(
+            () => SelectedRobotState() with { Checked = _rgbMemoryMonitorEnabled },
+            _ => Task.FromResult(ToggleRgbMemoryMonitor()));
+        handlers[LegacyCommandId.ViewImportBackground] = Handler(
+            () => new LegacyCommandState(true, false),
+            async _ => await ImportBackgroundAsync());
+        handlers[LegacyCommandId.ViewRemoveBackground] = Handler(
+            () => new LegacyCommandState(_hasBackgroundImage, false, _hasBackgroundImage ? null : "No background picture is loaded."),
+            _ => Task.FromResult(RemoveBackground()));
+        handlers[LegacyCommandId.ObjectsNewTeleporter] = Handler(
+            () => LegacyCommandState.Available,
+            _ => Task.FromResult(BeginEnvironmentPlacement(EnvironmentPlacement.Teleporter)));
+        handlers[LegacyCommandId.ObjectsDeleteTeleporter] = Handler(
+            () => FeatureState(WorldFeatureKind.Teleporter),
+            async _ => await RemoveSelectedFeatureCommandAsync());
+        handlers[LegacyCommandId.ObjectsDeleteAllTeleporters] = Handler(
+            EngineState,
+            async _ => await DeleteAllTeleportersCommandAsync());
+        handlers[LegacyCommandId.ObjectsHilightTeleporters] = ViewportToggle(
+            () => Viewport.HighlightTeleporters,
+            value => Viewport.HighlightTeleporters = value,
+            "TELEPORTER HIGHLIGHT");
+        handlers[LegacyCommandId.ObjectsDontDecayNrgShots] = Handler(
+            () => new LegacyCommandState(_session is not null, _liveEnvironment.Shots.EnergyShotsDoNotDecay),
+            async _ => await ToggleShotDecayAsync(true));
+        handlers[LegacyCommandId.ObjectsDontDecayWasteShots] = Handler(
+            () => new LegacyCommandState(_session is not null, _liveEnvironment.Shots.WasteShotsDoNotDecay),
+            async _ => await ToggleShotDecayAsync(false));
+        handlers[LegacyCommandId.ObjectsDisableTies] = Handler(
+            () => new LegacyCommandState(_session is not null, _session?.LatestSnapshot.TiesEnabled == false),
+            async _ => await ToggleTiesAsync());
+        handlers[LegacyCommandId.ObjectsNewShape] = Handler(
+            () => LegacyCommandState.Available,
+            _ => Task.FromResult(BeginEnvironmentPlacement(EnvironmentPlacement.Obstacle)));
+        handlers[LegacyCommandId.ObjectsDeleteShape] = Handler(
+            () => FeatureState(WorldFeatureKind.Obstacle),
+            async _ => await RemoveSelectedFeatureCommandAsync());
+        handlers[LegacyCommandId.ObjectsDeleteAllShapes] = Handler(
+            EngineState,
+            async _ => await DeleteAllObstaclesCommandAsync());
+        handlers[LegacyCommandId.ObjectsAddTenRandomShapes] = Handler(
+            EngineState,
+            async _ => await AddRandomObstaclesCommandAsync(10));
+        handlers[LegacyCommandId.ObjectsDeleteTenRandomShapes] = Handler(
+            EngineState,
+            async _ => await DeleteRandomObstaclesCommandAsync(10));
+        handlers[LegacyCommandId.ObjectsHorizontalMaze] = MazeHandler(MazePattern.Horizontal);
+        handlers[LegacyCommandId.ObjectsVerticalMaze] = MazeHandler(MazePattern.Vertical);
+        handlers[LegacyCommandId.ObjectsSprial] = MazeHandler(MazePattern.Spiral);
+        handlers[LegacyCommandId.ObjectsCheckerboard] = MazeHandler(MazePattern.Checkerboard);
+        handlers[LegacyCommandId.ObjectsPolarIce] = MazeHandler(MazePattern.PolarIce);
+        handlers[LegacyCommandId.ObjectsTrashCompactor] = MazeHandler(MazePattern.TrashCompactor);
+        handlers[LegacyCommandId.RobotKill] = Handler(
+            SelectedRobotState,
+            async _ => await KillSelectedAsync());
+        handlers[LegacyCommandId.RobotKillEntireOrganism] = Handler(
+            SelectedRobotState,
+            async _ => await KillSelectedAsync());
+        handlers[LegacyCommandId.RobotShowInfo] = Handler(
+            SelectedRobotState,
+            async _ => await ShowSelectedRobotInfoAsync());
+        handlers[LegacyCommandId.RobotShowPhilogeny] = Handler(
+            SelectedRobotState,
+            async _ => await ShowSelectedPhylogenyAsync());
+        handlers[LegacyCommandId.RobotChangeColor] = Handler(
+            SelectedRobotState,
+            async _ => await ChangeSelectedSpeciesColorAsync());
+        handlers[LegacyCommandId.RobotOpenConsole] = Handler(
+            SelectedRobotState,
+            async _ => await ShowSelectedRobotConsoleAsync());
+        handlers[LegacyCommandId.RobotViewGeneActivations] = Handler(
+            SelectedRobotState,
+            async _ => await ShowSelectedGeneActivationsAsync());
+        handlers[LegacyCommandId.RobotSaveDna] = Handler(
+            SelectedRobotState,
+            async _ => await SaveSelectedDnaCommandAsync());
+        handlers[LegacyCommandId.RobotMakeNewSpecies] = Handler(
+            SelectedRobotState,
+            async _ => await MakeSelectedNewSpeciesAsync());
+        handlers[LegacyCommandId.RobotSelectEntireOrganism] = Handler(
+            SelectedRobotState,
+            _ => Task.FromResult(SelectEntireOrganism()));
+        handlers[LegacyCommandId.RobotSaveEntireOrganism] = Handler(
+            SelectedRobotState,
+            async _ => await SaveEntireOrganismAsync());
+        handlers[LegacyCommandId.RobotFindBest] = Handler(
+            EngineState,
+            _ => Task.FromResult(FindBestRobot()));
+        handlers[LegacyCommandId.RecordingSafemodeBackup] = Handler(
+            () => new LegacyCommandState(true, _safemodeBackup),
+            _ => Task.FromResult(ToggleSafemodeBackup()));
+        handlers[LegacyCommandId.RecordingSnapshotLiving] = Handler(
+            EngineState,
+            async _ => await SaveLivingSnapshotAsync());
+        handlers[LegacyCommandId.RecordingDeadEnable] = Handler(
+            () => new LegacyCommandState(_session is not null, _deadRecordingEnabled, _session is null ? "Start a simulation first." : null),
+            _ => Task.FromResult(ToggleDeadRecording()));
+        handlers[LegacyCommandId.RecordingDeadExcludeRepopulating] = Handler(
+            () => new LegacyCommandState(_session is not null, _excludeRepopulatingDead, _session is null ? "Start a simulation first." : null),
+            _ => Task.FromResult(ToggleDeadRecordingFilter()));
+        handlers[LegacyCommandId.EGridEnable] = ViewportToggle(
+            () => Viewport.EnergyGridEnabled,
+            value => Viewport.EnergyGridEnabled = value,
+            "E-GRID");
+        handlers[LegacyCommandId.EGridLarge] = EnergyGridSizeHandler(EnergyGridSize.Large);
+        handlers[LegacyCommandId.EGridMedium] = EnergyGridSizeHandler(EnergyGridSize.Medium);
+        handlers[LegacyCommandId.EGridSmall] = EnergyGridSizeHandler(EnergyGridSize.Small);
+        handlers[LegacyCommandId.InternetEnabled] = DelegateLegacyCommandHandler.Disabled(offline);
+        handlers[LegacyCommandId.InternetTeleporter] = DelegateLegacyCommandHandler.Disabled(offline);
+        handlers[LegacyCommandId.EditInternetOptions] = DelegateLegacyCommandHandler.Disabled(offline);
+        handlers[LegacyCommandId.HelpDna] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
+            "DNA Help", "Legacy DNA quick reference",
+            "Darwinbots DNA is plain text. Conditions appear between cond and start; actions appear between start and stop. Values are pushed onto the stack, sysvars are read with * and written with store.\n\nExample:\ncond\n*.eye5 0 >\nstart\n30 .up store\nstop\nend\n\nApostrophes begin comments. Imported bot files keep the historical .txt format and sysvar names."));
+        handlers[LegacyCommandId.HelpRobotTagInformation] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
+            "Robot Tag Information", "Species and lineage identity",
+            "A robot retains a stable slot:generation identity while alive. Species name identifies its imported DNA family. Lineage color drifts only when automatic speciation creates a descendant lineage, allowing related organisms to be recognized visually.\n\nAutotroph species use green hues. Heterotroph species use the remaining palette."));
+        handlers[LegacyCommandId.HelpSurvivalInfo] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
+            "Survival Info", "Reading the ecosystem",
+            "Energy keeps a bot alive and powers movement, shots, and reproduction. Body is a durable energy reserve and influences rendered size. Vegetables gain energy from chloroplasts and sunlight; animals must feed or exchange energy.\n\nPopulation, births, deaths, energy, mutation, shots, and feeding totals are recorded below the world view."));
+        handlers[LegacyCommandId.HelpAbout] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
+            "About Darwinbots Modern", "Behavioral modernization",
+            "Darwinbots Modern is a cross-platform continuation of Darwinbots 2. It preserves legacy text DNA and sysvars while running a Rust simulation engine behind an Avalonia desktop interface. CPU and GPU backends share the same simulation contract.\n\nThe VB6 Darwinbots 2 runtime remains the behavioral authority for compatibility decisions."));
+
+        return new LegacyCommandRouter(handlers);
+    }
+
+    private LegacyCommandState EngineState() => _session is null
+        ? new LegacyCommandState(false, false, "The simulation engine is not ready.")
+        : LegacyCommandState.Available;
+
+    private LegacyCommandState SelectedRobotState() => _viewModel.SelectedOrganism is null
+        ? new LegacyCommandState(false, false, "Select a robot first.")
+        : LegacyCommandState.Available;
+
+    private LegacyCommandState FeatureState(WorldFeatureKind kind) =>
+        _selectedFeature is { Kind: var selectedKind } && selectedKind == kind
+            ? LegacyCommandState.Available
+            : new LegacyCommandState(false, false, $"Select a {kind.ToString().ToLowerInvariant()} first.");
+
+    private static DelegateLegacyCommandHandler Handler(
+        Func<LegacyCommandState> state,
+        Func<CancellationToken, Task<LegacyCommandResult>> execute) => new(state, execute);
+
+    private DelegateLegacyCommandHandler ViewportToggle(
+        Func<bool> current,
+        Action<bool> set,
+        string label) => Handler(
+        () => new LegacyCommandState(true, current()),
+        _ =>
+        {
+            var enabled = !current();
+            set(enabled);
+            return Task.FromResult(LegacyCommandResult.Success($"{label} {(enabled ? "ON" : "OFF")}"));
+        });
+
+    private DelegateLegacyCommandHandler EnergyGridSizeHandler(EnergyGridSize size) => Handler(
+        () => new LegacyCommandState(true, Viewport.EnergyGridSize == size),
+        _ =>
+        {
+            Viewport.EnergyGridSize = size;
+            return Task.FromResult(LegacyCommandResult.Success($"E-GRID SIZE · {size.ToString().ToUpperInvariant()}"));
+        });
+
+    private DelegateLegacyCommandHandler MazeHandler(MazePattern pattern) => Handler(
+        EngineState,
+        async _ => await AddMazeCommandAsync(pattern));
+
+    private async void HistoricMenuBar_CommandInvoked(object? sender, LegacyCommandInvokedEventArgs e)
+    {
+        var result = await _legacyCommands.ExecuteAsync(e.Command);
+        _viewModel.Status = result.Status;
+        RefreshLegacyMenuStates();
+    }
+
+    private void RefreshLegacyMenuStates() =>
+        HistoricMenuBar.RefreshStates(_legacyCommands.GetState);
+
+    private LegacyCommandResult PauseSimulation()
+    {
+        _runTimer.Stop();
+        return LegacyCommandResult.Success("PAUSED");
+    }
+
+    private LegacyCommandResult ToggleVisionGrid()
+    {
+        Viewport.ShowSelectedVision = !Viewport.ShowSelectedVision;
+        ShowVisionToggle.IsChecked = Viewport.ShowSelectedVision;
+        return LegacyCommandResult.Success(Viewport.ShowSelectedVision ? "VISION GRID ON" : "VISION GRID OFF");
+    }
+
+    private LegacyCommandResult BeginEnvironmentPlacement(EnvironmentPlacement placement)
+    {
+        _environmentPlacement = placement;
+        _placementOrigin = null;
+        return LegacyCommandResult.Success(placement == EnvironmentPlacement.Obstacle
+            ? "OBSTACLE · CLICK FIRST CORNER"
+            : "TELEPORTER · CLICK SOURCE");
+    }
+
+    private async Task<LegacyCommandResult> KillSelectedAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (_viewModel.SelectedOrganism is not { } organism)
+            return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        await _session.RemoveAsync(organism.Slot, organism.Generation);
+        Viewport.SelectSlot(null);
+        return LegacyCommandResult.Success("ROBOT KILLED");
+    }
+
+    private LegacyCommandResult OpenNewSimulationSetup()
+    {
+        new SetupWindow(_storage).Show();
+        Close();
+        return LegacyCommandResult.Success("NEW SIMULATION SETUP");
+    }
+
+    private LegacyCommandResult QuitApplication()
+    {
+        Close();
+        return LegacyCommandResult.Success("QUIT");
+    }
+
+    private async Task<LegacyCommandResult> SaveSimulationCommandAsync(string status)
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        return await _storage.SaveSimulationAsync(this, await _session.SaveAsync())
+            ? LegacyCommandResult.Success(status)
+            : LegacyCommandResult.Cancel();
+    }
+
+    private async Task<LegacyCommandResult> LoadSimulationCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (await _storage.OpenSimulationAsync(this) is not { } save)
+            return LegacyCommandResult.Cancel();
+        await _session.LoadAsync(save);
+        return LegacyCommandResult.Success("LOADED");
+    }
+
+    private async Task<LegacyCommandResult> ImportOrganismsCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var files = await _storage.OpenDnaFilesAsync(this);
+        if (files.Count == 0) return LegacyCommandResult.Cancel();
+        var warnings = new List<string>();
+        foreach (var file in files)
+        {
+            var report = await _session.ImportSpeciesAsync(new SpeciesImport(
+                Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d,
+                1, 1_000, 0, false, 1f));
+            warnings.AddRange(report.CompatibilityWarnings);
+        }
+        return warnings.Count == 0
+            ? LegacyCommandResult.Success($"IMPORTED {files.Count} BOT FILE(S)")
+            : LegacyCommandResult.Success($"DNA COMPATIBILITY · {string.Join(" · ", warnings.Distinct())}");
+    }
+
+    private async Task<LegacyCommandResult> ToggleLegacyRestrictionAsync(bool fixing)
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var snapshot = _session.LatestSnapshot;
+        var fixingAllowed = fixing ? !snapshot.RobotFixingAllowed : snapshot.RobotFixingAllowed;
+        var asexualAllowed = fixing ? snapshot.AsexualReproductionAllowed : !snapshot.AsexualReproductionAllowed;
+        await _session.UpdateLegacyRestrictionsAsync(fixingAllowed, asexualAllowed);
+        return LegacyCommandResult.Success(fixing
+            ? $"ROBOT FIXING · {(fixingAllowed ? "ALLOWED" : "DISALLOWED")}"
+            : $"ASEXUAL REPRODUCTION · {(asexualAllowed ? "ALLOWED" : "BLOCKED FOR NON-REPOPULATING SPECIES")}");
+    }
+
+    private LegacyCommandResult ToggleAutomaticTagging()
+    {
+        _automaticTagByName = !_automaticTagByName;
+        return LegacyCommandResult.Success($"AUTOMATIC NAME TAGS · {(_automaticTagByName ? "ON" : "OFF")}");
+    }
+
+    private async Task<LegacyCommandResult> ToggleAutomaticForkingAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        _liveEnvironment = _liveEnvironment with { AutoSpeciation = !_liveEnvironment.AutoSpeciation };
+        await _session.UpdateEnvironmentAsync(_liveEnvironment);
+        return LegacyCommandResult.Success($"AUTOMATIC FORKING · {(_liveEnvironment.AutoSpeciation ? "ON" : "OFF")}");
+    }
+
+    private async Task<LegacyCommandResult> OpenPlayerBotSettingsAsync()
+    {
+        var dialog = new LegacyValueWindow("PlayerBot Settings", "Manual movement step", _playerBotThrust.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture), "World units moved per arrow or WASD key press while PlayerBot mode is enabled.");
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        if (!float.TryParse(dialog.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var thrust) || !float.IsFinite(thrust) || thrust <= 0 || thrust > 2_000)
+            return LegacyCommandResult.Failure("PLAYERBOT STEP MUST BE BETWEEN 0 AND 2000");
+        _playerBotThrust = thrust;
+        return LegacyCommandResult.Success($"PLAYERBOT STEP · {_playerBotThrust:0.0}");
+    }
+
+    private LegacyCommandResult TogglePlayerBot()
+    {
+        _playerBotEnabled = !_playerBotEnabled;
+        return LegacyCommandResult.Success($"PLAYERBOT MODE · {(_playerBotEnabled ? "ON · USE ARROWS OR WASD" : "OFF")}");
+    }
+
+    private async void PlayerBot_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (!_playerBotEnabled || _session is null || _viewModel.SelectedOrganism is not { } organism) return;
+        var delta = e.Key switch
+        {
+            Avalonia.Input.Key.Left or Avalonia.Input.Key.A => new[] { -_playerBotThrust, 0f },
+            Avalonia.Input.Key.Right or Avalonia.Input.Key.D => new[] { _playerBotThrust, 0f },
+            Avalonia.Input.Key.Up or Avalonia.Input.Key.W => new[] { 0f, -_playerBotThrust },
+            Avalonia.Input.Key.Down or Avalonia.Input.Key.S => new[] { 0f, _playerBotThrust },
+            _ => null,
+        };
+        if (delta is null) return;
+        var world = _session.LatestSnapshot.WorldSize;
+        var position = new[]
+        {
+            Math.Clamp(organism.Position[0] + delta[0], 0, world[0]),
+            Math.Clamp(organism.Position[1] + delta[1], 0, world[1]),
+        };
+        await _session.MoveAsync(organism.Slot, organism.Generation, position);
+        e.Handled = true;
+    }
+
+    private async Task<LegacyCommandResult> OpenEyeDesignerAsync()
+    {
+        var organism = _viewModel.SelectedOrganism!;
+        var dialog = new LegacyValueWindow("Eye Designer", "Aim angle", organism.Aim.ToString(System.Globalization.CultureInfo.InvariantCulture), "DB2 angular units: 0 through 1256, where approximately 314 is a quarter turn.");
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        if (!int.TryParse(dialog.Value, out var aim)) return LegacyCommandResult.Failure("AIM MUST BE AN INTEGER");
+        await _session!.SetOrganismAimAsync(organism.Slot, organism.Generation, aim);
+        return LegacyCommandResult.Success($"EYE AIM · {((aim % 1257) + 1257) % 1257}");
+    }
+
+    private Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
+    {
+        var snapshot = _session!.LatestSnapshot;
+        return ShowDocumentAsync("Restriction Overwrites", "Active simulation policy", $"Robot-controlled fixing: {(snapshot.RobotFixingAllowed ? "allowed" : "overwritten off")}\nAsexual reproduction for non-repopulating species: {(snapshot.AsexualReproductionAllowed ? "allowed" : "overwritten off")}\nTie creation: {(snapshot.TiesEnabled ? "allowed" : "overwritten off")}\nAutomatic forking/speciation: {(_liveEnvironment.AutoSpeciation ? "enabled" : "disabled")}\n\nThese overrides apply between simulation phases and do not modify bot DNA.");
+    }
+
+    private async Task<LegacyCommandResult> OpenRgbMonitorSettingsAsync()
+    {
+        var dialog = new LegacyValueWindow("RGB Memory Monitor Settings", "Red, green, blue channels", _rgbMemoryChannels, "Enter three comma-separated DB2 values. The modern monitor currently recognizes .nrg, .body, .waste, .chlr, .shell, .slime, .venom, and .poison.");
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        var channels = dialog.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (channels.Length != 3) return LegacyCommandResult.Failure("RGB MONITOR REQUIRES THREE CHANNELS");
+        _rgbMemoryChannels = string.Join(", ", channels);
+        if (_rgbMemoryMonitorEnabled) CloseRgbMonitor();
+        return LegacyCommandResult.Success($"RGB CHANNELS · {_rgbMemoryChannels.ToUpperInvariant()}");
+    }
+
+    private LegacyCommandResult ToggleRgbMemoryMonitor()
+    {
+        if (_rgbMemoryMonitorEnabled)
+        {
+            CloseRgbMonitor();
+            return LegacyCommandResult.Success("RGB MEMORY MONITOR · OFF");
+        }
+        var organism = _viewModel.SelectedOrganism!;
+        var channels = _rgbMemoryChannels.Split(',', StringSplitOptions.TrimEntries);
+        int Read(string channel) => channel.ToLowerInvariant() switch
+        {
+            ".nrg" => organism.Energy, ".body" => organism.Body, ".waste" => organism.Waste,
+            ".chlr" => organism.Chloroplasts, ".shell" => organism.Shell, ".slime" => organism.Slime,
+            ".venom" => organism.Venom, ".poison" => organism.Poison, _ => 0,
+        };
+        _rgbMonitorWindow = new LegacyDocumentWindow("RGB Memory Monitor", $"Robot {organism.Slot}:{organism.Generation}", $"RED   {channels[0]} = {Read(channels[0]):N0}\nGREEN {channels[1]} = {Read(channels[1]):N0}\nBLUE  {channels[2]} = {Read(channels[2]):N0}\n\nThe three values form a diagnostic color signature for the selected robot.");
+        _rgbMonitorWindow.Closed += (_, _) => { _rgbMemoryMonitorEnabled = false; _rgbMonitorWindow = null; RefreshLegacyMenuStates(); };
+        _rgbMemoryMonitorEnabled = true;
+        _rgbMonitorWindow.Show(this);
+        return LegacyCommandResult.Success("RGB MEMORY MONITOR · ON");
+    }
+
+    private void CloseRgbMonitor()
+    {
+        var window = _rgbMonitorWindow;
+        _rgbMonitorWindow = null;
+        _rgbMemoryMonitorEnabled = false;
+        window?.Close();
+    }
+
+    private async Task<LegacyCommandResult> ImportBackgroundAsync()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Import Darwinbots background picture",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new Avalonia.Platform.Storage.FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp"] },
+            ],
+        });
+        if (files.Count == 0) return LegacyCommandResult.Cancel();
+        await using var stream = await files[0].OpenReadAsync();
+        Viewport.SetBackgroundImage(new Avalonia.Media.Imaging.Bitmap(stream));
+        _hasBackgroundImage = true;
+        return LegacyCommandResult.Success($"BACKGROUND · {files[0].Name}");
+    }
+
+    private LegacyCommandResult RemoveBackground()
+    {
+        Viewport.SetBackgroundImage(null);
+        _hasBackgroundImage = false;
+        return LegacyCommandResult.Success("BACKGROUND REMOVED");
+    }
+
+    private async Task<LegacyCommandResult> ToggleShotDecayAsync(bool energy)
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var shots = energy
+            ? _liveEnvironment.Shots with { EnergyShotsDoNotDecay = !_liveEnvironment.Shots.EnergyShotsDoNotDecay }
+            : _liveEnvironment.Shots with { WasteShotsDoNotDecay = !_liveEnvironment.Shots.WasteShotsDoNotDecay };
+        _liveEnvironment = _liveEnvironment with { Shots = shots };
+        await _session.UpdateEnvironmentAsync(_liveEnvironment);
+        var enabled = energy ? shots.EnergyShotsDoNotDecay : shots.WasteShotsDoNotDecay;
+        return LegacyCommandResult.Success($"{(energy ? "ENERGY" : "WASTE")} SHOT DECAY · {(enabled ? "OFF" : "ON")}");
+    }
+
+    private async Task<LegacyCommandResult> ToggleTiesAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var enabled = !_session.LatestSnapshot.TiesEnabled;
+        await _session.SetTiesEnabledAsync(enabled);
+        return LegacyCommandResult.Success($"TIES · {(enabled ? "ENABLED" : "DISABLED")}");
+    }
+
+    private async Task<LegacyCommandResult> SaveLivingSnapshotAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = "Save snapshot of the living",
+            SuggestedFileName = $"darwinbots-living-{_session.LatestSnapshot.Tick}.json",
+            DefaultExtension = "json",
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots living snapshot") { Patterns = ["*.json"] }],
+        });
+        if (file is null) return LegacyCommandResult.Cancel();
+        await using var stream = await file.OpenWriteAsync();
+        await System.Text.Json.JsonSerializer.SerializeAsync(stream, new
+        {
+            version = 1,
+            tick = _session.LatestSnapshot.Tick,
+            world_size = _session.LatestSnapshot.WorldSize,
+            organisms = _session.LatestSnapshot.Organisms,
+            species = _session.LatestSnapshot.Species,
+            stats = _session.LatestSnapshot.Stats,
+        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        return LegacyCommandResult.Success($"LIVING SNAPSHOT · {file.Name}");
+    }
+
+    private LegacyCommandResult ToggleDeadRecording()
+    {
+        _deadRecordingEnabled = !_deadRecordingEnabled;
+        _recordedCorpseCount = _session?.LatestSnapshot.Corpses.Count ?? 0;
+        return LegacyCommandResult.Success($"DEAD RECORDING · {(_deadRecordingEnabled ? "ON" : "OFF")}");
+    }
+
+    private LegacyCommandResult ToggleDeadRecordingFilter()
+    {
+        _excludeRepopulatingDead = !_excludeRepopulatingDead;
+        return LegacyCommandResult.Success($"REPOPULATING DEAD · {(_excludeRepopulatingDead ? "EXCLUDED" : "INCLUDED")}");
+    }
+
+    private void RecordDeadSnapshot(EngineSnapshot snapshot)
+    {
+        if (!_deadRecordingEnabled)
+        {
+            _recordedCorpseCount = snapshot.Corpses.Count;
+            return;
+        }
+        if (snapshot.Corpses.Count < _recordedCorpseCount) _recordedCorpseCount = 0;
+        if (snapshot.Corpses.Count == _recordedCorpseCount) return;
+        try
+        {
+            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern", "records");
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "dead.jsonl");
+            var lines = snapshot.Corpses.Skip(_recordedCorpseCount)
+                .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
+                .Select(corpse => System.Text.Json.JsonSerializer.Serialize(new { version = 1, tick = snapshot.Tick, corpse }))
+                .ToArray();
+            File.AppendAllLines(path, lines);
+            _recordedCorpseCount = snapshot.Corpses.Count;
+        }
+        catch (Exception error)
+        {
+            _deadRecordingEnabled = false;
+            _viewModel.Status = $"DEAD RECORDING FAILED · {error.Message}";
+        }
+    }
+
+    private async Task<LegacyCommandResult> ShowDocumentAsync(string title, string section, string content)
+    {
+        var dialog = new LegacyDocumentWindow(title, section, content);
+        await dialog.ShowDialog(this);
+        return LegacyCommandResult.Success(title.ToUpperInvariant());
+    }
+
+    private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        await _session.UpdateEnvironmentAsync(dialog.Update);
+        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
+        _liveEnvironment = dialog.Update;
+        return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+    }
+
+    private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
+    {
+        var organism = _viewModel.SelectedOrganism!;
+        var species = _session?.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
+        Viewport.SelectSlot(organism.Slot);
+        return await ShowDocumentAsync(
+            $"Robot {organism.Slot}:{organism.Generation}",
+            species?.Name ?? "Unassigned species",
+            $"Stable ID: {organism.Slot}:{organism.Generation}\nSpecies: {species?.Name ?? "Unassigned"}\nAge: {organism.Age:N0}\nEnergy: {organism.Energy:N0}\nBody: {organism.Body:N0}\nWaste: {organism.Waste:N0}\nChloroplasts: {organism.Chloroplasts:N0}\nShell / Slime: {organism.Shell:N0} / {organism.Slime:N0}\nPoison / Venom: {organism.Poison:N0} / {organism.Venom:N0}\nAim: {organism.Aim}\nPosition: {organism.Position[0]:0.0}, {organism.Position[1]:0.0}\nVelocity: {organism.Velocity[0]:0.00}, {organism.Velocity[1]:0.00}\nLineage: {organism.Phenotype.LineageId}\nAccumulated mutations: {organism.Phenotype.AccumulatedMutations:N0}");
+    }
+
+    private async Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
+    {
+        var organism = _viewModel.SelectedOrganism!;
+        var snapshot = _session!.LatestSnapshot;
+        var parents = organism.Parents is { Length: > 0 }
+            ? string.Join("\n", organism.Parents.Select((parent, index) => parent is { } value ? $"Parent {index + 1}: {value.Slot}:{value.Generation}" : $"Parent {index + 1}: unknown"))
+            : "No recorded parents (founder or legacy import).";
+        var relatives = snapshot.Organisms.Count(value => value.Phenotype.LineageId == organism.Phenotype.LineageId);
+        return await ShowDocumentAsync("Show Philogeny", "Lineage record", $"Robot: {organism.Slot}:{organism.Generation}\nLineage ID: {organism.Phenotype.LineageId}\nLiving lineage members: {relatives:N0}\nAccumulated mutations: {organism.Phenotype.AccumulatedMutations:N0}\n\n{parents}");
+    }
+
+    private async Task<LegacyCommandResult> ChangeSelectedSpeciesColorAsync()
+    {
+        var organism = _viewModel.SelectedOrganism!;
+        var species = _session!.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
+        var dialog = new LegacyValueWindow("Change Color", "Species color", $"#{(species?.Color ?? organism.Phenotype.Color) & 0x00ffffff:X6}", "Enter a six-digit RGB hexadecimal color, for example #239AC0.");
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        var text = dialog.Value.TrimStart('#');
+        if (!uint.TryParse(text, System.Globalization.NumberStyles.HexNumber, null, out var rgb) || text.Length != 6)
+            return LegacyCommandResult.Failure("COLOR MUST BE SIX HEX DIGITS");
+        await _session.SetSpeciesColorAsync(organism.Species, 0xff000000 | rgb);
+        return LegacyCommandResult.Success($"SPECIES COLOR · #{rgb:X6}");
+    }
+
+    private async Task<LegacyCommandResult> ShowSelectedRobotConsoleAsync()
+    {
+        var organism = _viewModel.SelectedOrganism!;
+        return await ShowDocumentAsync("Robot Console", $"Live robot {organism.Slot}:{organism.Generation}", $".nrg = {organism.Energy}\n.body = {organism.Body}\n.waste = {organism.Waste}\n.chlr = {organism.Chloroplasts}\n.aim = {organism.Aim}\n.paralyzed = {organism.Paralyzed}\n.poisoned = {organism.Poisoned}\n\nPosition = [{organism.Position[0]:0.00}, {organism.Position[1]:0.00}]\nVelocity = [{organism.Velocity[0]:0.00}, {organism.Velocity[1]:0.00}]\n\nThis console is a read-only live memory summary. Use Edit / Export DNA to change the active program.");
+    }
+
+    private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
+    {
+        var organism = _viewModel.SelectedOrganism!;
+        var dna = await _session!.ExportDnaAsync(organism.Slot, organism.Generation);
+        var genes = dna.Split("cond", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var report = genes.Length == 0 ? "No cond/start gene blocks were found." : string.Join("\n\n", genes.Select((gene, index) => $"GENE {index + 1}\ncond{gene}"));
+        return await ShowDocumentAsync("Gene Activations", $"DNA blocks for {organism.Slot}:{organism.Generation}", report);
+    }
+
+    private async Task<LegacyCommandResult> MakeSelectedNewSpeciesAsync()
+    {
+        var organism = _viewModel.SelectedOrganism!;
+        var source = _session!.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
+        var dialog = new LegacyValueWindow("Make New Species", "New species name", $"{source?.Name ?? "Species"} descendant", "Only the selected robot moves to the new species; its DNA and current state are preserved.");
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        if (string.IsNullOrWhiteSpace(dialog.Value)) return LegacyCommandResult.Failure("SPECIES NAME IS REQUIRED");
+        var sourceColor = source?.Color ?? organism.Phenotype.Color;
+        var color = 0xff000000 | (((sourceColor & 0x00ffffff) + 0x00130d17) & 0x00ffffff);
+        await _session.MakeNewSpeciesAsync(organism.Slot, organism.Generation, dialog.Value, color);
+        return LegacyCommandResult.Success($"NEW SPECIES · {dialog.Value.ToUpperInvariant()}");
+    }
+
+    private IReadOnlyList<OrganismSnapshot> SelectedOrganismGroup()
+    {
+        var selected = _viewModel.SelectedOrganism;
+        if (selected is null || _session is null) return [];
+        var snapshot = _session.LatestSnapshot;
+        var pending = new Queue<OrganismKey>();
+        var slots = new HashSet<uint> { selected.Slot };
+        pending.Enqueue(new OrganismKey(selected.Slot, selected.Generation));
+        while (pending.Count > 0)
+        {
+            var current = pending.Dequeue();
+            foreach (var tie in snapshot.Ties.Where(value => value.First == current || value.Second == current))
+            {
+                var other = tie.First == current ? tie.Second : tie.First;
+                if (slots.Add(other.Slot)) pending.Enqueue(other);
+            }
+        }
+        return snapshot.Organisms.Where(value => slots.Contains(value.Slot)).ToArray();
+    }
+
+    private LegacyCommandResult SelectEntireOrganism()
+    {
+        var group = SelectedOrganismGroup();
+        var selected = _viewModel.SelectedOrganism!;
+        Viewport.SelectSlots(group.Select(value => value.Slot), selected.Slot);
+        return LegacyCommandResult.Success($"ORGANISM SELECTED · {group.Count:N0} BOT(S)");
+    }
+
+    private async Task<LegacyCommandResult> SaveEntireOrganismAsync()
+    {
+        var group = SelectedOrganismGroup();
+        if (_session is null || group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
+        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = "Save entire organism",
+            SuggestedFileName = $"organism-{_viewModel.SelectedSlot}.json",
+            DefaultExtension = "json",
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots organism") { Patterns = ["*.json"] }],
+        });
+        if (file is null) return LegacyCommandResult.Cancel();
+        var members = new List<object>();
+        foreach (var member in group)
+        {
+            var dna = await _session.ExportDnaAsync(member.Slot, member.Generation);
+            members.Add(new { member.Slot, member.Generation, member.Species, member.Position, member.Velocity, member.Energy, member.Body, dna });
+        }
+        await using var stream = await file.OpenWriteAsync();
+        await System.Text.Json.JsonSerializer.SerializeAsync(stream, new { version = 1, tick = _session.LatestSnapshot.Tick, members, ties = _session.LatestSnapshot.Ties }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        return LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)");
+    }
+
+    private async Task<LegacyCommandResult> SaveSelectedDnaCommandAsync()
+    {
+        if (_session is null || _viewModel.SelectedOrganism is not { } organism)
+            return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        var dna = await _session.ExportDnaAsync(organism.Slot, organism.Generation);
+        var species = organism.Species < _session.LatestSnapshot.Species.Count
+            ? _session.LatestSnapshot.Species[(int)organism.Species].Name
+            : $"Robot-{organism.Slot}-{organism.Generation}";
+        var suggestedName = _automaticTagByName ? $"{species}.txt" : $"Robot-{organism.Slot}-{organism.Generation}.txt";
+        return await _storage.SaveDnaAsync(this, suggestedName, dna)
+            ? LegacyCommandResult.Success("ROBOT DNA SAVED")
+            : LegacyCommandResult.Cancel();
+    }
+
+    private LegacyCommandResult FindBestRobot()
+    {
+        if (_session?.LatestSnapshot.Organisms.MaxBy(organism => organism.Energy) is not { } organism)
+            return LegacyCommandResult.Failure("NO LIVING ROBOTS");
+        _viewModel.Select(organism.Slot);
+        Viewport.SelectSlot(organism.Slot);
+        return LegacyCommandResult.Success($"BEST ENERGY · {organism.Slot}:{organism.Generation} · {organism.Energy:0}");
+    }
+
+    private async Task<LegacyCommandResult> RemoveSelectedFeatureCommandAsync()
+    {
+        if (_session is null || _selectedFeature is not { } feature)
+            return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
+        if (feature.Kind == WorldFeatureKind.Obstacle) await _session.RemoveObstacleAsync(feature.Id);
+        else await _session.RemoveTeleporterAsync(feature.Id);
+        _selectedFeature = null;
+        Viewport.SelectFeature(null);
+        return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
+    }
+
+    private async Task<LegacyCommandResult> DeleteAllTeleportersCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var teleporters = _session.LatestSnapshot.Teleporters.ToArray();
+        foreach (var teleporter in teleporters) await _session.RemoveTeleporterAsync(teleporter.Id);
+        return LegacyCommandResult.Success($"DELETED {teleporters.Length} TELEPORTER(S)");
+    }
+
+    private async Task<LegacyCommandResult> DeleteAllObstaclesCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var obstacles = _session.LatestSnapshot.Obstacles.ToArray();
+        foreach (var obstacle in obstacles) await _session.RemoveObstacleAsync(obstacle.Id);
+        return LegacyCommandResult.Success($"DELETED {obstacles.Length} SHAPE(S)");
+    }
+
+    private async Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count)
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var random = new Random(unchecked((int)_session.LatestSnapshot.Tick + 0x4d42));
+        var width = (float)_setup.WorldWidth;
+        var height = (float)_setup.WorldHeight;
+        var shapes = Enumerable.Range(0, count).Select(_ =>
+        {
+            var shapeWidth = width * (0.025f + (float)random.NextDouble() * 0.09f);
+            var shapeHeight = height * (0.015f + (float)random.NextDouble() * 0.07f);
+            var x = (float)random.NextDouble() * Math.Max(1, width - shapeWidth);
+            var y = (float)random.NextDouble() * Math.Max(1, height - shapeHeight);
+            return (Minimum: new[] { x, y }, Maximum: new[] { x + shapeWidth, y + shapeHeight });
+        });
+        await AddObstaclesAsync(shapes);
+        return LegacyCommandResult.Success($"ADDED {count} RANDOM SHAPES");
+    }
+
+    private async Task<LegacyCommandResult> DeleteRandomObstaclesCommandAsync(int count)
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var selected = _session.LatestSnapshot.Obstacles
+            .OrderBy(obstacle => HashCode.Combine(obstacle.Id, _session.LatestSnapshot.Tick))
+            .Take(count)
+            .ToArray();
+        foreach (var obstacle in selected) await _session.RemoveObstacleAsync(obstacle.Id);
+        return LegacyCommandResult.Success($"DELETED {selected.Length} RANDOM SHAPES");
+    }
+
+    private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePattern pattern)
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var width = (float)_setup.WorldWidth;
+        var height = (float)_setup.WorldHeight;
+        var thickness = Math.Max(20f, Math.Min(width, height) * 0.012f);
+        var shapes = new List<(float[] Minimum, float[] Maximum)>();
+        void Add(float x1, float y1, float x2, float y2) =>
+            shapes.Add((new[] { x1, y1 }, new[] { x2, y2 }));
+
+        switch (pattern)
+        {
+            case MazePattern.Horizontal:
+                for (var row = 1; row <= 6; row++)
+                {
+                    var y = height * row / 7f;
+                    if (row % 2 == 0) Add(0, y, width * 0.78f, y + thickness);
+                    else Add(width * 0.22f, y, width, y + thickness);
+                }
+                break;
+            case MazePattern.Vertical:
+                for (var column = 1; column <= 6; column++)
+                {
+                    var x = width * column / 7f;
+                    if (column % 2 == 0) Add(x, 0, x + thickness, height * 0.78f);
+                    else Add(x, height * 0.22f, x + thickness, height);
+                }
+                break;
+            case MazePattern.Spiral:
+                for (var ring = 0; ring < 4; ring++)
+                {
+                    var left = width * (0.12f + ring * 0.1f);
+                    var right = width - left;
+                    var top = height * (0.12f + ring * 0.1f);
+                    var bottom = height - top;
+                    Add(left, top, right, top + thickness);
+                    Add(right - thickness, top, right, bottom);
+                    Add(left + width * 0.08f, bottom - thickness, right, bottom);
+                    if (ring < 3) Add(left, top + height * 0.08f, left + thickness, bottom);
+                }
+                break;
+            case MazePattern.Checkerboard:
+                for (var y = 0; y < 5; y++)
+                for (var x = 0; x < 7; x++)
+                    if ((x + y) % 2 == 0)
+                        Add(width * x / 7f, height * y / 5f, width * (x + 0.58f) / 7f, height * (y + 0.58f) / 5f);
+                break;
+            case MazePattern.PolarIce:
+                Add(0, 0, width * 0.42f, height * 0.12f);
+                Add(width * 0.58f, 0, width, height * 0.12f);
+                Add(0, height * 0.88f, width * 0.42f, height);
+                Add(width * 0.58f, height * 0.88f, width, height);
+                break;
+            case MazePattern.TrashCompactor:
+                Add(0, 0, width * 0.16f, height);
+                Add(width * 0.84f, 0, width, height);
+                for (var row = 0; row < 6; row++)
+                {
+                    var y = height * (row + 0.5f) / 6f;
+                    Add(width * 0.16f, y, width * 0.3f, y + thickness);
+                    Add(width * 0.7f, y, width * 0.84f, y + thickness);
+                }
+                break;
+        }
+
+        await AddObstaclesAsync(shapes);
+        return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
+    }
+
+    private async Task AddObstaclesAsync(IEnumerable<(float[] Minimum, float[] Maximum)> shapes)
+    {
+        if (_session is null) return;
+        var id = _session.LatestSnapshot.Obstacles.Select(obstacle => obstacle.Id).DefaultIfEmpty().Max() + 1;
+        foreach (var shape in shapes)
+            await _session.AddObstacleAsync(new ObstacleSnapshot(id++, shape.Minimum, shape.Maximum));
+    }
+
+    private LegacyCommandResult ToggleSafemodeBackup()
+    {
+        _safemodeBackup = !_safemodeBackup;
+        if (_safemodeBackup) _autosaveTimer.Start();
+        else _autosaveTimer.Stop();
+        return LegacyCommandResult.Success(_safemodeBackup ? "SAFEMODE BACKUP ON" : "SAFEMODE BACKUP OFF");
+    }
     private async void Window_Opened(object? sender, EventArgs e)
     {
         try
@@ -192,6 +1082,8 @@ public sealed partial class MainWindow : Window
                 Viewport.SelectSlot(_viewModel.SelectedSlot);
                 PopulationChart.SetSnapshot(snapshot);
                 EnergyChart.SetSnapshot(snapshot);
+                RecordDeadSnapshot(snapshot);
+                RefreshLegacyMenuStates();
                 if (_zerobotProgression is not null && !_progressionInFlight
                     && _zerobotProgression.Observe(snapshot) is { } transition)
                     _ = ApplyZerobotTransitionAsync(transition);
@@ -238,9 +1130,8 @@ public sealed partial class MainWindow : Window
 
     private async void Kill_Click(object? sender, RoutedEventArgs e)
     {
-        if (_session is null || _viewModel.SelectedOrganism is not { } organism) return;
-        await _session.RemoveAsync(organism.Slot, organism.Generation);
-        Viewport.SelectSlot(null);
+        _viewModel.Status = (await KillSelectedAsync()).Status;
+        RefreshLegacyMenuStates();
     }
 
     private void Move_Click(object? sender, RoutedEventArgs e)
@@ -283,8 +1174,7 @@ public sealed partial class MainWindow : Window
 
     private void Pause_Click(object? sender, RoutedEventArgs e)
     {
-        _runTimer.Stop();
-        _viewModel.Status = "PAUSED";
+        _viewModel.Status = PauseSimulation().Status;
     }
 
     private void Reset_Click(object? sender, RoutedEventArgs e)
@@ -337,16 +1227,12 @@ public sealed partial class MainWindow : Window
 
     private void AddObstacle_Click(object? sender, RoutedEventArgs e)
     {
-        _environmentPlacement = EnvironmentPlacement.Obstacle;
-        _placementOrigin = null;
-        _viewModel.Status = "OBSTACLE · CLICK FIRST CORNER";
+        _viewModel.Status = BeginEnvironmentPlacement(EnvironmentPlacement.Obstacle).Status;
     }
 
     private void AddTeleporter_Click(object? sender, RoutedEventArgs e)
     {
-        _environmentPlacement = EnvironmentPlacement.Teleporter;
-        _placementOrigin = null;
-        _viewModel.Status = "TELEPORTER · CLICK SOURCE";
+        _viewModel.Status = BeginEnvironmentPlacement(EnvironmentPlacement.Teleporter).Status;
     }
 
     private async void RemoveFeature_Click(object? sender, RoutedEventArgs e)
@@ -375,13 +1261,14 @@ public sealed partial class MainWindow : Window
     private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment);
+        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return;
         var update = dialog.Update;
         await _session.UpdateEnvironmentAsync(update);
+        await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = update;
-        _viewModel.Status = "LIVE ENVIRONMENT SETTINGS APPLIED";
+        _viewModel.Status = "LIVE SETTINGS APPLIED";
     }
 
     private async void ToroidalWorld_Changed(object? sender, RoutedEventArgs e)
@@ -532,3 +1419,4 @@ public sealed partial class MainWindow : Window
 }
 
 internal enum EnvironmentPlacement { None, Obstacle, Teleporter }
+internal enum MazePattern { Horizontal, Vertical, Spiral, Checkerboard, PolarIce, TrashCompactor }

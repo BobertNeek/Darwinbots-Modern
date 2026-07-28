@@ -7,12 +7,16 @@ pub struct CorpseSnapshot {
     pub energy: i32,
     pub body: i32,
     pub age: u64,
+    #[serde(default)]
+    pub species: u32,
+    #[serde(default)]
+    pub repopulating: bool,
 }
 
 impl CorpseSnapshot {
-    pub(crate) fn new(position: [f32; 2], velocity: [f32; 2], body: i32, waste: i32) -> Self {
+    pub(crate) fn new(position: [f32; 2], velocity: [f32; 2], body: i32, waste: i32, species: u32, repopulating: bool) -> Self {
         let body = body.max(1);
-        Self { position, velocity, energy: body.saturating_add(waste.max(0)), body, age: 0 }
+        Self { position, velocity, energy: body.saturating_add(waste.max(0)), body, age: 0, species, repopulating }
     }
 
     pub(crate) fn advance(&mut self, gravity: [f32; 2], drag: f32, world_size: [f32; 2]) {
