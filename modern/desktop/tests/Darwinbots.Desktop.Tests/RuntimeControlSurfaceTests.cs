@@ -261,7 +261,7 @@ public sealed class RuntimeControlSurfaceTests
             return Task.CompletedTask;
         }, CancellationToken.None);
 
-        await WaitFor(() => engine.Calls.Contains("SaveWithoutMutations"));
+        await WaitFor(() => storage.SavedSimulation is [9, 8, 7]);
         Assert.Equal([9, 8, 7], storage.SavedSimulation);
         Assert.DoesNotContain("Save", engine.Calls);
     }
