@@ -9,7 +9,8 @@ public sealed record LegacyMenuItem
         string? shortcut,
         LegacyMenuCheckKind checkKind,
         IReadOnlyList<LegacyMenuItem> children,
-        bool separator)
+        bool separator,
+        bool visibleByDefault)
     {
         Label = label;
         Command = command;
@@ -18,6 +19,7 @@ public sealed record LegacyMenuItem
         CheckKind = checkKind;
         Children = children;
         IsSeparator = separator;
+        VisibleByDefault = visibleByDefault;
     }
 
     public string Label { get; }
@@ -27,13 +29,17 @@ public sealed record LegacyMenuItem
     public LegacyMenuCheckKind CheckKind { get; }
     public IReadOnlyList<LegacyMenuItem> Children { get; }
     public bool IsSeparator { get; }
+    public bool VisibleByDefault { get; }
     public bool IsLeaf => Command is not null;
 
     public static LegacyMenuItem Top(string label, params LegacyMenuItem[] children) =>
-        new(label, null, null, null, LegacyMenuCheckKind.None, children, false);
+        Top(label, true, children);
+
+    public static LegacyMenuItem Top(string label, bool visible, params LegacyMenuItem[] children) =>
+        new(label, null, null, null, LegacyMenuCheckKind.None, children, false, visible);
 
     public static LegacyMenuItem Group(string label, string iconKey, params LegacyMenuItem[] children) =>
-        new(label, null, iconKey, null, LegacyMenuCheckKind.None, children, false);
+        new(label, null, iconKey, null, LegacyMenuCheckKind.None, children, false, true);
 
     public static LegacyMenuItem Leaf(
         string label,
@@ -41,8 +47,8 @@ public sealed record LegacyMenuItem
         string iconKey,
         string? shortcut = null,
         LegacyMenuCheckKind checkKind = LegacyMenuCheckKind.None) =>
-        new(label, command, iconKey, shortcut, checkKind, [], false);
+        new(label, command, iconKey, shortcut, checkKind, [], false, true);
 
     public static LegacyMenuItem Separator() =>
-        new("-", null, null, null, LegacyMenuCheckKind.None, [], true);
+        new("-", null, null, null, LegacyMenuCheckKind.None, [], true, true);
 }

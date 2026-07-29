@@ -57,9 +57,48 @@ public sealed class LegacyMenuCatalogTests
     }
 
     [Fact]
-    public void HistoricalPauseShortcutIsPreserved()
+    public void HistoricalVisibilityAndShortcutsArePreserved()
     {
-        Assert.Equal("F12", FindLeaf("File", "Pause Sim (F12)").Shortcut);
+        var expectedShortcuts = new Dictionary<LegacyCommandId, string>
+        {
+            [LegacyCommandId.FileNewSimulation] = "F1",
+            [LegacyCommandId.FileLoadSimulation] = "F2",
+            [LegacyCommandId.FileSaveSimulation] = "F3",
+            [LegacyCommandId.FileSaveWithoutMutations] = "Ctrl+F3",
+            [LegacyCommandId.FilePauseSimulation] = "F12",
+            [LegacyCommandId.FileQuit] = "Ctrl+Q",
+            [LegacyCommandId.EditInsertOrganism] = "Ctrl+I",
+            [LegacyCommandId.EditSpecies] = "Ctrl+X",
+            [LegacyCommandId.EditGeneralSettings] = "Ctrl+P",
+            [LegacyCommandId.EditPhysicsAndCosts] = "F5",
+            [LegacyCommandId.EditGlobalMutationRates] = "Ctrl+G",
+            [LegacyCommandId.EditRestartAndLeagues] = "Ctrl+F",
+            [LegacyCommandId.EditEnablePlayerBot] = "F11",
+            [LegacyCommandId.EditRestrictionOverwrites] = "F8",
+            [LegacyCommandId.RobotShowInfo] = "Ctrl+R",
+            [LegacyCommandId.RobotShowPhilogeny] = "Ctrl+T",
+            [LegacyCommandId.RobotMutationRates] = "Ctrl+M",
+            [LegacyCommandId.RobotChangeColor] = "Ctrl+C",
+            [LegacyCommandId.RobotOpenConsole] = "Ctrl+Y",
+            [LegacyCommandId.RobotViewGeneActivations] = "Ctrl+Z",
+            [LegacyCommandId.RobotKill] = "Ctrl+K",
+            [LegacyCommandId.RobotSaveDna] = "Ctrl+S",
+            [LegacyCommandId.RobotSelectEntireOrganism] = "Ctrl+F1",
+            [LegacyCommandId.RobotSaveEntireOrganism] = "Ctrl+F2",
+            [LegacyCommandId.RobotKillEntireOrganism] = "Ctrl+E",
+            [LegacyCommandId.RobotFindBest] = "Ctrl+B",
+            [LegacyCommandId.HelpDna] = "Ctrl+D",
+            [LegacyCommandId.HelpAbout] = "Ctrl+A",
+        };
+        var actualShortcuts = LegacyMenuCatalog.FlattenLeaves()
+            .Where(item => item.Shortcut is not null)
+            .ToDictionary(item => item.Command!.Value, item => item.Shortcut!);
+
+        Assert.Equal(expectedShortcuts, actualShortcuts);
+
+        var eGrid = Assert.Single(LegacyMenuCatalog.TopLevel, item => item.Label == "E-Grid");
+        Assert.False(eGrid.VisibleByDefault);
+        Assert.All(LegacyMenuCatalog.TopLevel.Where(item => item != eGrid), item => Assert.True(item.VisibleByDefault));
     }
 
     private static void AssertSubmenu(string topLevel, string submenu, params string[] expectedChildren)
