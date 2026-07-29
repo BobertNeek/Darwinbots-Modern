@@ -1,5 +1,6 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Darwinbots.Desktop.Core.LegacyMenus;
 
@@ -42,6 +43,7 @@ public partial class LegacyMenuBar : UserControl
             var state = stateProvider(command);
             item.IsEnabled = state.Enabled;
             item.IsChecked = state.Checked;
+            item.IsVisible = state.Visible;
             ToolTip.SetTip(item, state.DisabledReason);
         }
     }
@@ -52,6 +54,7 @@ public partial class LegacyMenuBar : UserControl
         {
             Header = model.Label,
             Name = topLevel ? $"Menu{Sanitize(model.Label)}" : null,
+            IsVisible = model.VisibleByDefault,
         };
         AutomationProperties.SetAutomationId(item, item.Name ?? $"MenuGroup{Sanitize(model.Label)}");
 
@@ -67,6 +70,7 @@ public partial class LegacyMenuBar : UserControl
             item.Name = $"Command{command}";
             AutomationProperties.SetAutomationId(item, item.Name);
             item.Icon = BuildIcon(model.IconKey ?? string.Empty);
+            if (model.Shortcut is not null) item.HotKey = KeyGesture.Parse(model.Shortcut);
             item.ToggleType = model.CheckKind switch
             {
                 LegacyMenuCheckKind.Check => MenuItemToggleType.CheckBox,

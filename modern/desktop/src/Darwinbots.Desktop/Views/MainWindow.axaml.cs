@@ -16,22 +16,15 @@ public sealed partial class MainWindow : Window
     private void MainWindow_KeyDown(object? sender, KeyEventArgs e)
     {
         var routed = new RoutedEventArgs();
-        if (e.Key == Key.F5) Run_Click(sender, routed);
-        else if (e.Key == Key.F6) Pause_Click(sender, routed);
+        if (e.Key == Key.F6) Pause_Click(sender, routed);
         else if (e.Key == Key.F7) Step_Click(sender, routed);
-        else if (e.Key == Key.F8) Turbo_Click(sender, routed);
         else if (e.Key == Key.F9)
             RuntimeSpeed.SelectedIndex = (RuntimeSpeed.SelectedIndex + 1) % 4;
         else if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             switch (e.Key)
             {
-                case Key.B: SwitchBackend_Click(sender, routed); break;
-                case Key.I: Import_Click(sender, routed); break;
-                case Key.S: Save_Click(sender, routed); break;
                 case Key.L: Load_Click(sender, routed); break;
-                case Key.R: Reset_Click(sender, routed); break;
-                case Key.E: EditDna_Click(sender, routed); break;
                 case Key.OemComma: LiveAdvanced_Click(sender, routed); break;
                 case Key.D1: AddObstacle_Click(sender, routed); break;
                 case Key.D2: AddTeleporter_Click(sender, routed); break;
@@ -397,7 +390,7 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.HelpRobotTagInformation] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
             "Robot Tag Information", "Species and lineage identity",
             "A robot retains a stable slot:generation identity while alive. Species name identifies its imported DNA family. Lineage color drifts only when automatic speciation creates a descendant lineage, allowing related organisms to be recognized visually.\n\nAutotroph species use green hues. Heterotroph species use the remaining palette."));
-        handlers[LegacyCommandId.HelpSurvivalInfo] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
+        handlers[LegacyCommandId.HelpSurvivalInfo] = Handler(() => new LegacyCommandState(true, false, Visible: false), _ => ShowDocumentAsync(
             "Survival Info", "Reading the ecosystem",
             "Energy keeps a bot alive and powers movement, shots, and reproduction. Body is a durable energy reserve and influences rendered size. Vegetables gain energy from chloroplasts and sunlight; animals must feed or exchange energy.\n\nPopulation, births, deaths, energy, mutation, shots, and feeding totals are recorded below the world view."));
         handlers[LegacyCommandId.HelpAbout] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
