@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Darwinbots.Desktop.Controls;
@@ -14,6 +15,63 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class RuntimeControlSurfaceTests
 {
+    [Fact]
+    public async Task HistoricShortcutMenuItemsOwnAndDispatchConflictingGestures()
+    {
+        var engine = new RecordingEngineClient();
+        await using var simulation = new SimulationSession(engine);
+        var storage = new AuditStorageService();
+        await simulation.StepAsync(0);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
+            SetField(window, "_session", simulation);
+            var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+            viewModel.Update(RecordingEngineClient.CreateSnapshot());
+            viewModel.Select(3);
+            window.FindControl<WorldViewport>("Viewport")!.SelectSlot(3);
+            window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, null);
+            var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+
+            var expected = new Dictionary<Core.LegacyMenus.LegacyCommandId, string>
+            {
+                [Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts] = "F5",
+                [Core.LegacyMenus.LegacyCommandId.EditRestrictionOverwrites] = "F8",
+                [Core.LegacyMenus.LegacyCommandId.RobotSaveDna] = "Ctrl+S",
+                [Core.LegacyMenus.LegacyCommandId.RobotKillEntireOrganism] = "Ctrl+E",
+            };
+            foreach (var pair in expected)
+            {
+                Assert.Equal(KeyGesture.Parse(pair.Value), menu.FindCommandItem(pair.Key)!.HotKey);
+            }
+
+            Assert.False(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.HelpSurvivalInfo)!.IsVisible);
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveDna)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            await WaitFor(() => storage.SavedDna == "start\nstop");
+
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKillEntireOrganism)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            await WaitFor(() => engine.Calls.Contains("RemoveMany:3:2"), () => string.Join(", ", engine.Calls));
+            Assert.Equal(["RemoveMany:3:2"], engine.Calls.Where(call => call.StartsWith("RemoveMany:", StringComparison.Ordinal)));
+
+            window.Show();
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+            Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>()).Close();
+
+            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditRestrictionOverwrites)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            await WaitFor(() => window.OwnedWindows.OfType<LegacyDocumentWindow>().Any());
+            Assert.Single(window.OwnedWindows.OfType<LegacyDocumentWindow>()).Close();
+            window.Close();
+            return 0;
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task HistoricMenuDispatchesRuntimeCommandsAndExposesUnavailableOnlineState()
     {

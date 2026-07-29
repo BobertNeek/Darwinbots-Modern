@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -20,12 +21,18 @@ public sealed class LegacyMenuBarTests
             Assert.Equal(
                 LegacyMenuCatalog.TopLevel.Select(item => item.Label),
                 menu.TopLevelItems.Select(item => item.Header));
+            Assert.False(Assert.Single(menu.TopLevelItems, item => Equals(item.Header, "E-Grid")).IsVisible);
 
-            foreach (var command in LegacyMenuCatalog.FlattenLeaves().Select(item => item.Command!.Value))
+            foreach (var catalogItem in LegacyMenuCatalog.FlattenLeaves())
             {
+                var command = catalogItem.Command!.Value;
                 var commandItem = menu.FindCommandItem(command);
                 Assert.NotNull(commandItem);
                 Assert.Equal($"Command{command}", commandItem.Name);
+                if (catalogItem.Shortcut is not null)
+                {
+                    Assert.Equal(KeyGesture.Parse(catalogItem.Shortcut), commandItem.HotKey);
+                }
             }
         }, CancellationToken.None);
     }
@@ -47,6 +54,7 @@ public sealed class LegacyMenuBarTests
             {
                 LegacyCommandId.ViewShowVisionGrid => new LegacyCommandState(true, true),
                 LegacyCommandId.InternetEnabled => new LegacyCommandState(false, false, "Online play is outside the compatibility scope."),
+                LegacyCommandId.HelpSurvivalInfo => new LegacyCommandState(true, false, Visible: false),
                 _ => LegacyCommandState.Available,
             });
 
@@ -54,6 +62,7 @@ public sealed class LegacyMenuBarTests
             var internet = menu.FindCommandItem(LegacyCommandId.InternetEnabled)!;
             Assert.False(internet.IsEnabled);
             Assert.Equal("Online play is outside the compatibility scope.", ToolTip.GetTip(internet));
+            Assert.False(menu.FindCommandItem(LegacyCommandId.HelpSurvivalInfo)!.IsVisible);
         }, CancellationToken.None);
     }
 }
