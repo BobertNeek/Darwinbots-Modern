@@ -338,7 +338,7 @@ public sealed partial class MainWindow : Window
             async _ => await KillSelectedAsync());
         handlers[LegacyCommandId.RobotKillEntireOrganism] = Handler(
             SelectedRobotState,
-            async _ => await KillSelectedAsync());
+            async _ => await KillSelectedOrganismAsync());
         handlers[LegacyCommandId.RobotShowInfo] = Handler(
             SelectedRobotState,
             async _ => await ShowSelectedRobotInfoAsync());
@@ -488,6 +488,18 @@ public sealed partial class MainWindow : Window
         await _session.RemoveAsync(organism.Slot, organism.Generation);
         Viewport.SelectSlot(null);
         return LegacyCommandResult.Success("ROBOT KILLED");
+    }
+
+    private async Task<LegacyCommandResult> KillSelectedOrganismAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var group = SelectedOrganismGroup();
+        if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
+        await _session.RemoveManyAsync(keys);
+        _viewModel.ClearSelection();
+        Viewport.SelectSlot(null);
+        return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
     }
 
     private LegacyCommandResult OpenNewSimulationSetup()
@@ -891,6 +903,9 @@ public sealed partial class MainWindow : Window
     {
         var group = SelectedOrganismGroup();
         if (_session is null || group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
+        var memberKeys = group.Select(value => new OrganismKey(value.Slot, value.Generation)).ToHashSet();
+        var snapshot = _session.LatestSnapshot;
+        var ties = FilterTiesForCapturedGroup(snapshot.Ties, memberKeys);
         var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
         {
             Title = "Save entire organism",
@@ -906,9 +921,14 @@ public sealed partial class MainWindow : Window
             members.Add(new { member.Slot, member.Generation, member.Species, member.Position, member.Velocity, member.Energy, member.Body, dna });
         }
         await using var stream = await file.OpenWriteAsync();
-        await System.Text.Json.JsonSerializer.SerializeAsync(stream, new { version = 1, tick = _session.LatestSnapshot.Tick, members, ties = _session.LatestSnapshot.Ties }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        await System.Text.Json.JsonSerializer.SerializeAsync(stream, new { version = 1, tick = snapshot.Tick, members, ties }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         return LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)");
     }
+
+    private static TieSnapshot[] FilterTiesForCapturedGroup(
+        IReadOnlyList<TieSnapshot> ties,
+        IReadOnlySet<OrganismKey> memberKeys) =>
+        ties.Where(tie => memberKeys.Contains(tie.First) && memberKeys.Contains(tie.Second)).ToArray();
 
     private async Task<LegacyCommandResult> SaveSelectedDnaCommandAsync()
     {

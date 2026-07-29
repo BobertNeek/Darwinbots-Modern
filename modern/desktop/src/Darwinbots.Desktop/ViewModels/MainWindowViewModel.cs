@@ -97,6 +97,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ApplySelection();
     }
 
+    public void ClearSelection()
+    {
+        _selectedSlot = null;
+        ApplySelection();
+    }
+
     public void Update(EngineSnapshot snapshot)
     {
         _snapshot = snapshot;

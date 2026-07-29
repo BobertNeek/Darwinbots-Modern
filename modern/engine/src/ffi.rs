@@ -37,11 +37,18 @@ struct SpeciesMutationRateCommand {
 }
 
 #[derive(Deserialize)]
+struct OrganismIdCommand {
+    slot: u32,
+    generation: u32,
+}
+
+#[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum EngineCommand {
     Tick { count: u32 },
     ImportDna { dna: String, position: Option<[f32; 2]> },
     Remove { slot: u32, generation: u32 },
+    RemoveMany { organisms: Vec<OrganismIdCommand> },
     ImportSpecies {
         dna: String,
         name: String,
@@ -287,6 +294,13 @@ fn db_engine_command_batch_impl(
             }),
             EngineCommand::Remove { slot, generation } => engine.remove(OrganismId::new(slot, generation))
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::RemoveMany { organisms } => {
+                let ids: Vec<_> = organisms
+                    .into_iter()
+                    .map(|organism| OrganismId::new(organism.slot, organism.generation))
+                    .collect();
+                engine.remove_many(&ids).map(|_| serde_json::Value::Null)
+            }
             EngineCommand::ImportSpecies {
                 dna,
                 name,

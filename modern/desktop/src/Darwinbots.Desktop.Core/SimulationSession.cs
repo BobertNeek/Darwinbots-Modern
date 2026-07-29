@@ -53,6 +53,15 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task RemoveAsync(uint slot, uint generation, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Remove(slot, generation), cancellationToken);
 
+    public Task RemoveManyAsync(IReadOnlyList<OrganismKey> organisms, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        OrganismKey[] stableOrganisms = [.. organisms];
+        return Enqueue(engine => engine.RemoveMany(stableOrganisms), cancellationToken);
+    }
+
     public Task MoveAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Move(slot, generation, position), cancellationToken);
 

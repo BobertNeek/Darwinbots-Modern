@@ -8,6 +8,7 @@ public interface IEngineClient : IDisposable
     DnaImportReport ImportDna(string dna, float[]? position = null);
     DnaImportReport ImportSpecies(SpeciesImport species);
     void Remove(uint slot, uint generation);
+    void RemoveMany(IReadOnlyList<OrganismKey> organisms);
     void Move(uint slot, uint generation, float[] position);
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);

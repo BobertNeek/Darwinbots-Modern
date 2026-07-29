@@ -160,6 +160,26 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "remove organism");
     }
 
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        EnsureAlive();
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "remove_many",
+                    organisms = organisms.Select(value => new { slot = value.Slot, generation = value.Generation }).ToArray(),
+                },
+            },
+        }, "remove organisms");
+    }
+
     public void Move(uint slot, uint generation, float[] position)
     {
         ValidatePosition(position);

@@ -599,16 +599,31 @@ impl Engine {
     }
 
     pub fn remove(&mut self, id: OrganismId) -> Result<(), EngineError> {
-        {
-            let slot = self.valid_slot_mut(id)?;
+        self.remove_many(&[id])
+    }
+
+    pub fn remove_many(&mut self, ids: &[OrganismId]) -> Result<(), EngineError> {
+        if ids.is_empty() {
+            return Err(EngineError::Invariant("remove_many requires at least one organism".to_owned()));
+        }
+        if ids.iter().enumerate().any(|(index, id)| ids[..index].contains(id)) {
+            return Err(EngineError::Invariant("remove_many contains duplicate organism IDs".to_owned()));
+        }
+        for &id in ids {
+            self.valid_slot(id)?;
+        }
+
+        for &id in ids {
+            let slot = &mut self.slots[id.slot() as usize];
             slot.organism = None;
             slot.generation = slot.generation.wrapping_add(1);
+            self.kinematics.deactivate(id.slot() as usize);
+            self.lifecycle.deactivate(id.slot() as usize);
+            self.biology[id.slot() as usize] = BiologyState::default();
+            self.forced_reproductions[id.slot() as usize] = false;
+            self.free_slots.push(id.slot());
         }
-        self.kinematics.deactivate(id.slot() as usize);
-        self.lifecycle.deactivate(id.slot() as usize);
-        self.biology[id.slot() as usize] = BiologyState::default();
-        self.forced_reproductions[id.slot() as usize] = false;
-        self.free_slots.push(id.slot());
+        self.ties.retain(|tie| !ids.contains(&tie.first) && !ids.contains(&tie.second));
         self.publish_snapshot();
         Ok(())
     }

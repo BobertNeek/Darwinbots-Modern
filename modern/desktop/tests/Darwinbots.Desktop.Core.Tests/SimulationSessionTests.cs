@@ -104,6 +104,19 @@ public sealed class SimulationSessionTests
     }
 
     [Fact]
+    public async Task RemoveManyPreservesStableOrganismKeysAndRunsOnTheEngineThread()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        OrganismKey[] organisms = [new(3, 2), new(7, 5)];
+
+        await session.RemoveManyAsync(organisms);
+
+        Assert.Equal(organisms, Assert.Single(engine.RemoveManyCalls));
+        Assert.Single(engine.ExecutionThreads);
+    }
+
+    [Fact]
     public async Task ManualToolsReturnIdsAndDnaThroughTheSession()
     {
         var engine = new FakeEngineClient();
@@ -255,6 +268,7 @@ internal sealed class FakeEngineClient : IEngineClient
     public float[]? LastImportPosition { get; private set; }
     public SpeciesImport? LastSpeciesImport { get; private set; }
     public (uint Slot, uint Generation)? LastRemoved { get; private set; }
+    public List<IReadOnlyList<OrganismKey>> RemoveManyCalls { get; } = [];
     public float[]? LastMovePosition { get; private set; }
     public ObstacleSnapshot? LastObstacleAdded { get; private set; }
     public TeleporterSnapshot? LastTeleporterAdded { get; private set; }
@@ -322,6 +336,13 @@ internal sealed class FakeEngineClient : IEngineClient
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastRemoved = (slot, generation);
         _population = Math.Max(0, _population - 1);
+    }
+
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        RemoveManyCalls.Add([.. organisms]);
+        _population = Math.Max(0, _population - organisms.Count);
     }
 
     public void Move(uint slot, uint generation, float[] position) => LastMovePosition = position;

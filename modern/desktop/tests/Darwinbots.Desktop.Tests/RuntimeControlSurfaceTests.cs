@@ -267,6 +267,64 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task KillEntireOrganismRemovesExactlyTheCapturedTiedGroupOnce()
+    {
+        var first = RecordingEngineClient.Organism;
+        var second = new OrganismSnapshot(4, 7, [140f, 200f], [0f, 0f], 900, 9, Species: 1);
+        var unrelated = new OrganismSnapshot(8, 1, [800f, 600f], [0f, 0f], 700, 7, Species: 1);
+        var snapshot = RecordingEngineClient.CreateSnapshot() with
+        {
+            Population = 3,
+            Organisms = [first, second, unrelated],
+            Ties = [new TieSnapshot(new OrganismKey(3, 2), new OrganismKey(4, 7), 40f)],
+        };
+        var engine = new RecordingEngineClient(snapshot);
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+        MainWindowViewModel? selectedViewModel = null;
+
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions());
+            SetField(window, "_session", simulation);
+            var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+            selectedViewModel = viewModel;
+            viewModel.Update(snapshot);
+            viewModel.Select(3);
+            window.FindControl<WorldViewport>("Viewport")!.SelectSlot(3);
+            window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                .FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKillEntireOrganism)!
+                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            return Task.CompletedTask;
+        }, CancellationToken.None);
+
+        await WaitFor(() =>
+            engine.Calls.Any(call => call.StartsWith("Remove", StringComparison.Ordinal))
+            && selectedViewModel?.SelectedSlot is null);
+        Assert.Equal(["RemoveMany:3:2,4:7"], engine.Calls.Where(call => call.StartsWith("Remove", StringComparison.Ordinal)));
+        Assert.Null(selectedViewModel!.SelectedSlot);
+    }
+
+    [Fact]
+    public void SaveEntireOrganismOmitsTiesWithEndpointsOutsideTheCapturedGroup()
+    {
+        TieSnapshot[] ties =
+        {
+            new(new OrganismKey(3, 2), new OrganismKey(4, 7), 40f),
+            new(new OrganismKey(4, 7), new OrganismKey(99, 5), 60f),
+        };
+        IReadOnlySet<OrganismKey> memberKeys = new HashSet<OrganismKey> { new(3, 2), new(4, 7) };
+
+        var filtered = (TieSnapshot[])typeof(MainWindow)
+            .GetMethod("FilterTiesForCapturedGroup", BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, [ties, memberKeys])!;
+
+        var tie = Assert.Single(filtered);
+        Assert.Equal(new OrganismKey(3, 2), tie.First);
+        Assert.Equal(new OrganismKey(4, 7), tie.Second);
+    }
+
+    [Fact]
     public async Task TeleporterPlacementDispatchesTheDb2SourceDestinationWorkflow()
     {
         var engine = new RecordingEngineClient();
@@ -348,6 +406,12 @@ internal sealed class RecordingEngineClient : IEngineClient
     public ConcurrentQueue<(uint Slot, uint Generation, string Dna)> DnaReplacements { get; } = [];
     public string Backend { get; private set; } = "CPU";
     private ulong _tick;
+    private readonly EngineSnapshot _snapshot;
+
+    public RecordingEngineClient(EngineSnapshot? snapshot = null)
+    {
+        _snapshot = snapshot ?? CreateSnapshot();
+    }
 
     public static EngineSnapshot CreateSnapshot() => new(0, 1, "CPU", [Organism])
     {
@@ -363,6 +427,7 @@ internal sealed class RecordingEngineClient : IEngineClient
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return new([]); }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue("ImportSpecies"); return new([]); }
     public void Remove(uint slot, uint generation) => Calls.Enqueue($"Remove:{slot}:{generation}");
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => Calls.Enqueue($"RemoveMany:{string.Join(',', organisms.Select(value => $"{value.Slot}:{value.Generation}"))}");
     public void Move(uint slot, uint generation, float[] position) => Calls.Enqueue($"Move:{slot}:{generation}:{position[0]:0}:{position[1]:0}");
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position)
     {
@@ -398,8 +463,7 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
     public EngineSnapshot Snapshot()
     {
-        var snapshot = CreateSnapshot();
-        return new EngineSnapshot(_tick, 1, Backend, [Organism]) { Species = snapshot.Species };
+        return _snapshot with { Tick = _tick, Backend = Backend };
     }
     public void Dispose() { }
 }

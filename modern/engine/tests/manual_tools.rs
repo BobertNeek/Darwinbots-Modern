@@ -1,6 +1,25 @@
 use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings, SpeciesDefinition};
 
 #[test]
+fn remove_many_rejects_the_whole_batch_before_mutating_any_slot() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let stale = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine.remove(stale).unwrap();
+    let valid = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    assert!(engine.remove_many(&[valid, stale]).is_err());
+    assert_eq!(engine.snapshot().organisms.len(), 1);
+}
+
+#[test]
+fn remove_many_publishes_one_world_without_the_validated_batch() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let first = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    let second = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine.remove_many(&[first, second]).unwrap();
+    assert!(engine.snapshot().organisms.is_empty());
+}
+
+#[test]
 fn move_clone_and_replace_dna_preserve_stable_world_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let species = engine.register_species(SpeciesDefinition {
