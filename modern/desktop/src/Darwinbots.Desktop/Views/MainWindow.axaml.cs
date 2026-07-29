@@ -876,19 +876,26 @@ public sealed partial class MainWindow : Window
         var selected = _viewModel.SelectedOrganism;
         if (selected is null || _session is null) return [];
         var snapshot = _session.LatestSnapshot;
+        var snapshotKeys = snapshot.Organisms
+            .Select(value => new OrganismKey(value.Slot, value.Generation))
+            .ToHashSet();
+        var selectedKey = new OrganismKey(selected.Slot, selected.Generation);
+        if (!snapshotKeys.Contains(selectedKey)) return [];
         var pending = new Queue<OrganismKey>();
-        var slots = new HashSet<uint> { selected.Slot };
-        pending.Enqueue(new OrganismKey(selected.Slot, selected.Generation));
+        var memberKeys = new HashSet<OrganismKey> { selectedKey };
+        pending.Enqueue(selectedKey);
         while (pending.Count > 0)
         {
             var current = pending.Dequeue();
             foreach (var tie in snapshot.Ties.Where(value => value.First == current || value.Second == current))
             {
                 var other = tie.First == current ? tie.Second : tie.First;
-                if (slots.Add(other.Slot)) pending.Enqueue(other);
+                if (snapshotKeys.Contains(other) && memberKeys.Add(other)) pending.Enqueue(other);
             }
         }
-        return snapshot.Organisms.Where(value => slots.Contains(value.Slot)).ToArray();
+        return snapshot.Organisms
+            .Where(value => memberKeys.Contains(new OrganismKey(value.Slot, value.Generation)))
+            .ToArray();
     }
 
     private LegacyCommandResult SelectEntireOrganism()

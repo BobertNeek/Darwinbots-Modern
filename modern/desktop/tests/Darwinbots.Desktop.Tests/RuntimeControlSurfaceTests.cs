@@ -306,6 +306,32 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task KillEntireOrganismRejectsStaleSelectionInsteadOfDeletingReusedSlot()
+    {
+        var oldSnapshot = RecordingEngineClient.CreateSnapshot();
+        var newer = RecordingEngineClient.Organism with { Generation = 3 };
+        var newerSnapshot = oldSnapshot with { Organisms = [newer] };
+        var engine = new RecordingEngineClient(newerSnapshot);
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions());
+            SetField(window, "_session", simulation);
+            var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+            viewModel.Update(oldSnapshot);
+            viewModel.Select(3);
+
+            await (Task)window.GetType()
+                .GetMethod("KillSelectedOrganismAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, null)!;
+        }, CancellationToken.None);
+
+        Assert.DoesNotContain(engine.Calls, call => call.StartsWith("Remove", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void SaveEntireOrganismOmitsTiesWithEndpointsOutsideTheCapturedGroup()
     {
         TieSnapshot[] ties =
