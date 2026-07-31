@@ -109,11 +109,13 @@ public sealed class SimulationSessionTests
         var engine = new FakeEngineClient();
         await using var session = new SimulationSession(engine);
         OrganismKey[] organisms = [new(3, 2), new(7, 5)];
+        var callerThread = Environment.CurrentManagedThreadId;
 
         await session.RemoveManyAsync(organisms);
 
         Assert.Equal(organisms, Assert.Single(engine.RemoveManyCalls));
-        Assert.Single(engine.ExecutionThreads);
+        var executionThread = Assert.Single(engine.ExecutionThreads);
+        Assert.NotEqual(callerThread, executionThread);
     }
 
     [Fact]

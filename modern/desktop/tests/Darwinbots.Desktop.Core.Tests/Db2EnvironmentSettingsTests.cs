@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Darwinbots.Desktop.Core;
 using Xunit;
 
@@ -55,6 +56,26 @@ public sealed class Db2EnvironmentSettingsTests
 
         Assert.Contains("\"auto_speciation\":true", json);
         Assert.Contains("\"speciation_genetic_distance_percent\":12.5", json);
+    }
+
+    [Fact]
+    public void NativeRemoveManyBatchSerializesExactStableKeys()
+    {
+        OrganismKey[] organisms = [new(3, 2), new(7, 5)];
+
+        var json = JsonSerializer.Serialize(NativeCommandSerializer.CreateRemoveManyBatch(organisms));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.Equal(1, root.GetProperty("version").GetInt32());
+        var command = Assert.Single(root.GetProperty("commands").EnumerateArray());
+        Assert.Equal("remove_many", command.GetProperty("type").GetString());
+        var serializedOrganisms = command.GetProperty("organisms").EnumerateArray().ToArray();
+        Assert.Equal(2, serializedOrganisms.Length);
+        Assert.Equal(3U, serializedOrganisms[0].GetProperty("slot").GetUInt32());
+        Assert.Equal(2U, serializedOrganisms[0].GetProperty("generation").GetUInt32());
+        Assert.Equal(7U, serializedOrganisms[1].GetProperty("slot").GetUInt32());
+        Assert.Equal(5U, serializedOrganisms[1].GetProperty("generation").GetUInt32());
     }
 
     [Fact]

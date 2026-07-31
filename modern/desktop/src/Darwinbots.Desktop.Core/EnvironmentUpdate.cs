@@ -68,6 +68,19 @@ public static class NativeCommandSerializer
     public static string SerializeEnvironment(EnvironmentUpdate update) =>
         JsonSerializer.Serialize(CreateEnvironmentBatch(update));
 
+    public static object CreateRemoveManyBatch(IReadOnlyList<OrganismKey> organisms) => new
+    {
+        version = 1,
+        commands = new[]
+        {
+            new
+            {
+                type = "remove_many",
+                organisms = organisms.Select(value => new { slot = value.Slot, generation = value.Generation }).ToArray(),
+            },
+        },
+    };
+
     internal static object CreateEnvironmentBatch(EnvironmentUpdate update) => new
     {
         version = 1,

@@ -306,6 +306,8 @@ pub struct Engine {
     pending_gpu_render_instances: Option<Vec<RenderInstance>>,
     #[serde(skip, default)]
     pending_gpu_collision_pairs: Option<Vec<(usize, usize)>>,
+    #[serde(skip, default)]
+    snapshot_publication_count: u64,
 }
 
 impl Engine {
@@ -366,6 +368,7 @@ impl Engine {
             phase_timings: PhaseTimings::default(),
             pending_gpu_render_instances: None,
             pending_gpu_collision_pairs: None,
+            snapshot_publication_count: 0,
         })
     }
 
@@ -846,6 +849,11 @@ impl Engine {
 
     pub fn snapshot(&self) -> &Snapshot {
         &self.snapshot
+    }
+
+    /// Returns the number of snapshots published since construction or load for diagnostics.
+    pub fn snapshot_publication_count(&self) -> u64 {
+        self.snapshot_publication_count
     }
 
     pub fn backend(&self) -> BackendKind {
@@ -2246,6 +2254,7 @@ impl Engine {
             teleporters: self.teleporters.clone(),
             phase_timings: self.phase_timings.clone(),
         };
+        self.snapshot_publication_count += 1;
     }
 
     fn valid_slot(&self, id: OrganismId) -> Result<&Slot, EngineError> {

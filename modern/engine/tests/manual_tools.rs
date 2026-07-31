@@ -15,7 +15,10 @@ fn remove_many_publishes_one_world_without_the_validated_batch() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let first = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
     let second = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    let publications_before = engine.snapshot_publication_count();
     engine.remove_many(&[first, second]).unwrap();
+    let publications_after = engine.snapshot_publication_count();
+    assert_eq!(publications_after, publications_before + 1);
     assert!(engine.snapshot().organisms.is_empty());
 }
 
