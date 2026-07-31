@@ -1,4 +1,4 @@
-use darwinbots_engine::{DnaBlock, DnaMetadata, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
+use darwinbots_engine::{DnaBlock, DnaMetadata, LegacyDna, TokenClass, MAX_DNA_BLOCKS};
 
 const ALL_CANONICAL_TOKENS: &str = r#"
 DeF ThReShOlD 50
@@ -489,6 +489,63 @@ fn metadata_hash_validates_and_round_trips() {
     assert_eq!(tampered.metadata().generation, 0);
     assert_eq!(tampered.metadata().mutations, 0);
     assert!(!tampered.metadata().hash_valid);
+}
+
+#[test]
+fn slash_metadata_prefix_is_loaded_and_validated() {
+    let source = concat!(
+        "/#generation: 17\r\n",
+        "/#mutations: 29\r\n",
+        "start\r\n",
+        "stop\r\n",
+        "\r\n",
+        "/#hash: Oao&#.<9KreII&[Z1zVr\r\n",
+    );
+
+    let dna = LegacyDna::parse(source).unwrap();
+
+    assert_eq!(dna.metadata().generation, 17);
+    assert_eq!(dna.metadata().mutations, 29);
+    assert_eq!(
+        dna.metadata().legacy_hash.as_deref(),
+        Some("Oao&#.<9KreII&[Z1zVr")
+    );
+    assert!(dna.metadata().hash_valid);
+}
+
+#[test]
+fn metadata_hash_is_newline_canonical() {
+    let source = concat!(
+        "'#generation: 17\n",
+        "'#mutations: 29\n",
+        "start\n",
+        "stop\n",
+        "\n",
+        "'#hash: WQ?+c6hU_!iE=v?6iF!&\n",
+    );
+
+    let dna = LegacyDna::parse(source).unwrap();
+
+    assert_eq!(dna.metadata().generation, 17);
+    assert_eq!(dna.metadata().mutations, 29);
+    assert!(dna.metadata().hash_valid);
+}
+
+#[test]
+fn metadata_without_hash_preserves_counts() {
+    let source = concat!(
+        "'#generation: 17\r\n",
+        "'#mutations: 29\r\n",
+        "start\r\n",
+        "stop\r\n",
+    );
+
+    let dna = LegacyDna::parse(source).unwrap();
+
+    assert_eq!(dna.metadata().generation, 17);
+    assert_eq!(dna.metadata().mutations, 29);
+    assert!(dna.metadata().legacy_hash.is_none());
+    assert!(!dna.metadata().hash_valid);
 }
 
 #[test]

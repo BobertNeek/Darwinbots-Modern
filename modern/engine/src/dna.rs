@@ -1,9 +1,9 @@
 use crate::dna_tokens::{block_token, command_string, token_block};
-use crate::{EngineError, sysvar_address};
+use crate::{sysvar_address, EngineError};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub use crate::dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
+pub use crate::dna_tokens::{DnaBlock, TokenClass, MAX_DNA_BLOCKS};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum Instruction {
@@ -150,41 +150,41 @@ impl LegacyDna {
         let mut hash_validation = None;
         let mut new_move = false;
 
-        let mut prefix_length = 0;
+        let mut hash_prefix = String::new();
         for (line_index, raw_segment) in source.split_inclusive('\n').enumerate() {
             let line_number = line_index + 1;
-            let raw_line = raw_segment
+            let logical_line = raw_segment
                 .strip_suffix('\n')
                 .unwrap_or(raw_segment)
                 .strip_suffix('\r')
                 .unwrap_or_else(|| raw_segment.strip_suffix('\n').unwrap_or(raw_segment));
-            let raw_line = raw_line.trim_start_matches('\u{feff}');
-            if raw_line.starts_with('/') {
-                prefix_length += raw_segment.len();
-                continue;
-            }
-            let (is_metadata, validation) = parse_metadata(
-                raw_line,
-                line_number,
-                &source[..prefix_length],
-                &mut metadata,
-            )?;
+            let raw_line = logical_line.trim_start_matches('\u{feff}');
+            let (is_metadata, validation) =
+                parse_metadata(raw_line, line_number, &hash_prefix, &mut metadata)?;
             if is_metadata {
                 saw_metadata = true;
                 if validation.is_some() {
                     hash_validation = validation;
                 }
-                prefix_length += raw_segment.len();
+                hash_prefix.push_str(logical_line);
+                hash_prefix.push_str("\r\n");
+                continue;
+            }
+            if raw_line.starts_with('/') {
+                hash_prefix.push_str(logical_line);
+                hash_prefix.push_str("\r\n");
                 continue;
             }
             let code = strip_comment(raw_line).trim();
             if code.is_empty() {
-                prefix_length += raw_segment.len();
+                hash_prefix.push_str(logical_line);
+                hash_prefix.push_str("\r\n");
                 continue;
             }
             if code.eq_ignore_ascii_case("newmove") {
                 new_move = true;
-                prefix_length += raw_segment.len();
+                hash_prefix.push_str(logical_line);
+                hash_prefix.push_str("\r\n");
                 continue;
             }
             let tokens = code.split_whitespace().collect::<Vec<_>>();
@@ -194,7 +194,8 @@ impl LegacyDna {
             {
                 parse_definition(&tokens, line_number, &mut user_variables)?;
             }
-            prefix_length += raw_segment.len();
+            hash_prefix.push_str(logical_line);
+            hash_prefix.push_str("\r\n");
         }
 
         validate_metadata(&mut metadata, saw_metadata, hash_validation);
@@ -584,7 +585,10 @@ fn parse_metadata(
     prefix: &str,
     metadata: &mut DnaMetadata,
 ) -> Result<(bool, Option<bool>), EngineError> {
-    let Some(header) = raw_line.strip_prefix("'#") else {
+    let Some(header) = raw_line
+        .strip_prefix("'#")
+        .or_else(|| raw_line.strip_prefix("/#"))
+    else {
         return Ok((false, None));
     };
     let Some((field, value)) = header.split_once(':') else {
@@ -627,7 +631,7 @@ fn validate_metadata(
         return;
     }
     metadata.hash_valid = hash_validation.unwrap_or(false);
-    if !metadata.hash_valid {
+    if hash_validation == Some(false) {
         metadata.generation = 0;
         metadata.mutations = 0;
     }
@@ -698,14 +702,14 @@ fn metadata_is_default(metadata: &DnaMetadata) -> bool {
 }
 
 fn is_metadata_line(raw_line: &str) -> bool {
-    raw_line.starts_with("'#")
+    raw_line.starts_with("'#") || raw_line.starts_with("/#")
 }
 
 fn strip_comment(line: &str) -> &str {
     line.split_once('\'').map_or(line, |(code, _)| code)
 }
 
-fn normalize_master_end(blocks: &mut Vec<DnaBlock>) {
+pub(crate) fn normalize_master_end(blocks: &mut Vec<DnaBlock>) {
     if let Some(end) = blocks
         .iter()
         .position(|block| block.class == TokenClass::End)

@@ -1,4 +1,5 @@
-use crate::{DnaBlock, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
+use crate::dna::normalize_master_end;
+use crate::{DnaBlock, LegacyDna, TokenClass, MAX_DNA_BLOCKS};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutationKind {
@@ -95,44 +96,48 @@ impl GenomeMutator {
             self.random_state = point.random_state();
             return report;
         }
+        let blocks = dna.blocks_mut();
+        normalize_master_end(blocks);
+        let master_end = blocks.pop().expect("normalized DNA has a master End");
         let changed = match kind {
-            MutationKind::Insertion if dna.blocks().len() < MAX_DNA_BLOCKS => {
-                let index = (self.next() as usize) % (dna.blocks().len() + 1);
+            MutationKind::Insertion if blocks.len() < MAX_DNA_BLOCKS - 1 => {
+                let index = (self.next() as usize) % (blocks.len() + 1);
                 let block = self.random_block();
-                dna.blocks_mut().insert(index, block);
+                blocks.insert(index, block);
                 true
             }
-            MutationKind::Deletion if !dna.blocks().is_empty() => {
-                let index = (self.next() as usize) % dna.blocks().len();
-                dna.blocks_mut().remove(index);
+            MutationKind::Deletion if !blocks.is_empty() => {
+                let index = (self.next() as usize) % blocks.len();
+                blocks.remove(index);
                 true
             }
             MutationKind::Duplication
-                if !dna.blocks().is_empty() && dna.blocks().len() < MAX_DNA_BLOCKS =>
+                if !blocks.is_empty() && blocks.len() < MAX_DNA_BLOCKS - 1 =>
             {
-                let start = (self.next() as usize) % dna.blocks().len();
-                let available = dna.blocks().len() - start;
-                let capacity = MAX_DNA_BLOCKS - dna.blocks().len();
+                let start = (self.next() as usize) % blocks.len();
+                let available = blocks.len() - start;
+                let capacity = MAX_DNA_BLOCKS - 1 - blocks.len();
                 let length = (1 + (self.next() as usize) % available.min(4)).min(capacity);
-                let copy = dna.blocks()[start..start + length].to_vec();
-                let insertion = (self.next() as usize) % (dna.blocks().len() + 1);
-                dna.blocks_mut().splice(insertion..insertion, copy);
+                let copy = blocks[start..start + length].to_vec();
+                let insertion = (self.next() as usize) % (blocks.len() + 1);
+                blocks.splice(insertion..insertion, copy);
                 true
             }
-            MutationKind::Replacement if !dna.blocks().is_empty() => {
-                let index = (self.next() as usize) % dna.blocks().len();
+            MutationKind::Replacement if !blocks.is_empty() => {
+                let index = (self.next() as usize) % blocks.len();
                 let mut replacement = self.random_block();
-                if replacement == dna.blocks()[index] {
+                if replacement == blocks[index] {
                     replacement = DnaBlock {
                         class: TokenClass::Basic,
                         value: 5,
                     };
                 }
-                dna.blocks_mut()[index] = replacement;
+                blocks[index] = replacement;
                 true
             }
             _ => false,
         };
+        blocks.push(master_end);
         MutationReport {
             changes: u32::from(changed),
             kind: changed.then_some(kind),

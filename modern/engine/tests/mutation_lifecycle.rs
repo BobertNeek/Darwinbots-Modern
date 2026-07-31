@@ -1,6 +1,18 @@
 use darwinbots_engine::{
     Engine, EngineConfig, GenomeMutator, LegacyDna, MutationKind, PhysicsSettings, PointMutator,
+    MAX_DNA_BLOCKS, TokenClass,
 };
+
+fn assert_single_terminal_end(dna: &LegacyDna) {
+    let end_positions = dna
+        .blocks()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, block)| (block.class == TokenClass::End).then_some(index))
+        .collect::<Vec<_>>();
+
+    assert_eq!(end_positions, vec![dna.blocks().len() - 1]);
+}
 
 #[test]
 fn point_mutation_is_seeded_and_preserves_program_structure() {
@@ -39,6 +51,75 @@ fn structural_mutations_can_grow_shrink_duplicate_and_replace_zerobot_dna() {
     assert_eq!(replaced.blocks().len(), original.blocks().len());
     assert_ne!(replaced, original);
     assert_eq!(report.kind, Some(MutationKind::Replacement));
+}
+
+#[test]
+fn structural_mutations_preserve_single_terminal_end() {
+    let original = LegacyDna::parse("0 1 2 3 4 5 6 7").unwrap();
+    let boundary_seeds = [3, 9, 10, 11, 21, 22];
+
+    for kind in [
+        MutationKind::Insertion,
+        MutationKind::Deletion,
+        MutationKind::Duplication,
+        MutationKind::Replacement,
+    ] {
+        for seed in boundary_seeds {
+            let mut mutated = original.clone();
+            let report = GenomeMutator::new(seed).mutate_kind(&mut mutated, kind);
+
+            assert_eq!(report.kind, Some(kind), "kind {kind:?}, seed {seed}");
+            match kind {
+                MutationKind::Insertion => {
+                    assert_eq!(mutated.blocks().len(), original.blocks().len() + 1)
+                }
+                MutationKind::Deletion => {
+                    assert_eq!(mutated.blocks().len(), original.blocks().len() - 1)
+                }
+                MutationKind::Duplication => {
+                    assert!(mutated.blocks().len() > original.blocks().len())
+                }
+                MutationKind::Replacement => {
+                    assert_eq!(mutated.blocks().len(), original.blocks().len())
+                }
+                MutationKind::Point => unreachable!(),
+            }
+            assert!(mutated.blocks().len() <= MAX_DNA_BLOCKS);
+            assert_single_terminal_end(&mutated);
+        }
+    }
+}
+
+#[test]
+fn structural_mutations_respect_32000_block_limit() {
+    let original = LegacyDna::parse(&"1 ".repeat(MAX_DNA_BLOCKS)).unwrap();
+    assert_eq!(original.blocks().len(), MAX_DNA_BLOCKS);
+
+    for kind in [
+        MutationKind::Insertion,
+        MutationKind::Duplication,
+        MutationKind::Deletion,
+        MutationKind::Replacement,
+    ] {
+        for seed in [29_349, 100_844] {
+            let mut mutated = original.clone();
+            GenomeMutator::new(seed).mutate_kind(&mut mutated, kind);
+
+            let expected_len = match kind {
+                MutationKind::Insertion | MutationKind::Duplication => MAX_DNA_BLOCKS,
+                MutationKind::Deletion => MAX_DNA_BLOCKS - 1,
+                MutationKind::Replacement => MAX_DNA_BLOCKS,
+                MutationKind::Point => unreachable!(),
+            };
+            assert_eq!(
+                mutated.blocks().len(),
+                expected_len,
+                "kind {kind:?}, seed {seed}"
+            );
+            assert!(mutated.blocks().len() <= MAX_DNA_BLOCKS);
+            assert_single_terminal_end(&mutated);
+        }
+    }
 }
 
 #[test]
