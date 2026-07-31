@@ -338,11 +338,9 @@ public sealed class RuntimeControlSurfaceTests
                     .GetMethod("SaveSimulationCommandAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
                     .Invoke(window, ["SAVED WITHOUT MUTATION SETTINGS", true])!;
                 Assert.True(result.Succeeded, result.Status);
+                Assert.Equal([9, 8, 7], storage.SavedSimulation);
+                Assert.DoesNotContain("Save", engine.Calls);
             }, CancellationToken.None);
-
-            await WaitFor(() => storage.SavedSimulation is [9, 8, 7]);
-            Assert.Equal([9, 8, 7], storage.SavedSimulation);
-            Assert.DoesNotContain("Save", engine.Calls);
         }
         finally
         {
