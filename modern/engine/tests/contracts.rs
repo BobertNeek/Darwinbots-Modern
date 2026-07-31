@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     BackendKind, BackendPreference, Engine, EngineConfig, EngineError, LegacyDna, SaveFile,
-    SpeciesDefinition,
+    SpeciesDefinition, TokenClass,
 };
 
 const SIMPLE_BOT: &str = r#"
@@ -18,38 +18,32 @@ fn imports_legacy_dna_and_preserves_user_variables() {
     let program = LegacyDna::parse(SIMPLE_BOT).expect("legacy DNA should parse");
 
     assert_eq!(program.user_variable("target"), Some(50));
-    assert!(program.instructions().len() >= 8);
+    assert!(program.blocks().len() >= 8);
 }
 
 #[test]
 fn parser_compiles_symbolic_memory_operands_to_numeric_addresses() {
     let program = LegacyDna::parse("def custom 777\nstart\n*.custom .up store\nstop").unwrap();
-    assert!(program.instructions().iter().any(|instruction| {
-        matches!(
-            instruction,
-            darwinbots_engine::Instruction::ReadResolved(777)
-        )
-    }));
-    assert!(program.instructions().iter().any(|instruction| {
-        matches!(
-            instruction,
-            darwinbots_engine::Instruction::AddressResolved(1)
-        )
-    }));
-    assert!(!program.instructions().iter().any(|instruction| {
-        matches!(
-            instruction,
-            darwinbots_engine::Instruction::Read(_) | darwinbots_engine::Instruction::Address(_)
-        )
-    }));
+    assert!(program
+        .blocks()
+        .iter()
+        .any(|block| block.class == TokenClass::Dereference && block.value == 777));
+    assert!(program
+        .blocks()
+        .iter()
+        .any(|block| block.class == TokenClass::Number && block.value == 1));
 }
 
 #[test]
-fn rejects_unknown_legacy_instruction_with_location() {
-    let error = LegacyDna::parse("start\nnot-a-command\nstop").unwrap_err();
+fn unknown_legacy_instruction_becomes_zero_with_location_warning() {
+    let program = LegacyDna::parse("start\nnot-a-command\nstop").unwrap();
 
-    assert!(error.to_string().contains("line 2"));
-    assert!(error.to_string().contains("not-a-command"));
+    assert!(program
+        .blocks()
+        .iter()
+        .any(|block| block.class == TokenClass::Number && block.value == 0));
+    assert!(program.compatibility_warnings()[0].contains("line 2"));
+    assert!(program.compatibility_warnings()[0].contains("not-a-command"));
 }
 
 #[test]

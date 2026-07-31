@@ -1,5 +1,4 @@
-use crate::{Instruction, LegacyDna};
-use crate::dna::{FlowInstruction, StoreInstruction};
+use crate::{DnaBlock, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutationKind {
@@ -22,7 +21,9 @@ pub struct PointMutator {
 
 impl PointMutator {
     pub fn new(seed: u64) -> Self {
-        Self { random_state: seed.max(1) }
+        Self {
+            random_state: seed.max(1),
+        }
     }
 
     pub fn random_state(&self) -> u64 {
@@ -30,19 +31,25 @@ impl PointMutator {
     }
 
     pub fn mutate(&mut self, dna: &mut LegacyDna) -> MutationReport {
-        let numeric_positions: Vec<_> = dna.instructions().iter().enumerate()
-            .filter_map(|(index, instruction)| matches!(instruction, Instruction::Number(_)).then_some(index))
-            .collect();
+        let numeric_positions = dna
+            .blocks()
+            .iter()
+            .enumerate()
+            .filter_map(|(index, block)| (block.class == TokenClass::Number).then_some(index))
+            .collect::<Vec<_>>();
         if numeric_positions.is_empty() {
             return MutationReport::default();
         }
         let position = numeric_positions[(self.next() as usize) % numeric_positions.len()];
         let mut delta = (self.next() % 21) as i32 - 10;
-        if delta == 0 { delta = 1; }
-        if let Instruction::Number(value) = &mut dna.instructions_mut()[position] {
-            *value = value.saturating_add(delta);
+        if delta == 0 {
+            delta = 1;
         }
-        MutationReport { changes: 1, kind: Some(MutationKind::Point) }
+        dna.blocks_mut()[position].value = dna.blocks()[position].value.saturating_add(delta);
+        MutationReport {
+            changes: 1,
+            kind: Some(MutationKind::Point),
+        }
     }
 
     fn next(&mut self) -> u64 {
@@ -61,7 +68,9 @@ pub struct GenomeMutator {
 
 impl GenomeMutator {
     pub fn new(seed: u64) -> Self {
-        Self { random_state: seed.max(1) }
+        Self {
+            random_state: seed.max(1),
+        }
     }
 
     pub fn random_state(&self) -> u64 {
@@ -86,53 +95,93 @@ impl GenomeMutator {
             self.random_state = point.random_state();
             return report;
         }
-        let instructions = dna.instructions_mut();
         let changed = match kind {
-            MutationKind::Insertion => {
-                let index = (self.next() as usize) % (instructions.len() + 1);
-                let instruction = self.random_instruction();
-                instructions.insert(index, instruction);
+            MutationKind::Insertion if dna.blocks().len() < MAX_DNA_BLOCKS => {
+                let index = (self.next() as usize) % (dna.blocks().len() + 1);
+                let block = self.random_block();
+                dna.blocks_mut().insert(index, block);
                 true
             }
-            MutationKind::Deletion if !instructions.is_empty() => {
-                let index = (self.next() as usize) % instructions.len();
-                instructions.remove(index);
+            MutationKind::Deletion if !dna.blocks().is_empty() => {
+                let index = (self.next() as usize) % dna.blocks().len();
+                dna.blocks_mut().remove(index);
                 true
             }
-            MutationKind::Duplication if !instructions.is_empty() => {
-                let start = (self.next() as usize) % instructions.len();
-                let available = instructions.len() - start;
-                let length = 1 + (self.next() as usize) % available.min(4);
-                let copy = instructions[start..start + length].to_vec();
-                let insertion = (self.next() as usize) % (instructions.len() + 1);
-                instructions.splice(insertion..insertion, copy);
+            MutationKind::Duplication
+                if !dna.blocks().is_empty() && dna.blocks().len() < MAX_DNA_BLOCKS =>
+            {
+                let start = (self.next() as usize) % dna.blocks().len();
+                let available = dna.blocks().len() - start;
+                let capacity = MAX_DNA_BLOCKS - dna.blocks().len();
+                let length = (1 + (self.next() as usize) % available.min(4)).min(capacity);
+                let copy = dna.blocks()[start..start + length].to_vec();
+                let insertion = (self.next() as usize) % (dna.blocks().len() + 1);
+                dna.blocks_mut().splice(insertion..insertion, copy);
                 true
             }
-            MutationKind::Replacement if !instructions.is_empty() => {
-                let index = (self.next() as usize) % instructions.len();
-                let mut replacement = self.random_instruction();
-                if replacement == instructions[index] {
-                    replacement = Instruction::Command("rnd".to_owned());
+            MutationKind::Replacement if !dna.blocks().is_empty() => {
+                let index = (self.next() as usize) % dna.blocks().len();
+                let mut replacement = self.random_block();
+                if replacement == dna.blocks()[index] {
+                    replacement = DnaBlock {
+                        class: TokenClass::Basic,
+                        value: 5,
+                    };
                 }
-                instructions[index] = replacement;
+                dna.blocks_mut()[index] = replacement;
                 true
             }
             _ => false,
         };
-        MutationReport { changes: u32::from(changed), kind: changed.then_some(kind) }
+        MutationReport {
+            changes: u32::from(changed),
+            kind: changed.then_some(kind),
+        }
     }
 
-    fn random_instruction(&mut self) -> Instruction {
+    fn random_block(&mut self) -> DnaBlock {
         const ADDRESSES: &[i32] = &[1, 2, 3, 4, 7, 8, 300, 301, 310, 330, 830];
-        const COMMANDS: &[&str] = &["add", "sub", "mult", "div", "rnd", "dup", "drop", "and", "or", "not"];
+        const COMMANDS: &[(TokenClass, i32)] = &[
+            (TokenClass::Basic, 1),
+            (TokenClass::Basic, 2),
+            (TokenClass::Basic, 3),
+            (TokenClass::Basic, 4),
+            (TokenClass::Basic, 5),
+            (TokenClass::Basic, 10),
+            (TokenClass::Basic, 11),
+            (TokenClass::Logic, 1),
+            (TokenClass::Logic, 2),
+            (TokenClass::Logic, 4),
+        ];
         match self.next() % 7 {
-            0 => Instruction::Number((self.next() % 64_001) as i32 - 32_000),
-            1 => Instruction::AddressResolved(ADDRESSES[(self.next() as usize) % ADDRESSES.len()]),
-            2 => Instruction::ReadResolved(ADDRESSES[(self.next() as usize) % ADDRESSES.len()]),
-            3 => Instruction::Store(StoreInstruction::Store),
-            4 => Instruction::Flow(FlowInstruction::Start),
-            5 => Instruction::Flow(FlowInstruction::Stop),
-            _ => Instruction::Command(COMMANDS[(self.next() as usize) % COMMANDS.len()].to_owned()),
+            0 => DnaBlock {
+                class: TokenClass::Number,
+                value: (self.next() % 64_001) as i32 - 32_000,
+            },
+            1 => DnaBlock {
+                class: TokenClass::Number,
+                value: ADDRESSES[(self.next() as usize) % ADDRESSES.len()],
+            },
+            2 => DnaBlock {
+                class: TokenClass::Dereference,
+                value: ADDRESSES[(self.next() as usize) % ADDRESSES.len()],
+            },
+            3 => DnaBlock {
+                class: TokenClass::Store,
+                value: 1,
+            },
+            4 => DnaBlock {
+                class: TokenClass::Flow,
+                value: 2,
+            },
+            5 => DnaBlock {
+                class: TokenClass::Flow,
+                value: 4,
+            },
+            _ => {
+                let (class, value) = COMMANDS[(self.next() as usize) % COMMANDS.len()];
+                DnaBlock { class, value }
+            }
         }
     }
 

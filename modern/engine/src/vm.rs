@@ -79,6 +79,7 @@ impl DnaVm {
         let mut report = VmReport::default();
 
         for instruction in program.instructions() {
+            let instruction = &instruction;
             report.instructions_executed = report.instructions_executed.saturating_add(1);
             let flow_instruction = match instruction {
                 Instruction::Flow(command) => Some(*command),

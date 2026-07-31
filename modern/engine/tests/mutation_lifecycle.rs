@@ -15,7 +15,7 @@ fn point_mutation_is_seeded_and_preserves_program_structure() {
     assert_eq!(left_report, right_report);
     assert_eq!(left, right);
     assert_ne!(left, original);
-    assert_eq!(left.instructions().len(), original.instructions().len());
+    assert_eq!(left.blocks().len(), original.blocks().len());
 }
 
 #[test]
@@ -24,19 +24,19 @@ fn structural_mutations_can_grow_shrink_duplicate_and_replace_zerobot_dna() {
 
     let mut inserted = original.clone();
     GenomeMutator::new(11).mutate_kind(&mut inserted, MutationKind::Insertion);
-    assert_eq!(inserted.instructions().len(), original.instructions().len() + 1);
+    assert_eq!(inserted.blocks().len(), original.blocks().len() + 1);
 
     let mut deleted = original.clone();
     GenomeMutator::new(12).mutate_kind(&mut deleted, MutationKind::Deletion);
-    assert_eq!(deleted.instructions().len(), original.instructions().len() - 1);
+    assert_eq!(deleted.blocks().len(), original.blocks().len() - 1);
 
     let mut duplicated = original.clone();
     GenomeMutator::new(13).mutate_kind(&mut duplicated, MutationKind::Duplication);
-    assert!(duplicated.instructions().len() > original.instructions().len());
+    assert!(duplicated.blocks().len() > original.blocks().len());
 
     let mut replaced = original.clone();
     let report = GenomeMutator::new(14).mutate_kind(&mut replaced, MutationKind::Replacement);
-    assert_eq!(replaced.instructions().len(), original.instructions().len());
+    assert_eq!(replaced.blocks().len(), original.blocks().len());
     assert_ne!(replaced, original);
     assert_eq!(report.kind, Some(MutationKind::Replacement));
 }
