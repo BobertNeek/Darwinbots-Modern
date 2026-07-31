@@ -2,10 +2,10 @@
 
 > **Execution:** Run this program through supervised Codex project tasks created from the main chat, one bounded goal and independent review at a time. Do not use subagents.
 
-**Date:** 2026-07-30  
-**Implementation base:** `ce8fed8caccc20bd1d98b1bfaff34824bf1adca7` (`ce8fed8`)  
-**Goal:** Deliver a faithful but improved DB2 2.48.32 offline interface in Avalonia without copying VB6 pixels.  
-**Architecture:** Avalonia owns presentation and ephemeral interaction state. Rust owns simulation truth, validation, telemetry, debug data, settings application, and backend execution.  
+**Date:** 2026-07-30
+**Implementation base:** `ce8fed8caccc20bd1d98b1bfaff34824bf1adca7` (`ce8fed8`)
+**Goal:** Deliver a faithful but improved DB2 2.48.32 offline interface in Avalonia without copying VB6 pixels.
+**Architecture:** Avalonia owns presentation and ephemeral interaction state. Rust owns simulation truth, validation, telemetry, debug data, settings application, and backend execution.
 **Tech stack:** Avalonia/.NET desktop frontend, Rust engine and versioned JSON ABI, rendered desktop automation, deterministic screenshot evidence.
 
 ## Global constraints
@@ -17,6 +17,7 @@
 - Faithfulness means complete offline menu behavior, arena-centered information architecture, correct settings timing, dedicated tools, rendering semantics, shortcuts, modality, and telemetry.
 - The arena remains the primary workspace. Do not preserve the current dashboard/card information architecture.
 - UI work that requires canonical state, sysvar lifecycle, VM telemetry, or cycle trace waits for its dependency in [the Phase 1 foundation plan](2026-07-30-db24832-phase1-foundation-implementation.md).
+- That foundation plan supplies only state, sysvar lifecycle, VM telemetry, and cycle trace. Canonical Rust persistence, competition, recovery, local-transfer, graph-history, and evolution authorities are separate future prerequisites.
 - Shell, layout, accessibility, and read-only projection may proceed only when they do not invent authority.
 
 ## Current baseline and limits
@@ -48,6 +49,11 @@ Existing catalog, routing, shortcut, and command-state work is the baseline for 
 | Simulation commands | Rust | Serialized, validated, and applied at a documented cycle boundary |
 | Modal editor draft | Avalonia until commit | Closing or cancelling causes no mutation |
 | Modeless tool | Avalonia window, Rust refresh | May follow focus while the simulation advances |
+| Competition and restart orchestration | Future Rust competition controller | Versioned run snapshot, commands, and durable result artifacts |
+| Directed evolution and restrictions | Future Rust evolution controller | Versioned stage snapshot, adjudication records, and checkpoint commands |
+| Safemode recovery and persistence | Future Rust recovery/persistence services | Fault report, checkpoint catalog, recovery attempt, and atomic save result |
+| File teleporter transfers | Future Rust local-transfer service | Validated local policy, poll status, transfer receipt, and serialized state |
+| Graph history and export | Future Rust graph-history service | Versioned series, sampling policy, save marker, and export receipt |
 
 Use `UiCommandResult<T>(Succeeded, Code, Message, Value, AppliedTick)` for command results. Use stable organism and object keys, settings revisions, and cycle IDs across the ABI.
 
@@ -93,6 +99,7 @@ Window modality:
 - [ ] Add `SetPlayerBotInputAsync(organismKey, input, targetTick)` with Rust timing validation.
 - [ ] Reject stale revisions, stale keys, invalid ranges, and disallowed live mutations.
 - [ ] Wait for the corresponding canonical-state, sysvar, VM-telemetry, and cycle-trace tasks in the Phase 1 foundation plan before wiring dependent UI.
+- [ ] Define frontend adapters for future `PersistenceAuthority`, `CompetitionController`, `RecoveryController`, `LocalTransferController`, `GraphHistoryAuthority`, and `EvolutionController`; do not stub their outcomes from C# or attribute them to the Phase 1 foundation plan.
 
 **Gate:** ABI round-trip tests cover each type. C# contains no independently calculated gameplay value.
 
@@ -170,9 +177,15 @@ The 24 toolbar slots are: New, Load, Save, separator; Play, Single Cycle, Pause,
 **Files:** `Darwinbots.Desktop.Core/Objects/ObjectDrafts.cs`, `Views/Objects/ShapeEditorWindow.axaml`, `LocalTeleporterEditorWindow.axaml`.
 
 - [ ] Edit shape position, size, color, fill, border, visibility, movement vector, behavior, and stable identity.
-- [ ] Edit teleporter source, destination, direction, enabled state, and local inbound/outbound/intrasimulation type.
+- [ ] Project obstacle opacity, drift, fixed-position policy, shape blocking, and independent vision-blocking and shot-blocking rules from Rust.
+- [ ] Edit teleporter source, destination, direction, enabled state, filesystem inbound/outbound paths, and local inbound/outbound/intrasimulation type.
+- [ ] Expose organism filters, poll interval, per-poll count limit, tied/multibot transfer policy, and backflow prevention through a typed `LocalTransferPolicyDraft`.
+- [ ] Consume `LocalTransferStatusSnapshot` and durable `LocalTransferReceipt` records; serialize policy and pending transfer state through canonical persistence.
 - [ ] Exclude internet teleporter types and all network fields.
 - [ ] Provide placement preview, cursor feedback, Escape cancellation, Rust validation, and confirmation for destructive bulk removal.
+- [ ] Keep the editor and arena projection disabled until the Rust local-transfer and persistence authorities exist; the frontend never moves, filters, or splits organisms itself.
+
+**Gate:** A deterministic two-directory fixture proves polling limits, filters, tied/multibot policy, no backflow, save/load continuity, fixed obstacles, shape blocking, and independent vision/shot blocking, with R04 matching the receipts.
 
 ## Phase 9 — Replace proxy robot windows with dedicated tools
 
@@ -182,29 +195,48 @@ The 24 toolbar slots are: New, Load, Save, separator; Play, Single Cycle, Pause,
 - [ ] Replace stale content with an unavailable state when the organism disappears.
 - [ ] Show Robot Details facts plus DNA and memory before/after execution.
 - [ ] Make Console a domain debugger, never a host shell.
-- [ ] Show current gene activation, Rust lineage, RGB memory mapping, and authoritative eye parameters.
-- [ ] Validate PlayerBot input and target-cycle timing in Rust.
+- [ ] Render a cycle-addressable gene-activation timeline from Rust VM trace data, including the active gene and activation transition at each tick.
+- [ ] Show Rust lineage with selectable ancestors and descendant highlighting in both the phylogeny tree and arena.
+- [ ] Provide RGB sliders and live preview whose values come from and commit through Rust memory cells; the preview must display pending versus accepted values.
+- [ ] Provide a configurable PlayerBot key map and show queued, accepted, and applied-cycle timing from Rust receipts.
+- [ ] Edit all nine eyes explicitly, including direction, width, range, ordering, validation, preview, commit, and reload from authoritative eye state.
+
+**Gate:** Frozen cycle-trace fixtures prove activation timelines, descendant highlighting, RGB memory round trips, PlayerBot applied ticks, nine-eye rejection/acceptance, focus following, pinning, and stale-key handling; R07 renders each state.
 
 ## Phase 10 — Restore graphs, contest results, and offline mode surfaces
 
 **Files:** `Darwinbots.Desktop.Core/Graphs/GraphCatalog.cs`, `Services/GraphWindowManager.cs`, `Controls/Db2GraphControl.cs`, `Views/Graphs/GraphWindow.axaml`, `Views/Modes/ContestResultsWindow.axaml`.
 
 - [ ] Implement Population; Average Mutations; Mutations/DNA Length; Average Age; Average Descendants; Average Energy; Average DNA Length; Average DNA Conditions; Total Energy; Dynamic Cost Statistics; Species Diversity; Average Chloroplasts; Selective Genetic Distance; Generational Distance; Slow Genetic Distance; Custom 1, 2, and 3.
-- [ ] Support multiple modeless graph windows, update/pause, reset, data list, and export.
-- [ ] Source samples and timestamps from Rust.
-- [ ] Provide five contest result rows and manual winner entry.
+- [ ] Define Rust-owned configurable periodic sampling and immediate sampling; every point carries its authoritative cycle, series revision, and settings revision.
+- [ ] Apply the cycle-999 save rule in Rust and persist versioned Graph Join-compatible series and export metadata.
+- [ ] Support multiple modeless graph windows, update/pause, reset, data list, Graph Join-compatible export, and exported-tick verification across save/load.
+- [ ] Wait for the Rust graph-history and persistence authorities; the frontend only requests samples, displays series, and presents export receipts.
+- [ ] Add a Rust competition controller for league, contest, F1, and restart orchestration with competitor discovery/loading, presets, rounds, population/cycle stopping, adjudication, disqualification, manual wins, instant wins, and persisted results.
+- [ ] Make ordinary, Survival, Zerobot, and Eco restarts deterministic Rust commands with seed, source artifact, stop reason, and resulting run ID in each receipt.
+- [ ] Keep all competition frontend surfaces disabled until the controller and durable artifacts exist; five contest result rows and manual/instant win actions display controller state and never adjudicate locally.
+- [ ] Add a Rust evolution controller for presets, round limits, population/cycle ceilings, prohibited/fatal rules, disqualification records, fitness outcomes, mutation adjustment, durable stage checkpoints/rollback, and Zerobot/Eco restart policy.
+- [ ] Make directed-evolution and restriction surfaces projections of `EvolutionRunSnapshot`; the frontend never calculates fitness, winners, disqualification, mutation adjustment, or rollback state.
 - [ ] Show Survival Information only while its offline mode is active.
+
+**Gate:** Seeded fixtures reproduce competition results and all four restart modes; adjudication/disqualification/manual/instant wins survive reload; evolution stage rollback restores the prior artifact; graph exports contain exact sampled and cycle-999 ticks before and after save/load; R08 renders the matching controller states.
 
 ## Phase 11 — Finish support, persistence, accessibility, and scaling
 
 **Files:** `Services/DialogService.cs`, `Views/Help/DnaHelpWindow.axaml`, `AboutWindow.axaml`, `FirstRunWindow.axaml`, `Controls/ArenaNotice.axaml`, `Assets/Help/`, app tray integration.
 
-- [ ] Complete living/dead organism snapshots, save/load progress, safe-mode messaging, and destructive confirmations.
+- [ ] Complete living/dead organism snapshots, save/load progress, and destructive confirmations through the future canonical persistence authority.
+- [ ] Add a Rust recovery controller that records last-start settings, durable checkpoints, and crash/fault classification while preserving the prior usable save.
+- [ ] Narrow replay or checkpoint search to a maximum 2,000-cycle fault window and return each diagnostic attempt, boundary, classification, and restart result as a durable recovery artifact.
+- [ ] Replace messaging-only Safemode with a diagnostic recovery window that shows last-start settings, checkpoint choice, narrowed cycle window, fault evidence, recovery progress, rollback, and accepted restart receipt.
+- [ ] Keep recovery actions disabled until recovery and persistence authorities exist; Avalonia must not classify faults, choose a winning checkpoint, or replace the usable save directly.
 - [ ] Add buoyancy, video-off, and PlayerBot arena notices. Add no internet notice.
 - [ ] Implement tray-based Stealth restore, first-run guidance, About, and DNA help.
 - [ ] Restore focus after dialogs and announce validation and backend fallback changes.
 - [ ] Add Automation IDs/names, ordered keyboard traversal, visible focus, non-color cues, high contrast, reduced motion, and locale-safe numeric parsing.
 - [ ] Verify 953x600/100%, 1280x800/100%, 1920x1080/150%, and 2560x1440/200% with the arena always dominant.
+
+**Gate:** A forced deterministic fault preserves the prior usable save, classifies the failure, narrows it to no more than 2,000 cycles, restores from a durable checkpoint, and produces a restart artifact accepted by Rust; R09 shows the complete recovery path.
 
 ## Phase 12 — Produce final deterministic evidence
 
@@ -231,7 +263,7 @@ Use one selected robot scene showing body, skin, aim, nine eyes, gauges, ties, a
 
 ### R04 — Arena tools
 
-Capture pan, zoom lock, species insertion, shape placement, local teleporter placement, preview cursors, and cancellation.
+Capture pan, zoom lock, species insertion, shape placement, filesystem and intrasimulation teleporter policies, transfer status/receipts, obstacle opacity/drift/fixed state, independent blocking rules, preview cursors, and cancellation.
 
 ### R05 — Simulation Settings
 
@@ -243,15 +275,15 @@ Capture all four Global tabs and the five detailed modal parameter editors with 
 
 ### R07 — Dedicated robot tools
 
-Capture every modeless robot tool refreshing while simulation advances, including pinned, focus-following, and unavailable states.
+Capture every modeless robot tool refreshing while simulation advances, including gene timeline, highlighted descendants, RGB slider pending/accepted preview, PlayerBot key-map timing, nine-eye validation, pinned, focus-following, and unavailable states.
 
 ### R08 — Graphs, contest, and telemetry
 
-Capture multiple graph windows, contest results, all 18 graph choices, and all 13 live status instruments.
+Capture multiple graph windows with configurable/immediate and cycle-999 samples, Graph Join export receipt, league/contest/F1 adjudication, manual/instant wins, ordinary/Survival/Zerobot/Eco restarts, directed-evolution stage/rollback, all 18 graph choices, and all 13 live status instruments.
 
 ### R09 — Support and persistence
 
-Capture help, first run, tray restore, offline overlays, save progress, safe-mode notice, and confirmations.
+Capture help, first run, tray restore, offline overlays, save progress, preserved prior save, last-start settings, fault classification, checkpoint selection, maximum 2,000-cycle narrowing, recovery progress, rollback, accepted restart receipt, and confirmations.
 
 ### R10 — Scaling and accessibility
 
@@ -278,12 +310,15 @@ Screenshot acceptance:
 | Backend visibility | CPU/GPU/fallback and per-phase details remain inspectable | CPU, GPU, forced-fallback smoke evidence |
 | Settings | Five simulation tabs, four global tabs, correct working-copy timing | Contract tests, R05, R06 |
 | Detailed editors | Physics, costs, energy, mutations, restrictions use dedicated modal tools | R06 and commit/discard tests |
-| Objects | Shapes and local teleporters support preview, validation, and stable identity | R04 and Rust command tests |
-| Robot tools | All nine dedicated tools have live, pinned, and stale-key behavior | R07 and inspection tests |
+| Local transfer/objects | Filesystem/intrasimulation teleporters, filters, limits, tied/multibot policy, no backflow, serialization, opacity, drift, fixed state, and independent blocking are Rust-owned | Transfer/blocking receipts and R04 |
+| Robot tools | Timeline, descendants, RGB memory, PlayerBot timing, nine-eye editing, pinning, and stale-key behavior use canonical Rust data | R07 and inspection/trace tests |
 | Rendering | Robots, eyes, ties, shots, impacts, objects, gauges, vectors, backgrounds match semantics | Seeded renderer tests and R03 |
 | Interaction | Focus, pan, zoom, insertion, placement, context actions, and cancellation work | Input-state tests and R04 |
 | Modality | Commit editors are modal; inspectors, graphs, contest, and help are modeless | Window-owner tests and R07 |
-| Graphs/contest | All 18 graph families, multi-window controls, export, and contest results work | Graph tests and R08 |
-| Persistence/support | Save/load, snapshots, tray, help, onboarding, progress, and confirmations work | R09 and restart smoke tests |
+| Graph history | Sampling policy, immediate points, cycle-999 save, Graph Join format, reset/list/export, and exported ticks survive save/load | Versioned graph receipts and R08 |
+| Competition/restarts | League, contest, F1, discovery, presets, rounds, stops, adjudication, wins, results, and four restart modes are Rust-owned and durable | Seeded controller artifacts and R08 |
+| Directed evolution | Limits, prohibited/fatal rules, disqualification, fitness, mutation adjustment, checkpoints, rollback, and restart policy are Rust-owned | Evolution artifacts and R08 |
+| Recovery/persistence | Last-start settings, checkpoints, fault classification, <=2,000-cycle narrowing, prior-save preservation, and accepted restart work | Recovery artifacts and R09 |
+| Persistence/support | Save/load, snapshots, tray, help, onboarding, progress, and confirmations use canonical persistence | R09 and restart smoke tests |
 | Accessibility/scaling | Keyboard, automation metadata, focus, contrast, reflow, and DPI gates pass | Accessibility automation and R10 |
 | Final parity | No placeholder, generic proxy, unintended inert command, active online/network behavior, silent fallback, or open 1500x900 dashboard defect remains | Full audit and signed screenshot manifest |
