@@ -1,5 +1,5 @@
 use crate::dna::normalize_master_end;
-use crate::{DnaBlock, LegacyDna, TokenClass, MAX_DNA_BLOCKS};
+use crate::{DnaBlock, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutationKind {

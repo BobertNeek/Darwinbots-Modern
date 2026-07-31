@@ -1,4 +1,4 @@
-use darwinbots_engine::{DnaBlock, DnaMetadata, LegacyDna, TokenClass, MAX_DNA_BLOCKS};
+use darwinbots_engine::{DnaBlock, DnaMetadata, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
 
 const ALL_CANONICAL_TOKENS: &str = r#"
 DeF ThReShOlD 50

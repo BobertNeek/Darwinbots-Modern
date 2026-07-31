@@ -1,9 +1,9 @@
 use crate::dna_tokens::{block_token, command_string, token_block};
-use crate::{sysvar_address, EngineError};
+use crate::{EngineError, sysvar_address};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub use crate::dna_tokens::{DnaBlock, TokenClass, MAX_DNA_BLOCKS};
+pub use crate::dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum Instruction {
@@ -710,18 +710,16 @@ fn strip_comment(line: &str) -> &str {
 }
 
 pub(crate) fn normalize_master_end(blocks: &mut Vec<DnaBlock>) {
-    if let Some(end) = blocks
+    let coding_end = blocks
         .iter()
         .position(|block| block.class == TokenClass::End)
-    {
-        blocks.truncate(end + 1);
-    } else {
-        blocks.truncate(MAX_DNA_BLOCKS - 1);
-        blocks.push(DnaBlock {
-            class: TokenClass::End,
-            value: 1,
-        });
-    }
+        .unwrap_or(blocks.len())
+        .min(MAX_DNA_BLOCKS - 1);
+    blocks.truncate(coding_end);
+    blocks.push(DnaBlock {
+        class: TokenClass::End,
+        value: 1,
+    });
 }
 
 fn split_compact_comparison(token: &str) -> Option<(&str, &str, i32)> {

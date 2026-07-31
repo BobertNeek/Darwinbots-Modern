@@ -1,6 +1,6 @@
 use darwinbots_engine::{
-    Engine, EngineConfig, GenomeMutator, LegacyDna, MutationKind, PhysicsSettings, PointMutator,
-    MAX_DNA_BLOCKS, TokenClass,
+    Engine, EngineConfig, GenomeMutator, LegacyDna, MAX_DNA_BLOCKS, MutationKind, PhysicsSettings,
+    PointMutator, TokenClass,
 };
 
 fn assert_single_terminal_end(dna: &LegacyDna) {
@@ -123,6 +123,45 @@ fn structural_mutations_respect_32000_block_limit() {
 }
 
 #[test]
+fn serde_deserialization_caps_dna_before_structural_mutation() {
+    let serialized = LegacyDna::parse("1").unwrap();
+    let mut value = serde_json::to_value(&serialized).unwrap();
+    let instructions = value
+        .get_mut("instructions")
+        .and_then(serde_json::Value::as_array_mut)
+        .unwrap();
+    let master_end = instructions.pop().unwrap();
+    let coding_block = instructions[0].clone();
+    *instructions = vec![coding_block; MAX_DNA_BLOCKS + 1];
+    instructions.push(master_end);
+
+    let dna: LegacyDna = serde_json::from_value(value).unwrap();
+
+    assert_eq!(dna.blocks().len(), MAX_DNA_BLOCKS);
+    assert_single_terminal_end(&dna);
+
+    for kind in [
+        MutationKind::Insertion,
+        MutationKind::Duplication,
+        MutationKind::Deletion,
+        MutationKind::Replacement,
+    ] {
+        let mut mutated = dna.clone();
+        GenomeMutator::new(29_349).mutate_kind(&mut mutated, kind);
+
+        let expected_len = match kind {
+            MutationKind::Insertion | MutationKind::Duplication => MAX_DNA_BLOCKS,
+            MutationKind::Deletion => MAX_DNA_BLOCKS - 1,
+            MutationKind::Replacement => MAX_DNA_BLOCKS,
+            MutationKind::Point => unreachable!(),
+        };
+        assert_eq!(mutated.blocks().len(), expected_len, "kind {kind:?}");
+        assert!(mutated.blocks().len() <= MAX_DNA_BLOCKS);
+        assert_single_terminal_end(&mutated);
+    }
+}
+
+#[test]
 fn mutation_reproduction_creates_mutated_child_and_records_change() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let dna = LegacyDna::parse("start\n10 .up store\n50 .mrepro store\nstop").unwrap();
@@ -130,7 +169,13 @@ fn mutation_reproduction_creates_mutated_child_and_records_change() {
 
     engine.tick().unwrap();
 
-    let child = engine.snapshot().organisms.iter().find(|organism| organism.id != parent).unwrap().id;
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.id != parent)
+        .unwrap()
+        .id;
     assert_ne!(engine.dna(parent).unwrap(), engine.dna(child).unwrap());
     assert_eq!(engine.snapshot().stats.mutations, 1);
 }
@@ -138,7 +183,10 @@ fn mutation_reproduction_creates_mutated_child_and_records_change() {
 #[test]
 fn depleted_organisms_die_and_increment_death_statistics() {
     let mut engine = Engine::new(EngineConfig {
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
