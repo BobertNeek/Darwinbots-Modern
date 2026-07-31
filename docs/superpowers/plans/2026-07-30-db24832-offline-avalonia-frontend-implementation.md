@@ -52,6 +52,7 @@ Existing catalog, routing, shortcut, and command-state work is the baseline for 
 | Competition and restart orchestration | Future Rust competition controller | Versioned run snapshot, commands, and durable result artifacts |
 | Directed evolution and restrictions | Future Rust evolution controller | Versioned stage snapshot, adjudication records, and checkpoint commands |
 | Safemode recovery and persistence | Future Rust recovery/persistence services | Fault report, checkpoint catalog, recovery attempt, and atomic save result |
+| Recording and interchange | Future Rust persistence authority | Versioned living/dead DNA records, whole-organism import/export, standalone settings, and graph artifact receipts |
 | File teleporter transfers | Future Rust local-transfer service | Validated local policy, poll status, transfer receipt, and serialized state |
 | Graph history and export | Future Rust graph-history service | Versioned series, sampling policy, save marker, and export receipt |
 
@@ -223,9 +224,16 @@ The 24 toolbar slots are: New, Load, Save, separator; Play, Single Cycle, Pause,
 
 ## Phase 11 — Finish support, persistence, accessibility, and scaling
 
-**Files:** `Services/DialogService.cs`, `Views/Help/DnaHelpWindow.axaml`, `AboutWindow.axaml`, `FirstRunWindow.axaml`, `Controls/ArenaNotice.axaml`, `Assets/Help/`, app tray integration.
+**Files:** `Services/DialogService.cs`, `Services/PersistenceDialogService.cs`, `Views/Persistence/OfflineRecordingWindow.axaml`, `ArtifactImportExportWindow.axaml`, `StandaloneSettingsWindow.axaml`, `Views/Help/DnaHelpWindow.axaml`, `AboutWindow.axaml`, `FirstRunWindow.axaml`, `Controls/ArenaNotice.axaml`, `Assets/Help/`, app tray integration.
 
-- [ ] Complete living/dead organism snapshots, save/load progress, and destructive confirmations through the future canonical persistence authority.
+- [ ] Have the Rust persistence authority write versioned living genome/DNA records for every live bot and continuously record dead DNA while excluding organisms created by repopulation from dead-record output.
+- [ ] Give each record format version, artifact ID, organism identity, source save/run identity, authoritative cycle, death or capture reason, checksum, and payload type.
+- [ ] Export and reload a whole organism with its tied structure as one typed artifact; Rust validates identity, tie topology, and import placement before mutation.
+- [ ] Save and load standalone simulation settings independently of world saves, with their own format version, settings revision, validation receipt, and path identity.
+- [ ] Persist compatible, versioned graph artifacts and return Graph Join/export receipts that identify series revision, sampled ticks, cycle-999 markers, checksum, and source run.
+- [ ] Return progress, completion, cancellation, and typed error receipts for every record/import/export/settings/graph operation. Avalonia only selects paths and recording policy, issues commands, and displays Rust results.
+- [ ] Do not claim legacy binary compatibility without an explicit adapter. Return a typed `UnsupportedArtifactFormat` result containing detected format, supported versions, and a non-destructive failure when no adapter exists.
+- [ ] Route destructive confirmations through the persistence authority and never replace an existing usable artifact before an atomic commit succeeds.
 - [ ] Add a Rust recovery controller that records last-start settings, durable checkpoints, and crash/fault classification while preserving the prior usable save.
 - [ ] Narrow replay or checkpoint search to a maximum 2,000-cycle fault window and return each diagnostic attempt, boundary, classification, and restart result as a durable recovery artifact.
 - [ ] Replace messaging-only Safemode with a diagnostic recovery window that shows last-start settings, checkpoint choice, narrowed cycle window, fault evidence, recovery progress, rollback, and accepted restart receipt.
@@ -236,7 +244,7 @@ The 24 toolbar slots are: New, Load, Save, separator; Play, Single Cycle, Pause,
 - [ ] Add Automation IDs/names, ordered keyboard traversal, visible focus, non-color cues, high contrast, reduced motion, and locale-safe numeric parsing.
 - [ ] Verify 953x600/100%, 1280x800/100%, 1920x1080/150%, and 2560x1440/200% with the arena always dominant.
 
-**Gate:** A forced deterministic fault preserves the prior usable save, classifies the failure, narrows it to no more than 2,000 cycles, restores from a durable checkpoint, and produces a restart artifact accepted by Rust; R09 shows the complete recovery path.
+**Gate:** A forced deterministic fault preserves the prior usable save, classifies the failure, narrows it to no more than 2,000 cycles, restores from a durable checkpoint, and produces a restart artifact accepted by Rust. Living/dead DNA, tied-organism, standalone-settings, and graph artifacts round-trip across a process restart with matching identities, checksums, ticks, and receipts; dead-record evidence proves repopulated organisms were excluded. Unsupported legacy input fails non-destructively with `UnsupportedArtifactFormat`; R09 shows the complete recovery and persistence paths.
 
 ## Phase 12 — Produce final deterministic evidence
 
@@ -283,7 +291,7 @@ Capture multiple graph windows with configurable/immediate and cycle-999 samples
 
 ### R09 — Support and persistence
 
-Capture help, first run, tray restore, offline overlays, save progress, preserved prior save, last-start settings, fault classification, checkpoint selection, maximum 2,000-cycle narrowing, recovery progress, rollback, accepted restart receipt, and confirmations.
+Capture help, first run, tray restore, offline overlays, visible file selection, living/dead recording state, organism export/reload, standalone settings save/load, graph artifact evidence, progress/error and round-trip receipts, preserved prior save, unsupported-format handling, last-start settings, fault classification, checkpoint selection, maximum 2,000-cycle narrowing, recovery progress, rollback, accepted restart receipt, and confirmations.
 
 ### R10 — Scaling and accessibility
 
@@ -319,6 +327,6 @@ Screenshot acceptance:
 | Competition/restarts | League, contest, F1, discovery, presets, rounds, stops, adjudication, wins, results, and four restart modes are Rust-owned and durable | Seeded controller artifacts and R08 |
 | Directed evolution | Limits, prohibited/fatal rules, disqualification, fitness, mutation adjustment, checkpoints, rollback, and restart policy are Rust-owned | Evolution artifacts and R08 |
 | Recovery/persistence | Last-start settings, checkpoints, fault classification, <=2,000-cycle narrowing, prior-save preservation, and accepted restart work | Recovery artifacts and R09 |
-| Persistence/support | Save/load, snapshots, tray, help, onboarding, progress, and confirmations use canonical persistence | R09 and restart smoke tests |
+| Persistence/support | Rust owns versioned living/dead DNA recording with repopulation exclusion, tied-organism interchange, standalone settings, graph artifacts, progress/errors, atomic replacement, restart round trips, and typed unsupported-format rejection; UI shows path, policy, state, and receipts | Persistence artifact tests, R09, and restart smoke tests |
 | Accessibility/scaling | Keyboard, automation metadata, focus, contrast, reflow, and DPI gates pass | Accessibility automation and R10 |
 | Final parity | No placeholder, generic proxy, unintended inert command, active online/network behavior, silent fallback, or open 1500x900 dashboard defect remains | Full audit and signed screenshot manifest |
