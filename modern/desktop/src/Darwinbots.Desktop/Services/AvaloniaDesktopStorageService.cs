@@ -78,6 +78,25 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
+    public async Task<bool> SaveOrganismAsync(
+        TopLevel owner,
+        string suggestedFileName,
+        Func<Stream, Task> writeAsync)
+    {
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save entire organism",
+            SuggestedFileName = suggestedFileName,
+            DefaultExtension = "json",
+            FileTypeChoices = [new FilePickerFileType("Darwinbots organism") { Patterns = ["*.json"] }],
+        });
+        if (file is null) return false;
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await writeAsync(stream);
+        return true;
+    }
+
     public string? FindLatestAutosave()
     {
         var directory = AutosaveDirectory();

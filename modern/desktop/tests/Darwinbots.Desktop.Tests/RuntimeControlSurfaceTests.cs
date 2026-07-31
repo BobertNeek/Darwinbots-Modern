@@ -246,45 +246,57 @@ public sealed class RuntimeControlSurfaceTests
         var headless = DesktopTestApplication.Session;
         MainWindow? window = null;
 
-        await headless.Dispatch(() =>
+        try
         {
-            window = new MainWindow([], new WorldSetupOptions());
-            SetField(window, "_session", simulation);
-            Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
+            await headless.Dispatch(() =>
+            {
+                window = new MainWindow([], new WorldSetupOptions());
+                SetField(window, "_session", simulation);
+                Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
 
-            Invoke(window, "Step_Click");
-            Invoke(window, "Clone_Click");
-            Invoke(window, "Reproduce_Click");
-            Invoke(window, "Kill_Click");
-            Invoke(window, "SwitchBackend_Click");
+                Invoke(window, "Step_Click");
+                Invoke(window, "Clone_Click");
+                Invoke(window, "Reproduce_Click");
+                Invoke(window, "Kill_Click");
+                Invoke(window, "SwitchBackend_Click");
 
-            window.FindControl<NumericUpDown>("LiveMetabolism")!.Value = 7;
-            window.FindControl<NumericUpDown>("LivePlantEnergy")!.Value = 55;
-            window.FindControl<NumericUpDown>("LiveFeedingToBody")!.Value = 0.25m;
-            Invoke(window, "ApplyEnergy_Click");
-            window.FindControl<CheckBox>("ToroidalWorldToggle")!.IsChecked = false;
+                window.FindControl<NumericUpDown>("LiveMetabolism")!.Value = 7;
+                window.FindControl<NumericUpDown>("LivePlantEnergy")!.Value = 55;
+                window.FindControl<NumericUpDown>("LiveFeedingToBody")!.Value = 0.25m;
+                Invoke(window, "ApplyEnergy_Click");
+                window.FindControl<CheckBox>("ToroidalWorldToggle")!.IsChecked = false;
 
-            var editor = new DnaEditorWindow(simulation, RecordingEngineClient.Organism);
-            editor.FindControl<TextBox>("Editor")!.Text = "start\n10 .up store\nstop";
-            Invoke(editor, "Apply_Click");
-            Invoke(editor, "Clone_Click");
-        }, CancellationToken.None);
+                var editor = new DnaEditorWindow(simulation, RecordingEngineClient.Organism);
+                editor.FindControl<TextBox>("Editor")!.Text = "start\n10 .up store\nstop";
+                Invoke(editor, "Apply_Click");
+                Invoke(editor, "Clone_Click");
+            }, CancellationToken.None);
 
-        await WaitFor(() =>
-            engine.Calls.Any(call => call.StartsWith("Tick:", StringComparison.Ordinal))
-            && engine.Calls.Any(call => call.StartsWith("Clone:3:2", StringComparison.Ordinal))
-            && engine.Calls.Any(call => call.StartsWith("Reproduce:3:2", StringComparison.Ordinal))
-            && engine.Calls.Contains("Remove:3:2")
-            && engine.Calls.Contains("Switch:Gpu")
-            && engine.EnvironmentUpdates.Count >= 2
-            && engine.DnaReplacements.Any(value => value.Slot == 3 && value.Generation == 2)
-            && engine.DnaReplacements.Any(value => value.Slot == 40 && value.Generation == 0));
+            await WaitFor(() =>
+                engine.Calls.Any(call => call.StartsWith("Tick:", StringComparison.Ordinal))
+                && engine.Calls.Any(call => call.StartsWith("Clone:3:2", StringComparison.Ordinal))
+                && engine.Calls.Any(call => call.StartsWith("Reproduce:3:2", StringComparison.Ordinal))
+                && engine.Calls.Contains("Remove:3:2")
+                && engine.Calls.Contains("Switch:Gpu")
+                && engine.EnvironmentUpdates.Count >= 2
+                && engine.DnaReplacements.Any(value => value.Slot == 3 && value.Generation == 2)
+                && engine.DnaReplacements.Any(value => value.Slot == 40 && value.Generation == 0));
 
-        Assert.Contains(engine.EnvironmentUpdates, update =>
-            update.MetabolismCost == 7
-            && update.Vegetation.MaxEnergyPerTick == 55
-            && Math.Abs(update.Vegetation.FeedingToBody - 0.25f) < 0.001f);
-        Assert.Contains(engine.EnvironmentUpdates, update => !update.ToroidalWorld);
+            Assert.Contains(engine.EnvironmentUpdates, update =>
+                update.MetabolismCost == 7
+                && update.Vegetation.MaxEnergyPerTick == 55
+                && Math.Abs(update.Vegetation.FeedingToBody - 0.25f) < 0.001f);
+            Assert.Contains(engine.EnvironmentUpdates, update => !update.ToroidalWorld);
+        }
+        finally
+        {
+            if (window is not null) await DesktopTestApplication.Session.Dispatch(() =>
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                return Task.CompletedTask;
+            }, CancellationToken.None);
+        }
     }
 
     [Fact]
@@ -311,23 +323,36 @@ public sealed class RuntimeControlSurfaceTests
         var engine = new RecordingEngineClient();
         await using var simulation = new SimulationSession(engine);
         var storage = new AuditStorageService();
+        MainWindow? window = null;
 
-        await DesktopTestApplication.Session.Dispatch(() =>
+        try
         {
-            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
-            SetField(window, "_session", simulation);
-            Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
-            window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .Invoke(window, null);
-            window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
-                .FindCommandItem(Core.LegacyMenus.LegacyCommandId.FileSaveWithoutMutations)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            return Task.CompletedTask;
-        }, CancellationToken.None);
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
+                SetField(window, "_session", simulation);
+                Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
+                window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null);
+                var result = await (Task<Core.LegacyMenus.LegacyCommandResult>)window.GetType()
+                    .GetMethod("SaveSimulationCommandAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, ["SAVED WITHOUT MUTATION SETTINGS", true])!;
+                Assert.True(result.Succeeded, result.Status);
+            }, CancellationToken.None);
 
-        await WaitFor(() => storage.SavedSimulation is [9, 8, 7]);
-        Assert.Equal([9, 8, 7], storage.SavedSimulation);
-        Assert.DoesNotContain("Save", engine.Calls);
+            await WaitFor(() => storage.SavedSimulation is [9, 8, 7]);
+            Assert.Equal([9, 8, 7], storage.SavedSimulation);
+            Assert.DoesNotContain("Save", engine.Calls);
+        }
+        finally
+        {
+            if (window is not null) await DesktopTestApplication.Session.Dispatch(() =>
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                return Task.CompletedTask;
+            }, CancellationToken.None);
+        }
     }
 
     [Fact]
@@ -346,27 +371,38 @@ public sealed class RuntimeControlSurfaceTests
         await using var simulation = new SimulationSession(engine);
         await simulation.StepAsync(0);
         MainWindowViewModel? selectedViewModel = null;
+        MainWindow? window = null;
 
-        await DesktopTestApplication.Session.Dispatch(() =>
+        try
         {
-            var window = new MainWindow([], new WorldSetupOptions());
-            SetField(window, "_session", simulation);
-            var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
-            selectedViewModel = viewModel;
-            viewModel.Update(snapshot);
-            viewModel.Select(3);
-            window.FindControl<WorldViewport>("Viewport")!.SelectSlot(3);
-            window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
-                .FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKillEntireOrganism)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            return Task.CompletedTask;
-        }, CancellationToken.None);
-
-        await WaitFor(() =>
-            engine.Calls.Any(call => call.StartsWith("Remove", StringComparison.Ordinal))
-            && selectedViewModel?.SelectedSlot is null);
-        Assert.Equal(["RemoveMany:3:2,4:7"], engine.Calls.Where(call => call.StartsWith("Remove", StringComparison.Ordinal)));
-        Assert.Null(selectedViewModel!.SelectedSlot);
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                window = new MainWindow([], new WorldSetupOptions());
+                SetField(window, "_session", simulation);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                selectedViewModel = viewModel;
+                viewModel.Update(snapshot);
+                viewModel.Select(3);
+                window.FindControl<WorldViewport>("Viewport")!.SelectSlot(3);
+                window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null);
+                var result = await (Task<Core.LegacyMenus.LegacyCommandResult>)window.GetType()
+                    .GetMethod("KillSelectedOrganismAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null)!;
+                Assert.True(result.Succeeded, result.Status);
+                Assert.Equal(["RemoveMany:3:2,4:7"], engine.Calls.Where(call => call.StartsWith("Remove", StringComparison.Ordinal)));
+                Assert.Null(viewModel.SelectedSlot);
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            if (window is not null) await DesktopTestApplication.Session.Dispatch(() =>
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                return Task.CompletedTask;
+            }, CancellationToken.None);
+        }
     }
 
     [Fact]
@@ -396,22 +432,82 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
-    public void SaveEntireOrganismOmitsTiesWithEndpointsOutsideTheCapturedGroup()
+    public async Task SaveEntireOrganismMenuWritesTheExactTiedGroupJsonThroughThePicker()
     {
-        TieSnapshot[] ties =
+        var selected = RecordingEngineClient.Organism;
+        var tied = selected with { Slot = 4, Generation = 7 };
+        var unrelated = selected with { Slot = 8, Generation = 1 };
+        var snapshot = RecordingEngineClient.CreateSnapshot() with
         {
-            new(new OrganismKey(3, 2), new OrganismKey(4, 7), 40f),
-            new(new OrganismKey(4, 7), new OrganismKey(99, 5), 60f),
+            Tick = 42,
+            Population = 3,
+            Organisms = [selected, tied, unrelated],
+            Ties =
+            [
+                new(new OrganismKey(3, 2), new OrganismKey(4, 7), 40f),
+                new(new OrganismKey(4, 7), new OrganismKey(99, 5), 60f),
+            ],
         };
-        IReadOnlySet<OrganismKey> memberKeys = new HashSet<OrganismKey> { new(3, 2), new(4, 7) };
+        var engine = new RecordingEngineClient(snapshot);
+        engine.Tick(42);
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+        var storage = new AuditStorageService();
 
-        var filtered = (TieSnapshot[])typeof(MainWindow)
-            .GetMethod("FilterTiesForCapturedGroup", BindingFlags.Static | BindingFlags.NonPublic)!
-            .Invoke(null, [ties, memberKeys])!;
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
+            SimulationSession? windowSession = null;
+            try
+            {
+                window.Show();
+                windowSession = Field<SimulationSession>(window, "_session");
+                SetField(window, "_session", simulation);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                viewModel.Update(snapshot);
+                viewModel.Select(3);
+                window.FindControl<WorldViewport>("Viewport")!.SelectSlot(3);
+                window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null);
 
-        var tie = Assert.Single(filtered);
-        Assert.Equal(new OrganismKey(3, 2), tie.First);
-        Assert.Equal(new OrganismKey(4, 7), tie.Second);
+                window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveEntireOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+                await WaitFor(() => storage.SavedOrganism is not null);
+                Assert.Equal("organism-3.json", storage.SavedOrganismSuggestedFileName);
+                using var document = System.Text.Json.JsonDocument.Parse(storage.SavedOrganism!);
+                var root = document.RootElement;
+                Assert.Equal(1, root.GetProperty("version").GetInt32());
+                Assert.Equal(42UL, root.GetProperty("tick").GetUInt64());
+
+                var members = root.GetProperty("members").EnumerateArray().ToArray();
+                Assert.Equal(2, members.Length);
+                Assert.Equal((3U, 2U), (members[0].GetProperty("Slot").GetUInt32(), members[0].GetProperty("Generation").GetUInt32()));
+                Assert.Equal((4U, 7U), (members[1].GetProperty("Slot").GetUInt32(), members[1].GetProperty("Generation").GetUInt32()));
+                Assert.All(members, member => Assert.Equal("start\nstop", member.GetProperty("dna").GetString()));
+
+                var ties = root.GetProperty("ties").EnumerateArray().ToArray();
+                var tie = Assert.Single(ties);
+                Assert.Equal((3U, 2U), (tie.GetProperty("First").GetProperty("Slot").GetUInt32(), tie.GetProperty("First").GetProperty("Generation").GetUInt32()));
+                Assert.Equal((4U, 7U), (tie.GetProperty("Second").GetProperty("Slot").GetUInt32(), tie.GetProperty("Second").GetProperty("Generation").GetUInt32()));
+                var serializedSlots = members.Select(member => member.GetProperty("Slot").GetUInt32())
+                    .Concat(ties.SelectMany(value => new[]
+                    {
+                        value.GetProperty("First").GetProperty("Slot").GetUInt32(),
+                        value.GetProperty("Second").GetProperty("Slot").GetUInt32(),
+                    }));
+                Assert.DoesNotContain(8U, serializedSlots);
+                Assert.DoesNotContain(99U, serializedSlots);
+                Assert.Equal([(3U, 2U), (4U, 7U)], engine.DnaExports.ToArray());
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                if (windowSession is not null) await windowSession.DisposeAsync();
+            }
+        }, CancellationToken.None);
     }
 
     [Fact]
@@ -494,6 +590,7 @@ internal sealed class RecordingEngineClient : IEngineClient
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
     public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation, string Dna)> DnaReplacements { get; } = [];
+    public ConcurrentQueue<(uint Slot, uint Generation)> DnaExports { get; } = [];
     public string Backend { get; private set; } = "CPU";
     private ulong _tick;
     private readonly EngineSnapshot _snapshot;
@@ -529,7 +626,11 @@ internal sealed class RecordingEngineClient : IEngineClient
         Calls.Enqueue($"ReplaceDna:{slot}:{generation}");
         DnaReplacements.Enqueue((slot, generation, dna));
     }
-    public string ExportDna(uint slot, uint generation) => "start\nstop";
+    public string ExportDna(uint slot, uint generation)
+    {
+        DnaExports.Enqueue((slot, generation));
+        return "start\nstop";
+    }
     public OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position)
     {
         Calls.Enqueue($"Reproduce:{firstSlot}:{firstGeneration}:{secondSlot?.ToString() ?? "none"}");

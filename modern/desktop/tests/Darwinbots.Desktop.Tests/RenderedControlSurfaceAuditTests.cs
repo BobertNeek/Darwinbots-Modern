@@ -601,6 +601,9 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public string? LatestAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
     public string? SavedDna { get; private set; }
+    public bool AcceptOrganismSave { get; init; } = true;
+    public string? SavedOrganismSuggestedFileName { get; private set; }
+    public byte[]? SavedOrganism { get; private set; }
     public byte[]? Autosave { get; private set; }
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
@@ -617,6 +620,16 @@ internal sealed class AuditStorageService : IDesktopStorageService
     {
         SavedDna = dna;
         return Task.FromResult(true);
+    }
+
+    public async Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync)
+    {
+        SavedOrganismSuggestedFileName = suggestedFileName;
+        if (!AcceptOrganismSave) return false;
+        using var stream = new MemoryStream();
+        await writeAsync(stream);
+        SavedOrganism = stream.ToArray();
+        return true;
     }
 
     public string? FindLatestAutosave() => LatestAutosave;

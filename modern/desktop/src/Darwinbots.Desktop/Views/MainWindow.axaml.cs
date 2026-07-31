@@ -906,23 +906,19 @@ public sealed partial class MainWindow : Window
         var memberKeys = group.Select(value => new OrganismKey(value.Slot, value.Generation)).ToHashSet();
         var snapshot = _session.LatestSnapshot;
         var ties = FilterTiesForCapturedGroup(snapshot.Ties, memberKeys);
-        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        var saved = await _storage.SaveOrganismAsync(this, $"organism-{_viewModel.SelectedSlot}.json", async stream =>
         {
-            Title = "Save entire organism",
-            SuggestedFileName = $"organism-{_viewModel.SelectedSlot}.json",
-            DefaultExtension = "json",
-            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots organism") { Patterns = ["*.json"] }],
+            var members = new List<object>();
+            foreach (var member in group)
+            {
+                var dna = await _session.ExportDnaAsync(member.Slot, member.Generation);
+                members.Add(new { member.Slot, member.Generation, member.Species, member.Position, member.Velocity, member.Energy, member.Body, dna });
+            }
+            await System.Text.Json.JsonSerializer.SerializeAsync(stream, new { version = 1, tick = snapshot.Tick, members, ties }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         });
-        if (file is null) return LegacyCommandResult.Cancel();
-        var members = new List<object>();
-        foreach (var member in group)
-        {
-            var dna = await _session.ExportDnaAsync(member.Slot, member.Generation);
-            members.Add(new { member.Slot, member.Generation, member.Species, member.Position, member.Velocity, member.Energy, member.Body, dna });
-        }
-        await using var stream = await file.OpenWriteAsync();
-        await System.Text.Json.JsonSerializer.SerializeAsync(stream, new { version = 1, tick = snapshot.Tick, members, ties }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        return LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)");
+        return saved
+            ? LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)")
+            : LegacyCommandResult.Cancel();
     }
 
     private static TieSnapshot[] FilterTiesForCapturedGroup(
