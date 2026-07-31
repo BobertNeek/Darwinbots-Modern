@@ -26,10 +26,18 @@ const MEM_WASTE: i32 = 828;
 const MEM_PARALYZED: i32 = 837;
 const MEM_POISONED: i32 = 838;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BiologyState {
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RobotMaterials {
+    #[serde(default = "default_energy")]
+    pub energy: i32,
     pub body: i32,
+    #[serde(default = "default_mass")]
+    pub mass: f32,
+    #[serde(default = "default_radius")]
+    pub radius: f32,
     pub waste: i32,
+    #[serde(default)]
+    pub permanent_waste: i32,
     pub shell: i32,
     pub slime: i32,
     pub venom: i32,
@@ -40,18 +48,34 @@ pub struct BiologyState {
     pub pleasure: i32,
     pub paralyzed: i32,
     pub poisoned: i32,
-    previous_energy: i32,
+    pub(crate) previous_energy: i32,
     #[serde(default)]
-    plant_energy_carry_micros: i64,
+    pub(crate) plant_energy_carry_micros: i64,
     #[serde(default)]
-    plant_body_carry_micros: i64,
+    pub(crate) plant_body_carry_micros: i64,
 }
 
-impl Default for BiologyState {
+pub type BiologyState = RobotMaterials;
+
+const fn default_energy() -> i32 {
+    1_000
+}
+const fn default_mass() -> f32 {
+    1.0
+}
+const fn default_radius() -> f32 {
+    1.0
+}
+
+impl Default for RobotMaterials {
     fn default() -> Self {
         Self {
+            energy: default_energy(),
             body: 1_000,
+            mass: default_mass(),
+            radius: default_radius(),
             waste: 0,
+            permanent_waste: 0,
             shell: 0,
             slime: 0,
             venom: 0,
@@ -69,7 +93,7 @@ impl Default for BiologyState {
     }
 }
 
-impl BiologyState {
+impl RobotMaterials {
     pub(crate) fn for_species(vegetable: bool, start_chloroplasts: i32) -> Self {
         Self {
             chloroplasts: if vegetable {
@@ -84,8 +108,12 @@ impl BiologyState {
     pub(crate) fn split_for_offspring(&mut self, percentage: i32) -> Self {
         let percentage = percentage.clamp(1, 99);
         let mut child = Self {
+            energy: split_resource(&mut self.energy, percentage, true),
             body: split_resource(&mut self.body, percentage, true),
+            mass: self.mass,
+            radius: self.radius,
             waste: split_resource(&mut self.waste, percentage, false),
+            permanent_waste: split_resource(&mut self.permanent_waste, percentage, false),
             shell: split_resource(&mut self.shell, percentage, false),
             slime: split_resource(&mut self.slime, percentage, false),
             venom: split_resource(&mut self.venom, percentage, false),
@@ -111,76 +139,118 @@ impl BiologyState {
     }
 
     pub(crate) fn absorb_offspring(&mut self, child: Self) {
+        self.energy = self.energy.saturating_add(child.energy);
         self.body = self.body.saturating_add(child.body);
+        self.permanent_waste = self.permanent_waste.saturating_add(child.permanent_waste);
         self.waste = self.waste.saturating_add(child.waste);
         self.shell = self.shell.saturating_add(child.shell);
         self.slime = self.slime.saturating_add(child.slime);
         self.venom = self.venom.saturating_add(child.venom);
         self.poison = self.poison.saturating_add(child.poison);
         self.chloroplasts = self.chloroplasts.saturating_add(child.chloroplasts);
-        self.plant_energy_carry_micros = self.plant_energy_carry_micros
+        self.plant_energy_carry_micros = self
+            .plant_energy_carry_micros
             .saturating_add(child.plant_energy_carry_micros);
-        self.plant_body_carry_micros = self.plant_body_carry_micros
+        self.plant_body_carry_micros = self
+            .plant_body_carry_micros
             .saturating_add(child.plant_body_carry_micros);
     }
 
-    pub(crate) fn synchronize_energy(&mut self, energy: i32) {
-        self.previous_energy = energy;
+    pub(crate) fn synchronize_energy(&mut self) {
+        self.previous_energy = self.energy;
     }
 
-    pub(crate) fn apply_plant_delta(
-        &mut self,
-        energy: &mut i32,
-        delta: f32,
-        feeding_to_body: f32,
-    ) -> (i32, i32) {
+    pub(crate) fn apply_plant_delta(&mut self, delta: f32, feeding_to_body: f32) -> (i32, i32) {
         let body_fraction = feeding_to_body.clamp(0.0, 1.0);
         let energy_micros = (delta * (1.0 - body_fraction) * 1_000_000.0).round() as i64;
         let body_micros = (delta * body_fraction / 10.0 * 1_000_000.0).round() as i64;
-        self.plant_energy_carry_micros = self.plant_energy_carry_micros
-            .saturating_add(energy_micros);
-        self.plant_body_carry_micros = self.plant_body_carry_micros
-            .saturating_add(body_micros);
+        self.plant_energy_carry_micros =
+            self.plant_energy_carry_micros.saturating_add(energy_micros);
+        self.plant_body_carry_micros = self.plant_body_carry_micros.saturating_add(body_micros);
 
         let energy_whole = self.plant_energy_carry_micros / 1_000_000;
         let body_whole = self.plant_body_carry_micros / 1_000_000;
         self.plant_energy_carry_micros %= 1_000_000;
         self.plant_body_carry_micros %= 1_000_000;
-        let prior_energy = *energy;
+        let prior_energy = self.energy;
         let prior_body = self.body;
-        *energy = (*energy as i64 + energy_whole).clamp(0, 32_000) as i32;
+        self.energy = (self.energy as i64 + energy_whole).clamp(0, 32_000) as i32;
         self.body = (self.body as i64 + body_whole).clamp(1, 32_000) as i32;
-        (energy.saturating_sub(prior_energy), self.body.saturating_sub(prior_body))
+        (
+            self.energy.saturating_sub(prior_energy),
+            self.body.saturating_sub(prior_body),
+        )
     }
 
-    pub fn apply_outputs(&mut self, memory: &mut VmMemory, energy: &mut i32, metabolism: i32) {
+    pub fn apply_outputs(&mut self, memory: &mut VmMemory, metabolism: i32) {
         let prior = self.previous_energy;
         let absolute = memory.read(MEM_SET_AIM);
-        if absolute != 0 { self.aim = normalize_aim(absolute); }
+        if absolute != 0 {
+            self.aim = normalize_aim(absolute);
+        }
         self.aim = normalize_aim(self.aim + memory.read(MEM_AIM_DX) - memory.read(MEM_AIM_SX));
 
-        let body_gain = spend(energy, memory.read(MEM_STORE_BODY).max(0), 10);
+        let body_gain = spend(&mut self.energy, memory.read(MEM_STORE_BODY).max(0), 10);
         self.body = self.body.saturating_add(body_gain);
-        let body_feed = memory.read(MEM_FEED_BODY).max(0).min(self.body.saturating_sub(1));
+        let body_feed = memory
+            .read(MEM_FEED_BODY)
+            .max(0)
+            .min(self.body.saturating_sub(1));
         self.body -= body_feed;
-        *energy = energy.saturating_add(body_feed.saturating_mul(10));
+        self.energy = self.energy.saturating_add(body_feed.saturating_mul(10));
 
-        self.shell = self.shell.saturating_add(spend(energy, memory.read(MEM_MAKE_SHELL).max(0), 1));
-        self.slime = self.slime.saturating_add(spend(energy, memory.read(MEM_MAKE_SLIME).max(0), 1));
-        self.venom = self.venom.saturating_add(spend(energy, memory.read(MEM_STORE_VENOM).max(0), 1));
-        self.poison = self.poison.saturating_add(spend(energy, memory.read(MEM_STORE_POISON).max(0), 1));
-        self.chloroplasts = self.chloroplasts.saturating_add(spend(energy, memory.read(MEM_MAKE_CHLOROPLASTS).max(0), 2));
-        self.chloroplasts = self.chloroplasts.saturating_sub(memory.read(MEM_REMOVE_CHLOROPLASTS).max(0)).max(0);
+        self.shell = self.shell.saturating_add(spend(
+            &mut self.energy,
+            memory.read(MEM_MAKE_SHELL).max(0),
+            1,
+        ));
+        self.slime = self.slime.saturating_add(spend(
+            &mut self.energy,
+            memory.read(MEM_MAKE_SLIME).max(0),
+            1,
+        ));
+        self.venom = self.venom.saturating_add(spend(
+            &mut self.energy,
+            memory.read(MEM_STORE_VENOM).max(0),
+            1,
+        ));
+        self.poison = self.poison.saturating_add(spend(
+            &mut self.energy,
+            memory.read(MEM_STORE_POISON).max(0),
+            1,
+        ));
+        self.chloroplasts = self.chloroplasts.saturating_add(spend(
+            &mut self.energy,
+            memory.read(MEM_MAKE_CHLOROPLASTS).max(0),
+            2,
+        ));
+        self.chloroplasts = self
+            .chloroplasts
+            .saturating_sub(memory.read(MEM_REMOVE_CHLOROPLASTS).max(0))
+            .max(0);
 
-        let spent = prior.saturating_sub(*energy).max(0);
-        self.waste = self.waste.saturating_add(metabolism.max(0)).saturating_add(spent / 20);
-        self.pain = prior.saturating_sub(*energy).max(0);
-        self.pleasure = energy.saturating_sub(prior).max(0);
-        self.previous_energy = *energy;
+        let spent = prior.saturating_sub(self.energy).max(0);
+        self.waste = self
+            .waste
+            .saturating_add(metabolism.max(0))
+            .saturating_add(spent / 20);
+        self.pain = prior.saturating_sub(self.energy).max(0);
+        self.pleasure = self.energy.saturating_sub(prior).max(0);
+        self.previous_energy = self.energy;
         self.publish(memory);
-        for address in [MEM_AIM_DX, MEM_AIM_SX, MEM_SET_AIM, MEM_FEED_BODY, MEM_STORE_BODY,
-            MEM_MAKE_SLIME, MEM_MAKE_SHELL, MEM_STORE_VENOM, MEM_STORE_POISON,
-            MEM_MAKE_CHLOROPLASTS, MEM_REMOVE_CHLOROPLASTS] {
+        for address in [
+            MEM_AIM_DX,
+            MEM_AIM_SX,
+            MEM_SET_AIM,
+            MEM_FEED_BODY,
+            MEM_STORE_BODY,
+            MEM_MAKE_SLIME,
+            MEM_MAKE_SHELL,
+            MEM_STORE_VENOM,
+            MEM_STORE_POISON,
+            MEM_MAKE_CHLOROPLASTS,
+            MEM_REMOVE_CHLOROPLASTS,
+        ] {
             memory.write(address, 0);
         }
     }
@@ -209,8 +279,7 @@ fn split_resource(resource: &mut i32, percentage: i32, preserve_living_body: boo
             *resource = 1;
             return 1;
         }
-        let child = ((total as i64 * percentage as i64) / 100)
-            .clamp(1, (total - 1) as i64) as i32;
+        let child = ((total as i64 * percentage as i64) / 100).clamp(1, (total - 1) as i64) as i32;
         *resource = total - child;
         child
     } else {
@@ -227,7 +296,9 @@ fn split_i64_resource(resource: &mut i64, percentage: i32) -> i64 {
 }
 
 fn spend(energy: &mut i32, requested: i32, unit_cost: i32) -> i32 {
-    if requested <= 0 || unit_cost <= 0 { return 0; }
+    if requested <= 0 || unit_cost <= 0 {
+        return 0;
+    }
     let affordable = (*energy).max(0) / unit_cost;
     let amount = requested.min(affordable);
     *energy = energy.saturating_sub(amount.saturating_mul(unit_cost));

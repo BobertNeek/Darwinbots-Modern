@@ -1,15 +1,15 @@
+use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState};
 use crate::{
-    BackendCapabilities, BackendKind, BackendPreference, CpuPhysicsBackend, DnaVm, EngineConfig,
-    EngineError, GpuPhysicsBackend, LegacyDna, OrganismId, PhysicsBackend, PhysicsBatch, RenderInstance, VmMemory,
-    BiologyState, GenomeMutator, Obstacle, PhaseTimings, SimulationStats, SpatialIndex, SpeciesDefinition,
-    CorpseSnapshot, HistorySample, ProjectileEffect, ProjectileImpact, ProjectilePool,
-    PlantLightInput, ProjectileSpawn, ProjectileTarget, ShotSnapshot, SpeciesId, Teleporter,
-    VegetationRuntime, projectile_effect,
-    VisualPhenotype, generated_skin,
-    VisionSnapshot, eye_value,
+    BackendCapabilities, BackendKind, BackendPreference, BiologyState, CorpseSnapshot,
+    CpuPhysicsBackend, DnaVm, EngineConfig, EngineError, GenomeMutator, GpuPhysicsBackend,
+    HistorySample, LegacyDna, Obstacle, OrganismId, PhaseTimings, PhysicsBackend, PhysicsBatch,
+    PlantLightInput, ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn,
+    ProjectileTarget, RenderInstance, ShotSnapshot, SimulationStats, SpatialIndex,
+    SpeciesDefinition, SpeciesId, Teleporter, VegetationRuntime, VisionSnapshot, VisualPhenotype,
+    VmMemory, eye_value, generated_skin, projectile_effect,
 };
-use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
 use crate::physics::{
@@ -149,19 +149,6 @@ pub struct TieSnapshot {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Organism {
-    dna: LegacyDna,
-    memory: VmMemory,
-    random_state: u64,
-    #[serde(default)]
-    species: SpeciesId,
-    #[serde(default)]
-    parents: [Option<OrganismId>; 2],
-    #[serde(default)]
-    phenotype: VisualPhenotype,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 struct SpeciesTemplate {
     dna: LegacyDna,
     initial_energy: i32,
@@ -175,88 +162,11 @@ struct PendingProjectileRequest {
     angle: f32,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-struct KinematicsSoa {
-    positions: Vec<[f32; 2]>,
-    #[serde(default)]
-    previous_positions: Vec<[f32; 2]>,
-    velocities: Vec<[f32; 2]>,
-    #[serde(default)]
-    actual_velocities: Vec<[f32; 2]>,
-    pending_velocities: Vec<[f32; 2]>,
-    alive: Vec<bool>,
-}
-
-impl KinematicsSoa {
-    fn activate(&mut self, slot: usize, position: [f32; 2]) {
-        if self.positions.len() <= slot {
-            let len = slot + 1;
-            self.positions.resize(len, [0.0; 2]);
-            self.previous_positions.resize(len, [0.0; 2]);
-            self.velocities.resize(len, [0.0; 2]);
-            self.actual_velocities.resize(len, [0.0; 2]);
-            self.pending_velocities.resize(len, [0.0; 2]);
-            self.alive.resize(len, false);
-        }
-        self.positions[slot] = position;
-        self.previous_positions[slot] = position;
-        self.velocities[slot] = [0.0; 2];
-        self.actual_velocities[slot] = [0.0; 2];
-        self.pending_velocities[slot] = [0.0; 2];
-        self.alive[slot] = true;
-    }
-
-    fn deactivate(&mut self, slot: usize) {
-        if slot < self.alive.len() {
-            self.alive[slot] = false;
-            self.velocities[slot] = [0.0; 2];
-            self.actual_velocities[slot] = [0.0; 2];
-            self.pending_velocities[slot] = [0.0; 2];
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-struct LifecycleSoa {
-    energies: Vec<i32>,
-    ages: Vec<u64>,
-}
-
-impl LifecycleSoa {
-    fn activate(&mut self, slot: usize, energy: i32) {
-        if self.energies.len() <= slot {
-            self.energies.resize(slot + 1, 0);
-            self.ages.resize(slot + 1, 0);
-        }
-        self.energies[slot] = energy;
-        self.ages[slot] = 0;
-    }
-
-    fn deactivate(&mut self, slot: usize) {
-        if slot < self.energies.len() {
-            self.energies[slot] = 0;
-            self.ages[slot] = 0;
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Slot {
-    generation: u32,
-    organism: Option<Organism>,
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
     config: EngineConfig,
-    slots: Vec<Slot>,
-    kinematics: KinematicsSoa,
-    lifecycle: LifecycleSoa,
-    #[serde(default)]
-    biology: Vec<BiologyState>,
-    #[serde(default)]
-    forced_reproductions: Vec<bool>,
-    free_slots: Vec<u32>,
+    #[serde(flatten)]
+    slots: RobotArena,
     tick: u64,
     snapshot: Snapshot,
     stats: SimulationStats,
@@ -316,12 +226,7 @@ impl Engine {
         let world_size = [config.world_width, config.world_height];
         Ok(Self {
             config,
-            slots: Vec::new(),
-            kinematics: KinematicsSoa::default(),
-            lifecycle: LifecycleSoa::default(),
-            biology: Vec::new(),
-            forced_reproductions: Vec::new(),
-            free_slots: Vec::new(),
+            slots: RobotArena::default(),
             tick: 0,
             snapshot: Snapshot {
                 tick: 0,
@@ -376,7 +281,11 @@ impl Engine {
         self.spawn_at(dna, [0.0, 0.0])
     }
 
-    pub fn spawn_at(&mut self, dna: LegacyDna, position: [f32; 2]) -> Result<OrganismId, EngineError> {
+    pub fn spawn_at(
+        &mut self,
+        dna: LegacyDna,
+        position: [f32; 2],
+    ) -> Result<OrganismId, EngineError> {
         let id = self.spawn_at_unpublished(dna, position)?;
         self.publish_snapshot();
         Ok(id)
@@ -388,7 +297,9 @@ impl Engine {
             species.skin = generated_skin(&species.name, species.lineage_id);
             self.next_lineage_id = species.lineage_id.saturating_add(1);
         } else {
-            self.next_lineage_id = self.next_lineage_id.max(species.lineage_id.saturating_add(1));
+            self.next_lineage_id = self
+                .next_lineage_id
+                .max(species.lineage_id.saturating_add(1));
         }
         let id = SpeciesId(self.species.len() as u32);
         self.species.push(species);
@@ -404,14 +315,22 @@ impl Engine {
         species_rates: &[(SpeciesId, f32)],
     ) -> Result<(), EngineError> {
         if !global_multiplier.is_finite() || !(0.0..=100.0).contains(&global_multiplier) {
-            return Err(EngineError::Invariant("global mutation multiplier must be between 0 and 100".to_owned()));
+            return Err(EngineError::Invariant(
+                "global mutation multiplier must be between 0 and 100".to_owned(),
+            ));
         }
         for (species, rate) in species_rates {
             if !rate.is_finite() || !(0.0..=100.0).contains(rate) {
-                return Err(EngineError::Invariant(format!("mutation rate for species {} must be between 0 and 100", species.0)));
+                return Err(EngineError::Invariant(format!(
+                    "mutation rate for species {} must be between 0 and 100",
+                    species.0
+                )));
             }
             if self.species.get(species.0 as usize).is_none() {
-                return Err(EngineError::Invariant(format!("species {} does not exist", species.0)));
+                return Err(EngineError::Invariant(format!(
+                    "species {} does not exist",
+                    species.0
+                )));
             }
         }
         self.mutations_enabled = enabled;
@@ -432,11 +351,16 @@ impl Engine {
     }
 
     pub fn set_species_color(&mut self, species: SpeciesId, color: u32) -> Result<(), EngineError> {
-        let definition = self.species.get_mut(species.0 as usize)
-            .ok_or_else(|| EngineError::Invariant(format!("species {} does not exist", species.0)))?;
+        let definition = self.species.get_mut(species.0 as usize).ok_or_else(|| {
+            EngineError::Invariant(format!("species {} does not exist", species.0))
+        })?;
         definition.color = color;
         for slot in &mut self.slots {
-            if let Some(organism) = slot.organism.as_mut().filter(|value| value.species == species) {
+            if let Some(organism) = slot
+                .organism
+                .as_mut()
+                .filter(|value| value.identity.species == species)
+            {
                 organism.phenotype.color = color;
             }
         }
@@ -444,11 +368,26 @@ impl Engine {
         Ok(())
     }
 
-    pub fn make_new_species(&mut self, id: OrganismId, name: String, color: u32) -> Result<SpeciesId, EngineError> {
-        let current_species = self.valid_slot(id)?.organism.as_ref().unwrap().species;
-        let mut definition = self.species.get(current_species.0 as usize)
+    pub fn make_new_species(
+        &mut self,
+        id: OrganismId,
+        name: String,
+        color: u32,
+    ) -> Result<SpeciesId, EngineError> {
+        let current_species = self
+            .valid_slot(id)?
+            .organism
+            .as_ref()
+            .unwrap()
+            .identity
+            .species;
+        let mut definition = self
+            .species
+            .get(current_species.0 as usize)
             .cloned()
-            .ok_or_else(|| EngineError::Invariant(format!("species {} does not exist", current_species.0)))?;
+            .ok_or_else(|| {
+                EngineError::Invariant(format!("species {} does not exist", current_species.0))
+            })?;
         definition.name = name;
         definition.color = color;
         definition.minimum_population = 0;
@@ -458,20 +397,24 @@ impl Engine {
         let lineage = self.species[new_species.0 as usize].lineage_id;
         let skin = self.species[new_species.0 as usize].skin;
         let organism = self.slots[id.slot() as usize].organism.as_mut().unwrap();
-        organism.species = new_species;
+        organism.identity.species = new_species;
         organism.phenotype = VisualPhenotype::new(lineage, color, skin);
         self.publish_snapshot();
         Ok(new_species)
     }
 
-    pub fn update_legacy_restrictions(&mut self, robot_fixing_allowed: bool, asexual_reproduction_allowed: bool) {
+    pub fn update_legacy_restrictions(
+        &mut self,
+        robot_fixing_allowed: bool,
+        asexual_reproduction_allowed: bool,
+    ) {
         self.robot_fixing_allowed = robot_fixing_allowed;
         self.asexual_reproduction_allowed = asexual_reproduction_allowed;
         if !robot_fixing_allowed {
             for slot in &mut self.slots {
                 if let Some(organism) = slot.organism.as_mut() {
-                    organism.memory.write(216, 0);
-                    organism.memory.write(215, 0);
+                    organism.program.memory.write(216, 0);
+                    organism.program.memory.write(215, 0);
                 }
             }
         }
@@ -481,7 +424,7 @@ impl Engine {
     pub fn set_organism_aim(&mut self, id: OrganismId, aim: i32) -> Result<(), EngineError> {
         self.valid_slot(id)?;
         let normalized = ((aim % 1257) + 1257) % 1257;
-        self.biology[id.slot() as usize].aim = normalized;
+        self.slots.get_mut(id)?.materials.aim = normalized;
         self.publish_snapshot();
         Ok(())
     }
@@ -505,21 +448,32 @@ impl Engine {
         initial_energy: i32,
     ) -> Result<Vec<OrganismId>, EngineError> {
         let mut positions: Vec<_> = positions.into_iter().collect();
-        if self.species.get(species.0 as usize).is_some_and(|value| value.vegetable) {
-            let available = self.config.vegetable_population_cap.saturating_sub(self.vegetable_population());
+        if self
+            .species
+            .get(species.0 as usize)
+            .is_some_and(|value| value.vegetable)
+        {
+            let available = self
+                .config
+                .vegetable_population_cap
+                .saturating_sub(self.vegetable_population());
             positions.truncate(available);
         }
         if self.population().saturating_add(positions.len()) > self.config.organism_capacity {
             return Err(EngineError::CapacityReached);
         }
         let energy = initial_energy.max(1);
-        self.species_templates[species.0 as usize] = Some(SpeciesTemplate { dna: dna.clone(), initial_energy: energy });
+        self.species_templates[species.0 as usize] = Some(SpeciesTemplate {
+            dna: dna.clone(),
+            initial_energy: energy,
+        });
         let mut ids = Vec::with_capacity(positions.len());
         for position in positions {
             let id = self.spawn_species_at_unpublished(dna.clone(), species, position)?;
-            let slot = id.slot() as usize;
-            self.lifecycle.energies[slot] = energy;
-            self.slots[slot].organism.as_mut().unwrap().memory.write(MEM_NRG, energy);
+            let state = self.slots.get_mut(id)?;
+            state.materials.energy = energy;
+            state.materials.synchronize_energy();
+            state.program.memory.write(MEM_NRG, energy);
             ids.push(id);
         }
         self.publish_snapshot();
@@ -542,7 +496,11 @@ impl Engine {
         Ok(ids)
     }
 
-    fn spawn_at_unpublished(&mut self, dna: LegacyDna, position: [f32; 2]) -> Result<OrganismId, EngineError> {
+    fn spawn_at_unpublished(
+        &mut self,
+        dna: LegacyDna,
+        position: [f32; 2],
+    ) -> Result<OrganismId, EngineError> {
         self.spawn_species_at_unpublished(dna, SpeciesId::default(), position)
     }
 
@@ -556,7 +514,10 @@ impl Engine {
             return Err(EngineError::CapacityReached);
         }
         if self.species.get(species.0 as usize).is_none() {
-            return Err(EngineError::Invariant(format!("species {} does not exist", species.0)));
+            return Err(EngineError::Invariant(format!(
+                "species {} does not exist",
+                species.0
+            )));
         }
 
         let vegetable = self.species[species.0 as usize].vegetable;
@@ -564,41 +525,26 @@ impl Engine {
             let definition = &self.species[species.0 as usize];
             VisualPhenotype::new(definition.lineage_id, definition.color, definition.skin)
         };
-        let initial_biology = BiologyState::for_species(
-            vegetable,
-            self.config.vegetation.start_chloroplasts,
-        );
+        let initial_biology =
+            BiologyState::for_species(vegetable, self.config.vegetation.start_chloroplasts);
         let mut memory = VmMemory::default();
         memory.write(MEM_NRG, 1_000);
         memory.write(MEM_XPOS, position[0].round() as i32);
         memory.write(MEM_YPOS, position[1].round() as i32);
         memory.write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
         initial_biology.publish(&mut memory);
-        let organism = Organism {
+        let state = RobotState::new(
             dna,
             memory,
-            random_state: self.config.seed ^ (self.tick + self.population() as u64 + 1),
+            self.config.seed ^ (self.tick + self.population() as u64 + 1),
             species,
-            parents: [None, None],
+            [None, None],
+            vegetable,
+            position,
+            initial_biology,
             phenotype,
-        };
-
-        let slot_index = if let Some(slot_index) = self.free_slots.pop() {
-            self.slots[slot_index as usize].organism = Some(organism);
-            slot_index
-        } else {
-            let slot_index = self.slots.len() as u32;
-            self.slots.push(Slot { generation: 0, organism: Some(organism) });
-            slot_index
-        };
-        self.kinematics.activate(slot_index as usize, position);
-        self.lifecycle.activate(slot_index as usize, 1_000);
-        if self.biology.len() <= slot_index as usize { self.biology.resize(slot_index as usize + 1, BiologyState::default()); }
-        self.biology[slot_index as usize] = initial_biology;
-        if self.forced_reproductions.len() <= slot_index as usize { self.forced_reproductions.resize(slot_index as usize + 1, false); }
-        self.forced_reproductions[slot_index as usize] = false;
-        let id = OrganismId::new(slot_index, self.slots[slot_index as usize].generation);
-        Ok(id)
+        );
+        Ok(self.slots.spawn(state))
     }
 
     pub fn remove(&mut self, id: OrganismId) -> Result<(), EngineError> {
@@ -607,26 +553,28 @@ impl Engine {
 
     pub fn remove_many(&mut self, ids: &[OrganismId]) -> Result<(), EngineError> {
         if ids.is_empty() {
-            return Err(EngineError::Invariant("remove_many requires at least one organism".to_owned()));
+            return Err(EngineError::Invariant(
+                "remove_many requires at least one organism".to_owned(),
+            ));
         }
-        if ids.iter().enumerate().any(|(index, id)| ids[..index].contains(id)) {
-            return Err(EngineError::Invariant("remove_many contains duplicate organism IDs".to_owned()));
+        if ids
+            .iter()
+            .enumerate()
+            .any(|(index, id)| ids[..index].contains(id))
+        {
+            return Err(EngineError::Invariant(
+                "remove_many contains duplicate organism IDs".to_owned(),
+            ));
         }
         for &id in ids {
             self.valid_slot(id)?;
         }
 
         for &id in ids {
-            let slot = &mut self.slots[id.slot() as usize];
-            slot.organism = None;
-            slot.generation = slot.generation.wrapping_add(1);
-            self.kinematics.deactivate(id.slot() as usize);
-            self.lifecycle.deactivate(id.slot() as usize);
-            self.biology[id.slot() as usize] = BiologyState::default();
-            self.forced_reproductions[id.slot() as usize] = false;
-            self.free_slots.push(id.slot());
+            self.slots.remove(id)?;
         }
-        self.ties.retain(|tie| !ids.contains(&tie.first) && !ids.contains(&tie.second));
+        self.ties
+            .retain(|tie| !ids.contains(&tie.first) && !ids.contains(&tie.second));
         self.publish_snapshot();
         Ok(())
     }
@@ -637,14 +585,28 @@ impl Engine {
     }
 
     pub fn organism(&self, id: OrganismId) -> Result<OrganismSnapshot, EngineError> {
-        let slot = self.valid_slot(id)?;
-        let organism = slot.organism.as_ref().ok_or(EngineError::StaleOrganismId)?;
-        Ok(snapshot_organism(id, organism, &self.kinematics, &self.lifecycle, &self.species, &self.biology, id.slot() as usize))
+        Ok(snapshot_organism(id, self.slots.get(id)?, &self.species))
+    }
+
+    pub fn robot_state(&self, id: OrganismId) -> Result<&RobotState, EngineError> {
+        self.slots.get(id)
+    }
+
+    pub fn physics_batch(&self) -> RobotPhysicsBatch {
+        self.slots.physics_batch(
+            [self.config.world_width, self.config.world_height],
+            self.config.toroidal_world,
+        )
+    }
+
+    pub fn apply_physics_batch(&mut self, batch: RobotPhysicsBatch) -> Result<(), EngineError> {
+        self.slots.apply_physics_batch(batch)?;
+        self.publish_snapshot();
+        Ok(())
     }
 
     pub fn move_organism(&mut self, id: OrganismId, position: [f32; 2]) -> Result<(), EngineError> {
         self.valid_slot(id)?;
-        let selected_slot = id.slot() as usize;
         let target = [
             position[0].clamp(0.0, self.config.world_width),
             position[1].clamp(0.0, self.config.world_height),
@@ -671,12 +633,12 @@ impl Engine {
         }
 
         let mut delta = [
-            target[0] - self.kinematics.positions[selected_slot][0],
-            target[1] - self.kinematics.positions[selected_slot][1],
+            target[0] - self.slots.get(id)?.kinematics.position[0],
+            target[1] - self.slots.get(id)?.kinematics.position[1],
         ];
         let (mut minimum, mut maximum) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
         for member in &connected {
-            let member_position = self.kinematics.positions[member.slot() as usize];
+            let member_position = self.slots.get(*member)?.kinematics.position;
             for axis in 0..2 {
                 minimum[axis] = minimum[axis].min(member_position[axis]);
                 maximum[axis] = maximum[axis].max(member_position[axis]);
@@ -686,56 +648,59 @@ impl Engine {
         delta[1] = delta[1].clamp(-minimum[1], self.config.world_height - maximum[1]);
 
         for member in connected {
-            let slot = member.slot() as usize;
-            self.kinematics.positions[slot][0] += delta[0];
-            self.kinematics.positions[slot][1] += delta[1];
-            self.kinematics.previous_positions[slot] = self.kinematics.positions[slot];
-            self.kinematics.velocities[slot] = [0.0; 2];
-            self.kinematics.actual_velocities[slot] = [0.0; 2];
-            self.kinematics.pending_velocities[slot] = [0.0; 2];
-            if let Some(organism) = self.slots[slot].organism.as_mut() {
-                organism.memory.write(MEM_XPOS, self.kinematics.positions[slot][0].round() as i32);
-                organism.memory.write(MEM_YPOS, self.kinematics.positions[slot][1].round() as i32);
-            }
+            let organism = self.slots.get_mut(member)?;
+            organism.kinematics.position[0] += delta[0];
+            organism.kinematics.position[1] += delta[1];
+            organism.kinematics.previous_position = organism.kinematics.position;
+            organism.kinematics.velocity = [0.0; 2];
+            organism.kinematics.actual_velocity = [0.0; 2];
+            organism.kinematics.pending_velocity = [0.0; 2];
+            organism
+                .program
+                .memory
+                .write(MEM_XPOS, organism.kinematics.position[0].round() as i32);
+            organism
+                .program
+                .memory
+                .write(MEM_YPOS, organism.kinematics.position[1].round() as i32);
         }
         self.publish_snapshot();
         Ok(())
     }
 
-    pub fn clone_organism(&mut self, id: OrganismId, position: [f32; 2]) -> Result<OrganismId, EngineError> {
-        let source_slot = id.slot() as usize;
-        let source = self.valid_slot(id)?.organism.as_ref().unwrap().clone();
-        let source_energy = self.lifecycle.energies[source_slot];
-        let source_age = self.lifecycle.ages[source_slot];
-        let source_biology = self.biology[source_slot].clone();
-        let source_velocity = self.kinematics.velocities[source_slot];
-        let source_actual_velocity = self.kinematics.actual_velocities[source_slot];
-        let source_pending_velocity = self.kinematics.pending_velocities[source_slot];
-        let clone = self.spawn_species_at_unpublished(source.dna.clone(), source.species, position)?;
-        let clone_slot = clone.slot() as usize;
-        let clone_position = self.kinematics.positions[clone_slot];
-        let mut cloned_organism = source;
-        cloned_organism.parents = [Some(id), None];
-        cloned_organism.memory.write(MEM_NRG, source_energy);
-        cloned_organism.memory.write(MEM_XPOS, clone_position[0].round() as i32);
-        cloned_organism.memory.write(MEM_YPOS, clone_position[1].round() as i32);
-        self.slots[clone_slot].organism = Some(cloned_organism);
-        self.lifecycle.energies[clone_slot] = source_energy;
-        self.lifecycle.ages[clone_slot] = source_age;
-        self.biology[clone_slot] = source_biology;
-        self.kinematics.previous_positions[clone_slot] = clone_position;
-        self.kinematics.velocities[clone_slot] = source_velocity;
-        self.kinematics.actual_velocities[clone_slot] = source_actual_velocity;
-        self.kinematics.pending_velocities[clone_slot] = source_pending_velocity;
+    pub fn clone_organism(
+        &mut self,
+        id: OrganismId,
+        position: [f32; 2],
+    ) -> Result<OrganismId, EngineError> {
+        if self.population() >= self.config.organism_capacity {
+            return Err(EngineError::CapacityReached);
+        }
+        let mut cloned_organism = self.slots.get(id)?.clone();
+        cloned_organism.identity.parents = [Some(id), None];
+        cloned_organism.kinematics.position = position;
+        cloned_organism.kinematics.previous_position = position;
+        cloned_organism
+            .program
+            .memory
+            .write(MEM_XPOS, position[0].round() as i32);
+        cloned_organism
+            .program
+            .memory
+            .write(MEM_YPOS, position[1].round() as i32);
+        let clone = self.slots.spawn(cloned_organism);
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(clone)
     }
 
     pub fn replace_dna(&mut self, id: OrganismId, dna: LegacyDna) -> Result<(), EngineError> {
-        let organism = self.valid_slot_mut(id)?.organism.as_mut().unwrap();
-        organism.memory.write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
-        organism.dna = dna;
+        let organism = self.slots.get_mut(id)?;
+        organism
+            .program
+            .memory
+            .write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
+        organism.program.dna = dna;
         self.publish_snapshot();
         Ok(())
     }
@@ -750,37 +715,46 @@ impl Engine {
         second: Option<OrganismId>,
         position: [f32; 2],
     ) -> Result<OrganismId, EngineError> {
-        let first_organism = self.valid_slot(first)?.organism.as_ref().unwrap().clone();
-        let first_slot = first.slot() as usize;
+        let first_organism = self.slots.get(first)?.clone();
         let dna = if let Some(second) = second {
-            let second_dna = &self.valid_slot(second)?.organism.as_ref().unwrap().dna;
-            first_organism.dna.crossover(second_dna)
+            let second_dna = &self.slots.get(second)?.program.dna;
+            first_organism.program.dna.crossover(second_dna)
         } else {
-            if self.lifecycle.energies[first_slot] < 2 {
-                return Err(EngineError::Invariant("manual reproduction requires at least two energy units".to_owned()));
+            if first_organism.materials.energy < 2 {
+                return Err(EngineError::Invariant(
+                    "manual reproduction requires at least two energy units".to_owned(),
+                ));
             }
-            first_organism.dna.clone()
+            first_organism.program.dna.clone()
         };
-        let child = self.spawn_species_at_unpublished(dna, first_organism.species, position)?;
-        let child_slot = child.slot() as usize;
-        let child_organism = self.slots[child_slot].organism.as_mut().unwrap();
-        child_organism.parents = [Some(first), second];
-        child_organism.phenotype = first_organism.phenotype;
+        let child =
+            self.spawn_species_at_unpublished(dna, first_organism.identity.species, position)?;
+        {
+            let child_organism = self.slots.get_mut(child)?;
+            child_organism.identity.parents = [Some(first), second];
+            child_organism.phenotype = first_organism.phenotype;
+        }
         if second.is_none() {
-            let child_energy = self.lifecycle.energies[first_slot] / 2;
-            self.lifecycle.energies[first_slot] -= child_energy;
-            self.lifecycle.energies[child_slot] = child_energy;
-            let mut child_biology = self.biology[first_slot].split_for_offspring(50);
-            self.biology[first_slot].synchronize_energy(self.lifecycle.energies[first_slot]);
-            child_biology.synchronize_energy(child_energy);
-            self.biology[child_slot] = child_biology;
-
-            let parent = self.slots[first_slot].organism.as_mut().unwrap();
-            parent.memory.write(MEM_NRG, self.lifecycle.energies[first_slot]);
-            self.biology[first_slot].publish(&mut parent.memory);
-            let child_organism = self.slots[child_slot].organism.as_mut().unwrap();
-            child_organism.memory.write(MEM_NRG, child_energy);
-            self.biology[child_slot].publish(&mut child_organism.memory);
+            let child_materials = {
+                let parent = self.slots.get_mut(first)?;
+                let child_materials = parent.materials.split_for_offspring(50);
+                parent.materials.synchronize_energy();
+                parent
+                    .program
+                    .memory
+                    .write(MEM_NRG, parent.materials.energy);
+                parent.materials.publish(&mut parent.program.memory);
+                child_materials
+            };
+            let child_organism = self.slots.get_mut(child)?;
+            child_organism.materials = child_materials;
+            child_organism
+                .program
+                .memory
+                .write(MEM_NRG, child_organism.materials.energy);
+            child_organism
+                .materials
+                .publish(&mut child_organism.program.memory);
         }
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
@@ -836,7 +810,9 @@ impl Engine {
         self.mutation_phase();
         self.phase_timings.mutation = elapsed_ms(started);
         self.tick += 1;
-        if self.tick % 100 == 0 { self.record_history(); }
+        if self.tick % 100 == 0 {
+            self.record_history();
+        }
         if publish {
             let started = Instant::now();
             self.publish_snapshot();
@@ -880,12 +856,23 @@ impl Engine {
     }
 
     pub fn add_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
-        if obstacle.minimum.iter().chain(obstacle.maximum.iter()).any(|value| !value.is_finite())
-            || obstacle.minimum[0] >= obstacle.maximum[0] || obstacle.minimum[1] >= obstacle.maximum[1] {
-            return Err(EngineError::Invariant("obstacle bounds are invalid".to_owned()));
+        if obstacle
+            .minimum
+            .iter()
+            .chain(obstacle.maximum.iter())
+            .any(|value| !value.is_finite())
+            || obstacle.minimum[0] >= obstacle.maximum[0]
+            || obstacle.minimum[1] >= obstacle.maximum[1]
+        {
+            return Err(EngineError::Invariant(
+                "obstacle bounds are invalid".to_owned(),
+            ));
         }
         if self.obstacles.iter().any(|value| value.id == obstacle.id) {
-            return Err(EngineError::Invariant(format!("obstacle {} already exists", obstacle.id)));
+            return Err(EngineError::Invariant(format!(
+                "obstacle {} already exists",
+                obstacle.id
+            )));
         }
         self.obstacles.push(obstacle);
         self.publish_snapshot();
@@ -896,19 +883,36 @@ impl Engine {
         let previous = self.obstacles.len();
         self.obstacles.retain(|value| value.id != id);
         if self.obstacles.len() == previous {
-            return Err(EngineError::Invariant(format!("obstacle {id} does not exist")));
+            return Err(EngineError::Invariant(format!(
+                "obstacle {id} does not exist"
+            )));
         }
         self.publish_snapshot();
         Ok(())
     }
 
     pub fn add_teleporter(&mut self, teleporter: Teleporter) -> Result<(), EngineError> {
-        if !teleporter.radius.is_finite() || teleporter.radius <= 0.0
-            || teleporter.center.iter().chain(teleporter.destination.iter()).any(|value| !value.is_finite()) {
-            return Err(EngineError::Invariant("teleporter geometry is invalid".to_owned()));
+        if !teleporter.radius.is_finite()
+            || teleporter.radius <= 0.0
+            || teleporter
+                .center
+                .iter()
+                .chain(teleporter.destination.iter())
+                .any(|value| !value.is_finite())
+        {
+            return Err(EngineError::Invariant(
+                "teleporter geometry is invalid".to_owned(),
+            ));
         }
-        if self.teleporters.iter().any(|value| value.id == teleporter.id) {
-            return Err(EngineError::Invariant(format!("teleporter {} already exists", teleporter.id)));
+        if self
+            .teleporters
+            .iter()
+            .any(|value| value.id == teleporter.id)
+        {
+            return Err(EngineError::Invariant(format!(
+                "teleporter {} already exists",
+                teleporter.id
+            )));
         }
         self.teleporters.push(teleporter);
         self.publish_snapshot();
@@ -919,7 +923,9 @@ impl Engine {
         let previous = self.teleporters.len();
         self.teleporters.retain(|value| value.id != id);
         if self.teleporters.len() == previous {
-            return Err(EngineError::Invariant(format!("teleporter {id} does not exist")));
+            return Err(EngineError::Invariant(format!(
+                "teleporter {id} does not exist"
+            )));
         }
         self.publish_snapshot();
         Ok(())
@@ -929,11 +935,15 @@ impl Engine {
         &self.capabilities
     }
 
-    pub fn brownian_motion(&self) -> f32 { self.config.brownian_motion }
+    pub fn brownian_motion(&self) -> f32 {
+        self.config.brownian_motion
+    }
 
     pub fn set_brownian_motion(&mut self, value: f32) -> Result<(), EngineError> {
         if !value.is_finite() || value < 0.0 {
-            return Err(EngineError::Invariant("Brownian motion must be a finite non-negative value".to_owned()));
+            return Err(EngineError::Invariant(
+                "Brownian motion must be a finite non-negative value".to_owned(),
+            ));
         }
         self.config.brownian_motion = value;
         self.publish_snapshot();
@@ -949,11 +959,18 @@ impl Engine {
         drag: f32,
         brownian_motion: f32,
     ) -> Result<(), EngineError> {
-        if metabolism_cost < 0 || vegetable_energy_per_tick < 0 || sunlight_energy < 0
+        if metabolism_cost < 0
+            || vegetable_energy_per_tick < 0
+            || sunlight_energy < 0
             || gravity.iter().any(|value| !value.is_finite())
-            || !drag.is_finite() || !(0.0..=1.0).contains(&drag)
-            || !brownian_motion.is_finite() || brownian_motion < 0.0 {
-            return Err(EngineError::Invariant("live environment settings are invalid".to_owned()));
+            || !drag.is_finite()
+            || !(0.0..=1.0).contains(&drag)
+            || !brownian_motion.is_finite()
+            || brownian_motion < 0.0
+        {
+            return Err(EngineError::Invariant(
+                "live environment settings are invalid".to_owned(),
+            ));
         }
         self.config.metabolism_cost = metabolism_cost;
         self.config.vegetable_energy_per_tick = vegetable_energy_per_tick;
@@ -1009,117 +1026,129 @@ impl Engine {
     }
 
     pub fn population(&self) -> usize {
-        self.slots.iter().filter(|slot| slot.organism.is_some()).count()
+        self.slots
+            .iter()
+            .filter(|slot| slot.organism.is_some())
+            .count()
     }
 
     pub fn vegetable_population(&self) -> usize {
-        self.slots.iter().filter_map(|slot| slot.organism.as_ref())
-            .filter(|organism| self.species.get(organism.species.0 as usize).is_some_and(|species| species.vegetable))
+        self.slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .filter(|organism| {
+                self.species
+                    .get(organism.identity.species.0 as usize)
+                    .is_some_and(|species| species.vegetable)
+            })
             .count()
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
         let slot_count = self.slots.len();
-        for (name, length) in [
-            ("positions", self.kinematics.positions.len()),
-            ("previous positions", self.kinematics.previous_positions.len()),
-            ("velocities", self.kinematics.velocities.len()),
-            ("actual velocities", self.kinematics.actual_velocities.len()),
-            ("pending velocities", self.kinematics.pending_velocities.len()),
-            ("alive flags", self.kinematics.alive.len()),
-            ("energies", self.lifecycle.energies.len()),
-            ("ages", self.lifecycle.ages.len()),
-            ("biology", self.biology.len()),
-            ("forced reproduction flags", self.forced_reproductions.len()),
-        ] {
-            if length != slot_count {
-                return Err(EngineError::Invariant(format!("{name} length {length} does not match {slot_count} slots")));
-            }
-        }
-        let mut free = std::collections::HashSet::with_capacity(self.free_slots.len());
-        for slot in &self.free_slots {
+        let mut free = std::collections::HashSet::with_capacity(self.slots.free_slots.len());
+        for slot in &self.slots.free_slots {
             let index = *slot as usize;
             if index >= slot_count || self.slots[index].organism.is_some() || !free.insert(*slot) {
-                return Err(EngineError::Invariant(format!("free slot {slot} is invalid or duplicated")));
+                return Err(EngineError::Invariant(format!(
+                    "free slot {slot} is invalid or duplicated"
+                )));
             }
         }
         for (index, slot) in self.slots.iter().enumerate() {
-            let occupied = slot.organism.is_some();
-            if self.kinematics.alive[index] != occupied {
-                return Err(EngineError::Invariant(format!("slot {index} alive flag disagrees with payload")));
-            }
-            if occupied {
-                let position = self.kinematics.positions[index];
-                if !position[0].is_finite() || !position[1].is_finite()
-                    || position[0] < 0.0 || position[1] < 0.0
-                    || position[0] > self.config.world_width || position[1] > self.config.world_height {
-                    return Err(EngineError::Invariant(format!("slot {index} has invalid position {position:?}")));
+            if let Some(robot) = &slot.organism {
+                let position = robot.kinematics.position;
+                if !position[0].is_finite()
+                    || !position[1].is_finite()
+                    || position[0] < 0.0
+                    || position[1] < 0.0
+                    || position[0] > self.config.world_width
+                    || position[1] > self.config.world_height
+                {
+                    return Err(EngineError::Invariant(format!(
+                        "slot {index} has invalid position {position:?}"
+                    )));
                 }
-                if self.lifecycle.energies[index] <= 0 {
-                    return Err(EngineError::Invariant(format!("live slot {index} has non-positive energy")));
+                if robot.materials.energy <= 0 {
+                    return Err(EngineError::Invariant(format!(
+                        "live slot {index} has non-positive energy"
+                    )));
                 }
             } else if !free.contains(&(index as u32)) {
-                return Err(EngineError::Invariant(format!("dead slot {index} is absent from free list")));
+                return Err(EngineError::Invariant(format!(
+                    "dead slot {index} is absent from free list"
+                )));
             }
         }
-        if self.ties.iter().any(|tie| !slot_id_valid(&self.slots, tie.first) || !slot_id_valid(&self.slots, tie.second)) {
-            return Err(EngineError::Invariant("tie references a stale organism ID".to_owned()));
+        if self.ties.iter().any(|tie| {
+            !slot_id_valid(&self.slots, tie.first) || !slot_id_valid(&self.slots, tie.second)
+        }) {
+            return Err(EngineError::Invariant(
+                "tie references a stale organism ID".to_owned(),
+            ));
         }
         if self.snapshot.tick != self.tick || self.snapshot.organisms.len() != self.population() {
-            return Err(EngineError::Invariant("published snapshot does not match current world".to_owned()));
+            return Err(EngineError::Invariant(
+                "published snapshot does not match current world".to_owned(),
+            ));
         }
         Ok(())
     }
 
     pub fn memory(&self, id: OrganismId, name: &str) -> Result<i32, EngineError> {
-        let slot = self.valid_slot(id)?;
-        Ok(slot.organism.as_ref().unwrap().memory.read_sysvar(name))
+        Ok(self.slots.get(id)?.program.memory.read_sysvar(name))
     }
 
     pub fn memory_at(&self, id: OrganismId, address: i32) -> Result<i32, EngineError> {
-        let slot = self.valid_slot(id)?;
-        Ok(slot.organism.as_ref().unwrap().memory.read(address))
+        Ok(self.slots.get(id)?.program.memory.read(address))
     }
 
     pub fn dna(&self, id: OrganismId) -> Result<&LegacyDna, EngineError> {
-        let slot = self.valid_slot(id)?;
-        Ok(&slot.organism.as_ref().unwrap().dna)
+        Ok(&self.slots.get(id)?.program.dna)
     }
 
     fn execute_dna_phase(&mut self) -> Result<(), EngineError> {
         let metabolism = self.config.metabolism_cost;
         let physics_settings = &self.config.physics;
-        self.slots.par_iter_mut()
-            .zip(self.kinematics.pending_velocities.par_iter_mut())
-            .zip(self.biology.par_iter_mut())
-            .zip(self.lifecycle.energies.par_iter_mut())
-            .try_for_each(|(((slot, pending_velocity), biology), energy)| -> Result<(), EngineError> {
-            let Some(organism) = &mut slot.organism else { return Ok(()) };
-            let mut vm = DnaVm::new(organism.random_state);
-            vm.execute(&organism.dna, &mut organism.memory)?;
-            organism.random_state = vm.random_state();
-            biology.apply_outputs(&mut organism.memory, energy, metabolism);
-            let input = MovementInput {
-                up: organism.memory.read(MEM_UP),
-                down: organism.memory.read(MEM_DN),
-                left: organism.memory.read(MEM_DX),
-                right: organism.memory.read(MEM_SX),
-                aim_radians: biology.aim as f32 / 200.0,
-                new_move: organism.dna.uses_new_move(),
-            };
-            let mut movement = MovementState::default();
-            if biology.paralyzed == 0 {
-                apply_voluntary_impulse(
-                    &mut movement,
-                    input,
-                    derived_mass(biology.body, biology.shell, biology.chloroplasts),
-                    physics_settings,
-                );
-            }
-            *pending_velocity = movement.velocity;
-            for output in [MEM_UP, MEM_DN, MEM_SX, MEM_DX] { organism.memory.write(output, 0); }
-            Ok(())
-        })?;
+        self.slots
+            .par_iter_mut()
+            .try_for_each(|slot| -> Result<(), EngineError> {
+                let Some(organism) = &mut slot.organism else {
+                    return Ok(());
+                };
+                let mut vm = DnaVm::new(organism.program.rng_state);
+                vm.execute(&organism.program.dna, &mut organism.program.memory)?;
+                organism.program.rng_state = vm.random_state();
+                organism
+                    .materials
+                    .apply_outputs(&mut organism.program.memory, metabolism);
+                let input = MovementInput {
+                    up: organism.program.memory.read(MEM_UP),
+                    down: organism.program.memory.read(MEM_DN),
+                    left: organism.program.memory.read(MEM_DX),
+                    right: organism.program.memory.read(MEM_SX),
+                    aim_radians: organism.materials.aim as f32 / 200.0,
+                    new_move: organism.program.dna.uses_new_move(),
+                };
+                let mut movement = MovementState::default();
+                if organism.materials.paralyzed == 0 {
+                    apply_voluntary_impulse(
+                        &mut movement,
+                        input,
+                        derived_mass(
+                            organism.materials.body,
+                            organism.materials.shell,
+                            organism.materials.chloroplasts,
+                        ),
+                        physics_settings,
+                    );
+                }
+                organism.kinematics.pending_velocity = movement.velocity;
+                for output in [MEM_UP, MEM_DN, MEM_SX, MEM_DX] {
+                    organism.program.memory.write(output, 0);
+                }
+                Ok(())
+            })?;
         Ok(())
     }
 
@@ -1130,39 +1159,70 @@ impl Engine {
         let seed = self.config.seed;
         let tick = self.tick;
         let settings = &self.config.physics;
-        let movement_events = self.kinematics.pending_velocities.iter().zip(&self.kinematics.alive)
-            .filter(|(velocity, alive)| **alive && (velocity[0].abs() > f32::EPSILON || velocity[1].abs() > f32::EPSILON))
+        let movement_events = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .filter(|robot| {
+                robot.kinematics.pending_velocity[0].abs() > f32::EPSILON
+                    || robot.kinematics.pending_velocity[1].abs() > f32::EPSILON
+            })
             .count() as u64;
-        self.stats.intentional_movement_events = self.stats.intentional_movement_events.saturating_add(movement_events);
-        self.kinematics.velocities.par_iter_mut()
-            .zip(self.kinematics.pending_velocities.par_iter_mut())
-            .zip(self.kinematics.alive.par_iter())
-            .zip(self.biology.par_iter())
+        self.stats.intentional_movement_events = self
+            .stats
+            .intentional_movement_events
+            .saturating_add(movement_events);
+        self.slots
+            .par_iter_mut()
             .enumerate()
-            .for_each(|(slot, (((velocity, pending), alive), biology))| {
-            if *alive {
-                velocity[0] += pending[0];
-                velocity[1] += pending[1];
-                let mass = derived_mass(biology.body, biology.shell, biology.chloroplasts)
+            .for_each(|(slot, entry)| {
+                if let Some(robot) = entry.organism.as_mut() {
+                    robot.kinematics.velocity[0] += robot.kinematics.pending_velocity[0];
+                    robot.kinematics.velocity[1] += robot.kinematics.pending_velocity[1];
+                    let mass = derived_mass(
+                        robot.materials.body,
+                        robot.materials.shell,
+                        robot.materials.chloroplasts,
+                    )
                     .clamp(1.0, 32_000.0);
-                let impulse = environment_impulse(gravity, brownian, mass, seed, tick, slot);
-                velocity[0] += impulse[0];
-                velocity[1] += impulse[1];
-                apply_resistance(
-                    velocity,
-                    mass,
-                    crate::physics::organism_radius(biology.body, biology.chloroplasts),
-                    drag,
-                    settings,
-                );
-            }
-            *pending = [0.0; 2];
-        });
+                    robot.materials.mass = mass;
+                    robot.materials.radius = crate::physics::organism_radius(
+                        robot.materials.body,
+                        robot.materials.chloroplasts,
+                    );
+                    let impulse = environment_impulse(gravity, brownian, mass, seed, tick, slot);
+                    robot.kinematics.velocity[0] += impulse[0];
+                    robot.kinematics.velocity[1] += impulse[1];
+                    apply_resistance(
+                        &mut robot.kinematics.velocity,
+                        mass,
+                        robot.materials.radius,
+                        drag,
+                        settings,
+                    );
+                    robot.kinematics.pending_velocity = [0.0; 2];
+                }
+            });
     }
 
     fn spatial_index_phase(&mut self) {
-        self.spatial.rebuild_from_soa(&self.kinematics.positions, &self.kinematics.alive, 64.0);
-        self.sensing_spatial.rebuild_from_soa(&self.kinematics.positions, &self.kinematics.alive, 1_000.0);
+        let positions: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism
+                    .as_ref()
+                    .map_or([0.0; 2], |robot| robot.kinematics.position)
+            })
+            .collect();
+        let alive: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| slot.organism.is_some())
+            .collect();
+        self.spatial.rebuild_from_soa(&positions, &alive, 64.0);
+        self.sensing_spatial
+            .rebuild_from_soa(&positions, &alive, 1_000.0);
     }
 
     fn sensing_phase(&mut self) -> Result<(), EngineError> {
@@ -1173,26 +1233,64 @@ impl Engine {
         {
             Some(Err(EngineError::Gpu("forced runtime failure".to_owned())))
         } else if let RuntimePhysics::Gpu(backend) = &self.physics {
-            let positions = self.kinematics.positions.clone();
-            let alive = self.kinematics.alive.clone();
-            let radii: Vec<_> = self.biology.iter()
-                .map(|biology| crate::physics::organism_radius(biology.body, biology.chloroplasts))
+            let positions: Vec<_> = self
+                .slots
+                .iter()
+                .map(|slot| {
+                    slot.organism
+                        .as_ref()
+                        .map_or([0.0; 2], |robot| robot.kinematics.position)
+                })
                 .collect();
-            Some(backend.sense_and_render_gpu_grid(
-                &positions,
-                &self.lifecycle.energies,
-                &radii,
-                &alive,
-                [self.config.world_width, self.config.world_height],
-                1_000.0,
-                1_000.0,
-            ).map(|(targets, instances)| (targets, Some(instances))))
+            let alive: Vec<_> = self
+                .slots
+                .iter()
+                .map(|slot| slot.organism.is_some())
+                .collect();
+            let radii: Vec<_> = self
+                .slots
+                .iter()
+                .map(|slot| {
+                    slot.organism.as_ref().map_or(1.0, |robot| {
+                        crate::physics::organism_radius(
+                            robot.materials.body,
+                            robot.materials.chloroplasts,
+                        )
+                    })
+                })
+                .collect();
+            let energies: Vec<_> = self
+                .slots
+                .iter()
+                .map(|slot| {
+                    slot.organism
+                        .as_ref()
+                        .map_or(0, |robot| robot.materials.energy)
+                })
+                .collect();
+            Some(
+                backend
+                    .sense_and_render_gpu_grid(
+                        &positions,
+                        &energies,
+                        &radii,
+                        &alive,
+                        [self.config.world_width, self.config.world_height],
+                        1_000.0,
+                        1_000.0,
+                    )
+                    .map(|(targets, instances)| (targets, Some(instances))),
+            )
         } else {
             None
         };
-        let max_organism_radius = self.biology.iter().enumerate()
-            .filter(|(slot, _)| self.kinematics.alive.get(*slot).copied().unwrap_or(false))
-            .map(|(_, biology)| crate::physics::organism_radius(biology.body, biology.chloroplasts))
+        let max_organism_radius = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|robot| {
+                crate::physics::organism_radius(robot.materials.body, robot.materials.chloroplasts)
+            })
             .fold(1.0_f32, f32::max);
         let gpu_targets = match gpu_result {
             Some(Ok((targets, render_instances))) => {
@@ -1209,91 +1307,141 @@ impl Engine {
             None => None,
         };
         if let Some(targets) = gpu_targets {
-            self.pending_gpu_collision_pairs = Some(targets.iter().enumerate().filter_map(|(first, second)| {
-                let second = (*second)?;
-                (first < second).then_some((first, second))
-            }).collect());
+            self.pending_gpu_collision_pairs = Some(
+                targets
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(first, second)| {
+                        let second = (*second)?;
+                        (first < second).then_some((first, second))
+                    })
+                    .collect(),
+            );
         }
-        let senses: Vec<_> = (0..self.slots.len()).into_par_iter().map(|observer_slot| {
-            let observer = self.slots[observer_slot].organism.as_ref()?;
-            let observer_position = self.kinematics.positions[observer_slot];
-            let vision = VisionSnapshot::from_memory(
-                &observer.memory,
-                self.biology[observer_slot].aim,
-            );
-            let observer_radius = crate::physics::organism_radius(
-                self.biology[observer_slot].body,
-                self.biology[observer_slot].chloroplasts,
-            );
-            let mut nearest_by_eye = [None; 9];
-            for target_slot in self.sensing_spatial.neighbors(
-                observer_position,
-                vision.max_range() + observer_radius + max_organism_radius,
-            ) {
-                if target_slot == observer_slot || self.slots[target_slot].organism.is_none() { continue; }
-                let target_position = self.kinematics.positions[target_slot];
-                let target_distance = distance_squared(observer_position, target_position);
-                let target_radius = crate::physics::organism_radius(
-                    self.biology[target_slot].body,
-                    self.biology[target_slot].chloroplasts,
+        let senses: Vec<_> = (0..self.slots.len())
+            .into_par_iter()
+            .map(|observer_slot| {
+                let observer = self.slots[observer_slot].organism.as_ref()?;
+                let observer_position = observer.kinematics.position;
+                let vision =
+                    VisionSnapshot::from_memory(&observer.program.memory, observer.materials.aim);
+                let observer_radius = crate::physics::organism_radius(
+                    observer.materials.body,
+                    observer.materials.chloroplasts,
                 );
-                let center_distance = target_distance.sqrt();
-                let edge_distance = (center_distance - observer_radius - target_radius).max(0.0);
-                let matching = vision.matching_eyes(
+                let mut nearest_by_eye = [None; 9];
+                for target_slot in self.sensing_spatial.neighbors(
                     observer_position,
-                    target_position,
-                    observer_radius,
-                    target_radius,
-                );
-                for (eye_index, matches) in matching.into_iter().enumerate() {
-                    if !matches { continue; }
-                    let strength = eye_value(vision.eyes[eye_index].range, edge_distance);
-                    if strength > 0
-                        && nearest_by_eye[eye_index]
-                            .is_none_or(|(_, best_strength)| strength > best_strength)
-                    {
-                        nearest_by_eye[eye_index] = Some((target_slot, strength));
+                    vision.max_range() + observer_radius + max_organism_radius,
+                ) {
+                    if target_slot == observer_slot || self.slots[target_slot].organism.is_none() {
+                        continue;
+                    }
+                    let target = self.slots[target_slot].organism.as_ref().unwrap();
+                    let target_position = target.kinematics.position;
+                    let target_distance = distance_squared(observer_position, target_position);
+                    let target_radius = crate::physics::organism_radius(
+                        target.materials.body,
+                        target.materials.chloroplasts,
+                    );
+                    let center_distance = target_distance.sqrt();
+                    let edge_distance =
+                        (center_distance - observer_radius - target_radius).max(0.0);
+                    let matching = vision.matching_eyes(
+                        observer_position,
+                        target_position,
+                        observer_radius,
+                        target_radius,
+                    );
+                    for (eye_index, matches) in matching.into_iter().enumerate() {
+                        if !matches {
+                            continue;
+                        }
+                        let strength = eye_value(vision.eyes[eye_index].range, edge_distance);
+                        if strength > 0
+                            && nearest_by_eye[eye_index]
+                                .is_none_or(|(_, best_strength)| strength > best_strength)
+                        {
+                            nearest_by_eye[eye_index] = Some((target_slot, strength));
+                        }
                     }
                 }
-            }
-            let mut eye_values = [0; 9];
-            for (sector, target) in nearest_by_eye.iter().enumerate() {
-                if let Some((_, strength)) = target {
-                    eye_values[sector] = *strength;
+                let mut eye_values = [0; 9];
+                for (sector, target) in nearest_by_eye.iter().enumerate() {
+                    if let Some((_, strength)) = target {
+                        eye_values[sector] = *strength;
+                    }
                 }
-            }
-            let reference = nearest_by_eye[vision.focus_eye as usize].and_then(|(target_slot, _)| {
-                let target = self.slots[target_slot].organism.as_ref()?;
-                Some((
-                    self.kinematics.positions[target_slot],
-                    self.kinematics.velocities[target_slot],
-                    self.lifecycle.energies[target_slot],
-                    self.lifecycle.ages[target_slot],
-                    target.memory.read(MEM_MY_EYE),
-                ))
-            });
-            Some((observer_slot, eye_values, reference))
-        }).collect();
+                let reference =
+                    nearest_by_eye[vision.focus_eye as usize].and_then(|(target_slot, _)| {
+                        let target = self.slots[target_slot].organism.as_ref()?;
+                        Some((
+                            target.kinematics.position,
+                            target.kinematics.velocity,
+                            target.materials.energy,
+                            target.counters.age,
+                            target.program.memory.read(MEM_MY_EYE),
+                        ))
+                    });
+                Some((observer_slot, eye_values, reference))
+            })
+            .collect();
         for sense in senses.into_iter().flatten() {
             let observer = self.slots[sense.0].organism.as_mut().unwrap();
             for (sector, value) in sense.1.into_iter().enumerate() {
-                observer.memory.write(MEM_EYE1 + sector as i32, value);
+                observer
+                    .program
+                    .memory
+                    .write(MEM_EYE1 + sector as i32, value);
             }
-            let Some((target_position, target_velocity, target_energy, target_age, target_eye_references)) = sense.2 else {
+            let Some((
+                target_position,
+                target_velocity,
+                target_energy,
+                target_age,
+                target_eye_references,
+            )) = sense.2
+            else {
                 continue;
             };
-            let observer_angle = self.biology[sense.0].aim as f32 / 200.0;
-            observer.memory.write(MEM_REF_X, target_position[0].round() as i32);
-            observer.memory.write(MEM_REF_Y, target_position[1].round() as i32);
-            let target_forward = target_velocity[0] * observer_angle.sin() + target_velocity[1] * observer_angle.cos();
-            let target_lateral = target_velocity[0] * observer_angle.cos() - target_velocity[1] * observer_angle.sin();
-            observer.memory.write(MEM_REF_VEL_UP, target_forward.max(0.0).round() as i32);
-            observer.memory.write(MEM_REF_VEL_DN, (-target_forward).max(0.0).round() as i32);
-            observer.memory.write(MEM_REF_VEL_DX, target_lateral.max(0.0).round() as i32);
-            observer.memory.write(MEM_REF_VEL_SX, (-target_lateral).max(0.0).round() as i32);
-            observer.memory.write(MEM_REF_EYE, target_eye_references);
-            observer.memory.write(MEM_REF_NRG, target_energy);
-            observer.memory.write(MEM_REF_AGE, target_age.min(i32::MAX as u64) as i32);
+            let observer_angle = observer.materials.aim as f32 / 200.0;
+            observer
+                .program
+                .memory
+                .write(MEM_REF_X, target_position[0].round() as i32);
+            observer
+                .program
+                .memory
+                .write(MEM_REF_Y, target_position[1].round() as i32);
+            let target_forward = target_velocity[0] * observer_angle.sin()
+                + target_velocity[1] * observer_angle.cos();
+            let target_lateral = target_velocity[0] * observer_angle.cos()
+                - target_velocity[1] * observer_angle.sin();
+            observer
+                .program
+                .memory
+                .write(MEM_REF_VEL_UP, target_forward.max(0.0).round() as i32);
+            observer
+                .program
+                .memory
+                .write(MEM_REF_VEL_DN, (-target_forward).max(0.0).round() as i32);
+            observer
+                .program
+                .memory
+                .write(MEM_REF_VEL_DX, target_lateral.max(0.0).round() as i32);
+            observer
+                .program
+                .memory
+                .write(MEM_REF_VEL_SX, (-target_lateral).max(0.0).round() as i32);
+            observer
+                .program
+                .memory
+                .write(MEM_REF_EYE, target_eye_references);
+            observer.program.memory.write(MEM_REF_NRG, target_energy);
+            observer
+                .program
+                .memory
+                .write(MEM_REF_AGE, target_age.min(i32::MAX as u64) as i32);
         }
         Ok(())
     }
@@ -1303,42 +1451,59 @@ impl Engine {
         let mut tie_requests = Vec::new();
         let mut tie_deletions = Vec::new();
         for attacker_slot in 0..self.slots.len() {
-            let Some(attacker) = self.slots[attacker_slot].organism.as_ref() else { continue };
-            if attacker.memory.read(MEM_DELETE_TIE) != 0 {
+            let Some(attacker) = self.slots[attacker_slot].organism.as_ref() else {
+                continue;
+            };
+            if attacker.program.memory.read(MEM_DELETE_TIE) != 0 {
                 tie_deletions.push(attacker_slot);
             }
-            if attacker.memory.read(MEM_TIE) != 0 {
-                let target = self.spatial.nearest(self.kinematics.positions[attacker_slot], Some(attacker_slot), 1_000.0);
-                if let Some(target) = target { tie_requests.push((attacker_slot, target)); }
+            if attacker.program.memory.read(MEM_TIE) != 0 {
+                let target = self.spatial.nearest(
+                    attacker.kinematics.position,
+                    Some(attacker_slot),
+                    1_000.0,
+                );
+                if let Some(target) = target {
+                    tie_requests.push((attacker_slot, target));
+                }
             }
-            let shot_type = attacker.memory.read(MEM_SHOOT);
-            if shot_type == 0 { continue; }
-            let requested_value = attacker.memory.read(MEM_SHOOTVAL);
+            let shot_type = attacker.program.memory.read(MEM_SHOOT);
+            if shot_type == 0 {
+                continue;
+            }
+            let requested_value = attacker.program.memory.read(MEM_SHOOTVAL);
             let shot_value = if shot_type == -1 && requested_value == 0 {
-                20_i32.saturating_add(self.biology[attacker_slot].body.max(0) / 5)
+                20_i32.saturating_add(attacker.materials.body.max(0) / 5)
             } else {
                 requested_value.abs().max(1)
             };
-            let mut angle = self.biology[attacker_slot].aim as f32 / 200.0;
-            if attacker.memory.read(MEM_BACKSHOT) != 0 {
+            let mut angle = attacker.materials.aim as f32 / 200.0;
+            if attacker.program.memory.read(MEM_BACKSHOT) != 0 {
                 angle -= std::f32::consts::PI;
             }
-            let aimed = attacker.memory.read(MEM_AIM_SHOOT);
+            let aimed = attacker.program.memory.read(MEM_AIM_SHOOT);
             if aimed != 0 {
-                angle = self.biology[attacker_slot].aim as f32 / 200.0
-                    - (aimed % 1_256) as f32 / 200.0;
+                angle = attacker.materials.aim as f32 / 200.0 - (aimed % 1_256) as f32 / 200.0;
             }
             let random = advance_random(
-                self.config.seed ^ self.tick.rotate_left(19) ^ (attacker_slot as u64).rotate_left(37),
+                self.config.seed
+                    ^ self.tick.rotate_left(19)
+                    ^ (attacker_slot as u64).rotate_left(37),
             );
             angle += ((random % 41) as i32 - 20) as f32 / 200.0;
-            self.pending_projectile_requests.push(PendingProjectileRequest {
-                owner_slot: attacker_slot,
-                kind: shot_type,
-                value: shot_value,
-                angle,
-            });
-            let memory = &mut self.slots[attacker_slot].organism.as_mut().unwrap().memory;
+            self.pending_projectile_requests
+                .push(PendingProjectileRequest {
+                    owner_slot: attacker_slot,
+                    kind: shot_type,
+                    value: shot_value,
+                    angle,
+                });
+            let memory = &mut self.slots[attacker_slot]
+                .organism
+                .as_mut()
+                .unwrap()
+                .program
+                .memory;
             for output in [MEM_SHOOT, MEM_SHOOTVAL, MEM_BACKSHOT, MEM_AIM_SHOOT] {
                 memory.write(output, 0);
             }
@@ -1350,27 +1515,58 @@ impl Engine {
         });
         for slot in tie_deletions {
             if let Some(organism) = self.slots[slot].organism.as_mut() {
-                organism.memory.write(MEM_DELETE_TIE, 0);
+                organism.program.memory.write(MEM_DELETE_TIE, 0);
             }
         }
         for (first_slot, second_slot) in tie_requests {
             if !self.ties_enabled {
-                self.slots[first_slot].organism.as_mut().unwrap().memory.write(MEM_TIE, 0);
+                self.slots[first_slot]
+                    .organism
+                    .as_mut()
+                    .unwrap()
+                    .program
+                    .memory
+                    .write(MEM_TIE, 0);
                 continue;
             }
-            if self.biology[second_slot].slime > 0 {
-                self.biology[second_slot].slime = self.biology[second_slot].slime.saturating_sub(10);
-                self.slots[first_slot].organism.as_mut().unwrap().memory.write(MEM_TIE, 0);
+            if self.slots[second_slot]
+                .organism
+                .as_ref()
+                .unwrap()
+                .materials
+                .slime
+                > 0
+            {
+                let second = self.slots[second_slot].organism.as_mut().unwrap();
+                second.materials.slime = second.materials.slime.saturating_sub(10);
+                self.slots[first_slot]
+                    .organism
+                    .as_mut()
+                    .unwrap()
+                    .program
+                    .memory
+                    .write(MEM_TIE, 0);
                 continue;
             }
             let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
             let second = OrganismId::new(second_slot as u32, self.slots[second_slot].generation);
             let exists = self.ties.iter().any(|tie| {
-                (tie.first == first && tie.second == second) || (tie.first == second && tie.second == first)
+                (tie.first == first && tie.second == second)
+                    || (tie.first == second && tie.second == first)
             });
             if !exists {
-                let first_position = self.kinematics.positions[first_slot];
-                let second_position = self.kinematics.positions[second_slot];
+                let first_position = self.slots[first_slot]
+                    .organism
+                    .as_ref()
+                    .unwrap()
+                    .kinematics
+                    .position;
+                let second_position = self.slots[second_slot]
+                    .organism
+                    .as_ref()
+                    .unwrap()
+                    .kinematics
+                    .position;
                 self.ties.push(TieSnapshot {
                     first,
                     second,
@@ -1378,7 +1574,13 @@ impl Engine {
                 });
                 self.stats.ties_created = self.stats.ties_created.saturating_add(1);
             }
-            self.slots[first_slot].organism.as_mut().unwrap().memory.write(MEM_TIE, 0);
+            self.slots[first_slot]
+                .organism
+                .as_mut()
+                .unwrap()
+                .program
+                .memory
+                .write(MEM_TIE, 0);
         }
         let mut tie_counts = vec![0i32; self.slots.len()];
         let mut partners = vec![None; self.slots.len()];
@@ -1391,14 +1593,28 @@ impl Engine {
             partners[second] = Some(first);
         }
         for (slot, slot_state) in self.slots.iter_mut().enumerate() {
-            let Some(organism) = slot_state.organism.as_mut() else { continue };
+            let Some(organism) = slot_state.organism.as_mut() else {
+                continue;
+            };
             let count = tie_counts.get(slot).copied().unwrap_or(0);
-            organism.memory.write(MEM_MULTI, i32::from(count > 0));
-            organism.memory.write(MEM_NUMBER_OF_TIES, count);
-            organism.memory.write(MEM_MY_TIES, count);
-            organism.memory.write(MEM_TIE_PRESENT, i32::from(count > 0));
-            organism.memory.write(MEM_TIE_NUMBER, count);
-            organism.memory.write(MEM_READ_TIE, partners.get(slot).and_then(|value| *value).map_or(0, |value| value as i32 + 1));
+            organism
+                .program
+                .memory
+                .write(MEM_MULTI, i32::from(count > 0));
+            organism.program.memory.write(MEM_NUMBER_OF_TIES, count);
+            organism.program.memory.write(MEM_MY_TIES, count);
+            organism
+                .program
+                .memory
+                .write(MEM_TIE_PRESENT, i32::from(count > 0));
+            organism.program.memory.write(MEM_TIE_NUMBER, count);
+            organism.program.memory.write(
+                MEM_READ_TIE,
+                partners
+                    .get(slot)
+                    .and_then(|value| *value)
+                    .map_or(0, |value| value as i32 + 1),
+            );
         }
         let mut channels = Vec::new();
         for tie in &self.ties {
@@ -1406,34 +1622,76 @@ impl Engine {
                 (tie.first.slot() as usize, tie.second.slot() as usize),
                 (tie.second.slot() as usize, tie.first.slot() as usize),
             ] {
-                let Some(source) = self.slots[source_slot].organism.as_ref() else { continue };
+                let Some(source) = self.slots[source_slot].organism.as_ref() else {
+                    continue;
+                };
                 channels.push((
                     source_slot,
                     target_slot,
-                    source.memory.read(MEM_SHARE_NRG).clamp(0, 99),
-                    source.memory.read(MEM_SHARE_WASTE).clamp(0, 99),
-                    source.memory.read(MEM_SHARE_SHELL).clamp(0, 99),
-                    source.memory.read(MEM_SHARE_SLIME).clamp(0, 99),
-                    source.memory.read(MEM_SHARE_CHLOROPLASTS).clamp(0, 99),
-                    source.memory.read(MEM_TIE_LOCATION),
-                    source.memory.read(MEM_TIE_VALUE),
+                    source.program.memory.read(MEM_SHARE_NRG).clamp(0, 99),
+                    source.program.memory.read(MEM_SHARE_WASTE).clamp(0, 99),
+                    source.program.memory.read(MEM_SHARE_SHELL).clamp(0, 99),
+                    source.program.memory.read(MEM_SHARE_SLIME).clamp(0, 99),
+                    source
+                        .program
+                        .memory
+                        .read(MEM_SHARE_CHLOROPLASTS)
+                        .clamp(0, 99),
+                    source.program.memory.read(MEM_TIE_LOCATION),
+                    source.program.memory.read(MEM_TIE_VALUE),
                 ));
             }
         }
-        for (source, target, energy, waste, shell, slime, chloroplasts, location, value) in channels {
-            transfer_percent(&mut self.lifecycle.energies, source, target, energy);
-            transfer_biology_percent(&mut self.biology, source, target, waste, |biology| &mut biology.waste);
-            transfer_biology_percent(&mut self.biology, source, target, shell, |biology| &mut biology.shell);
-            transfer_biology_percent(&mut self.biology, source, target, slime, |biology| &mut biology.slime);
-            transfer_biology_percent(&mut self.biology, source, target, chloroplasts, |biology| &mut biology.chloroplasts);
+        for (source, target, energy, waste, shell, slime, chloroplasts, location, value) in channels
+        {
+            transfer_robot_percent(&mut self.slots, source, target, energy, |robot| {
+                &mut robot.materials.energy
+            });
+            transfer_robot_percent(&mut self.slots, source, target, waste, |robot| {
+                &mut robot.materials.waste
+            });
+            transfer_robot_percent(&mut self.slots, source, target, shell, |robot| {
+                &mut robot.materials.shell
+            });
+            transfer_robot_percent(&mut self.slots, source, target, slime, |robot| {
+                &mut robot.materials.slime
+            });
+            transfer_robot_percent(&mut self.slots, source, target, chloroplasts, |robot| {
+                &mut robot.materials.chloroplasts
+            });
             if location != 0 {
-                self.slots[target].organism.as_mut().unwrap().memory.write(location, value);
-                self.slots[target].organism.as_mut().unwrap().memory.write(MEM_TIE_MEMORY_LOCATION, location);
-                self.slots[target].organism.as_mut().unwrap().memory.write(MEM_TIE_MEMORY_VALUE, value);
+                self.slots[target]
+                    .organism
+                    .as_mut()
+                    .unwrap()
+                    .program
+                    .memory
+                    .write(location, value);
+                self.slots[target]
+                    .organism
+                    .as_mut()
+                    .unwrap()
+                    .program
+                    .memory
+                    .write(MEM_TIE_MEMORY_LOCATION, location);
+                self.slots[target]
+                    .organism
+                    .as_mut()
+                    .unwrap()
+                    .program
+                    .memory
+                    .write(MEM_TIE_MEMORY_VALUE, value);
             }
-            let source_memory = &mut self.slots[source].organism.as_mut().unwrap().memory;
-            for output in [MEM_SHARE_NRG, MEM_SHARE_WASTE, MEM_SHARE_SHELL, MEM_SHARE_SLIME,
-                MEM_SHARE_CHLOROPLASTS, MEM_TIE_LOCATION, MEM_TIE_VALUE] {
+            let source_memory = &mut self.slots[source].organism.as_mut().unwrap().program.memory;
+            for output in [
+                MEM_SHARE_NRG,
+                MEM_SHARE_WASTE,
+                MEM_SHARE_SHELL,
+                MEM_SHARE_SLIME,
+                MEM_SHARE_CHLOROPLASTS,
+                MEM_TIE_LOCATION,
+                MEM_TIE_VALUE,
+            ] {
                 source_memory.write(output, 0);
             }
         }
@@ -1441,34 +1699,34 @@ impl Engine {
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
         self.capture_previous_positions();
-        let active_slots: Vec<_> = self.slots.iter().enumerate()
-            .filter_map(|(index, slot)| slot.organism.as_ref().map(|_| index))
+        let mut keyed_batch = self.physics_batch();
+        let fixed: Vec<_> = keyed_batch
+            .ids
+            .iter()
+            .map(|id| {
+                self.robot_fixing_allowed
+                    && self
+                        .slots
+                        .get(*id)
+                        .is_ok_and(|organism| organism.program.memory.read(216) != 0)
+            })
             .collect();
-        let fixed: Vec<_> = active_slots.iter().map(|index| {
-            self.robot_fixing_allowed && self.slots[*index].organism.as_ref().is_some_and(|organism| organism.memory.read(216) != 0)
-        }).collect();
-        let mut batch = PhysicsBatch {
-            positions: active_slots.iter().map(|index| self.kinematics.positions[*index]).collect(),
-            velocities: active_slots.iter().map(|index| self.kinematics.velocities[*index]).collect(),
-            world_size: [self.config.world_width, self.config.world_height],
-            toroidal: self.config.toroidal_world,
-        };
-        if let Err(error) = self.physics.step(&mut batch) {
+        if let Err(error) = self.physics.step(&mut keyed_batch.batch) {
             if self.config.allow_cpu_fallback && matches!(self.physics, RuntimePhysics::Gpu(_)) {
                 self.activate_cpu_fallback(error);
-                self.physics.step(&mut batch)?;
+                self.physics.step(&mut keyed_batch.batch)?;
             } else {
                 return Err(error);
             }
         }
-        for ((index, position), fixed) in active_slots.into_iter().zip(batch.positions).zip(fixed) {
+        for (index, fixed) in fixed.into_iter().enumerate() {
             if fixed {
-                self.kinematics.velocities[index] = [0.0; 2];
-                self.kinematics.pending_velocities[index] = [0.0; 2];
-            } else {
-                self.kinematics.positions[index] = position;
+                let state = self.slots.get(keyed_batch.ids[index])?;
+                keyed_batch.batch.positions[index] = state.kinematics.position;
+                keyed_batch.batch.velocities[index] = [0.0; 2];
             }
         }
+        self.slots.apply_physics_batch(keyed_batch)?;
         self.apply_tie_constraints();
         self.apply_organism_collisions();
         self.apply_environment_features();
@@ -1479,21 +1737,25 @@ impl Engine {
     fn projectile_spawn_phase(&mut self) {
         for request in std::mem::take(&mut self.pending_projectile_requests) {
             let slot = request.owner_slot;
-            if !self.kinematics.alive.get(slot).copied().unwrap_or(false) {
+            let Some(owner) = self
+                .slots
+                .as_slice()
+                .get(slot)
+                .and_then(|entry| entry.organism.as_ref())
+            else {
                 continue;
-            }
-            let payload = matches!(request.kind, -7 | -8)
-                .then(|| self.slots[slot].organism.as_ref().unwrap().dna.clone());
+            };
+            let payload = matches!(request.kind, -7 | -8).then(|| owner.program.dna.clone());
             self.projectiles.spawn(
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
-                    owner_position: self.kinematics.positions[slot],
-                    owner_actual_velocity: self.kinematics.actual_velocities[slot],
+                    owner_position: owner.kinematics.position,
+                    owner_actual_velocity: owner.kinematics.actual_velocity,
                     owner_radius: crate::physics::organism_radius(
-                        self.biology[slot].body,
-                        self.biology[slot].chloroplasts,
+                        owner.materials.body,
+                        owner.materials.chloroplasts,
                     ),
-                    owner_virtual_body: self.biology[slot].body as f32,
+                    owner_virtual_body: owner.materials.body as f32,
                     angle: request.angle,
                     kind: request.kind,
                     value: request.value,
@@ -1511,14 +1773,29 @@ impl Engine {
     }
 
     fn resolve_projectile_impacts(&mut self) {
-        self.spatial.rebuild_from_soa(
-            &self.kinematics.positions,
-            &self.kinematics.alive,
-            64.0,
-        );
-        let max_organism_radius = self.biology.iter().enumerate()
-            .filter(|(slot, _)| self.kinematics.alive.get(*slot).copied().unwrap_or(false))
-            .map(|(_, biology)| crate::physics::organism_radius(biology.body, biology.chloroplasts))
+        let positions: Vec<_> = self
+            .slots
+            .iter()
+            .map(|entry| {
+                entry
+                    .organism
+                    .as_ref()
+                    .map_or([0.0; 2], |robot| robot.kinematics.position)
+            })
+            .collect();
+        let alive: Vec<_> = self
+            .slots
+            .iter()
+            .map(|entry| entry.organism.is_some())
+            .collect();
+        self.spatial.rebuild_from_soa(&positions, &alive, 64.0);
+        let max_organism_radius = self
+            .slots
+            .iter()
+            .filter_map(|entry| entry.organism.as_ref())
+            .map(|robot| {
+                crate::physics::organism_radius(robot.materials.body, robot.materials.chloroplasts)
+            })
             .fold(1.0_f32, f32::max);
         let mut impacts = Vec::new();
         for projectile_slot in self.projectiles.live_slots() {
@@ -1528,30 +1805,30 @@ impl Engine {
             let owner = self.projectiles.owners[shot];
             let mut nearest: Option<(f32, ProjectileTarget)> = None;
 
-            for target in self.spatial.segment_candidates(start, end, max_organism_radius) {
-                if !self.kinematics.alive.get(target).copied().unwrap_or(false) {
+            for target in self
+                .spatial
+                .segment_candidates(start, end, max_organism_radius)
+            {
+                let Some(target_robot) = self.slots[target].organism.as_ref() else {
                     continue;
-                }
+                };
                 let target_id = OrganismId::new(target as u32, self.slots[target].generation);
                 if target_id == owner {
                     continue;
                 }
-                let newborn_is_immune = self.lifecycle.ages[target] <= 1
-                    && self.slots[target]
-                        .organism
-                        .as_ref()
-                        .is_some_and(|organism| organism.parents.contains(&Some(owner)));
+                let newborn_is_immune = target_robot.counters.age <= 1
+                    && target_robot.identity.parents.contains(&Some(owner));
                 if newborn_is_immune {
                     continue;
                 }
                 let radius = crate::physics::organism_radius(
-                    self.biology[target].body,
-                    self.biology[target].chloroplasts,
+                    target_robot.materials.body,
+                    target_robot.materials.chloroplasts,
                 );
                 let Some(fraction) = crate::physics::segment_circle_fraction(
                     start,
                     end,
-                    self.kinematics.positions[target],
+                    target_robot.kinematics.position,
                     radius,
                 ) else {
                     continue;
@@ -1563,12 +1840,9 @@ impl Engine {
 
             for (corpse, state) in self.corpses.iter().enumerate() {
                 let radius = crate::physics::organism_radius(state.body, 0);
-                let Some(fraction) = crate::physics::segment_circle_fraction(
-                    start,
-                    end,
-                    state.position,
-                    radius,
-                ) else {
+                let Some(fraction) =
+                    crate::physics::segment_circle_fraction(start, end, state.position, radius)
+                else {
                     continue;
                 };
                 if nearest.as_ref().is_none_or(|(best, _)| fraction < *best) {
@@ -1629,14 +1903,20 @@ impl Engine {
         payload: Option<LegacyDna>,
     ) -> bool {
         let owner_slot = owner.slot() as usize;
-        let owner_is_live = self.slots.get(owner_slot).is_some_and(|slot| {
-            slot.generation == owner.generation() && slot.organism.is_some()
-        });
+        let owner_is_live =
+            self.slots.as_slice().get(owner_slot).is_some_and(|slot| {
+                slot.generation == owner.generation() && slot.organism.is_some()
+            });
         match target {
             ProjectileTarget::Obstacle => false,
             ProjectileTarget::Corpse(corpse) => {
-                let Some(corpse_state) = self.corpses.get_mut(corpse) else { return false };
-                if !matches!(effect, ProjectileEffect::ReleaseEnergy | ProjectileEffect::ReleaseBody) {
+                let Some(corpse_state) = self.corpses.get_mut(corpse) else {
+                    return false;
+                };
+                if !matches!(
+                    effect,
+                    ProjectileEffect::ReleaseEnergy | ProjectileEffect::ReleaseBody
+                ) {
                     return false;
                 }
                 let applied = power.min(corpse_state.energy.max(0));
@@ -1644,10 +1924,11 @@ impl Engine {
                 corpse_state.body = corpse_state.body.min(corpse_state.energy).max(0);
                 if owner_is_live {
                     let harvested = applied.saturating_mul(3) / 4;
-                    self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
-                        .saturating_add(harvested);
-                    self.stats.energy_harvested = self.stats.energy_harvested
-                        .saturating_add(harvested as u64);
+                    let owner_robot = self.slots.get_mut(owner).unwrap();
+                    owner_robot.materials.energy =
+                        owner_robot.materials.energy.saturating_add(harvested);
+                    self.stats.energy_harvested =
+                        self.stats.energy_harvested.saturating_add(harvested as u64);
                     if harvested > 0 {
                         self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
                     }
@@ -1655,24 +1936,33 @@ impl Engine {
                 applied > 0
             }
             ProjectileTarget::Organism(target) => {
-                if !self.kinematics.alive.get(target).copied().unwrap_or(false) {
+                if self
+                    .slots
+                    .as_slice()
+                    .get(target)
+                    .and_then(|slot| slot.organism.as_ref())
+                    .is_none()
+                {
                     return false;
                 }
                 match effect {
                     ProjectileEffect::ReleaseEnergy => {
-                        let absorbed = power.min(self.biology[target].shell.max(0));
-                        self.biology[target].shell -= absorbed;
-                        let applied = (power - absorbed).min(self.lifecycle.energies[target].max(0));
-                        self.lifecycle.energies[target] = self.lifecycle.energies[target]
-                            .saturating_sub(applied);
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        let absorbed = power.min(target_robot.materials.shell.max(0));
+                        target_robot.materials.shell -= absorbed;
+                        let applied = (power - absorbed).min(target_robot.materials.energy.max(0));
+                        target_robot.materials.energy =
+                            target_robot.materials.energy.saturating_sub(applied);
                         if owner_is_live {
                             let harvested = applied.saturating_mul(3) / 4;
-                            self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
-                                .saturating_add(harvested);
-                            self.stats.energy_harvested = self.stats.energy_harvested
-                                .saturating_add(harvested as u64);
+                            let owner_robot = self.slots.get_mut(owner).unwrap();
+                            owner_robot.materials.energy =
+                                owner_robot.materials.energy.saturating_add(harvested);
+                            self.stats.energy_harvested =
+                                self.stats.energy_harvested.saturating_add(harvested as u64);
                             if harvested > 0 {
-                                self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
+                                self.stats.feeding_events =
+                                    self.stats.feeding_events.saturating_add(1);
                             }
                         }
                         applied > 0 || absorbed > 0
@@ -1681,79 +1971,132 @@ impl Engine {
                         if !owner_is_live {
                             return false;
                         }
-                        let donated = power.min(self.lifecycle.energies[owner_slot].max(0));
-                        self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
-                            .saturating_sub(donated);
-                        self.lifecycle.energies[target] = self.lifecycle.energies[target]
-                            .saturating_add(donated);
-                        self.stats.energy_donated = self.stats.energy_donated
-                            .saturating_add(donated as u64);
+                        let donated = transfer_fixed_amount(
+                            &mut self.slots,
+                            owner_slot,
+                            target,
+                            power,
+                            |robot| &mut robot.materials.energy,
+                            |robot| &mut robot.materials.energy,
+                        );
+                        self.stats.energy_donated =
+                            self.stats.energy_donated.saturating_add(donated as u64);
                         donated > 0
                     }
                     ProjectileEffect::Venom => {
                         if !owner_is_live {
                             return false;
                         }
-                        let transferred = power.min(self.biology[owner_slot].venom.max(0));
-                        self.biology[owner_slot].venom -= transferred;
-                        self.biology[target].paralyzed = self.biology[target].paralyzed
-                            .saturating_add(transferred);
+                        let transferred = transfer_fixed_amount(
+                            &mut self.slots,
+                            owner_slot,
+                            target,
+                            power,
+                            |robot| &mut robot.materials.venom,
+                            |robot| &mut robot.materials.paralyzed,
+                        );
                         if transferred > 0 {
-                            self.kinematics.velocities[target] = [0.0; 2];
+                            self.slots[target]
+                                .organism
+                                .as_mut()
+                                .unwrap()
+                                .kinematics
+                                .velocity = [0.0; 2];
                         }
                         transferred > 0
                     }
                     ProjectileEffect::Waste => {
-                        self.biology[target].waste = self.biology[target].waste.saturating_add(power);
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        target_robot.materials.waste =
+                            target_robot.materials.waste.saturating_add(power);
                         power > 0
                     }
                     ProjectileEffect::Poison => {
                         if !owner_is_live {
                             return false;
                         }
-                        let transferred = power.min(self.biology[owner_slot].poison.max(0));
-                        self.biology[owner_slot].poison -= transferred;
-                        self.biology[target].poisoned = self.biology[target].poisoned
-                            .saturating_add(transferred);
+                        let transferred = transfer_fixed_amount(
+                            &mut self.slots,
+                            owner_slot,
+                            target,
+                            power,
+                            |robot| &mut robot.materials.poison,
+                            |robot| &mut robot.materials.poisoned,
+                        );
                         transferred > 0
                     }
                     ProjectileEffect::ReleaseBody => {
-                        let applied = power.min(self.biology[target].body.max(0));
-                        self.biology[target].body -= applied;
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        let applied = power.min(target_robot.materials.body.max(0));
+                        target_robot.materials.body -= applied;
                         if owner_is_live {
                             let harvested = applied.saturating_mul(3) / 4;
-                            self.lifecycle.energies[owner_slot] = self.lifecycle.energies[owner_slot]
-                                .saturating_add(harvested);
-                            self.stats.energy_harvested = self.stats.energy_harvested
-                                .saturating_add(harvested as u64);
+                            let owner_robot = self.slots.get_mut(owner).unwrap();
+                            owner_robot.materials.energy =
+                                owner_robot.materials.energy.saturating_add(harvested);
+                            self.stats.energy_harvested =
+                                self.stats.energy_harvested.saturating_add(harvested as u64);
                         }
                         applied > 0
                     }
                     ProjectileEffect::AddGene => {
                         let Some(dna) = payload else { return false };
-                        self.slots[target].organism.as_mut().unwrap().dna = dna;
-                        let references = self.slots[target].organism.as_ref().unwrap().dna
+                        self.slots[target].organism.as_mut().unwrap().program.dna = dna;
+                        let references = self.slots[target]
+                            .organism
+                            .as_ref()
+                            .unwrap()
+                            .program
+                            .dna
                             .address_reference_count(MEM_EYE1, MEM_EYE9);
-                        self.slots[target].organism.as_mut().unwrap().memory
+                        self.slots[target]
+                            .organism
+                            .as_mut()
+                            .unwrap()
+                            .program
+                            .memory
                             .write(MEM_MY_EYE, references);
                         true
                     }
                     ProjectileEffect::Sperm => {
                         let Some(dna) = payload else { return false };
-                        let target_dna = self.slots[target].organism.as_ref().unwrap().dna.clone();
-                        self.slots[target].organism.as_mut().unwrap().dna = target_dna.crossover(&dna);
-                        self.slots[target].organism.as_mut().unwrap().memory.write(MEM_REPRO, 50);
-                        self.forced_reproductions[target] = true;
+                        let target_dna = self.slots[target]
+                            .organism
+                            .as_ref()
+                            .unwrap()
+                            .program
+                            .dna
+                            .clone();
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        target_robot.program.dna = target_dna.crossover(&dna);
+                        target_robot.program.memory.write(MEM_REPRO, 50);
+                        target_robot.effects.forced_reproduction = true;
                         true
                     }
                     ProjectileEffect::WriteMemory { address, value } => {
-                        self.slots[target].organism.as_mut().unwrap().memory.write(address, value);
+                        self.slots[target]
+                            .organism
+                            .as_mut()
+                            .unwrap()
+                            .program
+                            .memory
+                            .write(address, value);
                         true
                     }
                     ProjectileEffect::ForceReproduction { percentage } => {
-                        self.slots[target].organism.as_mut().unwrap().memory
+                        self.slots[target]
+                            .organism
+                            .as_mut()
+                            .unwrap()
+                            .program
+                            .memory
                             .write(MEM_REPRO, percentage);
-                        self.forced_reproductions[target] = true;
+                        self.slots[target]
+                            .organism
+                            .as_mut()
+                            .unwrap()
+                            .effects
+                            .forced_reproduction = true;
                         true
                     }
                 }
@@ -1762,75 +2105,163 @@ impl Engine {
     }
 
     fn capture_previous_positions(&mut self) {
-        for slot in 0..self.kinematics.positions.len() {
-            if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
-                self.kinematics.previous_positions[slot] = self.kinematics.positions[slot];
-            }
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+        {
+            robot.kinematics.previous_position = robot.kinematics.position;
         }
     }
 
     fn record_actual_velocities(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
-        for slot in 0..self.kinematics.positions.len() {
-            if self.kinematics.alive.get(slot).copied().unwrap_or(false) {
-                let mut displacement = [
-                    self.kinematics.positions[slot][0] - self.kinematics.previous_positions[slot][0],
-                    self.kinematics.positions[slot][1] - self.kinematics.previous_positions[slot][1],
-                ];
-                if self.config.toroidal_world {
-                    for axis in 0..2 {
-                        let extent = world_size[axis].max(1.0);
-                        let half_extent = extent * 0.5;
-                        displacement[axis] =
-                            (displacement[axis] + half_extent).rem_euclid(extent) - half_extent;
-                    }
+        for robot in self
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+        {
+            let mut displacement = [
+                robot.kinematics.position[0] - robot.kinematics.previous_position[0],
+                robot.kinematics.position[1] - robot.kinematics.previous_position[1],
+            ];
+            if self.config.toroidal_world {
+                for axis in 0..2 {
+                    let extent = world_size[axis].max(1.0);
+                    let half_extent = extent * 0.5;
+                    displacement[axis] =
+                        (displacement[axis] + half_extent).rem_euclid(extent) - half_extent;
                 }
-                self.kinematics.actual_velocities[slot] = displacement;
             }
+            robot.kinematics.actual_velocity = displacement;
         }
     }
 
     fn apply_environment_features(&mut self) {
+        let mut positions: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism
+                    .as_ref()
+                    .map_or([0.0; 2], |robot| robot.kinematics.position)
+            })
+            .collect();
+        let mut velocities: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism
+                    .as_ref()
+                    .map_or([0.0; 2], |robot| robot.kinematics.velocity)
+            })
+            .collect();
+        let alive: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| slot.organism.is_some())
+            .collect();
         crate::environment::apply_world_features(
-            &mut self.kinematics.positions,
-            &mut self.kinematics.velocities,
-            &self.kinematics.alive,
+            &mut positions,
+            &mut velocities,
+            &alive,
             &self.obstacles,
             &self.teleporters,
             [self.config.world_width, self.config.world_height],
         );
+        for (slot, (position, velocity)) in self
+            .slots
+            .iter_mut()
+            .zip(positions.into_iter().zip(velocities))
+        {
+            if let Some(robot) = slot.organism.as_mut() {
+                robot.kinematics.position = position;
+                robot.kinematics.velocity = velocity;
+            }
+        }
     }
 
     fn apply_organism_collisions(&mut self) {
-        let radii: Vec<_> = self.biology.iter().map(|biology| {
-            crate::physics::organism_radius(biology.body, biology.chloroplasts)
-        }).collect();
+        let mut positions: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism
+                    .as_ref()
+                    .map_or([0.0; 2], |robot| robot.kinematics.position)
+            })
+            .collect();
+        let mut velocities: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism
+                    .as_ref()
+                    .map_or([0.0; 2], |robot| robot.kinematics.velocity)
+            })
+            .collect();
+        let radii: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism.as_ref().map_or(1.0, |robot| {
+                    crate::physics::organism_radius(
+                        robot.materials.body,
+                        robot.materials.chloroplasts,
+                    )
+                })
+            })
+            .collect();
         let max_radius = radii.iter().copied().fold(1.0_f32, f32::max);
         let pairs = self.pending_gpu_collision_pairs.take().unwrap_or_else(|| {
             let mut pairs = Vec::new();
             for first in 0..self.slots.len() {
-                if self.slots[first].organism.is_none() { continue; }
-                if let Some(second) = self.spatial.nearest(
-                    self.kinematics.positions[first],
-                    Some(first),
-                    radii[first] + max_radius,
-                ) {
-                    if first < second { pairs.push((first, second)); }
+                if self.slots[first].organism.is_none() {
+                    continue;
+                }
+                if let Some(second) =
+                    self.spatial
+                        .nearest(positions[first], Some(first), radii[first] + max_radius)
+                {
+                    if first < second {
+                        pairs.push((first, second));
+                    }
                 }
             }
             pairs
         });
-        let masses: Vec<_> = self.biology.iter().map(|biology| {
-            derived_mass(biology.body, biology.shell, biology.chloroplasts).clamp(1.0, 32_000.0)
-        }).collect();
+        let masses: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism.as_ref().map_or(1.0, |robot| {
+                    derived_mass(
+                        robot.materials.body,
+                        robot.materials.shell,
+                        robot.materials.chloroplasts,
+                    )
+                    .clamp(1.0, 32_000.0)
+                })
+            })
+            .collect();
         crate::physics::resolve_collisions(
-            &mut self.kinematics.positions,
-            &mut self.kinematics.velocities,
+            &mut positions,
+            &mut velocities,
             &radii,
             &masses,
             &pairs,
             self.config.physics.elasticity,
         );
+        for (slot, (position, velocity)) in self
+            .slots
+            .iter_mut()
+            .zip(positions.into_iter().zip(velocities))
+        {
+            if let Some(robot) = slot.organism.as_mut() {
+                robot.kinematics.position = position;
+                robot.kinematics.velocity = velocity;
+            }
+        }
     }
 
     fn apply_tie_constraints(&mut self) {
@@ -1838,35 +2269,61 @@ impl Engine {
         for tie in ties {
             let first_slot = tie.first.slot() as usize;
             let second_slot = tie.second.slot() as usize;
-            if first_slot == second_slot || first_slot >= self.slots.len() || second_slot >= self.slots.len() { continue; }
+            if first_slot == second_slot
+                || first_slot >= self.slots.len()
+                || second_slot >= self.slots.len()
+            {
+                continue;
+            }
+            let (first, second) = if first_slot < second_slot {
+                let (left, right) = self.slots.as_mut_slice().split_at_mut(second_slot);
+                (&mut left[first_slot], &mut right[0])
+            } else {
+                let (left, right) = self.slots.as_mut_slice().split_at_mut(first_slot);
+                (&mut right[0], &mut left[second_slot])
+            };
+            let (Some(first), Some(second)) = (first.organism.as_mut(), second.organism.as_mut())
+            else {
+                continue;
+            };
             let delta = [
-                self.kinematics.positions[second_slot][0] - self.kinematics.positions[first_slot][0],
-                self.kinematics.positions[second_slot][1] - self.kinematics.positions[first_slot][1],
+                second.kinematics.position[0] - first.kinematics.position[0],
+                second.kinematics.position[1] - first.kinematics.position[1],
             ];
             let distance = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
-            if distance <= f32::EPSILON { continue; }
+            if distance <= f32::EPSILON {
+                continue;
+            }
             let correction = (distance - tie.rest_length) / distance * 0.5;
-            self.kinematics.positions[first_slot][0] += delta[0] * correction;
-            self.kinematics.positions[first_slot][1] += delta[1] * correction;
-            self.kinematics.positions[second_slot][0] -= delta[0] * correction;
-            self.kinematics.positions[second_slot][1] -= delta[1] * correction;
+            first.kinematics.position[0] += delta[0] * correction;
+            first.kinematics.position[1] += delta[1] * correction;
+            second.kinematics.position[0] -= delta[0] * correction;
+            second.kinematics.position[1] -= delta[1] * correction;
         }
     }
 
     fn vegetation_feed_phase(&mut self) {
-        let daytime = self.vegetation_runtime.advance_daylight(&mut self.config.vegetation);
+        let daytime = self
+            .vegetation_runtime
+            .advance_daylight(&mut self.config.vegetation);
         let world_area = self.config.world_width.max(0.0) * self.config.world_height.max(0.0);
-        let obstacle_area: f32 = self.obstacles.iter().map(|obstacle| {
-            (obstacle.maximum[0] - obstacle.minimum[0]).max(0.0)
-                * (obstacle.maximum[1] - obstacle.minimum[1]).max(0.0)
-        }).sum();
+        let obstacle_area: f32 = self
+            .obstacles
+            .iter()
+            .map(|obstacle| {
+                (obstacle.maximum[0] - obstacle.minimum[0]).max(0.0)
+                    * (obstacle.maximum[1] - obstacle.minimum[1]).max(0.0)
+            })
+            .sum();
         let usable_world_area = (world_area - obstacle_area).max(1.0);
-        let total_robot_area: f32 = self.kinematics.alive.iter().enumerate()
-            .filter(|(_, alive)| **alive)
-            .map(|(slot, _)| {
+        let total_robot_area: f32 = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|robot| {
                 let radius = crate::physics::organism_radius(
-                    self.biology[slot].body,
-                    self.biology[slot].chloroplasts,
+                    robot.materials.body,
+                    robot.materials.chloroplasts,
                 );
                 std::f32::consts::PI * radius * radius
             })
@@ -1874,65 +2331,104 @@ impl Engine {
         let settings = self.config.vegetation.clone();
         let flat_bonus = self.config.vegetable_energy_per_tick.max(0);
         for slot in 0..self.slots.len() {
-            let Some(organism) = self.slots[slot].organism.as_mut() else { continue };
-            if self.lifecycle.energies[slot] <= 0 {
-                organism.memory.write(MEM_LIGHT, 0);
+            let Some(organism) = self.slots[slot].organism.as_mut() else {
+                continue;
+            };
+            if organism.materials.energy <= 0 {
+                organism.program.memory.write(MEM_LIGHT, 0);
                 continue;
             }
             let feeding = self.vegetation_runtime.feed(PlantLightInput {
                 daytime,
-                chloroplasts: self.biology[slot].chloroplasts,
-                age: self.lifecycle.ages[slot],
+                chloroplasts: organism.materials.chloroplasts,
+                age: organism.counters.age,
                 total_robot_area,
                 usable_world_area,
                 max_energy_per_tick: settings.max_energy_per_tick,
                 pond_mode: false,
                 light_intensity: self.config.sunlight_energy.max(0) as f32,
-                depth: self.kinematics.positions[slot][1] / 2_000.0 + 1.0,
+                depth: organism.kinematics.position[1] / 2_000.0 + 1.0,
                 gradient: 1.0,
             });
-            organism.memory.write(MEM_LIGHT, i32::from(feeding.light));
+            organism
+                .program
+                .memory
+                .write(MEM_LIGHT, i32::from(feeding.light));
             let _availability = feeding.availability;
-            let (energy_gain, body_gain) = self.biology[slot].apply_plant_delta(
-                &mut self.lifecycle.energies[slot],
-                feeding.delta,
-                settings.feeding_to_body,
-            );
-            if self.species.get(organism.species.0 as usize).is_some_and(|species| species.vegetable) {
-                self.lifecycle.energies[slot] = self.lifecycle.energies[slot]
+            let (energy_gain, body_gain) = organism
+                .materials
+                .apply_plant_delta(feeding.delta, settings.feeding_to_body);
+            if self
+                .species
+                .get(organism.identity.species.0 as usize)
+                .is_some_and(|species| species.vegetable)
+            {
+                organism.materials.energy = organism
+                    .materials
+                    .energy
                     .saturating_add(flat_bonus)
                     .min(32_000);
             }
-            self.stats.plant_energy_generated = self.stats.plant_energy_generated
+            self.stats.plant_energy_generated = self
+                .stats
+                .plant_energy_generated
                 .saturating_add(energy_gain.max(0) as u64);
-            self.stats.plant_body_produced = self.stats.plant_body_produced
+            self.stats.plant_body_produced = self
+                .stats
+                .plant_body_produced
                 .saturating_add(body_gain.max(0) as u64);
-            organism.memory.write(MEM_NRG, self.lifecycle.energies[slot]);
-            self.biology[slot].publish(&mut organism.memory);
+            organism
+                .program
+                .memory
+                .write(MEM_NRG, organism.materials.energy);
+            organism.materials.publish(&mut organism.program.memory);
         }
     }
 
     fn vegetation_repopulation_phase(&mut self) -> Result<(), EngineError> {
-        let total_chloroplasts: i64 = self.biology.iter().enumerate()
-            .filter(|(slot, _)| self.kinematics.alive.get(*slot).copied().unwrap_or(false))
-            .map(|(_, biology)| biology.chloroplasts.max(0) as i64)
+        let total_chloroplasts: i64 = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|robot| robot.materials.chloroplasts.max(0) as i64)
             .sum();
         let equivalents = (total_chloroplasts / 16_000).max(0) as usize;
-        if !self.vegetation_runtime.advance_repopulation(equivalents, &self.config.vegetation) {
+        if !self
+            .vegetation_runtime
+            .advance_repopulation(equivalents, &self.config.vegetation)
+        {
             return Ok(());
         }
-        let eligible: Vec<_> = self.species.iter().enumerate().filter_map(|(index, species)| {
-            (species.vegetable && species.reseed
-                && self.species_templates.get(index).and_then(Option::as_ref).is_some())
+        let eligible: Vec<_> = self
+            .species
+            .iter()
+            .enumerate()
+            .filter_map(|(index, species)| {
+                (species.vegetable
+                    && species.reseed
+                    && self
+                        .species_templates
+                        .get(index)
+                        .and_then(Option::as_ref)
+                        .is_some())
                 .then_some(index)
-        }).collect();
+            })
+            .collect();
         if eligible.is_empty() {
             return Ok(());
         }
-        let capacity = self.config.organism_capacity.saturating_sub(self.population());
-        let vegetable_capacity = self.config.vegetable_population_cap
+        let capacity = self
+            .config
+            .organism_capacity
+            .saturating_sub(self.population());
+        let vegetable_capacity = self
+            .config
+            .vegetable_population_cap
             .saturating_sub(self.vegetable_population());
-        let amount = self.config.vegetation.repopulation_amount
+        let amount = self
+            .config
+            .vegetation
+            .repopulation_amount
             .min(capacity)
             .min(vegetable_capacity);
         for ordinal in 0..amount {
@@ -1940,7 +2436,10 @@ impl Engine {
                 self.config.seed ^ self.tick.rotate_left(23) ^ (ordinal as u64).rotate_left(41),
             );
             let species_index = eligible[random as usize % eligible.len()];
-            let template = self.species_templates[species_index].as_ref().unwrap().clone();
+            let template = self.species_templates[species_index]
+                .as_ref()
+                .unwrap()
+                .clone();
             let x_random = advance_random(random);
             let y_random = advance_random(x_random);
             let position = [
@@ -1952,10 +2451,10 @@ impl Engine {
                 SpeciesId(species_index as u32),
                 position,
             )?;
-            let slot = id.slot() as usize;
-            self.lifecycle.energies[slot] = template.initial_energy;
-            self.slots[slot].organism.as_mut().unwrap().memory
-                .write(MEM_NRG, template.initial_energy);
+            let robot = self.slots.get_mut(id)?;
+            robot.materials.energy = template.initial_energy;
+            robot.materials.synchronize_energy();
+            robot.program.memory.write(MEM_NRG, template.initial_energy);
             self.stats.reseeds = self.stats.reseeds.saturating_add(1);
         }
         Ok(())
@@ -1963,134 +2462,193 @@ impl Engine {
 
     fn lifecycle_phase(&mut self) -> Result<(), EngineError> {
         for corpse in &mut self.corpses {
-            corpse.advance(self.config.gravity, self.config.drag, [self.config.world_width, self.config.world_height]);
+            corpse.advance(
+                self.config.gravity,
+                self.config.drag,
+                [self.config.world_width, self.config.world_height],
+            );
         }
-        self.corpses.retain(|corpse| corpse.energy > 0 && corpse.position.iter().all(|value| value.is_finite()));
+        self.corpses.retain(|corpse| {
+            corpse.energy > 0 && corpse.position.iter().all(|value| value.is_finite())
+        });
         let mut births = Vec::new();
         let mut deaths = Vec::new();
-        let positions = &self.kinematics.positions;
         let species = &self.species;
         let asexual_reproduction_allowed = self.asexual_reproduction_allowed;
         let world_size = [self.config.world_width, self.config.world_height];
-        let outcomes: Vec<_> = self.slots.par_iter_mut()
-            .zip(self.lifecycle.energies.par_iter_mut())
-            .zip(self.lifecycle.ages.par_iter_mut())
-            .zip(self.biology.par_iter_mut())
-            .zip(self.forced_reproductions.par_iter_mut())
-            .enumerate().filter_map(|(slot_index, ((((slot, energy), age), biology), forced_reproduction))| {
-            let organism = slot.organism.as_mut()?;
-                *age += 1;
-                *energy = energy.saturating_sub(self.config.metabolism_cost.max(0));
-                if biology.poisoned > 0 {
-                    *energy = energy.saturating_sub(biology.poisoned.min(10));
-                    biology.poisoned = biology.poisoned.saturating_sub(1);
+        let metabolism_cost = self.config.metabolism_cost.max(0);
+        let mutations_enabled = self.mutations_enabled;
+        let global_mutation_multiplier = self.global_mutation_multiplier;
+        let outcomes: Vec<_> = self
+            .slots
+            .par_iter_mut()
+            .enumerate()
+            .filter_map(|(slot_index, slot)| {
+                let organism = slot.organism.as_mut()?;
+                organism.counters.age += 1;
+                organism.materials.energy =
+                    organism.materials.energy.saturating_sub(metabolism_cost);
+                if organism.materials.poisoned > 0 {
+                    organism.materials.energy = organism
+                        .materials
+                        .energy
+                        .saturating_sub(organism.materials.poisoned.min(10));
+                    organism.materials.poisoned = organism.materials.poisoned.saturating_sub(1);
                 }
-                biology.paralyzed = biology.paralyzed.saturating_sub(1).max(0);
-                *energy = (*energy).min(32_000);
-                organism.memory.write(MEM_ROBAGE, (*age).min(i32::MAX as u64) as i32);
-                organism.memory.write(MEM_NRG, *energy);
-                organism.memory.write(MEM_XPOS, positions[slot_index][0].round() as i32);
-                organism.memory.write(MEM_YPOS, positions[slot_index][1].round() as i32);
-                biology.publish(&mut organism.memory);
-                let mutation_reproduction = organism.memory.read(MEM_MREPRO);
-                let reproduction = organism.memory.read(MEM_REPRO).max(mutation_reproduction);
-                let assisted_reproduction = *forced_reproduction;
-                *forced_reproduction = false;
+                organism.materials.paralyzed =
+                    organism.materials.paralyzed.saturating_sub(1).max(0);
+                organism.materials.energy = organism.materials.energy.min(32_000);
+                organism.program.memory.write(
+                    MEM_ROBAGE,
+                    organism.counters.age.min(i32::MAX as u64) as i32,
+                );
+                organism
+                    .program
+                    .memory
+                    .write(MEM_NRG, organism.materials.energy);
+                organism
+                    .program
+                    .memory
+                    .write(MEM_XPOS, organism.kinematics.position[0].round() as i32);
+                organism
+                    .program
+                    .memory
+                    .write(MEM_YPOS, organism.kinematics.position[1].round() as i32);
+                organism.materials.publish(&mut organism.program.memory);
+                let mutation_reproduction = organism.program.memory.read(MEM_MREPRO);
+                let reproduction = organism
+                    .program
+                    .memory
+                    .read(MEM_REPRO)
+                    .max(mutation_reproduction);
+                let assisted_reproduction = organism.effects.forced_reproduction;
+                organism.effects.forced_reproduction = false;
                 let mut birth = None;
-                let species_repopulates = species.get(organism.species.0 as usize).is_some_and(|value| value.reseed);
-                if reproduction > 0 && *energy > 200 && (asexual_reproduction_allowed || assisted_reproduction || species_repopulates) {
-                    let child_energy = (*energy as i64 * reproduction.clamp(1, 99) as i64 / 100) as i32;
-                    *energy -= child_energy;
-                    let mut child_biology = biology.split_for_offspring(reproduction);
-                    child_biology.synchronize_energy(child_energy);
-                    organism.memory.write(MEM_NRG, *energy);
-                    organism.memory.write(MEM_REPRO, 0);
-                    organism.memory.write(MEM_MREPRO, 0);
-                    organism.random_state = advance_random(organism.random_state);
-                    let configured_rate = if self.mutations_enabled {
-                        species.get(organism.species.0 as usize)
-                            .map_or(0.0, |value| (value.mutation_rate * self.global_mutation_multiplier).clamp(0.0, 100.0))
+                let species_repopulates = species
+                    .get(organism.identity.species.0 as usize)
+                    .is_some_and(|value| value.reseed);
+                if reproduction > 0
+                    && organism.materials.energy > 200
+                    && (asexual_reproduction_allowed
+                        || assisted_reproduction
+                        || species_repopulates)
+                {
+                    let mut child_biology = organism.materials.split_for_offspring(reproduction);
+                    let child_energy = child_biology.energy;
+                    organism.materials.synchronize_energy();
+                    child_biology.synchronize_energy();
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_NRG, organism.materials.energy);
+                    organism.program.memory.write(MEM_REPRO, 0);
+                    organism.program.memory.write(MEM_MREPRO, 0);
+                    organism.program.rng_state = advance_random(organism.program.rng_state);
+                    let configured_rate = if mutations_enabled {
+                        species
+                            .get(organism.identity.species.0 as usize)
+                            .map_or(0.0, |value| {
+                                (value.mutation_rate * global_mutation_multiplier).clamp(0.0, 100.0)
+                            })
                     } else {
                         0.0
                     };
-                    let configured_mutation = ((organism.random_state % 10_000) as f32)
-                        < configured_rate * 100.0;
+                    let configured_mutation =
+                        ((organism.program.rng_state % 10_000) as f32) < configured_rate * 100.0;
                     birth = Some((
-                        organism.dna.clone(),
-                        offspring_position(positions[slot_index], organism.random_state, world_size),
+                        organism.program.dna.clone(),
+                        offspring_position(
+                            organism.kinematics.position,
+                            organism.program.rng_state,
+                            world_size,
+                        ),
                         child_energy,
                         mutation_reproduction > 0 || configured_mutation,
-                        organism.species,
+                        organism.identity.species,
                         OrganismId::new(slot_index as u32, slot.generation),
                         !assisted_reproduction,
                         child_biology,
                     ));
                 }
-                Some((slot_index, birth, *energy <= 0))
-        }).collect();
+                Some((slot_index, birth, organism.materials.energy <= 0))
+            })
+            .collect();
         for (slot_index, birth, dead) in outcomes {
-            if let Some(birth) = birth { births.push(birth); }
-            if dead { deaths.push(slot_index); }
+            if let Some(birth) = birth {
+                births.push(birth);
+            }
+            if dead {
+                deaths.push(slot_index);
+            }
         }
         for slot_index in deaths {
-            let slot = &mut self.slots[slot_index];
-            if let Some(organism) = slot.organism.take() {
-                let species = organism.species.0;
-                let repopulating = self.species.get(species as usize).is_some_and(|value| value.reseed);
+            let id = OrganismId::new(slot_index as u32, self.slots[slot_index].generation);
+            if let Ok(organism) = self.slots.remove(id) {
+                let species = organism.identity.species.0;
+                let repopulating = self
+                    .species
+                    .get(species as usize)
+                    .is_some_and(|value| value.reseed);
                 self.corpses.push(CorpseSnapshot::new(
-                    self.kinematics.positions[slot_index],
-                    self.kinematics.velocities[slot_index],
-                    self.biology[slot_index].body,
-                    self.biology[slot_index].waste,
+                    organism.kinematics.position,
+                    organism.kinematics.velocity,
+                    organism.materials.body,
+                    organism.materials.waste,
                     species,
                     repopulating,
                 ));
-                self.kinematics.deactivate(slot_index);
-                self.lifecycle.deactivate(slot_index);
-                self.biology[slot_index] = BiologyState::default();
-                self.forced_reproductions[slot_index] = false;
-                slot.generation = slot.generation.wrapping_add(1);
-                self.free_slots.push(slot_index as u32);
                 self.stats.deaths = self.stats.deaths.saturating_add(1);
             }
         }
-        let mut available_births = self.config.organism_capacity.saturating_sub(self.population());
+        let mut available_births = self
+            .config
+            .organism_capacity
+            .saturating_sub(self.population());
         let mut vegetable_population = self.vegetable_population();
-        for (dna, position, energy, mutate, species, parent, self_reproduction, child_biology) in births {
-            let vegetable_birth = self.species.get(species.0 as usize).is_some_and(|value| value.vegetable);
+        for (dna, position, energy, mutate, species, parent, self_reproduction, child_biology) in
+            births
+        {
+            let vegetable_birth = self
+                .species
+                .get(species.0 as usize)
+                .is_some_and(|value| value.vegetable);
             if available_births == 0
                 || (vegetable_birth && vegetable_population >= self.config.vegetable_population_cap)
             {
-                if let Some(parent_slot) = self.slots.get_mut(parent.slot() as usize)
-                    && parent_slot.generation == parent.generation()
-                    && let Some(parent_organism) = parent_slot.organism.as_mut()
-                {
-                    let parent_energy = &mut self.lifecycle.energies[parent.slot() as usize];
-                    *parent_energy = parent_energy.saturating_add(energy.max(1));
-                    parent_organism.memory.write(MEM_NRG, *parent_energy);
-                    self.biology[parent.slot() as usize].absorb_offspring(child_biology);
+                if let Ok(parent_organism) = self.slots.get_mut(parent) {
+                    parent_organism.materials.absorb_offspring(child_biology);
+                    parent_organism
+                        .program
+                        .memory
+                        .write(MEM_NRG, parent_organism.materials.energy);
                 }
                 continue;
             }
             let child = self.spawn_species_at_unpublished(dna, species, position)?;
             available_births -= 1;
-            if vegetable_birth { vegetable_population += 1; }
-            let parent_phenotype = self.slots
-                .get(parent.slot() as usize)
-                .filter(|slot| slot.generation == parent.generation())
-                .and_then(|slot| slot.organism.as_ref())
+            if vegetable_birth {
+                vegetable_population += 1;
+            }
+            let parent_phenotype = self
+                .slots
+                .get(parent)
+                .ok()
                 .map(|organism| organism.phenotype.clone());
-            let child_organism = self.slots[child.slot() as usize].organism.as_mut().unwrap();
-            child_organism.parents = [Some(parent), None];
+            let child_organism = self.slots.get_mut(child)?;
+            child_organism.identity.parents = [Some(parent), None];
             if let Some(phenotype) = parent_phenotype {
                 child_organism.phenotype = phenotype;
             }
-            self.lifecycle.energies[child.slot() as usize] = energy.max(1);
-            self.slots[child.slot() as usize].organism.as_mut().unwrap().memory.write(MEM_NRG, energy.max(1));
-            self.biology[child.slot() as usize] = child_biology;
-            self.biology[child.slot() as usize]
-                .publish(&mut self.slots[child.slot() as usize].organism.as_mut().unwrap().memory);
-            if mutate { self.pending_mutations.push(child); }
+            child_organism.materials = child_biology;
+            child_organism.materials.energy = energy.max(1);
+            child_organism.materials.synchronize_energy();
+            child_organism.program.memory.write(MEM_NRG, energy.max(1));
+            child_organism
+                .materials
+                .publish(&mut child_organism.program.memory);
+            if mutate {
+                self.pending_mutations.push(child);
+            }
             self.stats.births = self.stats.births.saturating_add(1);
             if self_reproduction {
                 self.stats.self_reproductions = self.stats.self_reproductions.saturating_add(1);
@@ -2098,7 +2656,9 @@ impl Engine {
         }
         let mut counts = vec![0usize; self.species.len()];
         for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
-            if let Some(count) = counts.get_mut(organism.species.0 as usize) { *count += 1; }
+            if let Some(count) = counts.get_mut(organism.identity.species.0 as usize) {
+                *count += 1;
+            }
         }
         let definitions = self.species.clone();
         let templates = self.species_templates.clone();
@@ -2110,58 +2670,87 @@ impl Engine {
             {
                 continue;
             }
-            let Some(template) = templates.get(species_index).and_then(Option::as_ref) else { continue };
+            let Some(template) = templates.get(species_index).and_then(Option::as_ref) else {
+                continue;
+            };
             let missing = definition.minimum_population - counts[species_index];
-            let available = self.config.organism_capacity.saturating_sub(self.population());
+            let available = self
+                .config
+                .organism_capacity
+                .saturating_sub(self.population());
             let vegetable_available = if definition.vegetable {
-                self.config.vegetable_population_cap.saturating_sub(vegetable_population)
+                self.config
+                    .vegetable_population_cap
+                    .saturating_sub(vegetable_population)
             } else {
                 usize::MAX
             };
             for ordinal in 0..missing.min(available).min(vegetable_available) {
-                let serial = self.tick.wrapping_mul(1_103).wrapping_add((species_index * 97 + ordinal) as u64);
+                let serial = self
+                    .tick
+                    .wrapping_mul(1_103)
+                    .wrapping_add((species_index * 97 + ordinal) as u64);
                 let position = [
                     (serial % 10_000) as f32 / 10_000.0 * self.config.world_width,
-                    (serial.wrapping_mul(7_919) % 10_000) as f32 / 10_000.0 * self.config.world_height,
+                    (serial.wrapping_mul(7_919) % 10_000) as f32 / 10_000.0
+                        * self.config.world_height,
                 ];
-                let id = self.spawn_species_at_unpublished(template.dna.clone(), SpeciesId(species_index as u32), position)?;
-                let slot = id.slot() as usize;
-                self.lifecycle.energies[slot] = template.initial_energy;
-                self.slots[slot].organism.as_mut().unwrap().memory.write(MEM_NRG, template.initial_energy);
+                let id = self.spawn_species_at_unpublished(
+                    template.dna.clone(),
+                    SpeciesId(species_index as u32),
+                    position,
+                )?;
+                let robot = self.slots.get_mut(id)?;
+                robot.materials.energy = template.initial_energy;
+                robot.materials.synchronize_energy();
+                robot.program.memory.write(MEM_NRG, template.initial_energy);
                 self.stats.reseeds = self.stats.reseeds.saturating_add(1);
-                if definition.vegetable { vegetable_population += 1; }
+                if definition.vegetable {
+                    vegetable_population += 1;
+                }
             }
         }
         let slots = &self.slots;
-        self.ties.retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
+        self.ties
+            .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
         Ok(())
     }
 
     fn mutation_phase(&mut self) {
         let pending_mutations = std::mem::take(&mut self.pending_mutations);
         for id in pending_mutations {
-            let Some(slot) = self.slots.get_mut(id.slot() as usize) else { continue };
-            if slot.generation != id.generation() { continue; }
-            let Some(organism) = slot.organism.as_mut() else { continue };
-            let mut mutator = GenomeMutator::new(organism.random_state);
-            let report = mutator.mutate(&mut organism.dna);
-            organism.memory.write(MEM_MY_EYE, organism.dna.address_reference_count(MEM_EYE1, MEM_EYE9));
-            organism.random_state = mutator.random_state();
+            let Ok(organism) = self.slots.get_mut(id) else {
+                continue;
+            };
+            let mut mutator = GenomeMutator::new(organism.program.rng_state);
+            let report = mutator.mutate(&mut organism.program.dna);
+            organism.program.memory.write(
+                MEM_MY_EYE,
+                organism
+                    .program
+                    .dna
+                    .address_reference_count(MEM_EYE1, MEM_EYE9),
+            );
+            organism.program.rng_state = mutator.random_state();
             if report.changes > 0 {
-                let vegetable = self.species
-                    .get(organism.species.0 as usize)
+                let vegetable = self
+                    .species
+                    .get(organism.identity.species.0 as usize)
                     .is_some_and(|species| species.vegetable);
                 organism.phenotype.apply_color_mutation(
                     report.changes,
                     vegetable,
-                    &mut organism.random_state,
+                    &mut organism.program.rng_state,
                 );
                 organism.phenotype.accumulated_mutations = organism
                     .phenotype
                     .accumulated_mutations
                     .saturating_add(report.changes);
-                let threshold = ((organism.dna.instructions().len().max(1) as f32)
-                    * self.config.speciation_genetic_distance_percent.clamp(0.1, 10_000.0)
+                let threshold = ((organism.program.dna.instructions().len().max(1) as f32)
+                    * self
+                        .config
+                        .speciation_genetic_distance_percent
+                        .clamp(0.1, 10_000.0)
                     / 100.0)
                     .ceil() as u32;
                 if self.config.auto_speciation
@@ -2171,7 +2760,7 @@ impl Engine {
                     self.next_lineage_id = lineage_id.saturating_add(1);
                     organism
                         .phenotype
-                        .apply_speciation(lineage_id, &mut organism.random_state);
+                        .apply_speciation(lineage_id, &mut organism.program.rng_state);
                 }
             }
             self.stats.mutations = self.stats.mutations.saturating_add(report.changes as u64);
@@ -2179,13 +2768,22 @@ impl Engine {
     }
 
     fn record_history(&mut self) {
-        if self.history.len() == 10_000 { self.history.remove(0); }
+        if self.history.len() == 10_000 {
+            self.history.remove(0);
+        }
         self.history.push(HistorySample {
             tick: self.tick,
             population: self.population(),
-            total_energy: self.slots.iter().enumerate().filter_map(|(slot, value)| {
-                value.organism.as_ref().map(|_| self.lifecycle.energies[slot] as i64)
-            }).sum(),
+            total_energy: self
+                .slots
+                .iter()
+                .filter_map(|value| {
+                    value
+                        .organism
+                        .as_ref()
+                        .map(|robot| robot.materials.energy as i64)
+                })
+                .sum(),
             births: self.stats.births,
             deaths: self.stats.deaths,
             mutations: self.stats.mutations,
@@ -2196,40 +2794,66 @@ impl Engine {
     }
 
     fn publish_snapshot(&mut self) {
-        let organisms: Vec<_> = self.slots.par_iter().enumerate().filter_map(|(index, slot)| {
-            slot.organism.as_ref().map(|organism| {
-                snapshot_organism(OrganismId::new(index as u32, slot.generation), organism, &self.kinematics, &self.lifecycle, &self.species, &self.biology, index)
+        let organisms: Vec<_> = self
+            .slots
+            .par_iter()
+            .enumerate()
+            .filter_map(|(index, slot)| {
+                slot.organism.as_ref().map(|organism| {
+                    snapshot_organism(
+                        OrganismId::new(index as u32, slot.generation),
+                        organism,
+                        &self.species,
+                    )
+                })
             })
-        }).collect();
+            .collect();
         self.stats.population = organisms.len();
-        self.stats.total_energy = organisms.iter().map(|organism| organism.energy as i64).sum();
+        self.stats.total_energy = organisms
+            .iter()
+            .map(|organism| organism.energy as i64)
+            .sum();
         let mut render_instances = self.pending_gpu_render_instances.take().unwrap_or_else(|| {
-            self.kinematics.alive.iter().enumerate().filter_map(|(slot, alive)| {
-                alive.then_some(cpu_render_instance(
-                    slot,
-                    self.kinematics.positions[slot],
-                    self.lifecycle.energies[slot],
-                    self.biology[slot].body,
-                    self.biology[slot].chloroplasts,
-                ))
-            }).collect()
+            self.slots
+                .iter()
+                .enumerate()
+                .filter_map(|(slot, entry)| {
+                    entry.organism.as_ref().map(|robot| {
+                        cpu_render_instance(
+                            slot,
+                            robot.kinematics.position,
+                            robot.materials.energy,
+                            robot.materials.body,
+                            robot.materials.chloroplasts,
+                        )
+                    })
+                })
+                .collect()
         });
         render_instances.retain(|instance| {
-            self.kinematics.alive.get(instance.slot as usize).copied().unwrap_or(false)
+            self.slots
+                .as_slice()
+                .get(instance.slot as usize)
+                .is_some_and(|slot| slot.organism.is_some())
         });
         for instance in &mut render_instances {
             let slot = instance.slot as usize;
-            instance.radius = crate::physics::organism_radius(
-                self.biology[slot].body,
-                self.biology[slot].chloroplasts,
-            );
-            if let Some(organism) = self.slots.get(instance.slot as usize).and_then(|slot| slot.organism.as_ref()) {
+            if let Some(organism) = self
+                .slots
+                .as_slice()
+                .get(slot)
+                .and_then(|slot| slot.organism.as_ref())
+            {
+                instance.radius = crate::physics::organism_radius(
+                    organism.materials.body,
+                    organism.materials.chloroplasts,
+                );
                 instance.generation = self.slots[slot].generation;
-                instance.aim = self.biology[slot].aim;
+                instance.aim = organism.materials.aim;
                 instance.skin = organism.phenotype.skin;
                 instance.lineage_id = organism.phenotype.lineage_id;
                 instance.color = organism.phenotype.color;
-                if let Some(species) = self.species.get(organism.species.0 as usize) {
+                if let Some(species) = self.species.get(organism.identity.species.0 as usize) {
                     instance.vegetable = species.vegetable;
                 }
             }
@@ -2257,8 +2881,10 @@ impl Engine {
         self.snapshot_publication_count += 1;
     }
 
-    fn valid_slot(&self, id: OrganismId) -> Result<&Slot, EngineError> {
-        self.slots.get(id.slot() as usize)
+    fn valid_slot(&self, id: OrganismId) -> Result<&RobotSlot, EngineError> {
+        self.slots
+            .as_slice()
+            .get(id.slot() as usize)
             .filter(|slot| slot.generation == id.generation() && slot.organism.is_some())
             .ok_or(EngineError::StaleOrganismId)
     }
@@ -2270,14 +2896,10 @@ impl Engine {
         self.capabilities.fallback_reason = Some(error.to_string());
     }
 
-    fn valid_slot_mut(&mut self, id: OrganismId) -> Result<&mut Slot, EngineError> {
-        self.slots.get_mut(id.slot() as usize)
-            .filter(|slot| slot.generation == id.generation() && slot.organism.is_some())
-            .ok_or(EngineError::StaleOrganismId)
-    }
-
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
-        if engine.species.is_empty() { engine.species = default_species(); }
+        if engine.species.is_empty() {
+            engine.species = default_species();
+        }
         let mut next_lineage_id = engine.next_lineage_id.max(1);
         for species in &mut engine.species {
             if species.lineage_id == 0 {
@@ -2289,22 +2911,26 @@ impl Engine {
             }
         }
         engine.species_templates.resize(engine.species.len(), None);
-        engine.biology.resize(engine.slots.len(), BiologyState::default());
-        engine.forced_reproductions.resize(engine.slots.len(), false);
         for slot in &mut engine.slots {
             if let Some(organism) = slot.organism.as_mut() {
-                organism.memory.write(MEM_MY_EYE, organism.dna.address_reference_count(MEM_EYE1, MEM_EYE9));
+                organism.program.memory.write(
+                    MEM_MY_EYE,
+                    organism
+                        .program
+                        .dna
+                        .address_reference_count(MEM_EYE1, MEM_EYE9),
+                );
                 if organism.phenotype.lineage_id == 0
-                    && let Some(species) = engine.species.get(organism.species.0 as usize)
+                    && let Some(species) = engine.species.get(organism.identity.species.0 as usize)
                 {
-                    organism.phenotype = VisualPhenotype::new(
-                        species.lineage_id,
-                        species.color,
-                        species.skin,
-                    );
+                    organism.phenotype =
+                        VisualPhenotype::new(species.lineage_id, species.color, species.skin);
                 }
-                next_lineage_id = next_lineage_id
-                    .max(organism.phenotype.lineage_id.saturating_add(1));
+                if let Some(species) = engine.species.get(organism.identity.species.0 as usize) {
+                    organism.flags.vegetable = species.vegetable;
+                }
+                next_lineage_id =
+                    next_lineage_id.max(organism.phenotype.lineage_id.saturating_add(1));
             }
         }
         engine.next_lineage_id = next_lineage_id;
@@ -2316,15 +2942,23 @@ impl Engine {
     }
 }
 
-fn select_backend(config: &EngineConfig) -> Result<(BackendCapabilities, RuntimePhysics), EngineError> {
+fn select_backend(
+    config: &EngineConfig,
+) -> Result<(BackendCapabilities, RuntimePhysics), EngineError> {
     if config.backend == BackendPreference::Cpu {
         return Ok((
-            BackendCapabilities { active: BackendKind::Cpu, gpu_available: false, fallback_reason: None },
+            BackendCapabilities {
+                active: BackendKind::Cpu,
+                gpu_available: false,
+                fallback_reason: None,
+            },
             RuntimePhysics::Cpu(CpuPhysicsBackend),
         ));
     }
     let gpu = if config.force_gpu_unavailable_for_tests {
-        Err(EngineError::GpuUnavailable("GPU availability was disabled by the test configuration".to_owned()))
+        Err(EngineError::GpuUnavailable(
+            "GPU availability was disabled by the test configuration".to_owned(),
+        ))
     } else {
         GpuPhysicsBackend::new()
     };
@@ -2344,17 +2978,24 @@ fn select_backend(config: &EngineConfig) -> Result<(BackendCapabilities, Runtime
         Err(error) => error.to_string(),
     };
     match config.backend {
-        BackendPreference::Gpu | BackendPreference::Auto if config.allow_cpu_fallback => Ok(BackendCapabilities {
-            active: BackendKind::Cpu,
-            gpu_available: false,
-            fallback_reason: Some(gpu_error),
-        }).map(|capabilities| (capabilities, RuntimePhysics::Cpu(CpuPhysicsBackend))),
+        BackendPreference::Gpu | BackendPreference::Auto if config.allow_cpu_fallback => {
+            Ok(BackendCapabilities {
+                active: BackendKind::Cpu,
+                gpu_available: false,
+                fallback_reason: Some(gpu_error),
+            })
+            .map(|capabilities| (capabilities, RuntimePhysics::Cpu(CpuPhysicsBackend)))
+        }
         _ => Err(EngineError::GpuUnavailable(gpu_error)),
     }
 }
 
 fn default_capabilities() -> BackendCapabilities {
-    BackendCapabilities { active: BackendKind::Cpu, gpu_available: false, fallback_reason: None }
+    BackendCapabilities {
+        active: BackendKind::Cpu,
+        gpu_available: false,
+        fallback_reason: None,
+    }
 }
 
 enum RuntimePhysics {
@@ -2379,34 +3020,32 @@ impl RuntimePhysics {
 
 fn snapshot_organism(
     id: OrganismId,
-    organism: &Organism,
-    kinematics: &KinematicsSoa,
-    lifecycle: &LifecycleSoa,
+    organism: &RobotState,
     species: &[SpeciesDefinition],
-    biology: &[BiologyState],
-    slot: usize,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
-        position: kinematics.positions[slot],
-        velocity: kinematics.velocities[slot],
-        energy: lifecycle.energies[slot],
-        age: lifecycle.ages[slot],
-        species: organism.species,
-        vegetable: species.get(organism.species.0 as usize).is_some_and(|value| value.vegetable),
-        parents: organism.parents,
-        body: biology[slot].body,
-        waste: biology[slot].waste,
-        shell: biology[slot].shell,
-        slime: biology[slot].slime,
-        venom: biology[slot].venom,
-        poison: biology[slot].poison,
-        chloroplasts: biology[slot].chloroplasts,
-        aim: biology[slot].aim,
-        paralyzed: biology[slot].paralyzed,
-        poisoned: biology[slot].poisoned,
+        position: organism.kinematics.position,
+        velocity: organism.kinematics.velocity,
+        energy: organism.materials.energy,
+        age: organism.counters.age,
+        species: organism.identity.species,
+        vegetable: species
+            .get(organism.identity.species.0 as usize)
+            .is_some_and(|value| value.vegetable),
+        parents: organism.identity.parents,
+        body: organism.materials.body,
+        waste: organism.materials.waste,
+        shell: organism.materials.shell,
+        slime: organism.materials.slime,
+        venom: organism.materials.venom,
+        poison: organism.materials.poison,
+        chloroplasts: organism.materials.chloroplasts,
+        aim: organism.materials.aim,
+        paralyzed: organism.materials.paralyzed,
+        poisoned: organism.materials.poisoned,
         phenotype: organism.phenotype.clone(),
-        vision: VisionSnapshot::from_memory(&organism.memory, biology[slot].aim),
+        vision: VisionSnapshot::from_memory(&organism.program.memory, organism.materials.aim),
     }
 }
 
@@ -2431,30 +3070,67 @@ fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2])
     ]
 }
 
-
-fn transfer_percent(values: &mut [i32], source: usize, target: usize, percent: i32) {
-    if percent <= 0 || source == target || source >= values.len() || target >= values.len() { return; }
-    let amount = (values[source].max(0) as i64 * percent.clamp(0, 99) as i64 / 100) as i32;
-    values[source] = values[source].saturating_sub(amount);
-    values[target] = values[target].saturating_add(amount);
-}
-
-fn transfer_biology_percent(
-    states: &mut [BiologyState],
+fn transfer_robot_percent(
+    slots: &mut [RobotSlot],
     source: usize,
     target: usize,
     percent: i32,
-    field: fn(&mut BiologyState) -> &mut i32,
-) {
-    if percent <= 0 || source == target || source >= states.len() || target >= states.len() { return; }
-    let amount = {
-        let source_value = field(&mut states[source]);
-        let amount = ((*source_value).max(0) as i64 * percent.clamp(0, 99) as i64 / 100) as i32;
-        *source_value = source_value.saturating_sub(amount);
-        amount
+    field: fn(&mut RobotState) -> &mut i32,
+) -> i32 {
+    if percent <= 0 || source == target || source >= slots.len() || target >= slots.len() {
+        return 0;
+    }
+    let (source_robot, target_robot) = if source < target {
+        let (left, right) = slots.split_at_mut(target);
+        (&mut left[source], &mut right[0])
+    } else {
+        let (left, right) = slots.split_at_mut(source);
+        (&mut right[0], &mut left[target])
     };
-    let target_value = field(&mut states[target]);
+    let (Some(source_robot), Some(target_robot)) = (
+        source_robot.organism.as_mut(),
+        target_robot.organism.as_mut(),
+    ) else {
+        return 0;
+    };
+    let source_value = field(source_robot);
+    let amount = ((*source_value).max(0) as i64 * percent.clamp(0, 99) as i64 / 100) as i32;
+    *source_value = source_value.saturating_sub(amount);
+    let target_value = field(target_robot);
     *target_value = target_value.saturating_add(amount);
+    amount
+}
+
+fn transfer_fixed_amount(
+    slots: &mut [RobotSlot],
+    source: usize,
+    target: usize,
+    requested: i32,
+    source_field: fn(&mut RobotState) -> &mut i32,
+    target_field: fn(&mut RobotState) -> &mut i32,
+) -> i32 {
+    if requested <= 0 || source == target || source >= slots.len() || target >= slots.len() {
+        return 0;
+    }
+    let (source_robot, target_robot) = if source < target {
+        let (left, right) = slots.split_at_mut(target);
+        (&mut left[source], &mut right[0])
+    } else {
+        let (left, right) = slots.split_at_mut(source);
+        (&mut right[0], &mut left[target])
+    };
+    let (Some(source_robot), Some(target_robot)) = (
+        source_robot.organism.as_mut(),
+        target_robot.organism.as_mut(),
+    ) else {
+        return 0;
+    };
+    let source_value = source_field(source_robot);
+    let amount = requested.min((*source_value).max(0));
+    *source_value = source_value.saturating_sub(amount);
+    let target_value = target_field(target_robot);
+    *target_value = target_value.saturating_add(amount);
+    amount
 }
 
 fn cpu_render_instance(
@@ -2479,8 +3155,9 @@ fn cpu_render_instance(
     }
 }
 
-fn slot_id_valid(slots: &[Slot], id: OrganismId) -> bool {
-    slots.get(id.slot() as usize)
+fn slot_id_valid(slots: &[RobotSlot], id: OrganismId) -> bool {
+    slots
+        .get(id.slot() as usize)
         .is_some_and(|slot| slot.generation == id.generation() && slot.organism.is_some())
 }
 
@@ -2503,13 +3180,21 @@ fn default_species() -> Vec<SpeciesDefinition> {
     vec![species]
 }
 
-fn default_mutations_enabled() -> bool { true }
+fn default_mutations_enabled() -> bool {
+    true
+}
 
-fn default_mutation_multiplier() -> f32 { 1.0 }
+fn default_mutation_multiplier() -> f32 {
+    1.0
+}
 
-fn default_ties_enabled() -> bool { true }
+fn default_ties_enabled() -> bool {
+    true
+}
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 fn default_species_templates() -> Vec<Option<SpeciesTemplate>> {
     vec![None]

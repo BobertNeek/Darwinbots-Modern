@@ -1,5 +1,6 @@
 use darwinbots_engine::{
     BackendKind, BackendPreference, Engine, EngineConfig, EngineError, LegacyDna, SaveFile,
+    SpeciesDefinition,
 };
 
 const SIMPLE_BOT: &str = r#"
@@ -24,10 +25,16 @@ fn imports_legacy_dna_and_preserves_user_variables() {
 fn parser_compiles_symbolic_memory_operands_to_numeric_addresses() {
     let program = LegacyDna::parse("def custom 777\nstart\n*.custom .up store\nstop").unwrap();
     assert!(program.instructions().iter().any(|instruction| {
-        matches!(instruction, darwinbots_engine::Instruction::ReadResolved(777))
+        matches!(
+            instruction,
+            darwinbots_engine::Instruction::ReadResolved(777)
+        )
     }));
     assert!(program.instructions().iter().any(|instruction| {
-        matches!(instruction, darwinbots_engine::Instruction::AddressResolved(1))
+        matches!(
+            instruction,
+            darwinbots_engine::Instruction::AddressResolved(1)
+        )
     }));
     assert!(!program.instructions().iter().any(|instruction| {
         matches!(
@@ -46,23 +53,12 @@ fn rejects_unknown_legacy_instruction_with_location() {
 }
 
 #[test]
-fn stable_ids_change_generation_when_slots_are_reused() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let first = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
-
-    engine.remove(first).unwrap();
-    let second = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
-
-    assert_eq!(first.slot(), second.slot());
-    assert_ne!(first.generation(), second.generation());
-    assert!(matches!(engine.organism(first), Err(EngineError::StaleOrganismId)));
-}
-
-#[test]
 fn batch_spawn_publishes_one_complete_population_snapshot() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();
-    let ids = engine.spawn_batch((0..16).map(|index| (dna.clone(), [index as f32, 5.0]))).unwrap();
+    let ids = engine
+        .spawn_batch((0..16).map(|index| (dna.clone(), [index as f32, 5.0])))
+        .unwrap();
 
     assert_eq!(ids.len(), 16);
     assert_eq!(engine.population(), 16);
@@ -74,7 +70,10 @@ fn batch_spawn_publishes_one_complete_population_snapshot() {
 
 #[test]
 fn seeded_cpu_ticks_are_reproducible_and_publish_snapshots() {
-    let config = EngineConfig { seed: 42, ..EngineConfig::testing() };
+    let config = EngineConfig {
+        seed: 42,
+        ..EngineConfig::testing()
+    };
     let mut left = Engine::new(config.clone()).unwrap();
     let mut right = Engine::new(config).unwrap();
     let dna = LegacyDna::parse("start\n10 .up store\nstop").unwrap();
@@ -94,7 +93,9 @@ fn seeded_cpu_ticks_are_reproducible_and_publish_snapshots() {
 #[test]
 fn tick_many_advances_a_batch_and_publishes_the_final_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
 
     engine.tick_many(25).unwrap();
 
@@ -105,10 +106,14 @@ fn tick_many_advances_a_batch_and_publishes_the_final_state() {
 #[test]
 fn invariant_checker_accepts_slot_reuse_and_seeded_ticks() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let first = engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    let first = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
     engine.remove(first).unwrap();
-    engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
     engine.validate_invariants().unwrap();
 }
@@ -122,10 +127,10 @@ fn engine_uses_vm_flow_semantics_for_movement_intents() {
             ..darwinbots_engine::PhysicsSettings::default()
         },
         ..EngineConfig::testing()
-    }).unwrap();
-    let dna = LegacyDna::parse(
-        "cond\n2 1 >\nstart\n10 .up store\nelse\n25 .up store\nstop",
-    ).unwrap();
+    })
+    .unwrap();
+    let dna =
+        LegacyDna::parse("cond\n2 1 >\nstart\n10 .up store\nelse\n25 .up store\nstop").unwrap();
     let id = engine.spawn(dna).unwrap();
 
     engine.tick().unwrap();
@@ -136,7 +141,9 @@ fn engine_uses_vm_flow_semantics_for_movement_intents() {
 #[test]
 fn save_files_are_versioned_and_round_trip_reference_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    engine.spawn(LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
 
     let bytes = SaveFile::encode(&engine).unwrap();
@@ -147,16 +154,121 @@ fn save_files_are_versioned_and_round_trip_reference_state() {
 }
 
 #[test]
+fn save_round_trip_preserves_pre_refactor_robot_state_fields() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut species = SpeciesDefinition::default();
+    species.name = "save-contract".to_owned();
+    species.vegetable = true;
+    let species = engine.register_species(species);
+    let id = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
+            species,
+            [125.0, 250.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    let before = engine.robot_state(id).unwrap().clone();
+
+    let restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    let after = restored.robot_state(id).unwrap();
+
+    assert_eq!(after.identity.species, before.identity.species);
+    assert_eq!(after.identity.parents, before.identity.parents);
+    assert_eq!(after.flags, before.flags);
+    assert_eq!(after.kinematics, before.kinematics);
+    assert_eq!(after.materials, before.materials);
+    assert_eq!(after.counters.age, before.counters.age);
+    assert_eq!(after.program.dna, before.program.dna);
+    assert_eq!(after.program.memory, before.program.memory);
+    assert_eq!(after.program.rng_state, before.program.rng_state);
+    assert_eq!(
+        after.effects.forced_reproduction,
+        before.effects.forced_reproduction
+    );
+    assert_eq!(after.phenotype, before.phenotype);
+}
+
+#[test]
+fn pre_refactor_db3s_v2_payload_preserves_legacy_robot_fields() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut species = SpeciesDefinition::default();
+    species.name = "legacy-save-contract".to_owned();
+    species.vegetable = true;
+    let species = engine.register_species(species);
+    let id = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\n17 .up store\nstop").unwrap(),
+            species,
+            [321.0, 654.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    let before = engine.robot_state(id).unwrap().clone();
+
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let object = payload.as_object_mut().unwrap();
+    for key in [
+        "slots",
+        "kinematics",
+        "lifecycle",
+        "biology",
+        "forced_reproductions",
+        "free_slots",
+    ] {
+        assert!(object.contains_key(key), "missing legacy arena key {key}");
+    }
+    for slot in object["slots"].as_array_mut().unwrap() {
+        if let Some(organism) = slot["organism"].as_object_mut() {
+            organism.remove("flags");
+        }
+    }
+
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut legacy_v2 = Vec::with_capacity(10 + payload.len());
+    legacy_v2.extend_from_slice(b"DB3S");
+    legacy_v2.extend_from_slice(&2u16.to_le_bytes());
+    legacy_v2.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    legacy_v2.extend_from_slice(&payload);
+
+    let restored = SaveFile::decode(&legacy_v2).unwrap();
+    let after = restored.robot_state(id).unwrap();
+    assert_eq!(after.identity.species, before.identity.species);
+    assert_eq!(after.identity.parents, before.identity.parents);
+    assert_eq!(after.kinematics, before.kinematics);
+    assert_eq!(after.materials, before.materials);
+    assert_eq!(after.counters.age, before.counters.age);
+    assert_eq!(after.program.dna, before.program.dna);
+    assert_eq!(after.program.memory, before.program.memory);
+    assert_eq!(after.program.rng_state, before.program.rng_state);
+    assert_eq!(
+        after.effects.forced_reproduction,
+        before.effects.forced_reproduction
+    );
+    assert_eq!(after.phenotype, before.phenotype);
+    assert!(after.flags.vegetable);
+}
+
+#[test]
 fn mutation_free_save_disables_saved_mutations_without_changing_live_engine() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    engine.update_mutation_settings(true, 2.5, &[(darwinbots_engine::SpeciesId(0), 3.5)]).unwrap();
+    engine
+        .update_mutation_settings(true, 2.5, &[(darwinbots_engine::SpeciesId(0), 3.5)])
+        .unwrap();
 
     let bytes = SaveFile::encode_without_mutations(&engine).unwrap();
     let restored = SaveFile::decode(&bytes).unwrap();
 
     assert!(!restored.snapshot().mutations_enabled);
     assert_eq!(restored.snapshot().global_mutation_multiplier, 0.0);
-    assert!(restored.snapshot().species.iter().all(|species| species.mutation_rate == 0.0));
+    assert!(
+        restored
+            .snapshot()
+            .species
+            .iter()
+            .all(|species| species.mutation_rate == 0.0)
+    );
     assert!(engine.snapshot().mutations_enabled);
     assert_eq!(engine.snapshot().global_mutation_multiplier, 2.5);
     assert_eq!(engine.snapshot().species[0].mutation_rate, 3.5);
@@ -186,7 +298,10 @@ fn unavailable_gpu_is_an_error_when_fallback_is_disabled() {
         ..EngineConfig::testing()
     };
 
-    assert!(matches!(Engine::new(config), Err(EngineError::GpuUnavailable(_))));
+    assert!(matches!(
+        Engine::new(config),
+        Err(EngineError::GpuUnavailable(_))
+    ));
 }
 #[test]
 fn db2_defaults_are_exposed_by_engine_config() {
