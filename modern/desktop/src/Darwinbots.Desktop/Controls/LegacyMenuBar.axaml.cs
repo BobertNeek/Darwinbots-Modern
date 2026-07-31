@@ -23,9 +23,8 @@ public partial class LegacyMenuBar : UserControl
         {
             var control = BuildMenu(menu, true);
             _topLevelItems.Add(control);
+            RootMenu.Items.Add(control);
         }
-
-        RootMenu.ItemsSource = _topLevelItems;
     }
 
     public event EventHandler<LegacyCommandInvokedEventArgs>? CommandInvoked;
@@ -60,9 +59,10 @@ public partial class LegacyMenuBar : UserControl
 
         if (model.Children.Count > 0)
         {
-            item.ItemsSource = model.Children.Select(child => child.IsSeparator
-                ? (Control)new Separator()
-                : BuildMenu(child)).ToArray();
+            foreach (var child in model.Children)
+            {
+                item.Items.Add(child.IsSeparator ? new Separator() : BuildMenu(child));
+            }
         }
 
         if (model.Command is { } command)

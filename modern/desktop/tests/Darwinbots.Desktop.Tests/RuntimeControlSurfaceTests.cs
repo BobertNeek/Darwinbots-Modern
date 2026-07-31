@@ -26,49 +26,55 @@ public sealed class RuntimeControlSurfaceTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
-            SetField(window, "_session", simulation);
-            var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
-            viewModel.Update(RecordingEngineClient.CreateSnapshot());
-            viewModel.Select(3);
-            window.FindControl<WorldViewport>("Viewport")!.SelectSlot(3);
-            window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .Invoke(window, null);
-            var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+            try
+            {
+                window.Show();
+                SetField(window, "_session", simulation);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                viewModel.Update(RecordingEngineClient.CreateSnapshot());
+                viewModel.Select(3);
+                window.FindControl<WorldViewport>("Viewport")!.SelectSlot(3);
+                window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null);
 
-            var expected = new Dictionary<Core.LegacyMenus.LegacyCommandId, string>
-            {
-                [Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts] = "F5",
-                [Core.LegacyMenus.LegacyCommandId.EditRestrictionOverwrites] = "F8",
-                [Core.LegacyMenus.LegacyCommandId.RobotSaveDna] = "Ctrl+S",
-                [Core.LegacyMenus.LegacyCommandId.RobotKillEntireOrganism] = "Ctrl+E",
-            };
-            foreach (var pair in expected)
-            {
-                Assert.Equal(KeyGesture.Parse(pair.Value), menu.FindCommandItem(pair.Key)!.HotKey);
+                var catalogGestures = Core.LegacyMenus.LegacyMenuCatalog.FlattenLeaves()
+                    .Where(item => item.Shortcut is not null)
+                    .Select(item => KeyGesture.Parse(item.Shortcut!))
+                    .ToArray();
+                Assert.Equal(28, catalogGestures.Length);
+                foreach (var gesture in catalogGestures)
+                {
+                    Assert.Single(window.KeyBindings, binding => Equals(binding.Gesture, gesture));
+                }
+
+                var speed = window.FindControl<ComboBox>("RuntimeSpeed")!;
+                speed.Focus();
+
+                window.KeyPress(Key.F5, RawInputModifiers.None, PhysicalKey.F5, null);
+                window.KeyRelease(Key.F5, RawInputModifiers.None, PhysicalKey.F5, null);
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>()).Close();
+
+                window.KeyPress(Key.F8, RawInputModifiers.None, PhysicalKey.F8, null);
+                window.KeyRelease(Key.F8, RawInputModifiers.None, PhysicalKey.F8, null);
+                await WaitFor(() => window.OwnedWindows.OfType<LegacyDocumentWindow>().Any());
+                Assert.Single(window.OwnedWindows.OfType<LegacyDocumentWindow>()).Close();
+
+                window.KeyPress(Key.S, RawInputModifiers.Control, PhysicalKey.S, null);
+                window.KeyRelease(Key.S, RawInputModifiers.Control, PhysicalKey.S, null);
+                await WaitFor(() => storage.SavedDna == "start\nstop");
+
+                window.KeyPress(Key.E, RawInputModifiers.Control, PhysicalKey.E, null);
+                window.KeyRelease(Key.E, RawInputModifiers.Control, PhysicalKey.E, null);
+                await WaitFor(() => engine.Calls.Contains("RemoveMany:3:2"), () => string.Join(", ", engine.Calls));
+                Assert.Equal(["RemoveMany:3:2"], engine.Calls.Where(call => call.StartsWith("RemoveMany:", StringComparison.Ordinal)));
+                return 0;
             }
-
-            Assert.False(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.HelpSurvivalInfo)!.IsVisible);
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveDna)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            await WaitFor(() => storage.SavedDna == "start\nstop");
-
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKillEntireOrganism)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            await WaitFor(() => engine.Calls.Contains("RemoveMany:3:2"), () => string.Join(", ", engine.Calls));
-            Assert.Equal(["RemoveMany:3:2"], engine.Calls.Where(call => call.StartsWith("RemoveMany:", StringComparison.Ordinal)));
-
-            window.Show();
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
-            Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>()).Close();
-
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditRestrictionOverwrites)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            await WaitFor(() => window.OwnedWindows.OfType<LegacyDocumentWindow>().Any());
-            Assert.Single(window.OwnedWindows.OfType<LegacyDocumentWindow>()).Close();
-            window.Close();
-            return 0;
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 
