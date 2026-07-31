@@ -555,7 +555,7 @@ fn execute_store(
         return None;
     }
     let address = pop(stack);
-    let division_value = (command == 7).then(|| pop(stack));
+    let binary_value = (7..=9).contains(&command).then(|| pop(stack));
     if address == 0 {
         return None;
     }
@@ -590,7 +590,7 @@ fn execute_store(
             0.2
         }
         7 => {
-            let value = division_value.expect("division value was captured");
+            let value = binary_value.expect("binary store value was captured");
             memory.write(
                 address,
                 if value == 0 {
@@ -602,12 +602,12 @@ fn execute_store(
             0.2
         }
         8 => {
-            let limit = pop(stack);
+            let limit = binary_value.expect("binary store value was captured");
             memory.write(address, memory.read(address).min(limit));
             0.2
         }
         9 => {
-            let limit = pop(stack);
+            let limit = binary_value.expect("binary store value was captured");
             memory.write(address, memory.read(address).max(limit));
             0.2
         }

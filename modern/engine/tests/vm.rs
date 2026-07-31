@@ -148,6 +148,17 @@ fn every_canonical_operator_has_stack_and_memory_results() {
 }
 
 #[test]
+fn zero_destination_limited_stores_consume_their_limits() {
+    let cases = [
+        ("ceilstore", "start 123 0 ceilstore 1 add 100 store stop"),
+        ("floorstore", "start 123 0 floorstore 1 add 100 store stop"),
+    ];
+    let actual = cases.map(|(command, source)| (command, stored_result(source)));
+
+    assert_eq!(actual, [("ceilstore", 1), ("floorstore", 1)]);
+}
+
+#[test]
 fn angle_dist_anglecmp_and_debug_commands_execute() {
     let source = "start\n100 0 angle 101 store\n100 97 dist 102 store\n10 1250 anglecmp 103 store\n42 debugint 104 store\ntrue debugbool\n1 105 store\nstop";
     let mut memory = VmMemory::default();
