@@ -1737,9 +1737,7 @@ impl Engine {
     fn projectile_spawn_phase(&mut self) {
         for request in std::mem::take(&mut self.pending_projectile_requests) {
             let slot = request.owner_slot;
-            let Some(owner) = self
-                .slots
-                .as_slice()
+            let Some(owner) = self.slots[..]
                 .get(slot)
                 .and_then(|entry| entry.organism.as_ref())
             else {
@@ -1903,10 +1901,9 @@ impl Engine {
         payload: Option<LegacyDna>,
     ) -> bool {
         let owner_slot = owner.slot() as usize;
-        let owner_is_live =
-            self.slots.as_slice().get(owner_slot).is_some_and(|slot| {
-                slot.generation == owner.generation() && slot.organism.is_some()
-            });
+        let owner_is_live = self.slots[..]
+            .get(owner_slot)
+            .is_some_and(|slot| slot.generation == owner.generation() && slot.organism.is_some());
         match target {
             ProjectileTarget::Obstacle => false,
             ProjectileTarget::Corpse(corpse) => {
@@ -1936,9 +1933,7 @@ impl Engine {
                 applied > 0
             }
             ProjectileTarget::Organism(target) => {
-                if self
-                    .slots
-                    .as_slice()
+                if self.slots[..]
                     .get(target)
                     .and_then(|slot| slot.organism.as_ref())
                     .is_none()
@@ -2276,10 +2271,10 @@ impl Engine {
                 continue;
             }
             let (first, second) = if first_slot < second_slot {
-                let (left, right) = self.slots.as_mut_slice().split_at_mut(second_slot);
+                let (left, right) = self.slots.split_at_mut(second_slot);
                 (&mut left[first_slot], &mut right[0])
             } else {
-                let (left, right) = self.slots.as_mut_slice().split_at_mut(first_slot);
+                let (left, right) = self.slots.split_at_mut(first_slot);
                 (&mut right[0], &mut left[second_slot])
             };
             let (Some(first), Some(second)) = (first.organism.as_mut(), second.organism.as_mut())
@@ -2831,16 +2826,13 @@ impl Engine {
                 .collect()
         });
         render_instances.retain(|instance| {
-            self.slots
-                .as_slice()
+            self.slots[..]
                 .get(instance.slot as usize)
                 .is_some_and(|slot| slot.organism.is_some())
         });
         for instance in &mut render_instances {
             let slot = instance.slot as usize;
-            if let Some(organism) = self
-                .slots
-                .as_slice()
+            if let Some(organism) = self.slots[..]
                 .get(slot)
                 .and_then(|slot| slot.organism.as_ref())
             {
@@ -2882,8 +2874,7 @@ impl Engine {
     }
 
     fn valid_slot(&self, id: OrganismId) -> Result<&RobotSlot, EngineError> {
-        self.slots
-            .as_slice()
+        self.slots[..]
             .get(id.slot() as usize)
             .filter(|slot| slot.generation == id.generation() && slot.organism.is_some())
             .ok_or(EngineError::StaleOrganismId)

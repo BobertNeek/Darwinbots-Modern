@@ -345,6 +345,9 @@ impl RobotArena {
                 "physics batch ID, position, and velocity lengths differ".to_owned(),
             ));
         }
+        for id in &batch.ids {
+            self.get(*id)?;
+        }
         for ((id, position), velocity) in batch
             .ids
             .into_iter()
@@ -360,16 +363,16 @@ impl RobotArena {
 }
 
 impl Deref for RobotArena {
-    type Target = Vec<RobotSlot>;
+    type Target = [RobotSlot];
 
     fn deref(&self) -> &Self::Target {
-        &self.slots
+        self.slots.as_slice()
     }
 }
 
 impl DerefMut for RobotArena {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.slots
+        self.slots.as_mut_slice()
     }
 }
 
@@ -676,5 +679,53 @@ impl From<&LegacyBiologyState> for BiologyState {
             plant_energy_carry_micros: state.plant_energy_carry_micros,
             plant_body_carry_micros: state.plant_body_carry_micros,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state_at(position: [f32; 2]) -> RobotState {
+        RobotState::new(
+            LegacyDna::parse("start\nstop").expect("inert DNA should parse"),
+            VmMemory::default(),
+            1,
+            SpeciesId::default(),
+            [None, None],
+            false,
+            position,
+            BiologyState::default(),
+            VisualPhenotype::default(),
+        )
+    }
+
+    #[test]
+    fn stale_physics_batch_id_does_not_partially_mutate_earlier_robot() {
+        let mut arena = RobotArena::default();
+        let first = arena.spawn(state_at([10.0, 20.0]));
+        let second = arena.spawn(state_at([30.0, 40.0]));
+        let mut batch = arena.physics_batch([100.0, 100.0], false);
+        batch.batch.positions[0] = [15.0, 25.0];
+        arena.remove(second).expect("second robot should be live");
+
+        let result = arena.apply_physics_batch(batch);
+
+        assert!(matches!(result, Err(EngineError::StaleOrganismId)));
+        assert_eq!(
+            arena
+                .get(first)
+                .expect("first robot should remain live")
+                .kinematics
+                .position,
+            [10.0, 20.0]
+        );
+    }
+
+    #[test]
+    fn robot_arena_deref_exposes_only_slot_slice() {
+        fn assert_slice_target<T: std::ops::Deref<Target = [RobotSlot]>>() {}
+
+        assert_slice_target::<RobotArena>();
     }
 }
