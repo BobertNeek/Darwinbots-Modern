@@ -122,6 +122,13 @@ impl RobotProgramState {
             activation_bitmap: Vec::new(),
         }
     }
+
+    pub(crate) fn settle_dna_energy_cost(&mut self, energy_cost: f64) -> i32 {
+        let total = self.fractional_cost_remainder + energy_cost;
+        let whole = total.trunc().clamp(i32::MIN as f64, i32::MAX as f64) as i32;
+        self.fractional_cost_remainder = total - f64::from(whole);
+        whole
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

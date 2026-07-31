@@ -1,4 +1,4 @@
-use crate::BackendPreference;
+use crate::{BackendPreference, DnaCosts};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -112,6 +112,8 @@ pub struct EngineConfig {
     #[serde(default)]
     pub vegetation: VegetationSettings,
     #[serde(default)]
+    pub dna_costs: DnaCosts,
+    #[serde(default)]
     pub auto_speciation: bool,
     #[serde(default = "default_speciation_genetic_distance_percent")]
     pub speciation_genetic_distance_percent: f32,
@@ -141,6 +143,7 @@ impl Default for EngineConfig {
             physics: PhysicsSettings::default(),
             shots: ShotSettings::default(),
             vegetation: VegetationSettings::default(),
+            dna_costs: DnaCosts::default(),
             auto_speciation: false,
             speciation_genetic_distance_percent: default_speciation_genetic_distance_percent(),
             force_gpu_unavailable_for_tests: false,
@@ -149,12 +152,24 @@ impl Default for EngineConfig {
     }
 }
 
-fn default_metabolism_cost() -> i32 { 0 }
-fn default_toroidal_world() -> bool { true }
-fn default_vegetable_energy_per_tick() -> i32 { 0 }
-fn default_sunlight_energy() -> i32 { 100 }
-fn default_vegetable_population_cap() -> usize { 500 }
-fn default_speciation_genetic_distance_percent() -> f32 { 20.0 }
+fn default_metabolism_cost() -> i32 {
+    0
+}
+fn default_toroidal_world() -> bool {
+    true
+}
+fn default_vegetable_energy_per_tick() -> i32 {
+    0
+}
+fn default_sunlight_energy() -> i32 {
+    100
+}
+fn default_vegetable_population_cap() -> usize {
+    500
+}
+fn default_speciation_genetic_distance_percent() -> f32 {
+    20.0
+}
 
 impl EngineConfig {
     pub fn testing() -> Self {

@@ -1117,8 +1117,27 @@ impl Engine {
                     return Ok(());
                 };
                 let mut vm = DnaVm::new(organism.program.rng_state);
-                vm.execute(&organism.program.dna, &mut organism.program.memory)?;
+                let report = vm.execute(
+                    &organism.program.dna,
+                    &mut organism.program.memory,
+                    crate::VmContext {
+                        position: [
+                            f64::from(organism.kinematics.position[0]),
+                            f64::from(organism.kinematics.position[1]),
+                        ],
+                        costs: &self.config.dna_costs,
+                        record_activations: false,
+                    },
+                )?;
                 organism.program.rng_state = vm.random_state();
+                organism.program.debug_text = report.debug_text;
+                organism.program.current_gene = u32::from(report.current_gene);
+                organism.program.condition_count = report.conditions_evaluated;
+                organism.program.activation_bitmap = report.activations;
+                let whole_cost = organism
+                    .program
+                    .settle_dna_energy_cost(report.energy_cost);
+                organism.materials.energy = organism.materials.energy.saturating_sub(whole_cost);
                 organism
                     .materials
                     .apply_outputs(&mut organism.program.memory, metabolism);
