@@ -1,76 +1,53 @@
-# Rendered GUI and DB2 Control-Parity Audit
+# Rendered GUI and DB2 Control Phase 0 Audit
 
-Last verified: 2026-07-23
+Last verified: 2026-07-30
 
 ## Outcome
 
-The original rendered audit baseline contains 109 interactive controls. The historical-menu restoration adds 74 DB2 menu leaf commands across nine top-level menus. Every historical command has a typed command ID, catalog entry, routed handler, enabled-state policy, and automated coverage proving that no command remains on the fail-closed pending implementation handler.
+The rendered audit measures the current Avalonia application. It does not establish complete DB2 GUI or behavioral parity. The 109-row baseline inventory and 74-entry historical menu catalog are registration and interaction surfaces; green counts do not prove that each control has DB2 semantics.
 
-| Surface | Controls | Rendered result |
+| Surface | Measured boundary | Current result |
 |---|---:|---:|
-| SetupWindow | 32 | 32 pass |
-| MainWindow | 39 | 39 pass |
-| AdvancedSettingsWindow | 34 | 34 pass |
-| DnaEditorWindow | 4 | 4 pass |
-| Historical menu leaf commands | 74 | 74 routed |
-| Original rendered baseline | 109 | 109 pass |
+| Baseline control matrix | 109 controls | 109/109 passing rows validated |
+| Historical menu catalog | 74 typed leaf commands | 74 registered and routed; semantics vary |
+| Desktop core suite | Current project | 62 passed; 0 failed; 0 skipped |
+| Rendered desktop suite | Current project | 26 passed; 0 failed; 0 skipped |
 
-The machine-readable baseline inventory is `docs/parity/control-surface-matrix.json`. The review table is `docs/parity/control-surface-matrix.md`. The current menu-specific result is `docs/parity/historic-menu-parity-report.md`.
+The machine-readable inventory is `docs/parity/control-surface-matrix.json`. The review table is `docs/parity/control-surface-matrix.md`. Menu-specific evidence is recorded in `docs/parity/historic-menu-parity-report.md`.
 
-## Behavioral authority and limits
+## Evidenced interaction boundary
 
-Control intent was compared with the original VB6 handlers in `Darwinbots2/MDIForm1.frm` and `Darwinbots2/OptionsForm.frm`. The comparison covers setup, simulation transport, robot commands, world-feature tools, settings, DNA inspection, DNA export, and new-species workflows.
+- Typed menu commands route to explicit handlers and enabled-state policy.
+- Live mutation settings execute through the authoritative simulation command path.
+- Mutation-free save writes a transformed copy and leaves the running world unchanged.
+- Whole-organism removal captures stable `slot:generation` identities, queues native `remove_many` JSON, executes off the caller thread, and publishes one batch update.
+- The organism export picker serializes only the captured permanent-tie group and its internal ties.
+- E-Grid and default Survival Info hidden states are enforced.
+- Retained shortcut strings become exact input gestures and are tested as keyboard input.
+- The three Internet commands remain visible for discoverability but disabled. The interaction suite, not screenshot appearance alone, proves no network work occurs.
+- Current view toggles and object tools are exercised within the modern viewport contract.
 
-The exact DB2 2.48.32 GUI could not be executed in the Linux cloud runner because its 32-bit Wine environment remained unavailable. This report therefore claims source-intent parity and rendered modern behavior, not pixel parity or exhaustive runtime comparison with the VB6 executable.
+## Known GUI gaps
 
-The menu audit claims functional coverage for the restored historical menu catalog. It does not claim pixel-identical VB6 dialogs, online play, or restoration of obsolete external utilities.
+- The MDI arena, bitmap toolbar, 13-panel status instrument, graph windows, and other desktop-shell details are replaced by a dashboard layout.
+- Distinct settings workflows are collapsed into setup and live-settings surfaces.
+- Robot Info, Console, Gene Activations, Philogeny, Color, PlayerBot, RGB monitor, Eye Designer, help, and related tools remain generic document/value-window substitutes or summaries.
+- Parameter dialogs for physics, costs, weather, mutations, restrictions, shapes, and teleporters remain incomplete.
+- Viewport rendering and interaction do not yet reproduce all DB2 eyes, gauges, object properties, click modes, cursor feedback, and zoom-lock behavior.
+- Graph, status, onboarding, refresh, modal/nonmodal, and offline workflow behavior remains incomplete.
+- The exact original 2.48.32 GUI has not been black-box exercised in a working compatible environment.
 
-## Rendered interaction coverage
+## Reproducible checkpoint gate
 
-- Setup menus, starting modes, species fields, mutation slider, file-service workflows, advanced settings, world creation, autosave recovery, defaults reset, and exit.
-- Runtime transport, throttle, turbo, backend switching, import, save, load, environment toggles, all nine expanders, live settings, viewport selection, click-to-move, drag-to-move, obstacle placement/removal, teleporter placement, clone, reproduce, follow, DNA editor launch, kill, and reset.
-- Every advanced numeric setting, every advanced boolean setting, Apply, and Cancel.
-- DNA text input, Apply DNA, Apply and Clone, and Save Bot.
-- All nine historical top-level menus opening through the rendered Avalonia visual tree.
-- Every one of the 74 historical leaf commands resolving to an explicit production handler and enabled-state policy.
-- Live mutation enable, global multiplier, and per-species mutation rates applying through the simulation thread.
-
-Inputs are delivered through Avalonia's rendered headless window with pointer and keyboard events. Asynchronous engine and storage effects are asserted through injected production interfaces, so file pickers and the engine thread are tested without bypassing their window handlers.
-
-## Defects fixed by this audit
-
-- Added injectable engine creation and desktop storage boundaries so runtime reset, import, save, load, autosave, and DNA export can be exercised without replacing production handlers.
-- Added stable names to every audited menu, button, field, toggle, expander, and editor action.
-- Corrected drag-to-move so it resolves the selected organism's stable `slot:generation` identity from the current UI snapshot before falling back to the session snapshot.
-- Corrected the runtime tool rail so nested environment controls and action labels remain readable at the 1500 x 900 audit viewport.
-- Added a Skia-backed test application and serialized rendered workflow coverage on Windows, Linux, and macOS CI jobs.
-
-## Intentional modern differences
-
-- CPU/GPU backend selection has no DB2 equivalent.
-- Turbo suspends world rendering while simulation throughput continues; DB2 instead ran as fast as its UI loop allowed.
-- Render Waste is a display-only control requested for the modern viewport.
-- Autosave recovery replaces broad legacy settings/save migration.
-- Expanders integrate DB2's separate dialogs and menu surfaces into the live simulation rail.
-
-These rows are marked `intentional-difference` rather than being misreported as DB2 parity.
-
-## Reproducible evidence
-
-Run:
+Run serially from the worktree root:
 
 ```powershell
-pwsh docs/verification/control-surface-audit/run-rendered-audit.ps1
+pwsh -NoProfile -File docs/reference/db24832/verify.ps1
+cargo test -p darwinbots-engine --test contracts --test manual_tools --test live_legacy_menu_settings
+dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj --no-restore --nologo
+dotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj --no-restore --nologo
+pwsh -NoProfile -File docs/verification/control-surface-audit/run-rendered-audit.ps1
+git diff --check
 ```
 
-The command runs the complete desktop test project, validates the 109-row matrix, and writes these generated screenshots under `docs/verification/control-surface-audit/modern/`:
-
-- `setup-initial.png`
-- `setup-exercised.png`
-- `advanced-initial.png`
-- `dna-initial.png`
-- `dna-exercised.png`
-- `runtime-initial.png`
-- `runtime-exercised.png`
-
-Screenshots are intentionally ignored by Git. CI writes the same evidence to its control-surface audit artifact directory.
+The rendered audit writes ignored screenshots under `docs/verification/control-surface-audit/modern/`. The checkpoint covers commits through `95818f6af58bcb2365ec21f6a49e707ae15ed343`.
