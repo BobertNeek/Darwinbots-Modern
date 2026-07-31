@@ -1,26 +1,18 @@
-use crate::VmMemory;
+use crate::{
+    AimCommands, CoreReadbacks, MaterialCommands, MaterialReadbacks, PhaseReadbacks, SysvarRuntime,
+    VmMemory,
+};
 use serde::{Deserialize, Serialize};
 
-const MEM_AIM_DX: i32 = 5;
-const MEM_AIM_SX: i32 = 6;
 const MEM_MASS: i32 = 10;
 const MEM_AIM: i32 = 18;
-const MEM_SET_AIM: i32 = 19;
 const MEM_PAIN: i32 = 203;
 const MEM_PLEASURE: i32 = 204;
 const MEM_CHLOROPLASTS: i32 = 920;
-const MEM_MAKE_CHLOROPLASTS: i32 = 921;
-const MEM_REMOVE_CHLOROPLASTS: i32 = 922;
 const MEM_BODY: i32 = 311;
-const MEM_FEED_BODY: i32 = 312;
-const MEM_STORE_BODY: i32 = 313;
-const MEM_MAKE_SLIME: i32 = 820;
 const MEM_SLIME: i32 = 821;
-const MEM_MAKE_SHELL: i32 = 822;
 const MEM_SHELL: i32 = 823;
-const MEM_STORE_VENOM: i32 = 824;
 const MEM_VENOM: i32 = 825;
-const MEM_STORE_POISON: i32 = 826;
 const MEM_POISON: i32 = 827;
 const MEM_WASTE: i32 = 828;
 const MEM_PARALYZED: i32 = 837;
@@ -182,18 +174,24 @@ impl RobotMaterials {
         )
     }
 
-    pub fn apply_outputs(&mut self, memory: &mut VmMemory, metabolism: i32) {
+    pub fn apply_outputs(
+        &mut self,
+        memory: &mut VmMemory,
+        metabolism: i32,
+        aim_commands: AimCommands,
+        material_commands: MaterialCommands,
+    ) {
         let prior = self.previous_energy;
-        let absolute = memory.read(MEM_SET_AIM);
+        let absolute = aim_commands.set;
         if absolute != 0 {
             self.aim = normalize_aim(absolute);
         }
-        self.aim = normalize_aim(self.aim + memory.read(MEM_AIM_DX) - memory.read(MEM_AIM_SX));
+        self.aim = normalize_aim(self.aim + aim_commands.turn_right - aim_commands.turn_left);
 
-        let body_gain = spend(&mut self.energy, memory.read(MEM_STORE_BODY).max(0), 10);
+        let body_gain = spend(&mut self.energy, material_commands.store_body.max(0), 10);
         self.body = self.body.saturating_add(body_gain);
-        let body_feed = memory
-            .read(MEM_FEED_BODY)
+        let body_feed = material_commands
+            .feed_body
             .max(0)
             .min(self.body.saturating_sub(1));
         self.body -= body_feed;
@@ -201,32 +199,32 @@ impl RobotMaterials {
 
         self.shell = self.shell.saturating_add(spend(
             &mut self.energy,
-            memory.read(MEM_MAKE_SHELL).max(0),
+            material_commands.make_shell.max(0),
             1,
         ));
         self.slime = self.slime.saturating_add(spend(
             &mut self.energy,
-            memory.read(MEM_MAKE_SLIME).max(0),
+            material_commands.make_slime.max(0),
             1,
         ));
         self.venom = self.venom.saturating_add(spend(
             &mut self.energy,
-            memory.read(MEM_STORE_VENOM).max(0),
+            material_commands.make_venom.max(0),
             1,
         ));
         self.poison = self.poison.saturating_add(spend(
             &mut self.energy,
-            memory.read(MEM_STORE_POISON).max(0),
+            material_commands.make_poison.max(0),
             1,
         ));
         self.chloroplasts = self.chloroplasts.saturating_add(spend(
             &mut self.energy,
-            memory.read(MEM_MAKE_CHLOROPLASTS).max(0),
+            material_commands.make_chloroplasts.max(0),
             2,
         ));
         self.chloroplasts = self
             .chloroplasts
-            .saturating_sub(memory.read(MEM_REMOVE_CHLOROPLASTS).max(0))
+            .saturating_sub(material_commands.remove_chloroplasts.max(0))
             .max(0);
 
         let spent = prior.saturating_sub(self.energy).max(0);
@@ -238,37 +236,41 @@ impl RobotMaterials {
         self.pleasure = self.energy.saturating_sub(prior).max(0);
         self.previous_energy = self.energy;
         self.publish(memory);
-        for address in [
-            MEM_AIM_DX,
-            MEM_AIM_SX,
-            MEM_SET_AIM,
-            MEM_FEED_BODY,
-            MEM_STORE_BODY,
-            MEM_MAKE_SLIME,
-            MEM_MAKE_SHELL,
-            MEM_STORE_VENOM,
-            MEM_STORE_POISON,
-            MEM_MAKE_CHLOROPLASTS,
-            MEM_REMOVE_CHLOROPLASTS,
-        ] {
-            memory.write(address, 0);
-        }
     }
 
     pub fn publish(&self, memory: &mut VmMemory) {
-        memory.write(MEM_BODY, self.body);
-        memory.write(MEM_WASTE, self.waste);
-        memory.write(MEM_SHELL, self.shell);
-        memory.write(MEM_SLIME, self.slime);
-        memory.write(MEM_VENOM, self.venom);
-        memory.write(MEM_POISON, self.poison);
-        memory.write(MEM_CHLOROPLASTS, self.chloroplasts);
-        memory.write(MEM_AIM, self.aim);
-        memory.write(MEM_MASS, self.body.saturating_add(self.shell / 10).max(1));
-        memory.write(MEM_PAIN, self.pain);
-        memory.write(MEM_PLEASURE, self.pleasure);
-        memory.write(MEM_PARALYZED, self.paralyzed);
-        memory.write(MEM_POISONED, self.poisoned);
+        let runtime = SysvarRuntime::new();
+        runtime.publish(
+            PhaseReadbacks::Materials(MaterialReadbacks {
+                values: vec![
+                    (310, self.energy),
+                    (MEM_BODY as u16, self.body),
+                    (MEM_WASTE as u16, self.waste),
+                    (MEM_SHELL as u16, self.shell),
+                    (MEM_SLIME as u16, self.slime),
+                    (MEM_VENOM as u16, self.venom),
+                    (MEM_POISON as u16, self.poison),
+                    (MEM_CHLOROPLASTS as u16, self.chloroplasts),
+                    (MEM_PARALYZED as u16, self.paralyzed),
+                    (MEM_POISONED as u16, self.poisoned),
+                ],
+            }),
+            memory,
+        );
+        runtime.publish(
+            PhaseReadbacks::Core(CoreReadbacks {
+                values: vec![
+                    (MEM_AIM as u16, self.aim),
+                    (
+                        MEM_MASS as u16,
+                        self.body.saturating_add(self.shell / 10).max(1),
+                    ),
+                    (MEM_PAIN as u16, self.pain),
+                    (MEM_PLEASURE as u16, self.pleasure),
+                ],
+            }),
+            memory,
+        );
     }
 }
 

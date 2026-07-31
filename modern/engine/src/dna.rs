@@ -422,14 +422,7 @@ fn resolve_address(
         return address;
     }
     match sysvar_address(name) {
-        Some(address) => {
-            if !crate::sysvars::sysvar_is_active(address) {
-                warnings.insert(format!(
-                    "legacy sysvar .{name} is accepted but currently inert"
-                ));
-            }
-            address
-        }
+        Some(address) => address,
         None => {
             warnings.insert(format!(
                 "unknown sysvar .{name} resolves to memory address 0"

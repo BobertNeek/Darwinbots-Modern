@@ -3,10 +3,11 @@ use crate::{
     BackendCapabilities, BackendKind, BackendPreference, BiologyState, CorpseSnapshot,
     CpuPhysicsBackend, DnaVm, EngineConfig, EngineError, GenomeMutator, GpuPhysicsBackend,
     HistorySample, LegacyDna, Obstacle, OrganismId, PhaseTimings, PhysicsBackend, PhysicsBatch,
-    PlantLightInput, ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn,
-    ProjectileTarget, RenderInstance, ShotSnapshot, SimulationStats, SpatialIndex,
-    SpeciesDefinition, SpeciesId, Teleporter, VegetationRuntime, VisionSnapshot, VisualPhenotype,
-    VmMemory, eye_value, generated_skin, projectile_effect,
+    CoreReadbacks, CyclePhase, PhaseCommands, PhaseReadbacks, PlantLightInput, ProjectileEffect,
+    ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, RenderInstance,
+    ShotSnapshot, SimulationStats, SpatialIndex, SpeciesDefinition, SpeciesId, SysvarRuntime,
+    Teleporter, TieCommands, TieReadbacks, VegetationRuntime, VisionReadbacks, VisionSnapshot,
+    VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -17,17 +18,9 @@ use crate::physics::{
     environment_impulse,
 };
 
-const MEM_UP: i32 = 1;
-const MEM_DN: i32 = 2;
-const MEM_SX: i32 = 3;
-const MEM_DX: i32 = 4;
-const MEM_SHOOT: i32 = 7;
-const MEM_SHOOTVAL: i32 = 8;
 const MEM_ROBAGE: i32 = 9;
 const MEM_REPRO: i32 = 300;
-const MEM_MREPRO: i32 = 301;
 const MEM_NRG: i32 = 310;
-const MEM_TIE: i32 = 330;
 const MEM_REF_X: i32 = 689;
 const MEM_REF_Y: i32 = 690;
 const MEM_REF_VEL_SX: i32 = 696;
@@ -39,14 +32,6 @@ const MEM_REF_NRG: i32 = 709;
 const MEM_REF_AGE: i32 = 710;
 const MEM_EYE1: i32 = 501;
 const MEM_EYE9: i32 = 509;
-const MEM_DELETE_TIE: i32 = 467;
-const MEM_SHARE_NRG: i32 = 830;
-const MEM_SHARE_WASTE: i32 = 831;
-const MEM_SHARE_SHELL: i32 = 832;
-const MEM_SHARE_SLIME: i32 = 833;
-const MEM_SHARE_CHLOROPLASTS: i32 = 924;
-const MEM_TIE_LOCATION: i32 = 452;
-const MEM_TIE_VALUE: i32 = 453;
 const MEM_TIE_PRESENT: i32 = 454;
 const MEM_TIE_NUMBER: i32 = 455;
 const MEM_NUMBER_OF_TIES: i32 = 466;
@@ -59,8 +44,6 @@ const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_LIGHT: i32 = 923;
-const MEM_BACKSHOT: i32 = 900;
-const MEM_AIM_SHOOT: i32 = 901;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrganismSnapshot {
@@ -1138,14 +1121,39 @@ impl Engine {
                     .program
                     .settle_dna_energy_cost(report.energy_cost);
                 organism.materials.energy = organism.materials.energy.saturating_sub(whole_cost);
-                organism
-                    .materials
-                    .apply_outputs(&mut organism.program.memory, metabolism);
+                let runtime = SysvarRuntime::new();
+                runtime.clear_transients_after_dna(&mut organism.program.memory);
+                let Some(PhaseCommands::Aim(aim_commands)) =
+                    runtime.consume(CyclePhase::Aim, &mut organism.program.memory)
+                else {
+                    unreachable!("aim phase must return aim commands")
+                };
+                let Some(PhaseCommands::Material(material_commands)) =
+                    runtime.consume(CyclePhase::Material, &mut organism.program.memory)
+                else {
+                    unreachable!("material phase must return material commands")
+                };
+                let Some(PhaseCommands::Movement(movement_commands)) =
+                    runtime.consume(CyclePhase::Movement, &mut organism.program.memory)
+                else {
+                    unreachable!("movement phase must return movement commands")
+                };
+                let Some(PhaseCommands::Virus(_)) =
+                    runtime.consume(CyclePhase::Virus, &mut organism.program.memory)
+                else {
+                    unreachable!("virus phase must return virus commands")
+                };
+                organism.materials.apply_outputs(
+                    &mut organism.program.memory,
+                    metabolism,
+                    aim_commands,
+                    material_commands,
+                );
                 let input = MovementInput {
-                    up: organism.program.memory.read(MEM_UP),
-                    down: organism.program.memory.read(MEM_DN),
-                    left: organism.program.memory.read(MEM_DX),
-                    right: organism.program.memory.read(MEM_SX),
+                    up: movement_commands.up,
+                    down: movement_commands.down,
+                    left: movement_commands.left,
+                    right: movement_commands.right,
                     aim_radians: organism.materials.aim as f32 / 200.0,
                     new_move: organism.program.dna.uses_new_move(),
                 };
@@ -1163,9 +1171,6 @@ impl Engine {
                     );
                 }
                 organism.kinematics.pending_velocity = movement.velocity;
-                for output in [MEM_UP, MEM_DN, MEM_SX, MEM_DX] {
-                    organism.program.memory.write(output, 0);
-                }
                 Ok(())
             })?;
         Ok(())
@@ -1407,76 +1412,100 @@ impl Engine {
             .collect();
         for sense in senses.into_iter().flatten() {
             let observer = self.slots[sense.0].organism.as_mut().unwrap();
-            for (sector, value) in sense.1.into_iter().enumerate() {
-                observer
-                    .program
-                    .memory
-                    .write(MEM_EYE1 + sector as i32, value);
-            }
-            let Some((
+            let mut values: Vec<_> = sense
+                .1
+                .into_iter()
+                .enumerate()
+                .map(|(sector, value)| ((MEM_EYE1 + sector as i32) as u16, value))
+                .collect();
+            values.extend([
+                (MEM_REF_X as u16, 0),
+                (MEM_REF_Y as u16, 0),
+                (MEM_REF_VEL_UP as u16, 0),
+                (MEM_REF_VEL_DN as u16, 0),
+                (MEM_REF_VEL_DX as u16, 0),
+                (MEM_REF_VEL_SX as u16, 0),
+                (MEM_REF_EYE as u16, 0),
+                (MEM_REF_NRG as u16, 0),
+                (MEM_REF_AGE as u16, 0),
+            ]);
+            if let Some((
                 target_position,
                 target_velocity,
                 target_energy,
                 target_age,
                 target_eye_references,
             )) = sense.2
-            else {
-                continue;
-            };
-            let observer_angle = observer.materials.aim as f32 / 200.0;
-            observer
-                .program
-                .memory
-                .write(MEM_REF_X, target_position[0].round() as i32);
-            observer
-                .program
-                .memory
-                .write(MEM_REF_Y, target_position[1].round() as i32);
-            let target_forward = target_velocity[0] * observer_angle.sin()
-                + target_velocity[1] * observer_angle.cos();
-            let target_lateral = target_velocity[0] * observer_angle.cos()
-                - target_velocity[1] * observer_angle.sin();
-            observer
-                .program
-                .memory
-                .write(MEM_REF_VEL_UP, target_forward.max(0.0).round() as i32);
-            observer
-                .program
-                .memory
-                .write(MEM_REF_VEL_DN, (-target_forward).max(0.0).round() as i32);
-            observer
-                .program
-                .memory
-                .write(MEM_REF_VEL_DX, target_lateral.max(0.0).round() as i32);
-            observer
-                .program
-                .memory
-                .write(MEM_REF_VEL_SX, (-target_lateral).max(0.0).round() as i32);
-            observer
-                .program
-                .memory
-                .write(MEM_REF_EYE, target_eye_references);
-            observer.program.memory.write(MEM_REF_NRG, target_energy);
-            observer
-                .program
-                .memory
-                .write(MEM_REF_AGE, target_age.min(i32::MAX as u64) as i32);
+            {
+                let observer_angle = observer.materials.aim as f32 / 200.0;
+                let target_forward = target_velocity[0] * observer_angle.sin()
+                    + target_velocity[1] * observer_angle.cos();
+                let target_lateral = target_velocity[0] * observer_angle.cos()
+                    - target_velocity[1] * observer_angle.sin();
+                values.extend([
+                    (MEM_REF_X as u16, target_position[0].round() as i32),
+                    (MEM_REF_Y as u16, target_position[1].round() as i32),
+                    (
+                        MEM_REF_VEL_UP as u16,
+                        target_forward.max(0.0).round() as i32,
+                    ),
+                    (
+                        MEM_REF_VEL_DN as u16,
+                        (-target_forward).max(0.0).round() as i32,
+                    ),
+                    (
+                        MEM_REF_VEL_DX as u16,
+                        target_lateral.max(0.0).round() as i32,
+                    ),
+                    (
+                        MEM_REF_VEL_SX as u16,
+                        (-target_lateral).max(0.0).round() as i32,
+                    ),
+                    (MEM_REF_EYE as u16, target_eye_references),
+                    (MEM_REF_NRG as u16, target_energy),
+                    (MEM_REF_AGE as u16, target_age.min(i32::MAX as u64) as i32),
+                ]);
+            }
+            SysvarRuntime::new().publish(
+                PhaseReadbacks::Vision(VisionReadbacks { values }),
+                &mut observer.program.memory,
+            );
         }
         Ok(())
     }
 
     fn interactions_phase(&mut self) {
         self.pending_projectile_requests.clear();
+        let runtime = SysvarRuntime::new();
+        let phase_commands: Vec<_> = self
+            .slots
+            .iter_mut()
+            .map(|slot| {
+                let organism = slot.organism.as_mut()?;
+                let Some(PhaseCommands::Tie(tie)) =
+                    runtime.consume(CyclePhase::Tie, &mut organism.program.memory)
+                else {
+                    unreachable!("tie phase must return tie commands")
+                };
+                let Some(PhaseCommands::Shot(shot)) =
+                    runtime.consume(CyclePhase::Shot, &mut organism.program.memory)
+                else {
+                    unreachable!("shot phase must return shot commands")
+                };
+                Some((tie, shot))
+            })
+            .collect();
         let mut tie_requests = Vec::new();
         let mut tie_deletions = Vec::new();
         for attacker_slot in 0..self.slots.len() {
             let Some(attacker) = self.slots[attacker_slot].organism.as_ref() else {
                 continue;
             };
-            if attacker.program.memory.read(MEM_DELETE_TIE) != 0 {
+            let (tie_commands, shot_commands) = phase_commands[attacker_slot].unwrap();
+            if tie_commands.delete != 0 {
                 tie_deletions.push(attacker_slot);
             }
-            if attacker.program.memory.read(MEM_TIE) != 0 {
+            if tie_commands.create != 0 {
                 let target = self.spatial.nearest(
                     attacker.kinematics.position,
                     Some(attacker_slot),
@@ -1486,21 +1515,21 @@ impl Engine {
                     tie_requests.push((attacker_slot, target));
                 }
             }
-            let shot_type = attacker.program.memory.read(MEM_SHOOT);
+            let shot_type = shot_commands.kind;
             if shot_type == 0 {
                 continue;
             }
-            let requested_value = attacker.program.memory.read(MEM_SHOOTVAL);
+            let requested_value = shot_commands.value;
             let shot_value = if shot_type == -1 && requested_value == 0 {
                 20_i32.saturating_add(attacker.materials.body.max(0) / 5)
             } else {
                 requested_value.abs().max(1)
             };
             let mut angle = attacker.materials.aim as f32 / 200.0;
-            if attacker.program.memory.read(MEM_BACKSHOT) != 0 {
+            if shot_commands.backshot != 0 {
                 angle -= std::f32::consts::PI;
             }
-            let aimed = attacker.program.memory.read(MEM_AIM_SHOOT);
+            let aimed = shot_commands.aim;
             if aimed != 0 {
                 angle = attacker.materials.aim as f32 / 200.0 - (aimed % 1_256) as f32 / 200.0;
             }
@@ -1517,35 +1546,14 @@ impl Engine {
                     value: shot_value,
                     angle,
                 });
-            let memory = &mut self.slots[attacker_slot]
-                .organism
-                .as_mut()
-                .unwrap()
-                .program
-                .memory;
-            for output in [MEM_SHOOT, MEM_SHOOTVAL, MEM_BACKSHOT, MEM_AIM_SHOOT] {
-                memory.write(output, 0);
-            }
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
         self.ties.retain(|tie| {
             !tie_deletions.contains(&(tie.first.slot() as usize))
                 && !tie_deletions.contains(&(tie.second.slot() as usize))
         });
-        for slot in tie_deletions {
-            if let Some(organism) = self.slots[slot].organism.as_mut() {
-                organism.program.memory.write(MEM_DELETE_TIE, 0);
-            }
-        }
         for (first_slot, second_slot) in tie_requests {
             if !self.ties_enabled {
-                self.slots[first_slot]
-                    .organism
-                    .as_mut()
-                    .unwrap()
-                    .program
-                    .memory
-                    .write(MEM_TIE, 0);
                 continue;
             }
             if self.slots[second_slot]
@@ -1558,13 +1566,6 @@ impl Engine {
             {
                 let second = self.slots[second_slot].organism.as_mut().unwrap();
                 second.materials.slime = second.materials.slime.saturating_sub(10);
-                self.slots[first_slot]
-                    .organism
-                    .as_mut()
-                    .unwrap()
-                    .program
-                    .memory
-                    .write(MEM_TIE, 0);
                 continue;
             }
             let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
@@ -1593,13 +1594,6 @@ impl Engine {
                 });
                 self.stats.ties_created = self.stats.ties_created.saturating_add(1);
             }
-            self.slots[first_slot]
-                .organism
-                .as_mut()
-                .unwrap()
-                .program
-                .memory
-                .write(MEM_TIE, 0);
         }
         let mut tie_counts = vec![0i32; self.slots.len()];
         let mut partners = vec![None; self.slots.len()];
@@ -1616,23 +1610,24 @@ impl Engine {
                 continue;
             };
             let count = tie_counts.get(slot).copied().unwrap_or(0);
-            organism
-                .program
-                .memory
-                .write(MEM_MULTI, i32::from(count > 0));
-            organism.program.memory.write(MEM_NUMBER_OF_TIES, count);
-            organism.program.memory.write(MEM_MY_TIES, count);
-            organism
-                .program
-                .memory
-                .write(MEM_TIE_PRESENT, i32::from(count > 0));
-            organism.program.memory.write(MEM_TIE_NUMBER, count);
-            organism.program.memory.write(
-                MEM_READ_TIE,
-                partners
-                    .get(slot)
-                    .and_then(|value| *value)
-                    .map_or(0, |value| value as i32 + 1),
+            runtime.publish(
+                PhaseReadbacks::Tie(TieReadbacks {
+                    values: vec![
+                        (MEM_MULTI as u16, i32::from(count > 0)),
+                        (MEM_NUMBER_OF_TIES as u16, count),
+                        (MEM_MY_TIES as u16, count),
+                        (MEM_TIE_PRESENT as u16, i32::from(count > 0)),
+                        (MEM_TIE_NUMBER as u16, count),
+                        (
+                            MEM_READ_TIE as u16,
+                            partners
+                                .get(slot)
+                                .and_then(|value| *value)
+                                .map_or(0, |value| value as i32 + 1),
+                        ),
+                    ],
+                }),
+                &mut organism.program.memory,
             );
         }
         let mut channels = Vec::new();
@@ -1641,23 +1636,22 @@ impl Engine {
                 (tie.first.slot() as usize, tie.second.slot() as usize),
                 (tie.second.slot() as usize, tie.first.slot() as usize),
             ] {
-                let Some(source) = self.slots[source_slot].organism.as_ref() else {
+                let Some(_source) = self.slots[source_slot].organism.as_ref() else {
                     continue;
                 };
+                let commands = phase_commands[source_slot]
+                    .map(|commands| commands.0)
+                    .unwrap_or_else(TieCommands::default);
                 channels.push((
                     source_slot,
                     target_slot,
-                    source.program.memory.read(MEM_SHARE_NRG).clamp(0, 99),
-                    source.program.memory.read(MEM_SHARE_WASTE).clamp(0, 99),
-                    source.program.memory.read(MEM_SHARE_SHELL).clamp(0, 99),
-                    source.program.memory.read(MEM_SHARE_SLIME).clamp(0, 99),
-                    source
-                        .program
-                        .memory
-                        .read(MEM_SHARE_CHLOROPLASTS)
-                        .clamp(0, 99),
-                    source.program.memory.read(MEM_TIE_LOCATION),
-                    source.program.memory.read(MEM_TIE_VALUE),
+                    commands.share_energy.clamp(0, 99),
+                    commands.share_waste.clamp(0, 99),
+                    commands.share_shell.clamp(0, 99),
+                    commands.share_slime.clamp(0, 99),
+                    commands.share_chloroplasts.clamp(0, 99),
+                    commands.location,
+                    commands.value,
                 ));
             }
         }
@@ -1700,18 +1694,6 @@ impl Engine {
                     .program
                     .memory
                     .write(MEM_TIE_MEMORY_VALUE, value);
-            }
-            let source_memory = &mut self.slots[source].organism.as_mut().unwrap().program.memory;
-            for output in [
-                MEM_SHARE_NRG,
-                MEM_SHARE_WASTE,
-                MEM_SHARE_SHELL,
-                MEM_SHARE_SLIME,
-                MEM_SHARE_CHLOROPLASTS,
-                MEM_TIE_LOCATION,
-                MEM_TIE_VALUE,
-            ] {
-                source_memory.write(output, 0);
             }
         }
     }
@@ -2493,6 +2475,7 @@ impl Engine {
         let metabolism_cost = self.config.metabolism_cost.max(0);
         let mutations_enabled = self.mutations_enabled;
         let global_mutation_multiplier = self.global_mutation_multiplier;
+        let runtime = SysvarRuntime::new();
         let outcomes: Vec<_> = self
             .slots
             .par_iter_mut()
@@ -2512,29 +2495,33 @@ impl Engine {
                 organism.materials.paralyzed =
                     organism.materials.paralyzed.saturating_sub(1).max(0);
                 organism.materials.energy = organism.materials.energy.min(32_000);
-                organism.program.memory.write(
-                    MEM_ROBAGE,
-                    organism.counters.age.min(i32::MAX as u64) as i32,
+                runtime.publish(
+                    PhaseReadbacks::Core(CoreReadbacks {
+                        values: vec![
+                            (
+                                MEM_ROBAGE as u16,
+                                organism.counters.age.min(i32::MAX as u64) as i32,
+                            ),
+                            (
+                                MEM_XPOS as u16,
+                                organism.kinematics.position[0].round() as i32,
+                            ),
+                            (
+                                MEM_YPOS as u16,
+                                organism.kinematics.position[1].round() as i32,
+                            ),
+                        ],
+                    }),
+                    &mut organism.program.memory,
                 );
-                organism
-                    .program
-                    .memory
-                    .write(MEM_NRG, organism.materials.energy);
-                organism
-                    .program
-                    .memory
-                    .write(MEM_XPOS, organism.kinematics.position[0].round() as i32);
-                organism
-                    .program
-                    .memory
-                    .write(MEM_YPOS, organism.kinematics.position[1].round() as i32);
                 organism.materials.publish(&mut organism.program.memory);
-                let mutation_reproduction = organism.program.memory.read(MEM_MREPRO);
-                let reproduction = organism
-                    .program
-                    .memory
-                    .read(MEM_REPRO)
-                    .max(mutation_reproduction);
+                let Some(PhaseCommands::Reproduction(reproduction_commands)) =
+                    runtime.consume(CyclePhase::Reproduction, &mut organism.program.memory)
+                else {
+                    unreachable!("reproduction phase must return reproduction commands")
+                };
+                let mutation_reproduction = reproduction_commands.mutated;
+                let reproduction = reproduction_commands.asexual.max(mutation_reproduction);
                 let assisted_reproduction = organism.effects.forced_reproduction;
                 organism.effects.forced_reproduction = false;
                 let mut birth = None;
@@ -2555,8 +2542,6 @@ impl Engine {
                         .program
                         .memory
                         .write(MEM_NRG, organism.materials.energy);
-                    organism.program.memory.write(MEM_REPRO, 0);
-                    organism.program.memory.write(MEM_MREPRO, 0);
                     organism.program.rng_state = advance_random(organism.program.rng_state);
                     let configured_rate = if mutations_enabled {
                         species
