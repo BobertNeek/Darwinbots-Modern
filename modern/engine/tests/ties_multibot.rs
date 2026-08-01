@@ -86,34 +86,68 @@ fn dragging_one_member_moves_the_tied_organism_and_clears_momentum() {
     let source = engine
         .spawn_at(
             LegacyDna::parse("start\n1 .tie store\n25 .up store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 300.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0])
+        .spawn_at(
+            LegacyDna::parse("start\n25 .up store\nstop").unwrap(),
+            [550.0, 300.0],
+        )
         .unwrap();
     engine.tick().unwrap();
-    assert_eq!(engine.snapshot().ties.len(), 1);
+    let snapshot_before = engine.snapshot();
+    assert_eq!(snapshot_before.ties.len(), 1);
+    assert_eq!(snapshot_before.ties[0].first, source);
+    assert_eq!(snapshot_before.ties[0].second, target);
     let source_before = engine.organism(source).unwrap();
     let target_before = engine.organism(target).unwrap();
     let destination = [400.0, 450.0];
+    let source_radius = snapshot_before
+        .render_instances
+        .iter()
+        .find(|instance| instance.slot == source.slot())
+        .unwrap()
+        .radius;
+    let target_radius = snapshot_before
+        .render_instances
+        .iter()
+        .find(|instance| instance.slot == target.slot())
+        .unwrap()
+        .radius;
+    let offset_before = [
+        target_before.position[0] - source_before.position[0],
+        target_before.position[1] - source_before.position[1],
+    ];
+    let separation_squared =
+        offset_before[0] * offset_before[0] + offset_before[1] * offset_before[1];
+    let minimum_separation = source_radius + target_radius;
+    assert!(separation_squared > minimum_separation * minimum_separation);
+    assert_ne!(source_before.velocity, [0.0, 0.0]);
+    assert_ne!(target_before.velocity, [0.0, 0.0]);
 
     engine.move_organism(source, destination).unwrap();
 
     let source_after = engine.organism(source).unwrap();
     let target_after = engine.organism(target).unwrap();
-    let delta = [
-        destination[0] - source_before.position[0],
-        destination[1] - source_before.position[1],
+    let source_translation = [
+        source_after.position[0] - source_before.position[0],
+        source_after.position[1] - source_before.position[1],
     ];
+    let target_translation = [
+        target_after.position[0] - target_before.position[0],
+        target_after.position[1] - target_before.position[1],
+    ];
+    let offset_after = [
+        target_after.position[0] - source_after.position[0],
+        target_after.position[1] - source_after.position[1],
+    ];
+
+    // Mutation guard: removing connected-graph translation or either momentum reset
+    // from Engine::move_organism must fail this test.
     assert_eq!(source_after.position, destination);
-    assert_eq!(
-        target_after.position,
-        [
-            target_before.position[0] + delta[0],
-            target_before.position[1] + delta[1]
-        ],
-    );
+    assert_eq!(target_translation, source_translation);
+    assert_eq!(offset_after, offset_before);
     assert_eq!(source_after.velocity, [0.0, 0.0]);
     assert_eq!(target_after.velocity, [0.0, 0.0]);
 }
