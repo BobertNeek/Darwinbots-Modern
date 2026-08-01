@@ -1,32 +1,32 @@
 # DB2 2.48.32 Non-Online Gap Register
 
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 
-This register maps every P0/P1 finding from the four systemic audits to a bounded status. `complete` is reserved for the Phase 0 B1-B4 repairs and their deterministic evidence closures. `partial` means useful behavior exists but the audit finding remains open. Catalog registration and test counts never make a subsystem complete. Online networking is `excluded`, not complete.
+This register maps every P0/P1 finding from the four systemic audits to a bounded status. `complete` is reserved for a proven row-level closure. `partial` means useful behavior exists but the audit finding remains open. The accepted Phase 1 foundation checkpoint does not close broader mechanics, frontend, or product-parity findings. Catalog registration and test counts never make a subsystem complete. Online networking is `excluded`, not complete.
 
-Audit P0 summary: 20 P0 findings remain `open` or `partial`; 2 P0 findings are `complete`. B2 and B3 are complete evidence closures inside broader audit findings, so they do not erase those broader gaps.
+Register summary: 29 findings remain `open`, 12 remain `partial`, 6 are `complete`, and online networking is `excluded`. B2 and B3 are complete evidence closures inside broader audit findings, so they do not erase those broader gaps.
 
 ## Cycle/state
 
 | Priority | Finding | Status | Evidence or limit | Dependency / next phase |
 |---|---|---|---|---|
-| P0 | Canonical cycle and observable state timing differ | open | Modern phase ordering, parallel DNA execution, and queued birth/death timing do not match the audit contract. | Build the three-cycle trace fixture, then repair orchestration order. |
-| P0 | DNA execution safety, accounting, and observability are absent | open | No 32,000-block cap, full gene/condition/activation/debug report, or per-token cost accounting. | DNA runtime phase after canonical cycle tracing. |
+| P0 | Canonical cycle foundation is accepted; complete observable-state timing parity remains open | open | Phase 1 proves the 56-phase order, serial slot-ordered DNA, three-cycle visibility, tied-write ordering, shot/sense timing, and deferred birth/death at accepted HEAD `7e9f0ea`; it does not prove every Phase 2 mechanism at every phase. | Extend golden traces with later sense, tie, shot, reproduction, physics, mutation, and ecology mechanics. |
+| P0 | DNA runtime foundation is accepted; complete legacy observability remains open | open | Phase 1 proves the 32,000-block cap, gene/condition/activation/debug reporting, stack semantics, and token/store cost accounting. Desktop debugger workflows and exhaustive mutated-program compatibility remain open. | Preserve the accepted runtime gates while adding later diagnostic and corpus evidence. |
 
 ## DNA/sysvars
 
 | Priority | Finding | Status | Evidence or limit | Dependency / next phase |
 |---|---|---|---|---|
-| P0 | Tokenizer failure semantics reject valid or mutated legacy input | open | Slash headers, implicit `end`, and unknown-token-to-zero behavior differ. | Golden tokenizer fixtures from authoritative samples. |
-| P0 | Accepted advanced/debug tokens can execute as no-ops | open | Parser coverage exceeds VM behavior. | Table-driven VM semantics and negative tests. |
-| P0 | Full alias lookup is not full sysvar behavior | partial | The name/address table exists, but selected accepted sysvars remain inert. | Command/sense lifecycle fixtures for all active addresses. |
+| P0 | Tokenizer foundation is accepted; exhaustive legacy-corpus compatibility remains open | open | Phase 1 proves slash headers, implicit terminal `end`, canonical metadata/hash handling, and unknown-token-to-zero behavior against authoritative and shipped samples. It does not claim every historical or mutated input. | Expand the frozen corpus without weakening the accepted tokenizer contract. |
+| P0 | Canonical VM operator coverage is accepted; exhaustive mutated-program behavior remains open | open | Every canonical operator has table-driven stack/memory coverage, including advanced/debug commands and negative/default cases. Full arbitrary-program equivalence is not claimed. | Add authoritative mutated-program differentials as fixtures become available. |
+| P0 | Sysvar lifecycle foundation is accepted; complete mechanism behavior remains partial | partial | The catalog has 255 names and 247 lifecycle-covered addresses with zero set differences; known sysvars do not emit inert warnings, and commands use typed phase DTOs. Phase 2 mechanism semantics behind those interfaces remain open. | Preserve lifecycle coverage while implementing and proving each later mechanism. |
 | P1 | DNA text export loses metadata and source identity | open | Export omits aliases, generation, mutation/tag data, and legacy hash. | Define lossless DNA source/export contract. |
 
 ## Physics/senses
 
 | Priority | Finding | Status | Evidence or limit | Dependency / next phase |
 |---|---|---|---|---|
-| P0 | Core senses are incomplete and occur at the wrong time | open | Touch, edge, taste, occlusion, focus, tie, body-change, and environmental senses remain incomplete. | Ordered sense-lifecycle fixtures after cycle repair. |
+| P0 | Core senses remain incomplete despite accepted cycle placement | open | Phase 1 proves canonical sense placement and three-cycle visibility, but touch, edge, taste, occlusion, focus, tie, body-change, and environmental sense semantics remain incomplete. | Add ordered fixtures for each remaining sense mechanism. |
 | P1 | Physics and topology retain kernels but not DB2 behavior | partial | Drag/friction kernels exist; mass, pond/tide, angular motion, wrap/borders, cluster collisions, and obstacle collision semantics differ. | Canonical physics fixtures and topology split. |
 
 ## Shots/defenses
@@ -47,7 +47,7 @@ Audit P0 summary: 20 P0 findings remain `open` or `partial`; 2 P0 findings are `
 
 | Priority | Finding | Status | Evidence or limit | Dependency / next phase |
 |---|---|---|---|---|
-| P0 | Robot state cannot represent DB2 heredity and reproduction | open | Required private state, transfer rules, birth placement/tie, sexual state, and staged fields are absent. | Expand authoritative organism state, then golden parent/child fixture. |
+| P0 | Robot-state foundation exists; complete DB2 heredity and reproduction remain open | open | Phase 1 consolidates authoritative robot fields behind `RobotState` and preserves them through DB3S v2 migration and v3 round-trip. Full transfer rules, birth ties, sexual state, and Phase 2 reproduction mechanics remain open. | Add golden parent/child fixtures for each remaining heredity and reproduction rule. |
 | P1 | Genealogy and console are summaries, not diagnostics | open | Current lineage, console, and activation views lack live diagnostic contracts. | Engine observability first, then dedicated nonmodal tools. |
 
 ## Ecology/corpses
@@ -69,7 +69,7 @@ Audit P0 summary: 20 P0 findings remain `open` or `partial`; 2 P0 findings are `
 | Priority | Finding | Status | Evidence or limit | Dependency / next phase |
 |---|---|---|---|---|
 | P0 | Legacy simulation/settings interchange is absent | open | Modern `.db3s` cannot read or emit DB2 simulation/settings/organism/stats formats. | Versioned compatibility/import-export plan. |
-| P1 | Modern persistence is deterministic but not product-compatible | partial | Modern state round-trips; DB2 save, graph, snapshot, genealogy, and recovery contracts do not. | Compatibility fixtures and legacy file boundaries. |
+| P1 | Modern persistence is deterministic but not product-compatible | partial | DB3S v2 migration, parent-default omissions, and complete Phase 1 DB3S v3 round-trip are covered; DB2 save, graph, snapshot, genealogy, and recovery contracts remain incompatible or absent. | Compatibility fixtures and legacy file boundaries. |
 | P1 | Snapshot recording does not meet the DB2 contract | open | Living/dead records use modern JSON behavior rather than the required genome record policy. | Recording contract and repopulation-exclusion tests. |
 | P1 | Safemode recovery is rotating autosave | open | No last-start artifact, fault-window narrowing, crash classification, or diagnostic recovery. | Recovery controller and induced-failure test. |
 | P1 | Settings persistence is coupled to world saves | open | No standalone settings file workflow. | Separate settings authority and serializer. |
@@ -86,7 +86,7 @@ Audit P0 summary: 20 P0 findings remain `open` or `partial`; 2 P0 findings are `
 
 | Priority | Finding | Status | Evidence or limit | Dependency / next phase |
 |---|---|---|---|---|
-| P1 | Interaction-bearing CPU/GPU coverage is incomplete | open | Existing differentials cover selected kernels, not every phase or long ecological scenario. | Extend only after canonical CPU semantics are fixed. |
+| P1 | Interaction-bearing CPU/GPU coverage is incomplete | open | A physical RTX 3050 passes Phase 1 CPU/GPU gameplay-state and nontiming-trace parity plus fallback-disabled post-submit rollback tests. Coverage still does not include every Phase 2 interaction or long ecological scenario. | Extend differentials without converting the bounded Phase 1 receipt into long-run GPU parity. |
 
 ## Desktop shell/settings/tools/viewport
 
