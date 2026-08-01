@@ -180,6 +180,7 @@ impl ProjectilePool {
                 80,
             ),
         };
+        let velocity = [vb_cint(velocity[0]), vb_cint(velocity[1])];
         let raw_range = incoming_range.saturating_mul(range_multiplier);
         let energy = raw_range.saturating_add(41) as f32;
         let range = (raw_range.saturating_add(41) / 40).max(1);
@@ -348,6 +349,10 @@ impl ProjectilePool {
         }
         snapshots
     }
+}
+
+fn vb_cint(value: f32) -> f32 {
+    value.round_ties_even()
 }
 
 fn normalize_kind(kind: i32) -> i32 {

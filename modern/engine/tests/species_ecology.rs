@@ -1,5 +1,5 @@
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, SaveFile, SpeciesDefinition, sysvar_address,
+    Engine, EngineConfig, LegacyDna, OrganismId, SaveFile, SpeciesDefinition, sysvar_address,
 };
 
 const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
@@ -12,6 +12,30 @@ fn assert_positive_toxin_edge_gap(target_position: [f32; 2]) {
     let center_gap = target_position[0] - TOXIN_SOURCE_POSITION[0];
     assert!(center_gap == 250.0 || center_gap == 300.0);
     assert!(center_gap - DEFAULT_ROBOT_RADII_SUM > 0.0);
+}
+
+fn restore_with_toxin_motion(
+    engine: &Engine,
+    source: OrganismId,
+    source_actual_velocity: [f32; 2],
+    target: OrganismId,
+    target_actual_velocity: [f32; 2],
+    incoming_velocity: [f32; 2],
+) -> Engine {
+    let encoded = SaveFile::encode(engine).unwrap();
+    assert_eq!(u16::from_le_bytes([encoded[4], encoded[5]]), 3);
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["slots"][source.slot() as usize]["organism"]["kinematics"]["actual_velocity"] =
+        serde_json::json!(source_actual_velocity);
+    payload["slots"][target.slot() as usize]["organism"]["kinematics"]["actual_velocity"] =
+        serde_json::json!(target_actual_velocity);
+    payload["projectiles"]["velocities"][0] = serde_json::json!(incoming_velocity);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    SaveFile::decode(&save).unwrap()
 }
 
 #[test]
@@ -550,7 +574,7 @@ fn heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppressi
 }
 
 #[test]
-fn information_defense_reverses_incoming_velocity_and_uses_range_times_forty() {
+fn information_defense_applies_vb_cint_to_reversed_velocity() {
     assert_positive_toxin_edge_gap(TOXIN_TARGET_POSITION);
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let mut engine = Engine::new(EngineConfig {
@@ -580,6 +604,30 @@ fn information_defense_reverses_incoming_velocity_and_uses_range_times_forty() {
     engine.replace_dna(defender, idle.clone()).unwrap();
 
     engine.tick().unwrap();
+    engine = restore_with_toxin_motion(
+        &engine,
+        attacker,
+        [0.5, -2.5],
+        defender,
+        [1.25, -0.75],
+        [40.5, -2.5],
+    );
+    assert_eq!(
+        engine
+            .robot_state(attacker)
+            .unwrap()
+            .kinematics
+            .actual_velocity,
+        [0.5, -2.5]
+    );
+    assert_eq!(
+        engine
+            .robot_state(defender)
+            .unwrap()
+            .kinematics
+            .actual_velocity,
+        [1.25, -0.75]
+    );
     let incoming = engine
         .snapshot()
         .shots
@@ -600,16 +648,14 @@ fn information_defense_reverses_incoming_velocity_and_uses_range_times_forty() {
         .unwrap();
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
     assert_eq!(returned.owner, defender);
-    assert_eq!(
-        returned.velocity,
-        [-incoming.velocity[0], -incoming.velocity[1]]
-    );
+    assert_eq!(incoming.velocity, [40.5, -2.5]);
+    assert_eq!(returned.velocity, [-40.0, 2.0]);
     assert_eq!(returned.range, 12);
     assert_eq!(returned.energy, 481.0);
 }
 
 #[test]
-fn release_energy_defense_uses_target_actual_velocity_and_range_times_eighty() {
+fn release_energy_defense_applies_vb_cint_after_target_velocity_formula() {
     assert_positive_toxin_edge_gap(TOXIN_TARGET_POSITION);
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let mut engine = Engine::new(EngineConfig {
@@ -638,6 +684,22 @@ fn release_energy_defense_uses_target_actual_velocity_and_range_times_eighty() {
         .unwrap();
 
     engine.tick().unwrap();
+    engine = restore_with_toxin_motion(
+        &engine,
+        attacker,
+        [0.25, -2.75],
+        defender,
+        [3.5, -1.5],
+        [40.25, -2.75],
+    );
+    assert_eq!(
+        engine
+            .robot_state(attacker)
+            .unwrap()
+            .kinematics
+            .actual_velocity,
+        [0.25, -2.75]
+    );
     let incoming = engine
         .snapshot()
         .shots
@@ -653,7 +715,7 @@ fn release_energy_defense_uses_target_actual_velocity_and_range_times_eighty() {
         .unwrap()
         .kinematics
         .actual_velocity;
-    assert_ne!(target_actual_velocity, [0.0, 0.0]);
+    assert_eq!(target_actual_velocity, [3.5, -1.5]);
     engine.tick().unwrap();
 
     let returned = engine
@@ -664,13 +726,8 @@ fn release_energy_defense_uses_target_actual_velocity_and_range_times_eighty() {
         .unwrap();
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
     assert_eq!(returned.owner, defender);
-    assert_eq!(
-        returned.velocity,
-        [
-            target_actual_velocity[0] * 1.5 - incoming.velocity[0],
-            target_actual_velocity[1] * 1.5 - incoming.velocity[1],
-        ]
-    );
+    assert_eq!(incoming.velocity, [40.25, -2.75]);
+    assert_eq!(returned.velocity, [-35.0, 0.0]);
     assert_eq!(returned.range, 23);
     assert_eq!(returned.energy, 921.0);
 }
