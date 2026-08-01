@@ -9,6 +9,10 @@ use darwinbots_engine::{
     },
 };
 
+const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
+const TOXIN_TARGET_POSITION: [f32; 2] = [350.0, 100.0];
+const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
+
 fn remove_wall_clock_timings(value: &mut serde_json::Value) {
     match value {
         serde_json::Value::Object(object) => {
@@ -299,6 +303,9 @@ fn cpu_and_gpu_match_toxin_state_memory_and_position() {
     .unwrap();
 
     fn seed(engine: &mut Engine) -> (darwinbots_engine::OrganismId, darwinbots_engine::OrganismId) {
+        let center_gap = TOXIN_TARGET_POSITION[0] - TOXIN_SOURCE_POSITION[0];
+        assert_eq!(center_gap, 250.0);
+        assert!(center_gap - DEFAULT_ROBOT_RADII_SUM > 0.0);
         let source_species = engine.register_species(SpeciesDefinition {
             name: "GPU toxin source".to_owned(),
             ..SpeciesDefinition::default()
@@ -311,14 +318,14 @@ fn cpu_and_gpu_match_toxin_state_memory_and_position() {
             .spawn_species_at(
                 LegacyDna::parse("start\n8 .strvenom store\nstop").unwrap(),
                 source_species,
-                [100.0, 100.0],
+                TOXIN_SOURCE_POSITION,
             )
             .unwrap();
         let target = engine
             .spawn_species_at(
                 LegacyDna::parse("start\nstop").unwrap(),
                 target_species,
-                [260.0, 100.0],
+                TOXIN_TARGET_POSITION,
             )
             .unwrap();
         (source, target)
@@ -328,6 +335,8 @@ fn cpu_and_gpu_match_toxin_state_memory_and_position() {
     let (gpu_source, gpu_target) = seed(&mut gpu);
     cpu.tick().unwrap();
     gpu.tick().unwrap();
+    assert_eq!(cpu.snapshot().stats.projectile_impacts, 0);
+    assert_eq!(gpu.snapshot().stats.projectile_impacts, 0);
     let shot = LegacyDna::parse(
         "start\n-3 .shoot store\n8 .shootval store\n500 .vloc store\n77 .venval store\nstop",
     )
@@ -337,10 +346,14 @@ fn cpu_and_gpu_match_toxin_state_memory_and_position() {
     gpu.replace_dna(gpu_source, shot).unwrap();
     cpu.tick().unwrap();
     gpu.tick().unwrap();
+    assert_eq!(cpu.snapshot().stats.projectile_impacts, 0);
+    assert_eq!(gpu.snapshot().stats.projectile_impacts, 0);
     cpu.replace_dna(cpu_source, idle.clone()).unwrap();
     gpu.replace_dna(gpu_source, idle).unwrap();
     cpu.tick().unwrap();
     gpu.tick().unwrap();
+    assert_eq!(cpu.snapshot().stats.projectile_impacts, 1);
+    assert_eq!(gpu.snapshot().stats.projectile_impacts, 1);
     let mover = LegacyDna::parse("start\n10 .dx store\nstop").unwrap();
     cpu.replace_dna(cpu_target, mover.clone()).unwrap();
     gpu.replace_dna(gpu_target, mover).unwrap();
@@ -349,7 +362,7 @@ fn cpu_and_gpu_match_toxin_state_memory_and_position() {
 
     let left = cpu.organism(cpu_target).unwrap();
     let right = gpu.organism(gpu_target).unwrap();
-    assert_eq!(left.paralyzed, 6);
+    assert_eq!(left.paralyzed, 5);
     assert_eq!(right.paralyzed, left.paralyzed);
     assert_eq!(gpu.memory_at(gpu_target, 500).unwrap(), 77);
     assert_eq!(

@@ -32,6 +32,12 @@ const MEM_REF_VEL_DX: i32 = 697;
 const MEM_REF_VEL_DN: i32 = 698;
 const MEM_REF_VEL_UP: i32 = 699;
 const MEM_REF_EYE: i32 = 708;
+
+#[derive(Clone, Copy)]
+pub(crate) enum DefensivePoisonRoute {
+    Information,
+    ReleaseEnergy,
+}
 const MEM_REF_NRG: i32 = 709;
 const MEM_REF_AGE: i32 = 710;
 const MEM_EYE1: i32 = 501;
@@ -4221,8 +4227,7 @@ impl Engine {
                         if self.fire_defensive_poison(
                             target,
                             power,
-                            false,
-                            false,
+                            DefensivePoisonRoute::ReleaseEnergy,
                             projectile_position,
                             projectile_velocity,
                             projectile_range,
@@ -4408,8 +4413,7 @@ impl Engine {
                         if self.fire_defensive_poison(
                             target,
                             (projectile_energy / 2.0).round() as i32,
-                            true,
-                            true,
+                            DefensivePoisonRoute::Information,
                             projectile_position,
                             projectile_velocity,
                             projectile_range,
@@ -4451,8 +4455,7 @@ impl Engine {
         &mut self,
         target: usize,
         power: i32,
-        equality_triggers: bool,
-        adds_waste: bool,
+        route: DefensivePoisonRoute,
         position: [f32; 2],
         incoming_velocity: [f32; 2],
         incoming_range: u32,
@@ -4464,17 +4467,16 @@ impl Engine {
         };
         let poison = target_robot.materials.poison.max(0);
         let qualifies = poison != 0
-            && if equality_triggers {
-                poison >= power
-            } else {
-                poison > power
+            && match route {
+                DefensivePoisonRoute::Information => poison >= power,
+                DefensivePoisonRoute::ReleaseEnergy => poison > power,
             };
         if !qualifies {
             return false;
         }
         let poison_spent = (power as f32 * 0.9).round() as i32;
         target_robot.materials.poison = poison.saturating_sub(poison_spent);
-        if adds_waste {
+        if matches!(route, DefensivePoisonRoute::Information) {
             target_robot.materials.waste = target_robot
                 .materials
                 .waste
@@ -4486,6 +4488,7 @@ impl Engine {
             .write(827, target_robot.materials.poison);
         let toxin_memory_location = target_robot.program.memory.read(834);
         let toxin_memory_value = target_robot.program.memory.read(839);
+        let target_actual_velocity = target_robot.kinematics.actual_velocity;
         let source_species_name = self
             .species
             .get(target_robot.identity.species.0 as usize)
@@ -4494,8 +4497,10 @@ impl Engine {
             target_id,
             position,
             incoming_velocity,
+            target_actual_velocity,
             incoming_range,
             power,
+            route,
             source_species_name,
             toxin_memory_location,
             toxin_memory_value,

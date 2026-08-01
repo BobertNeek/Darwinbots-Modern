@@ -1,4 +1,4 @@
-use crate::{LegacyDna, OrganismId, ShotSettings};
+use crate::{LegacyDna, OrganismId, ShotSettings, world::DefensivePoisonRoute};
 use serde::{Deserialize, Serialize};
 
 use super::ShotSnapshot;
@@ -156,8 +156,10 @@ impl ProjectilePool {
         owner: OrganismId,
         position: [f32; 2],
         incoming_velocity: [f32; 2],
+        target_actual_velocity: [f32; 2],
         incoming_range: u32,
         value: i32,
+        route: DefensivePoisonRoute,
         source_species_name: Option<String>,
         toxin_memory_location: i32,
         toxin_memory_value: i32,
@@ -166,8 +168,19 @@ impl ProjectilePool {
             .free_slots
             .pop()
             .map_or(self.owners.len(), |slot| slot as usize);
-        let velocity = [-incoming_velocity[0], -incoming_velocity[1]];
-        let raw_range = incoming_range.saturating_mul(80);
+        let (velocity, range_multiplier) = match route {
+            DefensivePoisonRoute::Information => {
+                ([-incoming_velocity[0], -incoming_velocity[1]], 40)
+            }
+            DefensivePoisonRoute::ReleaseEnergy => (
+                [
+                    target_actual_velocity[0] * 1.5 - incoming_velocity[0],
+                    target_actual_velocity[1] * 1.5 - incoming_velocity[1],
+                ],
+                80,
+            ),
+        };
+        let raw_range = incoming_range.saturating_mul(range_multiplier);
         let energy = raw_range.saturating_add(41) as f32;
         let range = (raw_range.saturating_add(41) / 40).max(1);
 
@@ -312,8 +325,7 @@ impl ProjectilePool {
     pub(crate) fn toxin_impact_power(&self, slot: u32) -> f32 {
         let slot = slot as usize;
         let denominator = self.ranges[slot].max(1) as f32 * 40.0;
-        let raw = self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator;
-        if raw < 1.0 { raw } else { raw.round() }
+        self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator
     }
 
     pub(crate) fn snapshots(&self) -> Vec<ShotSnapshot> {

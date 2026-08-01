@@ -3,6 +3,10 @@ use darwinbots_engine::{
     SaveFile, SpeciesDefinition, TokenClass,
 };
 
+const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
+const TOXIN_TARGET_POSITION: [f32; 2] = [350.0, 100.0];
+const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
+
 fn frame_save(version: u16, payload: &serde_json::Value) -> Vec<u8> {
     let payload = serde_json::to_vec(payload).unwrap();
     let mut save = Vec::with_capacity(10 + payload.len());
@@ -14,6 +18,9 @@ fn frame_save(version: u16, payload: &serde_json::Value) -> Vec<u8> {
 }
 
 fn engine_with_in_flight_venom() -> (Engine, OrganismId, OrganismId) {
+    let center_gap = TOXIN_TARGET_POSITION[0] - TOXIN_SOURCE_POSITION[0];
+    assert_eq!(center_gap, 250.0);
+    assert!(center_gap - DEFAULT_ROBOT_RADII_SUM > 0.0);
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         ..EngineConfig::testing()
@@ -31,14 +38,14 @@ fn engine_with_in_flight_venom() -> (Engine, OrganismId, OrganismId) {
         .spawn_species_at(
             LegacyDna::parse("start\n8 .strvenom store\nstop").unwrap(),
             source_species,
-            [100.0, 100.0],
+            TOXIN_SOURCE_POSITION,
         )
         .unwrap();
     let target = engine
         .spawn_species_at(
             LegacyDna::parse("start\nstop").unwrap(),
             target_species,
-            [260.0, 100.0],
+            TOXIN_TARGET_POSITION,
         )
         .unwrap();
     engine.tick().unwrap();
@@ -52,6 +59,7 @@ fn engine_with_in_flight_venom() -> (Engine, OrganismId, OrganismId) {
         )
         .unwrap();
     engine.tick().unwrap();
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 0);
     (engine, source, target)
 }
 
@@ -268,7 +276,7 @@ fn db3s_v3_round_trip_preserves_mid_effect_toxin_state() {
     engine.tick().unwrap();
     let before = engine.robot_state(target).unwrap().effects.clone();
     assert!(before.paralysis_active);
-    assert_eq!(before.paralysis_countdown, 7.0);
+    assert_eq!(before.paralysis_countdown, 6.9870706);
     assert_eq!(before.paralysis_location, 500);
     assert_eq!(before.paralysis_value, 77);
 
@@ -297,7 +305,7 @@ fn db3s_v3_round_trip_preserves_in_flight_toxin_payload() {
     restored.remove(source).unwrap();
     restored.tick().unwrap();
 
-    assert_eq!(restored.organism(target).unwrap().paralyzed, 7);
+    assert_eq!(restored.organism(target).unwrap().paralyzed, 6);
     assert_eq!(restored.memory_at(target, 500).unwrap(), 77);
 }
 
@@ -341,7 +349,7 @@ fn in_flight_toxin_uses_frozen_species_after_owner_species_change() {
     restored.tick().unwrap();
 
     assert_eq!(restored.organism(target).unwrap().venom, 0);
-    assert_eq!(restored.organism(target).unwrap().paralyzed, 7);
+    assert_eq!(restored.organism(target).unwrap().paralyzed, 6);
     assert_eq!(restored.memory_at(target, 500).unwrap(), 77);
 }
 
