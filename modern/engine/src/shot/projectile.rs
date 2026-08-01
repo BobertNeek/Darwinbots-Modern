@@ -68,7 +68,10 @@ impl ProjectilePool {
     }
 
     pub(crate) fn spawn(&mut self, request: ProjectileSpawn, settings: &ShotSettings) -> u32 {
-        let slot = self.free_slots.pop().map_or(self.owners.len(), |slot| slot as usize);
+        let slot = self
+            .free_slots
+            .pop()
+            .map_or(self.owners.len(), |slot| slot as usize);
         let direction = [request.angle.cos(), -request.angle.sin()];
         let position = [
             request.owner_position[0] + direction[0] * request.owner_radius,
@@ -78,9 +81,8 @@ impl ProjectilePool {
             request.owner_actual_velocity[0] + direction[0] * settings.speed,
             request.owner_actual_velocity[1] + direction[1] * settings.speed,
         ];
-        let raw_energy = request.owner_virtual_body.abs().max(1.0).ln()
-            * 60.0
-            * settings.range_multiplier;
+        let raw_energy =
+            request.owner_virtual_body.abs().max(1.0).ln() * 60.0 * settings.range_multiplier;
         let range = if request.owner_virtual_body > 10.0 {
             ((raw_energy + 41.0) / 40.0).floor().max(1.0) as u32
         } else {
@@ -118,7 +120,12 @@ impl ProjectilePool {
         slot as u32
     }
 
-    pub(crate) fn advance(&mut self, settings: &ShotSettings, world_size: [f32; 2], toroidal: bool) {
+    pub(crate) fn advance(
+        &mut self,
+        settings: &ShotSettings,
+        world_size: [f32; 2],
+        toroidal: bool,
+    ) {
         let mut expired = Vec::new();
         for slot in 0..self.alive.len() {
             if !self.alive[slot] {
@@ -148,10 +155,12 @@ impl ProjectilePool {
             }
             if self.ages[slot] > self.ranges[slot] {
                 expired.push(slot as u32);
-            } else if !toroidal && (self.positions[slot][0] < 0.0
-                || self.positions[slot][1] < 0.0
-                || self.positions[slot][0] > world_size[0]
-                || self.positions[slot][1] > world_size[1]) {
+            } else if !toroidal
+                && (self.positions[slot][0] < 0.0
+                    || self.positions[slot][1] < 0.0
+                    || self.positions[slot][0] > world_size[0]
+                    || self.positions[slot][1] > world_size[1])
+            {
                 expired.push(slot as u32);
             }
         }
@@ -208,8 +217,8 @@ impl ProjectilePool {
     pub(crate) fn impact_power(&self, slot: u32) -> i32 {
         let slot = slot as usize;
         let denominator = self.ranges[slot].max(1) as f32 * 40.0;
-        ((self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator)
-            .round() as i32)
+        ((self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator).round()
+            as i32)
             .max(1)
     }
 

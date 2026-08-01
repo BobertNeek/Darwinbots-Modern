@@ -52,11 +52,7 @@ pub(crate) fn apply_surface_friction(
     suppress_underflow(velocity);
 }
 
-pub(crate) fn apply_fluid_drag(
-    velocity: &mut [f32; 2],
-    radius: f32,
-    settings: &PhysicsSettings,
-) {
+pub(crate) fn apply_fluid_drag(velocity: &mut [f32; 2], radius: f32, settings: &PhysicsSettings) {
     let speed = velocity[0].hypot(velocity[1]);
     if speed < VELOCITY_EPSILON || settings.density <= 0.0 || settings.viscosity <= 0.0 {
         return;

@@ -50,8 +50,7 @@ fn projectile_wrap_preserves_its_travel_segment() {
     engine.tick().unwrap();
 
     let shot = &engine.snapshot().shots[0];
-    let segment_length =
-        (shot.end[0] - shot.start[0]).hypot(shot.end[1] - shot.start[1]);
+    let segment_length = (shot.end[0] - shot.start[0]).hypot(shot.end[1] - shot.start[1]);
     let velocity_length = shot.velocity[0].hypot(shot.velocity[1]);
     assert!((0.0..100.0).contains(&shot.end[0]));
     assert!((segment_length - velocity_length).abs() < 0.01);
@@ -70,6 +69,12 @@ fn shot_inherits_shortest_toroidal_firer_displacement() {
     engine.tick().unwrap();
 
     let shot = &engine.snapshot().shots[0];
-    assert!(shot.velocity[0] > 0.0, "wrapped firer velocity was inverted: {shot:?}");
-    assert!(shot.velocity[0] < 100.0, "wrapped firer inherited a world-sized jump: {shot:?}");
+    assert!(
+        shot.velocity[0] > 0.0,
+        "wrapped firer velocity was inverted: {shot:?}"
+    );
+    assert!(
+        shot.velocity[0] < 100.0,
+        "wrapped firer inherited a world-sized jump: {shot:?}"
+    );
 }

@@ -1,6 +1,7 @@
 use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SpeciesDefinition};
 
-const ALGA_MINIMALIS: &str = include_str!("../../../Installer/bots/Alga_Minimalis_Chloroplastus.txt");
+const ALGA_MINIMALIS: &str =
+    include_str!("../../../Installer/bots/Alga_Minimalis_Chloroplastus.txt");
 const ANIMAL_MINIMALIS: &str = include_str!("../../../Installer/bots/Animal_Minimalis.txt");
 
 #[test]
@@ -28,26 +29,33 @@ fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
         reseed: true,
         ..SpeciesDefinition::default()
     });
-    engine.spawn_species_batch(
-        LegacyDna::parse(ALGA_MINIMALIS).unwrap(),
-        alga,
-        random_positions(300, 16_000.0, 12_000.0, 7),
-        1_000,
-    ).unwrap();
-    engine.spawn_species_batch(
-        LegacyDna::parse(ANIMAL_MINIMALIS).unwrap(),
-        animal,
-        random_positions(100, 16_000.0, 12_000.0, 13),
-        1_000,
-    ).unwrap();
+    engine
+        .spawn_species_batch(
+            LegacyDna::parse(ALGA_MINIMALIS).unwrap(),
+            alga,
+            random_positions(300, 16_000.0, 12_000.0, 7),
+            1_000,
+        )
+        .unwrap();
+    engine
+        .spawn_species_batch(
+            LegacyDna::parse(ANIMAL_MINIMALIS).unwrap(),
+            animal,
+            random_positions(100, 16_000.0, 12_000.0, 13),
+            1_000,
+        )
+        .unwrap();
 
     engine.tick_many(20_000).unwrap();
 
     let snapshot = engine.snapshot();
-    let animals: Vec<_> = snapshot.organisms.iter()
+    let animals: Vec<_> = snapshot
+        .organisms
+        .iter()
         .filter(|organism| organism.species == animal)
         .collect();
-    let moving = animals.iter()
+    let moving = animals
+        .iter()
         .filter(|organism| organism.velocity[0].hypot(organism.velocity[1]) > 0.1)
         .count();
     assert!(!animals.is_empty());
@@ -72,13 +80,15 @@ fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
 
 fn random_positions(count: usize, width: f32, height: f32, seed: u64) -> Vec<[f32; 2]> {
     let mut state = seed.max(1);
-    (0..count).map(|_| {
-        state = advance_random(state);
-        let x = state as u32 as f32 / u32::MAX as f32;
-        state = advance_random(state);
-        let y = state as u32 as f32 / u32::MAX as f32;
-        [x * width, y * height]
-    }).collect()
+    (0..count)
+        .map(|_| {
+            state = advance_random(state);
+            let x = state as u32 as f32 / u32::MAX as f32;
+            state = advance_random(state);
+            let y = state as u32 as f32 / u32::MAX as f32;
+            [x * width, y * height]
+        })
+        .collect()
 }
 
 fn advance_random(mut value: u64) -> u64 {

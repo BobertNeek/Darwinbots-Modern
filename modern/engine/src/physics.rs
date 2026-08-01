@@ -3,15 +3,13 @@ use bytemuck::{Pod, Zeroable};
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
 
-mod movement;
-mod environment;
 mod collision;
+mod environment;
+mod movement;
 
-pub(crate) use movement::{
-    MovementInput, MovementState, apply_voluntary_impulse, derived_mass,
-};
-pub(crate) use environment::{apply_resistance, environment_impulse, integrate_body};
 pub(crate) use collision::{resolve_collisions, segment_aabb_fraction, segment_circle_fraction};
+pub(crate) use environment::{apply_resistance, environment_impulse, integrate_body};
+pub(crate) use movement::{MovementInput, MovementState, apply_voluntary_impulse, derived_mass};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -94,11 +92,31 @@ impl GpuSensingBuffers {
         let particle_capacity = particle_capacity.max(1).next_power_of_two();
         let offset_capacity = offset_capacity.max(1).next_power_of_two();
         let member_capacity = member_capacity.max(1).next_power_of_two();
-        let particles = storage_upload_buffer(device, "darwinbots sensing particles", particle_capacity * std::mem::size_of::<GpuSenseParticle>());
-        let offsets = storage_upload_buffer(device, "darwinbots sensing offsets", offset_capacity * std::mem::size_of::<u32>());
-        let members = storage_upload_buffer(device, "darwinbots sensing members", member_capacity * std::mem::size_of::<u32>());
-        let counts = storage_upload_buffer(device, "darwinbots grid counts", offset_capacity * std::mem::size_of::<u32>());
-        let cursors = storage_upload_buffer(device, "darwinbots grid cursors", offset_capacity * std::mem::size_of::<u32>());
+        let particles = storage_upload_buffer(
+            device,
+            "darwinbots sensing particles",
+            particle_capacity * std::mem::size_of::<GpuSenseParticle>(),
+        );
+        let offsets = storage_upload_buffer(
+            device,
+            "darwinbots sensing offsets",
+            offset_capacity * std::mem::size_of::<u32>(),
+        );
+        let members = storage_upload_buffer(
+            device,
+            "darwinbots sensing members",
+            member_capacity * std::mem::size_of::<u32>(),
+        );
+        let counts = storage_upload_buffer(
+            device,
+            "darwinbots grid counts",
+            offset_capacity * std::mem::size_of::<u32>(),
+        );
+        let cursors = storage_upload_buffer(
+            device,
+            "darwinbots grid cursors",
+            offset_capacity * std::mem::size_of::<u32>(),
+        );
         let output_size = (particle_capacity * std::mem::size_of::<GpuSenseOutput>()) as u64;
         let output = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("darwinbots sensing output"),
@@ -142,8 +160,19 @@ impl GpuSensingBuffers {
             ],
         });
         Self {
-            particle_capacity, offset_capacity, member_capacity, particles, offsets, members, _counts: counts, _cursors: cursors,
-            output, params, readback, bind_group, grid_bind_group,
+            particle_capacity,
+            offset_capacity,
+            member_capacity,
+            particles,
+            offsets,
+            members,
+            _counts: counts,
+            _cursors: cursors,
+            output,
+            params,
+            readback,
+            bind_group,
+            grid_bind_group,
         }
     }
 }
@@ -171,7 +200,10 @@ fn storage_layout_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutE
 }
 
 fn buffer_entry(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
-    wgpu::BindGroupEntry { binding, resource: buffer.as_entire_binding() }
+    wgpu::BindGroupEntry {
+        binding,
+        resource: buffer.as_entire_binding(),
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -298,30 +330,32 @@ impl GpuPhysicsBackend {
             label: Some("darwinbots sensing shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("sensing.wgsl").into()),
         });
-        let sensing_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("darwinbots sensing bind group layout"),
-            entries: &[
-                storage_layout_entry(0, true),
-                storage_layout_entry(1, true),
-                storage_layout_entry(2, true),
-                storage_layout_entry(3, false),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let sensing_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("darwinbots sensing bind group layout"),
+                entries: &[
+                    storage_layout_entry(0, true),
+                    storage_layout_entry(1, true),
+                    storage_layout_entry(2, true),
+                    storage_layout_entry(3, false),
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
-        let sensing_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("darwinbots sensing pipeline layout"),
-            bind_group_layouts: &[Some(&sensing_bind_group_layout)],
-            immediate_size: 0,
-        });
+                ],
+            });
+        let sensing_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("darwinbots sensing pipeline layout"),
+                bind_group_layouts: &[Some(&sensing_bind_group_layout)],
+                immediate_size: 0,
+            });
         let sensing_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("darwinbots sensing pipeline"),
             layout: Some(&sensing_pipeline_layout),
@@ -334,39 +368,50 @@ impl GpuPhysicsBackend {
             label: Some("darwinbots spatial grid shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("spatial_grid.wgsl").into()),
         });
-        let grid_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("darwinbots spatial grid bind group layout"),
-            entries: &[
-                storage_layout_entry(0, true),
-                storage_layout_entry(1, false),
-                storage_layout_entry(2, false),
-                storage_layout_entry(3, false),
-                storage_layout_entry(4, false),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let grid_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("darwinbots spatial grid bind group layout"),
+                entries: &[
+                    storage_layout_entry(0, true),
+                    storage_layout_entry(1, false),
+                    storage_layout_entry(2, false),
+                    storage_layout_entry(3, false),
+                    storage_layout_entry(4, false),
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
         let grid_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("darwinbots spatial grid pipeline layout"),
             bind_group_layouts: &[Some(&grid_bind_group_layout)],
             immediate_size: 0,
         });
-        let make_grid_pipeline = |label: &'static str, entry: &'static str| device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(label), layout: Some(&grid_pipeline_layout), module: &grid_shader,
-            entry_point: Some(entry), compilation_options: Default::default(), cache: None,
-        });
-        let grid_clear_pipeline = make_grid_pipeline("darwinbots grid clear pipeline", "clear_grid");
-        let grid_count_pipeline = make_grid_pipeline("darwinbots grid count pipeline", "count_particles");
-        let grid_prefix_pipeline = make_grid_pipeline("darwinbots grid prefix pipeline", "prefix_offsets");
-        let grid_scatter_pipeline = make_grid_pipeline("darwinbots grid scatter pipeline", "scatter_members");
+        let make_grid_pipeline = |label: &'static str, entry: &'static str| {
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(label),
+                layout: Some(&grid_pipeline_layout),
+                module: &grid_shader,
+                entry_point: Some(entry),
+                compilation_options: Default::default(),
+                cache: None,
+            })
+        };
+        let grid_clear_pipeline =
+            make_grid_pipeline("darwinbots grid clear pipeline", "clear_grid");
+        let grid_count_pipeline =
+            make_grid_pipeline("darwinbots grid count pipeline", "count_particles");
+        let grid_prefix_pipeline =
+            make_grid_pipeline("darwinbots grid prefix pipeline", "prefix_offsets");
+        let grid_scatter_pipeline =
+            make_grid_pipeline("darwinbots grid scatter pipeline", "scatter_members");
         Ok(Self {
             device,
             queue,
@@ -403,9 +448,17 @@ impl GpuPhysicsBackend {
     ) -> Result<Vec<Option<usize>>, EngineError> {
         let velocities = vec![[0.0; 2]; positions.len()];
         self.sense_and_integrate(
-            positions, &velocities, alive, cell_offsets, cell_members, grid_size,
-            cell_size, radius, [f32::MAX, f32::MAX],
-        ).map(|result| result.0)
+            positions,
+            &velocities,
+            alive,
+            cell_offsets,
+            cell_members,
+            grid_size,
+            cell_size,
+            radius,
+            [f32::MAX, f32::MAX],
+        )
+        .map(|result| result.0)
     }
 
     pub fn sense_nearest_gpu_grid(
@@ -419,8 +472,15 @@ impl GpuPhysicsBackend {
         let velocities = vec![[0.0; 2]; positions.len()];
         let energies = vec![0; positions.len()];
         self.sense_integrate_render_gpu_grid(
-            positions, &velocities, &energies, alive, world_size, cell_size, radius,
-        ).map(|result| result.0)
+            positions,
+            &velocities,
+            &energies,
+            alive,
+            world_size,
+            cell_size,
+            radius,
+        )
+        .map(|result| result.0)
     }
 
     pub fn sense_integrate_render_gpu_grid(
@@ -438,8 +498,18 @@ impl GpuPhysicsBackend {
             (world_size[1] / cell_size).ceil().max(1.0) as u32,
         ];
         self.sense_integrate_render_impl(
-            positions, velocities, energies, alive, &[], &[], grid_size,
-            cell_size, radius, world_size, None, true,
+            positions,
+            velocities,
+            energies,
+            alive,
+            &[],
+            &[],
+            grid_size,
+            cell_size,
+            radius,
+            world_size,
+            None,
+            true,
         )
     }
 
@@ -459,9 +529,20 @@ impl GpuPhysicsBackend {
         ];
         let velocities = vec![[0.0; 2]; positions.len()];
         self.sense_integrate_render_impl(
-            positions, &velocities, energies, alive, &[], &[], grid_size,
-            cell_size, radius, world_size, Some(radii), true,
-        ).map(|(targets, _, instances)| (targets, instances))
+            positions,
+            &velocities,
+            energies,
+            alive,
+            &[],
+            &[],
+            grid_size,
+            cell_size,
+            radius,
+            world_size,
+            Some(radii),
+            true,
+        )
+        .map(|(targets, _, instances)| (targets, instances))
     }
 
     pub fn sense_and_integrate(
@@ -478,9 +559,18 @@ impl GpuPhysicsBackend {
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>), EngineError> {
         let energies = vec![0; positions.len()];
         self.sense_integrate_render(
-            positions, velocities, &energies, alive, cell_offsets, cell_members,
-            grid_size, cell_size, radius, world_size,
-        ).map(|(targets, positions, _)| (targets, positions))
+            positions,
+            velocities,
+            &energies,
+            alive,
+            cell_offsets,
+            cell_members,
+            grid_size,
+            cell_size,
+            radius,
+            world_size,
+        )
+        .map(|(targets, positions, _)| (targets, positions))
     }
 
     pub fn sense_integrate_render(
@@ -497,8 +587,18 @@ impl GpuPhysicsBackend {
         world_size: [f32; 2],
     ) -> Result<(Vec<Option<usize>>, Vec<[f32; 2]>, Vec<RenderInstance>), EngineError> {
         self.sense_integrate_render_impl(
-            positions, velocities, energies, alive, cell_offsets, cell_members, grid_size,
-            cell_size, radius, world_size, None, false,
+            positions,
+            velocities,
+            energies,
+            alive,
+            cell_offsets,
+            cell_members,
+            grid_size,
+            cell_size,
+            radius,
+            world_size,
+            None,
+            false,
         )
     }
 
@@ -520,17 +620,24 @@ impl GpuPhysicsBackend {
         if positions.is_empty() {
             return Ok((Vec::new(), Vec::new(), Vec::new()));
         }
-        let particles: Vec<_> = positions.iter().enumerate().map(|(slot, position)| GpuSenseParticle {
-            position: *position,
-            velocity: velocities.get(slot).copied().unwrap_or([0.0; 2]),
-            slot: slot as u32,
-            alive: alive.get(slot).copied().unwrap_or(false) as u32,
-            energy: energies.get(slot).copied().unwrap_or(0),
-            radius: radii.and_then(|values| values.get(slot)).copied().unwrap_or_else(|| {
-                ((energies.get(slot).copied().unwrap_or(0).max(1) as f32).sqrt() * 0.45)
-                    .clamp(2.0, 24.0)
-            }),
-        }).collect();
+        let particles: Vec<_> = positions
+            .iter()
+            .enumerate()
+            .map(|(slot, position)| GpuSenseParticle {
+                position: *position,
+                velocity: velocities.get(slot).copied().unwrap_or([0.0; 2]),
+                slot: slot as u32,
+                alive: alive.get(slot).copied().unwrap_or(false) as u32,
+                energy: energies.get(slot).copied().unwrap_or(0),
+                radius: radii
+                    .and_then(|values| values.get(slot))
+                    .copied()
+                    .unwrap_or_else(|| {
+                        ((energies.get(slot).copied().unwrap_or(0).max(1) as f32).sqrt() * 0.45)
+                            .clamp(2.0, 24.0)
+                    }),
+            })
+            .collect();
         let params = GpuSenseParams {
             count: particles.len() as u32,
             grid_width: grid_size[0],
@@ -541,12 +648,27 @@ impl GpuPhysicsBackend {
             world_size,
         };
         let sentinel_members = [0u32];
-        let members = if cell_members.is_empty() { &sentinel_members[..] } else { cell_members };
+        let members = if cell_members.is_empty() {
+            &sentinel_members[..]
+        } else {
+            cell_members
+        };
         let grid_cells = (grid_size[0] as usize).saturating_mul(grid_size[1] as usize);
-        let required_offsets = if gpu_build_grid { grid_cells + 1 } else { cell_offsets.len() };
-        let required_members = if gpu_build_grid { positions.len().max(1) } else { members.len() };
+        let required_offsets = if gpu_build_grid {
+            grid_cells + 1
+        } else {
+            cell_offsets.len()
+        };
+        let required_members = if gpu_build_grid {
+            positions.len().max(1)
+        } else {
+            members.len()
+        };
         let output_size = (particles.len() * std::mem::size_of::<GpuSenseOutput>()) as u64;
-        let mut guard = self.sensing_buffers.lock().map_err(|error| EngineError::Gpu(error.to_string()))?;
+        let mut guard = self
+            .sensing_buffers
+            .lock()
+            .map_err(|error| EngineError::Gpu(error.to_string()))?;
         let needs_growth = guard.as_ref().is_none_or(|buffers| {
             buffers.particle_capacity < particles.len()
                 || buffers.offset_capacity < required_offsets
@@ -563,23 +685,44 @@ impl GpuPhysicsBackend {
             ));
         }
         let buffers = guard.as_ref().unwrap();
-        self.queue.write_buffer(&buffers.particles, 0, bytemuck::cast_slice(&particles));
+        self.queue
+            .write_buffer(&buffers.particles, 0, bytemuck::cast_slice(&particles));
         if !gpu_build_grid {
-            self.queue.write_buffer(&buffers.offsets, 0, bytemuck::cast_slice(cell_offsets));
-            self.queue.write_buffer(&buffers.members, 0, bytemuck::cast_slice(members));
+            self.queue
+                .write_buffer(&buffers.offsets, 0, bytemuck::cast_slice(cell_offsets));
+            self.queue
+                .write_buffer(&buffers.members, 0, bytemuck::cast_slice(members));
         }
-        self.queue.write_buffer(&buffers.params, 0, bytemuck::bytes_of(&params));
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("darwinbots sensing encoder"),
-        });
+        self.queue
+            .write_buffer(&buffers.params, 0, bytemuck::bytes_of(&params));
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("darwinbots sensing encoder"),
+            });
         if gpu_build_grid {
             for (label, pipeline, workgroups) in [
-                ("darwinbots grid clear pass", &self.grid_clear_pipeline, (grid_cells as u32).div_ceil(64)),
-                ("darwinbots grid count pass", &self.grid_count_pipeline, params.count.div_ceil(64)),
+                (
+                    "darwinbots grid clear pass",
+                    &self.grid_clear_pipeline,
+                    (grid_cells as u32).div_ceil(64),
+                ),
+                (
+                    "darwinbots grid count pass",
+                    &self.grid_count_pipeline,
+                    params.count.div_ceil(64),
+                ),
                 ("darwinbots grid prefix pass", &self.grid_prefix_pipeline, 1),
-                ("darwinbots grid scatter pass", &self.grid_scatter_pipeline, params.count.div_ceil(64)),
+                (
+                    "darwinbots grid scatter pass",
+                    &self.grid_scatter_pipeline,
+                    params.count.div_ceil(64),
+                ),
             ] {
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some(label), timestamp_writes: None });
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some(label),
+                    timestamp_writes: None,
+                });
                 pass.set_pipeline(pipeline);
                 pass.set_bind_group(0, &buffers.grid_bind_group, &[]);
                 pass.dispatch_workgroups(workgroups.max(1), 1, 1);
@@ -598,7 +741,9 @@ impl GpuPhysicsBackend {
         self.queue.submit(Some(encoder.finish()));
         let slice = buffers.readback.slice(..output_size);
         let (sender, receiver) = mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = sender.send(result);
+        });
         #[cfg(test)]
         {
             if self
@@ -610,29 +755,41 @@ impl GpuPhysicsBackend {
                 ));
             }
         }
-        self.device.poll(wgpu::PollType::wait_indefinitely())
+        self.device
+            .poll(wgpu::PollType::wait_indefinitely())
             .map_err(|error| EngineError::Gpu(error.to_string()))?;
-        receiver.recv().map_err(|error| EngineError::Gpu(error.to_string()))?
+        receiver
+            .recv()
+            .map_err(|error| EngineError::Gpu(error.to_string()))?
             .map_err(|error| EngineError::Gpu(error.to_string()))?;
         let mapped = slice.get_mapped_range();
         let outputs = bytemuck::cast_slice::<u8, GpuSenseOutput>(&mapped);
-        let result = outputs.iter()
+        let result = outputs
+            .iter()
             .map(|output| (output.nearest_slot != u32::MAX).then_some(output.nearest_slot as usize))
             .collect();
         let integrated = outputs.iter().map(|output| output.position).collect();
-        let render_instances = outputs.iter().enumerate().filter_map(|(index, output)| {
-            alive.get(index).copied().unwrap_or(false).then_some(RenderInstance {
-                slot: output.slot,
-                position: output.position,
-                radius: output.radius,
-                color: output.color,
-                generation: 0,
-                aim: 0,
-                skin: crate::default_skin(),
-                lineage_id: 0,
-                vegetable: false,
+        let render_instances = outputs
+            .iter()
+            .enumerate()
+            .filter_map(|(index, output)| {
+                alive
+                    .get(index)
+                    .copied()
+                    .unwrap_or(false)
+                    .then_some(RenderInstance {
+                        slot: output.slot,
+                        position: output.position,
+                        radius: output.radius,
+                        color: output.color,
+                        generation: 0,
+                        aim: 0,
+                        skin: crate::default_skin(),
+                        lineage_id: 0,
+                        vegetable: false,
+                    })
             })
-        }).collect();
+            .collect();
         drop(mapped);
         buffers.readback.unmap();
         Ok((result, integrated, render_instances))
@@ -646,24 +803,34 @@ impl PhysicsBackend for GpuPhysicsBackend {
             return Ok(());
         }
 
-        let particles: Vec<_> = batch.positions.iter().zip(&batch.velocities)
-            .map(|(position, velocity)| GpuParticle { position: *position, velocity: *velocity })
+        let particles: Vec<_> = batch
+            .positions
+            .iter()
+            .zip(&batch.velocities)
+            .map(|(position, velocity)| GpuParticle {
+                position: *position,
+                velocity: *velocity,
+            })
             .collect();
         let params = GpuParams {
             world_size: batch.world_size,
             count: particles.len() as u32,
             toroidal: u32::from(batch.toroidal),
         };
-        let particle_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("darwinbots particles"),
-            contents: bytemuck::cast_slice(&particles),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        });
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("darwinbots physics parameters"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let particle_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("darwinbots particles"),
+                contents: bytemuck::cast_slice(&particles),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("darwinbots physics parameters"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
         let output_size = std::mem::size_of_val(particles.as_slice()) as u64;
         let readback = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("darwinbots physics readback"),
@@ -675,13 +842,21 @@ impl PhysicsBackend for GpuPhysicsBackend {
             label: Some("darwinbots physics bind group"),
             layout: &self.bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: particle_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: params_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: particle_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: params_buffer.as_entire_binding(),
+                },
             ],
         });
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("darwinbots physics encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("darwinbots physics encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("darwinbots physics pass"),
@@ -699,9 +874,12 @@ impl PhysicsBackend for GpuPhysicsBackend {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
-        self.device.poll(wgpu::PollType::wait_indefinitely())
+        self.device
+            .poll(wgpu::PollType::wait_indefinitely())
             .map_err(|error| EngineError::Gpu(error.to_string()))?;
-        receiver.recv().map_err(|error| EngineError::Gpu(error.to_string()))?
+        receiver
+            .recv()
+            .map_err(|error| EngineError::Gpu(error.to_string()))?
             .map_err(|error| EngineError::Gpu(error.to_string()))?;
         let mapped = slice.get_mapped_range();
         let result: &[GpuParticle] = bytemuck::cast_slice(&mapped);
@@ -716,10 +894,14 @@ impl PhysicsBackend for GpuPhysicsBackend {
 
 fn validate_batch(batch: &PhysicsBatch) -> Result<(), EngineError> {
     if batch.positions.len() != batch.velocities.len() {
-        return Err(EngineError::Gpu("position and velocity counts differ".to_owned()));
+        return Err(EngineError::Gpu(
+            "position and velocity counts differ".to_owned(),
+        ));
     }
     if batch.positions.len() > u32::MAX as usize {
-        return Err(EngineError::Gpu("physics batch exceeds GPU index range".to_owned()));
+        return Err(EngineError::Gpu(
+            "physics batch exceeds GPU index range".to_owned(),
+        ));
     }
     Ok(())
 }

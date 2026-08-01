@@ -40,8 +40,8 @@ impl VegetationRuntime {
     }
 
     pub(crate) fn feed(&self, input: PlantLightInput) -> PlantFeeding {
-        let availability = (input.total_robot_area / input.usable_world_area.max(1.0))
-            .clamp(0.0, 1.0);
+        let availability =
+            (input.total_robot_area / input.usable_world_area.max(1.0)).clamp(0.0, 1.0);
         PlantFeeding {
             light: input.daytime,
             availability,
@@ -86,11 +86,11 @@ pub(crate) fn photosynthesis_delta(input: PlantLightInput) -> f32 {
     if !input.daytime || input.chloroplasts <= 0 {
         return 0.0;
     }
-    let light_occupied = (input.total_robot_area / input.usable_world_area.max(1.0))
-        .clamp(0.0, 1.0);
+    let light_occupied =
+        (input.total_robot_area / input.usable_world_area.max(1.0)).clamp(0.0, 1.0);
     let area_correction = (1.0 - light_occupied).powi(2) * 4.0;
-    let mut token = input.max_energy_per_tick.max(0) as f32
-        * (input.light_intensity / 100.0).max(0.0);
+    let mut token =
+        input.max_energy_per_tick.max(0) as f32 * (input.light_intensity / 100.0).max(0.0);
     if input.pond_mode {
         token = input.light_intensity / input.depth.max(1.0).powf(input.gradient);
     }

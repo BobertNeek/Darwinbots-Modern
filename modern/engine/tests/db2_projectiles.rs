@@ -8,7 +8,10 @@ use support::db2_fixtures::SHOT_SPEED;
 #[test]
 fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
     let mut engine = Engine::new(EngineConfig {
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -19,10 +22,7 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
         )
         .unwrap();
     engine
-        .spawn_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            [500.0, 100.0],
-        )
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 100.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -37,7 +37,10 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
 fn shot_velocity_inherits_the_firers_actual_velocity() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -58,16 +61,16 @@ fn shot_velocity_inherits_the_firers_actual_velocity() {
 fn projectile_moves_once_per_tick_and_expires_after_range() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
     engine
         .spawn_at(
-            LegacyDna::parse(
-                "cond\n*.robage 1 <\nstart\n-1 .shoot store\nstop",
-            )
-            .unwrap(),
+            LegacyDna::parse("cond\n*.robage 1 <\nstart\n-1 .shoot store\nstop").unwrap(),
             [100.0, 100.0],
         )
         .unwrap();
@@ -86,7 +89,10 @@ fn projectile_moves_once_per_tick_and_expires_after_range() {
 fn swept_collision_hits_a_bot_between_projectile_endpoints() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -97,10 +103,7 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
         )
         .unwrap();
     let target = engine
-        .spawn_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            [350.0, 100.0],
-        )
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
 
@@ -115,7 +118,10 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
 fn lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -150,7 +156,10 @@ fn lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis() {
 fn newborn_is_immune_to_parent_stream_for_one_tick() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -160,7 +169,9 @@ fn newborn_is_immune_to_parent_stream_for_one_tick() {
             [100.0, 100.0],
         )
         .unwrap();
-    let newborn = engine.manual_reproduce(parent, None, [350.0, 100.0]).unwrap();
+    let newborn = engine
+        .manual_reproduce(parent, None, [350.0, 100.0])
+        .unwrap();
     let initial_energy = engine.organism(newborn).unwrap().energy;
 
     engine.tick().unwrap();
@@ -172,7 +183,10 @@ fn newborn_is_immune_to_parent_stream_for_one_tick() {
 fn positive_memory_shot_writes_the_target_address() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -195,7 +209,10 @@ fn positive_memory_shot_writes_the_target_address() {
 fn obstacle_intercepts_projectile_before_target() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -227,7 +244,10 @@ fn obstacle_intercepts_projectile_before_target() {
 fn virus_shot_transfers_the_firers_dna() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -246,7 +266,10 @@ fn virus_shot_transfers_the_firers_dna() {
 fn sperm_shot_forces_target_reproduction() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
-        physics: PhysicsSettings { density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();

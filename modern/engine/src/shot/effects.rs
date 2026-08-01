@@ -29,7 +29,9 @@ pub(crate) struct ProjectileImpact {
 
 pub(crate) fn projectile_effect(kind: i32, value: i32) -> ProjectileEffect {
     match kind {
-        302 => ProjectileEffect::ForceReproduction { percentage: value.clamp(1, 99) },
+        302 => ProjectileEffect::ForceReproduction {
+            percentage: value.clamp(1, 99),
+        },
         -1 => ProjectileEffect::ReleaseEnergy,
         -2 => ProjectileEffect::DonateEnergy,
         -3 => ProjectileEffect::Venom,

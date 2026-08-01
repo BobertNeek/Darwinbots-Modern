@@ -21,7 +21,10 @@ fn physical_radius_is_derived_from_body_like_db2() {
         .unwrap();
 
     let radius = engine.snapshot().render_instances[0].radius;
-    assert!((radius - 114.28).abs() < 0.1, "expected DB2 radius 114.28, got {radius}");
+    assert!(
+        (radius - 114.28).abs() < 0.1,
+        "expected DB2 radius 114.28, got {radius}"
+    );
 }
 
 #[test]
@@ -29,7 +32,11 @@ fn movement_command_adds_impulse_and_bot_coasts_without_new_thrust() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         drag: 0.0,
-        physics: PhysicsSettings { surface_gravity: 0.0, density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            surface_gravity: 0.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -51,7 +58,11 @@ fn voluntary_acceleration_is_clamped_before_efficiency_multiplier() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         drag: 0.0,
-        physics: PhysicsSettings { surface_gravity: 0.0, density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            surface_gravity: 0.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -81,7 +92,11 @@ fn drag_reduces_retained_momentum_instead_of_replacing_it() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         drag: 0.25,
-        physics: PhysicsSettings { surface_gravity: 0.0, density: 0.0, ..PhysicsSettings::default() },
+        physics: PhysicsSettings {
+            surface_gravity: 0.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -124,8 +139,18 @@ fn elasticity_rebounds_colliding_bots_with_finite_velocity() {
     engine.tick().unwrap();
 
     let organisms = &engine.snapshot().organisms;
-    assert!(organisms.iter().flat_map(|bot| bot.position).all(f32::is_finite));
-    assert!(organisms.iter().flat_map(|bot| bot.velocity).all(f32::is_finite));
+    assert!(
+        organisms
+            .iter()
+            .flat_map(|bot| bot.position)
+            .all(f32::is_finite)
+    );
+    assert!(
+        organisms
+            .iter()
+            .flat_map(|bot| bot.velocity)
+            .all(f32::is_finite)
+    );
     assert!(organisms[0].velocity[0] < 0.0);
     assert!(organisms[1].velocity[0] > 0.0);
 }
@@ -181,5 +206,8 @@ fn maximum_velocity_caps_total_velocity_after_environment_impulses() {
     engine.tick().unwrap();
 
     let velocity = engine.organism(id).unwrap().velocity;
-    assert!(velocity[0].hypot(velocity[1]) <= 10.001, "velocity: {velocity:?}");
+    assert!(
+        velocity[0].hypot(velocity[1]) <= 10.001,
+        "velocity: {velocity:?}"
+    );
 }

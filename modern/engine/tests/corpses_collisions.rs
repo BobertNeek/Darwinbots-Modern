@@ -5,7 +5,8 @@ fn energy_death_leaves_a_decayable_corpse_in_world_state() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 1,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();
     engine.spawn_batch([(dna, [400.0, 500.0])]).unwrap();
 
@@ -26,10 +27,9 @@ fn energy_death_leaves_a_decayable_corpse_in_world_state() {
 fn overlapping_organisms_are_separated_without_non_finite_motion() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();
-    engine.spawn_batch([
-        (dna.clone(), [500.0, 500.0]),
-        (dna, [500.0, 500.0]),
-    ]).unwrap();
+    engine
+        .spawn_batch([(dna.clone(), [500.0, 500.0]), (dna, [500.0, 500.0])])
+        .unwrap();
 
     engine.tick().unwrap();
 
@@ -38,7 +38,12 @@ fn overlapping_organisms_are_separated_without_non_finite_motion() {
     let dy = organisms[1].position[1] - organisms[0].position[1];
     let distance = (dx * dx + dy * dy).sqrt();
     assert!(distance >= 4.0, "overlap remained at distance {distance}");
-    assert!(organisms.iter().flat_map(|organism| organism.position).all(f32::is_finite));
+    assert!(
+        organisms
+            .iter()
+            .flat_map(|organism| organism.position)
+            .all(f32::is_finite)
+    );
     engine.validate_invariants().unwrap();
 }
 
@@ -47,14 +52,22 @@ fn feeding_shots_harvest_energy_from_nearby_corpses() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 1,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let predator = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
-    engine.spawn_species_batch(idle, SpeciesId::default(), [[120.0, 100.0]], 1).unwrap();
+    engine
+        .spawn_species_batch(idle, SpeciesId::default(), [[120.0, 100.0]], 1)
+        .unwrap();
     engine.tick().unwrap();
     let corpse_energy = engine.snapshot().corpses[0].energy;
     let predator_energy = engine.organism(predator).unwrap().energy;
-    engine.replace_dna(predator, LegacyDna::parse("start\n-1 .shoot store\n40 .shootval store\nstop").unwrap()).unwrap();
+    engine
+        .replace_dna(
+            predator,
+            LegacyDna::parse("start\n-1 .shoot store\n40 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
 
     engine.tick().unwrap();
 

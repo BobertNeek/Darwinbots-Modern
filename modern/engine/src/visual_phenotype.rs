@@ -36,12 +36,7 @@ impl VisualPhenotype {
         ]
     }
 
-    pub fn apply_color_mutation(
-        &mut self,
-        changes: u32,
-        autotroph: bool,
-        random_state: &mut u64,
-    ) {
+    pub fn apply_color_mutation(&mut self, changes: u32, autotroph: bool, random_state: &mut u64) {
         if changes == 0 {
             return;
         }
@@ -139,11 +134,7 @@ fn clamp_to_autotroph_green(rgb: [u8; 3]) -> [u8; 3] {
             155.0
         };
     }
-    hsv_to_rgb(
-        hue,
-        saturation.clamp(0.45, 0.90),
-        value.clamp(0.40, 0.85),
-    )
+    hsv_to_rgb(hue, saturation.clamp(0.45, 0.90), value.clamp(0.40, 0.85))
 }
 
 fn rgb_to_hsv(rgb: [u8; 3]) -> [f32; 3] {

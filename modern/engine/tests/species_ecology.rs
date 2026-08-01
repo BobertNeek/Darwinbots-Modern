@@ -1,6 +1,4 @@
-use darwinbots_engine::{
-    sysvar_address, Engine, EngineConfig, LegacyDna, SpeciesDefinition,
-};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SpeciesDefinition, sysvar_address};
 
 #[test]
 fn modern_chloroplast_sysvars_use_the_latest_vb6_addresses() {
@@ -18,7 +16,8 @@ fn species_identity_and_vegetable_energy_are_part_of_the_world_state() {
         metabolism_cost: 1,
         vegetable_energy_per_tick: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let vegetable = engine.register_species(SpeciesDefinition {
         name: "Alga Minimalis".to_owned(),
         vegetable: true,
@@ -32,8 +31,12 @@ fn species_identity_and_vegetable_energy_are_part_of_the_world_state() {
         ..SpeciesDefinition::default()
     });
     let dna = LegacyDna::parse("start\nstop").unwrap();
-    engine.spawn_species_at(dna.clone(), vegetable, [200.0, 200.0]).unwrap();
-    engine.spawn_species_at(dna, animal, [800.0, 800.0]).unwrap();
+    engine
+        .spawn_species_at(dna.clone(), vegetable, [200.0, 200.0])
+        .unwrap();
+    engine
+        .spawn_species_at(dna, animal, [800.0, 800.0])
+        .unwrap();
 
     engine.tick().unwrap();
 
@@ -72,18 +75,24 @@ fn species_batches_publish_once_with_configured_initial_energy() {
     });
     let dna = LegacyDna::parse("start\nstop").unwrap();
 
-    let ids = engine.spawn_species_batch(
-        dna,
-        species,
-        [[100.0, 100.0], [200.0, 200.0], [300.0, 300.0]],
-        2_500,
-    ).unwrap();
+    let ids = engine
+        .spawn_species_batch(
+            dna,
+            species,
+            [[100.0, 100.0], [200.0, 200.0], [300.0, 300.0]],
+            2_500,
+        )
+        .unwrap();
 
     assert_eq!(ids.len(), 3);
     assert_eq!(engine.snapshot().organisms.len(), 3);
-    assert!(engine.snapshot().organisms.iter().all(|organism| {
-        organism.species == species && organism.energy == 2_500
-    }));
+    assert!(
+        engine
+            .snapshot()
+            .organisms
+            .iter()
+            .all(|organism| { organism.species == species && organism.energy == 2_500 })
+    );
 }
 
 #[test]
@@ -92,7 +101,8 @@ fn configured_species_reseed_after_extinction() {
         metabolism_cost: 1,
         vegetable_energy_per_tick: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let species = engine.register_species(SpeciesDefinition {
         name: "Protected lineage".to_owned(),
         minimum_population: 2,
@@ -100,12 +110,20 @@ fn configured_species_reseed_after_extinction() {
         ..SpeciesDefinition::default()
     });
     let dna = LegacyDna::parse("start\nstop").unwrap();
-    engine.spawn_species_batch(dna, species, [[500.0, 500.0]], 1).unwrap();
+    engine
+        .spawn_species_batch(dna, species, [[500.0, 500.0]], 1)
+        .unwrap();
 
     engine.tick().unwrap();
 
     assert_eq!(engine.population(), 2);
-    assert!(engine.snapshot().organisms.iter().all(|organism| organism.species == species));
+    assert!(
+        engine
+            .snapshot()
+            .organisms
+            .iter()
+            .all(|organism| organism.species == species)
+    );
     assert_eq!(engine.snapshot().stats.deaths, 1);
     assert_eq!(engine.snapshot().stats.reseeds, 2);
 }
@@ -119,11 +137,19 @@ fn species_mutation_rate_applies_to_ordinary_reproduction() {
         ..SpeciesDefinition::default()
     });
     let dna = LegacyDna::parse("start\n10 .up store\n50 .repro store\nstop").unwrap();
-    let parent = engine.spawn_species_batch(dna, species, [[500.0, 500.0]], 1_000).unwrap()[0];
+    let parent = engine
+        .spawn_species_batch(dna, species, [[500.0, 500.0]], 1_000)
+        .unwrap()[0];
 
     engine.tick().unwrap();
 
-    let child = engine.snapshot().organisms.iter().find(|organism| organism.id != parent).unwrap().id;
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.id != parent)
+        .unwrap()
+        .id;
     assert_ne!(engine.dna(parent).unwrap(), engine.dna(child).unwrap());
     assert_eq!(engine.snapshot().stats.mutations, 1);
 }
@@ -131,7 +157,10 @@ fn species_mutation_rate_applies_to_ordinary_reproduction() {
 #[test]
 fn dna_controls_body_defenses_chloroplasts_waste_and_aim() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let dna = LegacyDna::parse("start\n10 .strbody store\n25 .mkshell store\n30 .mkchlr store\n314 .setaim store\nstop").unwrap();
+    let dna = LegacyDna::parse(
+        "start\n10 .strbody store\n25 .mkshell store\n30 .mkchlr store\n314 .setaim store\nstop",
+    )
+    .unwrap();
     let id = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
@@ -165,11 +194,14 @@ fn chloroplasts_generate_environmental_energy_for_any_species() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let builder = LegacyDna::parse("start\n160 .mkchlr store\nstop").unwrap();
     let id = engine.spawn_at(builder, [500.0, 500.0]).unwrap();
     engine.tick().unwrap();
-    engine.replace_dna(id, LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine
+        .replace_dna(id, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
     let before = engine.organism(id).unwrap().energy;
 
     engine.tick_many(4).unwrap();
@@ -198,7 +230,8 @@ fn vegetable_cap_applies_to_initial_imports_and_reproduction() {
         vegetable_population_cap: 3,
         metabolism_cost: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let vegetables = engine.register_species(SpeciesDefinition {
         name: "Capped vegetables".to_owned(),
         vegetable: true,
@@ -206,12 +239,19 @@ fn vegetable_cap_applies_to_initial_imports_and_reproduction() {
     });
     let dna = LegacyDna::parse("start\n50 .repro store\nstop").unwrap();
 
-    let imported = engine.spawn_species_batch(
-        dna,
-        vegetables,
-        [[100.0, 100.0], [200.0, 100.0], [300.0, 100.0], [400.0, 100.0]],
-        1_000,
-    ).unwrap();
+    let imported = engine
+        .spawn_species_batch(
+            dna,
+            vegetables,
+            [
+                [100.0, 100.0],
+                [200.0, 100.0],
+                [300.0, 100.0],
+                [400.0, 100.0],
+            ],
+            1_000,
+        )
+        .unwrap();
     assert_eq!(imported.len(), 3);
 
     engine.tick().unwrap();
@@ -225,7 +265,8 @@ fn animal_minimalis_recognizes_and_moves_toward_non_family_targets() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let animal = LegacyDna::parse("cond\n*.eye5 0 >\n*.refeye *.myeye !=\nstart\n*.refveldx .dx store\n*.refvelup 30 add .up store\nstop\nend").unwrap();
     let alga = LegacyDna::parse("start\nstop\nend").unwrap();
     let animal_id = engine.spawn_at(animal, [500.0, 500.0]).unwrap();
@@ -246,9 +287,12 @@ fn reproduction_synchronizes_energy_memory_before_the_next_dna_cycle() {
         vegetable_energy_per_tick: 0,
         sunlight_energy: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let dna = LegacyDna::parse("cond\n*.nrg 6000 >\nstart\n50 .repro store\nstop\nend").unwrap();
-    engine.spawn_species_batch(dna, Default::default(), [[500.0, 500.0]], 7_000).unwrap();
+    engine
+        .spawn_species_batch(dna, Default::default(), [[500.0, 500.0]], 7_000)
+        .unwrap();
 
     engine.tick().unwrap();
     assert_eq!(engine.population(), 2);
@@ -262,10 +306,13 @@ fn reproduction_wave_stops_cleanly_at_population_capacity() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let dna = LegacyDna::parse("start\n50 .repro store\nstop").unwrap();
     for index in 0..20 {
-        engine.spawn_at(dna.clone(), [100.0 + index as f32 * 10.0, 500.0]).unwrap();
+        engine
+            .spawn_at(dna.clone(), [100.0 + index as f32 * 10.0, 500.0])
+            .unwrap();
     }
 
     engine.tick().unwrap();
@@ -308,10 +355,20 @@ fn shell_absorbs_feeding_damage_before_energy_is_lost() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(LegacyDna::parse("start\n100 .mkshell store\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let target = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .mkshell store\nstop").unwrap(),
+            [120.0, 100.0],
+        )
+        .unwrap();
     engine.tick().unwrap();
     engine.replace_dna(target, idle).unwrap();
-    engine.replace_dna(attacker, LegacyDna::parse("start\n-1 .shoot store\n50 .shootval store\nstop").unwrap()).unwrap();
+    engine
+        .replace_dna(
+            attacker,
+            LegacyDna::parse("start\n-1 .shoot store\n50 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
     let before = engine.organism(target).unwrap();
 
     engine.tick().unwrap();
@@ -324,25 +381,55 @@ fn shell_absorbs_feeding_damage_before_energy_is_lost() {
 #[test]
 fn poison_drains_energy_and_venom_suppresses_movement() {
     let mut poison_engine = Engine::new(EngineConfig::testing()).unwrap();
-    let poisoner = poison_engine.spawn_at(LegacyDna::parse("start\n100 .strpoison store\nstop").unwrap(), [100.0, 100.0]).unwrap();
-    let victim = poison_engine.spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let poisoner = poison_engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .strpoison store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let victim = poison_engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0])
+        .unwrap();
     poison_engine.tick().unwrap();
-    poison_engine.replace_dna(poisoner, LegacyDna::parse("start\n-5 .shoot store\n20 .shootval store\nstop").unwrap()).unwrap();
+    poison_engine
+        .replace_dna(
+            poisoner,
+            LegacyDna::parse("start\n-5 .shoot store\n20 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
     poison_engine.tick().unwrap();
     let poisoned_energy = poison_engine.organism(victim).unwrap().energy;
     poison_engine.tick().unwrap();
     assert!(poison_engine.organism(victim).unwrap().energy < poisoned_energy - 1);
 
     let mut venom_engine = Engine::new(EngineConfig::testing()).unwrap();
-    let venomous = venom_engine.spawn_at(LegacyDna::parse("start\n100 .strvenom store\nstop").unwrap(), [100.0, 100.0]).unwrap();
-    let mover = venom_engine.spawn_at(LegacyDna::parse("start\n10 .dx store\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let venomous = venom_engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .strvenom store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let mover = venom_engine
+        .spawn_at(
+            LegacyDna::parse("start\n10 .dx store\nstop").unwrap(),
+            [120.0, 100.0],
+        )
+        .unwrap();
     venom_engine.tick().unwrap();
-    venom_engine.replace_dna(venomous, LegacyDna::parse("start\n-3 .shoot store\n20 .shootval store\nstop").unwrap()).unwrap();
+    venom_engine
+        .replace_dna(
+            venomous,
+            LegacyDna::parse("start\n-3 .shoot store\n20 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
     venom_engine.tick().unwrap();
     let after_impact = venom_engine.organism(mover).unwrap();
     assert!(after_impact.paralyzed > 0);
     venom_engine.tick().unwrap();
-    assert_eq!(venom_engine.organism(mover).unwrap().position, after_impact.position);
+    assert_eq!(
+        venom_engine.organism(mover).unwrap().position,
+        after_impact.position
+    );
 }
 
 #[test]
@@ -350,7 +437,8 @@ fn eye_strength_uses_db2_edge_to_edge_distance() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let observer = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
@@ -361,5 +449,8 @@ fn eye_strength_uses_db2_edge_to_edge_distance() {
     engine.tick().unwrap();
 
     let eye5 = engine.memory_at(observer, 505).unwrap();
-    assert!((120..=122).contains(&eye5), "expected DB2 eye strength near 121, got {eye5}");
+    assert!(
+        (120..=122).contains(&eye5),
+        "expected DB2 eye strength near 121, got {eye5}"
+    );
 }

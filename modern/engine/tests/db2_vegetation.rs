@@ -33,7 +33,9 @@ fn every_db2_248_sysvar_resolves_to_its_vb6_address() {
             continue;
         }
 
-        let Some(name) = pending_name.take() else { continue };
+        let Some(name) = pending_name.take() else {
+            continue;
+        };
         let Some((_, value)) = line
             .strip_prefix("sysvar(")
             .and_then(|line| line.split_once(".value = "))
@@ -116,7 +118,10 @@ fn vegetable_reproduction_splits_parent_biology_without_resetting_child() {
         .filter(|bot| bot.species == vegetables)
         .collect();
     assert_eq!(plants.len(), 2);
-    assert_eq!(plants.iter().map(|bot| bot.chloroplasts).sum::<i32>(), START_CHLR);
+    assert_eq!(
+        plants.iter().map(|bot| bot.chloroplasts).sum::<i32>(),
+        START_CHLR
+    );
     assert!(plants.iter().all(|bot| bot.chloroplasts > 0));
 }
 

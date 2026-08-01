@@ -1,5 +1,8 @@
 use darwinbots_engine::LegacyDna;
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[test]
 fn imports_every_robot_shipped_with_the_legacy_distribution() {
@@ -16,7 +19,11 @@ fn imports_every_robot_shipped_with_the_legacy_distribution() {
         }
     }
 
-    assert!(failures.is_empty(), "legacy imports failed:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "legacy imports failed:\n{}",
+        failures.join("\n")
+    );
 }
 
 fn collect_robot_files(directory: &Path, output: &mut Vec<PathBuf>) {
@@ -25,7 +32,10 @@ fn collect_robot_files(directory: &Path, output: &mut Vec<PathBuf>) {
         let path = entry.path();
         if path.is_dir() {
             collect_robot_files(&path, output);
-        } else if path.extension().is_some_and(|extension| extension.eq_ignore_ascii_case("txt")) {
+        } else if path
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("txt"))
+        {
             output.push(path);
         }
     }

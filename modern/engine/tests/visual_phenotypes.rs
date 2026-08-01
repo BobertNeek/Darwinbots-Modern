@@ -52,8 +52,7 @@ fn generated_skin_is_stable_and_inside_the_bot() {
 
 #[test]
 fn real_mutation_drifts_color_but_zero_changes_do_not() {
-    let mut phenotype =
-        VisualPhenotype::new(3, 0xff23_9ac0, generated_skin("Animal", 3));
+    let mut phenotype = VisualPhenotype::new(3, 0xff23_9ac0, generated_skin("Animal", 3));
     let original = phenotype.clone();
     let mut random = 91;
 
@@ -79,8 +78,7 @@ fn autotroph_mutations_remain_green() {
 
 #[test]
 fn speciation_changes_one_skin_point_and_resets_distance() {
-    let mut phenotype =
-        VisualPhenotype::new(9, 0xff23_9ac0, generated_skin("Animal", 9));
+    let mut phenotype = VisualPhenotype::new(9, 0xff23_9ac0, generated_skin("Animal", 9));
     phenotype.accumulated_mutations = 12;
     let before = phenotype.skin;
     let mut random = 17;

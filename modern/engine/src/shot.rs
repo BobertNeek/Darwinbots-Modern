@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 mod effects;
 mod projectile;
 
-pub(crate) use effects::{
-    ProjectileEffect, ProjectileImpact, ProjectileTarget, projectile_effect,
-};
+pub(crate) use effects::{ProjectileEffect, ProjectileImpact, ProjectileTarget, projectile_effect};
 pub(crate) use projectile::{ProjectilePool, ProjectileSpawn};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

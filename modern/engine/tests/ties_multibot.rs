@@ -2,11 +2,21 @@ use darwinbots_engine::{Engine, EngineConfig, LegacyDna};
 
 #[test]
 fn ties_share_resources_transfer_memory_and_publish_multibot_state() {
-    let mut engine = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
-    let source = engine.spawn_at(LegacyDna::parse(
-        "start\n100 .mkshell store\n40 .mkslime store\n1 .tie store\nstop",
-    ).unwrap(), [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .mkshell store\n40 .mkslime store\n1 .tie store\nstop")
+                .unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [120.0, 100.0])
+        .unwrap();
     engine.tick().unwrap();
     assert_eq!(engine.snapshot().ties.len(), 1);
     let source_before = engine.organism(source).unwrap();
@@ -35,12 +45,30 @@ fn ties_share_resources_transfer_memory_and_publish_multibot_state() {
 
 #[test]
 fn slime_is_consumed_to_resist_new_ties() {
-    let mut engine = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
-    let source = engine.spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(LegacyDna::parse("start\n50 .mkslime store\nstop").unwrap(), [120.0, 100.0]).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+    let target = engine
+        .spawn_at(
+            LegacyDna::parse("start\n50 .mkslime store\nstop").unwrap(),
+            [120.0, 100.0],
+        )
+        .unwrap();
     engine.tick().unwrap();
-    engine.replace_dna(source, LegacyDna::parse("start\n1 .tie store\nstop").unwrap()).unwrap();
-    engine.replace_dna(target, LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n1 .tie store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine
+        .replace_dna(target, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
 
     engine.tick().unwrap();
 
@@ -50,7 +78,11 @@ fn slime_is_consumed_to_resist_new_ties() {
 
 #[test]
 fn dragging_one_member_moves_the_tied_organism_and_clears_momentum() {
-    let mut engine = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
     let source = engine
         .spawn_at(
             LegacyDna::parse("start\n1 .tie store\n25 .up store\nstop").unwrap(),
@@ -70,11 +102,17 @@ fn dragging_one_member_moves_the_tied_organism_and_clears_momentum() {
 
     let source_after = engine.organism(source).unwrap();
     let target_after = engine.organism(target).unwrap();
-    let delta = [destination[0] - source_before.position[0], destination[1] - source_before.position[1]];
+    let delta = [
+        destination[0] - source_before.position[0],
+        destination[1] - source_before.position[1],
+    ];
     assert_eq!(source_after.position, destination);
     assert_eq!(
         target_after.position,
-        [target_before.position[0] + delta[0], target_before.position[1] + delta[1]],
+        [
+            target_before.position[0] + delta[0],
+            target_before.position[1] + delta[1]
+        ],
     );
     assert_eq!(source_after.velocity, [0.0, 0.0]);
     assert_eq!(target_after.velocity, [0.0, 0.0]);
