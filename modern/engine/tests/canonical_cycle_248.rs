@@ -181,7 +181,7 @@ fn post_dna_tie_write_precedes_shot_and_reproduction_consumption() {
 }
 
 #[test]
-fn a_new_tie_exchanges_resources_only_from_the_following_cycle() {
+fn a_new_tie_exchanges_resources_only_after_hardening() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let source = engine
         .spawn_at(
@@ -228,7 +228,31 @@ fn a_new_tie_exchanges_resources_only_from_the_following_cycle() {
     }));
 
     let second = engine.tick_with_trace().unwrap();
-    let exchange = second
+    assert_eq!(engine.snapshot().tick, 2);
+    assert_eq!(
+        engine.organism(target).unwrap().energy,
+        target_after_creation
+    );
+    assert!(!second.events.iter().any(|event| {
+        matches!(
+            event,
+            CycleEvent::Effect {
+                phase: CyclePhase::Tie,
+                kind,
+                ..
+            } if kind == "tie_share_energy"
+        )
+    }));
+
+    engine.tick_many(17).unwrap();
+    assert_eq!(engine.snapshot().tick, 19);
+    assert_eq!(
+        engine.organism(target).unwrap().energy,
+        target_after_creation
+    );
+
+    let hardened = engine.tick_with_trace().unwrap();
+    let exchange = hardened
         .events
         .iter()
         .position(|event| {
@@ -243,9 +267,10 @@ fn a_new_tie_exchanges_resources_only_from_the_following_cycle() {
                 } if *id == source && *target_id == target && kind == "tie_share_energy"
             )
         })
-        .expect("existing tie energy exchange was not attributed to the tie pass");
+        .expect("hardened tie energy exchange was not attributed to the tie pass");
 
-    assert!(exchange < phase_index(&second, CyclePhase::TieFire));
+    assert!(phase_index(&hardened, CyclePhase::TieSpring) < exchange);
+    assert!(exchange < phase_index(&hardened, CyclePhase::TieFire));
     let target_after_exchange = engine.organism(target).unwrap().energy;
     assert!(
         target_after_exchange > target_after_creation + 50,

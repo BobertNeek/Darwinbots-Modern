@@ -1,5 +1,6 @@
-use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState};
+use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState, TieEndpointState};
 use crate::simulation_cycle::CycleRecorder;
+use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_DEADBAND};
 use crate::{
     BackendCapabilities, BackendKind, BackendPreference, BiologyState, CommandOutcome,
     CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm,
@@ -8,9 +9,9 @@ use crate::{
     PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect, ProjectileImpact,
     ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind, RenderInstance,
     ShotSettings, ShotSnapshot, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition,
-    SpeciesId, SysvarRuntime, Teleporter, TieCommands, TieReadbacks, VegetationRuntime,
-    VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, eye_value,
-    generated_skin, projectile_effect,
+    SpeciesId, SysvarRuntime, Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState,
+    VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype,
+    VmMemory, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -146,17 +147,6 @@ impl PartialEq for Snapshot {
             && self.obstacles == other.obstacles
             && self.teleporters == other.teleporters
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct TieSnapshot {
-    pub first: OrganismId,
-    pub second: OrganismId,
-    pub rest_length: f32,
-    #[serde(default)]
-    pub first_port: i32,
-    #[serde(default)]
-    pub second_port: i32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -912,13 +902,26 @@ struct Db3sV2TieSnapshot {
 
 impl From<Db3sV2TieSnapshot> for TieSnapshot {
     fn from(value: Db3sV2TieSnapshot) -> Self {
-        Self {
-            first: value.first.into(),
-            second: value.second.into(),
-            rest_length: value.rest_length,
-            first_port: value.first_port,
-            second_port: value.second_port,
-        }
+        let state = TieState::legacy(
+            value.first.into(),
+            value.second.into(),
+            value.rest_length,
+            value.first_port,
+            value.second_port,
+        );
+        Self::from(&state)
+    }
+}
+
+impl From<Db3sV2TieSnapshot> for TieState {
+    fn from(value: Db3sV2TieSnapshot) -> Self {
+        Self::legacy(
+            value.first.into(),
+            value.second.into(),
+            value.rest_length,
+            value.first_port,
+            value.second_port,
+        )
     }
 }
 
@@ -1563,7 +1566,7 @@ pub struct Engine {
     #[serde(skip, default)]
     sensing_spatial: SpatialIndex,
     pending_mutations: Vec<OrganismId>,
-    ties: Vec<TieSnapshot>,
+    ties: Vec<TieState>,
     #[serde(default = "default_species")]
     species: Vec<SpeciesDefinition>,
     #[serde(default = "default_species_templates")]
@@ -1614,7 +1617,7 @@ struct CycleCheckpoint {
     spatial: SpatialIndex,
     sensing_spatial: SpatialIndex,
     pending_mutations: Vec<OrganismId>,
-    ties: Vec<TieSnapshot>,
+    ties: Vec<TieState>,
     species: Vec<SpeciesDefinition>,
     species_templates: Vec<Option<SpeciesTemplate>>,
     mutations_enabled: bool,
@@ -3615,9 +3618,10 @@ impl Engine {
             !tie_deletions.contains(&(tie.first.slot() as usize))
                 && !tie_deletions.contains(&(tie.second.slot() as usize))
         });
+        self.refresh_tie_projections();
 
         let mut channels = Vec::new();
-        for tie in &self.ties {
+        for tie in self.ties.iter().filter(|tie| tie.hardened) {
             for (source_slot, target_slot) in [
                 (tie.first.slot() as usize, tie.second.slot() as usize),
                 (tie.second.slot() as usize, tie.first.slot() as usize),
@@ -3728,14 +3732,80 @@ impl Engine {
     }
 
     fn tie_readback_phase(&mut self) {
+        self.refresh_tie_projections();
+    }
+
+    fn refresh_tie_projections(&mut self) {
         let runtime = SysvarRuntime::new();
-        let mut tie_counts = vec![0i32; self.slots.len()];
+        let mut endpoints = vec![[None; MAX_TIES_PER_ROBOT]; self.slots.len()];
+        let mut tie_counts = vec![0usize; self.slots.len()];
+        let mut multibot = vec![false; self.slots.len()];
         let mut latest_ports = vec![None; self.slots.len()];
         for tie in &self.ties {
             let first = tie.first.slot() as usize;
             let second = tie.second.slot() as usize;
-            tie_counts[first] = tie_counts[first].saturating_add(1);
-            tie_counts[second] = tie_counts[second].saturating_add(1);
+            if first == second || first >= self.slots.len() || second >= self.slots.len() {
+                continue;
+            }
+            if self.slots[first].generation != tie.first.generation()
+                || self.slots[second].generation != tie.second.generation()
+            {
+                continue;
+            }
+            let (Some(first_robot), Some(second_robot)) = (
+                self.slots[first].organism.as_ref(),
+                self.slots[second].organism.as_ref(),
+            ) else {
+                continue;
+            };
+            let first_index = tie_counts[first];
+            let second_index = tie_counts[second];
+            if first_index >= MAX_TIES_PER_ROBOT || second_index >= MAX_TIES_PER_ROBOT {
+                continue;
+            }
+            let delta = [
+                second_robot.kinematics.position[0] - first_robot.kinematics.position[0],
+                second_robot.kinematics.position[1] - first_robot.kinematics.position[1],
+            ];
+            let current_length = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
+            let first_angle = delta[1].atan2(delta[0]);
+            let second_angle = (-delta[1]).atan2(-delta[0]);
+            let spring_velocity = if current_length > f32::EPSILON {
+                let unit = [delta[0] / current_length, delta[1] / current_length];
+                (second_robot.kinematics.velocity[0] - first_robot.kinematics.velocity[0]) * unit[0]
+                    + (second_robot.kinematics.velocity[1] - first_robot.kinematics.velocity[1])
+                        * unit[1]
+            } else {
+                0.0
+            };
+            endpoints[first][first_index] = Some(TieEndpointState {
+                other: Some(tie.second),
+                reciprocal_index: (second_index + 1) as u8,
+                port: tie.first_port,
+                current_angle: first_angle,
+                current_length,
+                requested_length: tie.rest_length,
+                countdown: tie.last,
+                spring_velocity,
+                ..TieEndpointState::default()
+            });
+            endpoints[second][second_index] = Some(TieEndpointState {
+                other: Some(tie.first),
+                reciprocal_index: (first_index + 1) as u8,
+                port: tie.second_port,
+                current_angle: second_angle,
+                current_length,
+                requested_length: tie.rest_length,
+                countdown: tie.last,
+                spring_velocity,
+                ..TieEndpointState::default()
+            });
+            tie_counts[first] += 1;
+            tie_counts[second] += 1;
+            if tie.hardened {
+                multibot[first] = true;
+                multibot[second] = true;
+            }
             latest_ports[first] = Some(tie.first_port);
             latest_ports[second] = Some(tie.second_port);
         }
@@ -3743,11 +3813,13 @@ impl Engine {
             let Some(organism) = slot_state.organism.as_mut() else {
                 continue;
             };
-            let count = tie_counts.get(slot).copied().unwrap_or(0);
+            organism.ties = endpoints[slot];
+            let count = tie_counts[slot] as i32;
+            organism.counters.multibot = multibot.get(slot).copied().unwrap_or(false);
             runtime.publish(
                 PhaseReadbacks::Tie(TieReadbacks {
                     values: vec![
-                        (MEM_MULTI as u16, i32::from(count > 0)),
+                        (MEM_MULTI as u16, i32::from(organism.counters.multibot)),
                         (MEM_NUMBER_OF_TIES as u16, count),
                         (MEM_MY_TIES as u16, count),
                         (MEM_TIE_PRESENT as u16, latest_ports[slot].unwrap_or(0)),
@@ -3759,10 +3831,11 @@ impl Engine {
                 0 => latest_ports[slot].unwrap_or(0),
                 selected => selected,
             };
-            let selected_tie_is_valid = self.ties.iter().any(|tie| {
-                (tie.first.slot() as usize == slot && tie.first_port == selected_port)
-                    || (tie.second.slot() as usize == slot && tie.second_port == selected_port)
-            });
+            let selected_tie_is_valid = organism
+                .ties
+                .iter()
+                .flatten()
+                .any(|endpoint| endpoint.port == selected_port);
             if !selected_tie_is_valid {
                 for address in TIED_REFERENCE_ADDRESSES {
                     organism.program.memory.write(address, 0);
@@ -3826,15 +3899,12 @@ impl Engine {
             if exists {
                 continue;
             }
-            let second_port = self
-                .ties
-                .iter()
-                .filter(|tie| {
-                    tie.first.slot() as usize == second_slot
-                        || tie.second.slot() as usize == second_slot
-                })
-                .count() as i32
-                + 1;
+            let first_tie_count = self.ties.iter().filter(|tie| tie.contains(first)).count();
+            let second_tie_count = self.ties.iter().filter(|tie| tie.contains(second)).count();
+            if first_tie_count >= MAX_TIES_PER_ROBOT || second_tie_count >= MAX_TIES_PER_ROBOT {
+                continue;
+            }
+            let second_port = second_tie_count as i32 + 1;
             let first_position = self.slots[first_slot]
                 .organism
                 .as_ref()
@@ -3847,18 +3917,19 @@ impl Engine {
                 .unwrap()
                 .kinematics
                 .position;
-            self.ties.push(TieSnapshot {
+            self.ties.push(TieState::new(
                 first,
                 second,
-                rest_length: distance_squared(first_position, second_position).sqrt(),
+                distance_squared(first_position, second_position).sqrt(),
                 first_port,
                 second_port,
-            });
+            ));
             self.stats.ties_created = self.stats.ties_created.saturating_add(1);
             if trace.is_enabled() {
                 trace.effect(CyclePhase::TieFire, Some(first), second, "tie_created");
             }
         }
+        self.refresh_tie_projections();
     }
 
     fn prepare_projectile_requests_phase(&mut self) {
@@ -4671,41 +4742,68 @@ impl Engine {
     }
 
     fn apply_tie_constraints(&mut self) {
-        let ties = self.ties.clone();
-        for tie in ties {
+        let slots = &mut self.slots;
+        self.ties.retain_mut(|tie| {
             let first_slot = tie.first.slot() as usize;
             let second_slot = tie.second.slot() as usize;
             if first_slot == second_slot
-                || first_slot >= self.slots.len()
-                || second_slot >= self.slots.len()
+                || first_slot >= slots.len()
+                || second_slot >= slots.len()
+                || slots[first_slot].generation != tie.first.generation()
+                || slots[second_slot].generation != tie.second.generation()
             {
-                continue;
+                return false;
             }
             let (first, second) = if first_slot < second_slot {
-                let (left, right) = self.slots.split_at_mut(second_slot);
+                let (left, right) = slots.split_at_mut(second_slot);
                 (&mut left[first_slot], &mut right[0])
             } else {
-                let (left, right) = self.slots.split_at_mut(first_slot);
+                let (left, right) = slots.split_at_mut(first_slot);
                 (&mut right[0], &mut left[second_slot])
             };
             let (Some(first), Some(second)) = (first.organism.as_mut(), second.organism.as_mut())
             else {
-                continue;
+                return false;
             };
             let delta = [
                 second.kinematics.position[0] - first.kinematics.position[0],
                 second.kinematics.position[1] - first.kinematics.position[1],
             ];
             let distance = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
-            if distance <= f32::EPSILON {
-                continue;
+            let first_radius =
+                crate::physics::organism_radius(first.materials.body, first.materials.chloroplasts);
+            let second_radius = crate::physics::organism_radius(
+                second.materials.body,
+                second.materials.chloroplasts,
+            );
+            if distance - first_radius - second_radius > MAX_TIE_SURFACE_GAP {
+                return false;
             }
-            let correction = (distance - tie.rest_length) / distance * 0.5;
-            first.kinematics.position[0] += delta[0] * correction;
-            first.kinematics.position[1] += delta[1] * correction;
-            second.kinematics.position[0] -= delta[0] * correction;
-            second.kinematics.position[1] -= delta[1] * correction;
-        }
+            if !tie.advance_lifecycle(distance) {
+                return false;
+            }
+            if distance <= f32::EPSILON {
+                return true;
+            }
+            let mut displacement = tie.rest_length - distance;
+            if displacement.abs() <= TIE_DEADBAND {
+                return true;
+            }
+            displacement = displacement.signum() * (displacement.abs() - TIE_DEADBAND);
+            let unit = [delta[0] / distance, delta[1] / distance];
+            let relative_velocity = [
+                first.kinematics.velocity[0] - second.kinematics.velocity[0],
+                first.kinematics.velocity[1] - second.kinematics.velocity[1],
+            ];
+            let relative_along = relative_velocity[0] * unit[0] + relative_velocity[1] * unit[1];
+            let impulse = -tie.k * displacement - tie.b * relative_along;
+            first.kinematics.velocity[0] += unit[0] * impulse;
+            first.kinematics.velocity[1] += unit[1] * impulse;
+            second.kinematics.velocity[0] -= unit[0] * impulse;
+            second.kinematics.velocity[1] -= unit[1] * impulse;
+            true
+        });
+        self.refresh_tie_projections();
     }
 
     fn vegetation_feed_phase(&mut self) {
@@ -5138,6 +5236,7 @@ impl Engine {
         let slots = &self.slots;
         self.ties
             .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
+        self.refresh_tie_projections();
         Ok(())
     }
 
@@ -5219,6 +5318,7 @@ impl Engine {
     }
 
     fn publish_snapshot(&mut self) {
+        self.refresh_tie_projections();
         let organisms: Vec<_> = self
             .slots
             .par_iter()
@@ -5289,7 +5389,7 @@ impl Engine {
             shots: self.projectiles.snapshots(),
             history: self.history.clone(),
             stats: self.stats.clone(),
-            ties: self.ties.clone(),
+            ties: self.ties.iter().map(TieSnapshot::from).collect(),
             render_instances,
             species: self.species.clone(),
             mutations_enabled: self.mutations_enabled,

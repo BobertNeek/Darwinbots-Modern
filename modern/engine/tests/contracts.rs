@@ -63,6 +63,101 @@ fn engine_with_in_flight_venom() -> (Engine, OrganismId, OrganismId) {
     (engine, source, target)
 }
 
+#[test]
+fn review_projection_db3s_v3_resumes_exact_mid_soft_tie_lifecycle() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        world_width: 3_000.0,
+        world_height: 2_000.0,
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            [400.0, 1_000.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 1_000.0])
+        .unwrap();
+    engine.tick().unwrap();
+    engine.tick_many(7).unwrap();
+
+    let before = &engine.snapshot().ties[0];
+    assert_eq!(engine.snapshot().tick, 8);
+    assert_eq!(before.last, -13);
+    assert!((before.b - 0.02).abs() < 0.000_001);
+    assert!((before.k - 0.01).abs() < 0.000_001);
+    assert!(!before.hardened);
+
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut restored = SaveFile::decode(&save).unwrap();
+    let after = &restored.snapshot().ties[0];
+    assert_eq!(after.last, -13);
+    assert!((after.b - 0.02).abs() < 0.000_001);
+    assert!((after.k - 0.01).abs() < 0.000_001);
+    assert!(!after.hardened);
+    assert_eq!(
+        (
+            restored
+                .robot_state(source)
+                .unwrap()
+                .ties
+                .iter()
+                .flatten()
+                .count(),
+            restored
+                .robot_state(target)
+                .unwrap()
+                .ties
+                .iter()
+                .flatten()
+                .count(),
+        ),
+        (1, 1)
+    );
+    assert_eq!(
+        (
+            restored.robot_state(source).unwrap().ties[0]
+                .unwrap()
+                .countdown,
+            restored.robot_state(target).unwrap().ties[0]
+                .unwrap()
+                .countdown,
+        ),
+        (-13, -13)
+    );
+
+    restored.tick_many(12).unwrap();
+    let hardened = &restored.snapshot().ties[0];
+    assert_eq!(restored.snapshot().tick, 20);
+    assert_eq!(hardened.last, -1);
+    assert!((hardened.b - 0.1).abs() < 0.000_001);
+    assert!((hardened.k - 0.05).abs() < 0.000_001);
+    assert!(hardened.hardened);
+    assert_eq!(restored.memory(source, "multi").unwrap(), 1);
+    assert_eq!(restored.memory(target, "multi").unwrap(), 1);
+
+    let mut old_v3: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    let strip_lifecycle_fields = |tie: &mut serde_json::Value| {
+        let tie = tie.as_object_mut().unwrap();
+        tie.remove("last");
+        tie.remove("b");
+        tie.remove("k");
+        tie.remove("hardened");
+    };
+    strip_lifecycle_fields(&mut old_v3["ties"][0]);
+    strip_lifecycle_fields(&mut old_v3["snapshot"]["ties"][0]);
+    let migrated = SaveFile::decode(&frame_save(3, &old_v3)).unwrap();
+    let migrated_tie = &migrated.snapshot().ties[0];
+    assert_eq!(migrated_tie.last, 0);
+    assert!((migrated_tie.b - 0.1).abs() < 0.000_001);
+    assert!((migrated_tie.k - 0.05).abs() < 0.000_001);
+    assert!(migrated_tie.hardened);
+}
+
 const SIMPLE_BOT: &str = r#"
 ' Legacy comments remain legal.
 def target 50
@@ -746,6 +841,10 @@ fn db3s_v2_accepts_parent_defaulted_field_omissions() {
     assert!(restored.snapshot().asexual_reproduction_allowed);
     assert_eq!(restored.snapshot().ties[0].first_port, 0);
     assert_eq!(restored.snapshot().ties[0].second_port, 0);
+    assert_eq!(restored.snapshot().ties[0].last, 0);
+    assert_eq!(restored.snapshot().ties[0].b, 0.1);
+    assert_eq!(restored.snapshot().ties[0].k, 0.05);
+    assert!(restored.snapshot().ties[0].hardened);
 
     let migrated = SaveFile::encode(&restored).unwrap();
     let migrated: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();

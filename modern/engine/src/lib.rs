@@ -20,6 +20,7 @@ mod species;
 mod stats;
 mod sysvar_runtime;
 mod sysvars;
+mod tie;
 mod timing;
 mod vegetation;
 mod vision;
@@ -67,9 +68,11 @@ pub use sysvar_runtime::{
     TieReadbacks, VirusCommands, VisionReadbacks,
 };
 pub use sysvars::sysvar_address;
+pub use tie::TieSnapshot;
+pub(crate) use tie::TieState;
 pub use timing::PhaseTimings;
 pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use vision::{EyeSnapshot, VisionSnapshot, absolute_eye_width, eye_sight_distance, eye_value};
 pub use visual_phenotype::{SkinPoint, VisualPhenotype, default_skin, generated_skin};
 pub use vm::{DnaVm, VmContext, VmMemory, VmReport, VmTermination};
-pub use world::{Engine, OrganismSnapshot, Snapshot, TieSnapshot};
+pub use world::{Engine, OrganismSnapshot, Snapshot};

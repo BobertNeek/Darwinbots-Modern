@@ -241,6 +241,84 @@ fn cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance() {
 }
 
 #[test]
+fn cpu_and_gpu_match_tie_lifecycle_spring_and_hardening() {
+    if GpuPhysicsBackend::new().is_err() {
+        return;
+    }
+    let config = EngineConfig {
+        world_width: 3_000.0,
+        world_height: 2_000.0,
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    };
+    let mut cpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Cpu,
+        ..config.clone()
+    })
+    .unwrap();
+    let mut gpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        ..config
+    })
+    .unwrap();
+
+    for engine in [&mut cpu, &mut gpu] {
+        let source = engine
+            .spawn_at(
+                LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+                [400.0, 1_000.0],
+            )
+            .unwrap();
+        let target = engine
+            .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 1_000.0])
+            .unwrap();
+        engine.tick().unwrap();
+        let mut batch = engine.physics_batch();
+        let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+        let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+        batch.batch.positions[source_index] = [400.0, 1_000.0];
+        batch.batch.positions[target_index] = [730.0, 1_000.0];
+        batch.batch.velocities[source_index] = [0.0; 2];
+        batch.batch.velocities[target_index] = [0.0; 2];
+        engine.apply_physics_batch(batch).unwrap();
+        engine.tick().unwrap();
+    }
+
+    for index in 0..2 {
+        let left = &cpu.snapshot().organisms[index];
+        let right = &gpu.snapshot().organisms[index];
+        assert!((left.position[0] - right.position[0]).abs() < 0.05);
+        assert!((left.velocity[0] - right.velocity[0]).abs() < 0.05);
+    }
+    assert_eq!(cpu.snapshot().ties[0].last, -19);
+    assert_eq!(gpu.snapshot().ties[0].last, -19);
+    assert!(!cpu.snapshot().ties[0].hardened);
+    assert!(!gpu.snapshot().ties[0].hardened);
+
+    cpu.tick_many(18).unwrap();
+    gpu.tick_many(18).unwrap();
+
+    let left_tie = &cpu.snapshot().ties[0];
+    let right_tie = &gpu.snapshot().ties[0];
+    assert_eq!(left_tie.last, -1);
+    assert_eq!(right_tie.last, -1);
+    assert!(left_tie.hardened);
+    assert!(right_tie.hardened);
+    assert_eq!(left_tie.b, right_tie.b);
+    assert_eq!(left_tie.k, right_tie.k);
+    assert!((left_tie.rest_length - right_tie.rest_length).abs() < 0.05);
+    for index in 0..2 {
+        let left = &cpu.snapshot().organisms[index];
+        let right = &gpu.snapshot().organisms[index];
+        assert!((left.position[0] - right.position[0]).abs() < 0.05);
+        assert!((left.velocity[0] - right.velocity[0]).abs() < 0.05);
+        assert_eq!(cpu.memory(left.id, "multi").unwrap(), 1);
+        assert_eq!(gpu.memory(right.id, "multi").unwrap(), 1);
+    }
+}
+
+#[test]
 fn cpu_and_gpu_emit_identical_nontiming_cycle_traces() {
     if GpuPhysicsBackend::new().is_err() {
         return;
