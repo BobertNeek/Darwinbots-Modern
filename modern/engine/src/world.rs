@@ -1,13 +1,15 @@
 use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState};
+use crate::simulation_cycle::CycleRecorder;
 use crate::{
     BackendCapabilities, BackendKind, BackendPreference, BiologyState, CommandOutcome,
     CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaVm, EngineConfig, EngineError,
     GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna, Obstacle, OrganismId,
     PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch, PlantLightInput,
     ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
-    RenderInstance, ShotSnapshot, SimulationStats, SpatialIndex, SpeciesDefinition, SpeciesId,
-    SysvarRuntime, Teleporter, TieCommands, TieReadbacks, VegetationRuntime, VisionReadbacks,
-    VisionSnapshot, VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
+    QueueChangeKind, RenderInstance, ShotSnapshot, SimulationStats, SpatialIndex,
+    SpeciesDefinition, SpeciesId, SysvarRuntime, Teleporter, TieCommands, TieReadbacks,
+    VegetationRuntime, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, eye_value,
+    generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -150,6 +152,23 @@ struct PendingProjectileRequest {
     kind: i32,
     value: i32,
     angle: f32,
+}
+
+type PendingBirth = (
+    LegacyDna,
+    [f32; 2],
+    i32,
+    bool,
+    SpeciesId,
+    OrganismId,
+    bool,
+    BiologyState,
+);
+
+#[derive(Default)]
+struct LifecycleQueues {
+    births: Vec<PendingBirth>,
+    deaths: Vec<usize>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -754,58 +773,169 @@ impl Engine {
     }
 
     pub fn tick(&mut self) -> Result<(), EngineError> {
-        self.tick_internal(true)
+        self.tick_internal(true, false).map(|_| ())
+    }
+
+    pub fn tick_with_trace(&mut self) -> Result<crate::CycleTrace, EngineError> {
+        self.tick_internal(true, true)?
+            .ok_or_else(|| EngineError::Invariant("cycle tracing was not enabled".to_owned()))
     }
 
     pub fn tick_many(&mut self, count: u32) -> Result<(), EngineError> {
         for index in 0..count {
-            self.tick_internal(index + 1 == count)?;
+            self.tick_internal(index + 1 == count, false)?;
         }
         Ok(())
     }
 
-    fn tick_internal(&mut self, publish: bool) -> Result<(), EngineError> {
+    fn tick_internal(
+        &mut self,
+        publish: bool,
+        trace_enabled: bool,
+    ) -> Result<Option<crate::CycleTrace>, EngineError> {
+        let cycle_started = Instant::now();
+        let next_tick = self.tick.saturating_add(1);
+        let mut trace = if trace_enabled {
+            CycleRecorder::enabled(next_tick)
+        } else {
+            CycleRecorder::disabled(next_tick)
+        };
+
+        trace.phase(CyclePhase::Pause);
+        trace.phase(CyclePhase::CycleIncrement);
+        self.tick = next_tick;
+        trace.phase(CyclePhase::ModeLogic);
+        trace.phase(CyclePhase::Bookkeeping);
+        if self.tick.is_multiple_of(100) {
+            self.record_history();
+        }
+
+        trace.phase(CyclePhase::Dna);
         let started = Instant::now();
-        self.execute_dna_phase()?;
-        self.clear_after_dna_phase();
+        self.execute_dna_phase(&mut trace)?;
         self.phase_timings.dna = elapsed_ms(started);
+        trace.phase(CyclePhase::DebuggerView);
+        trace.phase(CyclePhase::AfterDna);
+        self.clear_after_dna_phase();
+        trace.phase(CyclePhase::PlayerBot);
+
+        trace.phase(CyclePhase::ShotUpdate);
         let started = Instant::now();
+        self.projectile_update_phase(&mut trace);
+        self.phase_timings.projectiles = elapsed_ms(started);
+        trace.phase(CyclePhase::OldPositions);
+        self.capture_previous_positions();
+
+        trace.phase(CyclePhase::RobotPipeline);
+        for phase in [
+            CyclePhase::TeleporterTest,
+            CyclePhase::FluidMass,
+            CyclePhase::Tide,
+        ] {
+            self.trace_robot_phase(&mut trace, phase);
+        }
+        self.trace_robot_phase(&mut trace, CyclePhase::Upkeep);
+        self.upkeep_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::PoisonVenom);
+        self.poison_venom_phase();
+        for phase in [
+            CyclePhase::FixPosition,
+            CyclePhase::Mass,
+            CyclePhase::ObstaclesBorders,
+            CyclePhase::TieSpring,
+        ] {
+            self.trace_robot_phase(&mut trace, phase);
+        }
+
+        self.trace_robot_phase(&mut trace, CyclePhase::Movement);
+        let started = Instant::now();
+        self.movement_commands_phase();
         self.intent_phase();
         self.phase_timings.intent = elapsed_ms(started);
+        self.trace_robot_phase(&mut trace, CyclePhase::RobotCollisions);
+        self.trace_robot_phase(&mut trace, CyclePhase::StaticFriction);
+        self.trace_robot_phase(&mut trace, CyclePhase::TieData);
         let started = Instant::now();
         self.spatial_index_phase();
-        self.phase_timings.spatial = elapsed_ms(started);
-        let started = Instant::now();
-        self.interactions_phase();
+        self.tie_data_phase(&mut trace);
         self.phase_timings.interactions = elapsed_ms(started);
+
+        self.trace_robot_phase(&mut trace, CyclePhase::SpeciesCounts);
+        self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
+        self.decay_corpses_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::Tie);
+        let started = Instant::now();
+        self.tie_exchange_phase(&mut trace);
+        self.phase_timings.interactions += elapsed_ms(started);
+        self.trace_robot_phase(&mut trace, CyclePhase::BirthTieHeredity);
+        self.trace_robot_phase(&mut trace, CyclePhase::Aim);
+        self.aim_commands_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::Virus);
+        self.virus_commands_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::PositionIntegration);
         let started = Instant::now();
         self.physics_phase()?;
         self.phase_timings.physics = elapsed_ms(started);
+        self.trace_robot_phase(&mut trace, CyclePhase::StoreClamps);
+        self.store_clamps_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::BigBertha);
+
+        self.trace_robot_phase(&mut trace, CyclePhase::TieReadback);
         let started = Instant::now();
-        self.spatial_index_phase();
-        self.phase_timings.spatial += elapsed_ms(started);
-        let started = Instant::now();
-        self.sensing_phase()?;
-        self.phase_timings.sensing = elapsed_ms(started);
-        let started = Instant::now();
-        self.projectile_spawn_phase();
-        self.phase_timings.projectiles = elapsed_ms(started);
-        let started = Instant::now();
-        self.vegetation_feed_phase();
-        self.phase_timings.vegetation = elapsed_ms(started);
-        let started = Instant::now();
-        self.lifecycle_phase()?;
-        self.phase_timings.lifecycle = elapsed_ms(started);
-        let started = Instant::now();
-        self.vegetation_repopulation_phase()?;
-        self.phase_timings.vegetation += elapsed_ms(started);
+        self.tie_readback_phase();
+        self.phase_timings.interactions += elapsed_ms(started);
+        self.trace_robot_phase(&mut trace, CyclePhase::Mutation);
         let started = Instant::now();
         self.mutation_phase();
         self.phase_timings.mutation = elapsed_ms(started);
-        self.tick += 1;
-        if self.tick % 100 == 0 {
-            self.record_history();
-        }
+        self.trace_robot_phase(&mut trace, CyclePhase::Material);
+        self.material_commands_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::Waste);
+        self.trace_robot_phase(&mut trace, CyclePhase::Shot);
+        self.prepare_projectile_requests_phase();
+        self.projectile_spawn_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::Chloroplast);
+        self.trace_robot_phase(&mut trace, CyclePhase::Body);
+        self.trace_robot_phase(&mut trace, CyclePhase::Buoyancy);
+        self.trace_robot_phase(&mut trace, CyclePhase::Reproduction);
+        let started = Instant::now();
+        let mut lifecycle = self.prepare_lifecycle_queues(&mut trace);
+        self.phase_timings.lifecycle = elapsed_ms(started);
+        self.trace_robot_phase(&mut trace, CyclePhase::Shock);
+        self.trace_robot_phase(&mut trace, CyclePhase::Senses);
+        let started = Instant::now();
+        self.spatial_index_phase();
+        self.sensing_phase()?;
+        self.publish_core_senses_phase();
+        self.phase_timings.sensing = elapsed_ms(started);
+        self.trace_robot_phase(&mut trace, CyclePhase::TieFire);
+        let started = Instant::now();
+        self.tie_fire_phase(&mut trace);
+        self.phase_timings.interactions += elapsed_ms(started);
+        self.trace_robot_phase(&mut trace, CyclePhase::AgeTimer);
+        self.age_timer_phase();
+        self.trace_robot_phase(&mut trace, CyclePhase::CorpseRemoval);
+        self.queue_deaths(&mut lifecycle, &mut trace);
+        self.trace_robot_phase(&mut trace, CyclePhase::TotalEnergy);
+
+        trace.phase(CyclePhase::CommitBirthsDeaths);
+        self.commit_lifecycle_queues(lifecycle, &mut trace)?;
+        trace.phase(CyclePhase::ExtinctSpecies);
+        trace.phase(CyclePhase::Restart);
+        trace.phase(CyclePhase::ActualVelocity);
+        self.record_actual_velocities();
+        trace.phase(CyclePhase::ObjectsTeleporters);
+        self.apply_environment_features();
+        trace.phase(CyclePhase::Repopulation);
+        let started = Instant::now();
+        self.vegetation_repopulation_phase()?;
+        self.phase_timings.vegetation = elapsed_ms(started);
+        trace.phase(CyclePhase::Sunlight);
+        let started = Instant::now();
+        self.vegetation_feed_phase();
+        self.phase_timings.vegetation += elapsed_ms(started);
+        trace.phase(CyclePhase::Publication);
+        self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
         if publish {
             let started = Instant::now();
             self.publish_snapshot();
@@ -813,7 +943,19 @@ impl Engine {
         } else {
             self.phase_timings.snapshot = 0.0;
         }
-        Ok(())
+        self.phase_timings.cycle = elapsed_ms(cycle_started);
+        Ok(trace.finish())
+    }
+
+    fn trace_robot_phase(&self, trace: &mut CycleRecorder, phase: CyclePhase) {
+        trace.phase(phase);
+        if trace.is_enabled() {
+            for (slot, entry) in self.slots.iter().enumerate() {
+                if entry.organism.is_some() {
+                    trace.visit(phase, OrganismId::new(slot as u32, entry.generation));
+                }
+            }
+        }
     }
 
     pub fn snapshot(&self) -> &Snapshot {
@@ -1100,102 +1242,231 @@ impl Engine {
         Ok(&self.slots.get(id)?.program.dna)
     }
 
-    fn execute_dna_phase(&mut self) -> Result<(), EngineError> {
-        let metabolism = self.config.metabolism_cost;
-        let physics_settings = &self.config.physics;
-        self.slots
-            .par_iter_mut()
-            .try_for_each(|slot| -> Result<(), EngineError> {
-                let Some(organism) = &mut slot.organism else {
-                    return Ok(());
-                };
-                let mut vm = DnaVm::new(organism.program.rng_state);
-                let report = vm.execute(
-                    &organism.program.dna,
-                    &mut organism.program.memory,
-                    crate::VmContext {
-                        position: [
-                            f64::from(organism.kinematics.position[0]),
-                            f64::from(organism.kinematics.position[1]),
-                        ],
-                        costs: &self.config.dna_costs,
-                        record_activations: false,
-                    },
-                )?;
-                organism.program.rng_state = vm.random_state();
-                organism.program.debug_text = report.debug_text;
-                organism.program.current_gene = u32::from(report.current_gene);
-                organism.program.condition_count = report.conditions_evaluated;
-                organism.program.activation_bitmap = report.activations;
-                let whole_cost = organism.program.settle_dna_energy_cost(report.energy_cost);
-                organism.materials.energy = organism.materials.energy.saturating_sub(whole_cost);
-                let runtime = SysvarRuntime::new();
-                let Some(PhaseCommands::Aim(aim_commands)) =
-                    runtime.consume(CyclePhase::Aim, &mut organism.program.memory)
-                else {
-                    unreachable!("aim phase must return aim commands")
-                };
-                let Some(PhaseCommands::Material(material_commands)) =
-                    runtime.consume(CyclePhase::Material, &mut organism.program.memory)
-                else {
-                    unreachable!("material phase must return material commands")
-                };
-                let Some(PhaseCommands::Movement(movement_commands)) =
-                    runtime.consume(CyclePhase::Movement, &mut organism.program.memory)
-                else {
-                    unreachable!("movement phase must return movement commands")
-                };
-                let Some(PhaseCommands::Virus(_)) =
-                    runtime.consume(CyclePhase::Virus, &mut organism.program.memory)
-                else {
-                    unreachable!("virus phase must return virus commands")
-                };
-                for address in [5, 6, 19, 1, 2, 3, 4, 312, 313, 820, 822, 824, 826, 921, 922] {
-                    runtime.finish_command(
-                        address,
-                        CommandOutcome::Consumed,
-                        &mut organism.program.memory,
-                    );
-                }
-                runtime.finish_command(314, CommandOutcome::Excluded, &mut organism.program.memory);
-                for address in [335, 338, 340] {
-                    runtime.finish_command(
-                        address,
-                        CommandOutcome::Excluded,
-                        &mut organism.program.memory,
-                    );
-                }
-                organism.materials.apply_outputs(
-                    &mut organism.program.memory,
-                    metabolism,
-                    aim_commands,
-                    material_commands,
-                );
-                let input = MovementInput {
-                    up: movement_commands.up,
-                    down: movement_commands.down,
-                    left: movement_commands.left,
-                    right: movement_commands.right,
-                    aim_radians: organism.materials.aim as f32 / 200.0,
-                    new_move: organism.program.dna.uses_new_move(),
-                };
-                let mut movement = MovementState::default();
-                if organism.materials.paralyzed == 0 {
-                    apply_voluntary_impulse(
-                        &mut movement,
-                        input,
-                        derived_mass(
-                            organism.materials.body,
-                            organism.materials.shell,
-                            organism.materials.chloroplasts,
-                        ),
-                        physics_settings,
-                    );
-                }
-                organism.kinematics.pending_velocity = movement.velocity;
-                Ok(())
-            })?;
+    fn execute_dna_phase(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
+        for slot_index in 0..self.slots.len() {
+            let generation = self.slots[slot_index].generation;
+            let Some(organism) = &mut self.slots[slot_index].organism else {
+                continue;
+            };
+            trace.visit(
+                CyclePhase::Dna,
+                OrganismId::new(slot_index as u32, generation),
+            );
+            let mut vm = DnaVm::new(organism.program.rng_state);
+            let report = vm.execute(
+                &organism.program.dna,
+                &mut organism.program.memory,
+                crate::VmContext {
+                    position: [
+                        f64::from(organism.kinematics.position[0]),
+                        f64::from(organism.kinematics.position[1]),
+                    ],
+                    costs: &self.config.dna_costs,
+                    record_activations: false,
+                },
+            )?;
+            organism.program.rng_state = vm.random_state();
+            organism.program.debug_text = report.debug_text;
+            organism.program.current_gene = u32::from(report.current_gene);
+            organism.program.condition_count = report.conditions_evaluated;
+            organism.program.activation_bitmap = report.activations;
+            let whole_cost = organism.program.settle_dna_energy_cost(report.energy_cost);
+            organism.materials.energy = organism.materials.energy.saturating_sub(whole_cost);
+        }
         Ok(())
+    }
+
+    fn upkeep_phase(&mut self) {
+        let metabolism = self.config.metabolism_cost.max(0);
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            robot.materials.energy = robot.materials.energy.saturating_sub(metabolism);
+            robot.materials.waste = robot.materials.waste.saturating_add(metabolism);
+        }
+    }
+
+    fn poison_venom_phase(&mut self) {
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            if robot.materials.poisoned > 0 {
+                robot.materials.energy = robot
+                    .materials
+                    .energy
+                    .saturating_sub(robot.materials.poisoned.min(10));
+                robot.materials.poisoned = robot.materials.poisoned.saturating_sub(1);
+            }
+            robot.materials.paralyzed = robot.materials.paralyzed.saturating_sub(1).max(0);
+        }
+    }
+
+    fn movement_commands_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        let settings = &self.config.physics;
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            let Some(PhaseCommands::Movement(commands)) =
+                runtime.consume(CyclePhase::Movement, &mut robot.program.memory)
+            else {
+                unreachable!("movement phase must return movement commands")
+            };
+            for address in [1, 2, 3, 4] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Consumed,
+                    &mut robot.program.memory,
+                );
+            }
+            let input = MovementInput {
+                up: commands.up,
+                down: commands.down,
+                left: commands.left,
+                right: commands.right,
+                aim_radians: robot.materials.aim as f32 / 200.0,
+                new_move: robot.program.dna.uses_new_move(),
+            };
+            let mut movement = MovementState::default();
+            if robot.materials.paralyzed == 0 {
+                apply_voluntary_impulse(
+                    &mut movement,
+                    input,
+                    derived_mass(
+                        robot.materials.body,
+                        robot.materials.shell,
+                        robot.materials.chloroplasts,
+                    ),
+                    settings,
+                );
+            }
+            robot.kinematics.pending_velocity = movement.velocity;
+        }
+    }
+
+    fn aim_commands_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            let Some(PhaseCommands::Aim(commands)) =
+                runtime.consume(CyclePhase::Aim, &mut robot.program.memory)
+            else {
+                unreachable!("aim phase must return aim commands")
+            };
+            for address in [5, 6, 19] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Consumed,
+                    &mut robot.program.memory,
+                );
+            }
+            robot.materials.apply_outputs(
+                &mut robot.program.memory,
+                0,
+                commands,
+                Default::default(),
+            );
+        }
+    }
+
+    fn virus_commands_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            let Some(PhaseCommands::Virus(_)) =
+                runtime.consume(CyclePhase::Virus, &mut robot.program.memory)
+            else {
+                unreachable!("virus phase must return virus commands")
+            };
+            for address in [335, 338, 340] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Excluded,
+                    &mut robot.program.memory,
+                );
+            }
+        }
+    }
+
+    fn store_clamps_phase(&mut self) {
+        for slot in self.slots.iter_mut() {
+            if let Some(robot) = slot.organism.as_mut() {
+                robot.materials.energy = robot.materials.energy.min(32_000);
+            }
+        }
+    }
+
+    fn material_commands_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            let Some(PhaseCommands::Material(commands)) =
+                runtime.consume(CyclePhase::Material, &mut robot.program.memory)
+            else {
+                unreachable!("material phase must return material commands")
+            };
+            for address in [312, 313, 820, 822, 824, 826, 921, 922] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Consumed,
+                    &mut robot.program.memory,
+                );
+            }
+            runtime.finish_command(314, CommandOutcome::Excluded, &mut robot.program.memory);
+            let aim = crate::AimCommands {
+                set: robot.materials.aim,
+                ..Default::default()
+            };
+            robot
+                .materials
+                .apply_outputs(&mut robot.program.memory, 0, aim, commands);
+        }
+    }
+
+    fn age_timer_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            robot.counters.age = robot.counters.age.saturating_add(1);
+            runtime.publish(
+                PhaseReadbacks::Core(CoreReadbacks {
+                    values: vec![(
+                        MEM_ROBAGE as u16,
+                        robot.counters.age.min(i32::MAX as u64) as i32,
+                    )],
+                }),
+                &mut robot.program.memory,
+            );
+        }
+    }
+
+    fn publish_core_senses_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            runtime.publish(
+                PhaseReadbacks::Core(CoreReadbacks {
+                    values: vec![
+                        (MEM_XPOS as u16, robot.kinematics.position[0].round() as i32),
+                        (MEM_YPOS as u16, robot.kinematics.position[1].round() as i32),
+                    ],
+                }),
+                &mut robot.program.memory,
+            );
+        }
     }
 
     fn clear_after_dna_phase(&mut self) {
@@ -1505,11 +1776,9 @@ impl Engine {
         Ok(())
     }
 
-    fn interactions_phase(&mut self) {
-        self.pending_projectile_requests.clear();
+    fn capture_tie_commands(&mut self) -> Vec<Option<TieCommands>> {
         let runtime = SysvarRuntime::new();
-        let phase_commands: Vec<_> = self
-            .slots
+        self.slots
             .iter_mut()
             .map(|slot| {
                 let organism = slot.organism.as_mut()?;
@@ -1518,146 +1787,204 @@ impl Engine {
                 else {
                     unreachable!("tie phase must return tie commands")
                 };
-                let Some(PhaseCommands::Shot(shot)) =
-                    runtime.consume(CyclePhase::Shot, &mut organism.program.memory)
-                else {
-                    unreachable!("shot phase must return shot commands")
-                };
-                for address in [330, 455, 467, 468, 830, 831, 832, 833, 924] {
-                    runtime.finish_command(
-                        address,
-                        CommandOutcome::Consumed,
-                        &mut organism.program.memory,
-                    );
+                Some(tie)
+            })
+            .collect()
+    }
+
+    fn tie_data_phase(&mut self, trace: &mut CycleRecorder) {
+        let runtime = SysvarRuntime::new();
+        let phase_commands = self.capture_tie_commands();
+        let mut channels = Vec::new();
+        for tie in &self.ties {
+            for (source_slot, target_slot, source_port) in [
+                (
+                    tie.first.slot() as usize,
+                    tie.second.slot() as usize,
+                    tie.first_port,
+                ),
+                (
+                    tie.second.slot() as usize,
+                    tie.first.slot() as usize,
+                    tie.second_port,
+                ),
+            ] {
+                if self.slots[source_slot].organism.is_none() {
+                    continue;
                 }
-                for address in [331, 469, 480, 481, 482, 483, 484, 485, 486, 487] {
-                    runtime.finish_command(
-                        address,
-                        CommandOutcome::Excluded,
-                        &mut organism.program.memory,
-                    );
-                }
-                for address in [7, 8, 900, 901] {
-                    runtime.finish_command(
-                        address,
-                        CommandOutcome::Consumed,
-                        &mut organism.program.memory,
-                    );
-                }
-                Some((tie, shot))
+                let commands = phase_commands[source_slot].unwrap_or_default();
+                channels.push((
+                    source_slot,
+                    target_slot,
+                    source_port,
+                    commands.number,
+                    commands.location,
+                    commands.value,
+                ));
+            }
+        }
+        for (source, target, source_port, selected_port, location, value) in channels {
+            if selected_port == 0
+                || source_port != selected_port
+                || !(1..=1_000).contains(&location)
+            {
+                continue;
+            }
+            let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+            let before = self.slots[target]
+                .organism
+                .as_ref()
+                .unwrap()
+                .program
+                .memory
+                .read(location);
+            let target_memory = &mut self.slots[target].organism.as_mut().unwrap().program.memory;
+            target_memory.write(location, value);
+            target_memory.write(MEM_TIE_MEMORY_LOCATION, location);
+            target_memory.write(MEM_TIE_MEMORY_VALUE, value);
+            trace.memory_write(
+                CyclePhase::TieData,
+                target_id,
+                location as u16,
+                before,
+                value,
+            );
+            let source_memory = &mut self.slots[source].organism.as_mut().unwrap().program.memory;
+            runtime.finish_command(452, CommandOutcome::Consumed, source_memory);
+            runtime.finish_command(453, CommandOutcome::Consumed, source_memory);
+        }
+    }
+
+    fn tie_exchange_phase(&mut self, trace: &mut CycleRecorder) {
+        let runtime = SysvarRuntime::new();
+        let phase_commands = self.capture_tie_commands();
+        let tie_deletions: Vec<_> = phase_commands
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, commands)| {
+                commands
+                    .is_some_and(|commands| commands.delete != 0)
+                    .then_some(slot)
             })
             .collect();
-        let mut tie_requests = Vec::new();
-        let mut tie_deletions = Vec::new();
-        for attacker_slot in 0..self.slots.len() {
-            let Some(attacker) = self.slots[attacker_slot].organism.as_ref() else {
-                continue;
-            };
-            let (tie_commands, shot_commands) = phase_commands[attacker_slot].unwrap();
-            if tie_commands.delete != 0 {
-                tie_deletions.push(attacker_slot);
-            }
-            if tie_commands.create != 0 {
-                let target = self.spatial.nearest(
-                    attacker.kinematics.position,
-                    Some(attacker_slot),
-                    1_000.0,
-                );
-                if let Some(target) = target {
-                    tie_requests.push((attacker_slot, target, tie_commands.create));
-                }
-            }
-            let shot_type = shot_commands.kind;
-            if shot_type == 0 {
-                continue;
-            }
-            let requested_value = shot_commands.value;
-            let shot_value = if shot_type == -1 && requested_value == 0 {
-                20_i32.saturating_add(attacker.materials.body.max(0) / 5)
-            } else {
-                requested_value.abs().max(1)
-            };
-            let mut angle = attacker.materials.aim as f32 / 200.0;
-            if shot_commands.backshot != 0 {
-                angle -= std::f32::consts::PI;
-            }
-            let aimed = shot_commands.aim;
-            if aimed != 0 {
-                angle = attacker.materials.aim as f32 / 200.0 - (aimed % 1_256) as f32 / 200.0;
-            }
-            let random = advance_random(
-                self.config.seed
-                    ^ self.tick.rotate_left(19)
-                    ^ (attacker_slot as u64).rotate_left(37),
-            );
-            angle += ((random % 41) as i32 - 20) as f32 / 200.0;
-            self.pending_projectile_requests
-                .push(PendingProjectileRequest {
-                    owner_slot: attacker_slot,
-                    kind: shot_type,
-                    value: shot_value,
-                    angle,
-                });
-            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-        }
         self.ties.retain(|tie| {
             !tie_deletions.contains(&(tie.first.slot() as usize))
                 && !tie_deletions.contains(&(tie.second.slot() as usize))
         });
-        for (first_slot, second_slot, first_port) in tie_requests {
-            if !self.ties_enabled {
-                continue;
-            }
-            if self.slots[second_slot]
-                .organism
-                .as_ref()
-                .unwrap()
-                .materials
-                .slime
-                > 0
-            {
-                let second = self.slots[second_slot].organism.as_mut().unwrap();
-                second.materials.slime = second.materials.slime.saturating_sub(10);
-                continue;
-            }
-            let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
-            let second = OrganismId::new(second_slot as u32, self.slots[second_slot].generation);
-            let exists = self.ties.iter().any(|tie| {
-                (tie.first == first && tie.second == second)
-                    || (tie.first == second && tie.second == first)
-            });
-            if !exists {
-                let second_port = self
-                    .ties
-                    .iter()
-                    .filter(|tie| {
-                        tie.first.slot() as usize == second_slot
-                            || tie.second.slot() as usize == second_slot
-                    })
-                    .count() as i32
-                    + 1;
-                let first_position = self.slots[first_slot]
-                    .organism
-                    .as_ref()
-                    .unwrap()
-                    .kinematics
-                    .position;
-                let second_position = self.slots[second_slot]
-                    .organism
-                    .as_ref()
-                    .unwrap()
-                    .kinematics
-                    .position;
-                self.ties.push(TieSnapshot {
-                    first,
-                    second,
-                    rest_length: distance_squared(first_position, second_position).sqrt(),
-                    first_port,
-                    second_port,
-                });
-                self.stats.ties_created = self.stats.ties_created.saturating_add(1);
+
+        let mut channels = Vec::new();
+        for tie in &self.ties {
+            for (source_slot, target_slot) in [
+                (tie.first.slot() as usize, tie.second.slot() as usize),
+                (tie.second.slot() as usize, tie.first.slot() as usize),
+            ] {
+                if self.slots[source_slot].organism.is_none() {
+                    continue;
+                }
+                let commands = phase_commands[source_slot].unwrap_or_default();
+                channels.push((
+                    source_slot,
+                    target_slot,
+                    commands.share_energy.clamp(0, 99),
+                    commands.share_waste.clamp(0, 99),
+                    commands.share_shell.clamp(0, 99),
+                    commands.share_slime.clamp(0, 99),
+                    commands.share_chloroplasts.clamp(0, 99),
+                ));
             }
         }
+
+        for (source, target, energy, waste, shell, slime, chloroplasts) in channels {
+            let source_id = OrganismId::new(source as u32, self.slots[source].generation);
+            let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+            let energy_amount =
+                transfer_robot_percent(&mut self.slots, source, target, energy, |robot| {
+                    &mut robot.materials.energy
+                });
+            if trace.is_enabled() && energy_amount != 0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_energy",
+                );
+            }
+            let waste_amount =
+                transfer_robot_percent(&mut self.slots, source, target, waste, |robot| {
+                    &mut robot.materials.waste
+                });
+            if trace.is_enabled() && waste_amount != 0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_waste",
+                );
+            }
+            let shell_amount =
+                transfer_robot_percent(&mut self.slots, source, target, shell, |robot| {
+                    &mut robot.materials.shell
+                });
+            if trace.is_enabled() && shell_amount != 0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_shell",
+                );
+            }
+            let slime_amount =
+                transfer_robot_percent(&mut self.slots, source, target, slime, |robot| {
+                    &mut robot.materials.slime
+                });
+            if trace.is_enabled() && slime_amount != 0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_slime",
+                );
+            }
+            let chloroplast_amount =
+                transfer_robot_percent(&mut self.slots, source, target, chloroplasts, |robot| {
+                    &mut robot.materials.chloroplasts
+                });
+            if trace.is_enabled() && chloroplast_amount != 0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_chloroplasts",
+                );
+            }
+        }
+
+        for (slot, commands) in phase_commands.iter().enumerate() {
+            let Some(organism) = self.slots[slot].organism.as_mut() else {
+                continue;
+            };
+            if commands.is_none() {
+                continue;
+            }
+            for address in [455, 467, 468, 830, 831, 832, 833, 924] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Consumed,
+                    &mut organism.program.memory,
+                );
+            }
+            for address in [331, 469, 480, 481, 482, 483, 484, 485, 486, 487] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Excluded,
+                    &mut organism.program.memory,
+                );
+            }
+        }
+    }
+
+    fn tie_readback_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
         let mut tie_counts = vec![0i32; self.slots.len()];
         let mut latest_ports = vec![None; self.slots.len()];
         for tie in &self.ties {
@@ -1698,103 +2025,151 @@ impl Engine {
                 }
             }
         }
-        let mut channels = Vec::new();
-        for tie in &self.ties {
-            for (source_slot, target_slot, source_port) in [
-                (
-                    tie.first.slot() as usize,
-                    tie.second.slot() as usize,
-                    tie.first_port,
-                ),
-                (
-                    tie.second.slot() as usize,
-                    tie.first.slot() as usize,
-                    tie.second_port,
-                ),
-            ] {
-                let Some(_source) = self.slots[source_slot].organism.as_ref() else {
-                    continue;
-                };
-                let commands = phase_commands[source_slot]
-                    .map(|commands| commands.0)
-                    .unwrap_or_else(TieCommands::default);
-                channels.push((
-                    source_slot,
-                    target_slot,
-                    commands.share_energy.clamp(0, 99),
-                    commands.share_waste.clamp(0, 99),
-                    commands.share_shell.clamp(0, 99),
-                    commands.share_slime.clamp(0, 99),
-                    commands.share_chloroplasts.clamp(0, 99),
-                    source_port,
-                    commands.number,
-                    commands.location,
-                    commands.value,
-                ));
+    }
+
+    fn tie_fire_phase(&mut self, trace: &mut CycleRecorder) {
+        let runtime = SysvarRuntime::new();
+        let phase_commands = self.capture_tie_commands();
+        let mut tie_requests = Vec::new();
+        for (attacker_slot, commands) in phase_commands.iter().copied().enumerate() {
+            let Some(commands) = commands else {
+                continue;
+            };
+            if commands.create == 0 {
+                continue;
+            }
+            let Some(position) = self.slots[attacker_slot]
+                .organism
+                .as_ref()
+                .map(|organism| organism.kinematics.position)
+            else {
+                continue;
+            };
+            if let Some(target) = self.spatial.nearest(position, Some(attacker_slot), 1_000.0) {
+                tie_requests.push((attacker_slot, target, commands.create));
             }
         }
-        for (
-            source,
-            target,
-            energy,
-            waste,
-            shell,
-            slime,
-            chloroplasts,
-            source_port,
-            selected_port,
-            location,
-            value,
-        ) in channels
-        {
-            transfer_robot_percent(&mut self.slots, source, target, energy, |robot| {
-                &mut robot.materials.energy
-            });
-            transfer_robot_percent(&mut self.slots, source, target, waste, |robot| {
-                &mut robot.materials.waste
-            });
-            transfer_robot_percent(&mut self.slots, source, target, shell, |robot| {
-                &mut robot.materials.shell
-            });
-            transfer_robot_percent(&mut self.slots, source, target, slime, |robot| {
-                &mut robot.materials.slime
-            });
-            transfer_robot_percent(&mut self.slots, source, target, chloroplasts, |robot| {
-                &mut robot.materials.chloroplasts
-            });
-            if selected_port != 0 && source_port == selected_port && (1..=1_000).contains(&location)
+        for (slot, commands) in phase_commands.iter().enumerate() {
+            let Some(organism) = self.slots[slot].organism.as_mut() else {
+                continue;
+            };
+            if commands.is_some() {
+                runtime.finish_command(330, CommandOutcome::Consumed, &mut organism.program.memory);
+            }
+        }
+        for (first_slot, second_slot, first_port) in tie_requests {
+            if !self.ties_enabled {
+                continue;
+            }
+            if self.slots[second_slot]
+                .organism
+                .as_ref()
+                .unwrap()
+                .materials
+                .slime
+                > 0
             {
-                self.slots[target]
-                    .organism
-                    .as_mut()
-                    .unwrap()
-                    .program
-                    .memory
-                    .write(location, value);
-                self.slots[target]
-                    .organism
-                    .as_mut()
-                    .unwrap()
-                    .program
-                    .memory
-                    .write(MEM_TIE_MEMORY_LOCATION, location);
-                self.slots[target]
-                    .organism
-                    .as_mut()
-                    .unwrap()
-                    .program
-                    .memory
-                    .write(MEM_TIE_MEMORY_VALUE, value);
-                let source_memory =
-                    &mut self.slots[source].organism.as_mut().unwrap().program.memory;
-                runtime.finish_command(452, CommandOutcome::Consumed, source_memory);
-                runtime.finish_command(453, CommandOutcome::Consumed, source_memory);
+                let second = self.slots[second_slot].organism.as_mut().unwrap();
+                second.materials.slime = second.materials.slime.saturating_sub(10);
+                continue;
+            }
+            let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
+            let second = OrganismId::new(second_slot as u32, self.slots[second_slot].generation);
+            let exists = self.ties.iter().any(|tie| {
+                (tie.first == first && tie.second == second)
+                    || (tie.first == second && tie.second == first)
+            });
+            if exists {
+                continue;
+            }
+            let second_port = self
+                .ties
+                .iter()
+                .filter(|tie| {
+                    tie.first.slot() as usize == second_slot
+                        || tie.second.slot() as usize == second_slot
+                })
+                .count() as i32
+                + 1;
+            let first_position = self.slots[first_slot]
+                .organism
+                .as_ref()
+                .unwrap()
+                .kinematics
+                .position;
+            let second_position = self.slots[second_slot]
+                .organism
+                .as_ref()
+                .unwrap()
+                .kinematics
+                .position;
+            self.ties.push(TieSnapshot {
+                first,
+                second,
+                rest_length: distance_squared(first_position, second_position).sqrt(),
+                first_port,
+                second_port,
+            });
+            self.stats.ties_created = self.stats.ties_created.saturating_add(1);
+            if trace.is_enabled() {
+                trace.effect(CyclePhase::TieFire, Some(first), second, "tie_created");
             }
         }
     }
 
+    fn prepare_projectile_requests_phase(&mut self) {
+        self.pending_projectile_requests.clear();
+        let runtime = SysvarRuntime::new();
+        for attacker_slot in 0..self.slots.len() {
+            let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
+                continue;
+            };
+            let Some(PhaseCommands::Shot(commands)) =
+                runtime.consume(CyclePhase::Shot, &mut attacker.program.memory)
+            else {
+                unreachable!("shot phase must return shot commands")
+            };
+            for address in [7, 8, 900, 901] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Consumed,
+                    &mut attacker.program.memory,
+                );
+            }
+            if commands.kind == 0 {
+                continue;
+            }
+            let value = if commands.kind == -1 && commands.value == 0 {
+                20_i32.saturating_add(attacker.materials.body.max(0) / 5)
+            } else {
+                commands.value.abs().max(1)
+            };
+            let mut angle = attacker.materials.aim as f32 / 200.0;
+            if commands.backshot != 0 {
+                angle -= std::f32::consts::PI;
+            }
+            if commands.aim != 0 {
+                angle =
+                    attacker.materials.aim as f32 / 200.0 - (commands.aim % 1_256) as f32 / 200.0;
+            }
+            let random = advance_random(
+                self.config.seed
+                    ^ self.tick.rotate_left(19)
+                    ^ (attacker_slot as u64).rotate_left(37),
+            );
+            angle += ((random % 41) as i32 - 20) as f32 / 200.0;
+            self.pending_projectile_requests
+                .push(PendingProjectileRequest {
+                    owner_slot: attacker_slot,
+                    kind: commands.kind,
+                    value,
+                    angle,
+                });
+            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
+        }
+    }
+
     fn physics_phase(&mut self) -> Result<(), EngineError> {
-        self.capture_previous_positions();
         let mut keyed_batch = self.physics_batch();
         let fixed: Vec<_> = keyed_batch
             .ids
@@ -1825,8 +2200,6 @@ impl Engine {
         self.slots.apply_physics_batch(keyed_batch)?;
         self.apply_tie_constraints();
         self.apply_organism_collisions();
-        self.apply_environment_features();
-        self.record_actual_velocities();
         Ok(())
     }
 
@@ -1858,15 +2231,18 @@ impl Engine {
                 &self.config.shots,
             );
         }
+    }
+
+    fn projectile_update_phase(&mut self, trace: &mut CycleRecorder) {
         self.projectiles.advance(
             &self.config.shots,
             [self.config.world_width, self.config.world_height],
             self.config.toroidal_world,
         );
-        self.resolve_projectile_impacts();
+        self.resolve_projectile_impacts(trace);
     }
 
-    fn resolve_projectile_impacts(&mut self) {
+    fn resolve_projectile_impacts(&mut self, trace: &mut CycleRecorder) {
         let positions: Vec<_> = self
             .slots
             .iter()
@@ -1982,8 +2358,18 @@ impl Engine {
             );
             let power = self.projectiles.impact_power(impact.projectile_slot);
             self.stats.projectile_impacts = self.stats.projectile_impacts.saturating_add(1);
+            let traced_target = match impact.target {
+                ProjectileTarget::Organism(slot) => {
+                    Some(OrganismId::new(slot as u32, self.slots[slot].generation))
+                }
+                ProjectileTarget::Corpse(_) | ProjectileTarget::Obstacle => None,
+            };
+            let traced_kind = trace.is_enabled().then(|| format!("{:?}", impact.effect));
             if self.apply_projectile_effect(owner, impact.target, impact.effect, power, payload) {
                 self.stats.projectile_effects = self.stats.projectile_effects.saturating_add(1);
+                if let (Some(target), Some(kind)) = (traced_target, traced_kind) {
+                    trace.effect(CyclePhase::ShotUpdate, Some(owner), target, kind);
+                }
             }
         }
     }
@@ -2551,7 +2937,7 @@ impl Engine {
         Ok(())
     }
 
-    fn lifecycle_phase(&mut self) -> Result<(), EngineError> {
+    fn decay_corpses_phase(&mut self) {
         for corpse in &mut self.corpses {
             corpse.advance(
                 self.config.gravity,
@@ -2562,12 +2948,13 @@ impl Engine {
         self.corpses.retain(|corpse| {
             corpse.energy > 0 && corpse.position.iter().all(|value| value.is_finite())
         });
-        let mut births = Vec::new();
-        let mut deaths = Vec::new();
+    }
+
+    fn prepare_lifecycle_queues(&mut self, trace: &mut CycleRecorder) -> LifecycleQueues {
+        let mut queues = LifecycleQueues::default();
         let species = &self.species;
         let asexual_reproduction_allowed = self.asexual_reproduction_allowed;
         let world_size = [self.config.world_width, self.config.world_height];
-        let metabolism_cost = self.config.metabolism_cost.max(0);
         let mutations_enabled = self.mutations_enabled;
         let global_mutation_multiplier = self.global_mutation_multiplier;
         let runtime = SysvarRuntime::new();
@@ -2577,39 +2964,6 @@ impl Engine {
             .enumerate()
             .filter_map(|(slot_index, slot)| {
                 let organism = slot.organism.as_mut()?;
-                organism.counters.age += 1;
-                organism.materials.energy =
-                    organism.materials.energy.saturating_sub(metabolism_cost);
-                if organism.materials.poisoned > 0 {
-                    organism.materials.energy = organism
-                        .materials
-                        .energy
-                        .saturating_sub(organism.materials.poisoned.min(10));
-                    organism.materials.poisoned = organism.materials.poisoned.saturating_sub(1);
-                }
-                organism.materials.paralyzed =
-                    organism.materials.paralyzed.saturating_sub(1).max(0);
-                organism.materials.energy = organism.materials.energy.min(32_000);
-                runtime.publish(
-                    PhaseReadbacks::Core(CoreReadbacks {
-                        values: vec![
-                            (
-                                MEM_ROBAGE as u16,
-                                organism.counters.age.min(i32::MAX as u64) as i32,
-                            ),
-                            (
-                                MEM_XPOS as u16,
-                                organism.kinematics.position[0].round() as i32,
-                            ),
-                            (
-                                MEM_YPOS as u16,
-                                organism.kinematics.position[1].round() as i32,
-                            ),
-                        ],
-                    }),
-                    &mut organism.program.memory,
-                );
-                organism.materials.publish(&mut organism.program.memory);
                 let Some(PhaseCommands::Reproduction(reproduction_commands)) =
                     runtime.consume(CyclePhase::Reproduction, &mut organism.program.memory)
                 else {
@@ -2664,18 +3018,43 @@ impl Engine {
                         child_biology,
                     ));
                 }
-                Some((slot_index, birth, organism.materials.energy <= 0))
+                Some((slot_index, birth))
             })
             .collect();
-        for (slot_index, birth, dead) in outcomes {
+        for (_slot_index, birth) in outcomes {
             if let Some(birth) = birth {
-                births.push(birth);
-            }
-            if dead {
-                deaths.push(slot_index);
+                trace.queue_change(
+                    CyclePhase::Reproduction,
+                    birth.5,
+                    QueueChangeKind::BirthQueued,
+                );
+                queues.births.push(birth);
             }
         }
-        for slot_index in deaths {
+        queues
+    }
+
+    fn queue_deaths(&self, queues: &mut LifecycleQueues, trace: &mut CycleRecorder) {
+        for (slot_index, slot) in self.slots.iter().enumerate() {
+            let Some(robot) = slot.organism.as_ref() else {
+                continue;
+            };
+            if robot.materials.energy > 0 {
+                continue;
+            }
+            let id = OrganismId::new(slot_index as u32, slot.generation);
+            trace.queue_change(CyclePhase::CorpseRemoval, id, QueueChangeKind::DeathQueued);
+            queues.deaths.push(slot_index);
+        }
+    }
+
+    fn commit_lifecycle_queues(
+        &mut self,
+        queues: LifecycleQueues,
+        trace: &mut CycleRecorder,
+    ) -> Result<(), EngineError> {
+        let runtime = SysvarRuntime::new();
+        for slot_index in queues.deaths {
             let id = OrganismId::new(slot_index as u32, self.slots[slot_index].generation);
             if let Ok(organism) = self.slots.remove(id) {
                 let species = organism.identity.species.0;
@@ -2692,6 +3071,11 @@ impl Engine {
                     repopulating,
                 ));
                 self.stats.deaths = self.stats.deaths.saturating_add(1);
+                trace.queue_change(
+                    CyclePhase::CommitBirthsDeaths,
+                    id,
+                    QueueChangeKind::DeathCommitted,
+                );
             }
         }
         let mut available_births = self
@@ -2700,7 +3084,7 @@ impl Engine {
             .saturating_sub(self.population());
         let mut vegetable_population = self.vegetable_population();
         for (dna, position, energy, mutate, species, parent, self_reproduction, child_biology) in
-            births
+            queues.births
         {
             let vegetable_birth = self
                 .species
@@ -2754,8 +3138,14 @@ impl Engine {
             }
             if mutate {
                 self.pending_mutations.push(child);
+                self.mutation_phase();
             }
             self.stats.births = self.stats.births.saturating_add(1);
+            trace.queue_change(
+                CyclePhase::CommitBirthsDeaths,
+                child,
+                QueueChangeKind::BirthCommitted,
+            );
             if self_reproduction {
                 self.stats.self_reproductions = self.stats.self_reproductions.saturating_add(1);
             }
@@ -3316,7 +3706,9 @@ mod tests {
             .spawn(LegacyDna::parse("start\n22 .hitup store\nstop").unwrap())
             .unwrap();
 
-        engine.execute_dna_phase().unwrap();
+        engine
+            .execute_dna_phase(&mut CycleRecorder::disabled(1))
+            .unwrap();
 
         assert_eq!(engine.memory(first, "hitup").unwrap(), 11);
         assert_eq!(engine.memory(second, "hitup").unwrap(), 22);

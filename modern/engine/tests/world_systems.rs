@@ -6,14 +6,22 @@ fn uniform_spatial_index_returns_sorted_nearby_slots() {
 
     assert_eq!(index.neighbors([10.0, 10.0], 40.0), vec![0, 1]);
     assert_eq!(index.nearest([10.0, 10.0], Some(0), 40.0), Some(1));
-    assert_eq!(index.segment_candidates([0.0, 10.0], [40.0, 10.0], 4.0), vec![0, 1]);
+    assert_eq!(
+        index.segment_candidates([0.0, 10.0], [40.0, 10.0], 4.0),
+        vec![0, 1]
+    );
 }
 
 #[test]
 fn sensing_writes_nearest_organism_reference_sysvars() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let observer = engine.spawn_at(LegacyDna::parse("start\n314 .setaim store\nstop").unwrap(), [100.0, 100.0]).unwrap();
+    let observer = engine
+        .spawn_at(
+            LegacyDna::parse("start\n314 .setaim store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
     engine.spawn_at(idle, [400.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
@@ -28,10 +36,14 @@ fn negative_shot_damages_nearest_target_and_records_event() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let attacker = LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    engine.spawn_at(attacker, [100.0, 100.0]).unwrap();
+    let attacker = engine.spawn_at(attacker, [100.0, 100.0]).unwrap();
     let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
     let before = engine.organism(target).unwrap().energy;
 
+    engine.tick().unwrap();
+    engine
+        .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
 
     assert!(engine.organism(target).unwrap().energy < before);
@@ -49,7 +61,10 @@ fn reproduction_creates_child_with_stable_id_and_birth_statistics() {
 
     assert_eq!(engine.population(), 2);
     assert_eq!(engine.snapshot().stats.births, 1);
-    assert_ne!(engine.snapshot().organisms[0].id, engine.snapshot().organisms[1].id);
+    assert_ne!(
+        engine.snapshot().organisms[0].id,
+        engine.snapshot().organisms[1].id
+    );
 }
 
 #[test]
@@ -64,5 +79,8 @@ fn tie_commands_create_multibot_link_and_share_energy() {
 
     assert_eq!(engine.snapshot().ties.len(), 1);
     assert_eq!(engine.snapshot().stats.ties_created, 1);
+
+    engine.tick().unwrap();
+
     assert!(engine.organism(source).unwrap().energy < engine.organism(target).unwrap().energy);
 }

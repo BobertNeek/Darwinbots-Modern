@@ -14,6 +14,7 @@ mod persistence;
 mod physics;
 mod robot_state;
 mod shot;
+mod simulation_cycle;
 mod spatial;
 mod species;
 mod stats;
@@ -55,11 +56,12 @@ pub(crate) use shot::{
     ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
     projectile_effect,
 };
+pub use simulation_cycle::{CycleEvent, CyclePhase, CycleTrace, QueueChangeKind};
 pub use spatial::SpatialIndex;
 pub use species::{SpeciesDefinition, SpeciesId};
 pub use stats::SimulationStats;
 pub use sysvar_runtime::{
-    AimCommands, CommandOutcome, ContactReadbacks, CoreReadbacks, CyclePhase, MaterialCommands,
+    AimCommands, CommandOutcome, ContactReadbacks, CoreReadbacks, MaterialCommands,
     MaterialReadbacks, MaterialsReadbacks, MovementCommands, PhaseCommands, PhaseReadbacks,
     ReproductionCommands, ShotCommands, SysvarLifecycle, SysvarRole, SysvarRuntime, TieCommands,
     TieReadbacks, VirusCommands, VisionReadbacks,

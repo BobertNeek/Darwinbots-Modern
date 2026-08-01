@@ -342,10 +342,10 @@ fn engine_tick_keeps_tie_port_selectors_distinct_from_tie_count() {
         )
         .unwrap();
     let _second = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [110.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
         .unwrap();
     let third = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [800.0, 100.0])
         .unwrap();
     engine.tick().unwrap();
 
@@ -355,7 +355,8 @@ fn engine_tick_keeps_tie_port_selectors_distinct_from_tie_count() {
             LegacyDna::parse("start\n77 .tie store\n41 .readtie store\nstop").unwrap(),
         )
         .unwrap();
-    engine.move_organism(third, [101.0, 100.0]).unwrap();
+    engine.move_organism(third, [100.0, 350.0]).unwrap();
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.memory(first, "numties").unwrap(), 2);
@@ -415,10 +416,10 @@ fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId)
         )
         .unwrap();
     let port_41_partner = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [110.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
         .unwrap();
     let port_77_partner = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [800.0, 100.0])
         .unwrap();
     engine.tick().unwrap();
 
@@ -429,9 +430,14 @@ fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId)
         )
         .unwrap();
     engine
-        .move_organism(port_77_partner, [101.0, 100.0])
+        .move_organism(port_77_partner, [100.0, 350.0])
         .unwrap();
     engine.tick().unwrap();
+    assert_eq!(
+        engine.snapshot().ties.len(),
+        2,
+        "fixture did not create both selected-port ties"
+    );
 
     (engine, source, port_41_partner, port_77_partner)
 }

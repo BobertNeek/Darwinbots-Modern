@@ -1,26 +1,8 @@
 use std::{collections::BTreeSet, sync::OnceLock};
 
-use crate::{VmMemory, sysvars::canonical_sysvar_addresses};
+use crate::{CyclePhase, VmMemory, sysvars::canonical_sysvar_addresses};
 
 const LIFECYCLE_TABLE: &str = include_str!("db2_sysvar_lifecycle_248.txt");
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum CyclePhase {
-    Dna,
-    AfterDna,
-    Movement,
-    Aim,
-    Shot,
-    Tie,
-    Material,
-    Reproduction,
-    Virus,
-    CoreReadback,
-    VisionReadback,
-    ContactReadback,
-    TieReadback,
-    MaterialsReadback,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SysvarRole {
