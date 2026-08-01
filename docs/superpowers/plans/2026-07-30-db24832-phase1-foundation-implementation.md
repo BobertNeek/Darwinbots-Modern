@@ -294,9 +294,13 @@ pub enum PhaseReadbacks {
 
 - Delete `sysvar_is_active`.
 - Replace direct address constants and scattered clearing loops with the lifecycle table.
-- Capture commands into typed phase DTOs before clearing memory.
+- Capture commands into typed phase DTOs without clearing memory. Clear each register only after
+  its concrete subsystem reports successful consumption; pending and excluded DTOs persist.
 - Accept injected readback DTOs for mechanisms completed later.
 - Do not implement the later mechanism behind those DTOs.
+
+**VB6 authority correction:** `Robots.bas` clears reproduction only after a successful birth and
+virus commands only at the firing condition. `Ties.bas` resets `.fixang` to `32000`, not zero.
 
 **Gate:** `cargo test -p darwinbots-engine --test sysvar_lifecycle_248 --test sensing_compatibility --test gpu_ffi`
 

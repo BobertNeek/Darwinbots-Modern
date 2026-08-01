@@ -1,13 +1,13 @@
 use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState};
 use crate::{
-    BackendCapabilities, BackendKind, BackendPreference, BiologyState, CorpseSnapshot,
-    CpuPhysicsBackend, DnaVm, EngineConfig, EngineError, GenomeMutator, GpuPhysicsBackend,
-    HistorySample, LegacyDna, Obstacle, OrganismId, PhaseTimings, PhysicsBackend, PhysicsBatch,
-    CoreReadbacks, CyclePhase, PhaseCommands, PhaseReadbacks, PlantLightInput, ProjectileEffect,
-    ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, RenderInstance,
-    ShotSnapshot, SimulationStats, SpatialIndex, SpeciesDefinition, SpeciesId, SysvarRuntime,
-    Teleporter, TieCommands, TieReadbacks, VegetationRuntime, VisionReadbacks, VisionSnapshot,
-    VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
+    BackendCapabilities, BackendKind, BackendPreference, BiologyState, CommandOutcome,
+    CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaVm, EngineConfig, EngineError,
+    GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna, Obstacle, OrganismId,
+    PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch, PlantLightInput,
+    ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
+    RenderInstance, ShotSnapshot, SimulationStats, SpatialIndex, SpeciesDefinition, SpeciesId,
+    SysvarRuntime, Teleporter, TieCommands, TieReadbacks, VegetationRuntime, VisionReadbacks,
+    VisionSnapshot, VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,6 @@ const MEM_REF_AGE: i32 = 710;
 const MEM_EYE1: i32 = 501;
 const MEM_EYE9: i32 = 509;
 const MEM_TIE_PRESENT: i32 = 454;
-const MEM_TIE_NUMBER: i32 = 455;
 const MEM_NUMBER_OF_TIES: i32 = 466;
 const MEM_MULTI: i32 = 470;
 const MEM_READ_TIE: i32 = 471;
@@ -44,6 +43,10 @@ const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_LIGHT: i32 = 923;
+const TIED_REFERENCE_ADDRESSES: [i32; 26] = [
+    437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 456, 457, 458, 459, 460, 461,
+    462, 463, 464, 465, 475, 478, 479,
+];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrganismSnapshot {
@@ -129,6 +132,10 @@ pub struct TieSnapshot {
     pub first: OrganismId,
     pub second: OrganismId,
     pub rest_length: f32,
+    #[serde(default)]
+    pub first_port: i32,
+    #[serde(default)]
+    pub second_port: i32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -407,7 +414,9 @@ impl Engine {
     pub fn set_organism_aim(&mut self, id: OrganismId, aim: i32) -> Result<(), EngineError> {
         self.valid_slot(id)?;
         let normalized = ((aim % 1257) + 1257) % 1257;
-        self.slots.get_mut(id)?.materials.aim = normalized;
+        let organism = self.slots.get_mut(id)?;
+        organism.materials.aim = normalized;
+        organism.materials.publish(&mut organism.program.memory);
         self.publish_snapshot();
         Ok(())
     }
@@ -758,6 +767,7 @@ impl Engine {
     fn tick_internal(&mut self, publish: bool) -> Result<(), EngineError> {
         let started = Instant::now();
         self.execute_dna_phase()?;
+        self.clear_after_dna_phase();
         self.phase_timings.dna = elapsed_ms(started);
         let started = Instant::now();
         self.intent_phase();
@@ -1117,12 +1127,9 @@ impl Engine {
                 organism.program.current_gene = u32::from(report.current_gene);
                 organism.program.condition_count = report.conditions_evaluated;
                 organism.program.activation_bitmap = report.activations;
-                let whole_cost = organism
-                    .program
-                    .settle_dna_energy_cost(report.energy_cost);
+                let whole_cost = organism.program.settle_dna_energy_cost(report.energy_cost);
                 organism.materials.energy = organism.materials.energy.saturating_sub(whole_cost);
                 let runtime = SysvarRuntime::new();
-                runtime.clear_transients_after_dna(&mut organism.program.memory);
                 let Some(PhaseCommands::Aim(aim_commands)) =
                     runtime.consume(CyclePhase::Aim, &mut organism.program.memory)
                 else {
@@ -1143,6 +1150,21 @@ impl Engine {
                 else {
                     unreachable!("virus phase must return virus commands")
                 };
+                for address in [5, 6, 19, 1, 2, 3, 4, 312, 313, 820, 822, 824, 826, 921, 922] {
+                    runtime.finish_command(
+                        address,
+                        CommandOutcome::Consumed,
+                        &mut organism.program.memory,
+                    );
+                }
+                runtime.finish_command(314, CommandOutcome::Excluded, &mut organism.program.memory);
+                for address in [335, 338, 340] {
+                    runtime.finish_command(
+                        address,
+                        CommandOutcome::Excluded,
+                        &mut organism.program.memory,
+                    );
+                }
                 organism.materials.apply_outputs(
                     &mut organism.program.memory,
                     metabolism,
@@ -1174,6 +1196,15 @@ impl Engine {
                 Ok(())
             })?;
         Ok(())
+    }
+
+    fn clear_after_dna_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        self.slots.par_iter_mut().for_each(|slot| {
+            if let Some(organism) = &mut slot.organism {
+                runtime.clear_transients_after_dna(&mut organism.program.memory);
+            }
+        });
     }
 
     fn intent_phase(&mut self) {
@@ -1492,6 +1523,27 @@ impl Engine {
                 else {
                     unreachable!("shot phase must return shot commands")
                 };
+                for address in [330, 452, 453, 455, 467, 468, 830, 831, 832, 833, 924] {
+                    runtime.finish_command(
+                        address,
+                        CommandOutcome::Consumed,
+                        &mut organism.program.memory,
+                    );
+                }
+                for address in [331, 469, 480, 481, 482, 483, 484, 485, 486, 487] {
+                    runtime.finish_command(
+                        address,
+                        CommandOutcome::Excluded,
+                        &mut organism.program.memory,
+                    );
+                }
+                for address in [7, 8, 900, 901] {
+                    runtime.finish_command(
+                        address,
+                        CommandOutcome::Consumed,
+                        &mut organism.program.memory,
+                    );
+                }
                 Some((tie, shot))
             })
             .collect();
@@ -1512,7 +1564,7 @@ impl Engine {
                     1_000.0,
                 );
                 if let Some(target) = target {
-                    tie_requests.push((attacker_slot, target));
+                    tie_requests.push((attacker_slot, target, tie_commands.create));
                 }
             }
             let shot_type = shot_commands.kind;
@@ -1552,7 +1604,7 @@ impl Engine {
             !tie_deletions.contains(&(tie.first.slot() as usize))
                 && !tie_deletions.contains(&(tie.second.slot() as usize))
         });
-        for (first_slot, second_slot) in tie_requests {
+        for (first_slot, second_slot, first_port) in tie_requests {
             if !self.ties_enabled {
                 continue;
             }
@@ -1575,6 +1627,15 @@ impl Engine {
                     || (tie.first == second && tie.second == first)
             });
             if !exists {
+                let second_port = self
+                    .ties
+                    .iter()
+                    .filter(|tie| {
+                        tie.first.slot() as usize == second_slot
+                            || tie.second.slot() as usize == second_slot
+                    })
+                    .count() as i32
+                    + 1;
                 let first_position = self.slots[first_slot]
                     .organism
                     .as_ref()
@@ -1591,19 +1652,21 @@ impl Engine {
                     first,
                     second,
                     rest_length: distance_squared(first_position, second_position).sqrt(),
+                    first_port,
+                    second_port,
                 });
                 self.stats.ties_created = self.stats.ties_created.saturating_add(1);
             }
         }
         let mut tie_counts = vec![0i32; self.slots.len()];
-        let mut partners = vec![None; self.slots.len()];
+        let mut latest_ports = vec![None; self.slots.len()];
         for tie in &self.ties {
             let first = tie.first.slot() as usize;
             let second = tie.second.slot() as usize;
             tie_counts[first] = tie_counts[first].saturating_add(1);
             tie_counts[second] = tie_counts[second].saturating_add(1);
-            partners[first] = Some(second);
-            partners[second] = Some(first);
+            latest_ports[first] = Some(tie.first_port);
+            latest_ports[second] = Some(tie.second_port);
         }
         for (slot, slot_state) in self.slots.iter_mut().enumerate() {
             let Some(organism) = slot_state.organism.as_mut() else {
@@ -1616,19 +1679,24 @@ impl Engine {
                         (MEM_MULTI as u16, i32::from(count > 0)),
                         (MEM_NUMBER_OF_TIES as u16, count),
                         (MEM_MY_TIES as u16, count),
-                        (MEM_TIE_PRESENT as u16, i32::from(count > 0)),
-                        (MEM_TIE_NUMBER as u16, count),
-                        (
-                            MEM_READ_TIE as u16,
-                            partners
-                                .get(slot)
-                                .and_then(|value| *value)
-                                .map_or(0, |value| value as i32 + 1),
-                        ),
+                        (MEM_TIE_PRESENT as u16, latest_ports[slot].unwrap_or(0)),
                     ],
                 }),
                 &mut organism.program.memory,
             );
+            let selected_port = match organism.program.memory.read(MEM_READ_TIE) {
+                0 => latest_ports[slot].unwrap_or(0),
+                selected => selected,
+            };
+            let selected_tie_is_valid = self.ties.iter().any(|tie| {
+                (tie.first.slot() as usize == slot && tie.first_port == selected_port)
+                    || (tie.second.slot() as usize == slot && tie.second_port == selected_port)
+            });
+            if !selected_tie_is_valid {
+                for address in TIED_REFERENCE_ADDRESSES {
+                    organism.program.memory.write(address, 0);
+                }
+            }
         }
         let mut channels = Vec::new();
         for tie in &self.ties {
@@ -2645,6 +2713,18 @@ impl Engine {
             child_organism
                 .materials
                 .publish(&mut child_organism.program.memory);
+            if let Ok(parent_organism) = self.slots.get_mut(parent) {
+                runtime.finish_command(
+                    MEM_REPRO as u16,
+                    CommandOutcome::Consumed,
+                    &mut parent_organism.program.memory,
+                );
+                runtime.finish_command(
+                    301,
+                    CommandOutcome::Consumed,
+                    &mut parent_organism.program.memory,
+                );
+            }
             if mutate {
                 self.pending_mutations.push(child);
             }
@@ -3193,6 +3273,31 @@ fn default_true() -> bool {
 
 fn default_species_templates() -> Vec<Option<SpeciesTemplate>> {
     vec![None]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_dna_finishes_before_the_after_dna_clear_pass() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let first = engine
+            .spawn(LegacyDna::parse("start\n11 .hitup store\nstop").unwrap())
+            .unwrap();
+        let second = engine
+            .spawn(LegacyDna::parse("start\n22 .hitup store\nstop").unwrap())
+            .unwrap();
+
+        engine.execute_dna_phase().unwrap();
+
+        assert_eq!(engine.memory(first, "hitup").unwrap(), 11);
+        assert_eq!(engine.memory(second, "hitup").unwrap(), 22);
+
+        engine.clear_after_dna_phase();
+        assert_eq!(engine.memory(first, "hitup").unwrap(), 0);
+        assert_eq!(engine.memory(second, "hitup").unwrap(), 0);
+    }
 }
 
 fn default_world_size() -> [f32; 2] {

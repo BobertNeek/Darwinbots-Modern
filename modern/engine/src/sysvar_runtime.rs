@@ -32,12 +32,20 @@ pub enum SysvarRole {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommandOutcome {
+    Consumed,
+    Pending,
+    Excluded,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SysvarLifecycle {
     pub address: u16,
     pub role: SysvarRole,
     pub consume_at: Option<CyclePhase>,
     pub refresh_at: Option<CyclePhase>,
     pub clear_at: Option<CyclePhase>,
+    pub reset_value: Option<i32>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -241,8 +249,22 @@ impl SysvarRuntime {
             }),
             _ => return None,
         };
-        clear_at(memory, phase);
         Some(commands)
+    }
+
+    pub fn finish_command(&self, address: u16, outcome: CommandOutcome, memory: &mut VmMemory) {
+        if outcome != CommandOutcome::Consumed {
+            return;
+        }
+        let Some(definition) = self.definition(address) else {
+            return;
+        };
+        if definition.consume_at.is_none()
+            || !matches!(definition.role, SysvarRole::Command | SysvarRole::Duplex)
+        {
+            return;
+        }
+        memory.write(address.into(), definition.reset_value.unwrap_or_default());
     }
 
     pub fn publish(&self, readbacks: PhaseReadbacks, memory: &mut VmMemory) {
@@ -269,7 +291,10 @@ fn clear_at(memory: &mut VmMemory, phase: CyclePhase) {
         .iter()
         .filter(|definition| definition.clear_at == Some(phase))
     {
-        memory.write(definition.address.into(), 0);
+        memory.write(
+            definition.address.into(),
+            definition.reset_value.unwrap_or_default(),
+        );
     }
 }
 
@@ -297,12 +322,17 @@ fn lifecycle_definitions() -> &'static [SysvarLifecycle] {
                 addresses.insert(address),
                 "duplicate lifecycle address {address}"
             );
+            let role = parse_role(fields[1], line_index + 1);
+            let consume_at = parse_phase(fields[2], line_index + 1);
             definitions.push(SysvarLifecycle {
                 address,
-                role: parse_role(fields[1], line_index + 1),
-                consume_at: parse_phase(fields[2], line_index + 1),
+                role,
+                consume_at,
                 refresh_at: parse_phase(fields[3], line_index + 1),
                 clear_at: parse_phase(fields[4], line_index + 1),
+                reset_value: (consume_at.is_some()
+                    && matches!(role, SysvarRole::Command | SysvarRole::Duplex))
+                .then_some(if address == 468 { 32_000 } else { 0 }),
             });
         }
         definitions.sort_unstable_by_key(|definition| definition.address);

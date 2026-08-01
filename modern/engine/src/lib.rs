@@ -17,8 +17,8 @@ mod shot;
 mod spatial;
 mod species;
 mod stats;
-mod sysvars;
 mod sysvar_runtime;
+mod sysvars;
 mod timing;
 mod vegetation;
 mod vision;
@@ -58,13 +58,13 @@ pub(crate) use shot::{
 pub use spatial::SpatialIndex;
 pub use species::{SpeciesDefinition, SpeciesId};
 pub use stats::SimulationStats;
-pub use sysvars::sysvar_address;
 pub use sysvar_runtime::{
-    AimCommands, ContactReadbacks, CoreReadbacks, CyclePhase, MaterialCommands,
+    AimCommands, CommandOutcome, ContactReadbacks, CoreReadbacks, CyclePhase, MaterialCommands,
     MaterialReadbacks, MaterialsReadbacks, MovementCommands, PhaseCommands, PhaseReadbacks,
     ReproductionCommands, ShotCommands, SysvarLifecycle, SysvarRole, SysvarRuntime, TieCommands,
     TieReadbacks, VirusCommands, VisionReadbacks,
 };
+pub use sysvars::sysvar_address;
 pub use timing::PhaseTimings;
 pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use vision::{EyeSnapshot, VisionSnapshot, absolute_eye_width, eye_sight_distance, eye_value};

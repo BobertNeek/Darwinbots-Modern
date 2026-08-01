@@ -183,10 +183,11 @@ impl RobotMaterials {
     ) {
         let prior = self.previous_energy;
         let absolute = aim_commands.set;
-        if absolute != 0 {
+        if absolute != self.aim {
             self.aim = normalize_aim(absolute);
+        } else {
+            self.aim = normalize_aim(self.aim + aim_commands.turn_left - aim_commands.turn_right);
         }
-        self.aim = normalize_aim(self.aim + aim_commands.turn_right - aim_commands.turn_left);
 
         let body_gain = spend(&mut self.energy, material_commands.store_body.max(0), 10);
         self.body = self.body.saturating_add(body_gain);
@@ -261,6 +262,7 @@ impl RobotMaterials {
             PhaseReadbacks::Core(CoreReadbacks {
                 values: vec![
                     (MEM_AIM as u16, self.aim),
+                    (19, self.aim),
                     (
                         MEM_MASS as u16,
                         self.body.saturating_add(self.shell / 10).max(1),

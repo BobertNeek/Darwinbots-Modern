@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use darwinbots_engine::{
-    CyclePhase, LegacyDna, PhaseCommands, PhaseReadbacks, SysvarRole, SysvarRuntime, TieCommands,
-    VirusCommands, VisionReadbacks, VmMemory, sysvar_address,
+    CommandOutcome, CyclePhase, Engine, EngineConfig, LegacyDna, PhaseCommands, PhaseReadbacks,
+    SysvarRole, SysvarRuntime, TieCommands, VirusCommands, VisionReadbacks, VmMemory,
+    sysvar_address,
 };
 
 const CANONICAL_SYSVARS: &str = include_str!("../src/db2_sysvars_248.txt");
@@ -80,7 +81,7 @@ fn known_sysvars_never_report_inert() {
 }
 
 #[test]
-fn commands_clear_at_their_declared_consumption_phase() {
+fn capturing_commands_does_not_clear_their_registers() {
     let runtime = SysvarRuntime::new();
     let mut memory = VmMemory::default();
     memory.write_sysvar("up", 11);
@@ -93,7 +94,7 @@ fn commands_clear_at_their_declared_consumption_phase() {
         panic!("movement phase returned the wrong typed command DTO");
     };
     assert_eq!(movement.up, 11);
-    assert_eq!(memory.read_sysvar("up"), 0);
+    assert_eq!(memory.read_sysvar("up"), 11);
     assert_eq!(memory.read_sysvar("shoot"), -6);
 
     let shot = runtime.consume(CyclePhase::Shot, &mut memory).unwrap();
@@ -102,8 +103,8 @@ fn commands_clear_at_their_declared_consumption_phase() {
     };
     assert_eq!(shot.kind, -6);
     assert_eq!(shot.value, 27);
-    assert_eq!(memory.read_sysvar("shoot"), 0);
-    assert_eq!(memory.read_sysvar("shootval"), 0);
+    assert_eq!(memory.read_sysvar("shoot"), -6);
+    assert_eq!(memory.read_sysvar("shootval"), 27);
     assert_eq!(memory.read(50), 1_234);
 
     assert!(
@@ -116,13 +117,30 @@ fn commands_clear_at_their_declared_consumption_phase() {
 }
 
 #[test]
-fn touch_taste_edge_and_tie_references_clear_after_dna() {
+fn command_outcomes_control_when_and_how_registers_reset() {
     let runtime = SysvarRuntime::new();
     let mut memory = VmMemory::default();
-    let transients: [u16; 21] = [
-        201, 202, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 221, 437, 438, 449, 456, 464,
-        475, 478, 479,
-    ];
+    memory.write_sysvar("up", 11);
+    memory.write_sysvar("fixang", 123);
+    memory.write_sysvar("mkvirus", 13);
+    memory.write_sysvar("delgene", 15);
+
+    runtime.finish_command(1, CommandOutcome::Consumed, &mut memory);
+    runtime.finish_command(468, CommandOutcome::Consumed, &mut memory);
+    runtime.finish_command(335, CommandOutcome::Pending, &mut memory);
+    runtime.finish_command(340, CommandOutcome::Excluded, &mut memory);
+
+    assert_eq!(memory.read_sysvar("up"), 0);
+    assert_eq!(memory.read_sysvar("fixang"), 32_000);
+    assert_eq!(memory.read_sysvar("mkvirus"), 13);
+    assert_eq!(memory.read_sysvar("delgene"), 15);
+}
+
+#[test]
+fn only_legacy_touch_taste_and_edge_cells_clear_after_dna() {
+    let runtime = SysvarRuntime::new();
+    let mut memory = VmMemory::default();
+    let transients: [u16; 12] = [201, 202, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214];
     for address in transients {
         memory.write(address.into(), address as i32);
     }
@@ -135,6 +153,15 @@ fn touch_taste_edge_and_tie_references_clear_after_dna() {
         assert_eq!(
             runtime.definition(address).unwrap().clear_at,
             Some(CyclePhase::AfterDna)
+        );
+    }
+    for address in [221, 437, 438, 449, 456, 464, 475, 478, 479] {
+        memory.write(address, address);
+        runtime.clear_transients_after_dna(&mut memory);
+        assert_eq!(
+            memory.read(address),
+            address,
+            "address {address} was cleared"
         );
     }
     assert_eq!(memory.read(50), 8_765);
@@ -182,9 +209,9 @@ fn future_mechanism_commands_are_typed_and_phase_routed() {
         panic!("tie phase returned the wrong typed command DTO");
     };
     assert_eq!((create, stiffness, number), (4, 55, 3));
-    assert_eq!(memory.read_sysvar("tie"), 0);
-    assert_eq!(memory.read_sysvar("stifftie"), 0);
-    assert_eq!(memory.read_sysvar("tienum"), 0);
+    assert_eq!(memory.read_sysvar("tie"), 4);
+    assert_eq!(memory.read_sysvar("stifftie"), 55);
+    assert_eq!(memory.read_sysvar("tienum"), 3);
     assert_eq!(memory.read_sysvar("mkvirus"), 13);
 
     let virus = runtime.consume(CyclePhase::Virus, &mut memory).unwrap();
@@ -197,7 +224,184 @@ fn future_mechanism_commands_are_typed_and_phase_routed() {
         panic!("virus phase returned the wrong typed command DTO");
     };
     assert_eq!((make, shoot, delete_gene), (13, 14, 15));
-    assert_eq!(memory.read_sysvar("mkvirus"), 0);
-    assert_eq!(memory.read_sysvar("vshoot"), 0);
-    assert_eq!(memory.read_sysvar("delgene"), 0);
+    assert_eq!(memory.read_sysvar("mkvirus"), 13);
+    assert_eq!(memory.read_sysvar("vshoot"), 14);
+    assert_eq!(memory.read_sysvar("delgene"), 15);
+}
+
+fn testing_engine() -> Engine {
+    Engine::new(EngineConfig::testing()).unwrap()
+}
+
+#[test]
+fn engine_tick_resets_fixang_to_legacy_sentinel() {
+    let mut engine = testing_engine();
+    let robot = engine
+        .spawn(LegacyDna::parse("start\n123 .fixang store\nstop").unwrap())
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(robot, "fixang").unwrap(), 32_000);
+}
+
+#[test]
+fn engine_tick_setaim_overrides_relative_turns_and_mirrors_next_cycle_memory() {
+    let mut engine = testing_engine();
+    let robot = engine
+        .spawn(
+            LegacyDna::parse("start\n200 .aimsx store\n50 .aimdx store\n900 .setaim store\nstop")
+                .unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.memory(robot, "aim").unwrap(), 900);
+    assert_eq!(engine.memory(robot, "setaim").unwrap(), 900);
+
+    engine
+        .replace_dna(
+            robot,
+            LegacyDna::parse("start\n40 .aimsx store\n10 .aimdx store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.memory(robot, "aim").unwrap(), 930);
+    assert_eq!(engine.memory(robot, "setaim").unwrap(), 930);
+}
+
+#[test]
+fn engine_tick_clears_only_legacy_after_dna_transients_and_keeps_hitang() {
+    let mut engine = testing_engine();
+    let mut source = String::from("start\n777 .hitang store\n");
+    for address in [201, 202, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214] {
+        source.push_str(&format!("{address} {address} store\n"));
+    }
+    source.push_str("stop");
+    let robot = engine.spawn(LegacyDna::parse(&source).unwrap()).unwrap();
+
+    engine.tick().unwrap();
+
+    for address in [201, 202, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214] {
+        assert_eq!(
+            engine.memory_at(robot, address).unwrap(),
+            0,
+            "address {address}"
+        );
+    }
+    assert_eq!(engine.memory(robot, "hitang").unwrap(), 777);
+}
+
+#[test]
+fn engine_tick_preserves_blocked_reproduction_until_birth_succeeds() {
+    let mut engine = testing_engine();
+    engine.update_legacy_restrictions(true, false);
+    let robot = engine
+        .spawn(
+            LegacyDna::parse("cond\n*.50 0 =\nstart\n50 .repro store\n1 50 store\nstop\nend")
+                .unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.population(), 1);
+    assert_eq!(engine.memory(robot, "repro").unwrap(), 50);
+
+    engine.update_legacy_restrictions(true, true);
+    engine.tick().unwrap();
+    assert_eq!(engine.population(), 2);
+    assert_eq!(engine.memory(robot, "repro").unwrap(), 0);
+}
+
+#[test]
+fn engine_tick_preserves_unfinished_virus_commands() {
+    let mut engine = testing_engine();
+    let robot = engine
+        .spawn(
+            LegacyDna::parse(
+                "cond\n*.50 0 =\nstart\n12 .mkvirus store\n30 .vshoot store\n5 .delgene store\n1 50 store\nstop\nend",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(robot, "mkvirus").unwrap(), 12);
+    assert_eq!(engine.memory(robot, "vshoot").unwrap(), 30);
+    assert_eq!(engine.memory(robot, "delgene").unwrap(), 5);
+}
+
+#[test]
+fn engine_tick_keeps_tie_port_selectors_distinct_from_tie_count() {
+    let mut engine = testing_engine();
+    let first = engine
+        .spawn_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let _second = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [110.0, 100.0])
+        .unwrap();
+    let third = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .unwrap();
+    engine.tick().unwrap();
+
+    engine
+        .replace_dna(
+            first,
+            LegacyDna::parse("start\n77 .tie store\n41 .readtie store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.move_organism(third, [101.0, 100.0]).unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(first, "numties").unwrap(), 2);
+    assert_eq!(engine.memory(first, "tiepres").unwrap(), 77);
+    assert_eq!(engine.memory(first, "tienum").unwrap(), 0);
+    assert_eq!(engine.memory(first, "readtie").unwrap(), 41);
+}
+
+#[test]
+fn engine_tick_preserves_tied_references_only_for_a_valid_selected_port() {
+    let mut engine = testing_engine();
+    let first = engine
+        .spawn_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let _second = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [110.0, 100.0])
+        .unwrap();
+    engine.tick().unwrap();
+
+    engine
+        .replace_dna(
+            first,
+            LegacyDna::parse("start\n777 .trefbody store\n41 .readtie store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.memory(first, "trefbody").unwrap(), 777);
+
+    engine
+        .replace_dna(
+            first,
+            LegacyDna::parse("start\n999 .readtie store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    for address in [
+        437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 456, 457, 458, 459, 460,
+        461, 462, 463, 464, 465, 475, 478, 479,
+    ] {
+        assert_eq!(
+            engine.memory_at(first, address).unwrap(),
+            0,
+            "address {address}"
+        );
+    }
 }
