@@ -169,19 +169,33 @@ struct Db3sV2Payload {
     stats: Db3sV2SimulationStats,
     pending_mutations: Vec<Db3sV2OrganismId>,
     ties: Vec<Db3sV2TieSnapshot>,
+    #[serde(default = "db3s_v2_default_species")]
     species: Vec<Db3sV2SpeciesDefinition>,
+    #[serde(default = "db3s_v2_default_species_templates")]
     species_templates: Vec<Option<Db3sV2SpeciesTemplate>>,
+    #[serde(default = "db3s_v2_default_mutations_enabled")]
     mutations_enabled: bool,
+    #[serde(default = "db3s_v2_default_mutation_multiplier")]
     global_mutation_multiplier: f32,
+    #[serde(default = "db3s_v2_default_ties_enabled")]
     ties_enabled: bool,
+    #[serde(default = "db3s_v2_default_true")]
     robot_fixing_allowed: bool,
+    #[serde(default = "db3s_v2_default_true")]
     asexual_reproduction_allowed: bool,
+    #[serde(default)]
     next_lineage_id: u64,
+    #[serde(default)]
     obstacles: Vec<Db3sV2Obstacle>,
+    #[serde(default)]
     teleporters: Vec<Db3sV2Teleporter>,
+    #[serde(default)]
     corpses: Vec<Db3sV2CorpseSnapshot>,
+    #[serde(default)]
     projectiles: Db3sV2ProjectilePool,
+    #[serde(default)]
     vegetation_runtime: Db3sV2VegetationRuntime,
+    #[serde(default)]
     history: Vec<Db3sV2HistorySample>,
 }
 
@@ -189,24 +203,74 @@ struct Db3sV2Payload {
 struct Db3sV2EngineConfig {
     seed: u64,
     organism_capacity: usize,
+    #[serde(default = "db3s_v2_default_vegetable_population_cap")]
     vegetable_population_cap: usize,
     world_width: f32,
     world_height: f32,
+    #[serde(default = "db3s_v2_default_toroidal_world")]
     toroidal_world: bool,
     backend: Db3sV2BackendPreference,
     allow_cpu_fallback: bool,
+    #[serde(default)]
     metabolism_cost: i32,
+    #[serde(default)]
     vegetable_energy_per_tick: i32,
+    #[serde(default = "db3s_v2_default_sunlight_energy")]
     sunlight_energy: i32,
+    #[serde(default)]
     gravity: [f32; 2],
+    #[serde(default)]
     drag: f32,
+    #[serde(default)]
     brownian_motion: f32,
+    #[serde(default)]
     physics: Db3sV2PhysicsSettings,
+    #[serde(default)]
     shots: Db3sV2ShotSettings,
+    #[serde(default)]
     vegetation: Db3sV2VegetationSettings,
+    #[serde(default)]
     dna_costs: Db3sV2DnaCosts,
+    #[serde(default)]
     auto_speciation: bool,
+    #[serde(default = "db3s_v2_default_speciation_genetic_distance_percent")]
     speciation_genetic_distance_percent: f32,
+}
+
+const fn db3s_v2_default_vegetable_population_cap() -> usize {
+    500
+}
+
+const fn db3s_v2_default_toroidal_world() -> bool {
+    true
+}
+
+const fn db3s_v2_default_sunlight_energy() -> i32 {
+    100
+}
+
+const fn db3s_v2_default_speciation_genetic_distance_percent() -> f32 {
+    20.0
+}
+
+const fn db3s_v2_default_mutations_enabled() -> bool {
+    true
+}
+
+const fn db3s_v2_default_mutation_multiplier() -> f32 {
+    1.0
+}
+
+const fn db3s_v2_default_ties_enabled() -> bool {
+    true
+}
+
+const fn db3s_v2_default_true() -> bool {
+    true
+}
+
+const fn db3s_v2_default_world_size() -> [f32; 2] {
+    [16_000.0, 12_000.0]
 }
 
 #[derive(Deserialize)]
@@ -227,6 +291,7 @@ impl From<Db3sV2BackendPreference> for BackendPreference {
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct Db3sV2PhysicsSettings {
     max_velocity: f32,
     movement_efficiency: f32,
@@ -236,6 +301,21 @@ struct Db3sV2PhysicsSettings {
     density: f64,
     viscosity: f64,
     elasticity: f32,
+}
+
+impl Default for Db3sV2PhysicsSettings {
+    fn default() -> Self {
+        Self {
+            max_velocity: 180.0,
+            movement_efficiency: 0.66,
+            surface_gravity: 2.0,
+            static_friction: 0.6,
+            kinetic_friction: 0.4,
+            density: 0.0,
+            viscosity: 0.0,
+            elasticity: 0.0,
+        }
+    }
 }
 
 impl From<Db3sV2PhysicsSettings> for PhysicsSettings {
@@ -254,12 +334,25 @@ impl From<Db3sV2PhysicsSettings> for PhysicsSettings {
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct Db3sV2ShotSettings {
     speed: f32,
     range_multiplier: f32,
     decay: f32,
     energy_shots_do_not_decay: bool,
     waste_shots_do_not_decay: bool,
+}
+
+impl Default for Db3sV2ShotSettings {
+    fn default() -> Self {
+        Self {
+            speed: 40.0,
+            range_multiplier: 1.0,
+            decay: 40.0,
+            energy_shots_do_not_decay: false,
+            waste_shots_do_not_decay: false,
+        }
+    }
 }
 
 impl From<Db3sV2ShotSettings> for ShotSettings {
@@ -275,6 +368,7 @@ impl From<Db3sV2ShotSettings> for ShotSettings {
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct Db3sV2VegetationSettings {
     start_chloroplasts: i32,
     max_energy_per_tick: i32,
@@ -285,6 +379,22 @@ struct Db3sV2VegetationSettings {
     daytime: bool,
     day_night_enabled: bool,
     cycle_length: u64,
+}
+
+impl Default for Db3sV2VegetationSettings {
+    fn default() -> Self {
+        Self {
+            start_chloroplasts: 16_000,
+            max_energy_per_tick: 40,
+            minimum_chloroplast_equivalents: 10,
+            repopulation_amount: 10,
+            repopulation_cooldown: 25,
+            feeding_to_body: 0.5,
+            daytime: true,
+            day_night_enabled: false,
+            cycle_length: 10_000,
+        }
+    }
 }
 
 impl From<Db3sV2VegetationSettings> for VegetationSettings {
@@ -304,6 +414,7 @@ impl From<Db3sV2VegetationSettings> for VegetationSettings {
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct Db3sV2DnaCosts {
     number: f64,
     dereference: f64,
@@ -316,6 +427,24 @@ struct Db3sV2DnaCosts {
     flow: f64,
     dna_upkeep: f64,
     global_multiplier: f64,
+}
+
+impl Default for Db3sV2DnaCosts {
+    fn default() -> Self {
+        Self {
+            number: 0.0,
+            dereference: 0.0,
+            basic: 0.0,
+            advanced: 0.0,
+            bitwise: 0.0,
+            condition: 0.0,
+            logic: 0.0,
+            store: 0.0,
+            flow: 0.0,
+            dna_upkeep: 0.0,
+            global_multiplier: 1.0,
+        }
+    }
 }
 
 impl From<Db3sV2DnaCosts> for DnaCosts {
@@ -360,7 +489,6 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             auto_speciation: value.auto_speciation,
             speciation_genetic_distance_percent: value.speciation_genetic_distance_percent,
             force_gpu_unavailable_for_tests: false,
-            force_gpu_runtime_failure_for_tests: false,
         }
     }
 }
@@ -407,6 +535,59 @@ struct Db3sV2VisualPhenotype {
     color: u32,
     skin: [Db3sV2SkinPoint; 4],
     accumulated_mutations: u32,
+}
+
+impl Default for Db3sV2VisualPhenotype {
+    fn default() -> Self {
+        Self {
+            lineage_id: 0,
+            color: 0xff62_a844,
+            skin: db3s_v2_default_skin(),
+            accumulated_mutations: 0,
+        }
+    }
+}
+
+fn db3s_v2_default_skin() -> [Db3sV2SkinPoint; 4] {
+    [
+        Db3sV2SkinPoint {
+            radius: 0.57,
+            angle: 1230,
+        },
+        Db3sV2SkinPoint {
+            radius: 0.45,
+            angle: 316,
+        },
+        Db3sV2SkinPoint {
+            radius: 0.40,
+            angle: 637,
+        },
+        Db3sV2SkinPoint {
+            radius: 0.28,
+            angle: 889,
+        },
+    ]
+}
+
+fn db3s_v2_default_species_skin() -> [Db3sV2SkinPoint; 4] {
+    [
+        Db3sV2SkinPoint {
+            radius: 0.77,
+            angle: 68,
+        },
+        Db3sV2SkinPoint {
+            radius: 0.77,
+            angle: 266,
+        },
+        Db3sV2SkinPoint {
+            radius: 0.60,
+            angle: 662,
+        },
+        Db3sV2SkinPoint {
+            radius: 0.24,
+            angle: 897,
+        },
+    ]
 }
 
 impl From<Db3sV2VisualPhenotype> for VisualPhenotype {
@@ -604,9 +785,39 @@ struct Db3sV2SpeciesDefinition {
     color: u32,
     minimum_population: usize,
     reseed: bool,
+    #[serde(default)]
     mutation_rate: f32,
+    #[serde(default = "db3s_v2_default_skin")]
     skin: [Db3sV2SkinPoint; 4],
+    #[serde(default)]
     lineage_id: u64,
+}
+
+impl Default for Db3sV2SpeciesDefinition {
+    fn default() -> Self {
+        Self {
+            name: "Unassigned".to_owned(),
+            vegetable: false,
+            color: 0xff62_a844,
+            minimum_population: 0,
+            reseed: false,
+            mutation_rate: 0.0,
+            skin: db3s_v2_default_skin(),
+            lineage_id: 0,
+        }
+    }
+}
+
+fn db3s_v2_default_species() -> Vec<Db3sV2SpeciesDefinition> {
+    vec![Db3sV2SpeciesDefinition {
+        lineage_id: 1,
+        skin: db3s_v2_default_species_skin(),
+        ..Db3sV2SpeciesDefinition::default()
+    }]
+}
+
+fn db3s_v2_default_species_templates() -> Vec<Option<Db3sV2SpeciesTemplate>> {
+    vec![None]
 }
 
 impl From<Db3sV2SpeciesDefinition> for SpeciesDefinition {
@@ -626,22 +837,33 @@ impl From<Db3sV2SpeciesDefinition> for SpeciesDefinition {
 
 #[derive(Deserialize)]
 struct Db3sV2SimulationStats {
+    #[serde(default)]
     completed_cycles: u64,
     population: usize,
     births: u64,
     deaths: u64,
     shots_fired: u64,
+    #[serde(default)]
     projectile_impacts: u64,
+    #[serde(default)]
     projectile_effects: u64,
+    #[serde(default)]
     energy_harvested: u64,
+    #[serde(default)]
     energy_donated: u64,
     mutations: u64,
     ties_created: u64,
+    #[serde(default)]
     reseeds: u64,
+    #[serde(default)]
     self_reproductions: u64,
+    #[serde(default)]
     feeding_events: u64,
+    #[serde(default, alias = "plant_energy_produced")]
     plant_energy_generated: u64,
+    #[serde(default)]
     plant_body_produced: u64,
+    #[serde(default)]
     intentional_movement_events: u64,
     total_energy: i64,
 }
@@ -676,7 +898,9 @@ struct Db3sV2TieSnapshot {
     first: Db3sV2OrganismId,
     second: Db3sV2OrganismId,
     rest_length: f32,
+    #[serde(default)]
     first_port: i32,
+    #[serde(default)]
     second_port: i32,
 }
 
@@ -721,6 +945,23 @@ struct Db3sV2VisionSnapshot {
     eyes: [Db3sV2EyeSnapshot; 9],
 }
 
+impl Default for Db3sV2VisionSnapshot {
+    fn default() -> Self {
+        let eyes = std::array::from_fn(|index| {
+            let standard_offset = (4.0 - index as f32) * std::f32::consts::PI / 18.0;
+            Db3sV2EyeSnapshot {
+                direction: 0,
+                width: 0,
+                center_radians: standard_offset.rem_euclid(std::f32::consts::TAU),
+                half_width_radians: 0.0875,
+                range: 1_440.0,
+                value: 0,
+            }
+        });
+        Self { focus_eye: 4, eyes }
+    }
+}
+
 impl From<Db3sV2VisionSnapshot> for VisionSnapshot {
     fn from(value: Db3sV2VisionSnapshot) -> Self {
         Self {
@@ -750,7 +991,9 @@ struct Db3sV2OrganismSnapshot {
     aim: i32,
     paralyzed: i32,
     poisoned: i32,
+    #[serde(default)]
     phenotype: Db3sV2VisualPhenotype,
+    #[serde(default)]
     vision: Db3sV2VisionSnapshot,
 }
 
@@ -793,7 +1036,9 @@ struct Db3sV2CorpseSnapshot {
     energy: i32,
     body: i32,
     age: u64,
+    #[serde(default)]
     species: u32,
+    #[serde(default)]
     repopulating: bool,
 }
 
@@ -816,12 +1061,17 @@ struct Db3sV2ShotSnapshot {
     owner: Db3sV2OrganismId,
     start: [f32; 2],
     end: [f32; 2],
+    #[serde(default)]
     velocity: [f32; 2],
+    #[serde(default)]
     age: u32,
+    #[serde(default)]
     range: u32,
+    #[serde(default)]
     energy: f32,
     kind: i32,
     value: i32,
+    #[serde(default)]
     impact_flash: bool,
 }
 
@@ -851,7 +1101,9 @@ struct Db3sV2HistorySample {
     deaths: u64,
     mutations: u64,
     shots_fired: u64,
+    #[serde(default)]
     projectile_impacts: u64,
+    #[serde(default, alias = "plant_energy_produced")]
     plant_energy_generated: u64,
 }
 
@@ -877,10 +1129,15 @@ struct Db3sV2RenderInstance {
     position: [f32; 2],
     radius: f32,
     color: u32,
+    #[serde(default)]
     generation: u32,
+    #[serde(default)]
     aim: i32,
+    #[serde(default = "db3s_v2_default_skin")]
     skin: [Db3sV2SkinPoint; 4],
+    #[serde(default)]
     lineage_id: u64,
+    #[serde(default)]
     vegetable: bool,
 }
 
@@ -936,8 +1193,9 @@ impl From<Db3sV2Teleporter> for Teleporter {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct Db3sV2PhaseTimings {
+    #[serde(default)]
     cycle: f64,
     dna: f64,
     intent: f64,
@@ -945,7 +1203,9 @@ struct Db3sV2PhaseTimings {
     sensing: f64,
     interactions: f64,
     physics: f64,
+    #[serde(default)]
     projectiles: f64,
+    #[serde(default)]
     vegetation: f64,
     lifecycle: f64,
     mutation: f64,
@@ -974,22 +1234,36 @@ impl From<Db3sV2PhaseTimings> for PhaseTimings {
 #[derive(Deserialize)]
 struct Db3sV2Snapshot {
     tick: u64,
+    #[serde(default = "db3s_v2_default_world_size")]
     world_size: [f32; 2],
     organisms: Vec<Db3sV2OrganismSnapshot>,
+    #[serde(default)]
     corpses: Vec<Db3sV2CorpseSnapshot>,
+    #[serde(default)]
     shots: Vec<Db3sV2ShotSnapshot>,
+    #[serde(default)]
     history: Vec<Db3sV2HistorySample>,
     stats: Db3sV2SimulationStats,
     ties: Vec<Db3sV2TieSnapshot>,
+    #[serde(default)]
     render_instances: Vec<Db3sV2RenderInstance>,
+    #[serde(default)]
     species: Vec<Db3sV2SpeciesDefinition>,
+    #[serde(default = "db3s_v2_default_mutations_enabled")]
     mutations_enabled: bool,
+    #[serde(default = "db3s_v2_default_mutation_multiplier")]
     global_mutation_multiplier: f32,
+    #[serde(default = "db3s_v2_default_ties_enabled")]
     ties_enabled: bool,
+    #[serde(default = "db3s_v2_default_true")]
     robot_fixing_allowed: bool,
+    #[serde(default = "db3s_v2_default_true")]
     asexual_reproduction_allowed: bool,
+    #[serde(default)]
     obstacles: Vec<Db3sV2Obstacle>,
+    #[serde(default)]
     teleporters: Vec<Db3sV2Teleporter>,
+    #[serde(default)]
     phase_timings: Db3sV2PhaseTimings,
 }
 
@@ -1019,7 +1293,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct Db3sV2ProjectilePool {
     owners: Vec<Db3sV2OrganismId>,
     positions: Vec<[f32; 2]>,
@@ -1060,7 +1334,7 @@ impl From<Db3sV2ProjectilePool> for ProjectilePool {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct Db3sV2VegetationRuntime {
     repopulation_counter: u64,
     day_night_counter: u64,
@@ -1095,9 +1369,13 @@ struct Db3sV2Organism {
     dna: Db3sV2LegacyDna,
     memory: Db3sV2VmMemory,
     random_state: u64,
+    #[serde(default)]
     species: Db3sV2SpeciesId,
+    #[serde(default)]
     parents: [Option<Db3sV2OrganismId>; 2],
+    #[serde(default)]
     phenotype: Db3sV2VisualPhenotype,
+    #[serde(default)]
     flags: Db3sV2Flags,
 }
 
@@ -1158,8 +1436,10 @@ impl From<Db3sV2Flags> for crate::RobotFlags {
 #[derive(Deserialize)]
 struct Db3sV2Kinematics {
     positions: Vec<[f32; 2]>,
+    #[serde(default)]
     previous_positions: Vec<[f32; 2]>,
     velocities: Vec<[f32; 2]>,
+    #[serde(default)]
     actual_velocities: Vec<[f32; 2]>,
     pending_velocities: Vec<[f32; 2]>,
     #[serde(rename = "alive")]
@@ -1174,11 +1454,15 @@ struct Db3sV2Lifecycle {
 
 #[derive(Deserialize)]
 struct Db3sV2Biology {
+    #[serde(default = "db3s_v2_default_legacy_energy")]
     energy: i32,
     body: i32,
+    #[serde(default = "db3s_v2_default_legacy_dimension")]
     mass: f32,
+    #[serde(default = "db3s_v2_default_legacy_dimension")]
     radius: f32,
     waste: i32,
+    #[serde(default)]
     permanent_waste: i32,
     shell: i32,
     slime: i32,
@@ -1191,8 +1475,18 @@ struct Db3sV2Biology {
     paralyzed: i32,
     poisoned: i32,
     previous_energy: i32,
+    #[serde(default)]
     plant_energy_carry_micros: i64,
+    #[serde(default)]
     plant_body_carry_micros: i64,
+}
+
+const fn db3s_v2_default_legacy_energy() -> i32 {
+    1_000
+}
+
+const fn db3s_v2_default_legacy_dimension() -> f32 {
+    1.0
 }
 
 impl From<&Db3sV2Biology> for BiologyState {
@@ -1552,9 +1846,8 @@ impl Engine {
         Ok(engine)
     }
 
-    pub fn new(mut config: EngineConfig) -> Result<Self, EngineError> {
+    pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
         let (capabilities, physics) = select_backend(&config)?;
-        config.force_gpu_runtime_failure_for_tests = false;
         let world_size = [config.world_width, config.world_height];
         Ok(Self {
             config,
@@ -2980,11 +3273,7 @@ impl Engine {
     fn sensing_phase(&mut self) -> Result<(), EngineError> {
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
-        let gpu_result = if self.config.force_gpu_runtime_failure_for_tests
-            && matches!(self.physics, RuntimePhysics::Gpu(_))
-        {
-            Some(Err(EngineError::Gpu("forced runtime failure".to_owned())))
-        } else if let RuntimePhysics::Gpu(backend) = &self.physics {
+        let gpu_result = if let RuntimePhysics::Gpu(backend) = &self.physics {
             let positions: Vec<_> = self
                 .slots
                 .iter()
@@ -4881,9 +5170,6 @@ fn select_backend(
     };
     let gpu_error = match gpu {
         Ok(gpu) if config.backend == BackendPreference::Gpu => {
-            if config.force_gpu_runtime_failure_for_tests {
-                gpu.fail_next_sensing_after_submit_for_tests();
-            }
             return Ok((
                 BackendCapabilities { active: BackendKind::Gpu, gpu_available: true, fallback_reason: None },
                 RuntimePhysics::Gpu(gpu),
@@ -5130,6 +5416,13 @@ fn default_species_templates() -> Vec<Option<SpeciesTemplate>> {
 mod tests {
     use super::*;
 
+    fn fail_next_gpu_sensing_after_submit(engine: &Engine) {
+        let RuntimePhysics::Gpu(backend) = &engine.physics else {
+            panic!("the physical GPU is required for this test");
+        };
+        backend.fail_next_sensing_after_submit_for_tests();
+    }
+
     #[test]
     fn all_dna_finishes_before_the_after_dna_clear_pass() {
         let mut engine = Engine::new(EngineConfig::testing()).unwrap();
@@ -5150,6 +5443,145 @@ mod tests {
         engine.clear_after_dna_phase();
         assert_eq!(engine.memory(first, "hitup").unwrap(), 0);
         assert_eq!(engine.memory(second, "hitup").unwrap(), 0);
+    }
+
+    #[test]
+    fn runtime_gpu_failure_retries_on_cpu_and_records_reason() {
+        if GpuPhysicsBackend::new().is_err() {
+            return;
+        }
+        let mut engine = Engine::new(EngineConfig {
+            backend: BackendPreference::Gpu,
+            allow_cpu_fallback: true,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine
+            .spawn(LegacyDna::parse("start\nstop").unwrap())
+            .unwrap();
+        fail_next_gpu_sensing_after_submit(&engine);
+
+        engine.tick().unwrap();
+
+        assert_eq!(engine.backend(), BackendKind::Cpu);
+        assert!(!engine.capabilities().gpu_available);
+        assert!(
+            engine
+                .capabilities()
+                .fallback_reason
+                .as_deref()
+                .unwrap()
+                .contains("after GPU submission")
+        );
+    }
+
+    #[test]
+    fn runtime_gpu_failure_is_fatal_when_fallback_is_disabled() {
+        if GpuPhysicsBackend::new().is_err() {
+            return;
+        }
+        let mut engine = Engine::new(EngineConfig {
+            backend: BackendPreference::Gpu,
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine
+            .spawn(LegacyDna::parse("start\nstop").unwrap())
+            .unwrap();
+        fail_next_gpu_sensing_after_submit(&engine);
+
+        assert!(matches!(engine.tick(), Err(EngineError::Gpu(_))));
+        assert_eq!(engine.backend(), BackendKind::Gpu);
+    }
+
+    #[test]
+    fn gpu_failure_does_not_partially_advance_the_cycle() {
+        let mut engine = Engine::new(EngineConfig {
+            backend: BackendPreference::Gpu,
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .expect("the physical GPU is required for Task 6 acceptance");
+        engine
+            .spawn_at(
+                LegacyDna::parse("cond\n*.robage 0 =\nstart\n10 .up store\nstop").unwrap(),
+                [500.0, 500.0],
+            )
+            .unwrap();
+        let before = crate::SaveFile::encode(&engine).unwrap();
+        let publications_before = engine.snapshot_publication_count();
+        fail_next_gpu_sensing_after_submit(&engine);
+
+        let error = engine.tick().unwrap_err();
+
+        assert!(error.to_string().contains("after GPU submission"));
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(engine.snapshot_publication_count(), publications_before);
+        assert_eq!(engine.backend(), BackendKind::Gpu);
+        assert!(engine.capabilities().gpu_available);
+        assert!(engine.capabilities().fallback_reason.is_none());
+
+        engine.tick().unwrap();
+
+        assert_eq!(engine.snapshot().tick, 1);
+        assert_eq!(engine.backend(), BackendKind::Gpu);
+    }
+
+    #[test]
+    fn gpu_in_backend_failure_allows_later_tick_with_trace() {
+        let mut engine = Engine::new(EngineConfig {
+            backend: BackendPreference::Gpu,
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .expect("the physical GPU is required for Task 6 acceptance");
+        engine
+            .spawn_at(
+                LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
+                [500.0, 500.0],
+            )
+            .unwrap();
+        let before = crate::SaveFile::encode(&engine).unwrap();
+        fail_next_gpu_sensing_after_submit(&engine);
+
+        let error = engine.tick_with_trace().unwrap_err();
+
+        assert!(error.to_string().contains("after GPU submission"));
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+        let trace = engine.tick_with_trace().unwrap();
+        assert_eq!(trace.tick, 1);
+        assert_eq!(engine.snapshot().tick, 1);
+        assert_eq!(engine.backend(), BackendKind::Gpu);
+    }
+
+    #[test]
+    fn gpu_in_backend_failure_keeps_tick_many_iterations_atomic() {
+        let mut engine = Engine::new(EngineConfig {
+            backend: BackendPreference::Gpu,
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .expect("the physical GPU is required for Task 6 acceptance");
+        engine
+            .spawn_at(
+                LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
+                [500.0, 500.0],
+            )
+            .unwrap();
+        let before = crate::SaveFile::encode(&engine).unwrap();
+        let publications_before = engine.snapshot_publication_count();
+        fail_next_gpu_sensing_after_submit(&engine);
+
+        let error = engine.tick_many(3).unwrap_err();
+
+        assert!(error.to_string().contains("after GPU submission"));
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(engine.snapshot_publication_count(), publications_before);
+        engine.tick_many(3).unwrap();
+        assert_eq!(engine.snapshot().tick, 3);
+        assert_eq!(engine.snapshot_publication_count(), publications_before + 1);
+        assert_eq!(engine.backend(), BackendKind::Gpu);
     }
 }
 

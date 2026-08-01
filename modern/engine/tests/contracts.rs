@@ -322,6 +322,314 @@ fn db3s_v2_migrates_every_existing_robot_field() {
 }
 
 #[test]
+fn db3s_v2_accepts_parent_defaulted_field_omissions() {
+    let fixture = include_bytes!("fixtures/db3s_v2_phase1.bin");
+    let frame = |payload: &serde_json::Value| {
+        let payload = serde_json::to_vec(payload).unwrap();
+        let mut save = Vec::with_capacity(10 + payload.len());
+        save.extend_from_slice(b"DB3S");
+        save.extend_from_slice(&2_u16.to_le_bytes());
+        save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        save.extend_from_slice(&payload);
+        save
+    };
+    let mut payload: serde_json::Value = serde_json::from_slice(&fixture[10..]).unwrap();
+    let root = payload.as_object_mut().unwrap();
+
+    let config = root["config"].as_object_mut().unwrap();
+    for field in [
+        "vegetable_population_cap",
+        "toroidal_world",
+        "metabolism_cost",
+        "vegetable_energy_per_tick",
+        "sunlight_energy",
+        "gravity",
+        "drag",
+        "brownian_motion",
+        "physics",
+        "shots",
+        "vegetation",
+        "dna_costs",
+        "auto_speciation",
+        "speciation_genetic_distance_percent",
+    ] {
+        config.remove(field);
+    }
+
+    let organism = root["slots"][0]["organism"].as_object_mut().unwrap();
+    for field in ["species", "parents", "phenotype", "flags"] {
+        organism.remove(field);
+    }
+    let dna = organism["dna"].as_object_mut().unwrap();
+    for field in [
+        "user_variables",
+        "new_move",
+        "compatibility_warnings",
+        "metadata",
+    ] {
+        dna.remove(field);
+    }
+    let kinematics = root["kinematics"].as_object_mut().unwrap();
+    kinematics.remove("previous_positions");
+    kinematics.remove("actual_velocities");
+    root.remove("biology");
+    root.remove("forced_reproductions");
+
+    let snapshot = root["snapshot"].as_object_mut().unwrap();
+    let organism_snapshot = snapshot["organisms"][0].as_object_mut().unwrap();
+    organism_snapshot.remove("phenotype");
+    organism_snapshot.remove("vision");
+    let stats = snapshot["stats"].as_object_mut().unwrap();
+    for field in [
+        "completed_cycles",
+        "projectile_impacts",
+        "projectile_effects",
+        "energy_harvested",
+        "energy_donated",
+        "reseeds",
+        "self_reproductions",
+        "feeding_events",
+        "plant_energy_generated",
+        "plant_body_produced",
+        "intentional_movement_events",
+    ] {
+        stats.remove(field);
+    }
+    snapshot["ties"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("first_port");
+    snapshot["ties"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("second_port");
+    for field in [
+        "world_size",
+        "corpses",
+        "shots",
+        "history",
+        "render_instances",
+        "species",
+        "mutations_enabled",
+        "global_mutation_multiplier",
+        "ties_enabled",
+        "robot_fixing_allowed",
+        "asexual_reproduction_allowed",
+        "obstacles",
+        "teleporters",
+        "phase_timings",
+    ] {
+        snapshot.remove(field);
+    }
+    root["ties"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("first_port");
+    root["ties"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("second_port");
+
+    for field in [
+        "species",
+        "species_templates",
+        "mutations_enabled",
+        "global_mutation_multiplier",
+        "ties_enabled",
+        "robot_fixing_allowed",
+        "asexual_reproduction_allowed",
+        "next_lineage_id",
+        "obstacles",
+        "teleporters",
+        "corpses",
+        "projectiles",
+        "vegetation_runtime",
+        "history",
+    ] {
+        root.remove(field);
+    }
+
+    let restored = SaveFile::decode(&frame(&payload)).unwrap();
+    let id = restored.snapshot().organisms[0].id;
+    let robot = restored.robot_state(id).unwrap();
+    assert_eq!(robot.identity.species, darwinbots_engine::SpeciesId(0));
+    assert_eq!(robot.identity.parents, [None, None]);
+    assert!(robot.flags.exists);
+    assert!(!robot.flags.corpse);
+    assert!(!robot.flags.dead);
+    assert!(!robot.flags.vegetable);
+    assert!(!robot.flags.fixed);
+    assert!(robot.flags.can_see);
+    assert!(robot.flags.can_execute_dna);
+    assert!(robot.flags.can_move);
+    assert!(robot.flags.can_reproduce);
+    assert!(robot.flags.can_mutate);
+    assert!(robot.flags.can_use_chloroplasts);
+    assert!(robot.flags.can_receive_viruses);
+    assert_eq!(robot.phenotype.lineage_id, 1);
+    assert_eq!(robot.phenotype.color, 0xff62_a844);
+    assert_eq!(robot.phenotype.skin[0].radius, 0.77);
+    assert_eq!(robot.phenotype.skin[0].angle, 68);
+    assert!(!robot.program.dna.uses_new_move());
+    assert!(robot.program.dna.compatibility_warnings().is_empty());
+    assert_eq!(robot.program.dna.metadata().generation, 0);
+    assert_eq!(robot.program.dna.metadata().mutations, 0);
+    assert!(robot.program.dna.metadata().tag.is_empty());
+    assert!(robot.program.dna.metadata().legacy_hash.is_none());
+    assert!(robot.program.dna.metadata().hash_valid);
+    assert!(!robot.effects.forced_reproduction);
+    assert_eq!(
+        robot.kinematics.previous_position,
+        robot.kinematics.position
+    );
+    assert_eq!(robot.kinematics.actual_velocity, [0.0, 0.0]);
+    assert_eq!(restored.snapshot().world_size, [2222.0, 1111.0]);
+    assert!(restored.snapshot().mutations_enabled);
+    assert_eq!(restored.snapshot().global_mutation_multiplier, 1.0);
+    assert!(restored.snapshot().ties_enabled);
+    assert!(restored.snapshot().robot_fixing_allowed);
+    assert!(restored.snapshot().asexual_reproduction_allowed);
+    assert_eq!(restored.snapshot().ties[0].first_port, 0);
+    assert_eq!(restored.snapshot().ties[0].second_port, 0);
+
+    let migrated = SaveFile::encode(&restored).unwrap();
+    let migrated: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();
+    assert_eq!(migrated["config"]["vegetable_population_cap"], 500);
+    assert_eq!(migrated["config"]["toroidal_world"], true);
+    assert_eq!(migrated["config"]["sunlight_energy"], 100);
+    assert_eq!(migrated["config"]["physics"]["max_velocity"], 180.0);
+    assert_eq!(migrated["config"]["shots"]["speed"], 40.0);
+    assert_eq!(
+        migrated["config"]["vegetation"]["start_chloroplasts"],
+        16_000
+    );
+    assert_eq!(migrated["config"]["dna_costs"]["global_multiplier"], 1.0);
+    assert_eq!(
+        migrated["config"]["speciation_genetic_distance_percent"],
+        20.0
+    );
+    assert_eq!(migrated["species"][0]["lineage_id"], 1);
+    assert_eq!(
+        migrated["species"][0]["skin"][0]["radius"],
+        serde_json::json!(0.77_f32)
+    );
+    assert_eq!(migrated["species"][0]["skin"][0]["angle"], 68);
+    assert_eq!(migrated["species_templates"], serde_json::json!([null]));
+    assert_eq!(migrated["projectiles"]["owners"], serde_json::json!([]));
+    assert_eq!(migrated["vegetation_runtime"]["repopulation_counter"], 0);
+    assert_eq!(migrated["vegetation_runtime"]["day_night_counter"], 0);
+
+    let mut nested: serde_json::Value = serde_json::from_slice(&fixture[10..]).unwrap();
+    let root = nested.as_object_mut().unwrap();
+    let config = root["config"].as_object_mut().unwrap();
+    config.insert("physics".to_owned(), serde_json::json!({}));
+    config.insert("shots".to_owned(), serde_json::json!({}));
+    config.insert("vegetation".to_owned(), serde_json::json!({}));
+    config.insert("dna_costs".to_owned(), serde_json::json!({}));
+
+    let biology = root["biology"][0].as_object_mut().unwrap();
+    for field in [
+        "energy",
+        "mass",
+        "radius",
+        "permanent_waste",
+        "plant_energy_carry_micros",
+        "plant_body_carry_micros",
+    ] {
+        biology.remove(field);
+    }
+    let stats = root["stats"].as_object_mut().unwrap();
+    for field in [
+        "completed_cycles",
+        "projectile_impacts",
+        "projectile_effects",
+        "energy_harvested",
+        "energy_donated",
+        "reseeds",
+        "self_reproductions",
+        "feeding_events",
+        "plant_energy_generated",
+        "plant_body_produced",
+        "intentional_movement_events",
+    ] {
+        stats.remove(field);
+    }
+    for field in ["mutation_rate", "skin", "lineage_id"] {
+        root["species"][1].as_object_mut().unwrap().remove(field);
+    }
+    for field in ["species", "repopulating"] {
+        root["corpses"][0].as_object_mut().unwrap().remove(field);
+    }
+    for field in ["projectile_impacts", "plant_energy_generated"] {
+        root["history"][0].as_object_mut().unwrap().remove(field);
+    }
+
+    let snapshot = root["snapshot"].as_object_mut().unwrap();
+    for field in ["species", "repopulating"] {
+        snapshot["corpses"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove(field);
+    }
+    for field in ["velocity", "age", "range", "energy", "impact_flash"] {
+        snapshot["shots"][0].as_object_mut().unwrap().remove(field);
+    }
+    for field in ["projectile_impacts", "plant_energy_generated"] {
+        snapshot["history"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove(field);
+    }
+    for field in ["generation", "aim", "skin", "lineage_id", "vegetable"] {
+        snapshot["render_instances"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove(field);
+    }
+    for field in ["mutation_rate", "skin", "lineage_id"] {
+        snapshot["species"][1]
+            .as_object_mut()
+            .unwrap()
+            .remove(field);
+    }
+    for field in ["cycle", "projectiles", "vegetation"] {
+        snapshot["phase_timings"]
+            .as_object_mut()
+            .unwrap()
+            .remove(field);
+    }
+
+    let nested = SaveFile::decode(&frame(&nested)).unwrap();
+    let id = nested.snapshot().organisms[0].id;
+    let robot = nested.robot_state(id).unwrap();
+    assert_eq!(robot.materials.mass, 1.0);
+    assert_eq!(robot.materials.radius, 1.0);
+    assert_eq!(robot.materials.permanent_waste, 0);
+    assert_eq!(nested.snapshot().stats.projectile_effects, 0);
+    assert_eq!(nested.snapshot().corpses[0].species, 0);
+    assert!(!nested.snapshot().corpses[0].repopulating);
+    assert_eq!(nested.snapshot().history[0].projectile_impacts, 0);
+    assert_eq!(nested.snapshot().history[0].plant_energy_generated, 0);
+
+    let nested = SaveFile::encode(&nested).unwrap();
+    let nested: serde_json::Value = serde_json::from_slice(&nested[10..]).unwrap();
+    assert_eq!(nested["config"]["physics"]["max_velocity"], 180.0);
+    assert_eq!(nested["config"]["shots"]["speed"], 40.0);
+    assert_eq!(nested["config"]["vegetation"]["cycle_length"], 10_000);
+    assert_eq!(nested["config"]["dna_costs"]["global_multiplier"], 1.0);
+    assert_eq!(nested["stats"]["intentional_movement_events"], 0);
+    assert_eq!(nested["species"][1]["mutation_rate"], 0.0);
+    assert_eq!(
+        nested["slots"][0]["organism"]["materials"]["plant_energy_carry_micros"],
+        0
+    );
+    assert_eq!(
+        nested["slots"][0]["organism"]["materials"]["plant_body_carry_micros"],
+        0
+    );
+}
+
+#[test]
 fn db3s_v3_round_trip_preserves_complete_phase1_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let mut species = SpeciesDefinition::default();

@@ -119,8 +119,6 @@ pub struct EngineConfig {
     pub speciation_genetic_distance_percent: f32,
     #[serde(skip)]
     pub force_gpu_unavailable_for_tests: bool,
-    #[serde(skip)]
-    pub force_gpu_runtime_failure_for_tests: bool,
 }
 
 impl Default for EngineConfig {
@@ -147,7 +145,6 @@ impl Default for EngineConfig {
             auto_speciation: false,
             speciation_genetic_distance_percent: default_speciation_genetic_distance_percent(),
             force_gpu_unavailable_for_tests: false,
-            force_gpu_runtime_failure_for_tests: false,
         }
     }
 }
