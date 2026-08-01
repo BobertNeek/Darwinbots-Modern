@@ -1,6 +1,6 @@
 use crate::{
-    BiologyState, EngineError, LegacyDna, OrganismId, PhysicsBatch, SpeciesId, VisualPhenotype,
-    VmMemory,
+    BiologyState, EngineError, LegacyDna, OrganismId, PhysicsBatch, PointMutationSchedule,
+    SpeciesId, StandardMutationProfile, VisualPhenotype, VmMemory,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::ops::{Deref, DerefMut};
@@ -99,6 +99,10 @@ pub struct RobotProgramState {
     pub memory: VmMemory,
     pub private_variables: VmMemory,
     pub rng_state: u64,
+    #[serde(default)]
+    pub mutation_profile: StandardMutationProfile,
+    #[serde(default)]
+    pub point_mutation_schedule: Option<PointMutationSchedule>,
     pub mutation_metadata: RobotMutationMetadata,
     pub fractional_cost_remainder: f64,
     pub debug_text: String,
@@ -114,6 +118,8 @@ impl RobotProgramState {
             memory,
             private_variables: VmMemory::default(),
             rng_state: rng_state.max(1),
+            mutation_profile: StandardMutationProfile::default(),
+            point_mutation_schedule: None,
             mutation_metadata: RobotMutationMetadata::default(),
             fractional_cost_remainder: 0.0,
             debug_text: String::new(),
@@ -412,6 +418,10 @@ struct LegacyOrganism {
     dna: LegacyDna,
     memory: VmMemory,
     random_state: u64,
+    #[serde(default, skip_serializing_if = "mutation_profile_is_default")]
+    mutation_profile: StandardMutationProfile,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    point_mutation_schedule: Option<PointMutationSchedule>,
     #[serde(default)]
     species: SpeciesId,
     #[serde(default)]
@@ -420,6 +430,10 @@ struct LegacyOrganism {
     phenotype: VisualPhenotype,
     #[serde(default)]
     flags: RobotFlags,
+}
+
+fn mutation_profile_is_default(profile: &StandardMutationProfile) -> bool {
+    profile == &StandardMutationProfile::default()
 }
 
 #[derive(Serialize, Deserialize)]
@@ -510,6 +524,8 @@ impl Serialize for RobotArena {
                 dna: state.program.dna.clone(),
                 memory: state.program.memory.clone(),
                 random_state: state.program.rng_state,
+                mutation_profile: state.program.mutation_profile.clone(),
+                point_mutation_schedule: state.program.point_mutation_schedule,
                 species: state.identity.species,
                 parents: state.identity.parents,
                 phenotype: state.phenotype.clone(),
@@ -598,6 +614,8 @@ impl<'de> Deserialize<'de> for RobotArena {
                     materials,
                     organism.phenotype,
                 );
+                state.program.mutation_profile = organism.mutation_profile;
+                state.program.point_mutation_schedule = organism.point_mutation_schedule;
                 state.flags = organism.flags;
                 state.kinematics.previous_position = legacy
                     .kinematics

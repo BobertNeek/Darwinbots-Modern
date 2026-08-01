@@ -42,7 +42,11 @@ pub use environment::{Obstacle, Teleporter};
 pub use error::EngineError;
 pub use history::HistorySample;
 pub use id::OrganismId;
-pub use mutation::{GenomeMutator, MutationKind, MutationReport, PointMutator};
+pub use mutation::{
+    GenomeMutator, MutationKind, MutationPreference, MutationRate, MutationReport,
+    PointMutationSchedule, PointMutator, StandardMutationEvent, StandardMutationKind,
+    StandardMutationProfile, StandardMutationReport, apply_standard_mutation,
+};
 pub use persistence::SaveFile;
 pub use physics::{
     CpuPhysicsBackend, GpuPhysicsBackend, PhysicsBackend, PhysicsBatch, RenderInstance,

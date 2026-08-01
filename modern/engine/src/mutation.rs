@@ -1,5 +1,6 @@
 use crate::dna::normalize_master_end;
-use crate::{DnaBlock, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
+use crate::{DnaBlock, EngineError, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutationKind {
@@ -14,6 +15,405 @@ pub enum MutationKind {
 pub struct MutationReport {
     pub changes: u32,
     pub kind: Option<MutationKind>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MutationRate {
+    pub one_in: f64,
+    pub mean: f64,
+    pub std_dev: f64,
+}
+
+impl MutationRate {
+    const fn new(one_in: f64, mean: f64, std_dev: f64) -> Self {
+        Self {
+            one_in,
+            mean,
+            std_dev,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StandardMutationKind {
+    Point,
+    Delta,
+    CopyError,
+    Insertion,
+    Reversal,
+    MinorDeletion,
+    MajorDeletion,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct StandardMutationProfile {
+    pub point: MutationRate,
+    pub delta: MutationRate,
+    pub copy_error: MutationRate,
+    pub insertion: MutationRate,
+    pub reversal: MutationRate,
+    pub minor_deletion: MutationRate,
+    pub major_deletion: MutationRate,
+    pub point_value_change_percent: u8,
+    pub copy_error_value_change_percent: u8,
+}
+
+impl Default for StandardMutationProfile {
+    fn default() -> Self {
+        Self {
+            point: MutationRate::new(5_000.0, 3.0, 1.0),
+            delta: MutationRate::new(5_000.0, 500.0, 150.0),
+            copy_error: MutationRate::new(5_000.0, 1.0, 0.0),
+            insertion: MutationRate::new(5_000.0, 1.0, 0.0),
+            reversal: MutationRate::new(5_000.0, 3.0, 1.0),
+            minor_deletion: MutationRate::new(5_000.0, 1.0, 0.0),
+            major_deletion: MutationRate::new(5_000.0, 3.0, 1.0),
+            point_value_change_percent: 80,
+            copy_error_value_change_percent: 80,
+        }
+    }
+}
+
+impl StandardMutationProfile {
+    pub fn validate(&self) -> Result<(), EngineError> {
+        for (name, rate) in [
+            ("Point", &self.point),
+            ("Delta", &self.delta),
+            ("Copy Error", &self.copy_error),
+            ("Insertion", &self.insertion),
+            ("Reversal", &self.reversal),
+            ("Minor Deletion", &self.minor_deletion),
+            ("Major Deletion", &self.major_deletion),
+        ] {
+            if !rate.one_in.is_finite() || rate.one_in <= 0.0 {
+                return Err(EngineError::Invariant(format!(
+                    "{name} mutation one-in rate must be finite and positive"
+                )));
+            }
+            if !rate.mean.is_finite() {
+                return Err(EngineError::Invariant(format!(
+                    "{name} mutation mean must be finite"
+                )));
+            }
+            if !rate.std_dev.is_finite() || rate.std_dev < 0.0 {
+                return Err(EngineError::Invariant(format!(
+                    "{name} mutation standard deviation must be finite and nonnegative"
+                )));
+            }
+        }
+        if self.point_value_change_percent > 100 {
+            return Err(EngineError::Invariant(
+                "Point value-change preference must be between 0 and 100".to_owned(),
+            ));
+        }
+        if self.copy_error_value_change_percent > 100 {
+            return Err(EngineError::Invariant(
+                "Copy Error value-change preference must be between 0 and 100".to_owned(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn effective_one_in(&self, kind: StandardMutationKind, multiplier: f64) -> f64 {
+        let one_in = self.rate(kind).one_in;
+        if multiplier.is_finite() && multiplier > 0.0 {
+            (one_in / multiplier).max(1.0)
+        } else {
+            one_in
+        }
+    }
+
+    pub fn point_preference(&self, roll: u8) -> MutationPreference {
+        MutationPreference::from_roll(roll, self.point_value_change_percent)
+    }
+
+    pub fn copy_error_preference(&self, roll: u8) -> MutationPreference {
+        MutationPreference::from_roll(roll, self.copy_error_value_change_percent)
+    }
+
+    fn rate(&self, kind: StandardMutationKind) -> &MutationRate {
+        match kind {
+            StandardMutationKind::Point => &self.point,
+            StandardMutationKind::Delta => &self.delta,
+            StandardMutationKind::CopyError => &self.copy_error,
+            StandardMutationKind::Insertion => &self.insertion,
+            StandardMutationKind::Reversal => &self.reversal,
+            StandardMutationKind::MinorDeletion => &self.minor_deletion,
+            StandardMutationKind::MajorDeletion => &self.major_deletion,
+        }
+    }
+
+    fn rate_mut(&mut self, kind: StandardMutationKind) -> &mut MutationRate {
+        match kind {
+            StandardMutationKind::Point => &mut self.point,
+            StandardMutationKind::Delta => &mut self.delta,
+            StandardMutationKind::CopyError => &mut self.copy_error,
+            StandardMutationKind::Insertion => &mut self.insertion,
+            StandardMutationKind::Reversal => &mut self.reversal,
+            StandardMutationKind::MinorDeletion => &mut self.minor_deletion,
+            StandardMutationKind::MajorDeletion => &mut self.major_deletion,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MutationPreference {
+    Value,
+    Type,
+}
+
+impl MutationPreference {
+    fn from_roll(roll: u8, value_change_percent: u8) -> Self {
+        if roll < value_change_percent.min(100) {
+            Self::Value
+        } else {
+            Self::Type
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PointMutationSchedule {
+    pub location: usize,
+    pub cycle: u64,
+}
+
+impl PointMutationSchedule {
+    pub fn from_geometric(age: u64, dna_len: usize, result: u64) -> Option<Self> {
+        let coding_len = dna_len.checked_sub(1)?;
+        if coding_len == 0 {
+            return None;
+        }
+        Some(Self {
+            location: (result % coding_len as u64) as usize + 1,
+            cycle: age.saturating_add(result / coding_len as u64),
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StandardMutationEvent {
+    Point {
+        location: usize,
+        replacements: Vec<DnaBlock>,
+    },
+    Delta {
+        target: StandardMutationKind,
+        new_one_in: f64,
+    },
+    CopyError {
+        location: usize,
+        replacements: Vec<DnaBlock>,
+    },
+    Insertion {
+        after_location: usize,
+        blocks: Vec<DnaBlock>,
+    },
+    Reversal {
+        center: usize,
+        sampled_length: usize,
+    },
+    MinorDeletion {
+        location: usize,
+        length: usize,
+    },
+    MajorDeletion {
+        location: usize,
+        length: usize,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StandardMutationReport {
+    pub changes: u32,
+    pub kind: StandardMutationKind,
+}
+
+pub fn apply_standard_mutation(
+    dna: &mut LegacyDna,
+    profile: &mut StandardMutationProfile,
+    event: StandardMutationEvent,
+) -> Result<StandardMutationReport, EngineError> {
+    validate_standard_mutation_event(dna, &event)?;
+    normalize_master_end(dna.blocks_mut());
+    let kind = match &event {
+        StandardMutationEvent::Point { .. } => StandardMutationKind::Point,
+        StandardMutationEvent::Delta { .. } => StandardMutationKind::Delta,
+        StandardMutationEvent::CopyError { .. } => StandardMutationKind::CopyError,
+        StandardMutationEvent::Insertion { .. } => StandardMutationKind::Insertion,
+        StandardMutationEvent::Reversal { .. } => StandardMutationKind::Reversal,
+        StandardMutationEvent::MinorDeletion { .. } => StandardMutationKind::MinorDeletion,
+        StandardMutationEvent::MajorDeletion { .. } => StandardMutationKind::MajorDeletion,
+    };
+    let changes = match event {
+        StandardMutationEvent::Point {
+            location,
+            replacements,
+        }
+        | StandardMutationEvent::CopyError {
+            location,
+            replacements,
+        } => replace_coding_blocks(dna, location, &replacements)?,
+        StandardMutationEvent::Delta { target, new_one_in } => {
+            let target = profile.rate_mut(target);
+            let changed = target.one_in != new_one_in;
+            target.one_in = new_one_in;
+            u32::from(changed)
+        }
+        StandardMutationEvent::Insertion {
+            after_location,
+            blocks,
+        } => insert_coding_blocks(dna, after_location, &blocks)?,
+        StandardMutationEvent::Reversal {
+            center,
+            sampled_length,
+        } => reverse_coding_blocks(dna, center, sampled_length)?,
+        StandardMutationEvent::MinorDeletion { location, length }
+        | StandardMutationEvent::MajorDeletion { location, length } => {
+            delete_coding_blocks(dna, location, length)?
+        }
+    };
+    normalize_master_end(dna.blocks_mut());
+    Ok(StandardMutationReport { changes, kind })
+}
+
+fn validate_standard_mutation_event(
+    dna: &LegacyDna,
+    event: &StandardMutationEvent,
+) -> Result<(), EngineError> {
+    let coding_len = dna.blocks().len().saturating_sub(1);
+    match event {
+        StandardMutationEvent::Point {
+            location,
+            replacements,
+        }
+        | StandardMutationEvent::CopyError {
+            location,
+            replacements,
+        } => {
+            coding_index(*location, coding_len)?;
+            validate_payload(replacements)?;
+        }
+        StandardMutationEvent::Delta { new_one_in, .. } => {
+            if !new_one_in.is_finite() || *new_one_in <= 0.0 {
+                return Err(EngineError::Invariant(
+                    "Delta mutation rate must be finite and positive".to_owned(),
+                ));
+            }
+        }
+        StandardMutationEvent::Insertion {
+            after_location,
+            blocks,
+        } => validate_insertion(dna.blocks(), *after_location, blocks)?,
+        StandardMutationEvent::Reversal { center, .. } => {
+            coding_index(*center, coding_len)?;
+        }
+        StandardMutationEvent::MinorDeletion { location, .. }
+        | StandardMutationEvent::MajorDeletion { location, .. } => {
+            coding_index(*location, coding_len)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_payload(payload: &[DnaBlock]) -> Result<(), EngineError> {
+    if payload.iter().any(|block| block.class == TokenClass::End) {
+        return Err(EngineError::Invariant(
+            "mutation payload cannot contain the master End".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_insertion(
+    dna: &[DnaBlock],
+    after_location: usize,
+    inserted: &[DnaBlock],
+) -> Result<(), EngineError> {
+    let coding_len = dna.len().saturating_sub(1);
+    if after_location == 0 || after_location > coding_len {
+        return Err(invalid_location(after_location, coding_len));
+    }
+    validate_payload(inserted)?;
+    let capacity = MAX_DNA_BLOCKS.saturating_sub(dna.len());
+    if inserted.len() > capacity {
+        return Err(EngineError::Invariant(format!(
+            "insertion length {} exceeds remaining DNA capacity {capacity}",
+            inserted.len()
+        )));
+    }
+    Ok(())
+}
+
+fn replace_coding_blocks(
+    dna: &mut LegacyDna,
+    location: usize,
+    replacements: &[DnaBlock],
+) -> Result<u32, EngineError> {
+    let blocks = dna.blocks_mut();
+    let coding_len = blocks.len().saturating_sub(1);
+    let start = coding_index(location, coding_len)?;
+    let count = replacements.len().min(coding_len - start);
+    blocks[start..start + count].copy_from_slice(&replacements[..count]);
+    Ok(count.min(u32::MAX as usize) as u32)
+}
+
+fn insert_coding_blocks(
+    dna: &mut LegacyDna,
+    after_location: usize,
+    inserted: &[DnaBlock],
+) -> Result<u32, EngineError> {
+    validate_insertion(dna.blocks(), after_location, inserted)?;
+    let blocks = dna.blocks_mut();
+    blocks.splice(after_location..after_location, inserted.iter().copied());
+    Ok(inserted.len().min(u32::MAX as usize) as u32)
+}
+
+fn reverse_coding_blocks(
+    dna: &mut LegacyDna,
+    center: usize,
+    sampled_length: usize,
+) -> Result<u32, EngineError> {
+    let blocks = dna.blocks_mut();
+    let coding_len = blocks.len().saturating_sub(1);
+    let center = coding_index(center, coding_len)?;
+    let radius = (sampled_length / 2)
+        .min(center)
+        .min(coding_len - center - 1);
+    if radius == 0 {
+        return Ok(0);
+    }
+    blocks[center - radius..=center + radius].reverse();
+    Ok(1)
+}
+
+fn delete_coding_blocks(
+    dna: &mut LegacyDna,
+    location: usize,
+    length: usize,
+) -> Result<u32, EngineError> {
+    let blocks = dna.blocks_mut();
+    let coding_len = blocks.len().saturating_sub(1);
+    let start = coding_index(location, coding_len)?;
+    let count = length.min(coding_len - start);
+    blocks.drain(start..start + count);
+    Ok(u32::from(count > 0))
+}
+
+fn coding_index(location: usize, coding_len: usize) -> Result<usize, EngineError> {
+    let Some(index) = location.checked_sub(1) else {
+        return Err(invalid_location(location, coding_len));
+    };
+    if index >= coding_len {
+        return Err(invalid_location(location, coding_len));
+    }
+    Ok(index)
+}
+
+fn invalid_location(location: usize, coding_len: usize) -> EngineError {
+    EngineError::Invariant(format!(
+        "mutation location {location} is outside coding DNA length {coding_len}"
+    ))
 }
 
 pub struct PointMutator {

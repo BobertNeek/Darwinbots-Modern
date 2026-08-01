@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     BackendKind, BackendPreference, Engine, EngineConfig, EngineError, LegacyDna, OrganismId,
-    SaveFile, SpeciesDefinition, TokenClass,
+    SaveFile, SpeciesDefinition, StandardMutationProfile, TokenClass,
 };
 
 const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
@@ -309,6 +309,66 @@ fn save_files_are_versioned_and_round_trip_reference_state() {
 }
 
 #[test]
+fn db3s_v3_old_save_defaults_standard_mutation_profile() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let id = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    let program = payload["slots"][id.slot() as usize]["organism"]["program"]
+        .as_object_mut()
+        .unwrap();
+    program.remove("mutation_profile");
+    program.remove("point_mutation_schedule");
+
+    let restored = SaveFile::decode(&frame_save(3, &payload)).unwrap();
+
+    assert_eq!(
+        restored.mutation_profile(id).unwrap(),
+        &StandardMutationProfile::default()
+    );
+}
+
+#[test]
+fn db3s_v3_round_trip_preserves_nondefault_standard_mutation_profile() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let id = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let mut profile = StandardMutationProfile::default();
+    profile.point.one_in = 1_250.0;
+    profile.delta.mean = 750.0;
+    profile.reversal.std_dev = 2.0;
+    profile.point_value_change_percent = 79;
+    profile.copy_error_value_change_percent = 65;
+    engine.set_mutation_profile(id, profile.clone()).unwrap();
+
+    let save = SaveFile::encode(&engine).unwrap();
+    assert_eq!(&save[..4], b"DB3S");
+    assert_eq!(u16::from_le_bytes([save[4], save[5]]), 3);
+    assert_eq!(engine.snapshot().schema_version, 2);
+    let restored = SaveFile::decode(&save).unwrap();
+
+    assert_eq!(restored.mutation_profile(id).unwrap(), &profile);
+    assert_eq!(restored.snapshot().schema_version, 2);
+}
+
+#[test]
+fn db3s_v3_rejects_malformed_standard_mutation_profile() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let id = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    payload["slots"][id.slot() as usize]["organism"]["program"]["mutation_profile"]["point"]["one_in"] =
+        serde_json::json!(0.0);
+
+    assert!(SaveFile::decode(&frame_save(3, &payload)).is_err());
+}
+
+#[test]
 fn snapshot_v2_exposes_phase1_telemetry() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     engine
@@ -580,6 +640,11 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     assert_eq!(after.counters.age, 12);
     assert_eq!(after.program.memory.read(50), 4321);
     assert_eq!(after.program.rng_state, 987654321);
+    assert_eq!(
+        after.program.mutation_profile,
+        StandardMutationProfile::default()
+    );
+    assert_eq!(after.program.point_mutation_schedule, None);
     assert!(after.program.dna.uses_new_move());
     assert_eq!(after.program.dna.user_variable("fixturevar"), Some(777));
     assert_eq!(

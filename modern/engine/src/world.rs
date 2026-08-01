@@ -9,9 +9,9 @@ use crate::{
     PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect, ProjectileImpact,
     ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind, RenderInstance,
     ShotSettings, ShotSnapshot, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition,
-    SpeciesId, SysvarRuntime, Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState,
-    VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype,
-    VmMemory, eye_value, generated_skin, projectile_effect,
+    SpeciesId, StandardMutationProfile, SysvarRuntime, Teleporter, TieCommands, TieReadbacks,
+    TieSnapshot, TieState, VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot,
+    VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -2918,6 +2918,11 @@ impl Engine {
         }
         for (index, slot) in self.slots.iter().enumerate() {
             if let Some(robot) = &slot.organism {
+                robot.program.mutation_profile.validate().map_err(|error| {
+                    EngineError::Invariant(format!(
+                        "slot {index} has invalid mutation profile: {error}"
+                    ))
+                })?;
                 let position = robot.kinematics.position;
                 if !position[0].is_finite()
                     || !position[1].is_finite()
@@ -2966,6 +2971,24 @@ impl Engine {
 
     pub fn dna(&self, id: OrganismId) -> Result<&LegacyDna, EngineError> {
         Ok(&self.slots.get(id)?.program.dna)
+    }
+
+    pub fn mutation_profile(
+        &self,
+        id: OrganismId,
+    ) -> Result<&StandardMutationProfile, EngineError> {
+        Ok(&self.slots.get(id)?.program.mutation_profile)
+    }
+
+    pub fn set_mutation_profile(
+        &mut self,
+        id: OrganismId,
+        profile: StandardMutationProfile,
+    ) -> Result<(), EngineError> {
+        let organism = self.slots.get_mut(id)?;
+        profile.validate()?;
+        organism.program.mutation_profile = profile;
+        Ok(())
     }
 
     fn execute_dna_phase(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
@@ -5419,6 +5442,19 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        for (index, slot) in engine.slots.iter().enumerate() {
+            if let Some(organism) = &slot.organism {
+                organism
+                    .program
+                    .mutation_profile
+                    .validate()
+                    .map_err(|error| {
+                        EngineError::InvalidSave(format!(
+                            "slot {index} has invalid mutation profile: {error}"
+                        ))
+                    })?;
+            }
+        }
         if engine.species.is_empty() {
             engine.species = default_species();
         }
