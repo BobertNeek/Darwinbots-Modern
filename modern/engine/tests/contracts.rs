@@ -355,6 +355,121 @@ fn db3s_v3_round_trip_preserves_nondefault_standard_mutation_profile() {
 }
 
 #[test]
+fn db3s_v3_round_trip_preserves_asexual_birth_state() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        world_width: 4_000.0,
+        world_height: 3_000.0,
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let parent = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1_000.0, 1_000.0])
+        .unwrap();
+    let mut profile = StandardMutationProfile::default();
+    profile.point.one_in = 1_250.0;
+    profile.delta.mean = 750.0;
+    engine
+        .set_mutation_profile(parent, profile.clone())
+        .unwrap();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    payload["mutations_enabled"] = serde_json::json!(false);
+    let robot = &mut payload["slots"][parent.slot() as usize]["organism"];
+    robot["materials"]["energy"] = serde_json::json!(4_000);
+    robot["materials"]["body"] = serde_json::json!(400);
+    robot["materials"]["waste"] = serde_json::json!(40);
+    robot["materials"]["permanent_waste"] = serde_json::json!(20);
+    robot["materials"]["chloroplasts"] = serde_json::json!(200);
+    robot["materials"]["previous_energy"] = serde_json::json!(4_000);
+    robot["counters"]["generation"] = serde_json::json!(7);
+    robot["identity"]["absolute_id"] = serde_json::json!(41);
+    let cells = robot["program"]["memory"]["cells"].as_array_mut().unwrap();
+    cells.extend([
+        serde_json::json!([300, 25]),
+        serde_json::json!([971, 1_971]),
+        serde_json::json!([976, 2_976]),
+    ]);
+    cells.sort_by_key(|cell| cell[0].as_u64().unwrap());
+    let mut engine = SaveFile::decode(&frame_save(3, &payload)).unwrap();
+    engine.tick().unwrap();
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.parents == [Some(parent), None])
+        .unwrap()
+        .id;
+
+    let bytes = SaveFile::encode(&engine).unwrap();
+    assert_eq!(&bytes[..4], b"DB3S");
+    assert_eq!(u16::from_le_bytes([bytes[4], bytes[5]]), 3);
+    assert_eq!(engine.snapshot().schema_version, 2);
+    let current_payload: serde_json::Value = serde_json::from_slice(&bytes[10..]).unwrap();
+    assert_eq!(current_payload["next_absolute_id"], 43);
+    let restored = SaveFile::decode(&bytes).unwrap();
+
+    let restored_parent = restored.robot_state(parent).unwrap();
+    let restored_child = restored.robot_state(child).unwrap();
+    assert_eq!(restored_parent.identity.absolute_id, 41);
+    assert_eq!(restored_child.identity.absolute_id, 42);
+    assert_eq!(restored_child.identity.parents, [Some(parent), None]);
+    assert_eq!(restored_child.counters.generation, 8);
+    assert_eq!(restored_child.counters.birth_cycle, 1);
+    assert_eq!(restored_child.program.mutation_profile, profile);
+    assert_eq!(restored_child.program.memory.read(971), 1_971);
+    assert_eq!(restored_child.heredity.epigenetic_staging[0], 2_976);
+    assert_eq!(restored.snapshot().ties.len(), 1);
+    assert_eq!(restored.snapshot().ties[0].first, parent);
+    assert_eq!(restored.snapshot().ties[0].second, child);
+    assert_eq!(restored.snapshot().ties[0].first_port, 0);
+    assert_eq!(restored.snapshot().ties[0].second_port, 1);
+    assert_eq!(restored.snapshot().ties[0].last, 100);
+}
+
+#[test]
+fn db3s_v3_older_save_defaults_asexual_heredity_and_identity_fields() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let id = engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    payload.as_object_mut().unwrap().remove("next_absolute_id");
+    payload["config"]["dna_costs"]
+        .as_object_mut()
+        .unwrap()
+        .remove("dna_copy");
+    let robot = &mut payload["slots"][id.slot() as usize]["organism"];
+    robot["identity"]
+        .as_object_mut()
+        .unwrap()
+        .remove("absolute_id");
+    robot.as_object_mut().unwrap().remove("heredity");
+    robot.as_object_mut().unwrap().remove("buoyancy");
+
+    let restored = SaveFile::decode(&frame_save(3, &payload)).unwrap();
+
+    assert_eq!(restored.robot_state(id).unwrap().identity.absolute_id, 0);
+    assert_eq!(
+        restored.robot_state(id).unwrap().heredity,
+        darwinbots_engine::RobotHeredityState::default()
+    );
+    let migrated = SaveFile::encode(&restored).unwrap();
+    assert_eq!(&migrated[..4], b"DB3S");
+    assert_eq!(u16::from_le_bytes([migrated[4], migrated[5]]), 3);
+    let migrated: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();
+    assert_eq!(migrated["config"]["dna_costs"]["dna_copy"], 0.0);
+    assert_eq!(migrated["next_absolute_id"], 1);
+    assert_eq!(
+        migrated["slots"][id.slot() as usize]["organism"]["buoyancy"],
+        0.0
+    );
+    assert_eq!(restored.snapshot().schema_version, 2);
+}
+
+#[test]
 fn db3s_v3_rejects_malformed_standard_mutation_profile() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let id = engine
@@ -609,6 +724,7 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     let after = restored.robot_state(id).unwrap();
     assert_eq!(after.identity.species, darwinbots_engine::SpeciesId(1));
     assert_eq!(after.identity.parents, [None, None]);
+    assert_eq!(after.identity.absolute_id, 0);
     assert!(after.flags.exists);
     assert!(after.flags.vegetable);
     assert!(after.flags.fixed);
@@ -638,6 +754,8 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     assert_eq!(after.materials.paralyzed, 19);
     assert_eq!(after.materials.poisoned, 20);
     assert_eq!(after.counters.age, 12);
+    assert_eq!(after.counters.generation, 0);
+    assert_eq!(after.counters.birth_cycle, 0);
     assert_eq!(after.program.memory.read(50), 4321);
     assert_eq!(after.program.rng_state, 987654321);
     assert_eq!(
@@ -645,6 +763,10 @@ fn db3s_v2_migrates_every_existing_robot_field() {
         StandardMutationProfile::default()
     );
     assert_eq!(after.program.point_mutation_schedule, None);
+    assert_eq!(
+        after.heredity,
+        darwinbots_engine::RobotHeredityState::default()
+    );
     assert!(after.program.dna.uses_new_move());
     assert_eq!(after.program.dna.user_variable("fixturevar"), Some(777));
     assert_eq!(
@@ -698,6 +820,9 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     assert_eq!(payload["config"]["shots"]["speed"], 55.0);
     assert_eq!(payload["config"]["vegetation"]["cycle_length"], 88);
     assert_eq!(payload["config"]["dna_costs"]["global_multiplier"], 11.0);
+    assert_eq!(payload["config"]["dna_costs"]["dna_copy"], 0.0);
+    assert_eq!(payload["next_absolute_id"], 1);
+    assert_eq!(payload["slots"][0]["organism"]["buoyancy"], 0.0);
     assert_eq!(payload["slots"][1]["generation"], 9);
     assert_eq!(
         payload["slots"][0]["organism"]["materials"]["previous_energy"],

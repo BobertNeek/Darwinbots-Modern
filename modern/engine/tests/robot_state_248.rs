@@ -17,6 +17,7 @@ fn robot_state_contains_every_phase1_field() {
         program,
         senses,
         effects,
+        buoyancy,
         heredity,
         ties,
         phenotype,
@@ -24,6 +25,7 @@ fn robot_state_contains_every_phase1_field() {
 
     assert_eq!(identity.species, SpeciesId::default());
     assert_eq!(identity.parents, [None, None]);
+    assert_eq!(*buoyancy, 0.0);
     let _ = (
         &identity.species_file,
         &identity.owner,

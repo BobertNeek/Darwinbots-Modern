@@ -81,6 +81,19 @@ fn known_sysvars_never_report_inert() {
 }
 
 #[test]
+fn setboy_updates_persisted_buoyancy_readback_and_consumes_command() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let robot = engine
+        .spawn(LegacyDna::parse("start\n16000 .setboy store\nend").unwrap())
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory_at(robot, 314).unwrap(), 0);
+    assert_eq!(engine.memory_at(robot, 315).unwrap(), 16_000);
+}
+
+#[test]
 fn capturing_commands_does_not_clear_their_registers() {
     let runtime = SysvarRuntime::new();
     let mut memory = VmMemory::default();

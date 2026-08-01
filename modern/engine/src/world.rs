@@ -24,8 +24,11 @@ use crate::physics::{
 };
 
 const MEM_ROBAGE: i32 = 9;
+const MEM_FIXED: i32 = 216;
 const MEM_REPRO: i32 = 300;
 const MEM_NRG: i32 = 310;
+const MEM_SET_BUOYANCY: i32 = 314;
+const MEM_READ_BUOYANCY: i32 = 315;
 const MEM_REF_X: i32 = 689;
 const MEM_REF_Y: i32 = 690;
 const MEM_REF_VEL_SX: i32 = 696;
@@ -54,6 +57,7 @@ const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_LIGHT: i32 = 923;
+const BIRTH_BORDER_SMUDGE: f32 = 50.0;
 const TIED_REFERENCE_ADDRESSES: [i32; 26] = [
     437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 456, 457, 458, 459, 460, 461,
     462, 463, 464, 465, 475, 478, 479,
@@ -181,6 +185,8 @@ struct Db3sV2Payload {
     asexual_reproduction_allowed: bool,
     #[serde(default)]
     next_lineage_id: u64,
+    #[serde(default)]
+    next_absolute_id: u64,
     #[serde(default)]
     obstacles: Vec<Db3sV2Obstacle>,
     #[serde(default)]
@@ -456,6 +462,7 @@ impl From<Db3sV2DnaCosts> for DnaCosts {
             store: value.store,
             flow: value.flow,
             dna_upkeep: value.dna_upkeep,
+            dna_copy: 0.0,
             global_multiplier: value.global_multiplier,
         }
     }
@@ -1532,16 +1539,13 @@ struct PendingProjectileRequest {
     angle: f32,
 }
 
-type PendingBirth = (
-    LegacyDna,
-    [f32; 2],
-    i32,
-    bool,
-    SpeciesId,
-    OrganismId,
-    bool,
-    BiologyState,
-);
+#[derive(Clone, Copy, Debug)]
+struct PendingBirth {
+    parent: OrganismId,
+    percentage: i32,
+    mutation_reproduction: bool,
+    assisted: bool,
+}
 
 #[derive(Default)]
 struct LifecycleQueues {
@@ -1583,6 +1587,8 @@ pub struct Engine {
     asexual_reproduction_allowed: bool,
     #[serde(default)]
     next_lineage_id: u64,
+    #[serde(default)]
+    next_absolute_id: u64,
     #[serde(default)]
     obstacles: Vec<Obstacle>,
     #[serde(default)]
@@ -1626,6 +1632,7 @@ struct CycleCheckpoint {
     robot_fixing_allowed: bool,
     asexual_reproduction_allowed: bool,
     next_lineage_id: u64,
+    next_absolute_id: u64,
     obstacles: Vec<Obstacle>,
     teleporters: Vec<Teleporter>,
     corpses: Vec<CorpseSnapshot>,
@@ -1756,6 +1763,7 @@ impl Engine {
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
             next_lineage_id: legacy.next_lineage_id,
+            next_absolute_id: legacy.next_absolute_id,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
             teleporters: legacy.teleporters.into_iter().map(Into::into).collect(),
             corpses: legacy.corpses.into_iter().map(Into::into).collect(),
@@ -1899,6 +1907,7 @@ impl Engine {
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
             next_lineage_id: 2,
+            next_absolute_id: 1,
             obstacles: Vec::new(),
             teleporters: Vec::new(),
             corpses: Vec::new(),
@@ -2457,6 +2466,7 @@ impl Engine {
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             next_lineage_id: self.next_lineage_id,
+            next_absolute_id: self.next_absolute_id,
             obstacles: self.obstacles.clone(),
             teleporters: self.teleporters.clone(),
             corpses: self.corpses.clone(),
@@ -2490,6 +2500,7 @@ impl Engine {
         self.robot_fixing_allowed = checkpoint.robot_fixing_allowed;
         self.asexual_reproduction_allowed = checkpoint.asexual_reproduction_allowed;
         self.next_lineage_id = checkpoint.next_lineage_id;
+        self.next_absolute_id = checkpoint.next_absolute_id;
         self.obstacles = checkpoint.obstacles;
         self.teleporters = checkpoint.teleporters;
         self.corpses = checkpoint.corpses;
@@ -2595,6 +2606,7 @@ impl Engine {
         self.tie_exchange_phase(&mut trace);
         self.phase_timings.interactions += elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::BirthTieHeredity);
+        self.birth_tie_heredity_phase(&mut trace);
         self.trace_robot_phase(&mut trace, CyclePhase::Aim);
         self.aim_commands_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Virus);
@@ -3195,7 +3207,15 @@ impl Engine {
                     &mut robot.program.memory,
                 );
             }
-            runtime.finish_command(314, CommandOutcome::Excluded, &mut robot.program.memory);
+            if commands.set_buoyancy != 0 {
+                robot.buoyancy =
+                    (robot.buoyancy + commands.set_buoyancy as f32 / 32_000.0).clamp(0.0, 1.0);
+            }
+            runtime.finish_command(
+                MEM_SET_BUOYANCY as u16,
+                CommandOutcome::Consumed,
+                &mut robot.program.memory,
+            );
             let aim = crate::AimCommands {
                 set: robot.materials.aim,
                 ..Default::default()
@@ -3203,6 +3223,10 @@ impl Engine {
             robot
                 .materials
                 .apply_outputs(&mut robot.program.memory, 0, aim, commands);
+            robot.program.memory.write(
+                MEM_READ_BUOYANCY,
+                (robot.buoyancy * 32_000.0).round_ties_even() as i32,
+            );
         }
     }
 
@@ -3544,6 +3568,122 @@ impl Engine {
             );
         }
         Ok(())
+    }
+
+    fn birth_tie_heredity_phase(&mut self, trace: &mut CycleRecorder) {
+        let mut transfers = Vec::new();
+        for (slot_index, slot) in self.slots.iter().enumerate() {
+            let Some(child) = slot.organism.as_ref() else {
+                continue;
+            };
+            let age = child.counters.age as usize;
+            if age >= child.heredity.epigenetic_staging.len() {
+                continue;
+            }
+            let Some(parent) = child.identity.parents[0] else {
+                continue;
+            };
+            let child_id = OrganismId::new(slot_index as u32, slot.generation);
+            let has_birth_tie = self.ties.iter().any(|tie| {
+                tie.first == parent && tie.second == child_id && tie.first_port == 0 && tie.last > 0
+            });
+            if !has_birth_tie {
+                continue;
+            }
+            let address = 976 + age as i32;
+            let value = child.heredity.epigenetic_staging[age];
+            if value != 0 && child.program.memory.read(address) == 0 {
+                transfers.push((child_id, address, value));
+            }
+        }
+        for (child, address, value) in transfers {
+            let Ok(robot) = self.slots.get_mut(child) else {
+                continue;
+            };
+            robot.program.memory.write(address, value);
+            trace.memory_write(
+                CyclePhase::BirthTieHeredity,
+                child,
+                address as u16,
+                0,
+                value,
+            );
+        }
+    }
+
+    fn create_birth_tie(&mut self, parent: OrganismId, child: OrganismId) -> bool {
+        if !self.ties_enabled {
+            return false;
+        }
+        let parent_tie_count = self.ties.iter().filter(|tie| tie.contains(parent)).count();
+        let child_tie_count = self.ties.iter().filter(|tie| tie.contains(child)).count();
+        if parent_tie_count >= MAX_TIES_PER_ROBOT || child_tie_count >= MAX_TIES_PER_ROBOT {
+            return false;
+        }
+        let (Ok(parent_state), Ok(child_state)) = (self.slots.get(parent), self.slots.get(child))
+        else {
+            return false;
+        };
+        let mut tie = TieState::new(
+            parent,
+            child,
+            distance_squared(
+                parent_state.kinematics.position,
+                child_state.kinematics.position,
+            )
+            .sqrt(),
+            0,
+            child_tie_count as i32 + 1,
+        );
+        tie.last = 100;
+        self.ties.push(tie);
+        self.stats.ties_created = self.stats.ties_created.saturating_add(1);
+        true
+    }
+
+    fn birth_position_is_clear(&self, parent: OrganismId, position: [f32; 2]) -> bool {
+        let Ok(parent_state) = self.slots.get(parent) else {
+            return false;
+        };
+        let radius = parent_state.materials.radius;
+        if !self.config.toroidal_world
+            && (position[0] < radius + BIRTH_BORDER_SMUDGE
+                || position[0] > self.config.world_width - radius - BIRTH_BORDER_SMUDGE
+                || position[1] < radius + BIRTH_BORDER_SMUDGE
+                || position[1] > self.config.world_height - radius - BIRTH_BORDER_SMUDGE)
+        {
+            return false;
+        }
+        for (slot_index, slot) in self.slots.iter().enumerate() {
+            if slot_index == parent.slot() as usize {
+                continue;
+            }
+            let Some(other) = slot.organism.as_ref() else {
+                continue;
+            };
+            let other_radius = other.materials.radius;
+            if (other.kinematics.position[0] - position[0]).abs() < radius + other_radius
+                && (other.kinematics.position[1] - position[1]).abs() < radius + other_radius
+            {
+                return false;
+            }
+        }
+        for obstacle in &self.obstacles {
+            if obstacle.minimum[0] <= parent_state.kinematics.position[0].max(position[0])
+                && obstacle.maximum[0] >= parent_state.kinematics.position[0].min(position[0])
+                && obstacle.minimum[1] <= parent_state.kinematics.position[1].max(position[1])
+                && obstacle.maximum[1] >= parent_state.kinematics.position[1].min(position[1])
+            {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn allocate_absolute_identity(&mut self) -> u64 {
+        let absolute_id = self.next_absolute_id.max(1);
+        self.next_absolute_id = absolute_id.saturating_add(1);
+        absolute_id
     }
 
     fn capture_tie_commands(&mut self) -> Vec<Option<TieCommands>> {
@@ -5002,83 +5142,45 @@ impl Engine {
 
     fn prepare_lifecycle_queues(&mut self, trace: &mut CycleRecorder) -> LifecycleQueues {
         let mut queues = LifecycleQueues::default();
-        let species = &self.species;
-        let asexual_reproduction_allowed = self.asexual_reproduction_allowed;
-        let world_size = [self.config.world_width, self.config.world_height];
-        let mutations_enabled = self.mutations_enabled;
-        let global_mutation_multiplier = self.global_mutation_multiplier;
         let runtime = SysvarRuntime::new();
-        let outcomes: Vec<_> = self
-            .slots
-            .par_iter_mut()
-            .enumerate()
-            .filter_map(|(slot_index, slot)| {
-                let organism = slot.organism.as_mut()?;
-                let Some(PhaseCommands::Reproduction(reproduction_commands)) =
-                    runtime.consume(CyclePhase::Reproduction, &mut organism.program.memory)
-                else {
-                    unreachable!("reproduction phase must return reproduction commands")
-                };
-                let mutation_reproduction = reproduction_commands.mutated;
-                let reproduction = reproduction_commands.asexual.max(mutation_reproduction);
-                let assisted_reproduction = organism.effects.forced_reproduction;
-                organism.effects.forced_reproduction = false;
-                let mut birth = None;
-                let species_repopulates = species
-                    .get(organism.identity.species.0 as usize)
-                    .is_some_and(|value| value.reseed);
-                if reproduction > 0
-                    && organism.materials.energy > 200
-                    && (asexual_reproduction_allowed
-                        || assisted_reproduction
-                        || species_repopulates)
-                {
-                    let mut child_biology = organism.materials.split_for_offspring(reproduction);
-                    let child_energy = child_biology.energy;
-                    organism.materials.synchronize_energy();
-                    child_biology.synchronize_energy();
-                    organism
-                        .program
-                        .memory
-                        .write(MEM_NRG, organism.materials.energy);
-                    organism.program.rng_state = advance_random(organism.program.rng_state);
-                    let configured_rate = if mutations_enabled {
-                        species
-                            .get(organism.identity.species.0 as usize)
-                            .map_or(0.0, |value| {
-                                (value.mutation_rate * global_mutation_multiplier).clamp(0.0, 100.0)
-                            })
-                    } else {
-                        0.0
-                    };
-                    let configured_mutation =
-                        ((organism.program.rng_state % 10_000) as f32) < configured_rate * 100.0;
-                    birth = Some((
-                        organism.program.dna.clone(),
-                        offspring_position(
-                            organism.kinematics.position,
-                            organism.program.rng_state,
-                            world_size,
-                        ),
-                        child_energy,
-                        mutation_reproduction > 0 || configured_mutation,
-                        organism.identity.species,
-                        OrganismId::new(slot_index as u32, slot.generation),
-                        !assisted_reproduction,
-                        child_biology,
-                    ));
-                }
-                Some((slot_index, birth))
-            })
-            .collect();
-        for (_slot_index, birth) in outcomes {
-            if let Some(birth) = birth {
+        for (slot_index, slot) in self.slots.iter_mut().enumerate() {
+            let Some(organism) = slot.organism.as_mut() else {
+                continue;
+            };
+            let Some(PhaseCommands::Reproduction(reproduction_commands)) =
+                runtime.consume(CyclePhase::Reproduction, &mut organism.program.memory)
+            else {
+                unreachable!("reproduction phase must return reproduction commands")
+            };
+            let reproduction = reproduction_commands
+                .asexual
+                .max(reproduction_commands.mutated);
+            let percentage = reproduction % 100;
+            let assisted_reproduction = organism.effects.forced_reproduction;
+            let species_repopulates = self
+                .species
+                .get(organism.identity.species.0 as usize)
+                .is_some_and(|value| value.reseed);
+            if percentage > 0
+                && organism.materials.energy > 0
+                && organism.materials.body >= 5
+                && organism.flags.can_reproduce
+                && (self.asexual_reproduction_allowed
+                    || assisted_reproduction
+                    || species_repopulates)
+            {
+                let parent = OrganismId::new(slot_index as u32, slot.generation);
                 trace.queue_change(
                     CyclePhase::Reproduction,
-                    birth.5,
+                    parent,
                     QueueChangeKind::BirthQueued,
                 );
-                queues.births.push(birth);
+                queues.births.push(PendingBirth {
+                    parent,
+                    percentage,
+                    mutation_reproduction: reproduction_commands.mutated > 0,
+                    assisted: assisted_reproduction,
+                });
             }
         }
         queues
@@ -5133,9 +5235,11 @@ impl Engine {
             .organism_capacity
             .saturating_sub(self.population());
         let mut vegetable_population = self.vegetable_population();
-        for (dna, position, energy, mutate, species, parent, self_reproduction, child_biology) in
-            queues.births
-        {
+        for birth in queues.births {
+            let Ok(parent_state) = self.slots.get(birth.parent).cloned() else {
+                continue;
+            };
+            let species = parent_state.identity.species;
             let vegetable_birth = self
                 .species
                 .get(species.0 as usize)
@@ -5143,38 +5247,138 @@ impl Engine {
             if available_births == 0
                 || (vegetable_birth && vegetable_population >= self.config.vegetable_population_cap)
             {
-                if let Ok(parent_organism) = self.slots.get_mut(parent) {
-                    parent_organism.materials.absorb_offspring(child_biology);
-                    parent_organism
-                        .program
-                        .memory
-                        .write(MEM_NRG, parent_organism.materials.energy);
-                }
                 continue;
             }
-            let child = self.spawn_species_at_unpublished(dna, species, position)?;
+
+            let mut parent_materials = parent_state.materials.clone();
+            let mut child_materials = parent_materials.split_for_offspring(birth.percentage);
+            let separation = crate::physics::organism_radius(
+                parent_materials.body,
+                parent_materials.chloroplasts,
+            ) + crate::physics::organism_radius(
+                child_materials.body,
+                child_materials.chloroplasts,
+            );
+            let parent_angle = parent_state.materials.aim as f32 / 200.0;
+            let position = [
+                parent_state.kinematics.position[0] + parent_angle.cos() * separation,
+                parent_state.kinematics.position[1] + parent_angle.sin() * separation,
+            ];
+            if !self.birth_position_is_clear(birth.parent, position) {
+                continue;
+            }
+
+            let next_rng = advance_random(parent_state.program.rng_state);
+            let configured_rate = if self.mutations_enabled {
+                self.species.get(species.0 as usize).map_or(0.0, |value| {
+                    (value.mutation_rate * self.global_mutation_multiplier).clamp(0.0, 100.0)
+                })
+            } else {
+                0.0
+            };
+            let mutate = birth.mutation_reproduction
+                || ((next_rng % 10_000) as f32) < configured_rate * 100.0;
+            let child = self.spawn_species_at_unpublished(
+                parent_state.program.dna.clone(),
+                species,
+                position,
+            )?;
+            let absolute_id = self.allocate_absolute_identity();
             available_births -= 1;
             if vegetable_birth {
                 vegetable_population += 1;
             }
-            let parent_phenotype = self
-                .slots
-                .get(parent)
-                .ok()
-                .map(|organism| organism.phenotype.clone());
-            let child_organism = self.slots.get_mut(child)?;
-            child_organism.identity.parents = [Some(parent), None];
-            if let Some(phenotype) = parent_phenotype {
-                child_organism.phenotype = phenotype;
+
+            child_materials.aim = (parent_state.materials.aim + 628).rem_euclid(1_257);
+            child_materials.mass = child_materials.body.max(0) as f32 / 1_000.0
+                + child_materials.shell.max(0) as f32 / 200.0;
+            child_materials.radius =
+                crate::physics::organism_radius(child_materials.body, child_materials.chloroplasts);
+            child_materials.synchronize_energy();
+            {
+                let child_organism = self.slots.get_mut(child)?;
+                child_organism.identity = parent_state.identity.clone();
+                child_organism.identity.parents = [Some(birth.parent), None];
+                child_organism.identity.absolute_id = absolute_id;
+                child_organism.flags = parent_state.flags.clone();
+                child_organism.flags.exists = true;
+                child_organism.flags.corpse = false;
+                child_organism.flags.dead = false;
+                child_organism.buoyancy = parent_state.buoyancy;
+                child_organism.kinematics.velocity = parent_state.kinematics.velocity;
+                child_organism.kinematics.actual_velocity = parent_state.kinematics.actual_velocity;
+                let child_angle = child_materials.aim as f32 / 200.0;
+                child_organism.kinematics.aim_vector = [child_angle.cos(), child_angle.sin()];
+                child_organism.materials = child_materials;
+                child_organism.counters.generation = parent_state
+                    .counters
+                    .generation
+                    .saturating_add(1)
+                    .min(32_000);
+                child_organism.counters.birth_cycle = self.tick;
+                child_organism.program.rng_state = next_rng;
+                child_organism.program.mutation_profile =
+                    parent_state.program.mutation_profile.clone();
+                child_organism.program.point_mutation_schedule =
+                    parent_state.program.point_mutation_schedule;
+                child_organism.program.mutation_metadata =
+                    parent_state.program.mutation_metadata.clone();
+                child_organism.phenotype = parent_state.phenotype.clone();
+                child_organism
+                    .program
+                    .memory
+                    .write(MEM_FIXED, if child_organism.flags.fixed { 1 } else { 0 });
+                for offset in 0..5 {
+                    child_organism
+                        .program
+                        .memory
+                        .write(971 + offset, parent_state.program.memory.read(971 + offset));
+                }
+                for offset in 0..15 {
+                    child_organism.heredity.epigenetic_staging[offset as usize] =
+                        parent_state.program.memory.read(976 + offset);
+                }
+                child_organism
+                    .materials
+                    .publish(&mut child_organism.program.memory);
+                child_organism.program.memory.write(
+                    MEM_READ_BUOYANCY,
+                    (child_organism.buoyancy * 32_000.0).round_ties_even() as i32,
+                );
             }
-            child_organism.materials = child_biology;
-            child_organism.materials.energy = energy.max(1);
-            child_organism.materials.synchronize_energy();
-            child_organism.program.memory.write(MEM_NRG, energy.max(1));
-            child_organism
-                .materials
-                .publish(&mut child_organism.program.memory);
-            if let Ok(parent_organism) = self.slots.get_mut(parent) {
+
+            if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
+                parent_materials.radius = crate::physics::organism_radius(
+                    parent_materials.body,
+                    parent_state.materials.chloroplasts,
+                );
+                parent_materials.synchronize_energy();
+                parent_organism.materials = parent_materials;
+                parent_organism.counters.offspring = parent_organism
+                    .counters
+                    .offspring
+                    .saturating_add(1)
+                    .min(32_000);
+                parent_organism.program.rng_state = next_rng;
+                parent_organism.heredity.epigenetic_staging.fill(0);
+            }
+
+            trace.effect(
+                CyclePhase::CommitBirthsDeaths,
+                Some(birth.parent),
+                child,
+                "birth_resources_transferred",
+            );
+            if self.create_birth_tie(birth.parent, child) {
+                trace.effect(
+                    CyclePhase::CommitBirthsDeaths,
+                    Some(birth.parent),
+                    child,
+                    "birth_tie_created",
+                );
+            }
+
+            if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
                 runtime.finish_command(
                     MEM_REPRO as u16,
                     CommandOutcome::Consumed,
@@ -5184,6 +5388,40 @@ impl Engine {
                     301,
                     CommandOutcome::Consumed,
                     &mut parent_organism.program.memory,
+                );
+                parent_organism.effects.forced_reproduction = false;
+            }
+            trace.effect(
+                CyclePhase::CommitBirthsDeaths,
+                Some(birth.parent),
+                child,
+                "reproduction_action_consumed",
+            );
+
+            let mut charged_copy_cost = false;
+            if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
+                let copy_cost = parent_organism.program.dna.blocks().len() as f64
+                    * self.config.dna_costs.dna_copy
+                    * self.config.dna_costs.global_multiplier;
+                let whole_copy_cost = parent_organism.program.settle_dna_energy_cost(copy_cost);
+                if whole_copy_cost > 0 {
+                    parent_organism.materials.energy = parent_organism
+                        .materials
+                        .energy
+                        .saturating_sub(whole_copy_cost)
+                        .max(0);
+                    charged_copy_cost = true;
+                }
+                parent_organism
+                    .materials
+                    .publish(&mut parent_organism.program.memory);
+            }
+            if charged_copy_cost {
+                trace.effect(
+                    CyclePhase::CommitBirthsDeaths,
+                    Some(birth.parent),
+                    child,
+                    "birth_dna_copy_cost_charged",
                 );
             }
             if mutate {
@@ -5196,7 +5434,7 @@ impl Engine {
                 child,
                 QueueChangeKind::BirthCommitted,
             );
-            if self_reproduction {
+            if !birth.assisted {
                 self.stats.self_reproductions = self.stats.self_reproductions.saturating_add(1);
             }
         }
@@ -5492,6 +5730,16 @@ impl Engine {
             }
         }
         engine.next_lineage_id = next_lineage_id;
+        let next_observed_absolute_id = engine
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|organism| organism.identity.absolute_id)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1)
+            .max(1);
+        engine.next_absolute_id = engine.next_absolute_id.max(next_observed_absolute_id);
         let (capabilities, physics) = select_backend(&engine.config)?;
         engine.capabilities = capabilities;
         engine.physics = physics;
@@ -5639,15 +5887,6 @@ fn unit_coordinate(random: u64, extent: f32) -> f32 {
     let margin = 60.0_f32.min(extent.max(0.0) * 0.5);
     let usable = (extent - margin * 2.0).max(0.0);
     margin + (random >> 40) as f32 / ((1_u32 << 24) - 1) as f32 * usable
-}
-
-fn offspring_position(parent: [f32; 2], random_state: u64, world_size: [f32; 2]) -> [f32; 2] {
-    let angle = (random_state % 1_257) as f32 / 200.0;
-    let distance = 12.0 + ((random_state >> 16) % 21) as f32;
-    [
-        (parent[0] + angle.sin() * distance).clamp(0.0, world_size[0]),
-        (parent[1] + angle.cos() * distance).clamp(0.0, world_size[1]),
-    ]
 }
 
 fn transfer_robot_percent(

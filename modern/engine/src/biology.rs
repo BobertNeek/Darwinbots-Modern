@@ -99,17 +99,23 @@ impl RobotMaterials {
 
     pub(crate) fn split_for_offspring(&mut self, percentage: i32) -> Self {
         let percentage = percentage.clamp(1, 99);
-        let mut child = Self {
-            energy: split_resource(&mut self.energy, percentage, true),
+        let transferred_energy = self.energy.max(0) as f64 * f64::from(percentage) / 100.0;
+        self.energy = (f64::from(self.energy) - transferred_energy * 1.001)
+            .trunc()
+            .clamp(0.0, f64::from(i32::MAX)) as i32;
+        Self {
+            energy: (transferred_energy * 0.999)
+                .trunc()
+                .clamp(0.0, f64::from(i32::MAX)) as i32,
             body: split_resource(&mut self.body, percentage, true),
             mass: self.mass,
             radius: self.radius,
             waste: split_resource(&mut self.waste, percentage, false),
             permanent_waste: split_resource(&mut self.permanent_waste, percentage, false),
-            shell: split_resource(&mut self.shell, percentage, false),
-            slime: split_resource(&mut self.slime, percentage, false),
-            venom: split_resource(&mut self.venom, percentage, false),
-            poison: split_resource(&mut self.poison, percentage, false),
+            shell: 0,
+            slime: 0,
+            venom: 0,
+            poison: 0,
             chloroplasts: split_resource(&mut self.chloroplasts, percentage, false),
             aim: self.aim,
             pain: 0,
@@ -117,35 +123,9 @@ impl RobotMaterials {
             paralyzed: 0,
             poisoned: 0,
             previous_energy: 0,
-            plant_energy_carry_micros: split_i64_resource(
-                &mut self.plant_energy_carry_micros,
-                percentage,
-            ),
-            plant_body_carry_micros: split_i64_resource(
-                &mut self.plant_body_carry_micros,
-                percentage,
-            ),
-        };
-        child.body = child.body.max(1);
-        child
-    }
-
-    pub(crate) fn absorb_offspring(&mut self, child: Self) {
-        self.energy = self.energy.saturating_add(child.energy);
-        self.body = self.body.saturating_add(child.body);
-        self.permanent_waste = self.permanent_waste.saturating_add(child.permanent_waste);
-        self.waste = self.waste.saturating_add(child.waste);
-        self.shell = self.shell.saturating_add(child.shell);
-        self.slime = self.slime.saturating_add(child.slime);
-        self.venom = self.venom.saturating_add(child.venom);
-        self.poison = self.poison.saturating_add(child.poison);
-        self.chloroplasts = self.chloroplasts.saturating_add(child.chloroplasts);
-        self.plant_energy_carry_micros = self
-            .plant_energy_carry_micros
-            .saturating_add(child.plant_energy_carry_micros);
-        self.plant_body_carry_micros = self
-            .plant_body_carry_micros
-            .saturating_add(child.plant_body_carry_micros);
+            plant_energy_carry_micros: 0,
+            plant_body_carry_micros: 0,
+        }
     }
 
     pub(crate) fn synchronize_energy(&mut self) {
@@ -167,7 +147,7 @@ impl RobotMaterials {
         let prior_energy = self.energy;
         let prior_body = self.body;
         self.energy = (self.energy as i64 + energy_whole).clamp(0, 32_000) as i32;
-        self.body = (self.body as i64 + body_whole).clamp(1, 32_000) as i32;
+        self.body = (self.body as i64 + body_whole).clamp(0, 32_000) as i32;
         (
             self.energy.saturating_sub(prior_energy),
             self.body.saturating_sub(prior_body),
@@ -276,26 +256,21 @@ impl RobotMaterials {
     }
 }
 
-fn split_resource(resource: &mut i32, percentage: i32, preserve_living_body: bool) -> i32 {
+fn split_resource(resource: &mut i32, percentage: i32, vb6_cint: bool) -> i32 {
     let total = (*resource).max(0);
-    if preserve_living_body {
-        if total <= 1 {
-            *resource = 1;
-            return 1;
+    let scaled = i64::from(total) * i64::from(percentage);
+    let child = if vb6_cint {
+        let quotient = scaled / 100;
+        let remainder = scaled % 100;
+        if remainder > 50 || (remainder == 50 && quotient % 2 != 0) {
+            quotient + 1
+        } else {
+            quotient
         }
-        let child = ((total as i64 * percentage as i64) / 100).clamp(1, (total - 1) as i64) as i32;
-        *resource = total - child;
-        child
     } else {
-        let child = (total as i64 * percentage as i64 / 100) as i32;
-        *resource = total - child;
-        child
-    }
-}
-
-fn split_i64_resource(resource: &mut i64, percentage: i32) -> i64 {
-    let child = resource.saturating_mul(percentage as i64) / 100;
-    *resource = resource.saturating_sub(child);
+        scaled / 100
+    } as i32;
+    *resource = total - child;
     child
 }
 

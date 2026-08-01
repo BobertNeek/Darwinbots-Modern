@@ -13,6 +13,7 @@ pub struct RobotIdentity {
     pub owner: String,
     pub tag: String,
     pub simulation_id: u64,
+    #[serde(default)]
     pub absolute_id: u64,
 }
 
@@ -77,10 +78,12 @@ impl RobotKinematics {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RobotCounters {
     pub age: u64,
+    #[serde(default)]
     pub generation: u32,
     pub offspring: u64,
     pub descendants: u64,
     pub kills: u64,
+    #[serde(default)]
     pub birth_cycle: u64,
     pub multibot: bool,
 }
@@ -205,6 +208,9 @@ pub struct RobotState {
     pub program: RobotProgramState,
     pub senses: RobotSenseState,
     pub effects: RobotEffectState,
+    #[serde(default)]
+    pub buoyancy: f32,
+    #[serde(default)]
     pub heredity: RobotHeredityState,
     pub ties: [Option<TieEndpointState>; 10],
     pub phenotype: VisualPhenotype,
@@ -240,6 +246,7 @@ impl RobotState {
             program: RobotProgramState::new(dna, memory, rng_state),
             senses: RobotSenseState::default(),
             effects: RobotEffectState::default(),
+            buoyancy: 0.0,
             heredity: RobotHeredityState::default(),
             ties: [None; 10],
             phenotype,

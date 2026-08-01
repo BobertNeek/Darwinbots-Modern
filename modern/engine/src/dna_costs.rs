@@ -13,6 +13,7 @@ pub struct DnaCosts {
     pub store: f64,
     pub flow: f64,
     pub dna_upkeep: f64,
+    pub dna_copy: f64,
     pub global_multiplier: f64,
 }
 
@@ -29,6 +30,7 @@ impl Default for DnaCosts {
             store: 0.0,
             flow: 0.0,
             dna_upkeep: 0.0,
+            dna_copy: 0.0,
             global_multiplier: 1.0,
         }
     }

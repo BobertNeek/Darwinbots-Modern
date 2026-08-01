@@ -18,6 +18,144 @@ fn phase_index(trace: &CycleTrace, wanted: CyclePhase) -> usize {
         .unwrap_or_else(|| panic!("trace omitted {wanted:?}"))
 }
 
+#[test]
+fn asexual_birth_side_effects_execute_in_commit_phase() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        world_width: 4_000.0,
+        world_height: 3_000.0,
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let parent = engine
+        .spawn_at(
+            LegacyDna::parse("start\n1 50 store\nend").unwrap(),
+            [1_000.0, 1_000.0],
+        )
+        .unwrap();
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let robot = &mut payload["slots"][parent.slot() as usize]["organism"];
+    robot["materials"]["energy"] = serde_json::json!(4_000);
+    robot["materials"]["body"] = serde_json::json!(400);
+    robot["materials"]["waste"] = serde_json::json!(40);
+    robot["materials"]["permanent_waste"] = serde_json::json!(20);
+    robot["materials"]["chloroplasts"] = serde_json::json!(200);
+    robot["materials"]["previous_energy"] = serde_json::json!(4_000);
+    robot["program"]["memory"]["cells"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!([300, 25]));
+    payload["config"]["dna_costs"]["dna_copy"] = serde_json::json!(2.0);
+    payload["config"]["dna_costs"]["global_multiplier"] = serde_json::json!(3.0);
+    let bytes = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + bytes.len());
+    save.extend_from_slice(b"DB3S");
+    save.extend_from_slice(&3_u16.to_le_bytes());
+    save.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+    save.extend_from_slice(&bytes);
+    let mut engine = SaveFile::decode(&save).unwrap();
+
+    let trace = engine.tick_with_trace().unwrap();
+
+    let commit = phase_index(&trace, CyclePhase::CommitBirthsDeaths);
+    for kind in [
+        "birth_resources_transferred",
+        "birth_tie_created",
+        "birth_dna_copy_cost_charged",
+        "reproduction_action_consumed",
+    ] {
+        let (index, phase) = trace
+            .events
+            .iter()
+            .enumerate()
+            .find_map(|(index, event)| match event {
+                CycleEvent::Effect {
+                    phase,
+                    source: Some(source),
+                    kind: actual,
+                    ..
+                } if *source == parent && actual == kind => Some((index, *phase)),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("missing causal birth effect {kind}"));
+        assert_eq!(phase, CyclePhase::CommitBirthsDeaths, "{kind}");
+        assert!(index > commit, "{kind} preceded the commit phase");
+    }
+    let effect_index = |wanted: &str| {
+        trace
+            .events
+            .iter()
+            .position(|event| {
+                matches!(
+                    event,
+                    CycleEvent::Effect {
+                        source: Some(source),
+                        kind,
+                        ..
+                    } if *source == parent && kind == wanted
+                )
+            })
+            .unwrap()
+    };
+    let ordered = [
+        effect_index("birth_resources_transferred"),
+        effect_index("birth_tie_created"),
+        effect_index("reproduction_action_consumed"),
+        effect_index("birth_dna_copy_cost_charged"),
+    ];
+    assert!(
+        ordered.windows(2).all(|pair| pair[0] < pair[1]),
+        "{ordered:?}"
+    );
+}
+
+#[test]
+fn zero_cost_birth_does_not_emit_a_copy_charge_effect() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        world_width: 4_000.0,
+        world_height: 3_000.0,
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let parent = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1_000.0, 1_000.0])
+        .unwrap();
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let robot = &mut payload["slots"][parent.slot() as usize]["organism"];
+    robot["materials"]["energy"] = serde_json::json!(4_000);
+    robot["materials"]["body"] = serde_json::json!(400);
+    robot["materials"]["previous_energy"] = serde_json::json!(4_000);
+    robot["program"]["memory"]["cells"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!([300, 25]));
+    let bytes = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + bytes.len());
+    save.extend_from_slice(b"DB3S");
+    save.extend_from_slice(&3_u16.to_le_bytes());
+    save.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+    save.extend_from_slice(&bytes);
+    let mut engine = SaveFile::decode(&save).unwrap();
+
+    let trace = engine.tick_with_trace().unwrap();
+
+    assert!(!trace.events.iter().any(|event| {
+        matches!(
+            event,
+            CycleEvent::Effect {
+                source: Some(source),
+                kind,
+                ..
+            } if *source == parent && kind == "birth_dna_copy_cost_charged"
+        )
+    }));
+}
+
 fn visits(trace: &CycleTrace, wanted: CyclePhase) -> Vec<OrganismId> {
     trace
         .events
