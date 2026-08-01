@@ -148,14 +148,18 @@ pub struct StoredGeneticMaterial {
     pub source: Option<OrganismId>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct RobotEffectState {
+    #[serde(default)]
+    pub poisoning_active: bool,
     pub poisoning_location: i32,
     pub poisoning_value: i32,
-    pub poisoning_countdown: i32,
+    pub poisoning_countdown: f32,
+    #[serde(default)]
+    pub paralysis_active: bool,
     pub paralysis_location: i32,
     pub paralysis_value: i32,
-    pub paralysis_countdown: i32,
+    pub paralysis_countdown: f32,
     pub stored_virus: Option<StoredGeneticMaterial>,
     pub virus_build_timer: i32,
     pub stored_sperm: Option<StoredGeneticMaterial>,

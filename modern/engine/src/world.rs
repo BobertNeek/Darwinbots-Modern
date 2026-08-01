@@ -1843,6 +1843,7 @@ impl Engine {
         }
         let mut engine: Engine = serde_json::from_value(payload)?;
         engine.slots = arena;
+        engine.projectiles.fill_toxin_payload_defaults();
         Ok(engine)
     }
 
@@ -3011,14 +3012,38 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
-            if robot.materials.poisoned > 0 {
-                robot.materials.energy = robot
-                    .materials
-                    .energy
-                    .saturating_sub(robot.materials.poisoned.min(10));
-                robot.materials.poisoned = robot.materials.poisoned.saturating_sub(1);
+            if robot.effects.paralysis_active {
+                if robot.effects.paralysis_location != 0 {
+                    robot.program.memory.write(
+                        robot.effects.paralysis_location,
+                        robot.effects.paralysis_value,
+                    );
+                }
+                robot.effects.paralysis_countdown -= 1.0;
+                if robot.effects.paralysis_countdown < 1.0 {
+                    robot.effects.paralysis_active = false;
+                    robot.effects.paralysis_location = 0;
+                    robot.effects.paralysis_value = 0;
+                }
             }
-            robot.materials.paralyzed = robot.materials.paralyzed.saturating_sub(1).max(0);
+            robot.materials.paralyzed = robot.effects.paralysis_countdown.max(0.0).floor() as i32;
+            if robot.effects.poisoning_active {
+                if robot.effects.poisoning_location != 0 {
+                    robot.program.memory.write(
+                        robot.effects.poisoning_location,
+                        robot.effects.poisoning_value,
+                    );
+                }
+                robot.effects.poisoning_countdown -= 1.0;
+                if robot.effects.poisoning_countdown < 1.0 {
+                    robot.effects.poisoning_active = false;
+                    robot.effects.poisoning_location = 0;
+                    robot.effects.poisoning_value = 0;
+                }
+            }
+            robot.materials.poisoned = robot.effects.poisoning_countdown.max(0.0).floor() as i32;
+            robot.program.memory.write(837, robot.materials.paralyzed);
+            robot.program.memory.write(838, robot.materials.poisoned);
         }
     }
 
@@ -3050,18 +3075,16 @@ impl Engine {
                 new_move: robot.program.dna.uses_new_move(),
             };
             let mut movement = MovementState::default();
-            if robot.materials.paralyzed == 0 {
-                apply_voluntary_impulse(
-                    &mut movement,
-                    input,
-                    derived_mass(
-                        robot.materials.body,
-                        robot.materials.shell,
-                        robot.materials.chloroplasts,
-                    ),
-                    settings,
-                );
-            }
+            apply_voluntary_impulse(
+                &mut movement,
+                input,
+                derived_mass(
+                    robot.materials.body,
+                    robot.materials.shell,
+                    robot.materials.chloroplasts,
+                ),
+                settings,
+            );
             robot.kinematics.pending_velocity = movement.velocity;
         }
     }
@@ -3851,11 +3874,21 @@ impl Engine {
                     &mut attacker.program.memory,
                 );
             }
-            if commands.kind == 0 {
+            if commands.kind == 0 || ProjectilePool::normalized_kind(commands.kind) == -5 {
                 continue;
             }
             let value = if commands.kind == -1 && commands.value == 0 {
                 20_i32.saturating_add(attacker.materials.body.max(0) / 5)
+            } else if commands.kind == -3 {
+                let requested = commands.value.saturating_abs();
+                let amount = if requested == 0 {
+                    attacker.materials.venom.max(0) / 20
+                } else {
+                    requested.min(attacker.materials.venom.max(0))
+                };
+                attacker.materials.venom = attacker.materials.venom.saturating_sub(amount);
+                attacker.program.memory.write(825, attacker.materials.venom);
+                amount
             } else {
                 commands.value.abs().max(1)
             };
@@ -3926,6 +3959,21 @@ impl Engine {
                 continue;
             };
             let payload = matches!(request.kind, -7 | -8).then(|| owner.program.dna.clone());
+            let source_species_name = self
+                .species
+                .get(owner.identity.species.0 as usize)
+                .map(|species| species.name.clone());
+            let (toxin_memory_location, toxin_memory_value) = match request.kind {
+                -3 => (
+                    owner.program.memory.read(835),
+                    owner.program.memory.read(836),
+                ),
+                -5 => (
+                    owner.program.memory.read(834),
+                    owner.program.memory.read(839),
+                ),
+                _ => (0, 0),
+            };
             self.projectiles.spawn(
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
@@ -3940,6 +3988,9 @@ impl Engine {
                     kind: request.kind,
                     value: request.value,
                     payload,
+                    source_species_name,
+                    toxin_memory_location,
+                    toxin_memory_value,
                 },
                 &self.config.shots,
             );
@@ -4064,12 +4115,20 @@ impl Engine {
             let shot = impact.projectile_slot as usize;
             let owner = self.projectiles.owners[shot];
             let payload = self.projectiles.payloads[shot].clone();
+            let source_species_name = self.projectiles.source_species_names[shot].clone();
+            let toxin_memory_location = self.projectiles.toxin_memory_locations[shot];
+            let toxin_memory_value = self.projectiles.toxin_memory_values[shot];
             self.projectiles.mark_impact(
                 impact.projectile_slot,
                 impact.fraction,
                 &self.config.shots,
             );
+            let projectile_position = self.projectiles.positions[shot];
+            let projectile_velocity = self.projectiles.velocities[shot];
+            let projectile_range = self.projectiles.ranges[shot];
+            let projectile_energy = self.projectiles.energies[shot];
             let power = self.projectiles.impact_power(impact.projectile_slot);
+            let toxin_power = self.projectiles.toxin_impact_power(impact.projectile_slot);
             self.stats.projectile_impacts = self.stats.projectile_impacts.saturating_add(1);
             let traced_target = match impact.target {
                 ProjectileTarget::Organism(slot) => {
@@ -4078,7 +4137,21 @@ impl Engine {
                 ProjectileTarget::Corpse(_) | ProjectileTarget::Obstacle => None,
             };
             let traced_kind = trace.is_enabled().then(|| format!("{:?}", impact.effect));
-            if self.apply_projectile_effect(owner, impact.target, impact.effect, power, payload) {
+            if self.apply_projectile_effect(
+                owner,
+                impact.target,
+                impact.effect,
+                power,
+                toxin_power,
+                payload,
+                source_species_name,
+                toxin_memory_location,
+                toxin_memory_value,
+                projectile_position,
+                projectile_velocity,
+                projectile_range,
+                projectile_energy,
+            ) {
                 self.stats.projectile_effects = self.stats.projectile_effects.saturating_add(1);
                 if let (Some(target), Some(kind)) = (traced_target, traced_kind) {
                     trace.effect(CyclePhase::ShotUpdate, Some(owner), target, kind);
@@ -4093,7 +4166,15 @@ impl Engine {
         target: ProjectileTarget,
         effect: ProjectileEffect,
         power: i32,
+        toxin_power: f32,
         payload: Option<LegacyDna>,
+        source_species_name: Option<String>,
+        toxin_memory_location: i32,
+        toxin_memory_value: i32,
+        projectile_position: [f32; 2],
+        projectile_velocity: [f32; 2],
+        projectile_range: u32,
+        projectile_energy: f32,
     ) -> bool {
         let owner_slot = owner.slot() as usize;
         let owner_is_live = self.slots[..]
@@ -4137,6 +4218,17 @@ impl Engine {
                 }
                 match effect {
                     ProjectileEffect::ReleaseEnergy => {
+                        if self.fire_defensive_poison(
+                            target,
+                            power,
+                            false,
+                            false,
+                            projectile_position,
+                            projectile_velocity,
+                            projectile_range,
+                        ) {
+                            return true;
+                        }
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
                         let applied = power.min(target_robot.materials.energy.max(0));
                         target_robot.materials.energy =
@@ -4172,26 +4264,52 @@ impl Engine {
                         donated > 0
                     }
                     ProjectileEffect::Venom => {
-                        if !owner_is_live {
+                        if toxin_power < 1.0 {
                             return false;
                         }
-                        let transferred = transfer_fixed_amount(
-                            &mut self.slots,
-                            owner_slot,
-                            target,
-                            power,
-                            |robot| &mut robot.materials.venom,
-                            |robot| &mut robot.materials.paralyzed,
-                        );
-                        if transferred > 0 {
-                            self.slots[target]
-                                .organism
-                                .as_mut()
-                                .unwrap()
-                                .kinematics
-                                .velocity = [0.0; 2];
+                        let target_species = self.slots[target]
+                            .organism
+                            .as_ref()
+                            .unwrap()
+                            .identity
+                            .species;
+                        let conspecific = source_species_name.as_deref()
+                            == self
+                                .species
+                                .get(target_species.0 as usize)
+                                .map(|species| species.name.as_str());
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        if conspecific {
+                            target_robot.materials.venom = target_robot
+                                .materials
+                                .venom
+                                .saturating_add(toxin_power.round() as i32)
+                                .min(32_000);
+                            target_robot
+                                .program
+                                .memory
+                                .write(825, target_robot.materials.venom);
+                            return true;
                         }
-                        transferred > 0
+                        let shell_before = target_robot.materials.shell.max(0);
+                        let remaining = (toxin_power - 0.8 * shell_before as f32).max(0.0);
+                        let remaining_shell =
+                            (shell_before as f32 - toxin_power / 0.8).max(0.0).round() as i32;
+                        target_robot.materials.shell = remaining_shell;
+                        target_robot
+                            .program
+                            .memory
+                            .write(823, target_robot.materials.shell);
+                        if remaining < 1.0 {
+                            return shell_before != remaining_shell;
+                        }
+                        target_robot.effects.paralysis_active = true;
+                        target_robot.effects.paralysis_countdown =
+                            (target_robot.effects.paralysis_countdown + remaining).min(32_000.0);
+                        target_robot.effects.paralysis_location =
+                            toxin_location(target_robot, toxin_memory_location);
+                        target_robot.effects.paralysis_value = toxin_memory_value;
+                        true
                     }
                     ProjectileEffect::Waste => {
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
@@ -4200,18 +4318,41 @@ impl Engine {
                         power > 0
                     }
                     ProjectileEffect::Poison => {
-                        if !owner_is_live {
+                        if toxin_power < 1.0 {
                             return false;
                         }
-                        let transferred = transfer_fixed_amount(
-                            &mut self.slots,
-                            owner_slot,
-                            target,
-                            power,
-                            |robot| &mut robot.materials.poison,
-                            |robot| &mut robot.materials.poisoned,
-                        );
-                        transferred > 0
+                        let target_species = self.slots[target]
+                            .organism
+                            .as_ref()
+                            .unwrap()
+                            .identity
+                            .species;
+                        let conspecific = source_species_name.as_deref()
+                            == self
+                                .species
+                                .get(target_species.0 as usize)
+                                .map(|species| species.name.as_str());
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        if conspecific {
+                            target_robot.materials.poison = target_robot
+                                .materials
+                                .poison
+                                .saturating_add(toxin_power.round() as i32)
+                                .min(32_000);
+                            target_robot
+                                .program
+                                .memory
+                                .write(827, target_robot.materials.poison);
+                            return true;
+                        }
+                        target_robot.effects.poisoning_active = true;
+                        target_robot.effects.poisoning_countdown =
+                            (target_robot.effects.poisoning_countdown + toxin_power / 1.5)
+                                .min(32_000.0);
+                        target_robot.effects.poisoning_location =
+                            toxin_location(target_robot, toxin_memory_location);
+                        target_robot.effects.poisoning_value = toxin_memory_value;
+                        true
                     }
                     ProjectileEffect::ReleaseBody => {
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
@@ -4264,6 +4405,17 @@ impl Engine {
                         true
                     }
                     ProjectileEffect::WriteMemory { address, value } => {
+                        if self.fire_defensive_poison(
+                            target,
+                            (projectile_energy / 2.0).round() as i32,
+                            true,
+                            true,
+                            projectile_position,
+                            projectile_velocity,
+                            projectile_range,
+                        ) {
+                            return true;
+                        }
                         self.slots[target]
                             .organism
                             .as_mut()
@@ -4292,6 +4444,64 @@ impl Engine {
                 }
             }
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn fire_defensive_poison(
+        &mut self,
+        target: usize,
+        power: i32,
+        equality_triggers: bool,
+        adds_waste: bool,
+        position: [f32; 2],
+        incoming_velocity: [f32; 2],
+        incoming_range: u32,
+    ) -> bool {
+        let power = power.max(0);
+        let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+        let Some(target_robot) = self.slots[target].organism.as_mut() else {
+            return false;
+        };
+        let poison = target_robot.materials.poison.max(0);
+        let qualifies = poison != 0
+            && if equality_triggers {
+                poison >= power
+            } else {
+                poison > power
+            };
+        if !qualifies {
+            return false;
+        }
+        let poison_spent = (power as f32 * 0.9).round() as i32;
+        target_robot.materials.poison = poison.saturating_sub(poison_spent);
+        if adds_waste {
+            target_robot.materials.waste = target_robot
+                .materials
+                .waste
+                .saturating_add((power as f32 * 0.1).round() as i32);
+        }
+        target_robot
+            .program
+            .memory
+            .write(827, target_robot.materials.poison);
+        let toxin_memory_location = target_robot.program.memory.read(834);
+        let toxin_memory_value = target_robot.program.memory.read(839);
+        let source_species_name = self
+            .species
+            .get(target_robot.identity.species.0 as usize)
+            .map(|species| species.name.clone());
+        self.projectiles.spawn_defensive_poison(
+            target_id,
+            position,
+            incoming_velocity,
+            incoming_range,
+            power,
+            source_species_name,
+            toxin_memory_location,
+            toxin_memory_value,
+        );
+        self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
+        true
     }
 
     fn capture_previous_positions(&mut self) {
@@ -5203,6 +5413,20 @@ fn default_capabilities() -> BackendCapabilities {
         active: BackendKind::Cpu,
         gpu_available: false,
         fallback_reason: None,
+    }
+}
+
+fn toxin_location(robot: &mut RobotState, raw_location: i32) -> i32 {
+    if raw_location > 0 {
+        let normalized = (raw_location - 1).rem_euclid(1_000) + 1;
+        return if normalized == 340 { 0 } else { normalized };
+    }
+    loop {
+        robot.program.rng_state = advance_random(robot.program.rng_state);
+        let location = (robot.program.rng_state % 1_000) as i32 + 1;
+        if location != 340 {
+            return location;
+        }
     }
 }
 

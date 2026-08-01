@@ -1,7 +1,59 @@
 use darwinbots_engine::{
-    BackendKind, BackendPreference, Engine, EngineConfig, EngineError, LegacyDna, SaveFile,
-    SpeciesDefinition, TokenClass,
+    BackendKind, BackendPreference, Engine, EngineConfig, EngineError, LegacyDna, OrganismId,
+    SaveFile, SpeciesDefinition, TokenClass,
 };
+
+fn frame_save(version: u16, payload: &serde_json::Value) -> Vec<u8> {
+    let payload = serde_json::to_vec(payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(b"DB3S");
+    save.extend_from_slice(&version.to_le_bytes());
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    save
+}
+
+fn engine_with_in_flight_venom() -> (Engine, OrganismId, OrganismId) {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source_species = engine.register_species(SpeciesDefinition {
+        name: "Saved venom source".to_owned(),
+        ..SpeciesDefinition::default()
+    });
+    let target_species = engine.register_species(SpeciesDefinition {
+        name: "Saved venom target".to_owned(),
+        ..SpeciesDefinition::default()
+    });
+    let source = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\n8 .strvenom store\nstop").unwrap(),
+            source_species,
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            target_species,
+            [260.0, 100.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse(
+                "start\n-3 .shoot store\n8 .shootval store\n500 .vloc store\n77 .venval store\nstop",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    (engine, source, target)
+}
 
 const SIMPLE_BOT: &str = r#"
 ' Legacy comments remain legal.
@@ -208,6 +260,179 @@ fn save_round_trip_preserves_pre_refactor_robot_state_fields() {
 }
 
 #[test]
+fn db3s_v3_round_trip_preserves_mid_effect_toxin_state() {
+    let (mut engine, source, target) = engine_with_in_flight_venom();
+    engine
+        .replace_dna(source, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine.tick().unwrap();
+    let before = engine.robot_state(target).unwrap().effects.clone();
+    assert!(before.paralysis_active);
+    assert_eq!(before.paralysis_countdown, 7.0);
+    assert_eq!(before.paralysis_location, 500);
+    assert_eq!(before.paralysis_value, 77);
+
+    let mut restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    assert_eq!(restored.robot_state(target).unwrap().effects, before);
+
+    engine.tick().unwrap();
+    restored.tick().unwrap();
+    assert_eq!(restored.snapshot(), engine.snapshot());
+    assert_eq!(restored.memory_at(target, 500).unwrap(), 77);
+}
+
+#[test]
+fn db3s_v3_round_trip_preserves_in_flight_toxin_payload() {
+    let (engine, source, target) = engine_with_in_flight_venom();
+    let bytes = SaveFile::encode(&engine).unwrap();
+    let payload: serde_json::Value = serde_json::from_slice(&bytes[10..]).unwrap();
+    assert_eq!(
+        payload["projectiles"]["source_species_names"][0],
+        "Saved venom source"
+    );
+    assert_eq!(payload["projectiles"]["toxin_memory_locations"][0], 500);
+    assert_eq!(payload["projectiles"]["toxin_memory_values"][0], 77);
+
+    let mut restored = SaveFile::decode(&bytes).unwrap();
+    restored.remove(source).unwrap();
+    restored.tick().unwrap();
+
+    assert_eq!(restored.organism(target).unwrap().paralyzed, 7);
+    assert_eq!(restored.memory_at(target, 500).unwrap(), 77);
+}
+
+#[test]
+fn db3s_v3_missing_toxin_projectile_fields_default_to_aligned_empty_payloads() {
+    let (engine, _source, _target) = engine_with_in_flight_venom();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    let projectiles = payload["projectiles"].as_object_mut().unwrap();
+    projectiles.remove("source_species_names");
+    projectiles.remove("toxin_memory_locations");
+    projectiles.remove("toxin_memory_values");
+
+    let restored = SaveFile::decode(&frame_save(3, &payload)).unwrap();
+    let migrated = SaveFile::encode(&restored).unwrap();
+    let migrated: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();
+    assert_eq!(
+        migrated["projectiles"]["source_species_names"],
+        serde_json::json!([null])
+    );
+    assert_eq!(
+        migrated["projectiles"]["toxin_memory_locations"],
+        serde_json::json!([0])
+    );
+    assert_eq!(
+        migrated["projectiles"]["toxin_memory_values"],
+        serde_json::json!([0])
+    );
+}
+
+#[test]
+fn in_flight_toxin_uses_frozen_species_after_owner_species_change() {
+    let (engine, source, target) = engine_with_in_flight_venom();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    let target_species =
+        payload["slots"][target.slot() as usize]["organism"]["identity"]["species"].clone();
+    payload["slots"][source.slot() as usize]["organism"]["identity"]["species"] = target_species;
+    let mut restored = SaveFile::decode(&frame_save(3, &payload)).unwrap();
+
+    restored.tick().unwrap();
+
+    assert_eq!(restored.organism(target).unwrap().venom, 0);
+    assert_eq!(restored.organism(target).unwrap().paralyzed, 7);
+    assert_eq!(restored.memory_at(target, 500).unwrap(), 77);
+}
+
+#[test]
+fn later_toxin_hit_caps_fractional_duration_at_32000() {
+    let (engine, source, target) = engine_with_in_flight_venom();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    let effects = payload["slots"][target.slot() as usize]["organism"]["effects"]
+        .as_object_mut()
+        .unwrap();
+    effects.insert("paralysis_active".to_owned(), serde_json::json!(true));
+    effects.insert(
+        "paralysis_countdown".to_owned(),
+        serde_json::json!(31_999.0),
+    );
+    effects.insert("paralysis_location".to_owned(), serde_json::json!(400));
+    effects.insert("paralysis_value".to_owned(), serde_json::json!(66));
+    payload["slots"][target.slot() as usize]["organism"]["materials"]["paralyzed"] =
+        serde_json::json!(31_999);
+    payload["projectiles"]["values"][0] = serde_json::json!(20);
+    let mut restored = SaveFile::decode(&frame_save(3, &payload)).unwrap();
+    restored
+        .replace_dna(source, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+
+    restored.tick().unwrap();
+
+    let effect = &restored.robot_state(target).unwrap().effects;
+    assert!(effect.paralysis_active);
+    assert_eq!(effect.paralysis_countdown, 31_999.0);
+    assert_eq!(effect.paralysis_location, 500);
+    assert_eq!(effect.paralysis_value, 77);
+    assert_eq!(restored.organism(target).unwrap().paralyzed, 31_999);
+}
+
+#[test]
+fn newborn_and_reused_slots_start_without_toxin_effects() {
+    let (mut engine, source, parent) = engine_with_in_flight_venom();
+    engine
+        .replace_dna(source, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine.tick().unwrap();
+    assert!(engine.robot_state(parent).unwrap().effects.paralysis_active);
+    engine
+        .replace_dna(
+            parent,
+            LegacyDna::parse("start\n50 .repro store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.parents.contains(&Some(parent)))
+        .unwrap()
+        .id;
+    assert!(!engine.robot_state(child).unwrap().effects.paralysis_active);
+    assert_eq!(
+        engine
+            .robot_state(child)
+            .unwrap()
+            .effects
+            .paralysis_countdown,
+        0.0
+    );
+
+    engine.remove(parent).unwrap();
+    let replacement = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    assert_eq!(replacement.slot(), parent.slot());
+    assert!(
+        !engine
+            .robot_state(replacement)
+            .unwrap()
+            .effects
+            .paralysis_active
+    );
+    assert_eq!(
+        engine
+            .robot_state(replacement)
+            .unwrap()
+            .effects
+            .paralysis_countdown,
+        0.0
+    );
+}
+
+#[test]
 fn db3s_v2_migrates_every_existing_robot_field() {
     let fixture = include_bytes!("fixtures/db3s_v2_phase1.bin");
     assert_eq!(u16::from_le_bytes([fixture[4], fixture[5]]), 2);
@@ -265,6 +490,14 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     );
     assert!(!after.program.dna.metadata().hash_valid);
     assert!(after.effects.forced_reproduction);
+    assert!(!after.effects.paralysis_active);
+    assert_eq!(after.effects.paralysis_countdown, 0.0);
+    assert_eq!(after.effects.paralysis_location, 0);
+    assert_eq!(after.effects.paralysis_value, 0);
+    assert!(!after.effects.poisoning_active);
+    assert_eq!(after.effects.poisoning_countdown, 0.0);
+    assert_eq!(after.effects.poisoning_location, 0);
+    assert_eq!(after.effects.poisoning_value, 0);
     assert_eq!(after.phenotype.lineage_id, 22);
     assert_eq!(after.phenotype.color, 4281558681);
     assert_eq!(after.phenotype.accumulated_mutations, 6);
@@ -317,6 +550,18 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     assert_eq!(payload["next_lineage_id"], 44);
     assert_eq!(payload["projectiles"]["ages"], serde_json::json!([2, 0]));
     assert_eq!(payload["projectiles"]["free_slots"], serde_json::json!([1]));
+    assert_eq!(
+        payload["projectiles"]["source_species_names"],
+        serde_json::json!([null, null])
+    );
+    assert_eq!(
+        payload["projectiles"]["toxin_memory_locations"],
+        serde_json::json!([0, 0])
+    );
+    assert_eq!(
+        payload["projectiles"]["toxin_memory_values"],
+        serde_json::json!([0, 0])
+    );
     assert_eq!(payload["vegetation_runtime"]["repopulation_counter"], 16);
     assert_eq!(payload["vegetation_runtime"]["day_night_counter"], 17);
 }

@@ -14,6 +14,9 @@ pub(crate) struct ProjectileSpawn {
     pub kind: i32,
     pub value: i32,
     pub payload: Option<LegacyDna>,
+    pub source_species_name: Option<String>,
+    pub toxin_memory_location: i32,
+    pub toxin_memory_value: i32,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -30,10 +33,20 @@ pub(crate) struct ProjectilePool {
     pub(crate) alive: Vec<bool>,
     pub(crate) impact_flash: Vec<bool>,
     pub(crate) payloads: Vec<Option<LegacyDna>>,
+    #[serde(default)]
+    pub(crate) source_species_names: Vec<Option<String>>,
+    #[serde(default)]
+    pub(crate) toxin_memory_locations: Vec<i32>,
+    #[serde(default)]
+    pub(crate) toxin_memory_values: Vec<i32>,
     free_slots: Vec<u32>,
 }
 
 impl ProjectilePool {
+    pub(crate) fn normalized_kind(kind: i32) -> i32 {
+        normalize_kind(kind)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_legacy_wire_parts(
         owners: Vec<OrganismId>,
@@ -50,6 +63,7 @@ impl ProjectilePool {
         payloads: Vec<Option<LegacyDna>>,
         free_slots: Vec<u32>,
     ) -> Self {
+        let projectile_count = owners.len();
         Self {
             owners,
             positions,
@@ -63,8 +77,17 @@ impl ProjectilePool {
             alive,
             impact_flash,
             payloads,
+            source_species_names: vec![None; projectile_count],
+            toxin_memory_locations: vec![0; projectile_count],
+            toxin_memory_values: vec![0; projectile_count],
             free_slots,
         }
+    }
+
+    pub(crate) fn fill_toxin_payload_defaults(&mut self) {
+        self.source_species_names.resize(self.owners.len(), None);
+        self.toxin_memory_locations.resize(self.owners.len(), 0);
+        self.toxin_memory_values.resize(self.owners.len(), 0);
     }
 
     pub(crate) fn spawn(&mut self, request: ProjectileSpawn, settings: &ShotSettings) -> u32 {
@@ -98,11 +121,15 @@ impl ProjectilePool {
             self.ages.push(0);
             self.ranges.push(range);
             self.energies.push(energy);
-            self.kinds.push(normalize_kind(request.kind));
+            self.kinds.push(Self::normalized_kind(request.kind));
             self.values.push(request.value.clamp(-32_000, 32_000));
             self.alive.push(true);
             self.impact_flash.push(false);
             self.payloads.push(request.payload);
+            self.source_species_names.push(request.source_species_name);
+            self.toxin_memory_locations
+                .push(request.toxin_memory_location);
+            self.toxin_memory_values.push(request.toxin_memory_value);
         } else {
             self.owners[slot] = request.owner;
             self.positions[slot] = position;
@@ -111,11 +138,71 @@ impl ProjectilePool {
             self.ages[slot] = 0;
             self.ranges[slot] = range;
             self.energies[slot] = energy;
-            self.kinds[slot] = normalize_kind(request.kind);
+            self.kinds[slot] = Self::normalized_kind(request.kind);
             self.values[slot] = request.value.clamp(-32_000, 32_000);
             self.alive[slot] = true;
             self.impact_flash[slot] = false;
             self.payloads[slot] = request.payload;
+            self.source_species_names[slot] = request.source_species_name;
+            self.toxin_memory_locations[slot] = request.toxin_memory_location;
+            self.toxin_memory_values[slot] = request.toxin_memory_value;
+        }
+        slot as u32
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn spawn_defensive_poison(
+        &mut self,
+        owner: OrganismId,
+        position: [f32; 2],
+        incoming_velocity: [f32; 2],
+        incoming_range: u32,
+        value: i32,
+        source_species_name: Option<String>,
+        toxin_memory_location: i32,
+        toxin_memory_value: i32,
+    ) -> u32 {
+        let slot = self
+            .free_slots
+            .pop()
+            .map_or(self.owners.len(), |slot| slot as usize);
+        let velocity = [-incoming_velocity[0], -incoming_velocity[1]];
+        let raw_range = incoming_range.saturating_mul(80);
+        let energy = raw_range.saturating_add(41) as f32;
+        let range = (raw_range.saturating_add(41) / 40).max(1);
+
+        if slot == self.owners.len() {
+            self.owners.push(owner);
+            self.positions.push(position);
+            self.previous_positions.push(position);
+            self.velocities.push(velocity);
+            self.ages.push(0);
+            self.ranges.push(range);
+            self.energies.push(energy);
+            self.kinds.push(-5);
+            self.values.push(value.clamp(0, 32_000));
+            self.alive.push(true);
+            self.impact_flash.push(false);
+            self.payloads.push(None);
+            self.source_species_names.push(source_species_name);
+            self.toxin_memory_locations.push(toxin_memory_location);
+            self.toxin_memory_values.push(toxin_memory_value);
+        } else {
+            self.owners[slot] = owner;
+            self.positions[slot] = position;
+            self.previous_positions[slot] = position;
+            self.velocities[slot] = velocity;
+            self.ages[slot] = 0;
+            self.ranges[slot] = range;
+            self.energies[slot] = energy;
+            self.kinds[slot] = -5;
+            self.values[slot] = value.clamp(0, 32_000);
+            self.alive[slot] = true;
+            self.impact_flash[slot] = false;
+            self.payloads[slot] = None;
+            self.source_species_names[slot] = source_species_name;
+            self.toxin_memory_locations[slot] = toxin_memory_location;
+            self.toxin_memory_values[slot] = toxin_memory_value;
         }
         slot as u32
     }
@@ -220,6 +307,13 @@ impl ProjectilePool {
         ((self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator).round()
             as i32)
             .max(1)
+    }
+
+    pub(crate) fn toxin_impact_power(&self, slot: u32) -> f32 {
+        let slot = slot as usize;
+        let denominator = self.ranges[slot].max(1) as f32 * 40.0;
+        let raw = self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator;
+        if raw < 1.0 { raw } else { raw.round() }
     }
 
     pub(crate) fn snapshots(&self) -> Vec<ShotSnapshot> {

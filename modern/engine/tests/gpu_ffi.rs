@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     BackendKind, BackendPreference, CpuPhysicsBackend, Engine, EngineConfig, GpuPhysicsBackend,
-    LegacyDna, PhysicsBackend, PhysicsBatch,
+    LegacyDna, PhysicsBackend, PhysicsBatch, SpeciesDefinition,
     ffi::{
         ABI_VERSION, DbBuffer, DbStatus, db_api_version, db_buffer_free, db_engine_backend,
         db_engine_capabilities_json, db_engine_command_batch, db_engine_create, db_engine_destroy,
@@ -275,6 +275,98 @@ fn cpu_and_gpu_emit_identical_nontiming_cycle_traces() {
 }
 
 #[test]
+fn cpu_and_gpu_match_toxin_state_memory_and_position() {
+    if GpuPhysicsBackend::new().is_err() {
+        return;
+    }
+    let config = EngineConfig {
+        metabolism_cost: 0,
+        gravity: [0.0, 0.0],
+        drag: 0.0,
+        brownian_motion: 0.0,
+        ..EngineConfig::testing()
+    };
+    let mut cpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Cpu,
+        ..config.clone()
+    })
+    .unwrap();
+    let mut gpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        ..config
+    })
+    .unwrap();
+
+    fn seed(engine: &mut Engine) -> (darwinbots_engine::OrganismId, darwinbots_engine::OrganismId) {
+        let source_species = engine.register_species(SpeciesDefinition {
+            name: "GPU toxin source".to_owned(),
+            ..SpeciesDefinition::default()
+        });
+        let target_species = engine.register_species(SpeciesDefinition {
+            name: "GPU toxin target".to_owned(),
+            ..SpeciesDefinition::default()
+        });
+        let source = engine
+            .spawn_species_at(
+                LegacyDna::parse("start\n8 .strvenom store\nstop").unwrap(),
+                source_species,
+                [100.0, 100.0],
+            )
+            .unwrap();
+        let target = engine
+            .spawn_species_at(
+                LegacyDna::parse("start\nstop").unwrap(),
+                target_species,
+                [260.0, 100.0],
+            )
+            .unwrap();
+        (source, target)
+    }
+
+    let (cpu_source, cpu_target) = seed(&mut cpu);
+    let (gpu_source, gpu_target) = seed(&mut gpu);
+    cpu.tick().unwrap();
+    gpu.tick().unwrap();
+    let shot = LegacyDna::parse(
+        "start\n-3 .shoot store\n8 .shootval store\n500 .vloc store\n77 .venval store\nstop",
+    )
+    .unwrap();
+    let idle = LegacyDna::parse("start\nstop").unwrap();
+    cpu.replace_dna(cpu_source, shot.clone()).unwrap();
+    gpu.replace_dna(gpu_source, shot).unwrap();
+    cpu.tick().unwrap();
+    gpu.tick().unwrap();
+    cpu.replace_dna(cpu_source, idle.clone()).unwrap();
+    gpu.replace_dna(gpu_source, idle).unwrap();
+    cpu.tick().unwrap();
+    gpu.tick().unwrap();
+    let mover = LegacyDna::parse("start\n10 .dx store\nstop").unwrap();
+    cpu.replace_dna(cpu_target, mover.clone()).unwrap();
+    gpu.replace_dna(gpu_target, mover).unwrap();
+    cpu.tick().unwrap();
+    gpu.tick().unwrap();
+
+    let left = cpu.organism(cpu_target).unwrap();
+    let right = gpu.organism(gpu_target).unwrap();
+    assert_eq!(left.paralyzed, 6);
+    assert_eq!(right.paralyzed, left.paralyzed);
+    assert_eq!(gpu.memory_at(gpu_target, 500).unwrap(), 77);
+    assert_eq!(
+        gpu.memory_at(gpu_target, 500).unwrap(),
+        cpu.memory_at(cpu_target, 500).unwrap()
+    );
+    assert_eq!(
+        gpu.robot_state(gpu_target).unwrap().effects,
+        cpu.robot_state(cpu_target).unwrap().effects
+    );
+    assert!((right.position[0] - left.position[0]).abs() < 0.0001);
+    assert!((right.position[1] - left.position[1]).abs() < 0.0001);
+    assert!((right.velocity[0] - left.velocity[0]).abs() < 0.0001);
+    assert!((right.velocity[1] - left.velocity[1]).abs() < 0.0001);
+}
+
+#[test]
 fn engine_retains_gpu_backend_and_uses_it_for_tick_physics() {
     if GpuPhysicsBackend::new().is_err() {
         return;
@@ -336,6 +428,7 @@ fn ffi_v1_consumers_accept_the_additive_snapshot() {
         energy: i32,
     }
 
+    assert_eq!(ABI_VERSION, 1);
     assert_eq!(db_api_version(), ABI_VERSION);
     let mut engine = std::ptr::null_mut();
     let config = br#"{"seed":77,"organism_capacity":16,"world_width":1000.0,"world_height":1000.0,"backend":"Cpu","allow_cpu_fallback":true}"#;
