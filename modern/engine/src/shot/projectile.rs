@@ -34,6 +34,39 @@ pub(crate) struct ProjectilePool {
 }
 
 impl ProjectilePool {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn from_legacy_wire_parts(
+        owners: Vec<OrganismId>,
+        positions: Vec<[f32; 2]>,
+        previous_positions: Vec<[f32; 2]>,
+        velocities: Vec<[f32; 2]>,
+        ages: Vec<u32>,
+        ranges: Vec<u32>,
+        energies: Vec<f32>,
+        kinds: Vec<i32>,
+        values: Vec<i32>,
+        alive: Vec<bool>,
+        impact_flash: Vec<bool>,
+        payloads: Vec<Option<LegacyDna>>,
+        free_slots: Vec<u32>,
+    ) -> Self {
+        Self {
+            owners,
+            positions,
+            previous_positions,
+            velocities,
+            ages,
+            ranges,
+            energies,
+            kinds,
+            values,
+            alive,
+            impact_flash,
+            payloads,
+            free_slots,
+        }
+    }
+
     pub(crate) fn spawn(&mut self, request: ProjectileSpawn, settings: &ShotSettings) -> u32 {
         let slot = self.free_slots.pop().map_or(self.owners.len(), |slot| slot as usize);
         let direction = [request.angle.cos(), -request.angle.sin()];

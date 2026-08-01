@@ -143,6 +143,28 @@ impl<'de> Deserialize<'de> for LegacyDna {
 }
 
 impl LegacyDna {
+    pub(crate) fn from_legacy_wire_parts(
+        instructions: Vec<Instruction>,
+        user_variables: BTreeMap<String, i32>,
+        new_move: bool,
+        compatibility_warnings: Vec<String>,
+        metadata: DnaMetadata,
+    ) -> Self {
+        let mut warnings = compatibility_warnings.into_iter().collect::<BTreeSet<_>>();
+        let mut blocks = instructions
+            .into_iter()
+            .map(|instruction| instruction_block(instruction, &user_variables, &mut warnings))
+            .collect::<Vec<_>>();
+        normalize_master_end(&mut blocks);
+        Self {
+            blocks,
+            user_variables,
+            new_move,
+            compatibility_warnings: warnings.into_iter().collect(),
+            metadata,
+        }
+    }
+
     pub fn parse(source: &str) -> Result<Self, EngineError> {
         let mut user_variables = BTreeMap::new();
         let mut metadata = DnaMetadata::default();

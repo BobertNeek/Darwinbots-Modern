@@ -2,17 +2,19 @@ use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState};
 use crate::simulation_cycle::CycleRecorder;
 use crate::{
     BackendCapabilities, BackendKind, BackendPreference, BiologyState, CommandOutcome,
-    CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaVm, EngineConfig, EngineError,
-    GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna, Obstacle, OrganismId,
-    PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch, PlantLightInput,
-    ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
-    QueueChangeKind, RenderInstance, ShotSnapshot, SimulationStats, SpatialIndex,
-    SpeciesDefinition, SpeciesId, SysvarRuntime, Teleporter, TieCommands, TieReadbacks,
-    VegetationRuntime, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, eye_value,
+    CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm,
+    EngineConfig, EngineError, EyeSnapshot, GenomeMutator, GpuPhysicsBackend, HistorySample,
+    LegacyDna, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend,
+    PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect, ProjectileImpact,
+    ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind, RenderInstance,
+    ShotSettings, ShotSnapshot, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition,
+    SpeciesId, SysvarRuntime, Teleporter, TieCommands, TieReadbacks, VegetationRuntime,
+    VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, eye_value,
     generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::time::Instant;
 
 use crate::physics::{
@@ -159,42 +161,915 @@ struct SpeciesTemplate {
 
 #[derive(Deserialize)]
 struct Db3sV2Payload {
-    config: EngineConfig,
+    config: Db3sV2EngineConfig,
     #[serde(flatten)]
     arena: Db3sV2Arena,
     tick: u64,
-    snapshot: Snapshot,
-    stats: SimulationStats,
-    pending_mutations: Vec<OrganismId>,
-    ties: Vec<TieSnapshot>,
-    #[serde(default = "default_species")]
-    species: Vec<SpeciesDefinition>,
-    #[serde(default = "default_species_templates")]
-    species_templates: Vec<Option<SpeciesTemplate>>,
-    #[serde(default = "default_mutations_enabled")]
+    snapshot: Db3sV2Snapshot,
+    stats: Db3sV2SimulationStats,
+    pending_mutations: Vec<Db3sV2OrganismId>,
+    ties: Vec<Db3sV2TieSnapshot>,
+    species: Vec<Db3sV2SpeciesDefinition>,
+    species_templates: Vec<Option<Db3sV2SpeciesTemplate>>,
     mutations_enabled: bool,
-    #[serde(default = "default_mutation_multiplier")]
     global_mutation_multiplier: f32,
-    #[serde(default = "default_ties_enabled")]
     ties_enabled: bool,
-    #[serde(default = "default_true")]
     robot_fixing_allowed: bool,
-    #[serde(default = "default_true")]
     asexual_reproduction_allowed: bool,
-    #[serde(default)]
     next_lineage_id: u64,
+    obstacles: Vec<Db3sV2Obstacle>,
+    teleporters: Vec<Db3sV2Teleporter>,
+    corpses: Vec<Db3sV2CorpseSnapshot>,
+    projectiles: Db3sV2ProjectilePool,
+    vegetation_runtime: Db3sV2VegetationRuntime,
+    history: Vec<Db3sV2HistorySample>,
+}
+
+#[derive(Deserialize)]
+struct Db3sV2EngineConfig {
+    seed: u64,
+    organism_capacity: usize,
+    vegetable_population_cap: usize,
+    world_width: f32,
+    world_height: f32,
+    toroidal_world: bool,
+    backend: Db3sV2BackendPreference,
+    allow_cpu_fallback: bool,
+    metabolism_cost: i32,
+    vegetable_energy_per_tick: i32,
+    sunlight_energy: i32,
+    gravity: [f32; 2],
+    drag: f32,
+    brownian_motion: f32,
+    physics: Db3sV2PhysicsSettings,
+    shots: Db3sV2ShotSettings,
+    vegetation: Db3sV2VegetationSettings,
+    dna_costs: Db3sV2DnaCosts,
+    auto_speciation: bool,
+    speciation_genetic_distance_percent: f32,
+}
+
+#[derive(Deserialize)]
+enum Db3sV2BackendPreference {
+    Auto,
+    Cpu,
+    Gpu,
+}
+
+impl From<Db3sV2BackendPreference> for BackendPreference {
+    fn from(value: Db3sV2BackendPreference) -> Self {
+        match value {
+            Db3sV2BackendPreference::Auto => Self::Auto,
+            Db3sV2BackendPreference::Cpu => Self::Cpu,
+            Db3sV2BackendPreference::Gpu => Self::Gpu,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2PhysicsSettings {
+    max_velocity: f32,
+    movement_efficiency: f32,
+    surface_gravity: f32,
+    static_friction: f32,
+    kinetic_friction: f32,
+    density: f64,
+    viscosity: f64,
+    elasticity: f32,
+}
+
+impl From<Db3sV2PhysicsSettings> for PhysicsSettings {
+    fn from(value: Db3sV2PhysicsSettings) -> Self {
+        Self {
+            max_velocity: value.max_velocity,
+            movement_efficiency: value.movement_efficiency,
+            surface_gravity: value.surface_gravity,
+            static_friction: value.static_friction,
+            kinetic_friction: value.kinetic_friction,
+            density: value.density,
+            viscosity: value.viscosity,
+            elasticity: value.elasticity,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2ShotSettings {
+    speed: f32,
+    range_multiplier: f32,
+    decay: f32,
+    energy_shots_do_not_decay: bool,
+    waste_shots_do_not_decay: bool,
+}
+
+impl From<Db3sV2ShotSettings> for ShotSettings {
+    fn from(value: Db3sV2ShotSettings) -> Self {
+        Self {
+            speed: value.speed,
+            range_multiplier: value.range_multiplier,
+            decay: value.decay,
+            energy_shots_do_not_decay: value.energy_shots_do_not_decay,
+            waste_shots_do_not_decay: value.waste_shots_do_not_decay,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2VegetationSettings {
+    start_chloroplasts: i32,
+    max_energy_per_tick: i32,
+    minimum_chloroplast_equivalents: usize,
+    repopulation_amount: usize,
+    repopulation_cooldown: u64,
+    feeding_to_body: f32,
+    daytime: bool,
+    day_night_enabled: bool,
+    cycle_length: u64,
+}
+
+impl From<Db3sV2VegetationSettings> for VegetationSettings {
+    fn from(value: Db3sV2VegetationSettings) -> Self {
+        Self {
+            start_chloroplasts: value.start_chloroplasts,
+            max_energy_per_tick: value.max_energy_per_tick,
+            minimum_chloroplast_equivalents: value.minimum_chloroplast_equivalents,
+            repopulation_amount: value.repopulation_amount,
+            repopulation_cooldown: value.repopulation_cooldown,
+            feeding_to_body: value.feeding_to_body,
+            daytime: value.daytime,
+            day_night_enabled: value.day_night_enabled,
+            cycle_length: value.cycle_length,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2DnaCosts {
+    number: f64,
+    dereference: f64,
+    basic: f64,
+    advanced: f64,
+    bitwise: f64,
+    condition: f64,
+    logic: f64,
+    store: f64,
+    flow: f64,
+    dna_upkeep: f64,
+    global_multiplier: f64,
+}
+
+impl From<Db3sV2DnaCosts> for DnaCosts {
+    fn from(value: Db3sV2DnaCosts) -> Self {
+        Self {
+            number: value.number,
+            dereference: value.dereference,
+            basic: value.basic,
+            advanced: value.advanced,
+            bitwise: value.bitwise,
+            condition: value.condition,
+            logic: value.logic,
+            store: value.store,
+            flow: value.flow,
+            dna_upkeep: value.dna_upkeep,
+            global_multiplier: value.global_multiplier,
+        }
+    }
+}
+
+impl From<Db3sV2EngineConfig> for EngineConfig {
+    fn from(value: Db3sV2EngineConfig) -> Self {
+        Self {
+            seed: value.seed,
+            organism_capacity: value.organism_capacity,
+            vegetable_population_cap: value.vegetable_population_cap,
+            world_width: value.world_width,
+            world_height: value.world_height,
+            toroidal_world: value.toroidal_world,
+            backend: value.backend.into(),
+            allow_cpu_fallback: value.allow_cpu_fallback,
+            metabolism_cost: value.metabolism_cost,
+            vegetable_energy_per_tick: value.vegetable_energy_per_tick,
+            sunlight_energy: value.sunlight_energy,
+            gravity: value.gravity,
+            drag: value.drag,
+            brownian_motion: value.brownian_motion,
+            physics: value.physics.into(),
+            shots: value.shots.into(),
+            vegetation: value.vegetation.into(),
+            dna_costs: value.dna_costs.into(),
+            auto_speciation: value.auto_speciation,
+            speciation_genetic_distance_percent: value.speciation_genetic_distance_percent,
+            force_gpu_unavailable_for_tests: false,
+            force_gpu_runtime_failure_for_tests: false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Deserialize)]
+struct Db3sV2OrganismId {
+    slot: u32,
+    generation: u32,
+}
+
+impl From<Db3sV2OrganismId> for OrganismId {
+    fn from(value: Db3sV2OrganismId) -> Self {
+        Self::new(value.slot, value.generation)
+    }
+}
+
+#[derive(Clone, Copy, Default, Deserialize)]
+struct Db3sV2SpeciesId(u32);
+
+impl From<Db3sV2SpeciesId> for SpeciesId {
+    fn from(value: Db3sV2SpeciesId) -> Self {
+        Self(value.0)
+    }
+}
+
+#[derive(Clone, Copy, Deserialize)]
+struct Db3sV2SkinPoint {
+    radius: f32,
+    angle: i32,
+}
+
+impl From<Db3sV2SkinPoint> for SkinPoint {
+    fn from(value: Db3sV2SkinPoint) -> Self {
+        Self {
+            radius: value.radius,
+            angle: value.angle,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2VisualPhenotype {
+    lineage_id: u64,
+    color: u32,
+    skin: [Db3sV2SkinPoint; 4],
+    accumulated_mutations: u32,
+}
+
+impl From<Db3sV2VisualPhenotype> for VisualPhenotype {
+    fn from(value: Db3sV2VisualPhenotype) -> Self {
+        Self {
+            lineage_id: value.lineage_id,
+            color: value.color,
+            skin: value.skin.map(Into::into),
+            accumulated_mutations: value.accumulated_mutations,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2VmMemory {
+    cells: Vec<(u16, i32)>,
+}
+
+impl From<Db3sV2VmMemory> for VmMemory {
+    fn from(value: Db3sV2VmMemory) -> Self {
+        let mut memory = VmMemory::default();
+        for (address, stored) in value.cells {
+            memory.write(i32::from(address), stored);
+        }
+        memory
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2DnaMetadata {
+    generation: u32,
+    mutations: u64,
+    tag: String,
+    legacy_hash: Option<String>,
+    hash_valid: bool,
+}
+
+impl Default for Db3sV2DnaMetadata {
+    fn default() -> Self {
+        Self {
+            generation: 0,
+            mutations: 0,
+            tag: String::new(),
+            legacy_hash: None,
+            hash_valid: true,
+        }
+    }
+}
+
+impl From<Db3sV2DnaMetadata> for DnaMetadata {
+    fn from(value: Db3sV2DnaMetadata) -> Self {
+        Self {
+            generation: value.generation,
+            mutations: value.mutations,
+            tag: value.tag,
+            legacy_hash: value.legacy_hash,
+            hash_valid: value.hash_valid,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+enum Db3sV2FlowInstruction {
+    Cond,
+    Start,
+    Else,
+    Stop,
+    End,
+}
+
+#[derive(Deserialize)]
+enum Db3sV2StoreInstruction {
+    Store,
+    Inc,
+    Dec,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Ceil,
+    Floor,
+    Random,
+    Sign,
+    Absolute,
+    SquareRoot,
+    Negate,
+}
+
+#[derive(Deserialize)]
+enum Db3sV2Instruction {
+    Number(i32),
+    ReadAddress(i32),
+    Read(String),
+    Address(String),
+    ReadResolved(i32),
+    AddressResolved(i32),
+    Flow(Db3sV2FlowInstruction),
+    Store(Db3sV2StoreInstruction),
+    Command(String),
+}
+
+impl From<Db3sV2FlowInstruction> for crate::dna::FlowInstruction {
+    fn from(value: Db3sV2FlowInstruction) -> Self {
+        match value {
+            Db3sV2FlowInstruction::Cond => Self::Cond,
+            Db3sV2FlowInstruction::Start => Self::Start,
+            Db3sV2FlowInstruction::Else => Self::Else,
+            Db3sV2FlowInstruction::Stop => Self::Stop,
+            Db3sV2FlowInstruction::End => Self::End,
+        }
+    }
+}
+
+impl From<Db3sV2StoreInstruction> for crate::dna::StoreInstruction {
+    fn from(value: Db3sV2StoreInstruction) -> Self {
+        match value {
+            Db3sV2StoreInstruction::Store => Self::Store,
+            Db3sV2StoreInstruction::Inc => Self::Inc,
+            Db3sV2StoreInstruction::Dec => Self::Dec,
+            Db3sV2StoreInstruction::Add => Self::Add,
+            Db3sV2StoreInstruction::Subtract => Self::Subtract,
+            Db3sV2StoreInstruction::Multiply => Self::Multiply,
+            Db3sV2StoreInstruction::Divide => Self::Divide,
+            Db3sV2StoreInstruction::Ceil => Self::Ceil,
+            Db3sV2StoreInstruction::Floor => Self::Floor,
+            Db3sV2StoreInstruction::Random => Self::Random,
+            Db3sV2StoreInstruction::Sign => Self::Sign,
+            Db3sV2StoreInstruction::Absolute => Self::Absolute,
+            Db3sV2StoreInstruction::SquareRoot => Self::SquareRoot,
+            Db3sV2StoreInstruction::Negate => Self::Negate,
+        }
+    }
+}
+
+impl From<Db3sV2Instruction> for crate::dna::Instruction {
+    fn from(value: Db3sV2Instruction) -> Self {
+        match value {
+            Db3sV2Instruction::Number(value) => Self::Number(value),
+            Db3sV2Instruction::ReadAddress(value) => Self::ReadAddress(value),
+            Db3sV2Instruction::Read(value) => Self::Read(value),
+            Db3sV2Instruction::Address(value) => Self::Address(value),
+            Db3sV2Instruction::ReadResolved(value) => Self::ReadResolved(value),
+            Db3sV2Instruction::AddressResolved(value) => Self::AddressResolved(value),
+            Db3sV2Instruction::Flow(value) => Self::Flow(value.into()),
+            Db3sV2Instruction::Store(value) => Self::Store(value.into()),
+            Db3sV2Instruction::Command(value) => Self::Command(value),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2LegacyDna {
+    instructions: Vec<Db3sV2Instruction>,
     #[serde(default)]
-    obstacles: Vec<Obstacle>,
+    user_variables: BTreeMap<String, i32>,
     #[serde(default)]
-    teleporters: Vec<Teleporter>,
+    new_move: bool,
     #[serde(default)]
-    corpses: Vec<CorpseSnapshot>,
+    compatibility_warnings: Vec<String>,
     #[serde(default)]
-    projectiles: ProjectilePool,
-    #[serde(default)]
-    vegetation_runtime: VegetationRuntime,
-    #[serde(default)]
-    history: Vec<HistorySample>,
+    metadata: Db3sV2DnaMetadata,
+}
+
+impl From<Db3sV2LegacyDna> for LegacyDna {
+    fn from(value: Db3sV2LegacyDna) -> Self {
+        LegacyDna::from_legacy_wire_parts(
+            value.instructions.into_iter().map(Into::into).collect(),
+            value.user_variables,
+            value.new_move,
+            value.compatibility_warnings,
+            value.metadata.into(),
+        )
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2SpeciesTemplate {
+    dna: Db3sV2LegacyDna,
+    initial_energy: i32,
+}
+
+impl From<Db3sV2SpeciesTemplate> for SpeciesTemplate {
+    fn from(value: Db3sV2SpeciesTemplate) -> Self {
+        Self {
+            dna: value.dna.into(),
+            initial_energy: value.initial_energy,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2SpeciesDefinition {
+    name: String,
+    vegetable: bool,
+    color: u32,
+    minimum_population: usize,
+    reseed: bool,
+    mutation_rate: f32,
+    skin: [Db3sV2SkinPoint; 4],
+    lineage_id: u64,
+}
+
+impl From<Db3sV2SpeciesDefinition> for SpeciesDefinition {
+    fn from(value: Db3sV2SpeciesDefinition) -> Self {
+        Self {
+            name: value.name,
+            vegetable: value.vegetable,
+            color: value.color,
+            minimum_population: value.minimum_population,
+            reseed: value.reseed,
+            mutation_rate: value.mutation_rate,
+            skin: value.skin.map(Into::into),
+            lineage_id: value.lineage_id,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2SimulationStats {
+    completed_cycles: u64,
+    population: usize,
+    births: u64,
+    deaths: u64,
+    shots_fired: u64,
+    projectile_impacts: u64,
+    projectile_effects: u64,
+    energy_harvested: u64,
+    energy_donated: u64,
+    mutations: u64,
+    ties_created: u64,
+    reseeds: u64,
+    self_reproductions: u64,
+    feeding_events: u64,
+    plant_energy_generated: u64,
+    plant_body_produced: u64,
+    intentional_movement_events: u64,
+    total_energy: i64,
+}
+
+impl From<Db3sV2SimulationStats> for SimulationStats {
+    fn from(value: Db3sV2SimulationStats) -> Self {
+        Self {
+            completed_cycles: value.completed_cycles,
+            population: value.population,
+            births: value.births,
+            deaths: value.deaths,
+            shots_fired: value.shots_fired,
+            projectile_impacts: value.projectile_impacts,
+            projectile_effects: value.projectile_effects,
+            energy_harvested: value.energy_harvested,
+            energy_donated: value.energy_donated,
+            mutations: value.mutations,
+            ties_created: value.ties_created,
+            reseeds: value.reseeds,
+            self_reproductions: value.self_reproductions,
+            feeding_events: value.feeding_events,
+            plant_energy_generated: value.plant_energy_generated,
+            plant_body_produced: value.plant_body_produced,
+            intentional_movement_events: value.intentional_movement_events,
+            total_energy: value.total_energy,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2TieSnapshot {
+    first: Db3sV2OrganismId,
+    second: Db3sV2OrganismId,
+    rest_length: f32,
+    first_port: i32,
+    second_port: i32,
+}
+
+impl From<Db3sV2TieSnapshot> for TieSnapshot {
+    fn from(value: Db3sV2TieSnapshot) -> Self {
+        Self {
+            first: value.first.into(),
+            second: value.second.into(),
+            rest_length: value.rest_length,
+            first_port: value.first_port,
+            second_port: value.second_port,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2EyeSnapshot {
+    direction: i32,
+    width: i32,
+    center_radians: f32,
+    half_width_radians: f32,
+    range: f32,
+    value: i32,
+}
+
+impl From<Db3sV2EyeSnapshot> for EyeSnapshot {
+    fn from(value: Db3sV2EyeSnapshot) -> Self {
+        Self {
+            direction: value.direction,
+            width: value.width,
+            center_radians: value.center_radians,
+            half_width_radians: value.half_width_radians,
+            range: value.range,
+            value: value.value,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2VisionSnapshot {
+    focus_eye: u8,
+    eyes: [Db3sV2EyeSnapshot; 9],
+}
+
+impl From<Db3sV2VisionSnapshot> for VisionSnapshot {
+    fn from(value: Db3sV2VisionSnapshot) -> Self {
+        Self {
+            focus_eye: value.focus_eye,
+            eyes: value.eyes.map(Into::into),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2OrganismSnapshot {
+    id: Db3sV2OrganismId,
+    position: [f32; 2],
+    velocity: [f32; 2],
+    energy: i32,
+    age: u64,
+    species: Db3sV2SpeciesId,
+    vegetable: bool,
+    parents: [Option<Db3sV2OrganismId>; 2],
+    body: i32,
+    waste: i32,
+    shell: i32,
+    slime: i32,
+    venom: i32,
+    poison: i32,
+    chloroplasts: i32,
+    aim: i32,
+    paralyzed: i32,
+    poisoned: i32,
+    phenotype: Db3sV2VisualPhenotype,
+    vision: Db3sV2VisionSnapshot,
+}
+
+impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
+    fn from(value: Db3sV2OrganismSnapshot) -> Self {
+        let id: OrganismId = value.id.into();
+        Self {
+            id,
+            generation: id.generation(),
+            position: value.position,
+            velocity: value.velocity,
+            energy: value.energy,
+            age: value.age,
+            birth_cycle: 0,
+            current_gene: 0,
+            condition_count: 0,
+            species: value.species.into(),
+            vegetable: value.vegetable,
+            parents: value.parents.map(|parent| parent.map(Into::into)),
+            body: value.body,
+            waste: value.waste,
+            shell: value.shell,
+            slime: value.slime,
+            venom: value.venom,
+            poison: value.poison,
+            chloroplasts: value.chloroplasts,
+            aim: value.aim,
+            paralyzed: value.paralyzed,
+            poisoned: value.poisoned,
+            phenotype: value.phenotype.into(),
+            vision: value.vision.into(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2CorpseSnapshot {
+    position: [f32; 2],
+    velocity: [f32; 2],
+    energy: i32,
+    body: i32,
+    age: u64,
+    species: u32,
+    repopulating: bool,
+}
+
+impl From<Db3sV2CorpseSnapshot> for CorpseSnapshot {
+    fn from(value: Db3sV2CorpseSnapshot) -> Self {
+        Self {
+            position: value.position,
+            velocity: value.velocity,
+            energy: value.energy,
+            body: value.body,
+            age: value.age,
+            species: value.species,
+            repopulating: value.repopulating,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2ShotSnapshot {
+    owner: Db3sV2OrganismId,
+    start: [f32; 2],
+    end: [f32; 2],
+    velocity: [f32; 2],
+    age: u32,
+    range: u32,
+    energy: f32,
+    kind: i32,
+    value: i32,
+    impact_flash: bool,
+}
+
+impl From<Db3sV2ShotSnapshot> for ShotSnapshot {
+    fn from(value: Db3sV2ShotSnapshot) -> Self {
+        Self {
+            owner: value.owner.into(),
+            start: value.start,
+            end: value.end,
+            velocity: value.velocity,
+            age: value.age,
+            range: value.range,
+            energy: value.energy,
+            kind: value.kind,
+            value: value.value,
+            impact_flash: value.impact_flash,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2HistorySample {
+    tick: u64,
+    population: usize,
+    total_energy: i64,
+    births: u64,
+    deaths: u64,
+    mutations: u64,
+    shots_fired: u64,
+    projectile_impacts: u64,
+    plant_energy_generated: u64,
+}
+
+impl From<Db3sV2HistorySample> for HistorySample {
+    fn from(value: Db3sV2HistorySample) -> Self {
+        Self {
+            tick: value.tick,
+            population: value.population,
+            total_energy: value.total_energy,
+            births: value.births,
+            deaths: value.deaths,
+            mutations: value.mutations,
+            shots_fired: value.shots_fired,
+            projectile_impacts: value.projectile_impacts,
+            plant_energy_generated: value.plant_energy_generated,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2RenderInstance {
+    slot: u32,
+    position: [f32; 2],
+    radius: f32,
+    color: u32,
+    generation: u32,
+    aim: i32,
+    skin: [Db3sV2SkinPoint; 4],
+    lineage_id: u64,
+    vegetable: bool,
+}
+
+impl From<Db3sV2RenderInstance> for RenderInstance {
+    fn from(value: Db3sV2RenderInstance) -> Self {
+        Self {
+            slot: value.slot,
+            position: value.position,
+            radius: value.radius,
+            color: value.color,
+            generation: value.generation,
+            aim: value.aim,
+            skin: value.skin.map(Into::into),
+            lineage_id: value.lineage_id,
+            vegetable: value.vegetable,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Obstacle {
+    id: u32,
+    minimum: [f32; 2],
+    maximum: [f32; 2],
+}
+
+impl From<Db3sV2Obstacle> for Obstacle {
+    fn from(value: Db3sV2Obstacle) -> Self {
+        Self {
+            id: value.id,
+            minimum: value.minimum,
+            maximum: value.maximum,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Teleporter {
+    id: u32,
+    center: [f32; 2],
+    radius: f32,
+    destination: [f32; 2],
+}
+
+impl From<Db3sV2Teleporter> for Teleporter {
+    fn from(value: Db3sV2Teleporter) -> Self {
+        Self {
+            id: value.id,
+            center: value.center,
+            radius: value.radius,
+            destination: value.destination,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2PhaseTimings {
+    cycle: f64,
+    dna: f64,
+    intent: f64,
+    spatial: f64,
+    sensing: f64,
+    interactions: f64,
+    physics: f64,
+    projectiles: f64,
+    vegetation: f64,
+    lifecycle: f64,
+    mutation: f64,
+    snapshot: f64,
+}
+
+impl From<Db3sV2PhaseTimings> for PhaseTimings {
+    fn from(value: Db3sV2PhaseTimings) -> Self {
+        Self {
+            cycle: value.cycle,
+            dna: value.dna,
+            intent: value.intent,
+            spatial: value.spatial,
+            sensing: value.sensing,
+            interactions: value.interactions,
+            physics: value.physics,
+            projectiles: value.projectiles,
+            vegetation: value.vegetation,
+            lifecycle: value.lifecycle,
+            mutation: value.mutation,
+            snapshot: value.snapshot,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Snapshot {
+    tick: u64,
+    world_size: [f32; 2],
+    organisms: Vec<Db3sV2OrganismSnapshot>,
+    corpses: Vec<Db3sV2CorpseSnapshot>,
+    shots: Vec<Db3sV2ShotSnapshot>,
+    history: Vec<Db3sV2HistorySample>,
+    stats: Db3sV2SimulationStats,
+    ties: Vec<Db3sV2TieSnapshot>,
+    render_instances: Vec<Db3sV2RenderInstance>,
+    species: Vec<Db3sV2SpeciesDefinition>,
+    mutations_enabled: bool,
+    global_mutation_multiplier: f32,
+    ties_enabled: bool,
+    robot_fixing_allowed: bool,
+    asexual_reproduction_allowed: bool,
+    obstacles: Vec<Db3sV2Obstacle>,
+    teleporters: Vec<Db3sV2Teleporter>,
+    phase_timings: Db3sV2PhaseTimings,
+}
+
+impl From<Db3sV2Snapshot> for Snapshot {
+    fn from(value: Db3sV2Snapshot) -> Self {
+        Self {
+            schema_version: default_snapshot_schema_version(),
+            tick: value.tick,
+            world_size: value.world_size,
+            organisms: value.organisms.into_iter().map(Into::into).collect(),
+            corpses: value.corpses.into_iter().map(Into::into).collect(),
+            shots: value.shots.into_iter().map(Into::into).collect(),
+            history: value.history.into_iter().map(Into::into).collect(),
+            stats: value.stats.into(),
+            ties: value.ties.into_iter().map(Into::into).collect(),
+            render_instances: value.render_instances.into_iter().map(Into::into).collect(),
+            species: value.species.into_iter().map(Into::into).collect(),
+            mutations_enabled: value.mutations_enabled,
+            global_mutation_multiplier: value.global_mutation_multiplier,
+            ties_enabled: value.ties_enabled,
+            robot_fixing_allowed: value.robot_fixing_allowed,
+            asexual_reproduction_allowed: value.asexual_reproduction_allowed,
+            obstacles: value.obstacles.into_iter().map(Into::into).collect(),
+            teleporters: value.teleporters.into_iter().map(Into::into).collect(),
+            phase_timings: value.phase_timings.into(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2ProjectilePool {
+    owners: Vec<Db3sV2OrganismId>,
+    positions: Vec<[f32; 2]>,
+    previous_positions: Vec<[f32; 2]>,
+    velocities: Vec<[f32; 2]>,
+    ages: Vec<u32>,
+    ranges: Vec<u32>,
+    energies: Vec<f32>,
+    kinds: Vec<i32>,
+    values: Vec<i32>,
+    alive: Vec<bool>,
+    impact_flash: Vec<bool>,
+    payloads: Vec<Option<Db3sV2LegacyDna>>,
+    free_slots: Vec<u32>,
+}
+
+impl From<Db3sV2ProjectilePool> for ProjectilePool {
+    fn from(value: Db3sV2ProjectilePool) -> Self {
+        Self::from_legacy_wire_parts(
+            value.owners.into_iter().map(Into::into).collect(),
+            value.positions,
+            value.previous_positions,
+            value.velocities,
+            value.ages,
+            value.ranges,
+            value.energies,
+            value.kinds,
+            value.values,
+            value.alive,
+            value.impact_flash,
+            value
+                .payloads
+                .into_iter()
+                .map(|payload| payload.map(Into::into))
+                .collect(),
+            value.free_slots,
+        )
+    }
+}
+
+#[derive(Deserialize)]
+struct Db3sV2VegetationRuntime {
+    repopulation_counter: u64,
+    day_night_counter: u64,
+}
+
+impl From<Db3sV2VegetationRuntime> for VegetationRuntime {
+    fn from(value: Db3sV2VegetationRuntime) -> Self {
+        Self::from_legacy_wire_parts(value.repopulation_counter, value.day_night_counter)
+    }
 }
 
 #[derive(Deserialize)]
@@ -217,16 +1092,12 @@ struct Db3sV2Slot {
 
 #[derive(Deserialize)]
 struct Db3sV2Organism {
-    dna: LegacyDna,
-    memory: VmMemory,
+    dna: Db3sV2LegacyDna,
+    memory: Db3sV2VmMemory,
     random_state: u64,
-    #[serde(default)]
-    species: SpeciesId,
-    #[serde(default)]
-    parents: [Option<OrganismId>; 2],
-    #[serde(default)]
-    phenotype: VisualPhenotype,
-    #[serde(default)]
+    species: Db3sV2SpeciesId,
+    parents: [Option<Db3sV2OrganismId>; 2],
+    phenotype: Db3sV2VisualPhenotype,
     flags: Db3sV2Flags,
 }
 
@@ -284,20 +1155,18 @@ impl From<Db3sV2Flags> for crate::RobotFlags {
     }
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Deserialize)]
 struct Db3sV2Kinematics {
     positions: Vec<[f32; 2]>,
-    #[serde(default)]
     previous_positions: Vec<[f32; 2]>,
     velocities: Vec<[f32; 2]>,
-    #[serde(default)]
     actual_velocities: Vec<[f32; 2]>,
     pending_velocities: Vec<[f32; 2]>,
     #[serde(rename = "alive")]
     _alive: Vec<bool>,
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Deserialize)]
 struct Db3sV2Lifecycle {
     energies: Vec<i32>,
     ages: Vec<u64>,
@@ -305,15 +1174,11 @@ struct Db3sV2Lifecycle {
 
 #[derive(Deserialize)]
 struct Db3sV2Biology {
-    #[serde(default = "default_db3s_v2_energy")]
     energy: i32,
     body: i32,
-    #[serde(default = "default_db3s_v2_dimension")]
     mass: f32,
-    #[serde(default = "default_db3s_v2_dimension")]
     radius: f32,
     waste: i32,
-    #[serde(default)]
     permanent_waste: i32,
     shell: i32,
     slime: i32,
@@ -326,9 +1191,7 @@ struct Db3sV2Biology {
     paralyzed: i32,
     poisoned: i32,
     previous_energy: i32,
-    #[serde(default)]
     plant_energy_carry_micros: i64,
-    #[serde(default)]
     plant_body_carry_micros: i64,
 }
 
@@ -356,14 +1219,6 @@ impl From<&Db3sV2Biology> for BiologyState {
             plant_body_carry_micros: state.plant_body_carry_micros,
         }
     }
-}
-
-const fn default_db3s_v2_energy() -> i32 {
-    1_000
-}
-
-const fn default_db3s_v2_dimension() -> f32 {
-    1.0
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -508,15 +1363,15 @@ impl Engine {
                     .copied()
                     .unwrap_or(1_000);
                 let mut state = RobotState::new(
-                    organism.dna,
-                    organism.memory,
+                    organism.dna.into(),
+                    organism.memory.into(),
                     organism.random_state,
-                    organism.species,
-                    organism.parents,
+                    organism.species.into(),
+                    organism.parents.map(|parent| parent.map(Into::into)),
                     organism.flags.vegetable,
                     position,
                     materials,
-                    organism.phenotype,
+                    organism.phenotype.into(),
                 );
                 state.flags = organism.flags.into();
                 state.kinematics.previous_position = legacy
@@ -568,35 +1423,43 @@ impl Engine {
             });
         }
         Ok(Self {
-            config: legacy.config,
+            config: legacy.config.into(),
             slots: RobotArena {
                 slots,
                 free_slots: legacy.arena.free_slots,
             },
             tick: legacy.tick,
-            snapshot: legacy.snapshot,
-            stats: legacy.stats,
+            snapshot: legacy.snapshot.into(),
+            stats: legacy.stats.into(),
             capabilities: default_capabilities(),
             physics: RuntimePhysics::default(),
             spatial: SpatialIndex::default(),
             sensing_spatial: SpatialIndex::default(),
-            pending_mutations: legacy.pending_mutations,
-            ties: legacy.ties,
-            species: legacy.species,
-            species_templates: legacy.species_templates,
+            pending_mutations: legacy
+                .pending_mutations
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            ties: legacy.ties.into_iter().map(Into::into).collect(),
+            species: legacy.species.into_iter().map(Into::into).collect(),
+            species_templates: legacy
+                .species_templates
+                .into_iter()
+                .map(|template| template.map(Into::into))
+                .collect(),
             mutations_enabled: legacy.mutations_enabled,
             global_mutation_multiplier: legacy.global_mutation_multiplier,
             ties_enabled: legacy.ties_enabled,
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
             next_lineage_id: legacy.next_lineage_id,
-            obstacles: legacy.obstacles,
-            teleporters: legacy.teleporters,
-            corpses: legacy.corpses,
-            projectiles: legacy.projectiles,
-            vegetation_runtime: legacy.vegetation_runtime,
+            obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
+            teleporters: legacy.teleporters.into_iter().map(Into::into).collect(),
+            corpses: legacy.corpses.into_iter().map(Into::into).collect(),
+            projectiles: legacy.projectiles.into(),
+            vegetation_runtime: legacy.vegetation_runtime.into(),
             pending_projectile_requests: Vec::new(),
-            history: legacy.history,
+            history: legacy.history.into_iter().map(Into::into).collect(),
             phase_timings: PhaseTimings::default(),
             pending_gpu_render_instances: None,
             pending_gpu_collision_pairs: None,
@@ -689,8 +1552,9 @@ impl Engine {
         Ok(engine)
     }
 
-    pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
+    pub fn new(mut config: EngineConfig) -> Result<Self, EngineError> {
         let (capabilities, physics) = select_backend(&config)?;
+        config.force_gpu_runtime_failure_for_tests = false;
         let world_size = [config.world_width, config.world_height];
         Ok(Self {
             config,
@@ -1261,6 +2125,9 @@ impl Engine {
             Err(error) => {
                 if let Some(checkpoint) = checkpoint {
                     self.restore_cycle_checkpoint(checkpoint);
+                    if matches!(error, EngineError::Gpu(_) | EngineError::GpuUnavailable(_)) {
+                        self.recreate_gpu_backend_after_failure(&error)?;
+                    }
                 }
                 Err(error)
             }
@@ -1331,6 +2198,20 @@ impl Engine {
         self.pending_gpu_render_instances = checkpoint.pending_gpu_render_instances;
         self.pending_gpu_collision_pairs = checkpoint.pending_gpu_collision_pairs;
         self.snapshot_publication_count = checkpoint.snapshot_publication_count;
+    }
+
+    fn recreate_gpu_backend_after_failure(
+        &mut self,
+        original_error: &EngineError,
+    ) -> Result<(), EngineError> {
+        let (capabilities, physics) = select_backend(&self.config).map_err(|reset_error| {
+            EngineError::Gpu(format!(
+                "{original_error}; failed to recreate GPU backend: {reset_error}"
+            ))
+        })?;
+        self.capabilities = capabilities;
+        self.physics = physics;
+        Ok(())
     }
 
     fn tick_internal(
@@ -3999,10 +4880,15 @@ fn select_backend(
         GpuPhysicsBackend::new()
     };
     let gpu_error = match gpu {
-        Ok(gpu) if config.backend == BackendPreference::Gpu => return Ok((
-            BackendCapabilities { active: BackendKind::Gpu, gpu_available: true, fallback_reason: None },
-            RuntimePhysics::Gpu(gpu),
-        )),
+        Ok(gpu) if config.backend == BackendPreference::Gpu => {
+            if config.force_gpu_runtime_failure_for_tests {
+                gpu.fail_next_sensing_after_submit_for_tests();
+            }
+            return Ok((
+                BackendCapabilities { active: BackendKind::Gpu, gpu_available: true, fallback_reason: None },
+                RuntimePhysics::Gpu(gpu),
+            ));
+        }
         Ok(_) => return Ok((
             BackendCapabilities {
                 active: BackendKind::Cpu,

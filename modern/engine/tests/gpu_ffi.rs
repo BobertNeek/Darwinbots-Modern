@@ -355,9 +355,6 @@ fn runtime_gpu_failure_is_fatal_when_fallback_is_disabled() {
 
 #[test]
 fn gpu_failure_does_not_partially_advance_the_cycle() {
-    if GpuPhysicsBackend::new().is_err() {
-        return;
-    }
     let mut engine = Engine::new(EngineConfig {
         backend: BackendPreference::Gpu,
         allow_cpu_fallback: false,
@@ -372,16 +369,77 @@ fn gpu_failure_does_not_partially_advance_the_cycle() {
         )
         .unwrap();
     let before = SaveFile::encode(&engine).unwrap();
+    let publications_before = engine.snapshot_publication_count();
 
-    assert!(matches!(
-        engine.tick(),
-        Err(darwinbots_engine::EngineError::Gpu(_))
-    ));
+    let error = engine.tick().unwrap_err();
 
+    assert!(error.to_string().contains("after GPU submission"));
     assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    assert_eq!(engine.snapshot_publication_count(), publications_before);
     assert_eq!(engine.backend(), BackendKind::Gpu);
     assert!(engine.capabilities().gpu_available);
     assert!(engine.capabilities().fallback_reason.is_none());
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.snapshot().tick, 1);
+    assert_eq!(engine.backend(), BackendKind::Gpu);
+}
+
+#[test]
+fn gpu_in_backend_failure_allows_later_tick_with_trace() {
+    let mut engine = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        force_gpu_runtime_failure_for_tests: true,
+        ..EngineConfig::testing()
+    })
+    .expect("the physical GPU is required for Task 6 acceptance");
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+
+    let error = engine.tick_with_trace().unwrap_err();
+
+    assert!(error.to_string().contains("after GPU submission"));
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    let trace = engine.tick_with_trace().unwrap();
+    assert_eq!(trace.tick, 1);
+    assert_eq!(engine.snapshot().tick, 1);
+    assert_eq!(engine.backend(), BackendKind::Gpu);
+}
+
+#[test]
+fn gpu_in_backend_failure_keeps_tick_many_iterations_atomic() {
+    let mut engine = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        force_gpu_runtime_failure_for_tests: true,
+        ..EngineConfig::testing()
+    })
+    .expect("the physical GPU is required for Task 6 acceptance");
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+    let publications_before = engine.snapshot_publication_count();
+
+    let error = engine.tick_many(3).unwrap_err();
+
+    assert!(error.to_string().contains("after GPU submission"));
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    assert_eq!(engine.snapshot_publication_count(), publications_before);
+    engine.tick_many(3).unwrap();
+    assert_eq!(engine.snapshot().tick, 3);
+    assert_eq!(engine.snapshot_publication_count(), publications_before + 1);
+    assert_eq!(engine.backend(), BackendKind::Gpu);
 }
 
 #[test]

@@ -29,6 +29,16 @@ pub(crate) struct VegetationRuntime {
 }
 
 impl VegetationRuntime {
+    pub(crate) const fn from_legacy_wire_parts(
+        repopulation_counter: u64,
+        day_night_counter: u64,
+    ) -> Self {
+        Self {
+            repopulation_counter,
+            day_night_counter,
+        }
+    }
+
     pub(crate) fn feed(&self, input: PlantLightInput) -> PlantFeeding {
         let availability = (input.total_robot_area / input.usable_world_area.max(1.0))
             .clamp(0.0, 1.0);

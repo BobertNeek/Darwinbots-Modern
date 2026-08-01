@@ -226,6 +226,7 @@ pub struct GpuPhysicsBackend {
     grid_prefix_pipeline: wgpu::ComputePipeline,
     grid_scatter_pipeline: wgpu::ComputePipeline,
     sensing_buffers: std::sync::Mutex<Option<GpuSensingBuffers>>,
+    fail_next_sensing_after_submit_for_tests: std::sync::atomic::AtomicBool,
 }
 
 impl GpuPhysicsBackend {
@@ -378,7 +379,13 @@ impl GpuPhysicsBackend {
             grid_prefix_pipeline,
             grid_scatter_pipeline,
             sensing_buffers: std::sync::Mutex::new(None),
+            fail_next_sensing_after_submit_for_tests: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+
+    pub(crate) fn fail_next_sensing_after_submit_for_tests(&self) {
+        self.fail_next_sensing_after_submit_for_tests
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn sense_nearest(
@@ -589,6 +596,14 @@ impl GpuPhysicsBackend {
         let slice = buffers.readback.slice(..output_size);
         let (sender, receiver) = mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| { let _ = sender.send(result); });
+        if self
+            .fail_next_sensing_after_submit_for_tests
+            .swap(false, std::sync::atomic::Ordering::SeqCst)
+        {
+            return Err(EngineError::Gpu(
+                "forced runtime failure after GPU submission and mapping began".to_owned(),
+            ));
+        }
         self.device.poll(wgpu::PollType::wait_indefinitely())
             .map_err(|error| EngineError::Gpu(error.to_string()))?;
         receiver.recv().map_err(|error| EngineError::Gpu(error.to_string()))?

@@ -210,36 +210,115 @@ fn save_round_trip_preserves_pre_refactor_robot_state_fields() {
 #[test]
 fn db3s_v2_migrates_every_existing_robot_field() {
     let fixture = include_bytes!("fixtures/db3s_v2_phase1.bin");
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let mut species = SpeciesDefinition::default();
-    species.name = "db3s-v2-fixture".to_owned();
-    species.vegetable = true;
-    let species = engine.register_species(species);
-    let id = engine
-        .spawn_species_at(
-            LegacyDna::parse("start\n17 .up store\nstop").unwrap(),
-            species,
-            [321.0, 654.0],
-        )
-        .unwrap();
-    let before = engine.robot_state(id).unwrap().clone();
+    assert_eq!(u16::from_le_bytes([fixture[4], fixture[5]]), 2);
 
     let restored = SaveFile::decode(fixture).unwrap();
+    assert_eq!(restored.snapshot().tick, 42);
+    assert_eq!(restored.snapshot().world_size, [2222.0, 1111.0]);
+    let id = restored.snapshot().organisms[0].id;
     let after = restored.robot_state(id).unwrap();
-    assert_eq!(after.identity.species, before.identity.species);
-    assert_eq!(after.identity.parents, before.identity.parents);
-    assert_eq!(after.flags, before.flags);
-    assert_eq!(after.kinematics, before.kinematics);
-    assert_eq!(after.materials, before.materials);
-    assert_eq!(after.counters.age, before.counters.age);
-    assert_eq!(after.program.dna, before.program.dna);
-    assert_eq!(after.program.memory, before.program.memory);
-    assert_eq!(after.program.rng_state, before.program.rng_state);
+    assert_eq!(after.identity.species, darwinbots_engine::SpeciesId(1));
+    assert_eq!(after.identity.parents, [None, None]);
+    assert!(after.flags.exists);
+    assert!(after.flags.vegetable);
+    assert!(after.flags.fixed);
+    assert!(!after.flags.can_see);
+    assert!(!after.flags.can_move);
+    assert!(!after.flags.can_mutate);
+    assert!(!after.flags.can_receive_viruses);
+    assert_eq!(after.kinematics.position, [321.0, 654.0]);
+    assert_eq!(after.kinematics.previous_position, [320.0, 650.0]);
+    assert_eq!(after.kinematics.velocity, [1.5, -2.5]);
+    assert_eq!(after.kinematics.actual_velocity, [1.25, -2.25]);
+    assert_eq!(after.kinematics.pending_velocity, [3.5, -4.5]);
+    assert_eq!(after.materials.energy, 1234);
+    assert_eq!(after.materials.body, 876);
+    assert_eq!(after.materials.mass, 9.5);
+    assert_eq!(after.materials.radius, 8.5);
+    assert_eq!(after.materials.waste, 76);
+    assert_eq!(after.materials.permanent_waste, 65);
+    assert_eq!(after.materials.shell, 54);
+    assert_eq!(after.materials.slime, 43);
+    assert_eq!(after.materials.venom, 32);
+    assert_eq!(after.materials.poison, 21);
+    assert_eq!(after.materials.chloroplasts, 12345);
+    assert_eq!(after.materials.aim, 678);
+    assert_eq!(after.materials.pain, 17);
+    assert_eq!(after.materials.pleasure, 18);
+    assert_eq!(after.materials.paralyzed, 19);
+    assert_eq!(after.materials.poisoned, 20);
+    assert_eq!(after.counters.age, 12);
+    assert_eq!(after.program.memory.read(50), 4321);
+    assert_eq!(after.program.rng_state, 987654321);
+    assert!(after.program.dna.uses_new_move());
+    assert_eq!(after.program.dna.user_variable("fixturevar"), Some(777));
     assert_eq!(
-        after.effects.forced_reproduction,
-        before.effects.forced_reproduction
+        after.program.dna.compatibility_warnings(),
+        ["frozen v2 warning"]
     );
-    assert_eq!(after.phenotype, before.phenotype);
+    assert_eq!(after.program.dna.metadata().generation, 4);
+    assert_eq!(after.program.dna.metadata().mutations, 5);
+    assert_eq!(after.program.dna.metadata().tag, "frozen-v2");
+    assert_eq!(
+        after.program.dna.metadata().legacy_hash.as_deref(),
+        Some("legacy-v2-hash")
+    );
+    assert!(!after.program.dna.metadata().hash_valid);
+    assert!(after.effects.forced_reproduction);
+    assert_eq!(after.phenotype.lineage_id, 22);
+    assert_eq!(after.phenotype.color, 4281558681);
+    assert_eq!(after.phenotype.accumulated_mutations, 6);
+
+    let snapshot = restored.snapshot();
+    assert_eq!(snapshot.stats.completed_cycles, 42);
+    assert_eq!(snapshot.stats.projectile_effects, 5);
+    assert_eq!(snapshot.stats.intentional_movement_events, 15);
+    assert_eq!(snapshot.ties.len(), 1);
+    assert_eq!(snapshot.ties[0].rest_length, 45.5);
+    assert_eq!(snapshot.species[1].minimum_population, 2);
+    assert_eq!(snapshot.species[1].mutation_rate, 1.75);
+    assert!(!snapshot.mutations_enabled);
+    assert_eq!(snapshot.global_mutation_multiplier, 2.5);
+    assert!(!snapshot.ties_enabled);
+    assert!(!snapshot.robot_fixing_allowed);
+    assert!(!snapshot.asexual_reproduction_allowed);
+    assert_eq!(snapshot.obstacles[0].id, 31);
+    assert_eq!(snapshot.teleporters[0].id, 32);
+    assert_eq!(snapshot.corpses[0].age, 111);
+    assert_eq!(snapshot.shots[0].value, 444);
+    assert_eq!(snapshot.history[0].tick, 40);
+
+    let migrated = SaveFile::encode(&restored).unwrap();
+    let payload: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();
+    assert_eq!(payload["config"]["seed"], 77);
+    assert_eq!(payload["config"]["physics"]["max_velocity"], 99.0);
+    assert_eq!(payload["config"]["shots"]["speed"], 55.0);
+    assert_eq!(payload["config"]["vegetation"]["cycle_length"], 88);
+    assert_eq!(payload["config"]["dna_costs"]["global_multiplier"], 11.0);
+    assert_eq!(payload["slots"][1]["generation"], 9);
+    assert_eq!(
+        payload["slots"][0]["organism"]["materials"]["previous_energy"],
+        1222
+    );
+    assert_eq!(
+        payload["slots"][0]["organism"]["materials"]["plant_energy_carry_micros"],
+        111
+    );
+    assert_eq!(
+        payload["slots"][0]["organism"]["materials"]["plant_body_carry_micros"],
+        222
+    );
+    assert_eq!(payload["free_slots"], serde_json::json!([1]));
+    assert_eq!(
+        payload["pending_mutations"],
+        serde_json::json!([{"slot": 0, "generation": 0}])
+    );
+    assert_eq!(payload["species_templates"][1]["initial_energy"], 2222);
+    assert_eq!(payload["next_lineage_id"], 44);
+    assert_eq!(payload["projectiles"]["ages"], serde_json::json!([2, 0]));
+    assert_eq!(payload["projectiles"]["free_slots"], serde_json::json!([1]));
+    assert_eq!(payload["vegetation_runtime"]["repopulation_counter"], 16);
+    assert_eq!(payload["vegetation_runtime"]["day_night_counter"], 17);
 }
 
 #[test]
