@@ -22,7 +22,7 @@ fn ties_share_resources_transfer_memory_and_publish_multibot_state() {
     let source_before = engine.organism(source).unwrap();
     let target_before = engine.organism(target).unwrap();
     engine.replace_dna(source, LegacyDna::parse(
-        "start\n50 .sharenrg store\n50 .shareshell store\n50 .shareslime store\n50 .sharewaste store\n900 .tieloc store\n123 .tieval store\nstop",
+        "start\n50 .sharenrg store\n50 .shareshell store\n50 .shareslime store\n50 .sharewaste store\n1 .tienum store\n500 .tieloc store\n123 .tieval store\nstop",
     ).unwrap()).unwrap();
 
     engine.tick().unwrap();
@@ -36,7 +36,7 @@ fn ties_share_resources_transfer_memory_and_publish_multibot_state() {
     assert_eq!(source_after.slime, 20);
     assert_eq!(target_after.slime, 20);
     assert!(target_after.waste > target_before.waste);
-    assert_eq!(engine.memory_at(target, 900).unwrap(), 123);
+    assert_eq!(engine.memory_at(target, 500).unwrap(), 123);
     assert_eq!(engine.memory(source, "multi").unwrap(), 1);
     assert_eq!(engine.memory(target, "multi").unwrap(), 1);
     assert_eq!(engine.memory(source, "numties").unwrap(), 1);

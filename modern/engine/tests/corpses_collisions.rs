@@ -57,7 +57,7 @@ fn feeding_shots_harvest_energy_from_nearby_corpses() {
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let predator = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
     engine
-        .spawn_species_batch(idle, SpeciesId::default(), [[120.0, 100.0]], 1)
+        .spawn_species_batch(idle, SpeciesId::default(), [[350.0, 100.0]], 1)
         .unwrap();
     engine.tick().unwrap();
     let corpse_energy = engine.snapshot().corpses[0].energy;
@@ -69,6 +69,7 @@ fn feeding_shots_harvest_energy_from_nearby_corpses() {
         )
         .unwrap();
 
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert!(engine.snapshot().corpses[0].energy < corpse_energy);

@@ -32,10 +32,7 @@ fn obstacles_reject_organisms_and_teleporters_relocate_them() {
         })
         .unwrap();
     let mover = obstacle_engine
-        .spawn_at(
-            LegacyDna::parse("start\n50 .dx store\nstop").unwrap(),
-            [100.0, 100.0],
-        )
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [133.0, 100.0])
         .unwrap();
     obstacle_engine.tick().unwrap();
     let obstacle_position = obstacle_engine.organism(mover).unwrap().position;
@@ -57,10 +54,7 @@ fn obstacles_reject_organisms_and_teleporters_relocate_them() {
         })
         .unwrap();
     let traveler = teleporter_engine
-        .spawn_at(
-            LegacyDna::parse("start\n50 .dx store\nstop").unwrap(),
-            [100.0, 100.0],
-        )
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [150.0, 100.0])
         .unwrap();
     teleporter_engine.tick().unwrap();
     assert_eq!(

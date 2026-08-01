@@ -26,6 +26,7 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
         .unwrap();
 
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     let shot = &engine.snapshot().shots[0];
     assert_eq!(shot.owner, attacker);
@@ -44,13 +45,20 @@ fn shot_velocity_inherits_the_firers_actual_velocity() {
         ..EngineConfig::testing()
     })
     .unwrap();
-    engine
+    let attacker = engine
         .spawn_at(
-            LegacyDna::parse("start\n10 .dx store\n-1 .shoot store\nstop").unwrap(),
+            LegacyDna::parse("start\n10 .dx store\nstop").unwrap(),
             [100.0, 100.0],
         )
         .unwrap();
 
+    engine.tick().unwrap();
+    engine
+        .replace_dna(
+            attacker,
+            LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
+        )
+        .unwrap();
     engine.tick().unwrap();
 
     let shot = &engine.snapshot().shots[0];
@@ -108,6 +116,7 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
     let before = engine.organism(target).unwrap().energy;
 
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     assert!(engine.organism(target).unwrap().energy < before);
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
@@ -141,11 +150,12 @@ fn lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis() {
         .spawn_species_batch(
             LegacyDna::parse("start\nstop").unwrap(),
             vegetables,
-            [[518.0, 100.0]],
+            [[350.0, 100.0]],
             1,
         )
         .unwrap()[0];
 
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert!(engine.organism(target).is_err());
@@ -201,6 +211,7 @@ fn positive_memory_shot_writes_the_target_address() {
         .unwrap();
 
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     assert_eq!(engine.memory_at(target, 500).unwrap(), 37);
 }
@@ -219,8 +230,8 @@ fn obstacle_intercepts_projectile_before_target() {
     engine
         .add_obstacle(Obstacle {
             id: 1,
-            minimum: [230.0, 90.0],
-            maximum: [240.0, 110.0],
+            minimum: [220.0, 100.0],
+            maximum: [230.0, 120.0],
         })
         .unwrap();
     engine
@@ -234,6 +245,7 @@ fn obstacle_intercepts_projectile_before_target() {
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
 
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.organism(target).unwrap().energy, before);
@@ -257,6 +269,7 @@ fn virus_shot_transfers_the_firers_dna() {
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
 
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.dna(target).unwrap(), engine.dna(owner).unwrap());
@@ -283,6 +296,7 @@ fn sperm_shot_forces_target_reproduction() {
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
 
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.population(), 3);

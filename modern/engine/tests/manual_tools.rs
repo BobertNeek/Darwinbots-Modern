@@ -57,8 +57,9 @@ fn move_clone_and_replace_dna_preserve_stable_world_state() {
 #[test]
 fn manual_two_parent_reproduction_records_parentage() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let left_dna = LegacyDna::parse("start\n10 .up store\nstop").unwrap();
-    let right_dna = LegacyDna::parse("start\n20 .dx store\nstop").unwrap();
+    let left_dna = LegacyDna::parse("start\n10 .up store\n20 .dx store\nstop").unwrap();
+    let right_dna = LegacyDna::parse("start\n30 .sx store\n40 .down store\nstop").unwrap();
+    let expected_child = LegacyDna::parse("start\n10 .up store\n20\n40 .down store\nstop").unwrap();
     let left = engine.spawn_at(left_dna, [100.0, 100.0]).unwrap();
     let right = engine.spawn_at(right_dna, [200.0, 100.0]).unwrap();
 
@@ -74,6 +75,7 @@ fn manual_two_parent_reproduction_records_parentage() {
         .unwrap();
     assert_eq!(snapshot.parents, [Some(left), Some(right)]);
     assert_eq!(engine.snapshot().stats.births, 1);
+    assert_eq!(engine.dna(child).unwrap(), &expected_child);
     assert_ne!(engine.dna(child).unwrap(), engine.dna(left).unwrap());
     assert_ne!(engine.dna(child).unwrap(), engine.dna(right).unwrap());
 }

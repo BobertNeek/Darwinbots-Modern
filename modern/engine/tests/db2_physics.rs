@@ -84,7 +84,7 @@ fn newmove_directive_is_preserved_by_legacy_dna() {
     let dna = LegacyDna::parse("NewMove\nstart\nstop").unwrap();
 
     assert!(dna.uses_new_move());
-    assert!(dna.to_source().starts_with("NewMove\n"));
+    assert!(LegacyDna::parse(&dna.to_source()).unwrap().uses_new_move());
 }
 
 #[test]

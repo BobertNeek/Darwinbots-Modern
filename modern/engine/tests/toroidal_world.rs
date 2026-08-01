@@ -48,6 +48,7 @@ fn projectile_wrap_preserves_its_travel_segment() {
         .unwrap();
 
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     let shot = &engine.snapshot().shots[0];
     let segment_length = (shot.end[0] - shot.start[0]).hypot(shot.end[1] - shot.start[1]);

@@ -13,6 +13,7 @@ fn progression_counters_distinguish_evolved_behavior_from_forced_assistance() {
         .spawn_at(LegacyDna::parse("0 0 0 0 0").unwrap(), [350.0, 100.0])
         .unwrap();
     forced.tick().unwrap();
+    forced.tick().unwrap();
     assert_eq!(forced.snapshot().stats.births, 1);
     assert_eq!(forced.snapshot().stats.self_reproductions, 0);
 
@@ -37,6 +38,7 @@ fn progression_counters_distinguish_evolved_behavior_from_forced_assistance() {
     behavior
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
+    behavior.tick().unwrap();
     behavior.tick().unwrap();
     assert!(behavior.snapshot().stats.feeding_events > 0);
     assert!(behavior.snapshot().stats.intentional_movement_events > 0);

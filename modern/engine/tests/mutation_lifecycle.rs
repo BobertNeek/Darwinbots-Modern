@@ -196,6 +196,7 @@ fn depleted_organisms_die_and_increment_death_statistics() {
     let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     assert!(engine.organism(target).is_err());
     assert_eq!(engine.snapshot().stats.deaths, 1);

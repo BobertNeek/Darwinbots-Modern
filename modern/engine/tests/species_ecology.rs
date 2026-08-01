@@ -61,6 +61,7 @@ fn negative_shots_feed_the_attacker_from_the_target() {
     engine.spawn_at(prey, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     assert!(engine.organism(attacker).unwrap().energy > 1_000);
     assert_eq!(engine.snapshot().stats.energy_harvested, 75);
@@ -179,9 +180,13 @@ fn aim_rotates_forward_movement() {
     let mut config = EngineConfig::testing();
     config.physics.density = 0.0;
     let mut engine = Engine::new(config).unwrap();
-    let dna = LegacyDna::parse("start\n314 .setaim store\n10 .up store\nstop").unwrap();
-    let id = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
+    let aim = LegacyDna::parse("start\n314 .setaim store\nstop").unwrap();
+    let id = engine.spawn_at(aim, [500.0, 500.0]).unwrap();
 
+    engine.tick().unwrap();
+    engine
+        .replace_dna(id, LegacyDna::parse("start\n10 .up store\nstop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
 
     let position = engine.organism(id).unwrap().position;
@@ -217,6 +222,7 @@ fn feeding_shots_without_shootval_use_legacy_body_based_strength() {
     let attacker = engine.spawn_at(predator, [100.0, 100.0]).unwrap();
     engine.spawn_at(prey, [350.0, 100.0]).unwrap();
 
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.snapshot().stats.energy_harvested, 165);
@@ -330,6 +336,7 @@ fn minus_two_shots_donate_energy_to_zerobots() {
     let target = engine.spawn_at(zerobot, [350.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     assert_eq!(engine.organism(source).unwrap().energy, 950);
     assert!(engine.organism(target).unwrap().energy > 1_000);
@@ -344,6 +351,7 @@ fn shot_302_forces_target_reproduction_for_zerobot_feeding() {
     engine.spawn_at(feeder, [100.0, 100.0]).unwrap();
     engine.spawn_at(zerobot, [350.0, 100.0]).unwrap();
 
+    engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.population(), 3);
