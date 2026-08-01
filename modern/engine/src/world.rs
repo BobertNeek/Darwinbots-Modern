@@ -827,25 +827,20 @@ impl Engine {
         self.capture_previous_positions();
 
         trace.phase(CyclePhase::RobotPipeline);
-        for phase in [
-            CyclePhase::TeleporterTest,
-            CyclePhase::FluidMass,
-            CyclePhase::Tide,
-        ] {
-            self.trace_robot_phase(&mut trace, phase);
-        }
+        self.trace_robot_phase(&mut trace, CyclePhase::TeleporterTest);
+        self.apply_environment_features(false, true);
+        self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
+        self.trace_robot_phase(&mut trace, CyclePhase::Tide);
         self.trace_robot_phase(&mut trace, CyclePhase::Upkeep);
         self.upkeep_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::PoisonVenom);
         self.poison_venom_phase();
-        for phase in [
-            CyclePhase::FixPosition,
-            CyclePhase::Mass,
-            CyclePhase::ObstaclesBorders,
-            CyclePhase::TieSpring,
-        ] {
-            self.trace_robot_phase(&mut trace, phase);
-        }
+        self.trace_robot_phase(&mut trace, CyclePhase::FixPosition);
+        self.trace_robot_phase(&mut trace, CyclePhase::Mass);
+        self.trace_robot_phase(&mut trace, CyclePhase::ObstaclesBorders);
+        self.apply_environment_features(true, false);
+        self.trace_robot_phase(&mut trace, CyclePhase::TieSpring);
+        self.apply_tie_constraints();
 
         self.trace_robot_phase(&mut trace, CyclePhase::Movement);
         let started = Instant::now();
@@ -853,10 +848,13 @@ impl Engine {
         self.intent_phase();
         self.phase_timings.intent = elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::RobotCollisions);
+        let started = Instant::now();
+        self.spatial_index_phase();
+        self.apply_organism_collisions();
+        self.phase_timings.spatial = elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::StaticFriction);
         self.trace_robot_phase(&mut trace, CyclePhase::TieData);
         let started = Instant::now();
-        self.spatial_index_phase();
         self.tie_data_phase(&mut trace);
         self.phase_timings.interactions = elapsed_ms(started);
 
@@ -925,7 +923,6 @@ impl Engine {
         trace.phase(CyclePhase::ActualVelocity);
         self.record_actual_velocities();
         trace.phase(CyclePhase::ObjectsTeleporters);
-        self.apply_environment_features();
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
         self.vegetation_repopulation_phase()?;
@@ -1248,6 +1245,9 @@ impl Engine {
             let Some(organism) = &mut self.slots[slot_index].organism else {
                 continue;
             };
+            if organism.flags.corpse || !organism.flags.can_execute_dna {
+                continue;
+            }
             trace.visit(
                 CyclePhase::Dna,
                 OrganismId::new(slot_index as u32, generation),
@@ -2198,8 +2198,6 @@ impl Engine {
             }
         }
         self.slots.apply_physics_batch(keyed_batch)?;
-        self.apply_tie_constraints();
-        self.apply_organism_collisions();
         Ok(())
     }
 
@@ -2614,7 +2612,7 @@ impl Engine {
         }
     }
 
-    fn apply_environment_features(&mut self) {
+    fn apply_environment_features(&mut self, obstacles: bool, teleporters: bool) {
         let mut positions: Vec<_> = self
             .slots
             .iter()
@@ -2642,8 +2640,8 @@ impl Engine {
             &mut positions,
             &mut velocities,
             &alive,
-            &self.obstacles,
-            &self.teleporters,
+            if obstacles { &self.obstacles } else { &[] },
+            if teleporters { &self.teleporters } else { &[] },
             [self.config.world_width, self.config.world_height],
         );
         for (slot, (position, velocity)) in self

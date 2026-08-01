@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     CycleEvent, CyclePhase, CycleTrace, Engine, EngineConfig, LegacyDna, OrganismId,
-    QueueChangeKind, SpeciesId,
+    QueueChangeKind, SaveFile, SpeciesId, Teleporter,
 };
 
 const CANONICAL_PHASES: &str = include_str!("fixtures/db24832/canonical_cycle_phases.json");
@@ -72,6 +72,40 @@ fn dna_and_observable_robot_visits_use_ascending_slot_order() {
         visits(&trace, CyclePhase::Senses),
         vec![first, reused, third]
     );
+}
+
+#[test]
+fn dna_skips_corpse_and_dna_disabled_robots() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let active = engine
+        .spawn(LegacyDna::parse("start\n11 50 store\nstop").unwrap())
+        .unwrap();
+    let corpse = engine
+        .spawn(LegacyDna::parse("start\n22 50 store\nstop").unwrap())
+        .unwrap();
+    let dna_disabled = engine
+        .spawn(LegacyDna::parse("start\n33 50 store\nstop").unwrap())
+        .unwrap();
+
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let slots = payload["slots"].as_array_mut().unwrap();
+    slots[corpse.slot() as usize]["organism"]["flags"]["corpse"] = true.into();
+    slots[dna_disabled.slot() as usize]["organism"]["flags"]["can_execute_dna"] = false.into();
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(b"DB3S");
+    save.extend_from_slice(&2u16.to_le_bytes());
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    let mut engine = SaveFile::decode(&save).unwrap();
+
+    let trace = engine.tick_with_trace().unwrap();
+
+    assert_eq!(visits(&trace, CyclePhase::Dna), vec![active]);
+    assert_eq!(engine.memory_at(active, 50).unwrap(), 11);
+    assert_eq!(engine.memory_at(corpse, 50).unwrap(), 0);
+    assert_eq!(engine.memory_at(dna_disabled, 50).unwrap(), 0);
 }
 
 #[test]
@@ -221,6 +255,49 @@ fn a_new_tie_exchanges_resources_only_from_the_following_cycle() {
 }
 
 #[test]
+fn deleting_tie_still_applies_first_pass_spring_before_second_pass_delete() {
+    let mut engine = Engine::new(EngineConfig {
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().ties.len(), 1);
+
+    let mut batch = engine.physics_batch();
+    let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+    batch.batch.positions[target_index] = [800.0, 100.0];
+    batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(batch).unwrap();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n1 .deltie store\nstop").unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let source_position = engine.organism(source).unwrap().position;
+    let target_position = engine.organism(target).unwrap().position;
+    let separation = (target_position[0] - source_position[0]).abs();
+    assert!(
+        separation < 700.0,
+        "tie deletion suppressed the first-pass spring: source={source_position:?}, target={target_position:?}"
+    );
+    assert!(engine.snapshot().ties.is_empty());
+}
+
+#[test]
 fn tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let source = engine
@@ -323,6 +400,61 @@ fn shot_effect_occurs_after_dna_and_before_robot_passes() {
     assert!(phase_index(&second, CyclePhase::Dna) < effect);
     assert!(effect < phase_index(&second, CyclePhase::RobotPipeline));
     assert!(engine.organism(target).unwrap().energy < before);
+}
+
+#[test]
+fn teleporter_relocation_precedes_same_cycle_senses() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .add_teleporter(Teleporter {
+            id: 1,
+            center: [100.0, 100.0],
+            radius: 50.0,
+            destination: [800.0, 700.0],
+        })
+        .unwrap();
+    let traveler = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.organism(traveler).unwrap().position, [800.0, 700.0]);
+    assert_eq!(engine.memory(traveler, "xpos").unwrap(), 800);
+    assert_eq!(engine.memory(traveler, "ypos").unwrap(), 700);
+
+    let mut birth_engine = Engine::new(EngineConfig::testing()).unwrap();
+    birth_engine
+        .add_teleporter(Teleporter {
+            id: 2,
+            center: [500.0, 500.0],
+            radius: 50.0,
+            destination: [800.0, 700.0],
+        })
+        .unwrap();
+    let parent = birth_engine
+        .spawn_at(
+            LegacyDna::parse("start\n50 .repro store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+
+    birth_engine.tick().unwrap();
+
+    let child = birth_engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.id != parent)
+        .unwrap();
+    let child_offset = [child.position[0] - 800.0, child.position[1] - 700.0];
+    let child_distance =
+        (child_offset[0] * child_offset[0] + child_offset[1] * child_offset[1]).sqrt();
+    assert!(
+        child_distance >= 12.0,
+        "deferred newborn unexpectedly received the earlier teleporter pass: {:?}",
+        child.position
+    );
 }
 
 #[test]
