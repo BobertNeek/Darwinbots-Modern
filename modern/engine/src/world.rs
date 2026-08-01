@@ -1523,7 +1523,7 @@ impl Engine {
                 else {
                     unreachable!("shot phase must return shot commands")
                 };
-                for address in [330, 452, 453, 455, 467, 468, 830, 831, 832, 833, 924] {
+                for address in [330, 455, 467, 468, 830, 831, 832, 833, 924] {
                     runtime.finish_command(
                         address,
                         CommandOutcome::Consumed,
@@ -1700,9 +1700,17 @@ impl Engine {
         }
         let mut channels = Vec::new();
         for tie in &self.ties {
-            for (source_slot, target_slot) in [
-                (tie.first.slot() as usize, tie.second.slot() as usize),
-                (tie.second.slot() as usize, tie.first.slot() as usize),
+            for (source_slot, target_slot, source_port) in [
+                (
+                    tie.first.slot() as usize,
+                    tie.second.slot() as usize,
+                    tie.first_port,
+                ),
+                (
+                    tie.second.slot() as usize,
+                    tie.first.slot() as usize,
+                    tie.second_port,
+                ),
             ] {
                 let Some(_source) = self.slots[source_slot].organism.as_ref() else {
                     continue;
@@ -1718,12 +1726,26 @@ impl Engine {
                     commands.share_shell.clamp(0, 99),
                     commands.share_slime.clamp(0, 99),
                     commands.share_chloroplasts.clamp(0, 99),
+                    source_port,
+                    commands.number,
                     commands.location,
                     commands.value,
                 ));
             }
         }
-        for (source, target, energy, waste, shell, slime, chloroplasts, location, value) in channels
+        for (
+            source,
+            target,
+            energy,
+            waste,
+            shell,
+            slime,
+            chloroplasts,
+            source_port,
+            selected_port,
+            location,
+            value,
+        ) in channels
         {
             transfer_robot_percent(&mut self.slots, source, target, energy, |robot| {
                 &mut robot.materials.energy
@@ -1740,7 +1762,8 @@ impl Engine {
             transfer_robot_percent(&mut self.slots, source, target, chloroplasts, |robot| {
                 &mut robot.materials.chloroplasts
             });
-            if location != 0 {
+            if selected_port != 0 && source_port == selected_port && (1..=1_000).contains(&location)
+            {
                 self.slots[target]
                     .organism
                     .as_mut()
@@ -1762,6 +1785,10 @@ impl Engine {
                     .program
                     .memory
                     .write(MEM_TIE_MEMORY_VALUE, value);
+                let source_memory =
+                    &mut self.slots[source].organism.as_mut().unwrap().program.memory;
+                runtime.finish_command(452, CommandOutcome::Consumed, source_memory);
+                runtime.finish_command(453, CommandOutcome::Consumed, source_memory);
             }
         }
     }

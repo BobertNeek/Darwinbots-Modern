@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use darwinbots_engine::{
-    CommandOutcome, CyclePhase, Engine, EngineConfig, LegacyDna, PhaseCommands, PhaseReadbacks,
-    SysvarRole, SysvarRuntime, TieCommands, VirusCommands, VisionReadbacks, VmMemory,
-    sysvar_address,
+    CommandOutcome, CyclePhase, Engine, EngineConfig, LegacyDna, OrganismId, PhaseCommands,
+    PhaseReadbacks, SysvarRole, SysvarRuntime, TieCommands, VirusCommands, VisionReadbacks,
+    VmMemory, sysvar_address,
 };
 
 const CANONICAL_SYSVARS: &str = include_str!("../src/db2_sysvars_248.txt");
@@ -404,4 +404,118 @@ fn engine_tick_preserves_tied_references_only_for_a_valid_selected_port() {
             "address {address}"
         );
     }
+}
+
+fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId) {
+    let mut engine = testing_engine();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let port_41_partner = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [110.0, 100.0])
+        .unwrap();
+    let port_77_partner = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [140.0, 100.0])
+        .unwrap();
+    engine.tick().unwrap();
+
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n77 .tie store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine
+        .move_organism(port_77_partner, [101.0, 100.0])
+        .unwrap();
+    engine.tick().unwrap();
+
+    (engine, source, port_41_partner, port_77_partner)
+}
+
+#[test]
+fn engine_tick_routes_tie_memory_only_through_the_selected_local_port() {
+    let (mut engine, source, port_41_partner, port_77_partner) = engine_with_two_source_ties();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n77 .tienum store\n50 .tieloc store\n1234 .tieval store\nstop")
+                .unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory_at(port_41_partner, 50).unwrap(), 0);
+    assert_eq!(engine.memory_at(port_77_partner, 50).unwrap(), 1_234);
+}
+
+#[test]
+fn engine_tick_keeps_tie_memory_pending_without_a_valid_selected_port() {
+    let (mut engine, source, port_41_partner, port_77_partner) = engine_with_two_source_ties();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse(
+                "start\n999 .tienum store\n60 .tieloc store\n2001 .tieval store\nstop",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(source, "tieloc").unwrap(), 60);
+    assert_eq!(engine.memory(source, "tieval").unwrap(), 2_001);
+    assert_eq!(engine.memory_at(port_41_partner, 60).unwrap(), 0);
+    assert_eq!(engine.memory_at(port_77_partner, 60).unwrap(), 0);
+
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n61 .tieloc store\n2002 .tieval store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(source, "tieloc").unwrap(), 61);
+    assert_eq!(engine.memory(source, "tieval").unwrap(), 2_002);
+    assert_eq!(engine.memory_at(port_41_partner, 61).unwrap(), 0);
+    assert_eq!(engine.memory_at(port_77_partner, 61).unwrap(), 0);
+
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse(
+                "start\n41 .tienum store\n1001 .tieloc store\n2003 .tieval store\nstop",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(source, "tieloc").unwrap(), 1_001);
+    assert_eq!(engine.memory(source, "tieval").unwrap(), 2_003);
+}
+
+#[test]
+fn engine_tick_resets_tie_memory_only_after_a_valid_selected_write() {
+    let (mut engine, source, _, port_77_partner) = engine_with_two_source_ties();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n77 .tienum store\n62 .tieloc store\n2004 .tieval store\nstop")
+                .unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory_at(port_77_partner, 62).unwrap(), 2_004);
+    assert_eq!(engine.memory(source, "tieloc").unwrap(), 0);
+    assert_eq!(engine.memory(source, "tieval").unwrap(), 0);
+    assert_eq!(engine.memory(source, "tienum").unwrap(), 0);
 }
