@@ -4138,9 +4138,7 @@ impl Engine {
                 match effect {
                     ProjectileEffect::ReleaseEnergy => {
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        let absorbed = power.min(target_robot.materials.shell.max(0));
-                        target_robot.materials.shell -= absorbed;
-                        let applied = (power - absorbed).min(target_robot.materials.energy.max(0));
+                        let applied = power.min(target_robot.materials.energy.max(0));
                         target_robot.materials.energy =
                             target_robot.materials.energy.saturating_sub(applied);
                         if owner_is_live {
@@ -4155,7 +4153,7 @@ impl Engine {
                                     self.stats.feeding_events.saturating_add(1);
                             }
                         }
-                        applied > 0 || absorbed > 0
+                        applied > 0
                     }
                     ProjectileEffect::DonateEnergy => {
                         if !owner_is_live {
@@ -4217,7 +4215,9 @@ impl Engine {
                     }
                     ProjectileEffect::ReleaseBody => {
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        let applied = power.min(target_robot.materials.body.max(0));
+                        let absorbed = power.min(target_robot.materials.shell.max(0));
+                        target_robot.materials.shell -= absorbed;
+                        let applied = (power - absorbed).min(target_robot.materials.body.max(0));
                         target_robot.materials.body -= applied;
                         if owner_is_live {
                             let harvested = applied.saturating_mul(3) / 4;
@@ -4227,7 +4227,7 @@ impl Engine {
                             self.stats.energy_harvested =
                                 self.stats.energy_harvested.saturating_add(harvested as u64);
                         }
-                        applied > 0
+                        applied > 0 || absorbed > 0
                     }
                     ProjectileEffect::AddGene => {
                         let Some(dna) = payload else { return false };

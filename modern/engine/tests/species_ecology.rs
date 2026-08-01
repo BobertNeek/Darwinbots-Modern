@@ -359,31 +359,80 @@ fn shot_302_forces_target_reproduction_for_zerobot_feeding() {
 }
 
 #[test]
-fn shell_absorbs_feeding_damage_before_energy_is_lost() {
+fn feeding_energy_shots_ignore_shell() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
     let target = engine
         .spawn_at(
             LegacyDna::parse("start\n100 .mkshell store\nstop").unwrap(),
-            [120.0, 100.0],
+            [350.0, 100.0],
         )
         .unwrap();
     engine.tick().unwrap();
-    engine.replace_dna(target, idle).unwrap();
+    engine.replace_dna(target, idle.clone()).unwrap();
     engine
         .replace_dna(
             attacker,
             LegacyDna::parse("start\n-1 .shoot store\n50 .shootval store\nstop").unwrap(),
         )
         .unwrap();
-    let before = engine.organism(target).unwrap();
+    let attacker_before = engine.organism(attacker).unwrap();
+    let target_before = engine.organism(target).unwrap();
 
     engine.tick().unwrap();
+    engine.replace_dna(attacker, idle).unwrap();
+    engine.tick().unwrap();
 
-    let after = engine.organism(target).unwrap();
-    assert_eq!(after.energy, before.energy);
-    assert_eq!(after.shell, before.shell - 50);
+    let attacker_after = engine.organism(attacker).unwrap();
+    let target_after = engine.organism(target).unwrap();
+    assert_eq!(target_after.energy, target_before.energy - 50);
+    assert_eq!(target_after.shell, target_before.shell);
+    assert_eq!(attacker_after.energy, attacker_before.energy + 37);
+    assert_eq!(engine.snapshot().stats.shots_fired, 1);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 1);
+    assert_eq!(engine.snapshot().stats.energy_harvested, 37);
+    assert_eq!(engine.snapshot().stats.feeding_events, 1);
+}
+
+#[test]
+fn body_feeding_shots_consume_shell_before_body() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let idle = LegacyDna::parse("start\nstop").unwrap();
+    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let target = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .mkshell store\nstop").unwrap(),
+            [350.0, 100.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    engine.replace_dna(target, idle.clone()).unwrap();
+    engine
+        .replace_dna(
+            attacker,
+            LegacyDna::parse("start\n-6 .shoot store\n50 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
+    let attacker_before = engine.organism(attacker).unwrap();
+    let target_before = engine.organism(target).unwrap();
+
+    engine.tick().unwrap();
+    engine.replace_dna(attacker, idle).unwrap();
+    engine.tick().unwrap();
+
+    let attacker_after = engine.organism(attacker).unwrap();
+    let target_after = engine.organism(target).unwrap();
+    assert_eq!(target_after.energy, target_before.energy);
+    assert_eq!(target_after.body, target_before.body);
+    assert_eq!(target_after.shell, target_before.shell - 50);
+    assert_eq!(attacker_after.energy, attacker_before.energy);
+    assert_eq!(engine.snapshot().stats.shots_fired, 1);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 1);
+    assert_eq!(engine.snapshot().stats.energy_harvested, 0);
+    assert_eq!(engine.snapshot().stats.feeding_events, 0);
 }
 
 #[test]
