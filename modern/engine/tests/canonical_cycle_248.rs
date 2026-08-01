@@ -94,8 +94,7 @@ fn dna_skips_corpse_and_dna_disabled_robots() {
     slots[dna_disabled.slot() as usize]["organism"]["flags"]["can_execute_dna"] = false.into();
     let payload = serde_json::to_vec(&payload).unwrap();
     let mut save = Vec::with_capacity(10 + payload.len());
-    save.extend_from_slice(b"DB3S");
-    save.extend_from_slice(&2u16.to_le_bytes());
+    save.extend_from_slice(&encoded[..6]);
     save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
     save.extend_from_slice(&payload);
     let mut engine = SaveFile::decode(&save).unwrap();
