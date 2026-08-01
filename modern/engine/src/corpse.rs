@@ -41,7 +41,7 @@ impl CorpseSnapshot {
         self.velocity[1] = (self.velocity[1] + gravity[1]) * retention;
         self.position[0] = (self.position[0] + self.velocity[0]).clamp(0.0, world_size[0]);
         self.position[1] = (self.position[1] + self.velocity[1]).clamp(0.0, world_size[1]);
-        if self.age % 10 == 0 {
+        if self.age.is_multiple_of(10) {
             self.energy = self.energy.saturating_sub(1);
             self.body = self.body.min(self.energy).max(0);
         }

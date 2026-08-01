@@ -205,6 +205,8 @@ pub struct RobotState {
 }
 
 impl RobotState {
+    // Keep spawn and restore inputs aligned with the serialized state field groups.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         dna: LegacyDna,
         memory: VmMemory,

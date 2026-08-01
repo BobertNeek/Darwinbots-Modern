@@ -436,6 +436,8 @@ impl GpuPhysicsBackend {
             .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
+    // Preserve the buffer-oriented GPU API used by engine and FFI callers.
+    #[allow(clippy::too_many_arguments)]
     pub fn sense_nearest(
         &self,
         positions: &[[f32; 2]],
@@ -483,6 +485,8 @@ impl GpuPhysicsBackend {
         .map(|result| result.0)
     }
 
+    // Preserve the public GPU buffer contract and its established tuple result.
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub fn sense_integrate_render_gpu_grid(
         &self,
         positions: &[[f32; 2]],
@@ -513,6 +517,8 @@ impl GpuPhysicsBackend {
         )
     }
 
+    // Preserve the buffer-oriented GPU API used by engine and FFI callers.
+    #[allow(clippy::too_many_arguments)]
     pub fn sense_and_render_gpu_grid(
         &self,
         positions: &[[f32; 2]],
@@ -545,6 +551,8 @@ impl GpuPhysicsBackend {
         .map(|(targets, _, instances)| (targets, instances))
     }
 
+    // Preserve the public GPU buffer contract and its established tuple result.
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub fn sense_and_integrate(
         &self,
         positions: &[[f32; 2]],
@@ -573,6 +581,8 @@ impl GpuPhysicsBackend {
         .map(|(targets, positions, _)| (targets, positions))
     }
 
+    // Preserve the public GPU buffer contract and its established tuple result.
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub fn sense_integrate_render(
         &self,
         positions: &[[f32; 2]],
@@ -602,6 +612,8 @@ impl GpuPhysicsBackend {
         )
     }
 
+    // Keep the CPU/GPU dispatch inputs explicit so their data flow stays unchanged.
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     fn sense_integrate_render_impl(
         &self,
         positions: &[[f32; 2]],

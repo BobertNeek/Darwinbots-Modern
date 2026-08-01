@@ -11,15 +11,9 @@ const STACK_LIMIT: usize = 100;
 const MAX_MEMORY: i64 = 1_000;
 const MAX_INTEGER: i64 = 2_000_000_000;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VmMemory {
     cells: Vec<(u16, i32)>,
-}
-
-impl Default for VmMemory {
-    fn default() -> Self {
-        Self { cells: Vec::new() }
-    }
 }
 
 impl VmMemory {
@@ -511,7 +505,7 @@ fn execute_logic(command: i32, stack: &mut BooleanStack) {
         2 => {
             let b = pop_bool(stack).unwrap_or(true);
             let a = pop_bool(stack);
-            push_bool(stack, a.map_or(true, |value| value || b));
+            push_bool(stack, a.is_none_or(|value| value || b));
         }
         3 => {
             let b = pop_bool(stack).unwrap_or(true);

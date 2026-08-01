@@ -234,9 +234,11 @@ fn snapshot_v2_exposes_phase1_telemetry() {
 #[test]
 fn save_round_trip_preserves_pre_refactor_robot_state_fields() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let mut species = SpeciesDefinition::default();
-    species.name = "save-contract".to_owned();
-    species.vegetable = true;
+    let species = SpeciesDefinition {
+        name: "save-contract".to_owned(),
+        vegetable: true,
+        ..Default::default()
+    };
     let species = engine.register_species(species);
     let id = engine
         .spawn_species_at(
@@ -885,9 +887,11 @@ fn db3s_v2_accepts_parent_defaulted_field_omissions() {
 #[test]
 fn db3s_v3_round_trip_preserves_complete_phase1_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let mut species = SpeciesDefinition::default();
-    species.name = "db3s-v3-phase1".to_owned();
-    species.vegetable = true;
+    let species = SpeciesDefinition {
+        name: "db3s-v3-phase1".to_owned(),
+        vegetable: true,
+        ..Default::default()
+    };
     let species = engine.register_species(species);
     let id = engine
         .spawn_species_at(

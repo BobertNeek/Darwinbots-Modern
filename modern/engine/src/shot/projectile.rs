@@ -240,8 +240,8 @@ impl ProjectilePool {
             self.positions[slot][0] += self.velocities[slot][0];
             self.positions[slot][1] += self.velocities[slot][1];
             if toroidal {
-                for axis in 0..2 {
-                    let extent = world_size[axis].max(1.0);
+                for (axis, extent) in world_size.iter().copied().enumerate() {
+                    let extent = extent.max(1.0);
                     let unwrapped = self.positions[slot][axis];
                     let wrapped = unwrapped.rem_euclid(extent);
                     let wrap_offset = unwrapped - wrapped;
@@ -254,13 +254,12 @@ impl ProjectilePool {
             if !no_decay {
                 self.ages[slot] = self.ages[slot].saturating_add(1);
             }
-            if self.ages[slot] > self.ranges[slot] {
-                expired.push(slot as u32);
-            } else if !toroidal
-                && (self.positions[slot][0] < 0.0
-                    || self.positions[slot][1] < 0.0
-                    || self.positions[slot][0] > world_size[0]
-                    || self.positions[slot][1] > world_size[1])
+            if self.ages[slot] > self.ranges[slot]
+                || (!toroidal
+                    && (self.positions[slot][0] < 0.0
+                        || self.positions[slot][1] < 0.0
+                        || self.positions[slot][0] > world_size[0]
+                        || self.positions[slot][1] > world_size[1]))
             {
                 expired.push(slot as u32);
             }

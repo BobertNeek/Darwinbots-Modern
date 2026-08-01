@@ -2056,7 +2056,7 @@ impl Engine {
 
     pub fn set_organism_aim(&mut self, id: OrganismId, aim: i32) -> Result<(), EngineError> {
         self.valid_slot(id)?;
-        let normalized = ((aim % 1257) + 1257) % 1257;
+        let normalized = aim.rem_euclid(1257);
         let organism = self.slots.get_mut(id)?;
         organism.materials.aim = normalized;
         organism.materials.publish(&mut organism.program.memory);
@@ -2258,10 +2258,10 @@ impl Engine {
                 } else {
                     None
                 };
-                if let Some(neighbor) = neighbor {
-                    if !connected.contains(&neighbor) {
-                        connected.push(neighbor);
-                    }
+                if let Some(neighbor) = neighbor
+                    && !connected.contains(&neighbor)
+                {
+                    connected.push(neighbor);
                 }
             }
             cursor += 1;
@@ -4166,6 +4166,8 @@ impl Engine {
         }
     }
 
+    // Keep the canonical projectile payload fields explicit at the dispatch boundary.
+    #[allow(clippy::too_many_arguments)]
     fn apply_projectile_effect(
         &mut self,
         owner: OrganismId,
@@ -4627,10 +4629,9 @@ impl Engine {
                 if let Some(second) =
                     self.spatial
                         .nearest(positions[first], Some(first), radii[first] + max_radius)
+                    && first < second
                 {
-                    if first < second {
-                        pairs.push((first, second));
-                    }
+                    pairs.push((first, second));
                 }
             }
             pairs
@@ -5435,6 +5436,8 @@ fn toxin_location(robot: &mut RobotState, raw_location: i32) -> i32 {
     }
 }
 
+// Keep backend values inline so GPU authority and ownership remain unchanged.
+#[allow(clippy::large_enum_variant)]
 enum RuntimePhysics {
     Cpu(CpuPhysicsBackend),
     Gpu(GpuPhysicsBackend),
@@ -5641,6 +5644,14 @@ fn default_species_templates() -> Vec<Option<SpeciesTemplate>> {
     vec![None]
 }
 
+fn default_world_size() -> [f32; 2] {
+    [16_000.0, 12_000.0]
+}
+
+const fn default_snapshot_schema_version() -> u32 {
+    2
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5812,12 +5823,4 @@ mod tests {
         assert_eq!(engine.snapshot_publication_count(), publications_before + 1);
         assert_eq!(engine.backend(), BackendKind::Gpu);
     }
-}
-
-fn default_world_size() -> [f32; 2] {
-    [16_000.0, 12_000.0]
-}
-
-const fn default_snapshot_schema_version() -> u32 {
-    2
 }

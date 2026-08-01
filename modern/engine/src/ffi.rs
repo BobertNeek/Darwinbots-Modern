@@ -188,6 +188,8 @@ pub extern "C" fn db_api_version() -> u32 {
     ABI_VERSION
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_backend(engine: *const Engine) -> i32 {
     let Some(engine) = (unsafe { engine.as_ref() }) else {
@@ -240,6 +242,8 @@ fn db_engine_create_impl(
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_destroy(engine: *mut Engine) -> DbStatus {
     if engine.is_null() {
@@ -264,6 +268,8 @@ fn db_engine_tick_impl(engine: *mut Engine) -> DbStatus {
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_import_dna(
     engine: *mut Engine,
@@ -295,6 +301,8 @@ pub extern "C" fn db_engine_import_dna(
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_snapshot_json(
     engine: *const Engine,
@@ -596,6 +604,8 @@ fn db_engine_command_batch_impl(
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_capabilities_json(
     engine: *const Engine,
@@ -622,6 +632,8 @@ pub extern "C" fn db_engine_capabilities_json(
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_save(engine: *const Engine, out_buffer: *mut DbBuffer) -> DbStatus {
     let (Some(engine), Some(out_buffer)) =
@@ -638,6 +650,8 @@ pub extern "C" fn db_engine_save(engine: *const Engine, out_buffer: *mut DbBuffe
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_save_without_mutations(
     engine: *const Engine,
@@ -687,6 +701,8 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_last_error_json(out_buffer: *mut DbBuffer) -> DbStatus {
     let Some(out_buffer) = (unsafe { out_buffer.as_mut() }) else {
@@ -702,6 +718,8 @@ pub extern "C" fn db_last_error_json(out_buffer: *mut DbBuffer) -> DbStatus {
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_buffer_free(buffer: *mut DbBuffer) -> DbStatus {
     let Some(buffer) = (unsafe { buffer.as_mut() }) else {
