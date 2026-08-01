@@ -53,10 +53,18 @@ const TIED_REFERENCE_ADDRESSES: [i32; 26] = [
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrganismSnapshot {
     pub id: OrganismId,
+    #[serde(default)]
+    pub generation: u32,
     pub position: [f32; 2],
     pub velocity: [f32; 2],
     pub energy: i32,
     pub age: u64,
+    #[serde(default)]
+    pub birth_cycle: u64,
+    #[serde(default)]
+    pub current_gene: u32,
+    #[serde(default)]
+    pub condition_count: u32,
     pub species: SpeciesId,
     pub vegetable: bool,
     pub parents: [Option<OrganismId>; 2],
@@ -78,6 +86,8 @@ pub struct OrganismSnapshot {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Snapshot {
+    #[serde(default = "default_snapshot_schema_version")]
+    pub schema_version: u32,
     pub tick: u64,
     #[serde(default = "default_world_size")]
     pub world_size: [f32; 2],
@@ -115,6 +125,7 @@ pub struct Snapshot {
 impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
+            && self.schema_version == other.schema_version
             && self.world_size == other.world_size
             && self.organisms == other.organisms
             && self.corpses == other.corpses
@@ -144,6 +155,215 @@ pub struct TieSnapshot {
 struct SpeciesTemplate {
     dna: LegacyDna,
     initial_energy: i32,
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Payload {
+    config: EngineConfig,
+    #[serde(flatten)]
+    arena: Db3sV2Arena,
+    tick: u64,
+    snapshot: Snapshot,
+    stats: SimulationStats,
+    pending_mutations: Vec<OrganismId>,
+    ties: Vec<TieSnapshot>,
+    #[serde(default = "default_species")]
+    species: Vec<SpeciesDefinition>,
+    #[serde(default = "default_species_templates")]
+    species_templates: Vec<Option<SpeciesTemplate>>,
+    #[serde(default = "default_mutations_enabled")]
+    mutations_enabled: bool,
+    #[serde(default = "default_mutation_multiplier")]
+    global_mutation_multiplier: f32,
+    #[serde(default = "default_ties_enabled")]
+    ties_enabled: bool,
+    #[serde(default = "default_true")]
+    robot_fixing_allowed: bool,
+    #[serde(default = "default_true")]
+    asexual_reproduction_allowed: bool,
+    #[serde(default)]
+    next_lineage_id: u64,
+    #[serde(default)]
+    obstacles: Vec<Obstacle>,
+    #[serde(default)]
+    teleporters: Vec<Teleporter>,
+    #[serde(default)]
+    corpses: Vec<CorpseSnapshot>,
+    #[serde(default)]
+    projectiles: ProjectilePool,
+    #[serde(default)]
+    vegetation_runtime: VegetationRuntime,
+    #[serde(default)]
+    history: Vec<HistorySample>,
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Arena {
+    slots: Vec<Db3sV2Slot>,
+    kinematics: Db3sV2Kinematics,
+    lifecycle: Db3sV2Lifecycle,
+    #[serde(default)]
+    biology: Vec<Db3sV2Biology>,
+    #[serde(default)]
+    forced_reproductions: Vec<bool>,
+    free_slots: Vec<u32>,
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Slot {
+    generation: u32,
+    organism: Option<Db3sV2Organism>,
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Organism {
+    dna: LegacyDna,
+    memory: VmMemory,
+    random_state: u64,
+    #[serde(default)]
+    species: SpeciesId,
+    #[serde(default)]
+    parents: [Option<OrganismId>; 2],
+    #[serde(default)]
+    phenotype: VisualPhenotype,
+    #[serde(default)]
+    flags: Db3sV2Flags,
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Flags {
+    exists: bool,
+    corpse: bool,
+    dead: bool,
+    vegetable: bool,
+    fixed: bool,
+    can_see: bool,
+    can_execute_dna: bool,
+    can_move: bool,
+    can_reproduce: bool,
+    can_mutate: bool,
+    can_use_chloroplasts: bool,
+    can_receive_viruses: bool,
+}
+
+impl Default for Db3sV2Flags {
+    fn default() -> Self {
+        Self {
+            exists: true,
+            corpse: false,
+            dead: false,
+            vegetable: false,
+            fixed: false,
+            can_see: true,
+            can_execute_dna: true,
+            can_move: true,
+            can_reproduce: true,
+            can_mutate: true,
+            can_use_chloroplasts: true,
+            can_receive_viruses: true,
+        }
+    }
+}
+
+impl From<Db3sV2Flags> for crate::RobotFlags {
+    fn from(flags: Db3sV2Flags) -> Self {
+        Self {
+            exists: flags.exists,
+            corpse: flags.corpse,
+            dead: flags.dead,
+            vegetable: flags.vegetable,
+            fixed: flags.fixed,
+            can_see: flags.can_see,
+            can_execute_dna: flags.can_execute_dna,
+            can_move: flags.can_move,
+            can_reproduce: flags.can_reproduce,
+            can_mutate: flags.can_mutate,
+            can_use_chloroplasts: flags.can_use_chloroplasts,
+            can_receive_viruses: flags.can_receive_viruses,
+        }
+    }
+}
+
+#[derive(Default, Deserialize)]
+struct Db3sV2Kinematics {
+    positions: Vec<[f32; 2]>,
+    #[serde(default)]
+    previous_positions: Vec<[f32; 2]>,
+    velocities: Vec<[f32; 2]>,
+    #[serde(default)]
+    actual_velocities: Vec<[f32; 2]>,
+    pending_velocities: Vec<[f32; 2]>,
+    #[serde(rename = "alive")]
+    _alive: Vec<bool>,
+}
+
+#[derive(Default, Deserialize)]
+struct Db3sV2Lifecycle {
+    energies: Vec<i32>,
+    ages: Vec<u64>,
+}
+
+#[derive(Deserialize)]
+struct Db3sV2Biology {
+    #[serde(default = "default_db3s_v2_energy")]
+    energy: i32,
+    body: i32,
+    #[serde(default = "default_db3s_v2_dimension")]
+    mass: f32,
+    #[serde(default = "default_db3s_v2_dimension")]
+    radius: f32,
+    waste: i32,
+    #[serde(default)]
+    permanent_waste: i32,
+    shell: i32,
+    slime: i32,
+    venom: i32,
+    poison: i32,
+    chloroplasts: i32,
+    aim: i32,
+    pain: i32,
+    pleasure: i32,
+    paralyzed: i32,
+    poisoned: i32,
+    previous_energy: i32,
+    #[serde(default)]
+    plant_energy_carry_micros: i64,
+    #[serde(default)]
+    plant_body_carry_micros: i64,
+}
+
+impl From<&Db3sV2Biology> for BiologyState {
+    fn from(state: &Db3sV2Biology) -> Self {
+        Self {
+            energy: state.energy,
+            body: state.body,
+            mass: state.mass,
+            radius: state.radius,
+            waste: state.waste,
+            permanent_waste: state.permanent_waste,
+            shell: state.shell,
+            slime: state.slime,
+            venom: state.venom,
+            poison: state.poison,
+            chloroplasts: state.chloroplasts,
+            aim: state.aim,
+            pain: state.pain,
+            pleasure: state.pleasure,
+            paralyzed: state.paralyzed,
+            poisoned: state.poisoned,
+            previous_energy: state.previous_energy,
+            plant_energy_carry_micros: state.plant_energy_carry_micros,
+            plant_body_carry_micros: state.plant_body_carry_micros,
+        }
+    }
+}
+
+const fn default_db3s_v2_energy() -> i32 {
+    1_000
+}
+
+const fn default_db3s_v2_dimension() -> f32 {
+    1.0
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -229,7 +449,246 @@ pub struct Engine {
     snapshot_publication_count: u64,
 }
 
+struct CycleCheckpoint {
+    config: EngineConfig,
+    slots: RobotArena,
+    tick: u64,
+    snapshot: Snapshot,
+    stats: SimulationStats,
+    capabilities: BackendCapabilities,
+    spatial: SpatialIndex,
+    sensing_spatial: SpatialIndex,
+    pending_mutations: Vec<OrganismId>,
+    ties: Vec<TieSnapshot>,
+    species: Vec<SpeciesDefinition>,
+    species_templates: Vec<Option<SpeciesTemplate>>,
+    mutations_enabled: bool,
+    global_mutation_multiplier: f32,
+    ties_enabled: bool,
+    robot_fixing_allowed: bool,
+    asexual_reproduction_allowed: bool,
+    next_lineage_id: u64,
+    obstacles: Vec<Obstacle>,
+    teleporters: Vec<Teleporter>,
+    corpses: Vec<CorpseSnapshot>,
+    projectiles: ProjectilePool,
+    vegetation_runtime: VegetationRuntime,
+    pending_projectile_requests: Vec<PendingProjectileRequest>,
+    history: Vec<HistorySample>,
+    phase_timings: PhaseTimings,
+    pending_gpu_render_instances: Option<Vec<RenderInstance>>,
+    pending_gpu_collision_pairs: Option<Vec<(usize, usize)>>,
+    snapshot_publication_count: u64,
+}
+
 impl Engine {
+    pub(crate) fn from_db3s_v2_payload(payload: serde_json::Value) -> Result<Self, EngineError> {
+        let legacy: Db3sV2Payload = serde_json::from_value(payload)?;
+        let mut slots = Vec::with_capacity(legacy.arena.slots.len());
+        for (index, slot) in legacy.arena.slots.into_iter().enumerate() {
+            let organism = slot.organism.map(|organism| {
+                let position = legacy
+                    .arena
+                    .kinematics
+                    .positions
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default();
+                let mut materials = legacy
+                    .arena
+                    .biology
+                    .get(index)
+                    .map(BiologyState::from)
+                    .unwrap_or_default();
+                materials.energy = legacy
+                    .arena
+                    .lifecycle
+                    .energies
+                    .get(index)
+                    .copied()
+                    .unwrap_or(1_000);
+                let mut state = RobotState::new(
+                    organism.dna,
+                    organism.memory,
+                    organism.random_state,
+                    organism.species,
+                    organism.parents,
+                    organism.flags.vegetable,
+                    position,
+                    materials,
+                    organism.phenotype,
+                );
+                state.flags = organism.flags.into();
+                state.kinematics.previous_position = legacy
+                    .arena
+                    .kinematics
+                    .previous_positions
+                    .get(index)
+                    .copied()
+                    .unwrap_or(position);
+                state.kinematics.velocity = legacy
+                    .arena
+                    .kinematics
+                    .velocities
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default();
+                state.kinematics.actual_velocity = legacy
+                    .arena
+                    .kinematics
+                    .actual_velocities
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default();
+                state.kinematics.pending_velocity = legacy
+                    .arena
+                    .kinematics
+                    .pending_velocities
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default();
+                state.counters.age = legacy
+                    .arena
+                    .lifecycle
+                    .ages
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default();
+                state.effects.forced_reproduction = legacy
+                    .arena
+                    .forced_reproductions
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default();
+                state
+            });
+            slots.push(RobotSlot {
+                generation: slot.generation,
+                organism,
+            });
+        }
+        Ok(Self {
+            config: legacy.config,
+            slots: RobotArena {
+                slots,
+                free_slots: legacy.arena.free_slots,
+            },
+            tick: legacy.tick,
+            snapshot: legacy.snapshot,
+            stats: legacy.stats,
+            capabilities: default_capabilities(),
+            physics: RuntimePhysics::default(),
+            spatial: SpatialIndex::default(),
+            sensing_spatial: SpatialIndex::default(),
+            pending_mutations: legacy.pending_mutations,
+            ties: legacy.ties,
+            species: legacy.species,
+            species_templates: legacy.species_templates,
+            mutations_enabled: legacy.mutations_enabled,
+            global_mutation_multiplier: legacy.global_mutation_multiplier,
+            ties_enabled: legacy.ties_enabled,
+            robot_fixing_allowed: legacy.robot_fixing_allowed,
+            asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
+            next_lineage_id: legacy.next_lineage_id,
+            obstacles: legacy.obstacles,
+            teleporters: legacy.teleporters,
+            corpses: legacy.corpses,
+            projectiles: legacy.projectiles,
+            vegetation_runtime: legacy.vegetation_runtime,
+            pending_projectile_requests: Vec::new(),
+            history: legacy.history,
+            phase_timings: PhaseTimings::default(),
+            pending_gpu_render_instances: None,
+            pending_gpu_collision_pairs: None,
+            snapshot_publication_count: 0,
+        })
+    }
+
+    pub(crate) fn db3s_v3_payload(&self) -> Result<serde_json::Value, EngineError> {
+        let mut payload = serde_json::to_value(self)?;
+        let object = payload.as_object_mut().ok_or_else(|| {
+            EngineError::Invariant("serialized engine must be an object".to_owned())
+        })?;
+        let mut slots = Vec::with_capacity(self.slots.len());
+        for slot in self.slots.iter() {
+            let organism = slot
+                .organism
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()?;
+            let mut organism = organism;
+            if let Some(program) = organism
+                .as_mut()
+                .and_then(|value| value.get_mut("program"))
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                program.remove("activation_bitmap");
+                program.remove("debug_text");
+            }
+            slots.push(serde_json::json!({
+                "generation": slot.generation,
+                "organism": organism,
+            }));
+        }
+        object.insert("slots".to_owned(), serde_json::Value::Array(slots));
+        for key in ["kinematics", "lifecycle", "biology", "forced_reproductions"] {
+            object.remove(key);
+        }
+        Ok(payload)
+    }
+
+    pub(crate) fn from_db3s_v3_payload(
+        mut payload: serde_json::Value,
+    ) -> Result<Self, EngineError> {
+        let object = payload.as_object_mut().ok_or_else(|| {
+            EngineError::InvalidSave("DB3S v3 payload must be an object".to_owned())
+        })?;
+        let raw_slots = object
+            .remove("slots")
+            .and_then(|value| value.as_array().cloned())
+            .ok_or_else(|| EngineError::InvalidSave("DB3S v3 slots are missing".to_owned()))?;
+        let free_slots: Vec<u32> =
+            serde_json::from_value(object.get("free_slots").cloned().ok_or_else(|| {
+                EngineError::InvalidSave("DB3S v3 free slots are missing".to_owned())
+            })?)?;
+        let mut slots = Vec::with_capacity(raw_slots.len());
+        for mut raw_slot in raw_slots {
+            if let Some(program) = raw_slot
+                .get_mut("organism")
+                .and_then(|value| value.get_mut("program"))
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                program
+                    .entry("activation_bitmap".to_owned())
+                    .or_insert_with(|| serde_json::json!([]));
+                program
+                    .entry("debug_text".to_owned())
+                    .or_insert_with(|| serde_json::json!(""));
+            }
+            #[derive(Deserialize)]
+            struct Db3sV3Slot {
+                generation: u32,
+                organism: Option<RobotState>,
+            }
+            let slot: Db3sV3Slot = serde_json::from_value(raw_slot)?;
+            slots.push(RobotSlot {
+                generation: slot.generation,
+                organism: slot.organism,
+            });
+        }
+        let arena = RobotArena { slots, free_slots };
+        let legacy_arena = serde_json::to_value(&arena)?;
+        let legacy_arena = legacy_arena.as_object().ok_or_else(|| {
+            EngineError::Invariant("serialized robot arena must be an object".to_owned())
+        })?;
+        for (key, value) in legacy_arena {
+            object.insert(key.clone(), value.clone());
+        }
+        let mut engine: Engine = serde_json::from_value(payload)?;
+        engine.slots = arena;
+        Ok(engine)
+    }
+
     pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
         let (capabilities, physics) = select_backend(&config)?;
         let world_size = [config.world_width, config.world_height];
@@ -238,6 +697,7 @@ impl Engine {
             slots: RobotArena::default(),
             tick: 0,
             snapshot: Snapshot {
+                schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 world_size,
                 organisms: Vec::new(),
@@ -773,19 +1233,104 @@ impl Engine {
     }
 
     pub fn tick(&mut self) -> Result<(), EngineError> {
-        self.tick_internal(true, false).map(|_| ())
+        self.tick_transactional(true, false).map(|_| ())
     }
 
     pub fn tick_with_trace(&mut self) -> Result<crate::CycleTrace, EngineError> {
-        self.tick_internal(true, true)?
+        self.tick_transactional(true, true)?
             .ok_or_else(|| EngineError::Invariant("cycle tracing was not enabled".to_owned()))
     }
 
     pub fn tick_many(&mut self, count: u32) -> Result<(), EngineError> {
         for index in 0..count {
-            self.tick_internal(index + 1 == count, false)?;
+            self.tick_transactional(index + 1 == count, false)?;
         }
         Ok(())
+    }
+
+    fn tick_transactional(
+        &mut self,
+        publish: bool,
+        trace_enabled: bool,
+    ) -> Result<Option<crate::CycleTrace>, EngineError> {
+        let checkpoint = (matches!(self.physics, RuntimePhysics::Gpu(_))
+            && !self.config.allow_cpu_fallback)
+            .then(|| self.cycle_checkpoint());
+        match self.tick_internal(publish, trace_enabled) {
+            Ok(trace) => Ok(trace),
+            Err(error) => {
+                if let Some(checkpoint) = checkpoint {
+                    self.restore_cycle_checkpoint(checkpoint);
+                }
+                Err(error)
+            }
+        }
+    }
+
+    fn cycle_checkpoint(&self) -> CycleCheckpoint {
+        CycleCheckpoint {
+            config: self.config.clone(),
+            slots: self.slots.clone(),
+            tick: self.tick,
+            snapshot: self.snapshot.clone(),
+            stats: self.stats.clone(),
+            capabilities: self.capabilities.clone(),
+            spatial: self.spatial.clone(),
+            sensing_spatial: self.sensing_spatial.clone(),
+            pending_mutations: self.pending_mutations.clone(),
+            ties: self.ties.clone(),
+            species: self.species.clone(),
+            species_templates: self.species_templates.clone(),
+            mutations_enabled: self.mutations_enabled,
+            global_mutation_multiplier: self.global_mutation_multiplier,
+            ties_enabled: self.ties_enabled,
+            robot_fixing_allowed: self.robot_fixing_allowed,
+            asexual_reproduction_allowed: self.asexual_reproduction_allowed,
+            next_lineage_id: self.next_lineage_id,
+            obstacles: self.obstacles.clone(),
+            teleporters: self.teleporters.clone(),
+            corpses: self.corpses.clone(),
+            projectiles: self.projectiles.clone(),
+            vegetation_runtime: self.vegetation_runtime.clone(),
+            pending_projectile_requests: self.pending_projectile_requests.clone(),
+            history: self.history.clone(),
+            phase_timings: self.phase_timings.clone(),
+            pending_gpu_render_instances: self.pending_gpu_render_instances.clone(),
+            pending_gpu_collision_pairs: self.pending_gpu_collision_pairs.clone(),
+            snapshot_publication_count: self.snapshot_publication_count,
+        }
+    }
+
+    fn restore_cycle_checkpoint(&mut self, checkpoint: CycleCheckpoint) {
+        self.config = checkpoint.config;
+        self.slots = checkpoint.slots;
+        self.tick = checkpoint.tick;
+        self.snapshot = checkpoint.snapshot;
+        self.stats = checkpoint.stats;
+        self.capabilities = checkpoint.capabilities;
+        self.spatial = checkpoint.spatial;
+        self.sensing_spatial = checkpoint.sensing_spatial;
+        self.pending_mutations = checkpoint.pending_mutations;
+        self.ties = checkpoint.ties;
+        self.species = checkpoint.species;
+        self.species_templates = checkpoint.species_templates;
+        self.mutations_enabled = checkpoint.mutations_enabled;
+        self.global_mutation_multiplier = checkpoint.global_mutation_multiplier;
+        self.ties_enabled = checkpoint.ties_enabled;
+        self.robot_fixing_allowed = checkpoint.robot_fixing_allowed;
+        self.asexual_reproduction_allowed = checkpoint.asexual_reproduction_allowed;
+        self.next_lineage_id = checkpoint.next_lineage_id;
+        self.obstacles = checkpoint.obstacles;
+        self.teleporters = checkpoint.teleporters;
+        self.corpses = checkpoint.corpses;
+        self.projectiles = checkpoint.projectiles;
+        self.vegetation_runtime = checkpoint.vegetation_runtime;
+        self.pending_projectile_requests = checkpoint.pending_projectile_requests;
+        self.history = checkpoint.history;
+        self.phase_timings = checkpoint.phase_timings;
+        self.pending_gpu_render_instances = checkpoint.pending_gpu_render_instances;
+        self.pending_gpu_collision_pairs = checkpoint.pending_gpu_collision_pairs;
+        self.snapshot_publication_count = checkpoint.snapshot_publication_count;
     }
 
     fn tick_internal(
@@ -3350,6 +3895,7 @@ impl Engine {
             }
         }
         self.snapshot = Snapshot {
+            schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
@@ -3515,10 +4061,14 @@ fn snapshot_organism(
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
+        generation: organism.counters.generation,
         position: organism.kinematics.position,
         velocity: organism.kinematics.velocity,
         energy: organism.materials.energy,
         age: organism.counters.age,
+        birth_cycle: organism.counters.birth_cycle,
+        current_gene: organism.program.current_gene,
+        condition_count: organism.program.condition_count,
         species: organism.identity.species,
         vegetable: species
             .get(organism.identity.species.0 as usize)
@@ -3719,4 +4269,8 @@ mod tests {
 
 fn default_world_size() -> [f32; 2] {
     [16_000.0, 12_000.0]
+}
+
+const fn default_snapshot_schema_version() -> u32 {
+    2
 }

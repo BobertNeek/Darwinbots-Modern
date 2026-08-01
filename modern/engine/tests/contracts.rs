@@ -24,24 +24,30 @@ fn imports_legacy_dna_and_preserves_user_variables() {
 #[test]
 fn parser_compiles_symbolic_memory_operands_to_numeric_addresses() {
     let program = LegacyDna::parse("def custom 777\nstart\n*.custom .up store\nstop").unwrap();
-    assert!(program
-        .blocks()
-        .iter()
-        .any(|block| block.class == TokenClass::Dereference && block.value == 777));
-    assert!(program
-        .blocks()
-        .iter()
-        .any(|block| block.class == TokenClass::Number && block.value == 1));
+    assert!(
+        program
+            .blocks()
+            .iter()
+            .any(|block| block.class == TokenClass::Dereference && block.value == 777)
+    );
+    assert!(
+        program
+            .blocks()
+            .iter()
+            .any(|block| block.class == TokenClass::Number && block.value == 1)
+    );
 }
 
 #[test]
 fn unknown_legacy_instruction_becomes_zero_with_location_warning() {
     let program = LegacyDna::parse("start\nnot-a-command\nstop").unwrap();
 
-    assert!(program
-        .blocks()
-        .iter()
-        .any(|block| block.class == TokenClass::Number && block.value == 0));
+    assert!(
+        program
+            .blocks()
+            .iter()
+            .any(|block| block.class == TokenClass::Number && block.value == 0)
+    );
     assert!(program.compatibility_warnings()[0].contains("line 2"));
     assert!(program.compatibility_warnings()[0].contains("not-a-command"));
 }
@@ -148,6 +154,24 @@ fn save_files_are_versioned_and_round_trip_reference_state() {
 }
 
 #[test]
+fn snapshot_v2_exposes_phase1_telemetry() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .spawn(LegacyDna::parse("cond\n1 0 >\nstart\nstop").unwrap())
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let snapshot = engine.snapshot();
+    let organism = &snapshot.organisms[0];
+    assert_eq!(snapshot.schema_version, 2);
+    assert_eq!(organism.current_gene, 1);
+    assert_eq!(organism.condition_count, 1);
+    assert_eq!(organism.generation, 0);
+    assert_eq!(organism.birth_cycle, 0);
+}
+
+#[test]
 fn save_round_trip_preserves_pre_refactor_robot_state_fields() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let mut species = SpeciesDefinition::default();
@@ -184,10 +208,11 @@ fn save_round_trip_preserves_pre_refactor_robot_state_fields() {
 }
 
 #[test]
-fn pre_refactor_db3s_v2_payload_preserves_legacy_robot_fields() {
+fn db3s_v2_migrates_every_existing_robot_field() {
+    let fixture = include_bytes!("fixtures/db3s_v2_phase1.bin");
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let mut species = SpeciesDefinition::default();
-    species.name = "legacy-save-contract".to_owned();
+    species.name = "db3s-v2-fixture".to_owned();
     species.vegetable = true;
     let species = engine.register_species(species);
     let id = engine
@@ -197,39 +222,13 @@ fn pre_refactor_db3s_v2_payload_preserves_legacy_robot_fields() {
             [321.0, 654.0],
         )
         .unwrap();
-    engine.tick().unwrap();
     let before = engine.robot_state(id).unwrap().clone();
 
-    let encoded = SaveFile::encode(&engine).unwrap();
-    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
-    let object = payload.as_object_mut().unwrap();
-    for key in [
-        "slots",
-        "kinematics",
-        "lifecycle",
-        "biology",
-        "forced_reproductions",
-        "free_slots",
-    ] {
-        assert!(object.contains_key(key), "missing legacy arena key {key}");
-    }
-    for slot in object["slots"].as_array_mut().unwrap() {
-        if let Some(organism) = slot["organism"].as_object_mut() {
-            organism.remove("flags");
-        }
-    }
-
-    let payload = serde_json::to_vec(&payload).unwrap();
-    let mut legacy_v2 = Vec::with_capacity(10 + payload.len());
-    legacy_v2.extend_from_slice(b"DB3S");
-    legacy_v2.extend_from_slice(&2u16.to_le_bytes());
-    legacy_v2.extend_from_slice(&(payload.len() as u32).to_le_bytes());
-    legacy_v2.extend_from_slice(&payload);
-
-    let restored = SaveFile::decode(&legacy_v2).unwrap();
+    let restored = SaveFile::decode(fixture).unwrap();
     let after = restored.robot_state(id).unwrap();
     assert_eq!(after.identity.species, before.identity.species);
     assert_eq!(after.identity.parents, before.identity.parents);
+    assert_eq!(after.flags, before.flags);
     assert_eq!(after.kinematics, before.kinematics);
     assert_eq!(after.materials, before.materials);
     assert_eq!(after.counters.age, before.counters.age);
@@ -241,7 +240,64 @@ fn pre_refactor_db3s_v2_payload_preserves_legacy_robot_fields() {
         before.effects.forced_reproduction
     );
     assert_eq!(after.phenotype, before.phenotype);
-    assert!(after.flags.vegetable);
+}
+
+#[test]
+fn db3s_v3_round_trip_preserves_complete_phase1_state() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut species = SpeciesDefinition::default();
+    species.name = "db3s-v3-phase1".to_owned();
+    species.vegetable = true;
+    let species = engine.register_species(species);
+    let id = engine
+        .spawn_species_at(
+            LegacyDna::parse("cond\n1 0 >\nstart\n17 .up store\nstop").unwrap(),
+            species,
+            [321.0, 654.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    let before = engine.robot_state(id).unwrap().clone();
+
+    let bytes = SaveFile::encode(&engine).unwrap();
+    assert_eq!(u16::from_le_bytes([bytes[4], bytes[5]]), 3);
+    assert!(!String::from_utf8_lossy(&bytes).contains("activation_bitmap"));
+    assert!(!String::from_utf8_lossy(&bytes).contains("debug_text"));
+
+    let restored = SaveFile::decode(&bytes).unwrap();
+    let after = restored.robot_state(id).unwrap();
+    assert_eq!(after.identity, before.identity);
+    assert_eq!(after.flags, before.flags);
+    assert_eq!(after.kinematics, before.kinematics);
+    assert_eq!(after.materials, before.materials);
+    assert_eq!(after.counters, before.counters);
+    assert_eq!(after.program.dna, before.program.dna);
+    assert_eq!(after.program.memory, before.program.memory);
+    assert_eq!(
+        after.program.private_variables,
+        before.program.private_variables
+    );
+    assert_eq!(after.program.rng_state, before.program.rng_state);
+    assert_eq!(
+        after.program.mutation_metadata,
+        before.program.mutation_metadata
+    );
+    assert_eq!(
+        after.program.fractional_cost_remainder,
+        before.program.fractional_cost_remainder
+    );
+    assert_eq!(after.program.current_gene, before.program.current_gene);
+    assert_eq!(
+        after.program.condition_count,
+        before.program.condition_count
+    );
+    assert!(after.program.activation_bitmap.is_empty());
+    assert!(after.program.debug_text.is_empty());
+    assert_eq!(after.senses, before.senses);
+    assert_eq!(after.effects, before.effects);
+    assert_eq!(after.heredity, before.heredity);
+    assert_eq!(after.ties, before.ties);
+    assert_eq!(after.phenotype, before.phenotype);
 }
 
 #[test]

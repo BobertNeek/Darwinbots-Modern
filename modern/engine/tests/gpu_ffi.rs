@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     BackendKind, BackendPreference, CpuPhysicsBackend, Engine, EngineConfig, GpuPhysicsBackend,
-    LegacyDna, PhysicsBackend, PhysicsBatch,
+    LegacyDna, PhysicsBackend, PhysicsBatch, SaveFile,
     ffi::{
         ABI_VERSION, DbBuffer, DbStatus, db_api_version, db_buffer_free, db_engine_backend,
         db_engine_capabilities_json, db_engine_command_batch, db_engine_create, db_engine_destroy,
@@ -8,6 +8,30 @@ use darwinbots_engine::{
         db_engine_tick, db_last_error_json,
     },
 };
+
+fn remove_wall_clock_timings(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(object) => {
+            for key in [
+                "elapsed_ms",
+                "duration_ms",
+                "wall_clock_ms",
+                "phase_timings",
+            ] {
+                object.remove(key);
+            }
+            for child in object.values_mut() {
+                remove_wall_clock_timings(child);
+            }
+        }
+        serde_json::Value::Array(values) => {
+            for child in values {
+                remove_wall_clock_timings(child);
+            }
+        }
+        _ => {}
+    }
+}
 
 #[test]
 fn cpu_physics_integrates_and_clamps_world_bounds() {
@@ -162,7 +186,7 @@ fn gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_av
 }
 
 #[test]
-fn gpu_position_integration_matches_cpu_after_db2_forces_when_adapter_is_available() {
+fn cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance() {
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
@@ -199,6 +223,55 @@ fn gpu_position_integration_matches_cpu_after_db2_forces_when_adapter_is_availab
     assert!((left.velocity[0] - right.velocity[0]).abs() < 0.05);
     assert!((left.velocity[1] - right.velocity[1]).abs() < 0.05);
     assert!(right.velocity[0].abs() > 0.01 || right.velocity[1].abs() > 0.01);
+    assert_eq!(left.energy, right.energy);
+    assert_eq!(left.age, right.age);
+    assert_eq!(left.current_gene, right.current_gene);
+    assert_eq!(left.condition_count, right.condition_count);
+    assert_eq!(left.body, right.body);
+    assert_eq!(left.waste, right.waste);
+    assert_eq!(left.shell, right.shell);
+    assert_eq!(left.slime, right.slime);
+    assert_eq!(left.venom, right.venom);
+    assert_eq!(left.poison, right.poison);
+    assert_eq!(left.chloroplasts, right.chloroplasts);
+}
+
+#[test]
+fn cpu_and_gpu_emit_identical_nontiming_cycle_traces() {
+    if GpuPhysicsBackend::new().is_err() {
+        return;
+    }
+    let config = EngineConfig {
+        gravity: [0.01, 0.02],
+        drag: 0.001,
+        brownian_motion: 0.0,
+        world_width: 10_000.0,
+        world_height: 10_000.0,
+        ..EngineConfig::testing()
+    };
+    let mut cpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Cpu,
+        ..config.clone()
+    })
+    .unwrap();
+    let mut gpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        ..config
+    })
+    .unwrap();
+    let dna = LegacyDna::parse("cond\n*.robage 0 =\nstart\n10 .up store\nstop").unwrap();
+    for position in [[5_000.0, 5_000.0], [5_200.0, 5_100.0]] {
+        cpu.spawn_at(dna.clone(), position).unwrap();
+        gpu.spawn_at(dna.clone(), position).unwrap();
+    }
+
+    let mut cpu_trace = serde_json::to_value(cpu.tick_with_trace().unwrap()).unwrap();
+    let mut gpu_trace = serde_json::to_value(gpu.tick_with_trace().unwrap()).unwrap();
+    remove_wall_clock_timings(&mut cpu_trace);
+    remove_wall_clock_timings(&mut gpu_trace);
+
+    assert_eq!(gpu_trace, cpu_trace);
 }
 
 #[test]
@@ -281,6 +354,37 @@ fn runtime_gpu_failure_is_fatal_when_fallback_is_disabled() {
 }
 
 #[test]
+fn gpu_failure_does_not_partially_advance_the_cycle() {
+    if GpuPhysicsBackend::new().is_err() {
+        return;
+    }
+    let mut engine = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        force_gpu_runtime_failure_for_tests: true,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("cond\n*.robage 0 =\nstart\n10 .up store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+
+    assert!(matches!(
+        engine.tick(),
+        Err(darwinbots_engine::EngineError::Gpu(_))
+    ));
+
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    assert_eq!(engine.backend(), BackendKind::Gpu);
+    assert!(engine.capabilities().gpu_available);
+    assert!(engine.capabilities().fallback_reason.is_none());
+}
+
+#[test]
 fn engine_can_switch_backends_while_preserving_live_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let id = engine
@@ -304,7 +408,18 @@ fn engine_can_switch_backends_while_preserving_live_state() {
 }
 
 #[test]
-fn ffi_exposes_versioned_engine_and_owned_snapshot_buffers() {
+fn ffi_v1_consumers_accept_the_additive_snapshot() {
+    #[derive(serde::Deserialize)]
+    struct FfiV1Snapshot {
+        tick: u64,
+        organisms: Vec<FfiV1Organism>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct FfiV1Organism {
+        energy: i32,
+    }
+
     assert_eq!(db_api_version(), ABI_VERSION);
     let mut engine = std::ptr::null_mut();
     let config = br#"{"seed":77,"organism_capacity":16,"world_width":1000.0,"world_height":1000.0,"backend":"Cpu","allow_cpu_fallback":true}"#;
@@ -327,7 +442,11 @@ fn ffi_exposes_versioned_engine_and_owned_snapshot_buffers() {
     assert!(!buffer.data.is_null());
     assert!(buffer.len > 0);
     let bytes = unsafe { std::slice::from_raw_parts(buffer.data, buffer.len) };
+    let v1_snapshot: FfiV1Snapshot = serde_json::from_slice(bytes).unwrap();
+    assert_eq!(v1_snapshot.tick, 1);
+    assert_eq!(v1_snapshot.organisms[0].energy, 1_000);
     let snapshot: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+    assert_eq!(snapshot["schema_version"], 2);
     assert_eq!(snapshot["tick"], 1);
     assert_eq!(snapshot["organisms"].as_array().unwrap().len(), 1);
     assert!(snapshot["render_instances"][0]["aim"].is_number());
