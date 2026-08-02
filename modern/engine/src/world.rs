@@ -1,4 +1,5 @@
 use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState, TieEndpointState};
+use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_angle};
 use crate::simulation_cycle::CycleRecorder;
 use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_DEADBAND};
 use crate::{
@@ -24,6 +25,17 @@ use crate::physics::{
 };
 
 const MEM_ROBAGE: i32 = 9;
+const MEM_HIT: i32 = 201;
+const MEM_SHOT_FLAVOR: i32 = 202;
+const MEM_HIT_UP: i32 = 205;
+const MEM_HIT_DOWN: i32 = 206;
+const MEM_HIT_RIGHT: i32 = 207;
+const MEM_HIT_LEFT: i32 = 208;
+const MEM_SHOT_ANGLE: i32 = 209;
+const MEM_SHOT_UP: i32 = 210;
+const MEM_SHOT_DOWN: i32 = 211;
+const MEM_SHOT_RIGHT: i32 = 212;
+const MEM_SHOT_LEFT: i32 = 213;
 const MEM_FIXED: i32 = 216;
 const MEM_REPRO: i32 = 300;
 const MEM_NRG: i32 = 310;
@@ -62,6 +74,58 @@ const TIED_REFERENCE_ADDRESSES: [i32; 26] = [
     437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 456, 457, 458, 459, 460, 461,
     462, 463, 464, 465, 475, 478, 479,
 ];
+
+fn write_directional_sensor(
+    memory: &mut VmMemory,
+    direction: Option<LegacyDirection>,
+    addresses: [i32; 4],
+    value: i32,
+) {
+    let Some(address) = direction.map(|direction| match direction {
+        LegacyDirection::Up => addresses[0],
+        LegacyDirection::Down => addresses[1],
+        LegacyDirection::Right => addresses[2],
+        LegacyDirection::Left => addresses[3],
+    }) else {
+        return;
+    };
+    memory.write(address, value);
+}
+
+fn write_robot_touch(robot: &mut RobotState, robot_position: [f32; 2], event_point: [f32; 2]) {
+    let event_point = event_point.map(f32::round_ties_even);
+    let relative_angle = legacy_relative_angle(
+        robot_position,
+        robot.materials.aim as f32 / 200.0,
+        event_point,
+    );
+    write_directional_sensor(
+        &mut robot.program.memory,
+        classify_legacy_direction(relative_angle),
+        [MEM_HIT_UP, MEM_HIT_DOWN, MEM_HIT_RIGHT, MEM_HIT_LEFT],
+        1,
+    );
+    robot.program.memory.write(MEM_HIT, 1);
+}
+
+fn write_shot_taste(robot: &mut RobotState, event_point: [f32; 2], kind: i32) {
+    let relative_angle = legacy_relative_angle(
+        robot.kinematics.position,
+        robot.materials.aim as f32 / 200.0,
+        event_point,
+    );
+    write_directional_sensor(
+        &mut robot.program.memory,
+        classify_legacy_direction(relative_angle),
+        [MEM_SHOT_UP, MEM_SHOT_DOWN, MEM_SHOT_RIGHT, MEM_SHOT_LEFT],
+        kind,
+    );
+    robot.program.memory.write(
+        MEM_SHOT_ANGLE,
+        (relative_angle * 200.0).round_ties_even() as i32,
+    );
+    robot.program.memory.write(MEM_SHOT_FLAVOR, kind);
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrganismSnapshot {
@@ -4354,10 +4418,21 @@ impl Engine {
         for impact in impacts {
             let shot = impact.projectile_slot as usize;
             let owner = self.projectiles.owners[shot];
+            let previous_position = self.projectiles.previous_positions[shot];
+            let original_kind = self.projectiles.kinds[shot];
+            let taste_kind = match &impact.effect {
+                ProjectileEffect::WriteMemory { address, .. } => *address,
+                _ => original_kind,
+            };
             let payload = self.projectiles.payloads[shot].clone();
             let source_species_name = self.projectiles.source_species_names[shot].clone();
             let toxin_memory_location = self.projectiles.toxin_memory_locations[shot];
             let toxin_memory_value = self.projectiles.toxin_memory_values[shot];
+            if let ProjectileTarget::Organism(target) = impact.target
+                && let Some(target_robot) = self.slots[target].organism.as_mut()
+            {
+                write_shot_taste(target_robot, previous_position, taste_kind);
+            }
             self.projectiles.mark_impact(
                 impact.projectile_slot,
                 impact.fraction,
@@ -4884,6 +4959,25 @@ impl Engine {
                 })
             })
             .collect();
+        let touch_events: Vec<_> = pairs
+            .iter()
+            .copied()
+            .filter_map(|(first, second)| {
+                let first_robot = self.slots[..].get(first)?.organism.as_ref()?;
+                let second_robot = self.slots[..].get(second)?.organism.as_ref()?;
+                let first_position = first_robot.kinematics.position;
+                let second_position = second_robot.kinematics.position;
+                let dx = second_position[0] - first_position[0];
+                let dy = second_position[1] - first_position[1];
+                let minimum_distance = radii.get(first)? + radii.get(second)?;
+                (dx * dx + dy * dy < minimum_distance * minimum_distance).then_some((
+                    first,
+                    second,
+                    first_position,
+                    second_position,
+                ))
+            })
+            .collect();
         crate::physics::resolve_collisions(
             &mut positions,
             &mut velocities,
@@ -4892,6 +4986,14 @@ impl Engine {
             &pairs,
             self.config.physics.elasticity,
         );
+        for (first, second, first_position, second_position) in touch_events {
+            if let Some(first_robot) = self.slots[first].organism.as_mut() {
+                write_robot_touch(first_robot, first_position, second_position);
+            }
+            if let Some(second_robot) = self.slots[second].organism.as_mut() {
+                write_robot_touch(second_robot, second_position, first_position);
+            }
+        }
         for (slot, (position, velocity)) in self
             .slots
             .iter_mut()

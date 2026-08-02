@@ -13,6 +13,7 @@ mod mutation;
 mod persistence;
 mod physics;
 mod robot_state;
+mod senses;
 mod shot;
 mod simulation_cycle;
 mod spatial;
