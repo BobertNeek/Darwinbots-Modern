@@ -275,6 +275,7 @@ pub struct MutationPolicyReport {
     pub effective_one_in: f64,
     pub delta2_applied: bool,
     pub epigenetic_action: EpigeneticPolicyAction,
+    pub save_as_temporary_gene: bool,
 }
 
 pub fn apply_advanced_mutation_policies(
@@ -309,6 +310,7 @@ pub fn apply_advanced_mutation_policies(
         effective_one_in: effective_one_in.max(1.0),
         delta2_applied,
         epigenetic_action,
+        save_as_temporary_gene: settings.epigenetic.save_as_temporary_gene,
     }
 }
 
@@ -711,6 +713,45 @@ impl GenomeMutator {
             _ => MutationKind::Replacement,
         };
         self.mutate_kind(dna, kind)
+    }
+
+    pub fn mutate_with_policy(
+        &mut self,
+        dna: &mut LegacyDna,
+        profile: &StandardMutationProfile,
+        policy: MutationPolicyReport,
+    ) -> MutationReport {
+        let one_in = policy.effective_one_in.max(1.0);
+        let chance = (1_000_000.0 / one_in).min(1_000_000.0) as u64;
+        if self.next() % 1_000_000 >= chance {
+            return MutationReport::default();
+        }
+
+        let candidates = [
+            (MutationKind::Point, StandardMutationKind::Point),
+            (MutationKind::Insertion, StandardMutationKind::Insertion),
+            (MutationKind::Deletion, StandardMutationKind::MinorDeletion),
+            (
+                MutationKind::Duplication,
+                StandardMutationKind::MajorDeletion,
+            ),
+            (MutationKind::Replacement, StandardMutationKind::CopyError),
+        ];
+        let total_weight: f64 = candidates
+            .iter()
+            .map(|(_, kind)| 1.0 / profile.effective_one_in(*kind, policy.effective_multiplier))
+            .sum();
+        if !total_weight.is_finite() || total_weight <= 0.0 {
+            return MutationReport::default();
+        }
+        let mut pick = (self.next() as f64 / u64::MAX as f64) * total_weight;
+        for (kind, standard_kind) in candidates {
+            pick -= 1.0 / profile.effective_one_in(standard_kind, policy.effective_multiplier);
+            if pick <= 0.0 {
+                return self.mutate_kind(dna, kind);
+            }
+        }
+        self.mutate_kind(dna, MutationKind::Point)
     }
 
     pub fn mutate_kind(&mut self, dna: &mut LegacyDna, kind: MutationKind) -> MutationReport {

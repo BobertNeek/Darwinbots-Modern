@@ -3750,7 +3750,7 @@ impl Engine {
             };
             let cost = costs.upkeep_cost(
                 f64::from(robot.materials.body),
-                1,
+                robot.program.dna.blocks().len(),
                 population,
             ) + f64::from(metabolism) * costs.dynamic_multiplier(population);
             settle_simulation_cost(robot, cost);
@@ -6550,9 +6550,18 @@ impl Engine {
                         .memory
                         .write(971 + offset, parent_state.program.memory.read(971 + offset));
                 }
-                for offset in 0..15 {
-                    child_organism.heredity.epigenetic_staging[offset as usize] =
-                        parent_state.program.memory.read(976 + offset);
+                if self
+                    .config
+                    .advanced_mutation
+                    .epigenetic
+                    .save_as_temporary_gene
+                {
+                    for offset in 0..15 {
+                        child_organism.heredity.epigenetic_staging[offset as usize] =
+                            parent_state.program.memory.read(976 + offset);
+                    }
+                } else {
+                    child_organism.heredity.epigenetic_staging.fill(0);
                 }
                 child_organism
                     .materials
@@ -6810,7 +6819,11 @@ impl Engine {
                     ));
             }
             let mut mutator = GenomeMutator::new(organism.program.rng_state);
-            let report = mutator.mutate(&mut organism.program.dna);
+            let report = mutator.mutate_with_policy(
+                &mut organism.program.dna,
+                &organism.program.mutation_profile,
+                policy,
+            );
             organism.program.memory.write(
                 MEM_MY_EYE,
                 organism

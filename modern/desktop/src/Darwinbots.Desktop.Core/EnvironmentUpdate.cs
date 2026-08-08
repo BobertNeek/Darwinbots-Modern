@@ -68,6 +68,32 @@ public static class NativeCommandSerializer
     public static string SerializeEnvironment(EnvironmentUpdate update) =>
         JsonSerializer.Serialize(CreateEnvironmentBatch(update));
 
+    public static string SerializeEngineConfig(WorldSetupOptions options) =>
+        JsonSerializer.Serialize(new
+        {
+            seed = options.Seed,
+            organism_capacity = options.PopulationCapacity,
+            vegetable_population_cap = options.VegetablePopulationCap,
+            world_width = options.WorldWidth,
+            world_height = options.WorldHeight,
+            backend = options.Backend,
+            allow_cpu_fallback = true,
+            metabolism_cost = options.EffectiveMetabolismCost,
+            vegetable_energy_per_tick = options.VegetableEnergyPerTick,
+            sunlight_energy = options.SunlightEnergy,
+            gravity = options.Gravity,
+            drag = options.Drag,
+            brownian_motion = options.BrownianMotion,
+            physics = Physics(options.Physics),
+            shots = Shots(options.Shots),
+            vegetation = Vegetation(options.Vegetation),
+            auto_speciation = options.AutoSpeciation,
+            speciation_genetic_distance_percent = options.SpeciationGeneticDistancePercent,
+            toroidal_world = options.ToroidalWorld,
+            dna_costs = DnaCosts(options.GlobalSettings.Costs),
+            advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
+        });
+
     public static object CreateRemoveManyBatch(IReadOnlyList<OrganismKey> organisms) => new
     {
         version = 1,

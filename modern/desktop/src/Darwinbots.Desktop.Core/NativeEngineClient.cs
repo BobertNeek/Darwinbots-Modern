@@ -12,27 +12,18 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly float _worldHeight;
     private readonly SeededSpawnPlacement _spawnPlacement;
 
-    public NativeEngineClient(WorldSetupOptions options) : this(
-        options.Backend,
-        options.PopulationCapacity,
-        options.Seed,
-        options.WorldWidth,
-        options.WorldHeight,
-        options.EffectiveMetabolismCost,
-        options.VegetableEnergyPerTick,
-        options.SunlightEnergy,
-        options.Gravity,
-        options.Drag,
-        options.BrownianMotion,
-        options.VegetablePopulationCap,
-        options.Physics,
-        options.Shots,
-        options.Vegetation,
-        options.AutoSpeciation,
-        options.SpeciationGeneticDistancePercent,
-        options.ToroidalWorld,
-        options.GlobalSettings)
+    public NativeEngineClient(WorldSetupOptions options)
     {
+        _worldWidth = options.WorldWidth;
+        _worldHeight = options.WorldHeight;
+        _spawnPlacement = new SeededSpawnPlacement(options.Seed);
+        ValidatePosition(options.Gravity);
+        var bytes = Encoding.UTF8.GetBytes(NativeCommandSerializer.SerializeEngineConfig(options));
+        ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
+        if (_engine == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("Native engine creation returned a null handle.");
+        }
     }
 
     public NativeEngineClient(
@@ -54,46 +45,29 @@ public sealed partial class NativeEngineClient : IEngineClient
         bool autoSpeciation = false,
         float speciationGeneticDistancePercent = 20f,
         bool toroidalWorld = true,
-        GlobalSettings? globalSettings = null)
+        GlobalSettings? globalSettings = null) : this(new WorldSetupOptions
     {
-        _worldWidth = worldWidth;
-        _worldHeight = worldHeight;
-        _spawnPlacement = new SeededSpawnPlacement(seed);
-        gravity ??= [0f, 0f];
-        physics ??= Db2PhysicsOptions.Default;
-        shots ??= Db2ShotOptions.Default;
-        vegetation ??= Db2VegetationOptions.Default;
-        globalSettings ??= new GlobalSettings();
-        ValidatePosition(gravity);
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            seed,
-            organism_capacity = capacity,
-            vegetable_population_cap = vegetablePopulationCap,
-            world_width = worldWidth,
-            world_height = worldHeight,
-            backend,
-            allow_cpu_fallback = true,
-            metabolism_cost = metabolismCost,
-            vegetable_energy_per_tick = vegetableEnergyPerTick,
-            sunlight_energy = sunlightEnergy,
-            gravity,
-            drag,
-            brownian_motion = brownianMotion,
-            physics = NativeCommandSerializer.Physics(physics),
-            shots = NativeCommandSerializer.Shots(shots),
-            vegetation = NativeCommandSerializer.Vegetation(vegetation),
-            auto_speciation = autoSpeciation,
-            speciation_genetic_distance_percent = speciationGeneticDistancePercent,
-            toroidal_world = toroidalWorld,
-            dna_costs = NativeCommandSerializer.DnaCosts(globalSettings.Costs),
-            advanced_mutation = NativeCommandSerializer.AdvancedMutation(globalSettings.AdvancedMutation, globalSettings.Main),
-        });
-        ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
-        if (_engine == IntPtr.Zero)
-        {
-            throw new InvalidOperationException("Native engine creation returned a null handle.");
-        }
+        Backend = backend,
+        PopulationCapacity = capacity,
+        Seed = seed,
+        WorldWidth = worldWidth,
+        WorldHeight = worldHeight,
+        MetabolismCost = metabolismCost,
+        VegetableEnergyPerTick = vegetableEnergyPerTick,
+        SunlightEnergy = sunlightEnergy,
+        Gravity = gravity ?? [0f, 0f],
+        Drag = drag,
+        BrownianMotion = brownianMotion,
+        VegetablePopulationCap = vegetablePopulationCap,
+        Physics = physics ?? Db2PhysicsOptions.Default,
+        Shots = shots ?? Db2ShotOptions.Default,
+        Vegetation = vegetation ?? Db2VegetationOptions.Default,
+        AutoSpeciation = autoSpeciation,
+        SpeciationGeneticDistancePercent = speciationGeneticDistancePercent,
+        ToroidalWorld = toroidalWorld,
+        GlobalSettings = globalSettings ?? new GlobalSettings(),
+    })
+    {
     }
 
     public string Backend => NativeMethods.EngineBackend(_engine) switch

@@ -22,6 +22,12 @@ public sealed class GlobalSettingsTests
                 NormalizationEnabled = true,
                 NormalizationDnaLength = 32000,
                 EpigeneticOverloadThreshold = 12,
+                SaveAsTemporaryGene = true,
+            },
+            Costs = new GlobalSimulationCostSettings
+            {
+                GlobalMultiplier = 1.75,
+                DnaUpkeep = 2.5,
             },
             League = new GlobalLeagueSettings
             {
@@ -54,5 +60,18 @@ public sealed class GlobalSettingsTests
         Assert.Equal(settings, roundTrip);
         Assert.True(roundTrip.AdvancedMutation.Delta2Enabled);
         Assert.Equal(EvolutionMode.Zerobot, roundTrip.Evolution.Mode);
+
+        var createConfig = NativeCommandSerializer.SerializeEngineConfig(new WorldSetupOptions
+        {
+            GlobalSettings = settings,
+        });
+
+        Assert.Contains("\"dna_costs\"", createConfig);
+        Assert.Contains("\"dna_upkeep\":2.5", createConfig);
+        Assert.Contains("\"global_multiplier\":1.75", createConfig);
+        Assert.Contains("\"advanced_mutation\"", createConfig);
+        Assert.Contains("\"delta2\"", createConfig);
+        Assert.Contains("\"rate_step\":1", createConfig);
+        Assert.Contains("\"save_as_temporary_gene\":true", createConfig);
     }
 }

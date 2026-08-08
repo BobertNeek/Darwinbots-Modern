@@ -1,8 +1,8 @@
 use darwinbots_engine::{
     AdvancedMutationSettings, Delta2Settings, DnaCosts, EpigeneticPolicyAction, EpigeneticSettings,
-    MutationOscillationMode, MutationOscillationSettings, MutationPolicyInput,
-    SimulationCostAction, SimulationCostInput, StandardMutationProfile,
-    apply_advanced_mutation_policies,
+    GenomeMutator, LegacyDna, MutationOscillationMode, MutationOscillationSettings,
+    MutationPolicyInput, MutationPolicyReport, SimulationCostAction, SimulationCostInput,
+    StandardMutationProfile, apply_advanced_mutation_policies,
 };
 
 #[test]
@@ -15,6 +15,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
         expected_one_in: f64,
         expected_delta2: bool,
         expected_epigenetic: EpigeneticPolicyAction,
+        expected_save_as_temporary_gene: bool,
         expected_staging: [i32; 15],
     }
 
@@ -41,6 +42,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
             expected_one_in: 4_500.0,
             expected_delta2: true,
             expected_epigenetic: EpigeneticPolicyAction::None,
+            expected_save_as_temporary_gene: false,
             expected_staging: [2; 15],
         },
         MutationCase {
@@ -60,6 +62,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
             expected_one_in: 50_000.0,
             expected_delta2: false,
             expected_epigenetic: EpigeneticPolicyAction::None,
+            expected_save_as_temporary_gene: false,
             expected_staging: [2; 15],
         },
         MutationCase {
@@ -82,6 +85,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
             expected_one_in: 3_333.3333333333335,
             expected_delta2: false,
             expected_epigenetic: EpigeneticPolicyAction::None,
+            expected_save_as_temporary_gene: false,
             expected_staging: [2; 15],
         },
         MutationCase {
@@ -91,7 +95,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
                     reset_enabled: false,
                     amplification: 2.0,
                     overload_threshold: 3,
-                    save_as_temporary_gene: false,
+                    save_as_temporary_gene: true,
                 },
                 ..Default::default()
             },
@@ -105,6 +109,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
             expected_one_in: 5_000.0,
             expected_delta2: false,
             expected_epigenetic: EpigeneticPolicyAction::Amplified,
+            expected_save_as_temporary_gene: true,
             expected_staging: [4; 15],
         },
     ];
@@ -135,8 +140,29 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
             "{}",
             case.name
         );
+        assert_eq!(
+            report.save_as_temporary_gene, case.expected_save_as_temporary_gene,
+            "{}",
+            case.name
+        );
         assert_eq!(staging, case.expected_staging, "{}", case.name);
     }
+
+    let mut dna = LegacyDna::parse("1 2 3 4").unwrap();
+    let mut mutator = GenomeMutator::new(1);
+    let no_mutation = MutationPolicyReport {
+        effective_multiplier: 1.0,
+        effective_one_in: f64::MAX,
+        delta2_applied: false,
+        epigenetic_action: EpigeneticPolicyAction::None,
+        save_as_temporary_gene: false,
+    };
+    assert_eq!(
+        mutator
+            .mutate_with_policy(&mut dna, &StandardMutationProfile::default(), no_mutation)
+            .changes,
+        0
+    );
 
     let costs = DnaCosts {
         movement: 2.0,
@@ -164,4 +190,10 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
     assert_eq!(cost.action, 6.0);
     assert_eq!(cost.dynamic_multiplier, 3.0);
     assert_eq!(cost.total, 37.5);
+
+    let dna_upkeep = DnaCosts {
+        dna_upkeep: 2.0,
+        ..DnaCosts::default()
+    };
+    assert_eq!(dna_upkeep.upkeep_cost(0.0, 5, 0), 8.0);
 }
