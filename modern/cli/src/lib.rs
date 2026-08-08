@@ -1,3 +1,5 @@
+mod probe;
+
 use clap::{Parser, Subcommand, ValueEnum};
 use darwinbots_engine::{BackendPreference, Engine, EngineConfig, LegacyDna};
 use serde_json::json;
@@ -19,6 +21,14 @@ enum Command {
     Run {
         #[arg(long, required = true)]
         bot: Vec<PathBuf>,
+        #[arg(long, default_value_t = 1)]
+        population: usize,
+        #[arg(long)]
+        vegetable_bot: Option<PathBuf>,
+        #[arg(long, default_value_t = 0)]
+        vegetable_population: usize,
+        #[arg(long, default_value_t = 1_000)]
+        initial_energy: i32,
         #[arg(long, default_value_t = 1_000)]
         ticks: u64,
         #[arg(long, value_enum, default_value_t = BackendArgument::Auto)]
@@ -84,26 +94,25 @@ where
     match Arguments::try_parse_from(arguments)?.command {
         Command::Run {
             bot,
+            population,
+            vegetable_bot,
+            vegetable_population,
+            initial_energy,
             ticks,
             backend,
             seed,
         } => {
-            let mut engine = create_engine(bot.len().max(1), backend, seed)?;
-            for path in bot {
-                engine.spawn(read_bot(&path)?)?;
-            }
-            let started = Instant::now();
-            advance(&mut engine, ticks)?;
-            let elapsed = started.elapsed().as_secs_f64();
-            serde_json::to_writer(
-                &mut output,
-                &json!({
-                    "tick": engine.snapshot().tick,
-                    "population": engine.population(),
-                    "backend": format!("{:?}", engine.backend()),
-                    "elapsed_seconds": elapsed,
-                }),
-            )?;
+            let report = probe::execute(probe::Options {
+                bot,
+                population,
+                vegetable_bot,
+                vegetable_population,
+                initial_energy,
+                ticks,
+                seed,
+                backend: backend.into(),
+            })?;
+            serde_json::to_writer(&mut output, &report)?;
         }
         Command::Bench {
             bot,
