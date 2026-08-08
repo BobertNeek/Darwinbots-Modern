@@ -79,6 +79,49 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task EditedGlobalSettingsReachNextWorldCreatePayloadAfterReset()
+    {
+        var factory = new SetupCapturingEngineClientFactory();
+        var storage = new AuditStorageService();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), factory, storage);
+            window.Show();
+            await WaitFor(() => factory.Setups.Count >= 1);
+            Assert.Equal(1, factory.Setups.Count);
+            var originalSetup = factory.Setups.Single();
+
+            var dialog = new GlobalSettingsWindow(new GlobalSettings());
+            dialog.FindControl<CheckBox>("Delta2Enabled")!.IsChecked = true;
+            dialog.FindControl<NumericUpDown>("DnaUpkeep")!.Value = 2.5m;
+            dialog.FindControl<CheckBox>("SaveAsTemporaryGene")!.IsChecked = true;
+            Invoke(dialog, "Apply_Click");
+            SetField(window, "_globalSettings", dialog.Settings);
+            Assert.True(Field<GlobalSettings>(window, "_globalSettings").AdvancedMutation.Delta2Enabled);
+            Assert.Equal(2.5, Field<GlobalSettings>(window, "_globalSettings").Costs.DnaUpkeep);
+            Assert.False(originalSetup.GlobalSettings.AdvancedMutation.Delta2Enabled);
+            Assert.Equal(0, originalSetup.GlobalSettings.Costs.DnaUpkeep);
+            var pendingSetup = (WorldSetupOptions)typeof(MainWindow)
+                .GetMethod("CreateNextWorldSetup", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, null)!;
+            Assert.True(pendingSetup.GlobalSettings.AdvancedMutation.Delta2Enabled);
+            Assert.Equal(2.5, pendingSetup.GlobalSettings.Costs.DnaUpkeep);
+
+            Invoke(window, "Reset_Click");
+            await WaitFor(() => factory.Setups.Count >= 2);
+            Assert.Equal(2, factory.Setups.Count);
+
+            var nextWorld = factory.Setups.Last();
+            Assert.NotSame(originalSetup, nextWorld);
+            Assert.True(nextWorld.GlobalSettings.AdvancedMutation.Delta2Enabled);
+            Assert.Equal(2.5, nextWorld.GlobalSettings.Costs.DnaUpkeep);
+            Assert.True(nextWorld.GlobalSettings.AdvancedMutation.SaveAsTemporaryGene);
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task HistoricMenuDispatchesRuntimeCommandsAndExposesUnavailableOnlineState()
     {
         var engine = new RecordingEngineClient();
@@ -576,6 +619,17 @@ public sealed class RuntimeControlSurfaceTests
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10);
         Assert.True(condition(), $"Timed out waiting for the serialized UI command batch. Calls: {details?.Invoke()}");
+    }
+}
+
+internal sealed class SetupCapturingEngineClientFactory : IEngineClientFactory
+{
+    public List<WorldSetupOptions> Setups { get; } = [];
+
+    public IEngineClient Create(WorldSetupOptions setup)
+    {
+        Setups.Add(setup);
+        return new AuditEngineClient();
     }
 }
 

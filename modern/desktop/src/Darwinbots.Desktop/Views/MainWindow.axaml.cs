@@ -826,6 +826,11 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success("GLOBAL SETTINGS SAVED");
     }
 
+    private WorldSetupOptions CreateNextWorldSetup() => _setup with
+    {
+        GlobalSettings = _globalSettings,
+    };
+
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
@@ -1120,7 +1125,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            _session = new SimulationSession(_engineFactory.Create(_setup));
+            _session = new SimulationSession(_engineFactory.Create(CreateNextWorldSetup()));
             _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
             {
                 _viewModel.Update(snapshot);
@@ -1227,7 +1232,7 @@ public sealed partial class MainWindow : Window
     private void Reset_Click(object? sender, RoutedEventArgs e)
     {
         _runTimer.Stop();
-        var replacement = new MainWindow(_startupBots, _setup, _engineFactory, _storage);
+        var replacement = new MainWindow(_startupBots, CreateNextWorldSetup(), _engineFactory, _storage);
         replacement.Show();
         Close();
     }
