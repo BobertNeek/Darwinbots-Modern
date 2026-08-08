@@ -83,6 +83,8 @@ public sealed partial class MainWindow : Window
     private bool _rgbMemoryMonitorEnabled;
     private string _rgbMemoryChannels = ".nrg, .body, .waste";
     private LegacyDocumentWindow? _rgbMonitorWindow;
+    private GraphSuiteWindow? _graphWindow;
+    private ContestResultsWindow? _contestResultsWindow;
 
     public MainWindow() : this([], new WorldSetupOptions(), NativeEngineClientFactory.Instance, AvaloniaDesktopStorageService.Instance) { }
 
@@ -1110,6 +1112,7 @@ public sealed partial class MainWindow : Window
                 Viewport.SelectSlot(_viewModel.SelectedSlot);
                 PopulationChart.SetSnapshot(snapshot);
                 EnergyChart.SetSnapshot(snapshot);
+                _graphWindow?.SetSnapshot(snapshot);
                 RecordDeadSnapshot(snapshot);
                 RefreshLegacyMenuStates();
                 if (_zerobotProgression is not null && !_progressionInFlight
@@ -1555,7 +1558,34 @@ public sealed partial class MainWindow : Window
     {
         _runTimer.Stop();
         _autosaveTimer.Stop();
+        _graphWindow?.Close();
+        _contestResultsWindow?.Close();
         if (_session is not null) await _session.DisposeAsync();
+    }
+
+    private void Graphs_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_graphWindow is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+        _graphWindow = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty);
+        _graphWindow.Closed += (_, _) => _graphWindow = null;
+        _graphWindow.Show(this);
+    }
+
+    private void ContestResults_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_contestResultsWindow is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+        var result = ContestResultSnapshot.FromSnapshot(_session?.LatestSnapshot ?? EngineSnapshot.Empty);
+        _contestResultsWindow = new ContestResultsWindow(result);
+        _contestResultsWindow.Closed += (_, _) => _contestResultsWindow = null;
+        _contestResultsWindow.Show(this);
     }
 }
 
