@@ -1,4 +1,6 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SpeciesId};
+use darwinbots_engine::{
+    CorpseDecayMode, CorpseDecaySettings, Engine, EngineConfig, LegacyDna, SpeciesId,
+};
 
 #[test]
 fn energy_death_leaves_a_decayable_corpse_in_world_state() {
@@ -21,6 +23,64 @@ fn energy_death_leaves_a_decayable_corpse_in_world_state() {
 
     engine.tick_many(20_000).unwrap();
     assert!(engine.snapshot().corpses.is_empty());
+}
+
+#[test]
+fn configured_corpse_decay_changes_authoritative_lifecycle_state_after_tick() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 1,
+        corpse_decay: CorpseDecaySettings {
+            mode: CorpseDecayMode::EnergyShot,
+            packet_size: 3,
+            period: 1,
+            ..CorpseDecaySettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    engine
+        .spawn_species_batch(
+            LegacyDna::parse("start\nstop").unwrap(),
+            SpeciesId::default(),
+            [[400.0, 500.0]],
+            1,
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    let corpse_energy_before = engine.snapshot().corpses[0].energy;
+
+    engine.tick().unwrap();
+
+    let corpse = &engine.snapshot().corpses[0];
+    assert_eq!(corpse.energy, corpse_energy_before - 3);
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| shot.kind == -2 && shot.value == 3)
+    );
+}
+
+#[test]
+fn energy_below_configured_corpse_threshold_becomes_corpse_after_age_zero() {
+    let mut engine = Engine::new(EngineConfig {
+        corpse_decay: CorpseDecaySettings {
+            death_energy_threshold: 15,
+            ..CorpseDecaySettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let dna = LegacyDna::parse("start\nstop").unwrap();
+    engine
+        .spawn_species_batch(dna, SpeciesId::default(), [[400.0, 500.0]], 14)
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.population(), 0);
+    assert_eq!(engine.snapshot().corpses.len(), 1);
 }
 
 #[test]

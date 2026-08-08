@@ -8,9 +8,10 @@ use crate::simulation_cycle::CycleRecorder;
 use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_DEADBAND};
 use crate::{
     ActivationFrame, AdvancedMutationSettings, BackendCapabilities, BackendKind, BackendPreference,
-    BiologyState, CommandOutcome, CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase,
-    DnaCosts, DnaMetadata, DnaVm, EngineConfig, EngineError, EyeSnapshot, FileTeleporter,
-    GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna, LegacyOrganism,
+    BiologyState, CommandOutcome, CoreReadbacks, CorpseDecaySettings, CorpseSnapshot,
+    CpuPhysicsBackend,
+    CyclePhase, DnaCosts, DnaMetadata, DnaVm, EngineConfig, EngineError, EyeSnapshot,
+    FileTeleporter, GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna, LegacyOrganism,
     LegacySimulationFile, MutationPolicyInput, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks,
     PhaseTimings, PhysicsBackend, PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect,
     ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind,
@@ -19,7 +20,7 @@ use crate::{
     StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands,
     TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime, VegetationSettings,
     VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, apply_advanced_mutation_policies,
-    eye_value, generated_skin, projectile_effect,
+    WasteSettings, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -667,6 +668,8 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             brownian_motion: value.brownian_motion,
             physics: value.physics.into(),
             shots: value.shots.into(),
+            corpse_decay: CorpseDecaySettings::default(),
+            waste: WasteSettings::default(),
             vegetation: value.vegetation.into(),
             dna_costs: value.dna_costs.into(),
             advanced_mutation: AdvancedMutationSettings::default(),
@@ -3454,6 +3457,7 @@ impl Engine {
         self.trace_robot_phase(&mut trace, CyclePhase::Material);
         self.material_commands_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Waste);
+        self.waste_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Shot);
         self.prepare_projectile_requests_phase();
         self.projectile_spawn_phase();
@@ -4331,6 +4335,73 @@ impl Engine {
                 MEM_READ_BUOYANCY,
                 (robot.buoyancy * 32_000.0).round_ties_even() as i32,
             );
+        }
+    }
+
+    fn waste_phase(&mut self) {
+        let settings = self.config.waste;
+        let mut packets = Vec::new();
+        for (slot_index, slot) in self.slots.iter_mut().enumerate() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            robot.materials.waste = robot.materials.waste.max(0);
+            robot.materials.permanent_waste = robot.materials.permanent_waste.max(0);
+
+            let total_waste = robot
+                .materials
+                .waste
+                .saturating_add(robot.materials.permanent_waste);
+            let alzheimer_writes =
+                total_waste.saturating_sub(settings.alzheimer_threshold.max(0)) / 4;
+            if alzheimer_writes > 0 {
+                let mut random = robot.program.rng_state;
+                for _ in 0..alzheimer_writes {
+                    random = advance_random(random);
+                    let address = (random % 1_000 + 1) as i32;
+                    if matches!(address, 921 | 922) {
+                        continue;
+                    }
+                    random = advance_random(random);
+                    let value = (random % 64_001) as i32 - 32_000;
+                    robot.program.memory.write(address, value);
+                }
+                robot.program.rng_state = random;
+            }
+
+            if robot.materials.waste > settings.defecation_threshold.max(0) {
+                let overflow = robot.materials.waste > 32_000;
+                let amount = if overflow {
+                    robot.materials.waste = 31_500;
+                    500
+                } else {
+                    robot.materials.waste.min(200)
+                };
+                if amount > 0 {
+                    if !overflow {
+                        robot.materials.waste = robot.materials.waste.saturating_sub(amount);
+                    }
+                    robot.materials.permanent_waste = robot
+                        .materials
+                        .permanent_waste
+                        .saturating_add(scale_tie_amount(amount, 0.01))
+                        .min(32_000);
+                    robot.materials.publish(&mut robot.program.memory);
+                    packets.push((
+                        OrganismId::new(slot_index as u32, slot.generation),
+                        robot.kinematics.position,
+                        robot.kinematics.actual_velocity,
+                        amount,
+                    ));
+                }
+            } else {
+                robot.materials.publish(&mut robot.program.memory);
+            }
+        }
+        for (owner, position, velocity, value) in packets {
+            self.projectiles
+                .spawn_waste_packet(owner, position, velocity, value);
+            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
     }
 
@@ -5751,38 +5822,79 @@ impl Engine {
                         ) {
                             return true;
                         }
-                        let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        let applied = power.min(target_robot.materials.energy.max(0));
-                        target_robot.materials.energy =
-                            target_robot.materials.energy.saturating_sub(applied);
-                        if owner_is_live {
-                            let harvested = applied.saturating_mul(3) / 4;
-                            let owner_robot = self.slots.get_mut(owner).unwrap();
-                            owner_robot.materials.energy =
-                                owner_robot.materials.energy.saturating_add(harvested);
-                            self.stats.energy_harvested =
-                                self.stats.energy_harvested.saturating_add(harvested as u64);
-                            if harvested > 0 {
-                                self.stats.feeding_events =
-                                    self.stats.feeding_events.saturating_add(1);
+                        let target_id =
+                            OrganismId::new(target as u32, self.slots[target].generation);
+                        let (packet_value, target_velocity) = {
+                            let target_robot = self.slots[target].organism.as_mut().unwrap();
+                            let available = target_robot.materials.energy.max(0);
+                            if available == 0 {
+                                return false;
                             }
-                        }
-                        applied > 0
+                            let mut packet_value = power.max(1);
+                            let mut energy_loss = scale_tie_amount(packet_value, 0.90);
+                            if energy_loss > available {
+                                packet_value = (f64::from(available) / 0.90).floor() as i32;
+                                energy_loss = scale_tie_amount(packet_value, 0.90).min(available);
+                            }
+                            if packet_value <= 0 || energy_loss <= 0 {
+                                return false;
+                            }
+                            target_robot.materials.energy =
+                                target_robot.materials.energy.saturating_sub(energy_loss);
+                            let body_loss = scale_tie_amount(packet_value, 0.01);
+                            target_robot.materials.body =
+                                target_robot.materials.body.saturating_sub(body_loss);
+                            target_robot
+                                .materials
+                                .publish(&mut target_robot.program.memory);
+                            (packet_value, target_robot.kinematics.actual_velocity)
+                        };
+                        let return_velocity = [
+                            target_velocity[0] * 1.5 - projectile_velocity[0],
+                            target_velocity[1] * 1.5 - projectile_velocity[1],
+                        ];
+                        self.projectiles.spawn_energy_packet(
+                            target_id,
+                            projectile_position,
+                            return_velocity,
+                            projectile_range.saturating_mul(2),
+                            packet_value,
+                        );
+                        true
                     }
                     ProjectileEffect::DonateEnergy => {
-                        if !owner_is_live {
-                            return false;
-                        }
-                        let donated = transfer_fixed_amount(
-                            &mut self.slots,
-                            owner_slot,
-                            target,
-                            power,
-                            |robot| &mut robot.materials.energy,
-                            |robot| &mut robot.materials.energy,
-                        );
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        let packet_energy = scale_tie_amount(power.max(0), 0.95);
+                        let packet_body = scale_tie_amount(power.max(0), 0.004);
+                        let packet_waste = scale_tie_amount(power.max(0), 0.01);
+                        let overflow = (i64::from(target_robot.materials.energy.max(0))
+                            + i64::from(packet_energy)
+                            - 32_000)
+                            .max(0) as i32;
+                        target_robot.materials.energy = target_robot
+                            .materials
+                            .energy
+                            .saturating_add(packet_energy)
+                            .min(32_000);
+                        target_robot.materials.body = target_robot
+                            .materials
+                            .body
+                            .saturating_add(packet_body)
+                            .saturating_add(scale_tie_amount(overflow, 0.10))
+                            .min(32_000);
+                        target_robot.materials.waste =
+                            target_robot.materials.waste.saturating_add(packet_waste);
+                        target_robot
+                            .materials
+                            .publish(&mut target_robot.program.memory);
+                        let donated = packet_energy;
                         self.stats.energy_donated =
                             self.stats.energy_donated.saturating_add(donated as u64);
+                        self.stats.energy_harvested =
+                            self.stats.energy_harvested.saturating_add(donated as u64);
+                        if donated > 0 {
+                            self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
+                        }
                         donated > 0
                     }
                     ProjectileEffect::Venom => {
@@ -6661,12 +6773,21 @@ impl Engine {
     }
 
     fn decay_corpses_phase(&mut self) {
+        let mut packets = Vec::new();
         for corpse in &mut self.corpses {
-            corpse.advance(
+            if let Some((kind, value)) = corpse.advance(
                 self.config.gravity,
                 self.config.drag,
                 [self.config.world_width, self.config.world_height],
-            );
+                &self.config.corpse_decay,
+            ) {
+                packets.push((corpse.position, corpse.velocity, kind, value));
+            }
+        }
+        for (position, velocity, kind, value) in packets {
+            self.projectiles
+                .spawn_corpse_packet(position, velocity, kind, value);
+            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
         self.corpses.retain(|corpse| {
             corpse.energy > 0 && corpse.position.iter().all(|value| value.is_finite())
@@ -6751,7 +6872,13 @@ impl Engine {
             let Some(robot) = slot.organism.as_ref() else {
                 continue;
             };
-            if robot.materials.energy > 0 {
+            let should_die = if self.config.corpse_decay.enabled {
+                robot.counters.age > 0
+                    && robot.materials.energy < self.config.corpse_decay.death_energy_threshold
+            } else {
+                robot.materials.energy < 1 || robot.materials.body < 1
+            };
+            if !should_die {
                 continue;
             }
             let id = OrganismId::new(slot_index as u32, slot.generation);
@@ -6774,14 +6901,16 @@ impl Engine {
                     .species
                     .get(species as usize)
                     .is_some_and(|value| value.reseed);
-                self.corpses.push(CorpseSnapshot::new(
-                    organism.kinematics.position,
-                    organism.kinematics.velocity,
-                    organism.materials.body,
-                    organism.materials.waste,
-                    species,
-                    repopulating,
-                ));
+                if self.config.corpse_decay.enabled {
+                    self.corpses.push(CorpseSnapshot::new(
+                        organism.kinematics.position,
+                        organism.kinematics.velocity,
+                        organism.materials.body,
+                        organism.materials.waste,
+                        species,
+                        repopulating,
+                    ));
+                }
                 self.stats.deaths = self.stats.deaths.saturating_add(1);
                 trace.queue_change(
                     CyclePhase::CommitBirthsDeaths,
@@ -8055,38 +8184,6 @@ fn transfer_robot_percent(
     let amount = ((*source_value).max(0) as i64 * percent.clamp(0, 99) as i64 / 100) as i32;
     *source_value = source_value.saturating_sub(amount);
     let target_value = field(target_robot);
-    *target_value = target_value.saturating_add(amount);
-    amount
-}
-
-fn transfer_fixed_amount(
-    slots: &mut [RobotSlot],
-    source: usize,
-    target: usize,
-    requested: i32,
-    source_field: fn(&mut RobotState) -> &mut i32,
-    target_field: fn(&mut RobotState) -> &mut i32,
-) -> i32 {
-    if requested <= 0 || source == target || source >= slots.len() || target >= slots.len() {
-        return 0;
-    }
-    let (source_robot, target_robot) = if source < target {
-        let (left, right) = slots.split_at_mut(target);
-        (&mut left[source], &mut right[0])
-    } else {
-        let (left, right) = slots.split_at_mut(source);
-        (&mut right[0], &mut left[target])
-    };
-    let (Some(source_robot), Some(target_robot)) = (
-        source_robot.organism.as_mut(),
-        target_robot.organism.as_mut(),
-    ) else {
-        return 0;
-    };
-    let source_value = source_field(source_robot);
-    let amount = requested.min((*source_value).max(0));
-    *source_value = source_value.saturating_sub(amount);
-    let target_value = target_field(target_robot);
     *target_value = target_value.saturating_add(amount);
     amount
 }

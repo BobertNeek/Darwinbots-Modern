@@ -1,5 +1,6 @@
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, OrganismId, SaveFile, SpeciesDefinition, sysvar_address,
+    Engine, EngineConfig, LegacyDna, OrganismId, SaveFile, SpeciesDefinition, WasteSettings,
+    sysvar_address,
 };
 
 const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
@@ -100,9 +101,51 @@ fn negative_shots_feed_the_attacker_from_the_target() {
 
     engine.tick().unwrap();
     engine.tick().unwrap();
+    engine.tick().unwrap();
 
     assert!(engine.organism(attacker).unwrap().energy > 1_000);
-    assert_eq!(engine.snapshot().stats.energy_harvested, 75);
+    assert_eq!(engine.snapshot().stats.energy_harvested, 95);
+}
+
+#[test]
+fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        waste: WasteSettings {
+            alzheimer_threshold: 0,
+            defecation_threshold: 10,
+            ..WasteSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n-4 .shoot store\n32000 .shootval store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .unwrap();
+    engine.tick().unwrap();
+    let before_memory = engine.memory_at(target, 500).unwrap();
+
+    engine.tick().unwrap();
+
+    let after = engine.robot_state(target).unwrap();
+    assert!(after.materials.waste < 32_000);
+    assert!(after.materials.permanent_waste > 0);
+    assert_ne!(engine.memory_at(target, 500).unwrap(), before_memory);
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| shot.owner == target && shot.kind == -4 && shot.value == 200)
+    );
+    assert!(engine.snapshot().stats.shots_fired > 1);
+    assert_eq!(engine.organism(source).unwrap().waste, 0);
 }
 
 #[test]

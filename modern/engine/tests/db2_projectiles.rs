@@ -1,7 +1,8 @@
 mod support;
 
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, ShapeShotPolicy, SpeciesDefinition,
+    Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, ShapeShotPolicy, ShotSettings,
+    SpeciesDefinition,
 };
 use support::db2_fixtures::SHOT_SPEED;
 
@@ -32,6 +33,78 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
     assert_eq!(shot.owner, attacker);
     assert!((segment_length(shot.start, shot.end) - SHOT_SPEED).abs() < 0.01);
     assert_ne!(shot.end, [500.0, 100.0]);
+}
+
+#[test]
+fn energy_feeding_request_extracts_target_resources_and_returns_energy_packet() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let idle = LegacyDna::parse("start\nstop").unwrap();
+    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
+    engine.tick().unwrap();
+    let before = engine.robot_state(target).unwrap().materials.clone();
+
+    engine
+        .replace_dna(
+            attacker,
+            LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    engine
+        .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine.tick().unwrap();
+
+    let after = engine.robot_state(target).unwrap().materials.clone();
+    assert_eq!(after.energy, before.energy - 90);
+    assert_eq!(after.body, before.body - 1);
+    assert!(after.waste >= before.waste + 1);
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| shot.owner == target && shot.kind == -2 && shot.value == 100)
+    );
+}
+
+#[test]
+fn energy_packet_applies_db24832_transfer_without_a_live_packet_owner() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        shots: ShotSettings {
+            energy_shots_do_not_decay: true,
+            ..ShotSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source = engine
+        .spawn_species_batch(
+            LegacyDna::parse("start\n-2 .shoot store\n1000 .shootval store\nstop").unwrap(),
+            darwinbots_engine::SpeciesId::default(),
+            [[100.0, 100.0]],
+            1,
+        )
+        .unwrap()[0];
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .unwrap();
+    let before = engine.robot_state(target).unwrap().materials.clone();
+
+    engine.tick().unwrap();
+    assert!(engine.organism(source).is_err());
+    engine.tick().unwrap();
+
+    let after = engine.robot_state(target).unwrap().materials.clone();
+    assert_eq!(after.energy, before.energy + 950);
+    assert_eq!(after.body, before.body + 4);
+    assert_eq!(after.waste, before.waste + 10);
 }
 
 #[test]

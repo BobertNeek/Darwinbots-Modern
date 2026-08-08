@@ -36,7 +36,10 @@ pub mod ffi;
 pub use backend::{BackendCapabilities, BackendKind, BackendPreference};
 pub use biology::BiologyState;
 pub use biology::RobotMaterials;
-pub use config::{EngineConfig, PhysicsSettings, ShotSettings, VegetationSettings};
+pub use config::{
+    CorpseDecayMode, CorpseDecaySettings, EngineConfig, PhysicsSettings, ShotSettings,
+    VegetationSettings, WasteSettings,
+};
 pub use corpse::CorpseSnapshot;
 pub use dna::{DnaMetadata, LegacyDna};
 pub use dna_costs::{DnaCosts, SimulationCostAction, SimulationCostInput, SimulationCostReport};

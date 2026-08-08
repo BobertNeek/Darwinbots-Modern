@@ -150,6 +150,106 @@ impl ProjectilePool {
         slot as u32
     }
 
+    pub(crate) fn spawn_corpse_packet(
+        &mut self,
+        position: [f32; 2],
+        velocity: [f32; 2],
+        kind: i32,
+        value: i32,
+    ) -> u32 {
+        self.spawn_fixed_packet(
+            OrganismId::new(u32::MAX, u32::MAX),
+            position,
+            velocity,
+            1,
+            40.0,
+            kind,
+            value,
+        )
+    }
+
+    pub(crate) fn spawn_energy_packet(
+        &mut self,
+        owner: OrganismId,
+        position: [f32; 2],
+        velocity: [f32; 2],
+        range: u32,
+        value: i32,
+    ) -> u32 {
+        let range = range.max(1);
+        self.spawn_fixed_packet(
+            owner,
+            position,
+            velocity,
+            range,
+            range as f32 * 40.0,
+            -2,
+            value,
+        )
+    }
+
+    pub(crate) fn spawn_waste_packet(
+        &mut self,
+        owner: OrganismId,
+        position: [f32; 2],
+        velocity: [f32; 2],
+        value: i32,
+    ) -> u32 {
+        self.spawn_fixed_packet(owner, position, velocity, 1, 40.0, -4, value)
+    }
+
+    fn spawn_fixed_packet(
+        &mut self,
+        owner: OrganismId,
+        position: [f32; 2],
+        velocity: [f32; 2],
+        range: u32,
+        energy: f32,
+        kind: i32,
+        value: i32,
+    ) -> u32 {
+        let slot = self
+            .free_slots
+            .pop()
+            .map_or(self.owners.len(), |slot| slot as usize);
+        let kind = Self::normalized_kind(kind);
+        let value = value.clamp(-32_000, 32_000);
+        if slot == self.owners.len() {
+            self.owners.push(owner);
+            self.positions.push(position);
+            self.previous_positions.push(position);
+            self.velocities.push(velocity);
+            self.ages.push(0);
+            self.ranges.push(range);
+            self.energies.push(energy);
+            self.kinds.push(kind);
+            self.values.push(value);
+            self.alive.push(true);
+            self.impact_flash.push(false);
+            self.payloads.push(None);
+            self.source_species_names.push(None);
+            self.toxin_memory_locations.push(0);
+            self.toxin_memory_values.push(0);
+        } else {
+            self.owners[slot] = owner;
+            self.positions[slot] = position;
+            self.previous_positions[slot] = position;
+            self.velocities[slot] = velocity;
+            self.ages[slot] = 0;
+            self.ranges[slot] = range;
+            self.energies[slot] = energy;
+            self.kinds[slot] = kind;
+            self.values[slot] = value;
+            self.alive[slot] = true;
+            self.impact_flash[slot] = false;
+            self.payloads[slot] = None;
+            self.source_species_names[slot] = None;
+            self.toxin_memory_locations[slot] = 0;
+            self.toxin_memory_values[slot] = 0;
+        }
+        slot as u32
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn spawn_defensive_poison(
         &mut self,

@@ -51,6 +51,53 @@ impl Default for ShotSettings {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CorpseDecayMode {
+    None,
+    WasteShot,
+    #[default]
+    EnergyShot,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CorpseDecaySettings {
+    pub enabled: bool,
+    pub death_energy_threshold: i32,
+    pub mode: CorpseDecayMode,
+    pub packet_size: i32,
+    pub period: u64,
+}
+
+impl Default for CorpseDecaySettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            death_energy_threshold: 15,
+            mode: CorpseDecayMode::EnergyShot,
+            packet_size: 1,
+            period: 10,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WasteSettings {
+    pub alzheimer_threshold: i32,
+    pub defecation_threshold: i32,
+}
+
+impl Default for WasteSettings {
+    fn default() -> Self {
+        Self {
+            alzheimer_threshold: 400,
+            defecation_threshold: 32_000,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct VegetationSettings {
@@ -120,6 +167,10 @@ pub struct EngineConfig {
     #[serde(default)]
     pub shots: ShotSettings,
     #[serde(default)]
+    pub corpse_decay: CorpseDecaySettings,
+    #[serde(default)]
+    pub waste: WasteSettings,
+    #[serde(default)]
     pub vegetation: VegetationSettings,
     #[serde(default)]
     pub dna_costs: DnaCosts,
@@ -156,6 +207,8 @@ impl Default for EngineConfig {
             brownian_motion: 0.0,
             physics: PhysicsSettings::default(),
             shots: ShotSettings::default(),
+            corpse_decay: CorpseDecaySettings::default(),
+            waste: WasteSettings::default(),
             vegetation: VegetationSettings::default(),
             dna_costs: DnaCosts::default(),
             advanced_mutation: AdvancedMutationSettings::default(),
