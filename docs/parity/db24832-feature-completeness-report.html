@@ -50,22 +50,22 @@ footer{width:min(100% - 2rem,76rem);margin:0 auto;padding:2rem 0 4rem;color:var(
 <header class="mast">
 <p class="eyebrow">Product parity audit · canonical Rust port</p>
 <h1>Darwinbots Modern feature completeness</h1>
-<p class="deck">The port is <strong>evidence-weighted at 69.37/100</strong>. Its simulation core is materially ahead of its player-facing workflows, while environmental mechanics, reproduction breadth, and diagnostic tools remain partial.</p>
+<p class="deck">The port is <strong>evidence-weighted at 71.22/100</strong>. Its simulation core is materially ahead of its player-facing workflows, while environmental mechanics, reproduction breadth, and diagnostic tools remain partial.</p>
 <div class="meta" aria-label="Audit metadata"><span>Audit date <strong>2026-08-08</strong></span><span>Integrated base <code>27f2d32</code></span><span>Scope <strong>offline product parity</strong></span><span>Online play <strong>excluded</strong></span></div>
 </header>
 <nav class="toc" aria-label="Report contents"><ol><li><a href="#verdict">Verdict</a></li><li><a href="#comparison">Domain scores</a></li><li><a href="#findings">Findings</a></li><li><a href="#remaining">Remaining work</a></li><li><a href="#ledger">Feature ledger</a></li><li><a href="#method">Method</a></li></ol></nav>
 <noscript>This report needs JavaScript enabled to render its embedded 177-row feature ledger.</noscript>
 <main id="main">
 <section id="verdict"><div class="wide headline">
-<div aria-label="Overall feature parity: 69.37 out of 100"><span class="big">69.37<small>/100</small></span><span class="score-caption">Evidence-weighted parity</span></div>
+<div aria-label="Overall feature parity: 71.22 out of 100"><span class="big">71.22<small>/100</small></span><span class="score-caption">Evidence-weighted parity</span></div>
 <div class="callout"><p class="kicker">Bottom line</p><h2>A credible core, not yet a complete product.</h2>
 <p>The strongest work is in the DNA virtual machine, canonical scheduler, and GPU-capable runtime contracts. Remaining gaps center on environmental mechanics, reproduction breadth, robot diagnostics, and unverified physical-GPU execution.</p>
-<p><strong>30.63 weighted parity points remain open.</strong> That is a feature-gap measure, not a calendar estimate. Late parity work often costs more per point because it crosses simulation, persistence, and interface boundaries.</p>
-<p class="formula"><strong>Exact score: 69.37/100</strong> = 70% × 70.81 mechanics/platform + 30% × 66.00 UI/workflows. The 70% engine share maps to 55% mechanics plus 15% persistence/runtime, audited together.</p></div>
+<p><strong>28.78 weighted parity points remain open.</strong> That is a feature-gap measure, not a calendar estimate. Late parity work often costs more per point because it crosses simulation, persistence, and interface boundaries.</p>
+<p class="formula"><strong>Exact score: 71.22/100</strong> = 70% × 73.46 mechanics/platform + 30% × 66.00 UI/workflows. The 70% engine share maps to 55% mechanics plus 15% persistence/runtime, audited together.</p></div>
 </div></section>
 <section id="comparison"><div class="wide compare">
 <div><p class="kicker">Domain comparison</p><h2>Engine work leads the interface.</h2>
-<div class="measure"><div class="measure-head"><span>Mechanics &amp; platform</span><span>70.81</span></div><div class="track" role="progressbar" aria-label="Mechanics and platform parity" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70.81"><div class="fill" style="width:70.81%"></div></div></div>
+<div class="measure"><div class="measure-head"><span>Mechanics &amp; platform</span><span>73.46</span></div><div class="track" role="progressbar" aria-label="Mechanics and platform parity" aria-valuemin="0" aria-valuemax="100" aria-valuenow="73.46"><div class="fill" style="width:73.46%"></div></div></div>
 <div class="measure"><div class="measure-head"><span>UI &amp; workflows</span><span>66.00</span></div><div class="track" role="progressbar" aria-label="UI and workflow parity" aria-valuemin="0" aria-valuemax="100" aria-valuenow="66.00"><div class="fill" style="width:66.00%"></div></div></div>
 <p class="annotation">Engine behavior and UI exposure are scored separately. A menu item is not proof of a working mechanic, and a tested mechanic is not proof of a usable workflow.</p></div>
 <div><p class="kicker">UI evidence dimensions</p><h2>Presence is ahead of fidelity.</h2><ul class="dimensions"><li><div class="measure-head"><span>Surface coverage</span><span>71.02</span></div><div class="track" role="progressbar" aria-label="UI surface coverage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="71.02"><div class="fill amber" style="width:71.02%"></div></div></li><li><div class="measure-head"><span>Wired behavior</span><span>69.55</span></div><div class="track" role="progressbar" aria-label="Wired UI behavior" aria-valuemin="0" aria-valuemax="100" aria-valuenow="69.55"><div class="fill amber" style="width:69.55%"></div></div></li><li><div class="measure-head"><span>Rendered fidelity</span><span>51.51</span></div><div class="track" role="progressbar" aria-label="Rendered UI fidelity" aria-valuemin="0" aria-valuemax="100" aria-valuenow="51.51"><div class="fill amber" style="width:51.51%"></div></div></li></ul>
