@@ -9,6 +9,7 @@ mod environment;
 mod error;
 mod history;
 mod id;
+mod modes;
 mod mutation;
 mod persistence;
 mod physics;
@@ -43,6 +44,10 @@ pub use environment::{Obstacle, Teleporter};
 pub use error::EngineError;
 pub use history::HistorySample;
 pub use id::OrganismId;
+pub use modes::{
+    LeaguePreset, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
+    LocalModeResult, LocalModeState, LocalModeStatus,
+};
 pub use mutation::{
     GenomeMutator, MutationKind, MutationPreference, MutationRate, MutationReport,
     PointMutationSchedule, PointMutator, StandardMutationEvent, StandardMutationKind,

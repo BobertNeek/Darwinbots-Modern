@@ -46,6 +46,12 @@ public sealed class RenderedControlSurfaceAuditTests
                 "live.expander.world", "live.expander.parameters", "live.expander.environment",
                 "live.expander.physics", "live.expander.senses", "live.expander.energy",
                 "live.expander.history", "live.expander.statistics", "live.expander.experiments",
+                "live.expander.league", "live.local_mode.kind", "live.local_mode.preset",
+                "live.local_mode.minimum_rounds", "live.local_mode.maximum_rounds",
+                "live.local_mode.maximum_cycles", "live.local_mode.population_cap",
+                "live.local_mode.restart", "live.local_mode.info", "live.local_mode.viruses",
+                "live.local_mode.sexual", "live.local_mode.configure", "live.local_mode.start",
+                "live.local_mode.restart_button", "live.local_mode.adjudicate", "live.local_mode.reason",
             ],
             [nameof(AdvancedSettingsRenderedControlsRoundTripEveryField)] =
             [
@@ -70,7 +76,7 @@ public sealed class RenderedControlSurfaceAuditTests
     {
         var ids = Coverage.Values.SelectMany(value => value).ToArray();
 
-        Assert.Equal(109, ids.Length);
+        Assert.Equal(125, ids.Length);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.All(ids, id => Assert.False(string.IsNullOrWhiteSpace(id)));
     }
@@ -368,6 +374,22 @@ public sealed class RenderedControlSurfaceAuditTests
             ClickExpander(window, Named<Expander>(window, "ExperimentsExpander"));
             Click(window, Named<Button>(window, "AdvanceZerobotButton"));
 
+            AssertComboSelection(window, Named<ComboBox>(window, "LocalModeKindSelector"), 1);
+            AssertComboSelection(window, Named<ComboBox>(window, "LocalModePreset"), 1);
+            Named<NumericUpDown>(window, "ModeMinimumRounds").Value = 1;
+            Named<NumericUpDown>(window, "ModeMaximumRounds").Value = 2;
+            Named<NumericUpDown>(window, "ModeMaximumCycles").Value = 120;
+            Named<NumericUpDown>(window, "ModePopulationCap").Value = 16;
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeRestartOnExtinction"));
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeProhibitInformation"));
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeProhibitViruses"));
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeProhibitSexual"));
+            Named<TextBox>(window, "LocalModeReason").Text = "rendered adjudication";
+            Click(window, Named<Button>(window, "ConfigureModeButton"));
+            Click(window, Named<Button>(window, "StartModeButton"));
+            Click(window, Named<Button>(window, "RestartModeButton"));
+            Click(window, Named<Button>(window, "AdjudicateModeButton"));
+
             var viewport = Named<WorldViewport>(window, "Viewport");
             ClickAt(window, viewport, 0.5, 0.5);
             Assert.Equal(3U, viewModel.SelectedSlot);
@@ -412,9 +434,15 @@ public sealed class RenderedControlSurfaceAuditTests
                 && engine.Calls.Contains("Clone:3:2")
                 && engine.Calls.Contains("Reproduce:3:2")
                 && engine.Calls.Contains("Remove:3:2")
+                && engine.Calls.Contains("ConfigureLocalMode")
+                && engine.Calls.Contains("StartLocalMode")
+                && engine.Calls.Contains("RestartLocalMode")
+                && engine.Calls.Any(call => call.StartsWith("AdjudicateLocalRound:", StringComparison.Ordinal))
                 && engine.EnvironmentUpdates.Count >= 3
                 && storage.SavedSimulation is not null,
                 () => string.Join(", ", engine.Calls));
+            window.Height = 1200;
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Capture(window, "runtime-exercised.png");
 
             Click(window, Named<Button>(window, "ResetButton"));
@@ -658,6 +686,7 @@ internal sealed class AuditEngineClient : IEngineClient
     private ulong _tick;
     private string _backend = "CPU";
     private EngineSnapshot _snapshot;
+    private LocalModeConfig _localModeConfig = LocalModeConfig.Default;
 
     public AuditEngineClient()
     {
@@ -711,6 +740,51 @@ internal sealed class AuditEngineClient : IEngineClient
     public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
+    public void ConfigureLocalMode(LocalModeConfig config)
+    {
+        Calls.Enqueue("ConfigureLocalMode");
+        _localModeConfig = config;
+        _snapshot = _snapshot with { LocalMode = LocalModeSnapshotFor(config, LocalModeStatus.Configured, 0, 0, 0, []) };
+    }
+    public void StartLocalMode()
+    {
+        Calls.Enqueue("StartLocalMode");
+        _snapshot = _snapshot with { LocalMode = LocalModeSnapshotFor(_localModeConfig, LocalModeStatus.Running, 1, 0, 0, []) };
+    }
+    public void RestartLocalMode()
+    {
+        Calls.Enqueue("RestartLocalMode");
+        _snapshot = _snapshot with { LocalMode = LocalModeSnapshotFor(_localModeConfig, LocalModeStatus.Running, 1, 0, 1, []) };
+    }
+    public void AdjudicateLocalRound(uint? winner, string reason)
+    {
+        Calls.Enqueue($"AdjudicateLocalRound:{winner?.ToString() ?? "none"}");
+        var result = new LocalModeResult(1, winner, 1, 1_000, reason);
+        _snapshot = _snapshot with
+        {
+            LocalMode = LocalModeSnapshotFor(_localModeConfig, LocalModeStatus.Completed, 1, 0, 1, [result], new LocalModeAdjudication(winner, reason)),
+        };
+    }
+
+    private static LocalModeSnapshot LocalModeSnapshotFor(
+        LocalModeConfig config,
+        LocalModeStatus status,
+        uint round,
+        ulong cycle,
+        uint restarts,
+        IReadOnlyList<LocalModeResult> results,
+        LocalModeAdjudication? adjudication = null) => new(
+        status,
+        config.Kind,
+        config.Preset,
+        round,
+        config.MaximumRounds,
+        cycle,
+        config.MaximumCycles,
+        restarts,
+        results,
+        adjudication,
+        config.Restrictions);
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return [1, 2, 3, 4]; }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }

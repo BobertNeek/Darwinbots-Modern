@@ -117,8 +117,84 @@ public static class NativeSnapshotParser
             History = history,
             Ties = ties,
             PhaseTimings = timings,
+            LocalMode = ParseLocalMode(native.LocalMode),
         };
     }
+
+    private static LocalModeSnapshot ParseLocalMode(NativeLocalMode? native)
+    {
+        if (native?.Config is not { } config)
+            return LocalModeSnapshot.Idle;
+
+        var parsedConfig = new LocalModeConfig(
+            ParseKind(config.Kind),
+            ParsePreset(config.Preset),
+            config.MinimumRounds,
+            config.MaximumRounds,
+            config.MaximumCycles,
+            config.MaximumPopulation,
+            config.RestartOnExtinction,
+            config.SourceSpecies,
+            config.SelectionPopulationWeight,
+            config.SelectionEnergyWeight,
+            config.Restrictions is { } restrictions
+                ? new LocalModeRestrictions(
+                    restrictions.ProhibitInformationShots,
+                    restrictions.ProhibitViruses,
+                    restrictions.ProhibitSexualReproduction,
+                    restrictions.ProhibitCrossSpeciesTieTransfer,
+                    restrictions.RobotFixingAllowed,
+                    restrictions.AsexualReproductionAllowed)
+                : new());
+        return new LocalModeSnapshot(
+            ParseStatus(native.Status),
+            parsedConfig.Kind,
+            parsedConfig.Preset,
+            native.CurrentRound,
+            parsedConfig.MaximumRounds,
+            native.CycleInRound,
+            parsedConfig.MaximumCycles,
+            native.RestartCount,
+            (native.Results ?? []).Select(result => new LocalModeResult(
+                result.Round,
+                result.Winner,
+                result.WinningPopulation,
+                result.WinningEnergy,
+                result.Reason,
+                result.Automatic)).ToArray(),
+            native.Adjudication is { } adjudication
+                ? new LocalModeAdjudication(adjudication.Winner, adjudication.Reason, adjudication.Automatic)
+                : null,
+            parsedConfig.Restrictions);
+    }
+
+    private static LocalModeKind ParseKind(string? value) => value?.ToLowerInvariant() switch
+    {
+        "contest" => LocalModeKind.Contest,
+        "simple_survival" => LocalModeKind.SimpleSurvival,
+        "eco_survival" => LocalModeKind.EcoSurvival,
+        _ => LocalModeKind.League,
+    };
+
+    private static LeaguePreset ParsePreset(string? value) => value?.ToLowerInvariant() switch
+    {
+        "f2" => LeaguePreset.F2,
+        "f3" => LeaguePreset.F3,
+        "multibot" => LeaguePreset.Multibot,
+        "short_bot" => LeaguePreset.ShortBot,
+        "single_gene" => LeaguePreset.SingleGene,
+        "single_store" => LeaguePreset.SingleStore,
+        _ => LeaguePreset.F1,
+    };
+
+    private static LocalModeStatus ParseStatus(string? value) => value?.ToLowerInvariant() switch
+    {
+        "configured" => LocalModeStatus.Configured,
+        "running" => LocalModeStatus.Running,
+        "round_complete" => LocalModeStatus.RoundComplete,
+        "completed" => LocalModeStatus.Completed,
+        _ => LocalModeStatus.Idle,
+    };
 
     private static VisualPhenotypeSnapshot ParsePhenotype(NativeVisualPhenotype? phenotype) =>
         phenotype is null
@@ -183,7 +259,51 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("shots")] NativeShot[]? Shots,
         [property: JsonPropertyName("history")] NativeHistorySample[]? History,
         [property: JsonPropertyName("ties")] NativeTie[]? Ties,
-        [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings);
+        [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings,
+        [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode);
+
+    private sealed record NativeLocalMode(
+        [property: JsonPropertyName("config")] NativeLocalModeConfig? Config,
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("current_round")] uint CurrentRound,
+        [property: JsonPropertyName("cycle_in_round")] ulong CycleInRound,
+        [property: JsonPropertyName("restart_count")] uint RestartCount,
+        [property: JsonPropertyName("results")] NativeLocalModeResult[]? Results,
+        [property: JsonPropertyName("adjudication")] NativeLocalModeAdjudication? Adjudication);
+
+    private sealed record NativeLocalModeConfig(
+        [property: JsonPropertyName("kind")] string? Kind,
+        [property: JsonPropertyName("preset")] string? Preset,
+        [property: JsonPropertyName("minimum_rounds")] uint MinimumRounds,
+        [property: JsonPropertyName("maximum_rounds")] uint MaximumRounds,
+        [property: JsonPropertyName("maximum_cycles")] ulong MaximumCycles,
+        [property: JsonPropertyName("maximum_population")] int MaximumPopulation,
+        [property: JsonPropertyName("restart_on_extinction")] bool RestartOnExtinction,
+        [property: JsonPropertyName("source_species")] uint? SourceSpecies,
+        [property: JsonPropertyName("selection_population_weight")] float SelectionPopulationWeight,
+        [property: JsonPropertyName("selection_energy_weight")] float SelectionEnergyWeight,
+        [property: JsonPropertyName("restrictions")] NativeLocalModeRestrictions? Restrictions);
+
+    private sealed record NativeLocalModeRestrictions(
+        [property: JsonPropertyName("prohibit_information_shots")] bool ProhibitInformationShots,
+        [property: JsonPropertyName("prohibit_viruses")] bool ProhibitViruses,
+        [property: JsonPropertyName("prohibit_sexual_reproduction")] bool ProhibitSexualReproduction,
+        [property: JsonPropertyName("prohibit_cross_species_tie_transfer")] bool ProhibitCrossSpeciesTieTransfer,
+        [property: JsonPropertyName("robot_fixing_allowed")] bool RobotFixingAllowed,
+        [property: JsonPropertyName("asexual_reproduction_allowed")] bool AsexualReproductionAllowed);
+
+    private sealed record NativeLocalModeResult(
+        [property: JsonPropertyName("round")] uint Round,
+        [property: JsonPropertyName("winner")] uint? Winner,
+        [property: JsonPropertyName("winning_population")] int WinningPopulation,
+        [property: JsonPropertyName("winning_energy")] long WinningEnergy,
+        [property: JsonPropertyName("reason")] string Reason,
+        [property: JsonPropertyName("automatic")] bool Automatic);
+
+    private sealed record NativeLocalModeAdjudication(
+        [property: JsonPropertyName("winner")] uint? Winner,
+        [property: JsonPropertyName("reason")] string Reason,
+        [property: JsonPropertyName("automatic")] bool Automatic);
 
     private sealed record NativeCorpse(
         [property: JsonPropertyName("position")] float[] Position,

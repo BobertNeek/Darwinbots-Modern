@@ -112,6 +112,8 @@ public sealed partial class MainWindow : Window
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
         _liveEnvironment = setup.ToEnvironmentUpdate();
+        LocalModeKindSelector.SelectedIndex = 0;
+        LocalModePreset.SelectedIndex = 0;
         ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
         LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
         LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
@@ -222,7 +224,7 @@ public sealed partial class MainWindow : Window
             async _ => await ImportOrganismsCommandAsync());
         handlers[LegacyCommandId.EditRestartAndLeagues] = Handler(
             () => new LegacyCommandState(true, false),
-            _ => Task.FromResult(OpenNewSimulationSetup()));
+            _ => Task.FromResult(OpenLeagueTab()));
         handlers[LegacyCommandId.EditDisallowFixing] = Handler(
             () => new LegacyCommandState(_session is not null, _session?.LatestSnapshot.RobotFixingAllowed == false, _session is null ? "Start a simulation first." : null),
             async _ => await ToggleLegacyRestrictionAsync(true));
@@ -500,6 +502,13 @@ public sealed partial class MainWindow : Window
         new SetupWindow(_storage).Show();
         Close();
         return LegacyCommandResult.Success("NEW SIMULATION SETUP");
+    }
+
+    private LegacyCommandResult OpenLeagueTab()
+    {
+        LeagueExpander.IsExpanded = true;
+        LeagueExpander.BringIntoView();
+        return LegacyCommandResult.Success("LEAGUE TAB OPEN");
     }
 
     private LegacyCommandResult QuitApplication()
@@ -1276,6 +1285,119 @@ public sealed partial class MainWindow : Window
         else
             _viewModel.Status = "ZEROBOT PROGRESSION COMPLETE";
     }
+
+    private void LocalModeKind_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_controlsReady) return;
+        _viewModel.LocalMode.SelectKind(LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex));
+    }
+
+    private void LocalModePreset_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_controlsReady) return;
+        _viewModel.LocalMode.Preset = PresetFromIndex(LocalModePreset.SelectedIndex);
+        _viewModel.LocalMode.MarkConfigured();
+    }
+
+    private async void ConfigureLocalMode_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null)
+        {
+            _viewModel.Status = "ENGINE IS NOT READY";
+            return;
+        }
+        try
+        {
+            SynchronizeLocalModeControls();
+            var config = _viewModel.LocalMode.BuildConfiguration();
+            await _session.ConfigureLocalModeAsync(config);
+            _viewModel.LocalMode.MarkConfigured();
+            _viewModel.Status = $"LOCAL MODE CONFIGURED · {config.Kind.ToString().ToUpperInvariant()}";
+        }
+        catch (Exception error) { _viewModel.Status = $"LOCAL MODE CONFIG FAILED · {error.Message}"; }
+    }
+
+    private async void StartLocalMode_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null) return;
+        try
+        {
+            await _session.StartLocalModeAsync();
+            _viewModel.Status = "LOCAL MODE RUNNING";
+        }
+        catch (Exception error) { _viewModel.Status = $"LOCAL MODE START FAILED · {error.Message}"; }
+    }
+
+    private async void RestartLocalMode_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null) return;
+        try
+        {
+            await _session.RestartLocalModeAsync();
+            _viewModel.Status = "LOCAL MODE RESTARTED";
+        }
+        catch (Exception error) { _viewModel.Status = $"LOCAL MODE RESTART FAILED · {error.Message}"; }
+    }
+
+    private async void AdjudicateLocalMode_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null) return;
+        try
+        {
+            var snapshot = _session.LatestSnapshot;
+            var winner = snapshot.LocalMode.Results.LastOrDefault()?.Winner
+                ?? snapshot.Organisms.Where(organism => !organism.Vegetable)
+                    .GroupBy(organism => organism.Species)
+                    .OrderByDescending(group => group.Count())
+                    .Select(group => (uint?)group.Key)
+                    .FirstOrDefault();
+            var reason = string.IsNullOrWhiteSpace(LocalModeReason.Text)
+                ? "operator decision"
+                : LocalModeReason.Text.Trim();
+            await _session.AdjudicateLocalRoundAsync(winner, reason);
+            _viewModel.Status = "LOCAL ROUND ADJUDICATED";
+        }
+        catch (Exception error) { _viewModel.Status = $"LOCAL ADJUDICATION FAILED · {error.Message}"; }
+    }
+
+    private void SynchronizeLocalModeControls()
+    {
+        _viewModel.LocalMode.SelectKind(LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex));
+        _viewModel.LocalMode.Preset = PresetFromIndex(LocalModePreset.SelectedIndex);
+        _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds.Value, 1);
+        _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds.Value, 3);
+        _viewModel.LocalMode.MaximumCycles = ReadULong(ModeMaximumCycles.Value, 10_000);
+        _viewModel.LocalMode.MaximumPopulation = (int)Math.Clamp(ModePopulationCap.Value ?? 25_000m, 1m, 1_000_000m);
+        _viewModel.LocalMode.RestartOnExtinction = ModeRestartOnExtinction.IsChecked == true;
+        _viewModel.LocalMode.ProhibitInformationShots = ModeProhibitInformation.IsChecked == true;
+        _viewModel.LocalMode.ProhibitViruses = ModeProhibitViruses.IsChecked == true;
+        _viewModel.LocalMode.ProhibitSexualReproduction = ModeProhibitSexual.IsChecked == true;
+    }
+
+    private static LocalModeKind LocalModeKindFromIndex(int index) => index switch
+    {
+        1 => LocalModeKind.Contest,
+        2 => LocalModeKind.SimpleSurvival,
+        3 => LocalModeKind.EcoSurvival,
+        _ => LocalModeKind.League,
+    };
+
+    private static LeaguePreset PresetFromIndex(int index) => index switch
+    {
+        1 => LeaguePreset.F2,
+        2 => LeaguePreset.F3,
+        3 => LeaguePreset.Multibot,
+        4 => LeaguePreset.ShortBot,
+        5 => LeaguePreset.SingleGene,
+        6 => LeaguePreset.SingleStore,
+        _ => LeaguePreset.F1,
+    };
+
+    private static uint ReadUInt(decimal? value, uint fallback) =>
+        (uint)Math.Clamp(value ?? fallback, 1m, uint.MaxValue);
+
+    private static ulong ReadULong(decimal? value, ulong fallback) =>
+        (ulong)Math.Clamp(value ?? fallback, 1m, ulong.MaxValue);
 
     private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
     {

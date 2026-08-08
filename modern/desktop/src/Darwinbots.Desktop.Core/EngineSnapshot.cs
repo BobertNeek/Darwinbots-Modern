@@ -165,6 +165,7 @@ public sealed record EngineSnapshot(
     public IReadOnlyList<TieSnapshot> Ties { get; init; } = [];
     public IReadOnlyList<HistorySampleSnapshot> History { get; init; } = [];
     public PhaseTimingsSnapshot PhaseTimings { get; init; } = PhaseTimingsSnapshot.Empty;
+    public LocalModeSnapshot LocalMode { get; init; } = LocalModeSnapshot.Idle;
     public double TicksPerSecond { get; init; }
     public double SnapshotsPerSecond { get; init; }
     public static EngineSnapshot Empty { get; } = new(0, 0, "UNKNOWN", []);

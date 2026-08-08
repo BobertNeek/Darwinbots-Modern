@@ -139,6 +139,24 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateLegacyRestrictionsAsync(bool robotFixingAllowed, bool asexualReproductionAllowed, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateLegacyRestrictions(robotFixingAllowed, asexualReproductionAllowed), cancellationToken);
 
+    public Task ConfigureLocalModeAsync(LocalModeConfig config, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return Enqueue(engine => engine.ConfigureLocalMode(config), cancellationToken);
+    }
+
+    public Task StartLocalModeAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.StartLocalMode(), cancellationToken);
+
+    public Task RestartLocalModeAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RestartLocalMode(), cancellationToken);
+
+    public Task AdjudicateLocalRoundAsync(uint? winner, string reason, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        return Enqueue(engine => engine.AdjudicateLocalRound(winner, reason), cancellationToken);
+    }
+
     public Task SetOrganismAimAsync(uint slot, uint generation, int aim, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetOrganismAim(slot, generation, aim), cancellationToken);
 

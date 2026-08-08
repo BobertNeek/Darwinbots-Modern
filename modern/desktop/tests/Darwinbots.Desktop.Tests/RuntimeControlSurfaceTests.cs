@@ -646,6 +646,10 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
+    public void ConfigureLocalMode(LocalModeConfig config) => Calls.Enqueue("ConfigureLocalMode");
+    public void StartLocalMode() => Calls.Enqueue("StartLocalMode");
+    public void RestartLocalMode() => Calls.Enqueue("RestartLocalMode");
+    public void AdjudicateLocalRound(uint? winner, string reason) => Calls.Enqueue($"AdjudicateLocalRound:{winner?.ToString() ?? "none"}");
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return BitConverter.GetBytes(_tick); }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [9, 8, 7]; }

@@ -25,6 +25,10 @@ public interface IEngineClient : IDisposable
     void SetSpeciesColor(uint species, uint color);
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);
+    void ConfigureLocalMode(LocalModeConfig config);
+    void StartLocalMode();
+    void RestartLocalMode();
+    void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
     byte[] Save();

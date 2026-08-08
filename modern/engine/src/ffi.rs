@@ -48,6 +48,15 @@ enum EngineCommand {
     Tick {
         count: u32,
     },
+    ConfigureLocalMode {
+        config: crate::LocalModeConfig,
+    },
+    StartLocalMode,
+    RestartLocalMode,
+    AdjudicateLocalRound {
+        winner: Option<crate::SpeciesId>,
+        reason: String,
+    },
     ImportDna {
         dna: String,
         position: Option<[f32; 2]>,
@@ -381,6 +390,18 @@ fn db_engine_command_batch_impl(
                 }
                 engine.tick_many(count).map(|_| serde_json::Value::Null)
             }
+            EngineCommand::ConfigureLocalMode { config } => engine
+                .configure_local_mode(config)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::StartLocalMode => {
+                engine.start_local_mode().map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::RestartLocalMode => {
+                engine.restart_local_mode().map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::AdjudicateLocalRound { winner, reason } => engine
+                .adjudicate_local_round(winner, reason)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::ImportDna { dna, position } => LegacyDna::parse(&dna).and_then(|dna| {
                 let compatibility_warnings = dna.compatibility_warnings().to_vec();
                 engine

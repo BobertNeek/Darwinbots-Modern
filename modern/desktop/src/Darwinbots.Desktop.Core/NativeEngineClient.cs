@@ -284,6 +284,64 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
         "update legacy restrictions");
 
+    public void ConfigureLocalMode(LocalModeConfig config)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(config);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "configure_local_mode",
+                    config = new
+                    {
+                        kind = ModeKindName(config.Kind),
+                        preset = PresetName(config.Preset),
+                        minimum_rounds = config.MinimumRounds,
+                        maximum_rounds = config.MaximumRounds,
+                        maximum_cycles = config.MaximumCycles,
+                        maximum_population = config.MaximumPopulation,
+                        restart_on_extinction = config.RestartOnExtinction,
+                        source_species = config.SourceSpecies,
+                        selection_population_weight = config.SelectionPopulationWeight,
+                        selection_energy_weight = config.SelectionEnergyWeight,
+                        restrictions = new
+                        {
+                            prohibit_information_shots = config.Restrictions.ProhibitInformationShots,
+                            prohibit_viruses = config.Restrictions.ProhibitViruses,
+                            prohibit_sexual_reproduction = config.Restrictions.ProhibitSexualReproduction,
+                            prohibit_cross_species_tie_transfer = config.Restrictions.ProhibitCrossSpeciesTieTransfer,
+                            robot_fixing_allowed = config.Restrictions.RobotFixingAllowed,
+                            asexual_reproduction_allowed = config.Restrictions.AsexualReproductionAllowed,
+                        },
+                    },
+                },
+            },
+        }, "configure local mode");
+    }
+
+    public void StartLocalMode() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "start_local_mode" } } },
+        "start local mode");
+
+    public void RestartLocalMode() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "restart_local_mode" } } },
+        "restart local mode");
+
+    public void AdjudicateLocalRound(uint? winner, string reason)
+    {
+        EnsureAlive();
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "adjudicate_local_round", winner, reason } },
+        }, "adjudicate local round");
+    }
+
     public void SetOrganismAim(uint slot, uint generation, int aim) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "set_organism_aim", slot, generation, aim } } },
         "set organism aim");
@@ -305,6 +363,25 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (position.Length != 2 || position.Any(value => !float.IsFinite(value)))
             throw new ArgumentException("Position must contain two finite coordinates.", nameof(position));
     }
+
+    private static string ModeKindName(LocalModeKind kind) => kind switch
+    {
+        LocalModeKind.Contest => "contest",
+        LocalModeKind.SimpleSurvival => "simple_survival",
+        LocalModeKind.EcoSurvival => "eco_survival",
+        _ => "league",
+    };
+
+    private static string PresetName(LeaguePreset preset) => preset switch
+    {
+        LeaguePreset.F2 => "f2",
+        LeaguePreset.F3 => "f3",
+        LeaguePreset.Multibot => "multibot",
+        LeaguePreset.ShortBot => "short_bot",
+        LeaguePreset.SingleGene => "single_gene",
+        LeaguePreset.SingleStore => "single_store",
+        _ => "f1",
+    };
 
     public EngineCapabilities Capabilities()
     {

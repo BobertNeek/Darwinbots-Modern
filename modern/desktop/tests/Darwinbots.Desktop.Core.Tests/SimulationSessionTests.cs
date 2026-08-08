@@ -425,6 +425,10 @@ internal sealed class FakeEngineClient : IEngineClient
     public void SetSpeciesColor(uint species, uint color) { }
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) { }
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) { }
+    public void ConfigureLocalMode(LocalModeConfig config) { }
+    public void StartLocalMode() { }
+    public void RestartLocalMode() { }
+    public void AdjudicateLocalRound(uint? winner, string reason) { }
     public void SetOrganismAim(uint slot, uint generation, int aim) { }
 
     public void Dispose() { }

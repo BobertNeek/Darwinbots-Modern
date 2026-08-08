@@ -43,6 +43,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double _snapshotsPerSecond;
     private string _limitingPhase = "WAITING";
 
+    public LocalModeViewModel LocalMode { get; } = new();
     public ulong Tick { get => _tick; private set => Set(ref _tick, value); }
     public int Population { get => _population; private set => Set(ref _population, value); }
     public string Backend { get => _backend; private set => Set(ref _backend, value); }
@@ -106,6 +107,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void Update(EngineSnapshot snapshot)
     {
         _snapshot = snapshot;
+        LocalMode.Observe(snapshot.LocalMode);
         Tick = snapshot.Tick;
         Population = snapshot.Population;
         Backend = snapshot.Backend;

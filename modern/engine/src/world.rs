@@ -1,3 +1,7 @@
+use crate::modes::{
+    LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
+    LocalModeStatus,
+};
 use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState, TieEndpointState};
 use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_angle};
 use crate::simulation_cycle::CycleRecorder;
@@ -197,6 +201,8 @@ pub struct Snapshot {
     pub teleporters: Vec<Teleporter>,
     #[serde(default)]
     pub phase_timings: PhaseTimings,
+    #[serde(default)]
+    pub local_mode: LocalModeState,
 }
 
 impl PartialEq for Snapshot {
@@ -214,6 +220,7 @@ impl PartialEq for Snapshot {
             && self.species == other.species
             && self.obstacles == other.obstacles
             && self.teleporters == other.teleporters
+            && self.local_mode == other.local_mode
     }
 }
 
@@ -1366,6 +1373,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             ties_enabled: value.ties_enabled,
             robot_fixing_allowed: value.robot_fixing_allowed,
             asexual_reproduction_allowed: value.asexual_reproduction_allowed,
+            local_mode: LocalModeState::default(),
             obstacles: value.obstacles.into_iter().map(Into::into).collect(),
             teleporters: value.teleporters.into_iter().map(Into::into).collect(),
             phase_timings: value.phase_timings.into(),
@@ -1650,6 +1658,8 @@ pub struct Engine {
     #[serde(default = "default_true")]
     asexual_reproduction_allowed: bool,
     #[serde(default)]
+    local_mode: LocalModeState,
+    #[serde(default)]
     next_lineage_id: u64,
     #[serde(default)]
     next_absolute_id: u64,
@@ -1695,6 +1705,7 @@ struct CycleCheckpoint {
     ties_enabled: bool,
     robot_fixing_allowed: bool,
     asexual_reproduction_allowed: bool,
+    local_mode: LocalModeState,
     next_lineage_id: u64,
     next_absolute_id: u64,
     obstacles: Vec<Obstacle>,
@@ -1826,6 +1837,7 @@ impl Engine {
             ties_enabled: legacy.ties_enabled,
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
+            local_mode: LocalModeState::default(),
             next_lineage_id: legacy.next_lineage_id,
             next_absolute_id: legacy.next_absolute_id,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
@@ -1952,6 +1964,7 @@ impl Engine {
                 ties_enabled: true,
                 robot_fixing_allowed: true,
                 asexual_reproduction_allowed: true,
+                local_mode: LocalModeState::default(),
                 obstacles: Vec::new(),
                 teleporters: Vec::new(),
                 phase_timings: PhaseTimings::default(),
@@ -1970,6 +1983,7 @@ impl Engine {
             ties_enabled: true,
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
+            local_mode: LocalModeState::default(),
             next_lineage_id: 2,
             next_absolute_id: 1,
             obstacles: Vec::new(),
@@ -2128,6 +2142,372 @@ impl Engine {
             }
         }
         self.publish_snapshot();
+    }
+
+    pub fn configure_local_mode(&mut self, config: LocalModeConfig) -> Result<(), EngineError> {
+        config.validate().map_err(EngineError::Invariant)?;
+        if self.local_mode.status == LocalModeStatus::Running {
+            return Err(EngineError::Invariant(
+                "a local mode cannot be reconfigured while running".to_owned(),
+            ));
+        }
+        if let Some(species) = config.source_species
+            && self.species.get(species.0 as usize).is_none()
+        {
+            return Err(EngineError::Invariant(format!(
+                "local mode source species {} does not exist",
+                species.0
+            )));
+        }
+        self.apply_mode_restrictions(&config);
+        self.local_mode = LocalModeState::configured(config);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn start_local_mode(&mut self) -> Result<(), EngineError> {
+        let Some(config) = self.local_mode.config.clone() else {
+            return Err(EngineError::Invariant(
+                "a local mode must be configured before it starts".to_owned(),
+            ));
+        };
+        if self.local_mode.status == LocalModeStatus::Running {
+            return Ok(());
+        }
+        self.apply_mode_restrictions(&config);
+        self.local_mode.status = LocalModeStatus::Running;
+        self.local_mode.current_round = 1;
+        self.local_mode.cycle_in_round = 0;
+        self.local_mode.restart_count = 0;
+        self.local_mode.results.clear();
+        self.local_mode.adjudication = None;
+        self.enforce_mode_population_cap()?;
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn restart_local_mode(&mut self) -> Result<(), EngineError> {
+        let Some(config) = self.local_mode.config.clone() else {
+            return Err(EngineError::Invariant(
+                "a local mode must be configured before it restarts".to_owned(),
+            ));
+        };
+        self.restart_mode_world(None)?;
+        self.local_mode.current_round = 1;
+        self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
+        self.local_mode.cycle_in_round = 0;
+        self.local_mode.results.clear();
+        self.local_mode.adjudication = None;
+        self.local_mode.status = LocalModeStatus::Running;
+        self.apply_mode_restrictions(&config);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn adjudicate_local_round(
+        &mut self,
+        winner: Option<SpeciesId>,
+        reason: String,
+    ) -> Result<(), EngineError> {
+        if reason.trim().is_empty() {
+            return Err(EngineError::Invariant(
+                "local round adjudication requires a reason".to_owned(),
+            ));
+        }
+        if self.local_mode.status != LocalModeStatus::Running {
+            return Err(EngineError::Invariant(
+                "a local mode round is not running".to_owned(),
+            ));
+        }
+        self.finish_local_mode_round(winner, reason, false)
+    }
+
+    fn apply_mode_restrictions(&mut self, config: &LocalModeConfig) {
+        self.robot_fixing_allowed = config.restrictions.robot_fixing_allowed;
+        self.asexual_reproduction_allowed = config.restrictions.asexual_reproduction_allowed;
+        if !self.robot_fixing_allowed {
+            for slot in &mut self.slots {
+                if let Some(organism) = slot.organism.as_mut() {
+                    organism.program.memory.write(216, 0);
+                    organism.program.memory.write(215, 0);
+                }
+            }
+        }
+    }
+
+    fn local_mode_config(&self) -> Option<&LocalModeConfig> {
+        self.local_mode.config.as_ref()
+    }
+
+    fn local_mode_prohibits_cross_species_tie_transfer(
+        &self,
+        source_slot: usize,
+        target_slot: usize,
+    ) -> bool {
+        let Some(config) = self.local_mode_config() else {
+            return false;
+        };
+        if self.local_mode.status != LocalModeStatus::Running
+            || !config.restrictions.prohibit_cross_species_tie_transfer
+        {
+            return false;
+        }
+        let (Some(source), Some(target)) = (
+            self.slots
+                .slots
+                .get(source_slot)
+                .and_then(|slot| slot.organism.as_ref()),
+            self.slots
+                .slots
+                .get(target_slot)
+                .and_then(|slot| slot.organism.as_ref()),
+        ) else {
+            return false;
+        };
+        source.identity.species != target.identity.species
+    }
+
+    fn mode_heterotroph_population(&self) -> usize {
+        self.slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .filter(|organism| {
+                !self
+                    .species
+                    .get(organism.identity.species.0 as usize)
+                    .is_some_and(|species| species.vegetable)
+            })
+            .count()
+    }
+
+    fn mode_species_score(&self, species: SpeciesId) -> (usize, i64) {
+        self.slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .filter(|organism| organism.identity.species == species)
+            .fold((0, 0), |(population, energy), organism| {
+                (
+                    population + 1,
+                    energy + i64::from(organism.materials.energy.max(0)),
+                )
+            })
+    }
+
+    fn best_mode_species(&self) -> Option<SpeciesId> {
+        let config = self.local_mode_config()?;
+        let mut candidates = BTreeMap::<u32, (usize, i64)>::new();
+        for slot in self.slots.iter() {
+            let Some(organism) = slot.organism.as_ref() else {
+                continue;
+            };
+            if self
+                .species
+                .get(organism.identity.species.0 as usize)
+                .is_some_and(|species| species.vegetable)
+            {
+                continue;
+            }
+            let entry = candidates.entry(organism.identity.species.0).or_default();
+            entry.0 += 1;
+            entry.1 += i64::from(organism.materials.energy.max(0));
+        }
+        if let Some(source) = config.source_species
+            && candidates.contains_key(&source.0)
+        {
+            return Some(source);
+        }
+        candidates
+            .into_iter()
+            .max_by(|(left_id, left), (right_id, right)| {
+                let left_score = left.0 as f64 * f64::from(config.selection_population_weight)
+                    + left.1 as f64 * f64::from(config.selection_energy_weight) / 32_000.0;
+                let right_score = right.0 as f64 * f64::from(config.selection_population_weight)
+                    + right.1 as f64 * f64::from(config.selection_energy_weight) / 32_000.0;
+                left_score
+                    .partial_cmp(&right_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| right_id.cmp(left_id))
+            })
+            .map(|(species, _)| SpeciesId(species))
+    }
+
+    fn finish_local_mode_round(
+        &mut self,
+        winner: Option<SpeciesId>,
+        reason: String,
+        automatic: bool,
+    ) -> Result<(), EngineError> {
+        let Some(config) = self.local_mode.config.clone() else {
+            return Err(EngineError::Invariant(
+                "local mode is not configured".to_owned(),
+            ));
+        };
+        let winner = winner.or_else(|| self.best_mode_species());
+        let (winning_population, winning_energy) = winner
+            .map(|species| self.mode_species_score(species))
+            .unwrap_or_default();
+        self.local_mode.results.push(LocalModeResult {
+            round: self.local_mode.current_round,
+            winner,
+            winning_population,
+            winning_energy,
+            reason: reason.clone(),
+            automatic,
+        });
+        self.local_mode.adjudication = Some(LocalModeAdjudication {
+            winner,
+            reason,
+            automatic,
+        });
+        if self.local_mode.current_round >= config.maximum_rounds
+            && self.local_mode.current_round >= config.minimum_rounds
+        {
+            self.local_mode.status = LocalModeStatus::Completed;
+            self.publish_snapshot();
+            return Ok(());
+        }
+        self.local_mode.status = LocalModeStatus::RoundComplete;
+        self.restart_mode_world(
+            (config.kind == LocalModeKind::SimpleSurvival
+                || config.kind == LocalModeKind::EcoSurvival)
+                .then_some(winner)
+                .flatten(),
+        )?;
+        self.local_mode.current_round = self.local_mode.current_round.saturating_add(1);
+        self.local_mode.cycle_in_round = 0;
+        self.local_mode.status = LocalModeStatus::Running;
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    fn advance_local_mode_after_cycle(&mut self) -> Result<(), EngineError> {
+        if self.local_mode.status != LocalModeStatus::Running {
+            return Ok(());
+        }
+        self.local_mode.cycle_in_round = self.local_mode.cycle_in_round.saturating_add(1);
+        let Some(config) = self.local_mode.config.clone() else {
+            return Ok(());
+        };
+        if config.restart_on_extinction && self.mode_heterotroph_population() == 0 {
+            self.restart_mode_world(None)?;
+            self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
+            self.local_mode.current_round = self.local_mode.current_round.saturating_add(1);
+            self.local_mode.cycle_in_round = 0;
+            self.local_mode.status = LocalModeStatus::Running;
+            return Ok(());
+        }
+        if self.local_mode.cycle_in_round >= config.maximum_cycles {
+            self.finish_local_mode_round(None, "cycle limit".to_owned(), true)?;
+        }
+        Ok(())
+    }
+
+    fn restart_mode_world(&mut self, keep_species: Option<SpeciesId>) -> Result<(), EngineError> {
+        let ids: Vec<_> = self
+            .slots
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, entry)| {
+                entry
+                    .organism
+                    .as_ref()
+                    .map(|_| OrganismId::new(slot as u32, entry.generation))
+            })
+            .collect();
+        for id in ids {
+            self.slots.remove(id)?;
+        }
+        self.ties.clear();
+        self.projectiles = ProjectilePool::default();
+        self.pending_projectile_requests.clear();
+        self.pending_mutations.clear();
+        self.corpses.clear();
+        let max_population = self
+            .local_mode_config()
+            .map_or(self.config.organism_capacity, |config| {
+                config.maximum_population
+            })
+            .min(self.config.organism_capacity);
+        let species_to_spawn: Vec<_> = self
+            .species
+            .iter()
+            .enumerate()
+            .filter(|(index, species)| {
+                keep_species.is_none_or(|keep| keep == SpeciesId(*index as u32))
+                    && !species.vegetable
+                    && self
+                        .species_templates
+                        .get(*index)
+                        .and_then(Option::as_ref)
+                        .is_some()
+            })
+            .map(|(index, species)| (SpeciesId(index as u32), species.minimum_population.max(1)))
+            .collect();
+        let mut spawned = 0usize;
+        for (species, requested) in species_to_spawn {
+            let Some(template) = self
+                .species_templates
+                .get(species.0 as usize)
+                .and_then(Option::as_ref)
+                .cloned()
+            else {
+                continue;
+            };
+            for ordinal in 0..requested {
+                if spawned >= max_population {
+                    break;
+                }
+                let random = advance_random(
+                    self.config.seed
+                        ^ self.tick.rotate_left(17)
+                        ^ (species.0 as u64).rotate_left(31)
+                        ^ ordinal as u64,
+                );
+                let position = [
+                    unit_coordinate(random, self.config.world_width),
+                    unit_coordinate(advance_random(random), self.config.world_height),
+                ];
+                let id =
+                    self.spawn_species_at_unpublished(template.dna.clone(), species, position)?;
+                let organism = self.slots.get_mut(id)?;
+                organism.materials.energy = template.initial_energy;
+                organism.materials.synchronize_energy();
+                organism
+                    .program
+                    .memory
+                    .write(MEM_NRG, template.initial_energy);
+                spawned += 1;
+            }
+        }
+        Ok(())
+    }
+
+    fn enforce_mode_population_cap(&mut self) -> Result<(), EngineError> {
+        let Some(config) = self.local_mode_config() else {
+            return Ok(());
+        };
+        let excess = self.population().saturating_sub(config.maximum_population);
+        if excess == 0 {
+            return Ok(());
+        }
+        let mut candidates: Vec<_> = self
+            .slots
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, entry)| {
+                entry.organism.as_ref().map(|organism| {
+                    (
+                        organism.materials.energy,
+                        OrganismId::new(slot as u32, entry.generation),
+                    )
+                })
+            })
+            .collect();
+        candidates.sort_by_key(|(energy, id)| (*energy, id.slot(), id.generation()));
+        for (_, id) in candidates.into_iter().take(excess) {
+            self.slots.remove(id)?;
+        }
+        Ok(())
     }
 
     pub fn set_organism_aim(&mut self, id: OrganismId, aim: i32) -> Result<(), EngineError> {
@@ -2529,6 +2909,7 @@ impl Engine {
             ties_enabled: self.ties_enabled,
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
+            local_mode: self.local_mode.clone(),
             next_lineage_id: self.next_lineage_id,
             next_absolute_id: self.next_absolute_id,
             obstacles: self.obstacles.clone(),
@@ -2563,6 +2944,7 @@ impl Engine {
         self.ties_enabled = checkpoint.ties_enabled;
         self.robot_fixing_allowed = checkpoint.robot_fixing_allowed;
         self.asexual_reproduction_allowed = checkpoint.asexual_reproduction_allowed;
+        self.local_mode = checkpoint.local_mode;
         self.next_lineage_id = checkpoint.next_lineage_id;
         self.next_absolute_id = checkpoint.next_absolute_id;
         self.obstacles = checkpoint.obstacles;
@@ -2725,6 +3107,8 @@ impl Engine {
         self.commit_lifecycle_queues(lifecycle, &mut trace)?;
         trace.phase(CyclePhase::ExtinctSpecies);
         trace.phase(CyclePhase::Restart);
+        self.enforce_mode_population_cap()?;
+        self.advance_local_mode_after_cycle()?;
         trace.phase(CyclePhase::ActualVelocity);
         self.record_actual_velocities();
         trace.phase(CyclePhase::ObjectsTeleporters);
@@ -3798,6 +4182,9 @@ impl Engine {
             }
         }
         for (source, target, source_port, selected_port, location, value) in channels {
+            if self.local_mode_prohibits_cross_species_tie_transfer(source, target) {
+                continue;
+            }
             if selected_port == 0
                 || source_port != selected_port
                 || !(1..=1_000).contains(&location)
@@ -3854,6 +4241,9 @@ impl Engine {
                 (tie.second.slot() as usize, tie.first.slot() as usize),
             ] {
                 if self.slots[source_slot].organism.is_none() {
+                    continue;
+                }
+                if self.local_mode_prohibits_cross_species_tie_transfer(source_slot, target_slot) {
                     continue;
                 }
                 let commands = phase_commands[source_slot].unwrap_or_default();
@@ -4161,6 +4551,10 @@ impl Engine {
 
     fn prepare_projectile_requests_phase(&mut self) {
         self.pending_projectile_requests.clear();
+        let mode_restrictions = self
+            .local_mode_config()
+            .filter(|_| self.local_mode.status == LocalModeStatus::Running)
+            .map(|config| config.restrictions.clone());
         let runtime = SysvarRuntime::new();
         for attacker_slot in 0..self.slots.len() {
             let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
@@ -4177,6 +4571,15 @@ impl Engine {
                     CommandOutcome::Consumed,
                     &mut attacker.program.memory,
                 );
+            }
+            if let Some(restrictions) = mode_restrictions.as_ref() {
+                let normalized_kind = ProjectilePool::normalized_kind(commands.kind);
+                if (commands.kind > 0 && restrictions.prohibit_information_shots)
+                    || (normalized_kind == -7 && restrictions.prohibit_viruses)
+                    || (normalized_kind == -8 && restrictions.prohibit_sexual_reproduction)
+                {
+                    continue;
+                }
             }
             if commands.kind == 0 || ProjectilePool::normalized_kind(commands.kind) == -5 {
                 continue;
@@ -5763,6 +6166,7 @@ impl Engine {
             obstacles: self.obstacles.clone(),
             teleporters: self.teleporters.clone(),
             phase_timings: self.phase_timings.clone(),
+            local_mode: self.local_mode.clone(),
         };
         self.snapshot_publication_count += 1;
     }
