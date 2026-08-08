@@ -583,6 +583,32 @@ fn negative_tieloc_resource_exchange_runs_in_engine_tick() {
             "{} target",
             case.name
         );
+        let source_memory = &engine.robot_state(source).unwrap().program.memory;
+        let target_memory = &engine.robot_state(target).unwrap().program.memory;
+        assert_eq!(
+            (
+                source_memory.read(310),
+                source_memory.read(311),
+                source_memory.read(828),
+                source_memory.read(829),
+                target_memory.read(310),
+                target_memory.read(311),
+                target_memory.read(828),
+                target_memory.read(829),
+            ),
+            (
+                case.expected_source.energy,
+                case.expected_source.body,
+                case.expected_source.waste,
+                case.expected_source.permanent_waste,
+                case.expected_target.energy,
+                case.expected_target.body,
+                case.expected_target.waste,
+                case.expected_target.permanent_waste,
+            ),
+            "{} published material stores",
+            case.name
+        );
         let source_effects = &engine.robot_state(source).unwrap().effects;
         assert_eq!(
             (

@@ -15,6 +15,7 @@ const MEM_SHELL: i32 = 823;
 const MEM_VENOM: i32 = 825;
 const MEM_POISON: i32 = 827;
 const MEM_WASTE: i32 = 828;
+const MEM_PERMANENT_WASTE: i32 = 829;
 const MEM_PARALYZED: i32 = 837;
 const MEM_POISONED: i32 = 838;
 
@@ -227,6 +228,7 @@ impl RobotMaterials {
                     (310, self.energy),
                     (MEM_BODY as u16, self.body),
                     (MEM_WASTE as u16, self.waste),
+                    (MEM_PERMANENT_WASTE as u16, self.permanent_waste),
                     (MEM_SHELL as u16, self.shell),
                     (MEM_SLIME as u16, self.slime),
                     (MEM_VENOM as u16, self.venom),

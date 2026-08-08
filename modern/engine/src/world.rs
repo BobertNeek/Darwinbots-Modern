@@ -6572,6 +6572,8 @@ fn apply_tie_resource(
     if result.is_some() {
         source.materials.previous_energy = source.materials.energy;
         target.materials.previous_energy = target.materials.energy;
+        source.materials.publish(&mut source.program.memory);
+        target.materials.publish(&mut target.program.memory);
         source.materials.mass = derived_mass(
             source.materials.body,
             source.materials.shell,
