@@ -9,6 +9,7 @@ pub(crate) const HARD_TIE_B: f32 = 0.1;
 pub(crate) const HARD_TIE_K: f32 = 0.05;
 pub(crate) const TIE_DEADBAND: f32 = 20.0;
 pub(crate) const MAX_TIE_SURFACE_GAP: f32 = 1_000.0;
+pub(crate) const TIE_ANGLE_SLACK: f32 = 5.0_f32.to_radians();
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct TieState {
@@ -27,6 +28,12 @@ pub(crate) struct TieState {
     pub(crate) k: f32,
     #[serde(default = "legacy_tie_hardened")]
     pub(crate) hardened: bool,
+    #[serde(default)]
+    pub(crate) requested_angle: f32,
+    #[serde(default)]
+    pub(crate) angle_fixed: bool,
+    #[serde(default)]
+    pub(crate) angle_initialized: bool,
 }
 
 impl TieState {
@@ -47,6 +54,9 @@ impl TieState {
             b: SOFT_TIE_B,
             k: SOFT_TIE_K,
             hardened: false,
+            requested_angle: 0.0,
+            angle_fixed: false,
+            angle_initialized: false,
         }
     }
 
@@ -67,6 +77,9 @@ impl TieState {
             b: HARD_TIE_B,
             k: HARD_TIE_K,
             hardened: true,
+            requested_angle: 0.0,
+            angle_fixed: false,
+            angle_initialized: false,
         }
     }
 
@@ -111,6 +124,12 @@ pub struct TieSnapshot {
     pub k: f32,
     #[serde(default = "legacy_tie_hardened")]
     pub hardened: bool,
+    #[serde(default)]
+    pub requested_angle: f32,
+    #[serde(default)]
+    pub angle_fixed: bool,
+    #[serde(default)]
+    pub angle_initialized: bool,
 }
 
 impl From<&TieState> for TieSnapshot {
@@ -125,6 +144,9 @@ impl From<&TieState> for TieSnapshot {
             b: value.b,
             k: value.k,
             hardened: value.hardened,
+            requested_angle: value.requested_angle,
+            angle_fixed: value.angle_fixed,
+            angle_initialized: value.angle_initialized,
         }
     }
 }

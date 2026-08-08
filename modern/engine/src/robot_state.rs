@@ -116,6 +116,10 @@ pub struct RobotProgramState {
     pub activation_bitmap: Vec<bool>,
     #[serde(default)]
     pub activation_history: Vec<ActivationFrame>,
+    #[serde(default)]
+    pub tie_angle_overwrites: [bool; 4],
+    #[serde(default)]
+    pub tie_length_overwrites: [bool; 4],
 }
 
 impl RobotProgramState {
@@ -134,6 +138,8 @@ impl RobotProgramState {
             condition_count: 0,
             activation_bitmap: Vec::new(),
             activation_history: Vec::new(),
+            tie_angle_overwrites: [false; 4],
+            tie_length_overwrites: [false; 4],
         }
     }
 

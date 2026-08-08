@@ -1,4 +1,6 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, OrganismId, SaveFile, SpeciesDefinition};
+use darwinbots_engine::{
+    Engine, EngineConfig, LegacyDna, OrganismId, SaveFile, SpeciesDefinition, Teleporter,
+};
 use serde_json::{Value, json};
 
 fn tie_test_config() -> EngineConfig {
@@ -873,6 +875,157 @@ fn new_tie_hardens_on_db2_cycle() {
     assert_tie_float(&engine, "k", 0.05);
     assert_eq!(engine.memory(source, "multi").unwrap(), 1);
     assert_eq!(engine.memory(target, "multi").unwrap(), 1);
+}
+
+#[test]
+fn fixlen_command_changes_the_authoritative_tie_spring_response() {
+    let (mut engine, source, target) = spawn_soft_tie();
+    engine.tick_many(19).unwrap();
+    assert!(engine.snapshot().ties[0].hardened);
+    let original_length = engine.snapshot().ties[0].rest_length;
+
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n41 .tienum store\n20 .fixlen store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+
+    let fixed_length = engine.snapshot().ties[0].rest_length;
+    assert!(fixed_length < original_length);
+
+    let mut batch = engine.physics_batch();
+    let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+    let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+    batch.batch.positions[source_index] = [400.0, 1_000.0];
+    batch.batch.positions[target_index] = [700.0, 1_000.0];
+    batch.batch.velocities[source_index] = [0.0; 2];
+    batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(batch).unwrap();
+    engine.tick().unwrap();
+
+    let source_after = engine.organism(source).unwrap();
+    let target_after = engine.organism(target).unwrap();
+    assert!(source_after.velocity[0] > 0.0);
+    assert!(target_after.velocity[0] < 0.0);
+}
+
+#[test]
+fn stifftie_command_changes_hardened_tie_force() {
+    let (mut engine, source, target) = spawn_soft_tie();
+    engine.tick_many(19).unwrap();
+
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n41 .tienum store\n80 .stifftie store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+
+    assert_tie_float(&engine, "b", 0.4);
+    assert_tie_float(&engine, "k", 0.2);
+
+    let rest_length = engine.snapshot().ties[0].rest_length;
+    let mut batch = engine.physics_batch();
+    let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+    let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+    batch.batch.positions[source_index] = [400.0, 1_000.0];
+    batch.batch.positions[target_index] = [400.0 + rest_length + 30.0, 1_000.0];
+    batch.batch.velocities[source_index] = [0.0; 2];
+    batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(batch).unwrap();
+    engine.tick().unwrap();
+
+    assert!(engine.organism(source).unwrap().velocity[0] > 1.0);
+    assert!(engine.organism(target).unwrap().velocity[0] < -1.0);
+}
+
+#[test]
+fn fixang_command_applies_canonical_tie_torque() {
+    let (mut engine, source, target) = spawn_soft_tie();
+    engine.tick_many(19).unwrap();
+
+    let mut batch = engine.physics_batch();
+    let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+    let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+    batch.batch.positions[source_index] = [400.0, 1_000.0];
+    batch.batch.positions[target_index] = [400.0, 1_300.0];
+    batch.batch.velocities[source_index] = [0.0; 2];
+    batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(batch).unwrap();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n41 .tienum store\n0 .fixang store\nstop").unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+
+    assert_ne!(engine.organism(source).unwrap().aim, 0);
+    assert!(
+        engine
+            .robot_state(source)
+            .unwrap()
+            .kinematics
+            .angular_momentum
+            .abs()
+            > 0.001
+    );
+}
+
+#[test]
+fn multibot_amplifies_feeding_shot_and_virtual_body_range() {
+    let mut baseline = Engine::new(tie_test_config()).unwrap();
+    baseline
+        .spawn_at(
+            LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
+            [400.0, 1_000.0],
+        )
+        .unwrap();
+    baseline.tick().unwrap();
+    let baseline_shot = baseline.snapshot().shots[0].clone();
+
+    let (mut tied, source, _target) = spawn_soft_tie();
+    tied.tick_many(19).unwrap();
+    assert!(tied.snapshot().ties[0].hardened);
+    tied.replace_dna(
+        source,
+        LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
+    )
+    .unwrap();
+    tied.tick().unwrap();
+    let tied_shot = tied.snapshot().shots[0].clone();
+
+    assert_eq!(tied_shot.value, baseline_shot.value * 2);
+    assert!(tied_shot.range > baseline_shot.range);
+}
+
+#[test]
+fn hardened_tie_group_follows_teleporter_relocation() {
+    let (mut engine, source, target) = spawn_soft_tie();
+    engine.tick_many(19).unwrap();
+    assert!(engine.snapshot().ties[0].hardened);
+    let source_before = engine.organism(source).unwrap().position;
+    let target_before = engine.organism(target).unwrap().position;
+    engine
+        .add_teleporter(Teleporter {
+            id: 1,
+            center: source_before,
+            radius: 50.0,
+            destination: [source_before[0] + 800.0, source_before[1]],
+        })
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(
+        engine.organism(target).unwrap().position,
+        [target_before[0] + 800.0, target_before[1]]
+    );
 }
 
 fn soft_tie_response(stretch: f32) -> ([f32; 2], [f32; 2], [f32; 2], [f32; 2]) {
