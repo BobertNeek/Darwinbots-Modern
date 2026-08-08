@@ -56,6 +56,8 @@ public static class NativeSnapshotParser
             SimulationId = organism.SimulationId,
             UniqueId = organism.UniqueId,
             VirusTimer = organism.VirusTimer,
+            Touch = organism.Touch,
+            Taste = organism.Taste,
             NewMutations = organism.NewMutations,
             TotalMutations = organism.TotalMutations,
             DnaLength = organism.DnaLength,
@@ -157,6 +159,8 @@ public static class NativeSnapshotParser
             native.PhaseTimings.Dna, native.PhaseTimings.Intent, native.PhaseTimings.Spatial,
             native.PhaseTimings.Sensing, native.PhaseTimings.Interactions, native.PhaseTimings.Physics,
             native.PhaseTimings.Lifecycle, native.PhaseTimings.Mutation, native.PhaseTimings.Snapshot);
+        var playerBot = ParsePlayerBot(native.PlayerBot);
+        var restrictionOptions = ParseRestrictionOptions(native.RestrictionOptions);
         return new EngineSnapshot(native.Tick, organisms.Length, backend, organisms)
         {
             RenderInstances = renderInstances,
@@ -167,6 +171,8 @@ public static class NativeSnapshotParser
             TiesEnabled = native.TiesEnabled ?? true,
             RobotFixingAllowed = native.RobotFixingAllowed ?? true,
             AsexualReproductionAllowed = native.AsexualReproductionAllowed ?? true,
+            PlayerBot = playerBot,
+            RestrictionOptions = restrictionOptions,
             Stats = stats,
             WorldSize = native.WorldSize is { Length: 2 } ? native.WorldSize : [16_000f, 12_000f],
             Obstacles = obstacles,
@@ -232,6 +238,41 @@ public static class NativeSnapshotParser
             EnergyHandicap = parsedConfig.EnergyHandicap,
         };
     }
+
+    private static PlayerBotSnapshot ParsePlayerBot(NativePlayerBot? native)
+    {
+        if (native is null) return PlayerBotSnapshot.Default;
+        var bindings = (native.Bindings ?? [])
+            .Select(binding => new PlayerBotBinding(binding.Key, binding.MemoryAddress, binding.Value, binding.Invert))
+            .ToArray();
+        return new PlayerBotSnapshot(
+            native.Enabled,
+            native.Focus is { } focus ? new OrganismKey(focus.Slot, focus.Generation) : null,
+            bindings,
+            (native.PressedKeys ?? []).Select(key => checked((int)key)).ToArray());
+    }
+
+    private static RestrictionOptions ParseRestrictionOptions(NativeRestrictionOptions? native)
+    {
+        if (native is null) return RestrictionOptions.Default;
+        return new RestrictionOptions(
+            ParseRestrictionColumn(native.NonRepopulating),
+            ParseRestrictionColumn(native.Repopulating));
+    }
+
+    private static RestrictionColumn ParseRestrictionColumn(NativeRestrictionColumn? native) => native is null
+        ? new()
+        : new(
+            native.KillMultibot,
+            native.KillDisqualified,
+            native.DisableChloroplasts,
+            native.FixedInPlace,
+            native.DisableVision,
+            native.DisableDna,
+            native.DisableReproduction,
+            native.VirusImmune,
+            native.DisableMutations,
+            native.DisableMovement);
 
     private static LocalModeKind ParseKind(string? value) => value?.ToLowerInvariant() switch
     {
@@ -317,6 +358,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("ties_enabled")] bool? TiesEnabled,
         [property: JsonPropertyName("robot_fixing_allowed")] bool? RobotFixingAllowed,
         [property: JsonPropertyName("asexual_reproduction_allowed")] bool? AsexualReproductionAllowed,
+        [property: JsonPropertyName("player_bot")] NativePlayerBot? PlayerBot,
+        [property: JsonPropertyName("restriction_options")] NativeRestrictionOptions? RestrictionOptions,
         [property: JsonPropertyName("stats")] NativeStats? Stats,
         [property: JsonPropertyName("obstacles")] NativeObstacle[]? Obstacles,
         [property: JsonPropertyName("teleporters")] NativeTeleporter[]? Teleporters,
@@ -327,6 +370,34 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("ties")] NativeTie[]? Ties,
         [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings,
         [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode);
+
+    private sealed record NativePlayerBot(
+        [property: JsonPropertyName("enabled")] bool Enabled,
+        [property: JsonPropertyName("focus")] NativeId? Focus,
+        [property: JsonPropertyName("bindings")] NativePlayerBotBinding[]? Bindings,
+        [property: JsonPropertyName("pressed_keys")] uint[]? PressedKeys);
+
+    private sealed record NativePlayerBotBinding(
+        [property: JsonPropertyName("key")] int Key,
+        [property: JsonPropertyName("memory_address")] ushort MemoryAddress,
+        [property: JsonPropertyName("value")] int Value,
+        [property: JsonPropertyName("invert")] bool Invert);
+
+    private sealed record NativeRestrictionOptions(
+        [property: JsonPropertyName("non_repopulating")] NativeRestrictionColumn? NonRepopulating,
+        [property: JsonPropertyName("repopulating")] NativeRestrictionColumn? Repopulating);
+
+    private sealed record NativeRestrictionColumn(
+        [property: JsonPropertyName("kill_multibot")] bool KillMultibot,
+        [property: JsonPropertyName("kill_disqualified")] bool KillDisqualified,
+        [property: JsonPropertyName("disable_chloroplasts")] bool DisableChloroplasts,
+        [property: JsonPropertyName("fixed_in_place")] bool FixedInPlace,
+        [property: JsonPropertyName("disable_vision")] bool DisableVision,
+        [property: JsonPropertyName("disable_dna")] bool DisableDna,
+        [property: JsonPropertyName("disable_reproduction")] bool DisableReproduction,
+        [property: JsonPropertyName("virus_immune")] bool VirusImmune,
+        [property: JsonPropertyName("disable_mutations")] bool DisableMutations,
+        [property: JsonPropertyName("disable_movement")] bool DisableMovement);
 
     private sealed record NativeLocalMode(
         [property: JsonPropertyName("config")] NativeLocalModeConfig? Config,
@@ -520,6 +591,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("aim")] int Aim,
         [property: JsonPropertyName("paralyzed")] int Paralyzed,
         [property: JsonPropertyName("poisoned")] int Poisoned,
+        [property: JsonPropertyName("touch")] int Touch,
+        [property: JsonPropertyName("taste")] int Taste,
         [property: JsonPropertyName("parents")] NativeId?[]? Parents,
         [property: JsonPropertyName("phenotype")] NativeVisualPhenotype? Phenotype,
         [property: JsonPropertyName("vision")] NativeVision? Vision,

@@ -3,6 +3,7 @@ use crate::modes::{
     LocalModeStatus,
 };
 use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState, TieEndpointState};
+use crate::robot_tools::{PlayerBotBinding, PlayerBotState, RestrictionColumn, RestrictionOptions};
 use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_angle};
 use crate::simulation_cycle::CycleRecorder;
 use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_ANGLE_SLACK, TIE_DEADBAND};
@@ -250,6 +251,10 @@ pub struct OrganismSnapshot {
     pub slime: i32,
     pub venom: i32,
     pub poison: i32,
+    #[serde(default)]
+    pub touch: i32,
+    #[serde(default)]
+    pub taste: i32,
     pub chloroplasts: i32,
     pub aim: i32,
     pub paralyzed: i32,
@@ -309,6 +314,10 @@ pub struct Snapshot {
     #[serde(default = "default_true")]
     pub asexual_reproduction_allowed: bool,
     #[serde(default)]
+    pub player_bot: PlayerBotState,
+    #[serde(default)]
+    pub restriction_options: RestrictionOptions,
+    #[serde(default)]
     pub obstacles: Vec<Obstacle>,
     #[serde(default)]
     pub teleporters: Vec<Teleporter>,
@@ -336,6 +345,8 @@ impl PartialEq for Snapshot {
             && self.obstacles == other.obstacles
             && self.teleporters == other.teleporters
             && self.file_teleporters == other.file_teleporters
+            && self.player_bot == other.player_bot
+            && self.restriction_options == other.restriction_options
             && self.local_mode == other.local_mode
     }
 }
@@ -1287,6 +1298,8 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             slime: value.slime,
             venom: value.venom,
             poison: value.poison,
+            touch: 0,
+            taste: 0,
             chloroplasts: value.chloroplasts,
             aim: value.aim,
             paralyzed: value.paralyzed,
@@ -1598,6 +1611,8 @@ impl From<Db3sV2Snapshot> for Snapshot {
             ties_enabled: value.ties_enabled,
             robot_fixing_allowed: value.robot_fixing_allowed,
             asexual_reproduction_allowed: value.asexual_reproduction_allowed,
+            player_bot: PlayerBotState::default(),
+            restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             obstacles: value.obstacles.into_iter().map(Into::into).collect(),
             teleporters: value.teleporters.into_iter().map(Into::into).collect(),
@@ -1886,6 +1901,10 @@ pub struct Engine {
     #[serde(default = "default_true")]
     asexual_reproduction_allowed: bool,
     #[serde(default)]
+    player_bot: PlayerBotState,
+    #[serde(default)]
+    restriction_options: RestrictionOptions,
+    #[serde(default)]
     local_mode: LocalModeState,
     #[serde(default)]
     next_lineage_id: u64,
@@ -1941,6 +1960,8 @@ struct CycleCheckpoint {
     ties_enabled: bool,
     robot_fixing_allowed: bool,
     asexual_reproduction_allowed: bool,
+    player_bot: PlayerBotState,
+    restriction_options: RestrictionOptions,
     local_mode: LocalModeState,
     next_lineage_id: u64,
     speciation_fork_interval: u64,
@@ -2077,6 +2098,8 @@ impl Engine {
             ties_enabled: legacy.ties_enabled,
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
+            player_bot: PlayerBotState::default(),
+            restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: legacy.next_lineage_id,
             speciation_fork_interval: default_speciation_fork_interval(),
@@ -2212,6 +2235,8 @@ impl Engine {
                 ties_enabled: true,
                 robot_fixing_allowed: true,
                 asexual_reproduction_allowed: true,
+                player_bot: PlayerBotState::default(),
+                restriction_options: RestrictionOptions::default(),
                 local_mode: LocalModeState::default(),
                 obstacles: Vec::new(),
                 teleporters: Vec::new(),
@@ -2232,6 +2257,8 @@ impl Engine {
             ties_enabled: true,
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
+            player_bot: PlayerBotState::default(),
+            restriction_options: RestrictionOptions::default(),
             local_mode: LocalModeState::default(),
             next_lineage_id: 2,
             speciation_fork_interval: default_speciation_fork_interval(),
@@ -3034,6 +3061,117 @@ impl Engine {
         Ok(())
     }
 
+    pub fn configure_player_bot(
+        &mut self,
+        enabled: bool,
+        focus: Option<OrganismId>,
+        bindings: Vec<PlayerBotBinding>,
+    ) -> Result<(), EngineError> {
+        if let Some(id) = focus {
+            self.valid_slot(id)?;
+        }
+        for binding in &bindings {
+            binding.validate()?;
+        }
+        self.player_bot.enabled = enabled;
+        self.player_bot.focus = focus;
+        self.player_bot.bindings = bindings;
+        if !enabled {
+            self.player_bot.pressed_keys.clear();
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn set_player_bot_key(
+        &mut self,
+        focus: OrganismId,
+        key: u32,
+        pressed: bool,
+    ) -> Result<(), EngineError> {
+        self.valid_slot(focus)?;
+        if key > 65_535 {
+            return Err(EngineError::Invariant(
+                "PlayerBot key codes must be between 0 and 65535".to_owned(),
+            ));
+        }
+        self.player_bot.focus = Some(focus);
+        if pressed {
+            if !self.player_bot.pressed_keys.contains(&key) {
+                self.player_bot.pressed_keys.push(key);
+            }
+        } else {
+            self.player_bot.pressed_keys.retain(|value| *value != key);
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn set_organism_memory(
+        &mut self,
+        id: OrganismId,
+        address: u16,
+        value: i32,
+    ) -> Result<(), EngineError> {
+        self.valid_slot(id)?;
+        if !(1..=999).contains(&address) {
+            return Err(EngineError::Invariant(
+                "organism memory addresses must be between 1 and 999".to_owned(),
+            ));
+        }
+        if !(-32_000..=32_000).contains(&value) {
+            return Err(EngineError::Invariant(
+                "organism memory values must be between -32000 and 32000".to_owned(),
+            ));
+        }
+        self.slots
+            .get_mut(id)?
+            .program
+            .memory
+            .write(address as i32, value);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn set_organism_energy(&mut self, id: OrganismId, energy: i32) -> Result<(), EngineError> {
+        self.valid_slot(id)?;
+        if !(1..=32_000).contains(&energy) {
+            return Err(EngineError::Invariant(
+                "organism energy must be between 1 and 32000".to_owned(),
+            ));
+        }
+        let organism = self.slots.get_mut(id)?;
+        organism.materials.energy = energy;
+        organism.materials.synchronize_energy();
+        organism.program.memory.write(MEM_NRG, energy);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn update_restriction_options(
+        &mut self,
+        options: RestrictionOptions,
+    ) -> Result<(), EngineError> {
+        for slot in &mut self.slots {
+            let Some(organism) = slot.organism.as_mut() else {
+                continue;
+            };
+            let column = if self
+                .species
+                .get(organism.identity.species.0 as usize)
+                .is_some_and(|species| species.reseed)
+            {
+                &options.repopulating
+            } else {
+                &options.non_repopulating
+            };
+            apply_restriction_column(organism, column);
+        }
+        self.restriction_options = options;
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn spawn_species_at(
         &mut self,
         dna: LegacyDna,
@@ -3126,6 +3264,11 @@ impl Engine {
         }
 
         let vegetable = self.species[species.0 as usize].vegetable;
+        let restriction_column = if self.species[species.0 as usize].reseed {
+            self.restriction_options.repopulating.clone()
+        } else {
+            self.restriction_options.non_repopulating.clone()
+        };
         let phenotype = {
             let definition = &self.species[species.0 as usize];
             VisualPhenotype::new(definition.lineage_id, definition.color, definition.skin)
@@ -3138,7 +3281,7 @@ impl Engine {
         memory.write(MEM_XPOS, position[0].round() as i32);
         memory.write(MEM_YPOS, position[1].round() as i32);
         initial_biology.publish(&mut memory);
-        let state = RobotState::new(
+        let mut state = RobotState::new(
             dna,
             memory,
             self.config.seed ^ (self.tick + self.population() as u64 + 1),
@@ -3149,6 +3292,7 @@ impl Engine {
             initial_biology,
             phenotype,
         );
+        apply_restriction_column(&mut state, &restriction_column);
         Ok(self.slots.spawn(state))
     }
 
@@ -3428,6 +3572,8 @@ impl Engine {
             ties_enabled: self.ties_enabled,
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
+            player_bot: self.player_bot.clone(),
+            restriction_options: self.restriction_options.clone(),
             local_mode: self.local_mode.clone(),
             next_lineage_id: self.next_lineage_id,
             speciation_fork_interval: self.speciation_fork_interval,
@@ -3467,6 +3613,8 @@ impl Engine {
         self.ties_enabled = checkpoint.ties_enabled;
         self.robot_fixing_allowed = checkpoint.robot_fixing_allowed;
         self.asexual_reproduction_allowed = checkpoint.asexual_reproduction_allowed;
+        self.player_bot = checkpoint.player_bot;
+        self.restriction_options = checkpoint.restriction_options;
         self.local_mode = checkpoint.local_mode;
         self.next_lineage_id = checkpoint.next_lineage_id;
         self.speciation_fork_interval = checkpoint.speciation_fork_interval;
@@ -3533,6 +3681,7 @@ impl Engine {
         trace.phase(CyclePhase::AfterDna);
         self.clear_after_dna_phase();
         trace.phase(CyclePhase::PlayerBot);
+        self.player_bot_phase(&mut trace);
 
         trace.phase(CyclePhase::ShotUpdate);
         self.advance_reproductive_timers();
@@ -4250,6 +4399,10 @@ impl Engine {
                     &mut robot.program.memory,
                 );
             }
+            if !robot.flags.can_move {
+                robot.kinematics.pending_velocity = [0.0; 2];
+                continue;
+            }
             let input = MovementInput {
                 up: commands.up,
                 down: commands.down,
@@ -4646,6 +4799,41 @@ impl Engine {
         });
     }
 
+    fn player_bot_phase(&mut self, trace: &mut CycleRecorder) {
+        if !self.player_bot.enabled {
+            return;
+        }
+        let Some(focus) = self.player_bot.focus else {
+            return;
+        };
+        let bindings = self.player_bot.bindings.clone();
+        let pressed_keys = self.player_bot.pressed_keys.clone();
+        let Some(slot) = self.slots.slots.get_mut(focus.slot() as usize) else {
+            return;
+        };
+        if slot.generation != focus.generation() {
+            return;
+        }
+        let Some(robot) = slot.organism.as_mut() else {
+            return;
+        };
+        for binding in bindings {
+            if pressed_keys.contains(&binding.key) == binding.invert {
+                continue;
+            }
+            let address = binding.memory_address;
+            let before = robot.program.memory.read(address as i32);
+            robot.program.memory.write(address as i32, binding.value);
+            trace.memory_write(
+                CyclePhase::PlayerBot,
+                focus,
+                address,
+                before,
+                robot.program.memory.read(address as i32),
+            );
+        }
+    }
+
     fn tide_scaling(&self) -> f32 {
         let period = self.config.vegetation.tides;
         if period == 0 {
@@ -4854,6 +5042,9 @@ impl Engine {
             .into_par_iter()
             .map(|observer_slot| {
                 let observer = self.slots[observer_slot].organism.as_ref()?;
+                if !observer.flags.can_see {
+                    return Some((observer_slot, [0; 9], None));
+                }
                 let observer_position = observer.kinematics.position;
                 let vision =
                     VisionSnapshot::from_memory(&observer.program.memory, observer.materials.aim);
@@ -7353,6 +7544,10 @@ impl Engine {
                 organism.program.memory.write(MEM_LIGHT, 0);
                 continue;
             }
+            if !organism.flags.can_use_chloroplasts {
+                organism.program.memory.write(MEM_LIGHT, 0);
+                continue;
+            }
             let feeding = self.vegetation_runtime.feed(PlantLightInput {
                 daytime,
                 sunlit: !settings.weather_enabled
@@ -8388,6 +8583,8 @@ impl Engine {
             ties_enabled: self.ties_enabled,
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
+            player_bot: self.player_bot.clone(),
+            restriction_options: self.restriction_options.clone(),
             obstacles: self.obstacles.clone(),
             teleporters: self.teleporters.clone(),
             file_teleporters: self.file_teleporters.clone(),
@@ -8471,6 +8668,27 @@ impl Engine {
         engine.physics = physics;
         engine.publish_snapshot();
         Ok(engine)
+    }
+}
+
+fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
+    robot.flags.fixed = column.fixed_in_place;
+    robot.flags.can_see = !column.disable_vision;
+    robot.flags.can_execute_dna = !column.disable_dna;
+    robot.flags.can_reproduce = !column.disable_reproduction;
+    robot.flags.can_receive_viruses = !column.virus_immune;
+    robot.flags.can_mutate = !column.disable_mutations;
+    robot.flags.can_move = !column.disable_movement;
+    robot.flags.can_use_chloroplasts = !column.disable_chloroplasts;
+    robot
+        .program
+        .memory
+        .write(MEM_FIXED, i32::from(column.fixed_in_place));
+    if column.fixed_in_place {
+        robot.kinematics.velocity = [0.0; 2];
+        robot.kinematics.pending_velocity = [0.0; 2];
+        robot.kinematics.independent_impulse = [0.0; 2];
+        robot.kinematics.resistive_impulse = [0.0; 2];
     }
 }
 
@@ -8927,6 +9145,8 @@ fn snapshot_organism(
         slime: organism.materials.slime,
         venom: organism.materials.venom,
         poison: organism.materials.poison,
+        touch: organism.senses.touch,
+        taste: organism.senses.taste,
         chloroplasts: organism.materials.chloroplasts,
         aim: organism.materials.aim,
         paralyzed: organism.materials.paralyzed,

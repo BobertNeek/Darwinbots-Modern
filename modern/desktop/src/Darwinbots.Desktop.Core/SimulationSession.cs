@@ -166,6 +166,32 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateLegacyRestrictionsAsync(bool robotFixingAllowed, bool asexualReproductionAllowed, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateLegacyRestrictions(robotFixingAllowed, asexualReproductionAllowed), cancellationToken);
 
+    public Task ConfigurePlayerBotAsync(PlayerBotConfig config, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        foreach (var binding in config.Bindings) binding.Validate();
+        return Enqueue(engine => engine.ConfigurePlayerBot(config), cancellationToken);
+    }
+
+    public Task SetPlayerBotKeyAsync(OrganismKey focus, int keyCode, bool pressed, CancellationToken cancellationToken = default)
+    {
+        if (keyCode is < 0 or > 65_535)
+            throw new ArgumentOutOfRangeException(nameof(keyCode));
+        return Enqueue(engine => engine.SetPlayerBotKey(focus.Slot, focus.Generation, keyCode, pressed), cancellationToken);
+    }
+
+    public Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
+
+    public Task SetOrganismEnergyAsync(uint slot, uint generation, int energy, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrganismEnergy(slot, generation, energy), cancellationToken);
+
+    public Task UpdateRestrictionOptionsAsync(RestrictionOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return Enqueue(engine => engine.UpdateRestrictionOptions(options), cancellationToken);
+    }
+
     public Task ConfigureLocalModeAsync(LocalModeConfig config, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(config);

@@ -380,6 +380,75 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
         "update legacy restrictions");
 
+    public void ConfigurePlayerBot(PlayerBotConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        foreach (var binding in config.Bindings) binding.Validate();
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "configure_player_bot",
+                    enabled = config.Enabled,
+                    focus = OrganismPayload(config.Focus),
+                    bindings = config.Bindings.Select(binding => new
+                    {
+                        key = binding.KeyCode,
+                        memory_address = binding.MemoryAddress,
+                        value = binding.Value,
+                        invert = binding.Invert,
+                    }).ToArray(),
+                },
+            },
+        }, "configure PlayerBot");
+    }
+
+    public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed)
+    {
+        if (keyCode is < 0 or > 65_535)
+            throw new ArgumentOutOfRangeException(nameof(keyCode));
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_player_bot_key", slot, generation, key = keyCode, pressed } },
+        }, "update PlayerBot key state");
+    }
+
+    public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_organism_memory", slot, generation, address, value } },
+        }, "set organism memory");
+
+    public void SetOrganismEnergy(uint slot, uint generation, int energy) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_organism_energy", slot, generation, energy } },
+        }, "set organism energy");
+
+    public void UpdateRestrictionOptions(RestrictionOptions options) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "update_restriction_options",
+                    options = new
+                    {
+                        non_repopulating = RestrictionColumnPayload(options.NonRepopulating),
+                        repopulating = RestrictionColumnPayload(options.Repopulating),
+                    },
+                },
+            },
+        }, "update restriction options");
+
     public void ConfigureLocalMode(LocalModeConfig config)
     {
         EnsureAlive();
@@ -460,6 +529,24 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (position.Length != 2 || position.Any(value => !float.IsFinite(value)))
             throw new ArgumentException("Position must contain two finite coordinates.", nameof(position));
     }
+
+    private static object? OrganismPayload(OrganismKey? key) => key is { } value
+        ? new { slot = value.Slot, generation = value.Generation }
+        : null;
+
+    private static object RestrictionColumnPayload(RestrictionColumn value) => new
+    {
+        kill_multibot = value.KillMultibot,
+        kill_disqualified = value.KillDisqualified,
+        disable_chloroplasts = value.DisableChloroplasts,
+        fixed_in_place = value.FixedInPlace,
+        disable_vision = value.DisableVision,
+        disable_dna = value.DisableDna,
+        disable_reproduction = value.DisableReproduction,
+        virus_immune = value.VirusImmune,
+        disable_mutations = value.DisableMutations,
+        disable_movement = value.DisableMovement,
+    };
 
     private static string ModeKindName(LocalModeKind kind) => kind switch
     {

@@ -489,6 +489,11 @@ internal sealed class FakeEngineClient : IEngineClient
     public void SetSpeciesColor(uint species, uint color) { }
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) { }
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) { }
+    public void ConfigurePlayerBot(PlayerBotConfig config) { }
+    public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) { }
+    public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) { }
+    public void SetOrganismEnergy(uint slot, uint generation, int energy) { }
+    public void UpdateRestrictionOptions(RestrictionOptions options) { }
     public void ConfigureLocalMode(LocalModeConfig config) { }
     public void StartLocalMode() { }
     public void RestartLocalMode() { }

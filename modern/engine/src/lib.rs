@@ -15,6 +15,7 @@ mod mutation;
 mod persistence;
 mod physics;
 mod robot_state;
+mod robot_tools;
 mod senses;
 mod shot;
 mod simulation_cycle;
@@ -72,6 +73,7 @@ pub use robot_state::{
     RobotKinematics, RobotMutationMetadata, RobotPhysicsBatch, RobotProgramState, RobotSenseState,
     RobotState, StoredGeneticMaterial, TieEndpointState,
 };
+pub use robot_tools::{PlayerBotBinding, PlayerBotState, RestrictionColumn, RestrictionOptions};
 pub use shot::ShotSnapshot;
 pub(crate) use shot::{
     ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,

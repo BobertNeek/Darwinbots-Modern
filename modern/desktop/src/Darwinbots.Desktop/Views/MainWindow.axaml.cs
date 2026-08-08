@@ -87,7 +87,7 @@ public sealed partial class MainWindow : Window
     private int _recordedCorpseCount;
     private bool _automaticTagByName;
     private bool _playerBotEnabled;
-    private float _playerBotThrust = 30f;
+    private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private bool _rgbMemoryMonitorEnabled;
     private string _rgbMemoryChannels = ".nrg, .body, .waste";
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
@@ -130,6 +130,7 @@ public sealed partial class MainWindow : Window
             InsertionSpeciesSelector.SelectedIndex = 0;
         InitializeTray();
         KeyDown += PlayerBot_KeyDown;
+        KeyUp += PlayerBot_KeyUp;
         _legacyCommands = CreateLegacyCommandRouter();
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
@@ -384,7 +385,7 @@ public sealed partial class MainWindow : Window
             async _ => await OpenPlayerBotSettingsAsync());
         handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
             () => SelectedRobotState() with { Checked = _playerBotEnabled },
-            _ => Task.FromResult(TogglePlayerBot()));
+            async _ => await TogglePlayerBotAsync());
         handlers[LegacyCommandId.EditEyeDesigner] = Handler(
             SelectedRobotState,
             async _ => await OpenEyeDesignerAsync());
@@ -737,42 +738,59 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenPlayerBotSettingsAsync()
     {
-        var dialog = new LegacyValueWindow("PlayerBot Settings", "Manual movement step", _playerBotThrust.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture), "World units moved per arrow or WASD key press while PlayerBot mode is enabled.");
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var current = _session.LatestSnapshot.PlayerBot.Bindings.Count > 0
+            ? _session.LatestSnapshot.PlayerBot.Bindings
+            : _playerBotBindings;
+        var dialog = new PlayerBotSettingsWindow(current);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        if (!float.TryParse(dialog.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var thrust) || !float.IsFinite(thrust) || thrust <= 0 || thrust > 2_000)
-            return LegacyCommandResult.Failure("PLAYERBOT STEP MUST BE BETWEEN 0 AND 2000");
-        _playerBotThrust = thrust;
-        return LegacyCommandResult.Success($"PLAYERBOT STEP · {_playerBotThrust:0.0}");
+        _playerBotBindings = dialog.Bindings;
+        await _session.ConfigurePlayerBotAsync(new PlayerBotConfig(
+            _playerBotEnabled,
+            SelectedRobotKey(),
+            _playerBotBindings));
+        return LegacyCommandResult.Success($"PLAYERBOT KEY MAP · {_playerBotBindings.Count} BINDING(S)");
     }
 
-    private LegacyCommandResult TogglePlayerBot()
+    private async Task<LegacyCommandResult> TogglePlayerBotAsync()
     {
-        _playerBotEnabled = !_playerBotEnabled;
-        return LegacyCommandResult.Success($"PLAYERBOT MODE · {(_playerBotEnabled ? "ON · USE ARROWS OR WASD" : "OFF")}");
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var next = !_playerBotEnabled;
+        if (next && SelectedRobotKey() is null)
+            return LegacyCommandResult.Failure("SELECT A ROBOT BEFORE ENABLING PLAYERBOT");
+        _playerBotBindings = _session.LatestSnapshot.PlayerBot.Bindings.Count > 0
+            ? _session.LatestSnapshot.PlayerBot.Bindings
+            : _playerBotBindings;
+        await _session.ConfigurePlayerBotAsync(new PlayerBotConfig(next, SelectedRobotKey(), _playerBotBindings));
+        _playerBotEnabled = next;
+        return LegacyCommandResult.Success($"PLAYERBOT MODE · {(next ? "ON · MAPPED KEYS WRITE AFTER SENSE CLEAR" : "OFF")}");
     }
 
     private async void PlayerBot_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
     {
-        if (!_playerBotEnabled || _session is null || _viewModel.SelectedOrganism is not { } organism) return;
-        var delta = e.Key switch
-        {
-            Avalonia.Input.Key.Left or Avalonia.Input.Key.A => new[] { -_playerBotThrust, 0f },
-            Avalonia.Input.Key.Right or Avalonia.Input.Key.D => new[] { _playerBotThrust, 0f },
-            Avalonia.Input.Key.Up or Avalonia.Input.Key.W => new[] { 0f, -_playerBotThrust },
-            Avalonia.Input.Key.Down or Avalonia.Input.Key.S => new[] { 0f, _playerBotThrust },
-            _ => null,
-        };
-        if (delta is null) return;
-        var world = _session.LatestSnapshot.WorldSize;
-        var position = new[]
-        {
-            Math.Clamp(organism.Position[0] + delta[0], 0, world[0]),
-            Math.Clamp(organism.Position[1] + delta[1], 0, world[1]),
-        };
-        await _session.MoveAsync(organism.Slot, organism.Generation, position);
+        if (!_playerBotEnabled || _session is null || SelectedRobotKey() is not { } focus) return;
+        var keyCode = (int)e.Key;
+        if (!_session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
+            && !_playerBotBindings.Any(binding => binding.KeyCode == keyCode)) return;
+        await _session.SetPlayerBotKeyAsync(focus, keyCode, pressed: true);
         e.Handled = true;
     }
+
+    private async void PlayerBot_KeyUp(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (!_playerBotEnabled || _session is null || SelectedRobotKey() is not { } focus) return;
+        var keyCode = (int)e.Key;
+        if (!_session.LatestSnapshot.PlayerBot.Bindings.Any(binding => binding.KeyCode == keyCode)
+            && !_playerBotBindings.Any(binding => binding.KeyCode == keyCode)) return;
+        await _session.SetPlayerBotKeyAsync(focus, keyCode, pressed: false);
+        e.Handled = true;
+    }
+
+    private OrganismKey? SelectedRobotKey() =>
+        _viewModel.SelectedOrganism is { } organism
+            ? new OrganismKey(organism.Slot, organism.Generation)
+            : null;
 
     private async Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
@@ -785,10 +803,14 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"EYE AIM · {((aim % 1257) + 1257) % 1257}");
     }
 
-    private Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
+    private async Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
     {
-        var snapshot = _session!.LatestSnapshot;
-        return ShowDocumentAsync("Restriction Overwrites", "Active simulation policy", $"Robot-controlled fixing: {(snapshot.RobotFixingAllowed ? "allowed" : "overwritten off")}\nAsexual reproduction for non-repopulating species: {(snapshot.AsexualReproductionAllowed ? "allowed" : "overwritten off")}\nTie creation: {(snapshot.TiesEnabled ? "allowed" : "overwritten off")}\nAutomatic forking/speciation: {(_liveEnvironment.AutoSpeciation ? "enabled" : "disabled")}\n\nThese overrides apply between simulation phases and do not modify bot DNA.");
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var dialog = new RestrictionOptionsWindow(_session.LatestSnapshot.RestrictionOptions);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        await _session.UpdateRestrictionOptionsAsync(dialog.Options);
+        return LegacyCommandResult.Success("RESTRICTION OPTIONS APPLIED TO LIVE ROBOTS");
     }
 
     private async Task<LegacyCommandResult> OpenRgbMonitorSettingsAsync()
@@ -1042,7 +1064,23 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ShowSelectedRobotConsoleAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        return await ShowDocumentAsync("Robot Console", $"Live robot {organism.Slot}:{organism.Generation}", $".nrg = {organism.Energy}\n.body = {organism.Body}\n.waste = {organism.Waste}\n.chlr = {organism.Chloroplasts}\n.aim = {organism.Aim}\n.paralyzed = {organism.Paralyzed}\n.poisoned = {organism.Poisoned}\n\nPosition = [{organism.Position[0]:0.00}, {organism.Position[1]:0.00}]\nVelocity = [{organism.Velocity[0]:0.00}, {organism.Velocity[1]:0.00}]\n\nThis console is a read-only live memory summary. Use Edit / Export DNA to change the active program.");
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var focus = new OrganismKey(organism.Slot, organism.Generation);
+        var console = new RobotConsoleWindow(
+            _session,
+            focus,
+            () =>
+            {
+                Run_Click(this, new RoutedEventArgs());
+                return Task.CompletedTask;
+            },
+            () =>
+            {
+                Pause_Click(this, new RoutedEventArgs());
+                return Task.CompletedTask;
+            });
+        console.Show(this);
+        return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
     }
 
     private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
@@ -1367,6 +1405,8 @@ public sealed partial class MainWindow : Window
             _insertion = new WorldInsertionController(_session);
             _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
             {
+                _playerBotEnabled = snapshot.PlayerBot.Enabled;
+                _playerBotBindings = snapshot.PlayerBot.Bindings;
                 _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
                 Viewport.SetSnapshot(snapshot);
                 Viewport.SelectSlot(_viewModel.SelectedSlot);

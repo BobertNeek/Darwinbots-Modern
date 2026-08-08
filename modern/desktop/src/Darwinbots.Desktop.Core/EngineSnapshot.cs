@@ -56,6 +56,8 @@ public sealed record OrganismSnapshot(
     public IReadOnlyList<MemoryCellSnapshot> Memory { get; init; } = [];
     public int Mass { get; init; }
     public float Radius { get; init; }
+    public int Touch { get; init; }
+    public int Taste { get; init; }
     public int PermanentWaste { get; init; }
     public ulong Offspring { get; init; }
     public ulong Descendants { get; init; }
@@ -222,6 +224,8 @@ public sealed record EngineSnapshot(
     public bool TiesEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;
     public bool AsexualReproductionAllowed { get; init; } = true;
+    public PlayerBotSnapshot PlayerBot { get; init; } = PlayerBotSnapshot.Default;
+    public RestrictionOptions RestrictionOptions { get; init; } = RestrictionOptions.Default;
     public SimulationStatsSnapshot Stats { get; init; } = SimulationStatsSnapshot.Empty;
     public float[] WorldSize { get; init; } = [16_000f, 12_000f];
     public IReadOnlyList<ObstacleSnapshot> Obstacles { get; init; } = [];

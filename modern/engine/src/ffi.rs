@@ -163,6 +163,31 @@ enum EngineCommand {
         robot_fixing_allowed: bool,
         asexual_reproduction_allowed: bool,
     },
+    ConfigurePlayerBot {
+        enabled: bool,
+        focus: Option<OrganismIdCommand>,
+        bindings: Vec<crate::PlayerBotBinding>,
+    },
+    SetPlayerBotKey {
+        slot: u32,
+        generation: u32,
+        key: u32,
+        pressed: bool,
+    },
+    SetOrganismMemory {
+        slot: u32,
+        generation: u32,
+        address: u16,
+        value: i32,
+    },
+    SetOrganismEnergy {
+        slot: u32,
+        generation: u32,
+        energy: i32,
+    },
+    UpdateRestrictionOptions {
+        options: crate::RestrictionOptions,
+    },
     SetOrganismAim {
         slot: u32,
         generation: u32,
@@ -584,6 +609,43 @@ fn db_engine_command_batch_impl(
                     .update_legacy_restrictions(robot_fixing_allowed, asexual_reproduction_allowed);
                 Ok(serde_json::Value::Null)
             }
+            EngineCommand::ConfigurePlayerBot {
+                enabled,
+                focus,
+                bindings,
+            } => engine
+                .configure_player_bot(
+                    enabled,
+                    focus.map(|value| OrganismId::new(value.slot, value.generation)),
+                    bindings,
+                )
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetPlayerBotKey {
+                slot,
+                generation,
+                key,
+                pressed,
+            } => engine
+                .set_player_bot_key(OrganismId::new(slot, generation), key, pressed)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetOrganismMemory {
+                slot,
+                generation,
+                address,
+                value,
+            } => engine
+                .set_organism_memory(OrganismId::new(slot, generation), address, value)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetOrganismEnergy {
+                slot,
+                generation,
+                energy,
+            } => engine
+                .set_organism_energy(OrganismId::new(slot, generation), energy)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateRestrictionOptions { options } => engine
+                .update_restriction_options(options)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::SetOrganismAim {
                 slot,
                 generation,

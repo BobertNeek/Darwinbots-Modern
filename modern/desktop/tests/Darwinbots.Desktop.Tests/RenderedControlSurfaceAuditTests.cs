@@ -788,6 +788,11 @@ internal sealed class AuditEngineClient : IEngineClient
     public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");
     public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
+    public void ConfigurePlayerBot(PlayerBotConfig config) => Calls.Enqueue("ConfigurePlayerBot");
+    public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) => Calls.Enqueue($"PlayerBotKey:{slot}:{generation}:{keyCode}:{pressed}");
+    public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
+    public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
+    public void UpdateRestrictionOptions(RestrictionOptions options) => Calls.Enqueue("RestrictionOptions");
     public void ConfigureLocalMode(LocalModeConfig config)
     {
         Calls.Enqueue("ConfigureLocalMode");
