@@ -84,6 +84,7 @@ const MEM_MY_TIES: i32 = 729;
 const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
+const MEM_EDGE: i32 = 214;
 const MEM_LIGHT: i32 = 923;
 const BIRTH_BORDER_SMUDGE: f32 = 50.0;
 const FERTILIZATION_WINDOW: i32 = 10;
@@ -583,6 +584,12 @@ struct Db3sV2VegetationSettings {
     daytime: bool,
     day_night_enabled: bool,
     cycle_length: u64,
+    sun_up_enabled: bool,
+    sun_up_threshold: i32,
+    sun_down_enabled: bool,
+    sun_down_threshold: i32,
+    sun_threshold_mode: i32,
+    weather_enabled: bool,
     pond_mode: bool,
     light_intensity: f32,
     gradient: f32,
@@ -602,6 +609,12 @@ impl Default for Db3sV2VegetationSettings {
             daytime: true,
             day_night_enabled: false,
             cycle_length: 10_000,
+            sun_up_enabled: false,
+            sun_up_threshold: 500_000,
+            sun_down_enabled: false,
+            sun_down_threshold: 1_000_000,
+            sun_threshold_mode: 0,
+            weather_enabled: false,
             pond_mode: false,
             light_intensity: 100.0,
             gradient: 1.0,
@@ -623,6 +636,12 @@ impl From<Db3sV2VegetationSettings> for VegetationSettings {
             daytime: value.daytime,
             day_night_enabled: value.day_night_enabled,
             cycle_length: value.cycle_length,
+            sun_up_enabled: value.sun_up_enabled,
+            sun_up_threshold: value.sun_up_threshold,
+            sun_down_enabled: value.sun_down_enabled,
+            sun_down_threshold: value.sun_down_threshold,
+            sun_threshold_mode: value.sun_threshold_mode,
+            weather_enabled: value.weather_enabled,
             pond_mode: value.pond_mode,
             light_intensity: value.light_intensity,
             gradient: value.gradient,
@@ -5902,6 +5921,23 @@ impl Engine {
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
         let mut keyed_batch = self.physics_batch();
+        let edge_contacts: Vec<bool> = if keyed_batch.batch.toroidal {
+            vec![false; keyed_batch.batch.positions.len()]
+        } else {
+            keyed_batch
+                .batch
+                .positions
+                .iter()
+                .zip(&keyed_batch.batch.velocities)
+                .map(|(position, velocity)| {
+                    let next = [position[0] + velocity[0], position[1] + velocity[1]];
+                    next[0] < 0.0
+                        || next[0] > keyed_batch.batch.world_size[0]
+                        || next[1] < 0.0
+                        || next[1] > keyed_batch.batch.world_size[1]
+                })
+                .collect()
+        };
         let fixed: Vec<_> = keyed_batch
             .ids
             .iter()
@@ -5926,6 +5962,13 @@ impl Engine {
                 let state = self.slots.get(keyed_batch.ids[index])?;
                 keyed_batch.batch.positions[index] = state.kinematics.position;
                 keyed_batch.batch.velocities[index] = [0.0; 2];
+            }
+            if edge_contacts[index] && !fixed {
+                self.slots
+                    .get_mut(keyed_batch.ids[index])?
+                    .program
+                    .memory
+                    .write(MEM_EDGE, 1);
             }
         }
         self.slots.apply_physics_batch(keyed_batch)?;
@@ -6192,13 +6235,44 @@ impl Engine {
         match target {
             ProjectileTarget::Obstacle => false,
             ProjectileTarget::Corpse(corpse) => {
+                if matches!(effect, ProjectileEffect::ReleaseBody) {
+                    let (packet_value, target_velocity) = {
+                        let Some(corpse_state) = self.corpses.get_mut(corpse) else {
+                            return false;
+                        };
+                        let body = corpse_state.body.max(0) as f64;
+                        if body <= 0.0 {
+                            return false;
+                        }
+                        let mut body_power =
+                            f64::from(power.max(0)).min(32_000.0).min(body * 10.0 / 0.8);
+                        if body_power <= 0.0 {
+                            return false;
+                        }
+                        body_power = (body_power * 4.0).min(body * 10.0);
+                        corpse_state.body = (body - body_power / 10.0)
+                            .max(0.0)
+                            .round()
+                            .clamp(0.0, 32_000.0)
+                            as i32;
+                        (body_power.round() as i32, corpse_state.velocity)
+                    };
+                    self.projectiles.spawn_energy_packet(
+                        OrganismId::new(u32::MAX, u32::MAX),
+                        projectile_position,
+                        [
+                            target_velocity[0] * 1.5 - projectile_velocity[0],
+                            target_velocity[1] * 1.5 - projectile_velocity[1],
+                        ],
+                        projectile_range.saturating_mul(2),
+                        packet_value,
+                    );
+                    return true;
+                }
                 let Some(corpse_state) = self.corpses.get_mut(corpse) else {
                     return false;
                 };
-                if !matches!(
-                    effect,
-                    ProjectileEffect::ReleaseEnergy | ProjectileEffect::ReleaseBody
-                ) {
+                if !matches!(effect, ProjectileEffect::ReleaseEnergy) {
                     return false;
                 }
                 let applied = power.min(corpse_state.energy.max(0));
@@ -6404,20 +6478,131 @@ impl Engine {
                         true
                     }
                     ProjectileEffect::ReleaseBody => {
-                        let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        let absorbed = power.min(target_robot.materials.shell.max(0));
-                        target_robot.materials.shell -= absorbed;
-                        let applied = (power - absorbed).min(target_robot.materials.body.max(0));
-                        target_robot.materials.body -= applied;
-                        if owner_is_live {
-                            let harvested = applied.saturating_mul(3) / 4;
-                            let owner_robot = self.slots.get_mut(owner).unwrap();
-                            owner_robot.materials.energy =
-                                owner_robot.materials.energy.saturating_add(harvested);
-                            self.stats.energy_harvested =
-                                self.stats.energy_harvested.saturating_add(harvested as u64);
-                        }
-                        applied > 0 || absorbed > 0
+                        let (packet_value, target_velocity) = {
+                            let target_robot = self.slots[target].organism.as_mut().unwrap();
+                            if target_robot.materials.body <= 0 {
+                                return false;
+                            }
+                            let shell_energy =
+                                f64::from(target_robot.materials.shell.max(0)) * 20.0;
+                            let body_energy = f64::from(target_robot.materials.body.max(0)) * 10.0;
+                            let mut body_power = f64::from(power.max(0))
+                                .min(32_000.0)
+                                .min(body_energy / 0.8 + shell_energy);
+                            if body_power <= 0.0 {
+                                return false;
+                            }
+                            if body_power < shell_energy {
+                                let shell = (f64::from(target_robot.materials.shell.max(0))
+                                    - body_power / 20.0)
+                                    .max(0.0)
+                                    .round() as i32;
+                                target_robot.materials.shell = shell;
+                                target_robot.materials.mass = derived_mass(
+                                    target_robot.materials.body,
+                                    target_robot.materials.shell,
+                                    target_robot.materials.chloroplasts,
+                                )
+                                .clamp(1.0, 32_000.0);
+                                target_robot.materials.radius = crate::physics::organism_radius(
+                                    target_robot.materials.body,
+                                    target_robot.materials.chloroplasts,
+                                );
+                                target_robot
+                                    .materials
+                                    .publish(&mut target_robot.program.memory);
+                                return true;
+                            }
+
+                            let shell_after = (f64::from(target_robot.materials.shell.max(0))
+                                - body_power / 20.0)
+                                .max(0.0);
+                            target_robot.materials.shell = shell_after.round() as i32;
+                            body_power = (body_power - shell_energy).max(0.0);
+                            if body_power <= 0.0 {
+                                target_robot.materials.mass = derived_mass(
+                                    target_robot.materials.body,
+                                    target_robot.materials.shell,
+                                    target_robot.materials.chloroplasts,
+                                )
+                                .clamp(1.0, 32_000.0);
+                                target_robot.materials.radius = crate::physics::organism_radius(
+                                    target_robot.materials.body,
+                                    target_robot.materials.chloroplasts,
+                                );
+                                target_robot
+                                    .materials
+                                    .publish(&mut target_robot.program.memory);
+                                return true;
+                            }
+
+                            let mut energy = f64::from(target_robot.materials.energy.max(0));
+                            let mut body = f64::from(target_robot.materials.body.max(0));
+                            let mut leftover = 0.0;
+                            let energy_loss = body_power * 0.2;
+                            if energy_loss > energy {
+                                leftover += energy_loss - energy;
+                                energy = 0.0;
+                            } else {
+                                energy -= energy_loss;
+                            }
+                            let body_loss = body_power * 0.08;
+                            let body_capacity = body * 10.0;
+                            if body_loss > body_capacity {
+                                leftover += body_loss - body_capacity;
+                                body = 0.0;
+                            } else {
+                                body -= body_loss / 10.0;
+                            }
+                            if leftover > 0.0 {
+                                if energy > leftover {
+                                    energy -= leftover;
+                                    leftover = 0.0;
+                                } else if energy > 0.0 {
+                                    leftover -= energy;
+                                    energy = 0.0;
+                                }
+                                if leftover > 0.0 {
+                                    body = (body - leftover / 10.0).max(0.0);
+                                }
+                            }
+                            target_robot.materials.energy =
+                                energy.round().clamp(0.0, 32_000.0) as i32;
+                            target_robot.materials.body = body.round().clamp(0.0, 32_000.0) as i32;
+                            target_robot.flags.dead = target_robot.materials.energy <= 0
+                                || target_robot.materials.body <= 0;
+                            target_robot.materials.mass = derived_mass(
+                                target_robot.materials.body,
+                                target_robot.materials.shell,
+                                target_robot.materials.chloroplasts,
+                            )
+                            .clamp(1.0, 32_000.0);
+                            target_robot.materials.radius = crate::physics::organism_radius(
+                                target_robot.materials.body,
+                                target_robot.materials.chloroplasts,
+                            );
+                            target_robot
+                                .materials
+                                .publish(&mut target_robot.program.memory);
+                            (
+                                body_power.round() as i32,
+                                target_robot.kinematics.actual_velocity,
+                            )
+                        };
+                        let target_id =
+                            OrganismId::new(target as u32, self.slots[target].generation);
+                        let return_velocity = [
+                            target_velocity[0] * 1.5 - projectile_velocity[0],
+                            target_velocity[1] * 1.5 - projectile_velocity[1],
+                        ];
+                        self.projectiles.spawn_energy_packet(
+                            target_id,
+                            projectile_position,
+                            return_velocity,
+                            projectile_range.saturating_mul(2),
+                            packet_value,
+                        );
+                        true
                     }
                     ProjectileEffect::AddGene => {
                         let Some(dna) = payload else { return false };
@@ -7096,10 +7281,40 @@ impl Engine {
         self.refresh_tie_projections();
     }
 
+    fn total_simulation_energy(&self) -> i64 {
+        let organisms = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|robot| {
+                i64::from(robot.materials.energy.max(0))
+                    + i64::from(robot.materials.body.max(0)) * 10
+            })
+            .sum::<i64>();
+        let corpses = self
+            .corpses
+            .iter()
+            .map(|corpse| i64::from(corpse.energy.max(0)) + i64::from(corpse.body.max(0)) * 10)
+            .sum::<i64>();
+        let shots = self
+            .projectiles
+            .live_slots()
+            .into_iter()
+            .filter(|slot| self.projectiles.kinds[*slot as usize] == -2)
+            .map(|slot| self.projectiles.energies[slot as usize].round() as i64)
+            .sum::<i64>();
+        organisms.saturating_add(corpses).saturating_add(shots)
+    }
+
     fn vegetation_feed_phase(&mut self) {
-        let daytime = self
-            .vegetation_runtime
-            .advance_daylight(&mut self.config.vegetation);
+        let total_energy = self.total_simulation_energy();
+        let weather_seed = self.config.seed ^ self.tick.rotate_left(17);
+        let daylight = self.vegetation_runtime.advance_daylight(
+            &mut self.config.vegetation,
+            total_energy,
+            weather_seed,
+        );
+        let daytime = daylight.feed_this_cycle;
         let world_area = self.config.world_width.max(0.0) * self.config.world_height.max(0.0);
         let obstacle_area: f32 = self
             .obstacles
@@ -7140,6 +7355,13 @@ impl Engine {
             }
             let feeding = self.vegetation_runtime.feed(PlantLightInput {
                 daytime,
+                sunlit: !settings.weather_enabled
+                    || is_in_sun_band(
+                        organism.kinematics.position[0],
+                        self.config.world_width,
+                        daylight.sun_position,
+                        daylight.sun_range,
+                    ),
                 chloroplasts: organism.materials.chloroplasts,
                 age: organism.counters.age,
                 total_robot_area,
@@ -7158,15 +7380,16 @@ impl Engine {
             let tide_factor = if settings.tides == 0 {
                 1.0
             } else {
-                tide_scaling
+                (1.0 - tide_scaling).clamp(0.0, 1.0)
             };
             let (energy_gain, body_gain) = organism
                 .materials
                 .apply_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body);
-            if self
-                .species
-                .get(organism.identity.species.0 as usize)
-                .is_some_and(|species| species.vegetable)
+            if feeding.light
+                && self
+                    .species
+                    .get(organism.identity.species.0 as usize)
+                    .is_some_and(|species| species.vegetable)
             {
                 organism.materials.energy = organism
                     .materials
@@ -7365,12 +7588,13 @@ impl Engine {
             let Some(robot) = slot.organism.as_ref() else {
                 continue;
             };
-            let should_die = if self.config.corpse_decay.enabled {
-                robot.counters.age > 0
-                    && robot.materials.energy < self.config.corpse_decay.death_energy_threshold
-            } else {
-                robot.materials.energy < 1 || robot.materials.body < 1
-            };
+            let should_die = robot.flags.dead
+                || if self.config.corpse_decay.enabled {
+                    robot.counters.age > 0
+                        && robot.materials.energy < self.config.corpse_decay.death_energy_threshold
+                } else {
+                    robot.materials.energy < 1 || robot.materials.body < 1
+                };
             if !should_die {
                 continue;
             }
@@ -8824,6 +9048,21 @@ fn strip_numeric_species_prefix(name: &str) -> &str {
 fn zerobot_seed_score(robot: &RobotState) -> i64 {
     i64::from(robot.materials.energy.max(0))
         + i64::from(robot.materials.body.max(0)).saturating_mul(10)
+}
+
+fn is_in_sun_band(x: f32, world_width: f32, sun_position: f32, sun_range: f32) -> bool {
+    let width = world_width.max(1.0);
+    let band_fraction = (0.25 + sun_range.clamp(0.0, 1.0).powi(3) * 0.75).clamp(0.0, 1.0);
+    let start = (sun_position - band_fraction / 2.0) * width;
+    let stop = (sun_position + band_fraction / 2.0) * width;
+    let x = x.rem_euclid(width);
+    if start < 0.0 {
+        x >= width + start || x <= stop
+    } else if stop > width {
+        x >= start || x <= stop - width
+    } else {
+        x >= start && x <= stop
+    }
 }
 
 fn default_species() -> Vec<SpeciesDefinition> {

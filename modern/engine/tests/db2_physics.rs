@@ -290,3 +290,40 @@ fn pond_tides_modulate_vertical_gravity_over_the_configured_period() {
         "high tide velocity: {high_tide_velocity}, falling velocity: {falling_velocity}"
     );
 }
+
+#[test]
+fn non_toroidal_border_collision_writes_edge_sense() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        toroidal_world: false,
+        gravity: [0.0, 0.0],
+        drag: 0.0,
+        brownian_motion: 0.0,
+        physics: PhysicsSettings {
+            density: 0.0,
+            surface_gravity: 0.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let left = engine
+        .spawn_at(
+            LegacyDna::parse("start\n-100 .dx store\nstop").unwrap(),
+            [0.0, 500.0],
+        )
+        .unwrap();
+    let right = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .dx store\nstop").unwrap(),
+            [1_000.0, 500.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory_at(left, 214).unwrap(), 1);
+    assert_eq!(engine.memory_at(right, 214).unwrap(), 1);
+}

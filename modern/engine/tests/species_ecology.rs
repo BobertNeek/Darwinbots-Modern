@@ -493,7 +493,7 @@ fn body_feeding_shots_consume_shell_before_body() {
     engine
         .replace_dna(
             attacker,
-            LegacyDna::parse("start\n-6 .shoot store\n50 .shootval store\nstop").unwrap(),
+            LegacyDna::parse("start\n-6 .shoot store\n40 .shootval store\nstop").unwrap(),
         )
         .unwrap();
     let attacker_before = engine.organism(attacker).unwrap();
@@ -507,13 +507,54 @@ fn body_feeding_shots_consume_shell_before_body() {
     let target_after = engine.organism(target).unwrap();
     assert_eq!(target_after.energy, target_before.energy);
     assert_eq!(target_after.body, target_before.body);
-    assert_eq!(target_after.shell, target_before.shell - 50);
+    assert_eq!(target_after.shell, target_before.shell - 2);
     assert_eq!(attacker_after.energy, attacker_before.energy);
     assert_eq!(engine.snapshot().stats.shots_fired, 1);
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
     assert_eq!(engine.snapshot().stats.projectile_effects, 1);
     assert_eq!(engine.snapshot().stats.energy_harvested, 0);
     assert_eq!(engine.snapshot().stats.feeding_events, 0);
+}
+
+#[test]
+fn body_feeding_shots_use_body_coefficients_and_return_energy_from_target() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let idle = LegacyDna::parse("start\nstop").unwrap();
+    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let target = engine.spawn_at(idle.clone(), [350.0, 100.0]).unwrap();
+    engine.tick().unwrap();
+    engine
+        .replace_dna(
+            attacker,
+            LegacyDna::parse("start\n-6 .shoot store\n100 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
+    let attacker_before = engine.organism(attacker).unwrap();
+    let target_before = engine.organism(target).unwrap();
+
+    engine.tick().unwrap();
+    engine.replace_dna(attacker, idle).unwrap();
+    engine.tick().unwrap();
+
+    let attacker_after_impact = engine.organism(attacker).unwrap();
+    let target_after = engine.organism(target).unwrap();
+    assert_eq!(target_after.energy, target_before.energy - 20);
+    assert_eq!(target_after.body, target_before.body - 1);
+    assert_eq!(attacker_after_impact.energy, attacker_before.energy);
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| { shot.kind == -2 && shot.owner == target && shot.value == 100 })
+    );
+
+    engine.tick_many(8).unwrap();
+    assert!(engine.organism(attacker).unwrap().energy > attacker_before.energy);
 }
 
 #[test]

@@ -1,7 +1,8 @@
 mod support;
 
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, SpeciesDefinition, VegetationSettings, sysvar_address,
+    Engine, EngineConfig, LegacyDna, SaveFile, SpeciesDefinition, VegetationSettings,
+    sysvar_address,
 };
 use support::db2_fixtures::{
     MEM_AVAILABILITY, MEM_CHLR, MEM_LIGHT, MEM_MAKE_CHLR, MEM_REMOVE_CHLR, MEM_SHARE_CHLR,
@@ -254,4 +255,166 @@ fn sunlight_intensity_scales_non_pond_photosynthesis() {
 
     assert_eq!(darkness, 1_000);
     assert!(full_light > darkness);
+}
+
+#[test]
+fn day_night_cycle_changes_after_the_configured_number_of_completed_cycles() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        vegetation: VegetationSettings {
+            day_night_enabled: true,
+            cycle_length: 2,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let plant = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [500.0, 500.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 1);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 1);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 0);
+}
+
+#[test]
+fn tides_reduce_photosynthetic_yield_at_high_tide() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        sunlight_energy: 100,
+        vegetation: VegetationSettings {
+            max_energy_per_tick: 40,
+            feeding_to_body: 0.0,
+            tides: 4,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let plant = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let initial_energy = engine.organism(plant).unwrap().energy;
+
+    engine.tick().unwrap();
+    let high_tide_energy = engine.organism(plant).unwrap().energy;
+    engine.tick().unwrap();
+    let low_tide_energy = engine.organism(plant).unwrap().energy;
+
+    assert_eq!(high_tide_energy, initial_energy);
+    assert!(low_tide_energy > high_tide_energy);
+}
+
+#[test]
+fn total_energy_threshold_modes_apply_vb6_sun_overrides() {
+    fn run(daytime: bool, mode: i32, sun_up: bool, sun_down: bool) -> (i32, bool) {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 0,
+            vegetation: VegetationSettings {
+                daytime,
+                day_night_enabled: true,
+                cycle_length: 10,
+                sun_up_enabled: sun_up,
+                sun_up_threshold: 20_000,
+                sun_down_enabled: sun_down,
+                sun_down_threshold: 0,
+                sun_threshold_mode: mode,
+                ..VegetationSettings::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let vegetables = engine.register_species(SpeciesDefinition {
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let plant = engine
+            .spawn_species_at(
+                LegacyDna::parse("start\nstop").unwrap(),
+                vegetables,
+                [500.0, 500.0],
+            )
+            .unwrap();
+        engine.tick().unwrap();
+        let payload: serde_json::Value =
+            serde_json::from_slice(&SaveFile::encode(&engine).unwrap()[10..]).unwrap();
+        (
+            engine.memory_at(plant, MEM_LIGHT).unwrap(),
+            payload["config"]["vegetation"]["daytime"]
+                .as_bool()
+                .unwrap(),
+        )
+    }
+
+    assert_eq!(run(true, 0, false, true), (0, true));
+    assert_eq!(run(true, 1, false, true), (0, false));
+    assert_eq!(run(true, 2, false, true), (0, false));
+    assert_eq!(run(false, 0, true, false), (1, false));
+}
+
+#[test]
+fn weather_sun_band_controls_light_memory_for_wrapped_positions() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        vegetation: VegetationSettings {
+            weather_enabled: true,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let inside = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [100.0, 500.0],
+        )
+        .unwrap();
+    let outside = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["vegetation_runtime"]["sun_position"] = serde_json::json!(0.1);
+    payload["vegetation_runtime"]["sun_range"] = serde_json::json!(0.0);
+    payload["vegetation_runtime"]["sun_change"] = serde_json::json!(11);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    let mut engine = SaveFile::decode(&save).unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory_at(inside, MEM_LIGHT).unwrap(), 1);
+    assert_eq!(engine.memory_at(outside, MEM_LIGHT).unwrap(), 0);
 }

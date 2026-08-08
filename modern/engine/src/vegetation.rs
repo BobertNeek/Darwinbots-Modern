@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct PlantLightInput {
     pub daytime: bool,
+    pub sunlit: bool,
     pub chloroplasts: i32,
     pub age: u64,
     pub total_robot_area: f32,
@@ -22,20 +23,44 @@ pub(crate) struct PlantFeeding {
     pub delta: f32,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct DaylightState {
+    pub feed_this_cycle: bool,
+    pub sun_position: f32,
+    pub sun_range: f32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub(crate) struct VegetationRuntime {
     repopulation_counter: u64,
     day_night_counter: u64,
+    sun_position: f32,
+    sun_range: f32,
+    sun_change: u8,
+}
+
+impl Default for VegetationRuntime {
+    fn default() -> Self {
+        Self {
+            repopulation_counter: 0,
+            day_night_counter: 0,
+            sun_position: 0.5,
+            sun_range: 1.0,
+            sun_change: 10,
+        }
+    }
 }
 
 impl VegetationRuntime {
-    pub(crate) const fn from_legacy_wire_parts(
+    pub(crate) fn from_legacy_wire_parts(
         repopulation_counter: u64,
         day_night_counter: u64,
     ) -> Self {
         Self {
             repopulation_counter,
             day_night_counter,
+            ..Self::default()
         }
     }
 
@@ -43,24 +68,125 @@ impl VegetationRuntime {
         let availability =
             (input.total_robot_area / input.usable_world_area.max(1.0)).clamp(0.0, 1.0);
         PlantFeeding {
-            light: input.daytime,
+            light: input.daytime && input.sunlit,
             availability,
             delta: photosynthesis_delta(input),
         }
     }
 
-    pub(crate) fn advance_daylight(&mut self, settings: &mut VegetationSettings) -> bool {
-        if settings.day_night_enabled {
+    pub(crate) fn advance_daylight(
+        &mut self,
+        settings: &mut VegetationSettings,
+        total_energy: i64,
+        weather_seed: u64,
+    ) -> DaylightState {
+        self.advance_weather(settings.weather_enabled, weather_seed);
+
+        let mut feed_this_cycle = settings.daytime;
+        let mut override_day_night = false;
+        if settings.sun_up_enabled && total_energy < i64::from(settings.sun_up_threshold) {
+            match settings.sun_threshold_mode {
+                0 => {
+                    feed_this_cycle = true;
+                    override_day_night = true;
+                }
+                2 => {
+                    self.day_night_counter = 0;
+                    settings.daytime = true;
+                    feed_this_cycle = true;
+                }
+                1 => {
+                    feed_this_cycle = true;
+                    settings.daytime = true;
+                }
+                _ => {}
+            }
+        } else if settings.sun_down_enabled && total_energy > i64::from(settings.sun_down_threshold)
+        {
+            match settings.sun_threshold_mode {
+                0 => {
+                    feed_this_cycle = false;
+                    override_day_night = true;
+                }
+                2 => {
+                    self.day_night_counter = 0;
+                    settings.daytime = false;
+                    feed_this_cycle = false;
+                }
+                1 => {
+                    feed_this_cycle = false;
+                    settings.daytime = false;
+                }
+                _ => {}
+            }
+        }
+
+        if settings.sun_threshold_mode == 1 && settings.sun_down_enabled && settings.sun_up_enabled
+        {
+            override_day_night = true;
+        }
+
+        if settings.day_night_enabled && !override_day_night {
             self.day_night_counter = self.day_night_counter.saturating_add(1);
             let cycle = settings.cycle_length.max(1);
-            if self.day_night_counter >= cycle {
-                self.day_night_counter -= cycle;
+            if self.day_night_counter > cycle {
                 settings.daytime = !settings.daytime;
+                self.day_night_counter = 0;
             }
-        } else {
+            feed_this_cycle = settings.daytime;
+        } else if !settings.day_night_enabled {
             self.day_night_counter = 0;
         }
-        settings.daytime
+
+        DaylightState {
+            feed_this_cycle,
+            sun_position: self.sun_position,
+            sun_range: self.sun_range,
+        }
+    }
+
+    fn advance_weather(&mut self, enabled: bool, seed: u64) {
+        if !enabled {
+            return;
+        }
+        let mut random = weather_random(seed);
+        let mut position_mode = self.sun_change % 10;
+        let mut range_mode = self.sun_change / 10;
+        if random % 2_000 == 0 {
+            range_mode = if range_mode == 0 { 1 } else { 0 };
+        }
+        random = weather_random(random);
+        if random % 2_000 == 0 {
+            position_mode = (random % 3) as u8;
+        }
+
+        if range_mode == 1 {
+            self.sun_range += 0.0005;
+        } else {
+            self.sun_range -= 0.0005;
+        }
+        if self.sun_range >= 1.0 {
+            self.sun_range = 1.0;
+            range_mode = 0;
+        }
+        if self.sun_range <= 0.0 {
+            self.sun_range = 0.0;
+            range_mode = 1;
+        }
+        if position_mode == 0 {
+            self.sun_position -= 0.0005;
+        } else if position_mode == 2 {
+            self.sun_position += 0.0005;
+        }
+        if self.sun_position >= 1.0 {
+            self.sun_position = 1.0;
+            position_mode = 0;
+        }
+        if self.sun_position <= 0.0 {
+            self.sun_position = 0.0;
+            position_mode = 2;
+        }
+        self.sun_change = position_mode + range_mode * 10;
     }
 
     pub(crate) fn advance_repopulation(
@@ -86,6 +212,10 @@ pub(crate) fn photosynthesis_delta(input: PlantLightInput) -> f32 {
     if !input.daytime || input.chloroplasts <= 0 {
         return 0.0;
     }
+    let age_loss = input.age as f32 * input.chloroplasts as f32 / 1_000_000_000.0;
+    if !input.sunlit {
+        return -age_loss;
+    }
     let light_occupied =
         (input.total_robot_area / input.usable_world_area.max(1.0)).clamp(0.0, 1.0);
     let area_correction = (1.0 - light_occupied).powi(2) * 4.0;
@@ -98,6 +228,13 @@ pub(crate) fn photosynthesis_delta(input: PlantLightInput) -> f32 {
     let chloroplast_correction = input.chloroplasts as f32 / 16_000.0;
     let add_rate = area_correction * chloroplast_correction * 1.25;
     let subtract_rate = (input.chloroplasts as f32 / 32_000.0).powi(2);
-    (add_rate - subtract_rate) * token
-        - input.age as f32 * input.chloroplasts as f32 / 1_000_000_000.0
+    (add_rate - subtract_rate) * token - age_loss
+}
+
+fn weather_random(mut value: u64) -> u64 {
+    value = value.max(1);
+    value ^= value << 13;
+    value ^= value >> 7;
+    value ^= value << 17;
+    value.max(1)
 }

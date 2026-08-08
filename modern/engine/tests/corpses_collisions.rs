@@ -136,3 +136,41 @@ fn feeding_shots_harvest_energy_from_nearby_corpses() {
     assert!(engine.organism(predator).unwrap().energy > predator_energy);
     assert!(engine.snapshot().stats.energy_harvested > 0);
 }
+
+#[test]
+fn body_feeding_shots_multiply_corpse_damage_and_return_a_packet() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let idle = LegacyDna::parse("start\nstop").unwrap();
+    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    engine
+        .spawn_species_batch(idle, SpeciesId::default(), [[350.0, 100.0]], 1)
+        .unwrap();
+    engine.tick().unwrap();
+    let corpse_before = engine.snapshot().corpses[0].clone();
+    engine
+        .replace_dna(
+            attacker,
+            LegacyDna::parse("start\n-6 .shoot store\n100 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+    engine
+        .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine.tick().unwrap();
+
+    let corpse_after = &engine.snapshot().corpses[0];
+    assert_eq!(corpse_after.body, corpse_before.body - 40);
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| { shot.kind == -2 && shot.owner.slot() == u32::MAX && shot.value == 400 })
+    );
+}
