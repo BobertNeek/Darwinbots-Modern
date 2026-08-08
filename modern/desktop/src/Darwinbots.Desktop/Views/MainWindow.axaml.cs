@@ -7,6 +7,7 @@ using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 
 namespace Darwinbots.Desktop.Views;
@@ -54,11 +55,13 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _autosaveTimer;
     private readonly IReadOnlyList<string> _startupBots;
     private readonly WorldSetupOptions _setup;
+    private readonly ObservableCollection<SpeciesImport> _insertionSpecies = [];
     private GlobalSettings _globalSettings;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
     private OrganismKey? _moveOrganism;
+    private WorldInsertionController? _insertion;
     private bool _turbo;
     private EnvironmentPlacement _environmentPlacement;
     private float[]? _placementOrigin;
@@ -111,6 +114,11 @@ public sealed partial class MainWindow : Window
             ? new ZerobotProgressionController(setup.AutomaticZerobotProgression)
             : null;
         InitializeComponent();
+        foreach (var species in setup.Species)
+            _insertionSpecies.Add(species);
+        InsertionSpeciesSelector.ItemsSource = _insertionSpecies;
+        if (_insertionSpecies.Count > 0)
+            InsertionSpeciesSelector.SelectedIndex = 0;
         KeyDown += PlayerBot_KeyDown;
         _legacyCommands = CreateLegacyCommandRouter();
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
@@ -135,6 +143,20 @@ public sealed partial class MainWindow : Window
         Viewport.WorldClicked += async position =>
         {
             if (_session is null) return;
+            if (_insertion?.IsActive == true)
+            {
+                if (_insertion.SelectedSpecies is not { } species) return;
+                try
+                {
+                    await _insertion.PlaceAsync(position);
+                    _viewModel.Status = $"INSERTED {species.Name.ToUpperInvariant()} · {position[0]:0}, {position[1]:0}";
+                }
+                catch (Exception error)
+                {
+                    _viewModel.Status = $"INSERTION FAILED · {error.Message}";
+                }
+                return;
+            }
             if (_moveOrganism is { } organism)
             {
                 _moveOrganism = null;
@@ -555,9 +577,11 @@ public sealed partial class MainWindow : Window
         var warnings = new List<string>();
         foreach (var file in files)
         {
-            var report = await _session.ImportSpeciesAsync(new SpeciesImport(
+            var species = new SpeciesImport(
                 Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d,
-                1, 1_000, 0, false, 1f));
+                1, 1_000, 0, false, 1f);
+            var report = await _session.ImportSpeciesAsync(species);
+            RegisterInsertionSpecies(species);
             warnings.AddRange(report.CompatibilityWarnings);
         }
         return warnings.Count == 0
@@ -1132,6 +1156,7 @@ public sealed partial class MainWindow : Window
         try
         {
             _session = new SimulationSession(_engineFactory.Create(CreateNextWorldSetup()));
+            _insertion = new WorldInsertionController(_session);
             _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
             {
                 _viewModel.Update(snapshot);
@@ -1169,6 +1194,21 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void RegisterInsertionSpecies(SpeciesImport species)
+    {
+        var existing = _insertionSpecies.FirstOrDefault(value =>
+            value.Name.Equals(species.Name, StringComparison.OrdinalIgnoreCase)
+            && value.Dna.Equals(species.Dna, StringComparison.Ordinal));
+        if (existing is not null)
+        {
+            InsertionSpeciesSelector.SelectedItem = existing;
+            return;
+        }
+
+        _insertionSpecies.Add(species);
+        InsertionSpeciesSelector.SelectedItem = species;
+    }
+
     private static IReadOnlyList<string> ParseStartupBots(IReadOnlyList<string> arguments)
     {
         var bots = new List<string>();
@@ -1197,6 +1237,45 @@ public sealed partial class MainWindow : Window
         if (_viewModel.SelectedOrganism is not { } organism) return;
         _moveOrganism = new OrganismKey(organism.Slot, organism.Generation);
         _viewModel.Status = "CLICK AN EMPTY WORLD POSITION";
+    }
+
+    private void InsertSpecies_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null)
+        {
+            _viewModel.Status = "ENGINE IS NOT READY";
+            return;
+        }
+
+        _insertion ??= new WorldInsertionController(_session);
+        if (_insertion.IsActive)
+        {
+            _insertion.Cancel();
+            InsertSpeciesButton.Content = "INSERT SPECIES";
+            _viewModel.Status = "INSERTION CANCELLED";
+            return;
+        }
+
+        if (InsertionSpeciesSelector.SelectedItem is not SpeciesImport species)
+        {
+            _viewModel.Status = "SELECT AN INSTALLED OR IMPORTED SPECIES";
+            return;
+        }
+
+        try
+        {
+            _insertion.SelectSpecies(species);
+            _insertion.Begin();
+            _moveOrganism = null;
+            _environmentPlacement = EnvironmentPlacement.None;
+            _placementOrigin = null;
+            InsertSpeciesButton.Content = "CANCEL INSERTION";
+            _viewModel.Status = $"INSERT {species.Name.ToUpperInvariant()} · CLICK EMPTY WORLD";
+        }
+        catch (Exception error)
+        {
+            _viewModel.Status = $"INSERTION FAILED · {error.Message}";
+        }
     }
 
     private async void Clone_Click(object? sender, RoutedEventArgs e)
@@ -1591,7 +1670,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return;
         foreach (var file in await _storage.OpenDnaFilesAsync(this))
         {
-            var report = await _session.ImportSpeciesAsync(new SpeciesImport(
+            var species = new SpeciesImport(
                 Path.GetFileNameWithoutExtension(file.Name),
                 file.Content,
                 false,
@@ -1600,7 +1679,9 @@ public sealed partial class MainWindow : Window
                 1_000,
                 0,
                 false,
-                1f));
+                1f);
+            var report = await _session.ImportSpeciesAsync(species);
+            RegisterInsertionSpecies(species);
             _viewModel.Status = report.CompatibilityWarnings.Count == 0
                 ? $"IMPORTED {file.Name}"
                 : $"DNA COMPATIBILITY · {string.Join(" · ", report.CompatibilityWarnings)}";

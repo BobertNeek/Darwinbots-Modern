@@ -756,6 +756,11 @@ internal sealed class AuditEngineClient : IEngineClient
     public void Tick(uint count = 1) { _tick += count; Calls.Enqueue($"Tick:{count}"); }
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return DnaImportReport.Compatible; }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue($"ImportSpecies:{species.Name}"); return DnaImportReport.Compatible; }
+    public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)
+    {
+        Calls.Enqueue($"InsertSpeciesAt:{species.Name}:{position[0]:0}:{position[1]:0}");
+        return DnaImportReport.Compatible;
+    }
     public void Remove(uint slot, uint generation) => Calls.Enqueue($"Remove:{slot}:{generation}");
     public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => Calls.Enqueue($"RemoveMany:{string.Join(',', organisms.Select(value => $"{value.Slot}:{value.Generation}"))}");
     public void Move(uint slot, uint generation, float[] position) => Calls.Enqueue($"Move:{slot}:{generation}:{position[0]:0}:{position[1]:0}");

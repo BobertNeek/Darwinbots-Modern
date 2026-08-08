@@ -296,6 +296,8 @@ internal sealed class FakeEngineClient : IEngineClient
     public string? LastDna { get; private set; }
     public float[]? LastImportPosition { get; private set; }
     public SpeciesImport? LastSpeciesImport { get; private set; }
+    public SpeciesImport? LastInsertedSpecies { get; private set; }
+    public float[]? LastInsertedPosition { get; private set; }
     public (uint Slot, uint Generation)? LastRemoved { get; private set; }
     public List<IReadOnlyList<OrganismKey>> RemoveManyCalls { get; } = [];
     public float[]? LastMovePosition { get; private set; }
@@ -360,6 +362,15 @@ internal sealed class FakeEngineClient : IEngineClient
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastSpeciesImport = species;
         _population += species.InitialCount;
+        return new DnaImportReport(["legacy warning"]);
+    }
+
+    public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastInsertedSpecies = species;
+        LastInsertedPosition = position;
+        _population++;
         return new DnaImportReport(["legacy warning"]);
     }
 

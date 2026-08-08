@@ -44,8 +44,16 @@
         <Border BorderBrush="#D0CDC3" BorderThickness="0,0,0,1" Padding="12">
           <TextBlock Classes="section" Text="SPECIES" />
         </Border>
-        <Border Grid.Row="1" Background="#E5ECD9" Padding="12,9">
-          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Active species" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding SpeciesCount}"/></Grid>
+        <Border Grid.Row="1" Background="#E5ECD9" Padding="10,8">
+          <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Active species" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding SpeciesCount}"/></Grid>
+            <ComboBox x:Name="InsertionSpeciesSelector" PlaceholderText="SELECT SPECIES" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:CompileBindings="False"><TextBlock Text="{Binding Name}" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button x:Name="InsertSpeciesButton" Content="INSERT SPECIES" Click="InsertSpecies_Click" />
+          </StackPanel>
         </Border>
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="12,16" Spacing="8">

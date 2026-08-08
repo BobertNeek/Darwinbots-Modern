@@ -50,6 +50,21 @@ public sealed class SimulationSession : IAsyncDisposable
         return report ?? DnaImportReport.Compatible;
     }
 
+    public async Task<DnaImportReport> InsertSpeciesAtAsync(
+        SpeciesImport species,
+        float[] position,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(species);
+        species.Validate();
+        ValidatePosition(position);
+        DnaImportReport? report = null;
+        float[] requestedPosition = [.. position];
+        await Enqueue(engine => report = engine.InsertSpeciesAt(species, requestedPosition), cancellationToken)
+            .ConfigureAwait(false);
+        return report ?? DnaImportReport.Compatible;
+    }
+
     public Task RemoveAsync(uint slot, uint generation, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Remove(slot, generation), cancellationToken);
 
@@ -203,6 +218,13 @@ public sealed class SimulationSession : IAsyncDisposable
         var command = new SessionCommand(action, completion, cancellationToken);
         _commands.Add(command, cancellationToken);
         return completion.Task;
+    }
+
+    private static void ValidatePosition(float[] position)
+    {
+        ArgumentNullException.ThrowIfNull(position);
+        if (position.Length != 2 || position.Any(value => !float.IsFinite(value)))
+            throw new ArgumentException("World position must contain two finite coordinates.", nameof(position));
     }
 
     private void ProcessCommands()

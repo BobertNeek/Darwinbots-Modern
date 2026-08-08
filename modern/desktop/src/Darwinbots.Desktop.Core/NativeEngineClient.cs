@@ -122,6 +122,35 @@ public sealed partial class NativeEngineClient : IEngineClient
         return ReadImportReport(result.GetProperty("results")[0]);
     }
 
+    public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(species);
+        species.Validate();
+        ValidatePosition(position);
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "import_species",
+                    dna = species.Dna,
+                    name = species.Name,
+                    vegetable = species.Vegetable,
+                    color = species.Color,
+                    minimum_population = species.MinimumPopulation,
+                    reseed = species.Reseed,
+                    mutation_rate = species.MutationRate,
+                    initial_energy = species.InitialEnergy,
+                    positions = new[] { position },
+                },
+            },
+        }, "insert species");
+        return ReadImportReport(result.GetProperty("results")[0]);
+    }
+
     private static DnaImportReport ReadImportReport(JsonElement value)
     {
         if (!value.TryGetProperty("compatibility_warnings", out var warnings)) return DnaImportReport.Compatible;
