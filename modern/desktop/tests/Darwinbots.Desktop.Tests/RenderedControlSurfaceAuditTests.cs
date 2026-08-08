@@ -769,9 +769,13 @@ internal sealed class AuditEngineClient : IEngineClient
     }
     public void SwitchBackend(string backend) { _backend = backend.ToUpperInvariant(); Calls.Enqueue($"Switch:{backend}"); }
     public void AddObstacle(ObstacleSnapshot obstacle) { Calls.Enqueue("AddObstacle"); _snapshot = _snapshot with { Obstacles = [.. _snapshot.Obstacles, obstacle] }; }
+    public void UpdateObstacle(ObstacleSnapshot obstacle) { Calls.Enqueue("UpdateObstacle"); _snapshot = _snapshot with { Obstacles = _snapshot.Obstacles.Select(value => value.Id == obstacle.Id ? obstacle : value).ToArray() }; }
     public void RemoveObstacle(uint id) { Calls.Enqueue($"RemoveObstacle:{id}"); _snapshot = _snapshot with { Obstacles = _snapshot.Obstacles.Where(value => value.Id != id).ToArray() }; }
     public void AddTeleporter(TeleporterSnapshot teleporter) { Calls.Enqueue("AddTeleporter"); _snapshot = _snapshot with { Teleporters = [.. _snapshot.Teleporters, teleporter] }; }
     public void RemoveTeleporter(uint id) { Calls.Enqueue($"RemoveTeleporter:{id}"); _snapshot = _snapshot with { Teleporters = _snapshot.Teleporters.Where(value => value.Id != id).ToArray() }; }
+    public void AddFileTeleporter(FileTeleporterSnapshot teleporter) { Calls.Enqueue("AddFileTeleporter"); _snapshot = _snapshot with { FileTeleporters = [.. _snapshot.FileTeleporters, teleporter] }; }
+    public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter) { Calls.Enqueue("UpdateFileTeleporter"); _snapshot = _snapshot with { FileTeleporters = _snapshot.FileTeleporters.Select(value => value.Id == teleporter.Id ? teleporter : value).ToArray() }; }
+    public void RemoveFileTeleporter(uint id) { Calls.Enqueue($"RemoveFileTeleporter:{id}"); _snapshot = _snapshot with { FileTeleporters = _snapshot.FileTeleporters.Where(value => value.Id != id).ToArray() }; }
     public void SetBrownianMotion(float value) => Calls.Enqueue($"Brownian:{value}");
     public void UpdateEnvironment(EnvironmentUpdate update) { EnvironmentUpdates.Enqueue(update); Calls.Enqueue("Environment"); }
     public void UpdateMutationSettings(MutationSettingsUpdate update) { MutationUpdates.Enqueue(update); Calls.Enqueue("Mutations"); }

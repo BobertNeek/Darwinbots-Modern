@@ -795,11 +795,7 @@ fn toroidal_birth_uses_unwrapped_candidate_and_obstacle_segment() {
         robot["kinematics"]["previous_position"] = json!([3_900.0, 1_000.0]);
     });
     engine
-        .add_obstacle(Obstacle {
-            id: 77,
-            minimum: [2_000.0, 900.0],
-            maximum: [2_010.0, 1_100.0],
-        })
+        .add_obstacle(Obstacle::new(77, [2_000.0, 900.0], [2_010.0, 1_100.0]))
         .unwrap();
 
     engine.tick().unwrap();

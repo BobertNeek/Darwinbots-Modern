@@ -120,8 +120,32 @@ internal static class VisualSnapshotDefaults
         (value % MathF.Tau + MathF.Tau) % MathF.Tau;
 }
 
-public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum);
+public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum)
+{
+    public uint Color { get; init; } = 0xffb9bdb6u;
+    public float Opacity { get; init; } = 1f;
+    public float[] Drift { get; init; } = [0f, 0f];
+    public string VisionPolicy { get; init; } = "opaque";
+    public string ShotPolicy { get; init; } = "absorb";
+}
 public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination);
+public sealed record TeleporterFilterSnapshot(
+    bool TeleportVegetables,
+    bool TeleportCorpses,
+    bool TeleportHeterotrophs);
+public sealed record FileTeleporterSnapshot(
+    uint Id,
+    float[] Center,
+    float Radius,
+    string InboundPath,
+    string OutboundPath,
+    uint PollInterval,
+    uint PollCountdown,
+    int Capacity,
+    TeleporterFilterSnapshot Filters,
+    ulong Sent,
+    ulong Received,
+    string? BackflowGuardPath = null);
 public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age, uint Species = 0, bool Repopulating = false);
 public sealed record ShotSnapshot(
     OrganismKey Owner,
@@ -177,6 +201,7 @@ public sealed record EngineSnapshot(
     public float[] WorldSize { get; init; } = [16_000f, 12_000f];
     public IReadOnlyList<ObstacleSnapshot> Obstacles { get; init; } = [];
     public IReadOnlyList<TeleporterSnapshot> Teleporters { get; init; } = [];
+    public IReadOnlyList<FileTeleporterSnapshot> FileTeleporters { get; init; } = [];
     public IReadOnlyList<CorpseSnapshot> Corpses { get; init; } = [];
     public IReadOnlyList<ShotSnapshot> Shots { get; init; } = [];
     public IReadOnlyList<TieSnapshot> Ties { get; init; } = [];

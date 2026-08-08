@@ -45,6 +45,11 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Feeding to body"/><NumericUpDown Grid.Column="1" x:Name="FeedingToBody" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
           <CheckBox x:Name="Daytime" Content="Daytime"/><CheckBox x:Name="DayNightEnabled" Content="Day/night cycle"/>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Cycle length"/><NumericUpDown Grid.Column="1" x:Name="CycleLength" Minimum="1" Maximum="100000000" Increment="100"/></Grid>
+          <CheckBox x:Name="PondMode" Content="Pond mode (buoyancy and depth light)"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Pond light intensity"/><NumericUpDown Grid.Column="1" x:Name="PondLightIntensity" Minimum="0" Maximum="100000" Increment="1"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Pond depth gradient"/><NumericUpDown Grid.Column="1" x:Name="PondGradient" Minimum="0" Maximum="10" Increment="0.01" FormatString="0.00"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Tide period (cycles, 0 off)"/><NumericUpDown Grid.Column="1" x:Name="TidePeriod" Minimum="0" Maximum="100000000" Increment="1"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Tide phase offset"/><NumericUpDown Grid.Column="1" x:Name="TideOffset" Minimum="-100000000" Maximum="100000000" Increment="1"/></Grid>
         </StackPanel></Border>
       </StackPanel></ScrollViewer></TabItem>
 

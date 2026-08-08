@@ -1,11 +1,60 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ShapeVisionPolicy {
+    #[default]
+    Opaque,
+    SeeThrough,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ShapeShotPolicy {
+    #[default]
+    Absorb,
+    PassThrough,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Obstacle {
     pub id: u32,
     pub minimum: [f32; 2],
     pub maximum: [f32; 2],
+    #[serde(default = "default_shape_color")]
+    pub color: u32,
+    #[serde(default = "default_shape_opacity")]
+    pub opacity: f32,
+    #[serde(default)]
+    pub drift: [f32; 2],
+    #[serde(default)]
+    pub vision_policy: ShapeVisionPolicy,
+    #[serde(default)]
+    pub shot_policy: ShapeShotPolicy,
+}
+
+impl Obstacle {
+    pub fn new(id: u32, minimum: [f32; 2], maximum: [f32; 2]) -> Self {
+        Self {
+            id,
+            minimum,
+            maximum,
+            color: default_shape_color(),
+            opacity: default_shape_opacity(),
+            drift: [0.0; 2],
+            vision_policy: ShapeVisionPolicy::default(),
+            shot_policy: ShapeShotPolicy::default(),
+        }
+    }
+}
+
+fn default_shape_color() -> u32 {
+    0xffb9bdb6
+}
+
+fn default_shape_opacity() -> f32 {
+    1.0
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -81,6 +130,10 @@ impl FileTeleporter {
     pub fn with_filters(mut self, filters: TeleporterFilters) -> Self {
         self.filters = filters;
         self
+    }
+
+    pub fn backflow_guard_active(&self) -> bool {
+        self.backflow_guard.is_some()
     }
 
     pub(crate) fn accepts(&self, vegetable: bool, corpse: bool) -> bool {

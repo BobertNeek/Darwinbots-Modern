@@ -61,6 +61,9 @@
                     <CheckBox x:Name="RenderWasteToggle" Content="RENDER WASTE" FontSize="11" IsChecked="True" IsCheckedChanged="RenderWaste_Changed"/>
                     <Button x:Name="AddObstacleButton" Content="＋ OBSTACLE" FontSize="11" HorizontalAlignment="Stretch" Click="AddObstacle_Click"/>
                     <Button x:Name="AddTeleporterButton" Content="＋ TELEPORTER" FontSize="11" HorizontalAlignment="Stretch" Click="AddTeleporter_Click"/>
+                    <Button x:Name="AddFileTeleporterButton" Content="＋ FILE TELEPORTER" FontSize="11" HorizontalAlignment="Stretch" Click="AddFileTeleporter_Click"/>
+                    <Button x:Name="EditShapeButton" Content="EDIT SHAPE PROPERTIES" FontSize="11" HorizontalAlignment="Stretch" Click="EditShape_Click"/>
+                    <Button x:Name="EditTeleporterButton" Content="EDIT FILE TELEPORTER" FontSize="11" HorizontalAlignment="Stretch" Click="EditTeleporter_Click"/>
                     <Button x:Name="RemoveFeatureButton" Content="REMOVE FEATURE" FontSize="11" HorizontalAlignment="Stretch" Click="RemoveFeature_Click"/>
                   </StackPanel>
                 </Expander>

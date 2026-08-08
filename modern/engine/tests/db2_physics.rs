@@ -1,6 +1,6 @@
 mod support;
 
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings, VegetationSettings};
 use support::db2_fixtures::{DEFAULT_MAX_VELOCITY, DEFAULT_MOVEMENT_EFFICIENCY};
 
 #[test]
@@ -209,5 +209,84 @@ fn maximum_velocity_caps_total_velocity_after_environment_impulses() {
     assert!(
         velocity[0].hypot(velocity[1]) <= 10.001,
         "velocity: {velocity:?}"
+    );
+}
+
+#[test]
+fn pond_buoyancy_reverses_vertical_gravity_at_the_bottom() {
+    let config = EngineConfig {
+        gravity: [0.0, 6.2],
+        toroidal_world: false,
+        physics: PhysicsSettings {
+            density: 0.0,
+            surface_gravity: 0.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
+            ..PhysicsSettings::default()
+        },
+        vegetation: VegetationSettings {
+            pond_mode: true,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    };
+    let mut sinking = Engine::new(config.clone()).unwrap();
+    let sinker = sinking
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 900.0])
+        .unwrap();
+    sinking.tick().unwrap();
+    sinking.tick().unwrap();
+
+    let mut floating = Engine::new(config).unwrap();
+    let floater = floating
+        .spawn_at(
+            LegacyDna::parse("start\n32000 .setboy store\nstop").unwrap(),
+            [500.0, 900.0],
+        )
+        .unwrap();
+    floating.tick().unwrap();
+    floating.tick().unwrap();
+    floating.tick().unwrap();
+
+    assert!(sinking.organism(sinker).unwrap().velocity[1] > 0.0);
+    assert!(
+        floating.organism(floater).unwrap().velocity[1] < 0.0,
+        "floating velocity: {:?}",
+        floating.organism(floater).unwrap().velocity
+    );
+}
+
+#[test]
+fn pond_tides_modulate_vertical_gravity_over_the_configured_period() {
+    let config = EngineConfig {
+        gravity: [0.0, 6.2],
+        toroidal_world: false,
+        vegetation: VegetationSettings {
+            pond_mode: true,
+            tides: 4,
+            ..VegetationSettings::default()
+        },
+        physics: PhysicsSettings {
+            density: 0.0,
+            surface_gravity: 0.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    };
+    let mut engine = Engine::new(config).unwrap();
+    let id = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 900.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+    let high_tide_velocity = engine.organism(id).unwrap().velocity[1];
+    engine.tick().unwrap();
+    let falling_velocity = engine.organism(id).unwrap().velocity[1];
+
+    assert!(
+        high_tide_velocity < 1.0 && falling_velocity > high_tide_velocity + 0.5,
+        "high tide velocity: {high_tide_velocity}, falling velocity: {falling_velocity}"
     );
 }

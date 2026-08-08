@@ -114,6 +114,9 @@ enum EngineCommand {
         minimum: [f32; 2],
         maximum: [f32; 2],
     },
+    UpdateObstacle {
+        obstacle: crate::Obstacle,
+    },
     RemoveObstacle {
         id: u32,
     },
@@ -124,6 +127,15 @@ enum EngineCommand {
         destination: [f32; 2],
     },
     RemoveTeleporter {
+        id: u32,
+    },
+    AddFileTeleporter {
+        teleporter: crate::FileTeleporter,
+    },
+    UpdateFileTeleporter {
+        teleporter: crate::FileTeleporter,
+    },
+    RemoveFileTeleporter {
         id: u32,
     },
     SetBrownianMotion {
@@ -500,11 +512,10 @@ fn db_engine_command_batch_impl(
                 minimum,
                 maximum,
             } => engine
-                .add_obstacle(crate::Obstacle {
-                    id,
-                    minimum,
-                    maximum,
-                })
+                .add_obstacle(crate::Obstacle::new(id, minimum, maximum))
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateObstacle { obstacle } => engine
+                .update_obstacle(obstacle)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::RemoveObstacle { id } => {
                 engine.remove_obstacle(id).map(|_| serde_json::Value::Null)
@@ -524,6 +535,15 @@ fn db_engine_command_batch_impl(
                 .map(|_| serde_json::Value::Null),
             EngineCommand::RemoveTeleporter { id } => engine
                 .remove_teleporter(id)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::AddFileTeleporter { teleporter } => engine
+                .add_file_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateFileTeleporter { teleporter } => engine
+                .update_file_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::RemoveFileTeleporter { id } => engine
+                .remove_file_teleporter(id)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::SetBrownianMotion { value } => engine
                 .set_brownian_motion(value)

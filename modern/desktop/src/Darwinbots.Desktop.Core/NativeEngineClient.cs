@@ -201,6 +201,39 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "add_obstacle", id = obstacle.Id, minimum = obstacle.Minimum, maximum = obstacle.Maximum } } }, "add obstacle");
     }
 
+    public void UpdateObstacle(ObstacleSnapshot obstacle)
+    {
+        ArgumentNullException.ThrowIfNull(obstacle);
+        ValidatePosition(obstacle.Minimum);
+        ValidatePosition(obstacle.Maximum);
+        if (!float.IsFinite(obstacle.Opacity) || obstacle.Opacity is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(obstacle));
+        if (obstacle.Drift is not { Length: 2 } || obstacle.Drift.Any(value => !float.IsFinite(value)))
+            throw new ArgumentException("Obstacle drift must contain two finite values.", nameof(obstacle));
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "update_obstacle",
+                    obstacle = new
+                    {
+                        id = obstacle.Id,
+                        minimum = obstacle.Minimum,
+                        maximum = obstacle.Maximum,
+                        color = obstacle.Color,
+                        opacity = obstacle.Opacity,
+                        drift = obstacle.Drift,
+                        vision_policy = obstacle.VisionPolicy,
+                        shot_policy = obstacle.ShotPolicy,
+                    },
+                },
+            },
+        }, "update obstacle");
+    }
+
     public void RemoveObstacle(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_obstacle", id } } }, "remove obstacle");
 
@@ -215,6 +248,61 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void RemoveTeleporter(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_teleporter", id } } }, "remove teleporter");
+
+    public void AddFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ValidateFileTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_file_teleporter", teleporter = FileTeleporterPayload(teleporter) } },
+        }, "add file teleporter");
+    }
+
+    public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ValidateFileTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "update_file_teleporter", teleporter = FileTeleporterPayload(teleporter) } },
+        }, "update file teleporter");
+    }
+
+    public void RemoveFileTeleporter(uint id) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "remove_file_teleporter", id } } }, "remove file teleporter");
+
+    private static object FileTeleporterPayload(FileTeleporterSnapshot teleporter) => new
+    {
+        id = teleporter.Id,
+        center = teleporter.Center,
+        radius = teleporter.Radius,
+        inbound_path = teleporter.InboundPath,
+        outbound_path = teleporter.OutboundPath,
+        poll_interval = teleporter.PollInterval,
+        poll_countdown = teleporter.PollCountdown,
+        capacity = teleporter.Capacity,
+        filters = new
+        {
+            teleport_vegetables = teleporter.Filters.TeleportVegetables,
+            teleport_corpses = teleporter.Filters.TeleportCorpses,
+            teleport_heterotrophs = teleporter.Filters.TeleportHeterotrophs,
+        },
+        sent = teleporter.Sent,
+        received = teleporter.Received,
+    };
+
+    private void ValidateFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ArgumentNullException.ThrowIfNull(teleporter);
+        ValidatePosition(teleporter.Center);
+        if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (string.IsNullOrWhiteSpace(teleporter.InboundPath) && string.IsNullOrWhiteSpace(teleporter.OutboundPath))
+            throw new ArgumentException("A file teleporter needs an inbound or outbound path.", nameof(teleporter));
+        if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+    }
 
     public void SetBrownianMotion(float value)
     {

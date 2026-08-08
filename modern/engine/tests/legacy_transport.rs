@@ -155,11 +155,14 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
         1,
         "blocked vegetable crossed the teleporter"
     );
+    assert_eq!(engine.snapshot().file_teleporters[0].sent, 1);
+    assert_eq!(engine.snapshot().file_teleporters[0].received, 0);
 
     let inbound_file = inbound.join(outgoing[0].file_name().expect("transfer file name"));
     fs::copy(&outgoing[0], &inbound_file).expect("stage inbound transfer");
     engine.tick().expect("inbound file transfer");
     assert_eq!(engine.population(), 2, "inbound transfer was not inserted");
+    assert_eq!(engine.snapshot().file_teleporters[0].received, 1);
     assert!(
         !inbound_file.exists(),
         "successful inbound transfer was not consumed"
@@ -213,6 +216,11 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
             .count(),
         2,
         "same-directory transfer was consumed as backflow"
+    );
+    assert_eq!(backflow_engine.snapshot().file_teleporters[0].sent, 2);
+    assert!(
+        backflow_engine.snapshot().file_teleporters[0].backflow_guard_active(),
+        "same-path file teleporter must publish an active backflow guard"
     );
 
     let corpse_outbound = root.path().join("corpse-outbound");

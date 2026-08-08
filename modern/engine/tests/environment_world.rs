@@ -1,4 +1,7 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, Obstacle, SpeciesDefinition, Teleporter};
+use darwinbots_engine::{
+    Engine, EngineConfig, LegacyDna, Obstacle, ShapeShotPolicy, ShapeVisionPolicy,
+    SpeciesDefinition, Teleporter,
+};
 
 #[test]
 fn gravity_and_drag_affect_motion() {
@@ -25,11 +28,7 @@ fn gravity_and_drag_affect_motion() {
 fn obstacles_reject_organisms_and_teleporters_relocate_them() {
     let mut obstacle_engine = Engine::new(EngineConfig::testing()).unwrap();
     obstacle_engine
-        .add_obstacle(Obstacle {
-            id: 1,
-            minimum: [120.0, 80.0],
-            maximum: [180.0, 160.0],
-        })
+        .add_obstacle(Obstacle::new(1, [120.0, 80.0], [180.0, 160.0]))
         .unwrap();
     let mover = obstacle_engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [133.0, 100.0])
@@ -63,6 +62,77 @@ fn obstacles_reject_organisms_and_teleporters_relocate_them() {
     );
     assert_eq!(teleporter_engine.snapshot().obstacles.len(), 0);
     assert_eq!(teleporter_engine.snapshot().teleporters.len(), 1);
+}
+
+#[test]
+fn opaque_obstacle_blocks_vision_of_a_target_behind_it() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let observer = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 300.0])
+        .unwrap();
+    engine
+        .add_obstacle(Obstacle::new(1, [80.0, 190.0], [120.0, 210.0]))
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(
+        engine.memory_at(observer, 505).unwrap(),
+        0,
+        "an opaque obstacle must occlude the target from eye five"
+    );
+}
+
+#[test]
+fn shape_drift_moves_the_obstacle_before_publication() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut obstacle = Obstacle::new(1, [80.0, 190.0], [120.0, 210.0]);
+    obstacle.drift = [3.0, -2.0];
+    engine.add_obstacle(obstacle).unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.snapshot().obstacles[0].minimum, [83.0, 188.0]);
+    assert_eq!(engine.snapshot().obstacles[0].maximum, [123.0, 208.0]);
+}
+
+#[test]
+fn shape_editor_properties_persist_through_the_authoritative_engine() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .add_obstacle(Obstacle::new(1, [80.0, 190.0], [120.0, 210.0]))
+        .unwrap();
+    let mut edited = engine.snapshot().obstacles[0].clone();
+    edited.color = 0xff112233;
+    edited.opacity = 0.35;
+    edited.drift = [1.5, -0.5];
+    edited.vision_policy = ShapeVisionPolicy::SeeThrough;
+    edited.shot_policy = ShapeShotPolicy::PassThrough;
+
+    engine.update_obstacle(edited.clone()).unwrap();
+
+    assert_eq!(&engine.snapshot().obstacles[0], &edited);
+}
+
+#[test]
+fn see_through_shape_preserves_vision_of_a_target_behind_it() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let observer = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 300.0])
+        .unwrap();
+    let mut obstacle = Obstacle::new(1, [80.0, 190.0], [120.0, 210.0]);
+    obstacle.vision_policy = ShapeVisionPolicy::SeeThrough;
+    engine.add_obstacle(obstacle).unwrap();
+
+    engine.tick().unwrap();
+
+    assert!(engine.memory_at(observer, 505).unwrap() > 0);
 }
 
 #[test]

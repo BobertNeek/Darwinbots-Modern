@@ -451,6 +451,14 @@ public sealed class WorldViewport : Control
             if ((pointer.X - x) * (pointer.X - x) + (pointer.Y - y) * (pointer.Y - y) <= radius * radius)
                 return new WorldFeatureSelection(WorldFeatureKind.Teleporter, teleporter.Id);
         }
+        foreach (var teleporter in _snapshot.FileTeleporters.AsEnumerable().Reverse())
+        {
+            var x = teleporter.Center[0] * scaleX + _pan.X;
+            var y = teleporter.Center[1] * scaleY + _pan.Y;
+            var radius = Math.Max(6, teleporter.Radius * Math.Min(scaleX, scaleY));
+            if ((pointer.X - x) * (pointer.X - x) + (pointer.Y - y) * (pointer.Y - y) <= radius * radius)
+                return new WorldFeatureSelection(WorldFeatureKind.Teleporter, teleporter.Id);
+        }
         return null;
     }
 
@@ -516,7 +524,7 @@ public sealed class WorldViewport : Control
                 obstacle.Minimum[1] * scaleY + _pan.Y,
                 (obstacle.Maximum[0] - obstacle.Minimum[0]) * scaleX,
                 (obstacle.Maximum[1] - obstacle.Minimum[1]) * scaleY);
-            context.FillRectangle(new SolidColorBrush(Color.Parse("#B9BDB6")), rectangle);
+            context.FillRectangle(new SolidColorBrush(Color.FromUInt32(obstacle.Color), Math.Clamp(obstacle.Opacity, 0f, 1f)), rectangle);
             var selected = _selectedFeature is { Kind: WorldFeatureKind.Obstacle } feature && feature.Id == obstacle.Id;
             context.DrawRectangle(null, new Pen(new SolidColorBrush(Color.Parse(selected ? "#202725" : "#69716D")), selected ? 2.4 : 1.2), rectangle);
         }
@@ -529,6 +537,19 @@ public sealed class WorldViewport : Control
             context.DrawEllipse(
                 new SolidColorBrush(Color.Parse(HighlightTeleporters ? "#55239AC0" : "#35239AC0")),
                 new Pen(new SolidColorBrush(Color.Parse(highlighted ? "#E26722" : "#239AC0")), highlighted ? 3 : 2),
+                center,
+                radius,
+                radius);
+        }
+        foreach (var teleporter in _snapshot.FileTeleporters)
+        {
+            var center = new Point(teleporter.Center[0] * scaleX + _pan.X, teleporter.Center[1] * scaleY + _pan.Y);
+            var radius = Math.Max(4.0, teleporter.Radius * Math.Min(scaleX, scaleY));
+            var selected = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature && feature.Id == teleporter.Id;
+            var highlighted = selected || HighlightTeleporters;
+            context.DrawEllipse(
+                new SolidColorBrush(Color.Parse("#553E7B36")),
+                new Pen(new SolidColorBrush(Color.Parse(highlighted ? "#E26722" : "#3E7B36")), highlighted ? 3 : 2),
                 center,
                 radius,
                 radius);

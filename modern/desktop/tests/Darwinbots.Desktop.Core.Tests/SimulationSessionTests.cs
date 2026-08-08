@@ -184,6 +184,33 @@ public sealed class SimulationSessionTests
     }
 
     [Fact]
+    public async Task ShapeAndOfflineTeleporterEditorsForwardAllProperties()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        var obstacle = new ObstacleSnapshot(7, [10f, 20f], [30f, 40f])
+        {
+            Color = 0xff112233u,
+            Opacity = 0.4f,
+            Drift = [2f, -3f],
+            VisionPolicy = "see_through",
+            ShotPolicy = "pass_through",
+        };
+        var teleporter = new FileTeleporterSnapshot(
+            9, [50f, 60f], 15f, "in", "out", 3, 1, 4,
+            new TeleporterFilterSnapshot(false, true, true), 8, 5);
+
+        await session.UpdateObstacleAsync(obstacle);
+        await session.AddFileTeleporterAsync(teleporter);
+        await session.UpdateFileTeleporterAsync(teleporter with { PollInterval = 5 });
+
+        Assert.Equal(obstacle, engine.LastObstacleUpdated);
+        Assert.Equal(teleporter, engine.LastFileTeleporterAdded);
+        Assert.Equal(5U, engine.LastFileTeleporterUpdated!.PollInterval);
+        Assert.Single(engine.ExecutionThreads);
+    }
+
+    [Fact]
     public async Task RuntimeBrownianUpdateRunsOnTheDedicatedEngineThread()
     {
         var engine = new FakeEngineClient();
@@ -273,7 +300,10 @@ internal sealed class FakeEngineClient : IEngineClient
     public List<IReadOnlyList<OrganismKey>> RemoveManyCalls { get; } = [];
     public float[]? LastMovePosition { get; private set; }
     public ObstacleSnapshot? LastObstacleAdded { get; private set; }
+    public ObstacleSnapshot? LastObstacleUpdated { get; private set; }
     public TeleporterSnapshot? LastTeleporterAdded { get; private set; }
+    public FileTeleporterSnapshot? LastFileTeleporterAdded { get; private set; }
+    public FileTeleporterSnapshot? LastFileTeleporterUpdated { get; private set; }
     public uint? LastObstacleRemoved { get; private set; }
     public uint? LastTeleporterRemoved { get; private set; }
     public float? LastBrownianMotion { get; private set; }
@@ -381,6 +411,12 @@ internal sealed class FakeEngineClient : IEngineClient
         LastObstacleAdded = obstacle;
     }
 
+    public void UpdateObstacle(ObstacleSnapshot obstacle)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastObstacleUpdated = obstacle;
+    }
+
     public void RemoveObstacle(uint id)
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
@@ -397,6 +433,23 @@ internal sealed class FakeEngineClient : IEngineClient
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastTeleporterRemoved = id;
+    }
+
+    public void AddFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastFileTeleporterAdded = teleporter;
+    }
+
+    public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastFileTeleporterUpdated = teleporter;
+    }
+
+    public void RemoveFileTeleporter(uint id)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
     }
 
     public void SetBrownianMotion(float value)

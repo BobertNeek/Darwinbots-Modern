@@ -63,6 +63,11 @@ pub struct VegetationSettings {
     pub daytime: bool,
     pub day_night_enabled: bool,
     pub cycle_length: u64,
+    pub pond_mode: bool,
+    pub light_intensity: f32,
+    pub gradient: f32,
+    pub tides: u32,
+    pub tides_offset: i32,
 }
 
 impl Default for VegetationSettings {
@@ -77,6 +82,11 @@ impl Default for VegetationSettings {
             daytime: true,
             day_night_enabled: false,
             cycle_length: 10_000,
+            pond_mode: false,
+            light_intensity: 100.0,
+            gradient: 1.0,
+            tides: 0,
+            tides_offset: 0,
         }
     }
 }

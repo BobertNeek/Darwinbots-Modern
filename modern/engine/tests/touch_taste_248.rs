@@ -182,11 +182,7 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
 
     let mut obstacle_engine = projectile_engine();
     obstacle_engine
-        .add_obstacle(Obstacle {
-            id: 1,
-            minimum: [220.0, 100.0],
-            maximum: [230.0, 120.0],
-        })
+        .add_obstacle(Obstacle::new(1, [220.0, 100.0], [230.0, 120.0]))
         .unwrap();
     obstacle_engine
         .spawn_at(

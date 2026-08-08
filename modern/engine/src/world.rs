@@ -14,11 +14,12 @@ use crate::{
     MutationPolicyInput, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings,
     PhysicsBackend, PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect,
     ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind,
-    RenderInstance, ShotSettings, ShotSnapshot, SimulationCostAction, SimulationStats, SkinPoint,
-    SpatialIndex, SpeciesDefinition, SpeciesId, StandardMutationProfile, StoredGeneticMaterial,
-    SysvarRuntime, Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState, TokenClass,
-    VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype,
-    VmMemory, apply_advanced_mutation_policies, eye_value, generated_skin, projectile_effect,
+    RenderInstance, ShapeShotPolicy, ShapeVisionPolicy, ShotSettings, ShotSnapshot,
+    SimulationCostAction, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId,
+    StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands,
+    TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime, VegetationSettings,
+    VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, apply_advanced_mutation_policies,
+    eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -237,6 +238,8 @@ pub struct Snapshot {
     #[serde(default)]
     pub teleporters: Vec<Teleporter>,
     #[serde(default)]
+    pub file_teleporters: Vec<FileTeleporter>,
+    #[serde(default)]
     pub phase_timings: PhaseTimings,
     #[serde(default)]
     pub local_mode: LocalModeState,
@@ -257,6 +260,7 @@ impl PartialEq for Snapshot {
             && self.species == other.species
             && self.obstacles == other.obstacles
             && self.teleporters == other.teleporters
+            && self.file_teleporters == other.file_teleporters
             && self.local_mode == other.local_mode
     }
 }
@@ -501,6 +505,11 @@ struct Db3sV2VegetationSettings {
     daytime: bool,
     day_night_enabled: bool,
     cycle_length: u64,
+    pond_mode: bool,
+    light_intensity: f32,
+    gradient: f32,
+    tides: u32,
+    tides_offset: i32,
 }
 
 impl Default for Db3sV2VegetationSettings {
@@ -515,6 +524,11 @@ impl Default for Db3sV2VegetationSettings {
             daytime: true,
             day_night_enabled: false,
             cycle_length: 10_000,
+            pond_mode: false,
+            light_intensity: 100.0,
+            gradient: 1.0,
+            tides: 0,
+            tides_offset: 0,
         }
     }
 }
@@ -531,6 +545,11 @@ impl From<Db3sV2VegetationSettings> for VegetationSettings {
             daytime: value.daytime,
             day_night_enabled: value.day_night_enabled,
             cycle_length: value.cycle_length,
+            pond_mode: value.pond_mode,
+            light_intensity: value.light_intensity,
+            gradient: value.gradient,
+            tides: value.tides,
+            tides_offset: value.tides_offset,
         }
     }
 }
@@ -1345,11 +1364,7 @@ struct Db3sV2Obstacle {
 
 impl From<Db3sV2Obstacle> for Obstacle {
     fn from(value: Db3sV2Obstacle) -> Self {
-        Self {
-            id: value.id,
-            minimum: value.minimum,
-            maximum: value.maximum,
-        }
+        Self::new(value.id, value.minimum, value.maximum)
     }
 }
 
@@ -1468,6 +1483,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             local_mode: LocalModeState::default(),
             obstacles: value.obstacles.into_iter().map(Into::into).collect(),
             teleporters: value.teleporters.into_iter().map(Into::into).collect(),
+            file_teleporters: Vec::new(),
             phase_timings: value.phase_timings.into(),
         }
     }
@@ -2065,6 +2081,7 @@ impl Engine {
                 local_mode: LocalModeState::default(),
                 obstacles: Vec::new(),
                 teleporters: Vec::new(),
+                file_teleporters: Vec::new(),
                 phase_timings: PhaseTimings::default(),
             },
             stats: SimulationStats::default(),
@@ -3416,6 +3433,7 @@ impl Engine {
         trace.phase(CyclePhase::ActualVelocity);
         self.record_actual_velocities();
         trace.phase(CyclePhase::ObjectsTeleporters);
+        self.move_obstacles();
         trace.phase(CyclePhase::Repopulation);
         let started = Instant::now();
         self.vegetation_repopulation_phase()?;
@@ -3494,6 +3512,14 @@ impl Engine {
                 "obstacle bounds are invalid".to_owned(),
             ));
         }
+        if !obstacle.opacity.is_finite()
+            || !(0.0..=1.0).contains(&obstacle.opacity)
+            || obstacle.drift.iter().any(|value| !value.is_finite())
+        {
+            return Err(EngineError::Invariant(
+                "obstacle display or drift properties are invalid".to_owned(),
+            ));
+        }
         if self.obstacles.iter().any(|value| value.id == obstacle.id) {
             return Err(EngineError::Invariant(format!(
                 "obstacle {} already exists",
@@ -3501,6 +3527,34 @@ impl Engine {
             )));
         }
         self.obstacles.push(obstacle);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn update_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
+        let index = self
+            .obstacles
+            .iter()
+            .position(|value| value.id == obstacle.id)
+            .ok_or_else(|| {
+                EngineError::Invariant(format!("obstacle {} does not exist", obstacle.id))
+            })?;
+        if obstacle
+            .minimum
+            .iter()
+            .chain(obstacle.maximum.iter())
+            .any(|value| !value.is_finite())
+            || obstacle.minimum[0] >= obstacle.maximum[0]
+            || obstacle.minimum[1] >= obstacle.maximum[1]
+            || !obstacle.opacity.is_finite()
+            || !(0.0..=1.0).contains(&obstacle.opacity)
+            || obstacle.drift.iter().any(|value| !value.is_finite())
+        {
+            return Err(EngineError::Invariant(
+                "obstacle geometry or properties are invalid".to_owned(),
+            ));
+        }
+        self.obstacles[index] = obstacle;
         self.publish_snapshot();
         Ok(())
     }
@@ -3549,26 +3603,7 @@ impl Engine {
         &mut self,
         mut teleporter: FileTeleporter,
     ) -> Result<(), EngineError> {
-        if !teleporter.radius.is_finite()
-            || teleporter.radius <= 0.0
-            || teleporter.center.iter().any(|value| !value.is_finite())
-        {
-            return Err(EngineError::Invariant(
-                "file teleporter geometry is invalid".to_owned(),
-            ));
-        }
-        if teleporter.inbound_path.as_os_str().is_empty()
-            && teleporter.outbound_path.as_os_str().is_empty()
-        {
-            return Err(EngineError::Invariant(
-                "file teleporter requires an inbound or outbound path".to_owned(),
-            ));
-        }
-        if teleporter.poll_interval == 0 || teleporter.capacity == 0 {
-            return Err(EngineError::Invariant(
-                "file teleporter polling and capacity must be positive".to_owned(),
-            ));
-        }
+        validate_file_teleporter(&teleporter)?;
         if self
             .teleporters
             .iter()
@@ -3585,6 +3620,40 @@ impl Engine {
         }
         teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
         self.file_teleporters.push(teleporter);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn update_file_teleporter(
+        &mut self,
+        mut teleporter: FileTeleporter,
+    ) -> Result<(), EngineError> {
+        validate_file_teleporter(&teleporter)?;
+        let index = self
+            .file_teleporters
+            .iter()
+            .position(|value| value.id == teleporter.id)
+            .ok_or_else(|| {
+                EngineError::Invariant(format!("file teleporter {} does not exist", teleporter.id))
+            })?;
+        if self
+            .teleporters
+            .iter()
+            .any(|value| value.id == teleporter.id)
+            || self
+                .file_teleporters
+                .iter()
+                .enumerate()
+                .any(|(candidate, value)| candidate != index && value.id == teleporter.id)
+        {
+            return Err(EngineError::Invariant(format!(
+                "teleporter {} already exists",
+                teleporter.id
+            )));
+        }
+        teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        teleporter.backflow_guard = None;
+        self.file_teleporters[index] = teleporter;
         self.publish_snapshot();
         Ok(())
     }
@@ -3913,6 +3982,15 @@ impl Engine {
         let settings = &self.config.physics;
         let costs = &self.config.dna_costs;
         let population = self.population();
+        let pond_mode = self.config.vegetation.pond_mode && !self.config.toroidal_world;
+        let buoyancy_cost = if pond_mode {
+            f64::from(self.config.gravity[1].abs())
+                / f64::from(settings.movement_efficiency.max(f32::EPSILON))
+                * costs.movement
+                * costs.global_multiplier
+        } else {
+            0.0
+        };
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -3957,6 +4035,17 @@ impl Engine {
                 robot,
                 costs.action_cost_for(SimulationCostAction::Movement, amount, population),
             );
+            if buoyancy_cost != 0.0 && robot.buoyancy != 0.0 {
+                let mass = f64::from(
+                    derived_mass(
+                        robot.materials.body,
+                        robot.materials.shell,
+                        robot.materials.chloroplasts,
+                    )
+                    .min(192.0),
+                );
+                settle_simulation_cost(robot, buoyancy_cost * mass * f64::from(robot.buoyancy));
+            }
         }
     }
 
@@ -4232,10 +4321,37 @@ impl Engine {
         });
     }
 
+    fn tide_scaling(&self) -> f32 {
+        let period = self.config.vegetation.tides;
+        if period == 0 {
+            return 1.0;
+        }
+        let phase = (self.tick as i64 + i64::from(self.config.vegetation.tides_offset))
+            .rem_euclid(i64::from(period)) as f32
+            / period as f32;
+        ((1.0 + (phase * std::f32::consts::TAU).sin()) * 0.5)
+            .max(0.0)
+            .sqrt()
+    }
+
     fn intent_phase(&mut self) {
-        let gravity = self.config.gravity;
+        let configured_gravity = self.config.gravity;
         let drag = self.config.drag;
-        let brownian = self.config.brownian_motion.max(0.0);
+        let configured_brownian = self.config.brownian_motion.max(0.0);
+        let pond_mode = self.config.vegetation.pond_mode && !self.config.toroidal_world;
+        let tide_period = self.config.vegetation.tides;
+        let tide_scaling = self.tide_scaling();
+        let world_height = self.config.world_height.max(1.0);
+        let gravity = if tide_period == 0 {
+            configured_gravity
+        } else {
+            [configured_gravity[0], (1.0 - tide_scaling) * 4.0]
+        };
+        let brownian = if tide_period != 0 && tide_scaling > 0.8 {
+            10.0
+        } else {
+            configured_brownian
+        };
         let seed = self.config.seed;
         let tick = self.tick;
         let settings = &self.config.physics;
@@ -4270,7 +4386,19 @@ impl Engine {
                         robot.materials.body,
                         robot.materials.chloroplasts,
                     );
-                    let impulse = environment_impulse(gravity, brownian, mass, seed, tick, slot);
+                    let mut effective_gravity = gravity;
+                    if pond_mode && effective_gravity[1] != 0.0 {
+                        let buoyancy_threshold = (1.0 / tide_scaling.max(f32::EPSILON)
+                            - robot.kinematics.position[1] / world_height)
+                            .clamp(0.0, 1.0);
+                        effective_gravity[1] = if buoyancy_threshold > robot.buoyancy {
+                            effective_gravity[1].abs()
+                        } else {
+                            -effective_gravity[1].abs()
+                        };
+                    }
+                    let impulse =
+                        environment_impulse(effective_gravity, brownian, mass, seed, tick, slot);
                     robot.kinematics.velocity[0] += impulse[0];
                     robot.kinematics.velocity[1] += impulse[1];
                     apply_resistance(
@@ -4420,6 +4548,18 @@ impl Engine {
                         target.materials.body,
                         target.materials.chloroplasts,
                     );
+                    if self.obstacles.iter().any(|obstacle| {
+                        obstacle.vision_policy != ShapeVisionPolicy::SeeThrough
+                            && crate::physics::segment_aabb_fraction(
+                                observer_position,
+                                target_position,
+                                obstacle.minimum,
+                                obstacle.maximum,
+                            )
+                            .is_some()
+                    }) {
+                        continue;
+                    }
                     let center_distance = target_distance.sqrt();
                     let edge_distance =
                         (center_distance - observer_radius - target_radius).max(0.0);
@@ -5381,6 +5521,9 @@ impl Engine {
             }
 
             for obstacle in &self.obstacles {
+                if obstacle.shot_policy != ShapeShotPolicy::Absorb {
+                    continue;
+                }
                 let Some(fraction) = crate::physics::segment_aabb_fraction(
                     start,
                     end,
@@ -5844,6 +5987,21 @@ impl Engine {
         }
     }
 
+    fn move_obstacles(&mut self) {
+        let world_size = [self.config.world_width, self.config.world_height];
+        for obstacle in &mut self.obstacles {
+            for axis in 0..2 {
+                let extent = world_size[axis].max(1.0);
+                let delta = obstacle.drift[axis];
+                let width = obstacle.maximum[axis] - obstacle.minimum[axis];
+                let minimum =
+                    (obstacle.minimum[axis] + delta).clamp(0.0, (extent - width).max(0.0));
+                obstacle.minimum[axis] = minimum;
+                obstacle.maximum[axis] = minimum + width;
+            }
+        }
+    }
+
     fn apply_file_teleporters(&mut self) -> Result<(), EngineError> {
         for index in 0..self.file_teleporters.len() {
             let settings = self.file_teleporters[index].clone();
@@ -6290,6 +6448,12 @@ impl Engine {
             .sum();
         let settings = self.config.vegetation.clone();
         let flat_bonus = self.config.vegetable_energy_per_tick.max(0);
+        let tide_scaling = self.tide_scaling();
+        let light_intensity = if settings.pond_mode {
+            settings.light_intensity.max(0.0)
+        } else {
+            self.config.sunlight_energy.max(0) as f32
+        };
         for slot in 0..self.slots.len() {
             let Some(organism) = self.slots[slot].organism.as_mut() else {
                 continue;
@@ -6305,19 +6469,24 @@ impl Engine {
                 total_robot_area,
                 usable_world_area,
                 max_energy_per_tick: settings.max_energy_per_tick,
-                pond_mode: false,
-                light_intensity: self.config.sunlight_energy.max(0) as f32,
+                pond_mode: settings.pond_mode,
+                light_intensity,
                 depth: organism.kinematics.position[1] / 2_000.0 + 1.0,
-                gradient: 1.0,
+                gradient: settings.gradient.max(0.0),
             });
             organism
                 .program
                 .memory
                 .write(MEM_LIGHT, i32::from(feeding.light));
             let _availability = feeding.availability;
+            let tide_factor = if settings.tides == 0 {
+                1.0
+            } else {
+                tide_scaling
+            };
             let (energy_gain, body_gain) = organism
                 .materials
-                .apply_plant_delta(feeding.delta, settings.feeding_to_body);
+                .apply_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body);
             if self
                 .species
                 .get(organism.identity.species.0 as usize)
@@ -7221,6 +7390,7 @@ impl Engine {
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             obstacles: self.obstacles.clone(),
             teleporters: self.teleporters.clone(),
+            file_teleporters: self.file_teleporters.clone(),
             phase_timings: self.phase_timings.clone(),
             local_mode: self.local_mode.clone(),
         };
@@ -7642,6 +7812,30 @@ fn inside_file_teleporter(teleporter: &FileTeleporter, position: [f32; 2]) -> bo
     let dx = position[0] - teleporter.center[0];
     let dy = position[1] - teleporter.center[1];
     dx * dx + dy * dy <= teleporter.radius * teleporter.radius
+}
+
+fn validate_file_teleporter(teleporter: &FileTeleporter) -> Result<(), EngineError> {
+    if !teleporter.radius.is_finite()
+        || teleporter.radius <= 0.0
+        || teleporter.center.iter().any(|value| !value.is_finite())
+    {
+        return Err(EngineError::Invariant(
+            "file teleporter geometry is invalid".to_owned(),
+        ));
+    }
+    if teleporter.inbound_path.as_os_str().is_empty()
+        && teleporter.outbound_path.as_os_str().is_empty()
+    {
+        return Err(EngineError::Invariant(
+            "file teleporter requires an inbound or outbound path".to_owned(),
+        ));
+    }
+    if teleporter.poll_interval == 0 || teleporter.capacity == 0 {
+        return Err(EngineError::Invariant(
+            "file teleporter polling and capacity must be positive".to_owned(),
+        ));
+    }
+    Ok(())
 }
 
 fn write_transfer_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {

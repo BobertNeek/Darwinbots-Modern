@@ -690,9 +690,13 @@ internal sealed class RecordingEngineClient : IEngineClient
     }
     public void SwitchBackend(string backend) { Backend = backend.ToUpperInvariant(); Calls.Enqueue($"Switch:{backend}"); }
     public void AddObstacle(ObstacleSnapshot obstacle) => Calls.Enqueue($"AddObstacle:{obstacle.Id}");
+    public void UpdateObstacle(ObstacleSnapshot obstacle) => Calls.Enqueue($"UpdateObstacle:{obstacle.Id}");
     public void RemoveObstacle(uint id) => Calls.Enqueue($"RemoveObstacle:{id}");
     public void AddTeleporter(TeleporterSnapshot teleporter) => Calls.Enqueue($"AddTeleporter:{teleporter.Id}");
     public void RemoveTeleporter(uint id) => Calls.Enqueue($"RemoveTeleporter:{id}");
+    public void AddFileTeleporter(FileTeleporterSnapshot teleporter) => Calls.Enqueue($"AddFileTeleporter:{teleporter.Id}");
+    public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter) => Calls.Enqueue($"UpdateFileTeleporter:{teleporter.Id}");
+    public void RemoveFileTeleporter(uint id) => Calls.Enqueue($"RemoveFileTeleporter:{id}");
     public void SetBrownianMotion(float value) => Calls.Enqueue($"Brownian:{value}");
     public void UpdateEnvironment(EnvironmentUpdate update) { EnvironmentUpdates.Enqueue(update); Calls.Enqueue("Environment"); }
     public void UpdateMutationSettings(MutationSettingsUpdate update) { MutationUpdates.Enqueue(update); Calls.Enqueue("Mutations"); }

@@ -34,7 +34,12 @@ public sealed record Db2VegetationOptions(
     float FeedingToBody,
     bool Daytime,
     bool DayNightEnabled,
-    ulong CycleLength)
+    ulong CycleLength,
+    bool PondMode = false,
+    float LightIntensity = 100f,
+    float Gradient = 1f,
+    uint Tides = 0,
+    int TidesOffset = 0)
 {
     public static Db2VegetationOptions Default { get; } = new(16_000, 40, 10, 10, 25, 0.5f, true, false, 10_000);
 }
@@ -163,6 +168,11 @@ public static class NativeCommandSerializer
         daytime = value.Daytime,
         day_night_enabled = value.DayNightEnabled,
         cycle_length = value.CycleLength,
+        pond_mode = value.PondMode,
+        light_intensity = value.LightIntensity,
+        gradient = value.Gradient,
+        tides = value.Tides,
+        tides_offset = value.TidesOffset,
     };
 
     internal static object DnaCosts(GlobalSimulationCostSettings value) => new

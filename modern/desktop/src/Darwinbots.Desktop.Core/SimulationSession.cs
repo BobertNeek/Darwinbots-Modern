@@ -112,6 +112,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task AddObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddObstacle(obstacle), cancellationToken);
 
+    public Task UpdateObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateObstacle(obstacle), cancellationToken);
+
     public Task RemoveObstacleAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveObstacle(id), cancellationToken);
 
@@ -120,6 +123,15 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public Task RemoveTeleporterAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveTeleporter(id), cancellationToken);
+
+    public Task AddFileTeleporterAsync(FileTeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.AddFileTeleporter(teleporter), cancellationToken);
+
+    public Task UpdateFileTeleporterAsync(FileTeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateFileTeleporter(teleporter), cancellationToken);
+
+    public Task RemoveFileTeleporterAsync(uint id, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RemoveFileTeleporter(id), cancellationToken);
 
     public Task SetBrownianMotionAsync(float value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetBrownianMotion(value), cancellationToken);

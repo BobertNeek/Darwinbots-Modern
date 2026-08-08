@@ -668,7 +668,7 @@ fn ffi_adds_and_removes_live_environment_features() {
         db_engine_create(std::ptr::null(), 0, &mut engine),
         DbStatus::Ok
     );
-    let add = br#"{"version":1,"commands":[{"type":"add_obstacle","id":7,"minimum":[10.0,20.0],"maximum":[30.0,40.0]},{"type":"add_teleporter","id":8,"center":[50.0,60.0],"radius":15.0,"destination":[500.0,600.0]}]}"#;
+    let add = br#"{"version":1,"commands":[{"type":"add_obstacle","id":7,"minimum":[10.0,20.0],"maximum":[30.0,40.0]},{"type":"update_obstacle","obstacle":{"id":7,"minimum":[10.0,20.0],"maximum":[30.0,40.0],"color":4279312947,"opacity":0.35,"drift":[2.0,-3.0],"vision_policy":"see_through","shot_policy":"pass_through"}},{"type":"add_teleporter","id":8,"center":[50.0,60.0],"radius":15.0,"destination":[500.0,600.0]},{"type":"add_file_teleporter","teleporter":{"id":9,"center":[70.0,80.0],"radius":20.0,"inbound_path":"in","outbound_path":"out","poll_interval":3,"poll_countdown":1,"capacity":4,"filters":{"teleport_vegetables":false,"teleport_corpses":true,"teleport_heterotrophs":true},"sent":8,"received":5}},{"type":"update_file_teleporter","teleporter":{"id":9,"center":[70.0,80.0],"radius":20.0,"inbound_path":"in2","outbound_path":"out2","poll_interval":4,"poll_countdown":2,"capacity":5,"filters":{"teleport_vegetables":true,"teleport_corpses":false,"teleport_heterotrophs":false},"sent":9,"received":6}}]}"#;
     let mut result = DbBuffer::default();
     assert_eq!(
         db_engine_command_batch(engine, add.as_ptr(), add.len(), &mut result),
@@ -681,10 +681,16 @@ fn ffi_adds_and_removes_live_environment_features() {
         serde_json::from_slice(unsafe { std::slice::from_raw_parts(snapshot.data, snapshot.len) })
             .unwrap();
     assert_eq!(json["obstacles"][0]["id"], 7);
+    assert_eq!(json["obstacles"][0]["vision_policy"], "see_through");
+    assert_eq!(json["obstacles"][0]["shot_policy"], "pass_through");
     assert_eq!(json["teleporters"][0]["id"], 8);
+    assert_eq!(json["file_teleporters"][0]["id"], 9);
+    assert_eq!(json["file_teleporters"][0]["inbound_path"], "in2");
+    assert_eq!(json["file_teleporters"][0]["sent"], 9);
+    assert_eq!(json["file_teleporters"][0]["received"], 6);
     assert_eq!(db_buffer_free(&mut snapshot), DbStatus::Ok);
 
-    let remove = br#"{"version":1,"commands":[{"type":"remove_obstacle","id":7},{"type":"remove_teleporter","id":8}]}"#;
+    let remove = br#"{"version":1,"commands":[{"type":"remove_obstacle","id":7},{"type":"remove_teleporter","id":8},{"type":"remove_file_teleporter","id":9}]}"#;
     assert_eq!(
         db_engine_command_batch(engine, remove.as_ptr(), remove.len(), &mut result),
         DbStatus::Ok
@@ -696,6 +702,7 @@ fn ffi_adds_and_removes_live_environment_features() {
             .unwrap();
     assert!(json["obstacles"].as_array().unwrap().is_empty());
     assert!(json["teleporters"].as_array().unwrap().is_empty());
+    assert!(json["file_teleporters"].as_array().unwrap().is_empty());
     assert_eq!(db_buffer_free(&mut snapshot), DbStatus::Ok);
     assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
 }

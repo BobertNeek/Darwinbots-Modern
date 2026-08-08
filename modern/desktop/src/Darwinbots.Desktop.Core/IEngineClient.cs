@@ -16,9 +16,13 @@ public interface IEngineClient : IDisposable
     OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position);
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
+    void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);
     void RemoveTeleporter(uint id);
+    void AddFileTeleporter(FileTeleporterSnapshot teleporter);
+    void UpdateFileTeleporter(FileTeleporterSnapshot teleporter);
+    void RemoveFileTeleporter(uint id);
     void SetBrownianMotion(float value);
     void UpdateMutationSettings(MutationSettingsUpdate update);
     void SetTiesEnabled(bool enabled);

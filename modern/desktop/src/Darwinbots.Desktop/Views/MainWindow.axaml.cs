@@ -174,7 +174,9 @@ public sealed partial class MainWindow : Window
         {
             _selectedFeature = feature;
             _viewModel.Status = $"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} SELECTED";
+            RefreshFeatureEditorButtons();
         };
+        RefreshFeatureEditorButtons();
         Viewport.OrganismDragCompleted += async (slot, position) =>
         {
             if (_session is null) return;
@@ -986,9 +988,11 @@ public sealed partial class MainWindow : Window
         if (_session is null || _selectedFeature is not { } feature)
             return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
         if (feature.Kind == WorldFeatureKind.Obstacle) await _session.RemoveObstacleAsync(feature.Id);
+        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
         else await _session.RemoveTeleporterAsync(feature.Id);
         _selectedFeature = null;
         Viewport.SelectFeature(null);
+        RefreshFeatureEditorButtons();
         return LegacyCommandResult.Success($"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED");
     }
 
@@ -996,8 +1000,10 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var teleporters = _session.LatestSnapshot.Teleporters.ToArray();
+        var fileTeleporters = _session.LatestSnapshot.FileTeleporters.ToArray();
         foreach (var teleporter in teleporters) await _session.RemoveTeleporterAsync(teleporter.Id);
-        return LegacyCommandResult.Success($"DELETED {teleporters.Length} TELEPORTER(S)");
+        foreach (var teleporter in fileTeleporters) await _session.RemoveFileTeleporterAsync(teleporter.Id);
+        return LegacyCommandResult.Success($"DELETED {teleporters.Length + fileTeleporters.Length} TELEPORTER(S)");
     }
 
     private async Task<LegacyCommandResult> DeleteAllObstaclesCommandAsync()
@@ -1287,14 +1293,81 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = BeginEnvironmentPlacement(EnvironmentPlacement.Teleporter).Status;
     }
 
+    private async void AddFileTeleporter_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null) return;
+        var world = _session.LatestSnapshot.WorldSize;
+        var id = _session.LatestSnapshot.Teleporters
+            .Concat(_session.LatestSnapshot.FileTeleporters.Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Center)))
+            .Select(value => value.Id)
+            .DefaultIfEmpty()
+            .Max() + 1;
+        var draft = new FileTeleporterSnapshot(
+            id,
+            [world.ElementAtOrDefault(0) * 0.5f, world.ElementAtOrDefault(1) * 0.5f],
+            180f,
+            string.Empty,
+            string.Empty,
+            1,
+            0,
+            1,
+            new TeleporterFilterSnapshot(true, true, true),
+            0,
+            0);
+        var dialog = new FileTeleporterEditorWindow(draft);
+        await dialog.ShowDialog(this);
+        if (dialog.Result is not { } result) return;
+        await _session.AddFileTeleporterAsync(result);
+        _viewModel.Status = $"FILE TELEPORTER {result.Id} ADDED · OFFLINE";
+    }
+
+    private async void EditShape_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Obstacle } feature) return;
+        var obstacle = _session.LatestSnapshot.Obstacles.FirstOrDefault(value => value.Id == feature.Id);
+        if (obstacle is null) return;
+        var dialog = new ShapeEditorWindow(obstacle);
+        await dialog.ShowDialog(this);
+        if (dialog.Result is not { } result) return;
+        await _session.UpdateObstacleAsync(result);
+        _viewModel.Status = $"SHAPE {result.Id} UPDATED";
+    }
+
+    private async void EditTeleporter_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature) return;
+        var teleporter = _session.LatestSnapshot.FileTeleporters.FirstOrDefault(value => value.Id == feature.Id);
+        if (teleporter is null)
+        {
+            _viewModel.Status = "SELECT AN OFFLINE FILE TELEPORTER";
+            return;
+        }
+        var dialog = new FileTeleporterEditorWindow(teleporter);
+        await dialog.ShowDialog(this);
+        if (dialog.Result is not { } result) return;
+        await _session.UpdateFileTeleporterAsync(result);
+        _viewModel.Status = $"FILE TELEPORTER {result.Id} UPDATED · OFFLINE";
+    }
+
     private async void RemoveFeature_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _selectedFeature is not { } feature) return;
         if (feature.Kind == WorldFeatureKind.Obstacle) await _session.RemoveObstacleAsync(feature.Id);
+        else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
         else await _session.RemoveTeleporterAsync(feature.Id);
         _selectedFeature = null;
         Viewport.SelectFeature(null);
+        RefreshFeatureEditorButtons();
         _viewModel.Status = $"{feature.Kind.ToString().ToUpperInvariant()} {feature.Id} REMOVED";
+    }
+
+    private void RefreshFeatureEditorButtons()
+    {
+        var selectedObstacle = _selectedFeature is { Kind: WorldFeatureKind.Obstacle };
+        var selectedFileTeleporter = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature
+            && _session?.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id) == true;
+        EditShapeButton.IsEnabled = selectedObstacle;
+        EditTeleporterButton.IsEnabled = selectedFileTeleporter;
     }
 
     private async void AdvanceZerobot_Click(object? sender, RoutedEventArgs e)

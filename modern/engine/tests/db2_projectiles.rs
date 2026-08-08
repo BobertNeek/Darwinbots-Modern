@@ -1,7 +1,7 @@
 mod support;
 
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SpeciesDefinition,
+    Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, ShapeShotPolicy, SpeciesDefinition,
 };
 use support::db2_fixtures::SHOT_SPEED;
 
@@ -228,11 +228,7 @@ fn obstacle_intercepts_projectile_before_target() {
     })
     .unwrap();
     engine
-        .add_obstacle(Obstacle {
-            id: 1,
-            minimum: [220.0, 100.0],
-            maximum: [230.0, 120.0],
-        })
+        .add_obstacle(Obstacle::new(1, [220.0, 100.0], [230.0, 120.0]))
         .unwrap();
     engine
         .spawn_at(
@@ -250,6 +246,36 @@ fn obstacle_intercepts_projectile_before_target() {
 
     assert_eq!(engine.organism(target).unwrap().energy, before);
     assert!(engine.snapshot().shots[0].impact_flash);
+}
+
+#[test]
+fn pass_through_shape_allows_a_projectile_to_reach_the_target() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let mut obstacle = Obstacle::new(1, [220.0, 100.0], [230.0, 120.0]);
+    obstacle.shot_policy = ShapeShotPolicy::PassThrough;
+    engine.add_obstacle(obstacle).unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n500 .shoot store\n37 .shootval store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory_at(target, 500).unwrap(), 37);
 }
 
 #[test]

@@ -74,8 +74,30 @@ public static class NativeSnapshotParser
             native.Stats.ProjectileImpacts,
             native.Stats.ProjectileEffects,
             native.Stats.PlantEnergyGenerated);
-        var obstacles = (native.Obstacles ?? []).Select(value => new ObstacleSnapshot(value.Id, value.Minimum, value.Maximum)).ToArray();
+        var obstacles = (native.Obstacles ?? []).Select(value => new ObstacleSnapshot(value.Id, value.Minimum, value.Maximum)
+        {
+            Color = value.Color ?? 0xffb9bdb6u,
+            Opacity = value.Opacity ?? 1f,
+            Drift = value.Drift is { Length: 2 } ? value.Drift : [0f, 0f],
+            VisionPolicy = value.VisionPolicy ?? "opaque",
+            ShotPolicy = value.ShotPolicy ?? "absorb",
+        }).ToArray();
         var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)).ToArray();
+        var fileTeleporters = (native.FileTeleporters ?? []).Select(value => new FileTeleporterSnapshot(
+            value.Id,
+            value.Center,
+            value.Radius,
+            value.InboundPath ?? string.Empty,
+            value.OutboundPath ?? string.Empty,
+            value.PollInterval,
+            value.PollCountdown,
+            value.Capacity,
+            value.Filters is { } filters
+                ? new TeleporterFilterSnapshot(filters.TeleportVegetables, filters.TeleportCorpses, filters.TeleportHeterotrophs)
+                : new TeleporterFilterSnapshot(true, true, true),
+            value.Sent,
+            value.Received,
+            value.BackflowGuard)).ToArray();
         var corpses = (native.Corpses ?? []).Select(value => new CorpseSnapshot(value.Position, value.Velocity, value.Energy, value.Body, value.Age, value.Species, value.Repopulating)).ToArray();
         var shots = (native.Shots ?? []).Select(value => new ShotSnapshot(
             new OrganismKey(value.Owner.Slot, value.Owner.Generation),
@@ -127,6 +149,7 @@ public static class NativeSnapshotParser
             WorldSize = native.WorldSize is { Length: 2 } ? native.WorldSize : [16_000f, 12_000f],
             Obstacles = obstacles,
             Teleporters = teleporters,
+            FileTeleporters = fileTeleporters,
             Corpses = corpses,
             Shots = shots,
             History = history,
@@ -275,6 +298,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("stats")] NativeStats? Stats,
         [property: JsonPropertyName("obstacles")] NativeObstacle[]? Obstacles,
         [property: JsonPropertyName("teleporters")] NativeTeleporter[]? Teleporters,
+        [property: JsonPropertyName("file_teleporters")] NativeFileTeleporter[]? FileTeleporters,
         [property: JsonPropertyName("corpses")] NativeCorpse[]? Corpses,
         [property: JsonPropertyName("shots")] NativeShot[]? Shots,
         [property: JsonPropertyName("history")] NativeHistorySample[]? History,
@@ -377,13 +401,37 @@ public static class NativeSnapshotParser
     private sealed record NativeObstacle(
         [property: JsonPropertyName("id")] uint Id,
         [property: JsonPropertyName("minimum")] float[] Minimum,
-        [property: JsonPropertyName("maximum")] float[] Maximum);
+        [property: JsonPropertyName("maximum")] float[] Maximum,
+        [property: JsonPropertyName("color")] uint? Color,
+        [property: JsonPropertyName("opacity")] float? Opacity,
+        [property: JsonPropertyName("drift")] float[]? Drift,
+        [property: JsonPropertyName("vision_policy")] string? VisionPolicy,
+        [property: JsonPropertyName("shot_policy")] string? ShotPolicy);
 
     private sealed record NativeTeleporter(
         [property: JsonPropertyName("id")] uint Id,
         [property: JsonPropertyName("center")] float[] Center,
         [property: JsonPropertyName("radius")] float Radius,
         [property: JsonPropertyName("destination")] float[] Destination);
+
+    private sealed record NativeFileTeleporter(
+        [property: JsonPropertyName("id")] uint Id,
+        [property: JsonPropertyName("center")] float[] Center,
+        [property: JsonPropertyName("radius")] float Radius,
+        [property: JsonPropertyName("inbound_path")] string? InboundPath,
+        [property: JsonPropertyName("outbound_path")] string? OutboundPath,
+        [property: JsonPropertyName("poll_interval")] uint PollInterval,
+        [property: JsonPropertyName("poll_countdown")] uint PollCountdown,
+        [property: JsonPropertyName("capacity")] int Capacity,
+        [property: JsonPropertyName("filters")] NativeTeleporterFilters? Filters,
+        [property: JsonPropertyName("sent")] ulong Sent,
+        [property: JsonPropertyName("received")] ulong Received,
+        [property: JsonPropertyName("backflow_guard")] string? BackflowGuard);
+
+    private sealed record NativeTeleporterFilters(
+        [property: JsonPropertyName("teleport_vegetables")] bool TeleportVegetables,
+        [property: JsonPropertyName("teleport_corpses")] bool TeleportCorpses,
+        [property: JsonPropertyName("teleport_heterotrophs")] bool TeleportHeterotrophs);
 
     private sealed record NativePhaseTimings(
         [property: JsonPropertyName("dna")] double Dna,
