@@ -7,6 +7,10 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed class LegacyDocumentWindow : Window
 {
+    private readonly TextBlock _titleText;
+    private readonly TextBlock _sectionText;
+    private readonly TextBox _documentText;
+
     public LegacyDocumentWindow(string title, string section, string content)
     {
         Title = $"Darwinbots — {title}";
@@ -17,6 +21,23 @@ public sealed class LegacyDocumentWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush.Parse("#F4F0E6");
 
+        _titleText = new TextBlock
+        {
+            Text = title.ToUpperInvariant(),
+            FontFamily = new FontFamily("Bahnschrift"),
+            FontSize = 22,
+            FontWeight = FontWeight.Bold,
+            LetterSpacing = 1.4,
+        };
+        _sectionText = new TextBlock
+        {
+            Text = section.ToUpperInvariant(),
+            Foreground = Brush.Parse("#537B43"),
+            FontFamily = new FontFamily("Bahnschrift"),
+            FontSize = 11,
+            FontWeight = FontWeight.Bold,
+            LetterSpacing = 1.2,
+        };
         var root = new Grid { RowDefinitions = new RowDefinitions("72,*,58") };
         var header = new Border
         {
@@ -29,14 +50,14 @@ public sealed class LegacyDocumentWindow : Window
                 Spacing = 2,
                 Children =
                 {
-                    new TextBlock { Text = title.ToUpperInvariant(), FontFamily = new FontFamily("Bahnschrift"), FontSize = 22, FontWeight = FontWeight.Bold, LetterSpacing = 1.4 },
-                    new TextBlock { Text = section.ToUpperInvariant(), Foreground = Brush.Parse("#537B43"), FontFamily = new FontFamily("Bahnschrift"), FontSize = 11, FontWeight = FontWeight.Bold, LetterSpacing = 1.2 },
+                    _titleText,
+                    _sectionText,
                 },
             },
         };
         root.Children.Add(header);
 
-        var document = new TextBox
+        _documentText = new TextBox
         {
             Text = content,
             IsReadOnly = true,
@@ -51,8 +72,8 @@ public sealed class LegacyDocumentWindow : Window
             FontFamily = new FontFamily("Georgia"),
             FontSize = 14,
         };
-        Grid.SetRow(document, 1);
-        root.Children.Add(document);
+        Grid.SetRow(_documentText, 1);
+        root.Children.Add(_documentText);
 
         var close = new Button
         {
@@ -75,5 +96,13 @@ public sealed class LegacyDocumentWindow : Window
         Grid.SetRow(footer, 2);
         root.Children.Add(footer);
         Content = root;
+    }
+
+    public void SetDocument(string title, string section, string content)
+    {
+        Title = $"Darwinbots — {title}";
+        _titleText.Text = title.ToUpperInvariant();
+        _sectionText.Text = section.ToUpperInvariant();
+        _documentText.Text = content;
     }
 }

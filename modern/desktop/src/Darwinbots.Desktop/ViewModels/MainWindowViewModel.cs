@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Darwinbots.Desktop.Core;
 
@@ -42,6 +43,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double _ticksPerSecond;
     private double _snapshotsPerSecond;
     private string _limitingPhase = "WAITING";
+    private long? _previousTotalEnergy;
+    private ulong? _previousShots;
+    private ulong? _previousTick;
+    private double _costMultiplier = 1.0;
+
+    private readonly StatusPanelViewModel[] _statusPanels =
+    [
+        new("CPS"),
+        new("Tot"),
+        new("Bots"),
+        new("Chlr"),
+        new("Born"),
+        new("Cycles"),
+        new("Time"),
+        new("Mut"),
+        new("Restarts"),
+        new("Shots"),
+        new("Nrg"),
+        new("Delta"),
+        new("CostX"),
+    ];
 
     public LocalModeViewModel LocalMode { get; } = new();
     public ulong Tick { get => _tick; private set => Set(ref _tick, value); }
@@ -84,6 +106,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string EnergyActivitySummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    PLANT {PlantEnergyGenerated:N0}";
     public string PlantSummary => $"PLANT ENERGY {PlantEnergyGenerated:N0}";
     public string MutationSummary => $"MUTATIONS {Mutations:N0}";
+    public IReadOnlyList<StatusPanelViewModel> StatusPanels => _statusPanels;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -104,8 +127,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ApplySelection();
     }
 
-    public void Update(EngineSnapshot snapshot)
+    public void Update(EngineSnapshot snapshot, TimeSpan? elapsed = null, double? costMultiplier = null)
     {
+        var (energyDelta, shotsThisCycle) = CalculateDeltas(snapshot);
+        if (costMultiplier is { } value)
+            _costMultiplier = value;
         _snapshot = snapshot;
         LocalMode.Observe(snapshot.LocalMode);
         Tick = snapshot.Tick;
@@ -137,12 +163,63 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         };
         var limiting = phases.MaxBy(value => value.Value);
         LimitingPhase = $"{limiting.Key} {limiting.Value:0.0} ms";
+        UpdateStatusPanels(snapshot, elapsed ?? TimeSpan.Zero, energyDelta, shotsThisCycle);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PopulationSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LifecycleSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CombatSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EnergyActivitySummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlantSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MutationSummary)));
+    }
+
+    private (long EnergyDelta, ulong ShotsThisCycle) CalculateDeltas(EngineSnapshot snapshot)
+    {
+        var advancing = _previousTick is { } previousTick
+            && snapshot.Tick > previousTick
+            && _previousTotalEnergy is not null
+            && _previousShots is not null;
+        var energyDelta = advancing
+            ? snapshot.Stats.TotalEnergy - _previousTotalEnergy!.Value
+            : 0;
+        var shotsThisCycle = advancing && snapshot.Stats.ShotsFired >= _previousShots!.Value
+            ? snapshot.Stats.ShotsFired - _previousShots.Value
+            : 0;
+        _previousTick = snapshot.Tick;
+        _previousTotalEnergy = snapshot.Stats.TotalEnergy;
+        _previousShots = snapshot.Stats.ShotsFired;
+        return (energyDelta, shotsThisCycle);
+    }
+
+    private void UpdateStatusPanels(
+        EngineSnapshot snapshot,
+        TimeSpan elapsed,
+        long energyDelta,
+        ulong shotsThisCycle)
+    {
+        SetPanel(0, snapshot.TicksPerSecond.ToString("0.###", CultureInfo.InvariantCulture));
+        SetPanel(1, snapshot.Population.ToString(CultureInfo.InvariantCulture));
+        SetPanel(2, snapshot.Organisms.Count(organism => !organism.Vegetable).ToString(CultureInfo.InvariantCulture));
+        SetPanel(3, snapshot.Organisms.Sum(organism => organism.Chloroplasts).ToString(CultureInfo.InvariantCulture));
+        SetPanel(4, snapshot.Stats.Births.ToString(CultureInfo.InvariantCulture));
+        SetPanel(5, snapshot.Tick.ToString(CultureInfo.InvariantCulture));
+        SetPanel(6, FormatElapsed(elapsed));
+        SetPanel(7, $"{snapshot.MutationSettings.GlobalMultiplier.ToString("0.###", CultureInfo.InvariantCulture)}x");
+        SetPanel(8, snapshot.LocalMode.RestartCount.ToString(CultureInfo.InvariantCulture));
+        SetPanel(9, shotsThisCycle.ToString(CultureInfo.InvariantCulture));
+        SetPanel(10, snapshot.Stats.TotalEnergy.ToString(CultureInfo.InvariantCulture));
+        SetPanel(11, energyDelta.ToString(CultureInfo.InvariantCulture));
+        SetPanel(12, _costMultiplier.ToString("0.#####", CultureInfo.InvariantCulture));
+    }
+
+    private void SetPanel(int index, string value)
+    {
+        _statusPanels[index].SetValue(value);
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        var hours = (long)Math.Max(0, elapsed.TotalHours);
+        return $"{hours}h{elapsed.Minutes}m{elapsed.Seconds}s";
     }
 
     private void ApplySelection()

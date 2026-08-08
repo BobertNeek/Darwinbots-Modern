@@ -46,6 +46,8 @@ public sealed class RobotDetailsWindow : Window
 
     public string ActivationSummary => _diagnostic.ActivationSummary;
 
+    public void SelectTab(RobotDetailsTab tab) => _tabs.SelectedIndex = (int)tab;
+
     private RobotDetailsWindow(
         SimulationSession? session,
         OrganismKey focus,
@@ -228,7 +230,9 @@ public sealed class RobotDetailsWindow : Window
         Avalonia.Threading.Dispatcher.UIThread.Post(() => Update(snapshot));
     }
 
-    private void Update(EngineSnapshot snapshot)
+    private void Update(EngineSnapshot snapshot) => SetSnapshot(snapshot);
+
+    public void SetSnapshot(EngineSnapshot snapshot)
     {
         _diagnostic.Update(snapshot, _focus);
         var organism = snapshot.Organisms.FirstOrDefault(value =>

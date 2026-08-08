@@ -90,9 +90,10 @@ public sealed partial class MainWindow : Window
     private float _playerBotThrust = 30f;
     private bool _rgbMemoryMonitorEnabled;
     private string _rgbMemoryChannels = ".nrg, .body, .waste";
-    private LegacyDocumentWindow? _rgbMonitorWindow;
-    private GraphSuiteWindow? _graphWindow;
-    private ContestResultsWindow? _contestResultsWindow;
+    private const string RgbMonitorToolKey = "rgb-memory-monitor";
+    private readonly PersistentToolWindowRegistry _toolWindows;
+    private readonly Stopwatch _runtimeClock = new();
+    private double _activeCostMultiplier;
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _trayIgnoreErrorsItem;
 
@@ -120,6 +121,8 @@ public sealed partial class MainWindow : Window
             ? new ZerobotProgressionController(setup.AutomaticZerobotProgression)
             : null;
         InitializeComponent();
+        _toolWindows = new PersistentToolWindowRegistry(this);
+        _activeCostMultiplier = setup.GlobalSettings.Costs.GlobalMultiplier;
         foreach (var species in setup.Species)
             _insertionSpecies.Add(species);
         InsertionSpeciesSelector.ItemsSource = _insertionSpecies;
@@ -815,19 +818,27 @@ public sealed partial class MainWindow : Window
             ".chlr" => organism.Chloroplasts, ".shell" => organism.Shell, ".slime" => organism.Slime,
             ".venom" => organism.Venom, ".poison" => organism.Poison, _ => 0,
         };
-        _rgbMonitorWindow = new LegacyDocumentWindow("RGB Memory Monitor", $"Robot {organism.Slot}:{organism.Generation}", $"RED   {channels[0]} = {Read(channels[0]):N0}\nGREEN {channels[1]} = {Read(channels[1]):N0}\nBLUE  {channels[2]} = {Read(channels[2]):N0}\n\nThe three values form a diagnostic color signature for the selected robot.");
-        _rgbMonitorWindow.Closed += (_, _) => { _rgbMemoryMonitorEnabled = false; _rgbMonitorWindow = null; RefreshLegacyMenuStates(); };
+        var section = $"Robot {organism.Slot}:{organism.Generation}";
+        var content = $"RED   {channels[0]} = {Read(channels[0]):N0}\nGREEN {channels[1]} = {Read(channels[1]):N0}\nBLUE  {channels[2]} = {Read(channels[2]):N0}\n\nThe three values form a diagnostic color signature for the selected robot.";
+        var window = _toolWindows.ShowOrActivate(RgbMonitorToolKey, () =>
+        {
+            var tool = new LegacyDocumentWindow("RGB Memory Monitor", section, content);
+            tool.Closed += (_, _) =>
+            {
+                _rgbMemoryMonitorEnabled = false;
+                RefreshLegacyMenuStates();
+            };
+            return tool;
+        });
+        window.SetDocument("RGB Memory Monitor", section, content);
         _rgbMemoryMonitorEnabled = true;
-        _rgbMonitorWindow.Show(this);
         return LegacyCommandResult.Success("RGB MEMORY MONITOR · ON");
     }
 
     private void CloseRgbMonitor()
     {
-        var window = _rgbMonitorWindow;
-        _rgbMonitorWindow = null;
         _rgbMemoryMonitorEnabled = false;
-        window?.Close();
+        _toolWindows.Close(RgbMonitorToolKey);
     }
 
     private async Task<LegacyCommandResult> ImportBackgroundAsync()
@@ -940,11 +951,12 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task<LegacyCommandResult> ShowDocumentAsync(string title, string section, string content)
+    private Task<LegacyCommandResult> ShowDocumentAsync(string title, string section, string content)
     {
-        var dialog = new LegacyDocumentWindow(title, section, content);
-        await dialog.ShowDialog(this);
-        return LegacyCommandResult.Success(title.ToUpperInvariant());
+        var key = $"document:{title}";
+        var window = _toolWindows.ShowOrActivate(key, () => new LegacyDocumentWindow(title, section, content));
+        window.SetDocument(title, section, content);
+        return Task.FromResult(LegacyCommandResult.Success(title.ToUpperInvariant()));
     }
 
     private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync()
@@ -981,8 +993,25 @@ public sealed partial class MainWindow : Window
         var organism = _viewModel.SelectedOrganism!;
         var session = _session!;
         Viewport.SelectSlot(organism.Slot);
-        new RobotDetailsWindow(session, new OrganismKey(organism.Slot, organism.Generation)).Show(this);
+        ShowRobotDetails(session, organism, RobotDetailsTab.Facts);
         return LegacyCommandResult.Success("ROBOT DETAILS OPEN");
+    }
+
+    private RobotDetailsWindow ShowRobotDetails(
+        SimulationSession session,
+        OrganismSnapshot organism,
+        RobotDetailsTab tab)
+    {
+        var key = $"robot-details:{organism.Slot}:{organism.Generation}";
+        var window = _toolWindows.ShowOrActivate(
+            key,
+            () => new RobotDetailsWindow(
+                session,
+                new OrganismKey(organism.Slot, organism.Generation),
+                tab));
+        window.SelectTab(tab);
+        window.SetSnapshot(session.LatestSnapshot);
+        return window;
     }
 
     private async Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
@@ -1019,10 +1048,7 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        new RobotDetailsWindow(
-            _session!,
-            new OrganismKey(organism.Slot, organism.Generation),
-            RobotDetailsTab.GeneActivations).Show(this);
+        ShowRobotDetails(_session!, organism, RobotDetailsTab.GeneActivations);
         return LegacyCommandResult.Success("GENE ACTIVATIONS OPEN");
     }
 
@@ -1334,16 +1360,19 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            _session = new SimulationSession(_engineFactory.Create(CreateNextWorldSetup()));
+            _runtimeClock.Restart();
+            var worldSetup = CreateNextWorldSetup();
+            _activeCostMultiplier = worldSetup.GlobalSettings.Costs.GlobalMultiplier;
+            _session = new SimulationSession(_engineFactory.Create(worldSetup));
             _insertion = new WorldInsertionController(_session);
             _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
             {
-                _viewModel.Update(snapshot);
+                _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
                 Viewport.SetSnapshot(snapshot);
                 Viewport.SelectSlot(_viewModel.SelectedSlot);
                 PopulationChart.SetSnapshot(snapshot);
                 EnergyChart.SetSnapshot(snapshot);
-                _graphWindow?.SetSnapshot(snapshot);
+                _toolWindows.PublishSnapshot(snapshot);
                 RecordDeadSnapshot(snapshot);
                 RefreshLegacyMenuStates();
                 if (_zerobotProgression is not null && !_progressionInFlight
@@ -1924,35 +1953,23 @@ public sealed partial class MainWindow : Window
     {
         _runTimer.Stop();
         _autosaveTimer.Stop();
-        _graphWindow?.Close();
-        _contestResultsWindow?.Close();
+        _runtimeClock.Stop();
+        _toolWindows.CloseAll();
         _trayIcon?.Dispose();
         if (_session is not null) await _session.DisposeAsync();
     }
 
     private void Graphs_Click(object? sender, RoutedEventArgs e)
     {
-        if (_graphWindow is { IsVisible: true } existing)
-        {
-            existing.Activate();
-            return;
-        }
-        _graphWindow = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty);
-        _graphWindow.Closed += (_, _) => _graphWindow = null;
-        _graphWindow.Show(this);
+        _toolWindows.ShowOrActivate(
+            "graph-suite",
+            () => new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty));
     }
 
     private void ContestResults_Click(object? sender, RoutedEventArgs e)
     {
-        if (_contestResultsWindow is { IsVisible: true } existing)
-        {
-            existing.Activate();
-            return;
-        }
         var result = ContestResultSnapshot.FromSnapshot(_session?.LatestSnapshot ?? EngineSnapshot.Empty);
-        _contestResultsWindow = new ContestResultsWindow(result);
-        _contestResultsWindow.Closed += (_, _) => _contestResultsWindow = null;
-        _contestResultsWindow.Show(this);
+        _toolWindows.ShowOrActivate("contest-results", () => new ContestResultsWindow(result));
     }
 }
 

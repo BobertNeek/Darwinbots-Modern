@@ -3,7 +3,7 @@ using Darwinbots.Desktop.Core;
 
 namespace Darwinbots.Desktop.Views;
 
-public sealed partial class GraphSuiteWindow : Window
+public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWindow
 {
     private readonly List<GraphSeriesWindow> _graphWindows = [];
 
