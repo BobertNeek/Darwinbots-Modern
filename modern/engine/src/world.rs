@@ -7,12 +7,12 @@ use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_
 use crate::simulation_cycle::CycleRecorder;
 use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_DEADBAND};
 use crate::{
-    AdvancedMutationSettings, BackendCapabilities, BackendKind, BackendPreference, BiologyState,
-    CommandOutcome, CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaCosts,
-    DnaMetadata, DnaVm, EngineConfig, EngineError, EyeSnapshot, FileTeleporter, GenomeMutator,
-    GpuPhysicsBackend, HistorySample, LegacyDna, LegacyOrganism, LegacySimulationFile,
-    MutationPolicyInput, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings,
-    PhysicsBackend, PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect,
+    ActivationFrame, AdvancedMutationSettings, BackendCapabilities, BackendKind, BackendPreference,
+    BiologyState, CommandOutcome, CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase,
+    DnaCosts, DnaMetadata, DnaVm, EngineConfig, EngineError, EyeSnapshot, FileTeleporter,
+    GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna, LegacyOrganism,
+    LegacySimulationFile, MutationPolicyInput, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks,
+    PhaseTimings, PhysicsBackend, PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect,
     ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind,
     RenderInstance, ShapeShotPolicy, ShapeVisionPolicy, ShotSettings, ShotSnapshot,
     SimulationCostAction, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId,
@@ -170,6 +170,12 @@ fn publish_reproductive_readbacks(robot: &mut RobotState) {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MemoryCellSnapshot {
+    pub address: u16,
+    pub value: i32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrganismSnapshot {
     pub id: OrganismId,
     #[serde(default)]
@@ -184,11 +190,25 @@ pub struct OrganismSnapshot {
     pub current_gene: u32,
     #[serde(default)]
     pub condition_count: u32,
+    #[serde(default)]
+    pub activation_bitmap: Vec<bool>,
+    #[serde(default)]
+    pub activation_history: Vec<ActivationFrame>,
+    #[serde(default)]
+    pub debug_text: String,
+    #[serde(default)]
+    pub memory: Vec<MemoryCellSnapshot>,
     pub species: SpeciesId,
     pub vegetable: bool,
     pub parents: [Option<OrganismId>; 2],
     pub body: i32,
+    #[serde(default)]
+    pub mass: f32,
+    #[serde(default)]
+    pub radius: f32,
     pub waste: i32,
+    #[serde(default)]
+    pub permanent_waste: i32,
     pub shell: i32,
     pub slime: i32,
     pub venom: i32,
@@ -197,6 +217,24 @@ pub struct OrganismSnapshot {
     pub aim: i32,
     pub paralyzed: i32,
     pub poisoned: i32,
+    #[serde(default)]
+    pub offspring: u64,
+    #[serde(default)]
+    pub descendants: u64,
+    #[serde(default)]
+    pub simulation_id: u64,
+    #[serde(default)]
+    pub unique_id: u64,
+    #[serde(default)]
+    pub virus_timer: i32,
+    #[serde(default)]
+    pub new_mutations: u64,
+    #[serde(default)]
+    pub total_mutations: u64,
+    #[serde(default)]
+    pub dna_length: u32,
+    #[serde(default)]
+    pub gene_count: u32,
     #[serde(default)]
     pub phenotype: VisualPhenotype,
     #[serde(default)]
@@ -1169,11 +1207,18 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             birth_cycle: 0,
             current_gene: 0,
             condition_count: 0,
+            activation_bitmap: Vec::new(),
+            activation_history: Vec::new(),
+            debug_text: String::new(),
+            memory: Vec::new(),
             species: value.species.into(),
             vegetable: value.vegetable,
             parents: value.parents.map(|parent| parent.map(Into::into)),
             body: value.body,
+            mass: 0.0,
+            radius: 0.0,
             waste: value.waste,
+            permanent_waste: 0,
             shell: value.shell,
             slime: value.slime,
             venom: value.venom,
@@ -1182,6 +1227,15 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             aim: value.aim,
             paralyzed: value.paralyzed,
             poisoned: value.poisoned,
+            offspring: 0,
+            descendants: 0,
+            simulation_id: 0,
+            unique_id: 0,
+            virus_timer: 0,
+            new_mutations: 0,
+            total_mutations: 0,
+            dna_length: 0,
+            gene_count: 0,
             phenotype: value.phenotype.into(),
             vision: value.vision.into(),
         }
@@ -1987,6 +2041,7 @@ impl Engine {
                 .and_then(serde_json::Value::as_object_mut)
             {
                 program.remove("activation_bitmap");
+                program.remove("activation_history");
                 program.remove("debug_text");
             }
             slots.push(serde_json::json!({
@@ -2024,6 +2079,9 @@ impl Engine {
             {
                 program
                     .entry("activation_bitmap".to_owned())
+                    .or_insert_with(|| serde_json::json!([]));
+                program
+                    .entry("activation_history".to_owned())
                     .or_insert_with(|| serde_json::json!([]));
                 program
                     .entry("debug_text".to_owned())
@@ -3904,14 +3962,27 @@ impl Engine {
                         f64::from(organism.kinematics.position[1]),
                     ],
                     costs: &self.config.dna_costs,
-                    record_activations: false,
+                    record_activations: true,
                 },
             )?;
             organism.program.rng_state = vm.random_state();
             organism.program.debug_text = report.debug_text;
             organism.program.current_gene = u32::from(report.current_gene);
             organism.program.condition_count = report.conditions_evaluated;
-            organism.program.activation_bitmap = report.activations;
+            organism.program.activation_bitmap = report.activations.clone();
+            organism.program.activation_history.push(ActivationFrame {
+                tick: self.tick,
+                activations: report.activations,
+            });
+            const MAX_ACTIVATION_HISTORY: usize = 32;
+            let excess = organism
+                .program
+                .activation_history
+                .len()
+                .saturating_sub(MAX_ACTIVATION_HISTORY);
+            if excess > 0 {
+                organism.program.activation_history.drain(..excess);
+            }
             let whole_cost = organism.program.settle_dna_energy_cost(report.energy_cost);
             organism.materials.energy = organism.materials.energy.saturating_sub(whole_cost);
         }
@@ -7904,13 +7975,25 @@ fn snapshot_organism(
         birth_cycle: organism.counters.birth_cycle,
         current_gene: organism.program.current_gene,
         condition_count: organism.program.condition_count,
+        activation_bitmap: organism.program.activation_bitmap.clone(),
+        activation_history: organism.program.activation_history.clone(),
+        debug_text: organism.program.debug_text.clone(),
+        memory: organism
+            .program
+            .memory
+            .entries()
+            .map(|(address, value)| MemoryCellSnapshot { address, value })
+            .collect(),
         species: organism.identity.species,
         vegetable: species
             .get(organism.identity.species.0 as usize)
             .is_some_and(|value| value.vegetable),
         parents: organism.identity.parents,
         body: organism.materials.body,
+        mass: organism.materials.mass,
+        radius: organism.materials.radius,
         waste: organism.materials.waste,
+        permanent_waste: organism.materials.permanent_waste,
         shell: organism.materials.shell,
         slime: organism.materials.slime,
         venom: organism.materials.venom,
@@ -7919,6 +8002,15 @@ fn snapshot_organism(
         aim: organism.materials.aim,
         paralyzed: organism.materials.paralyzed,
         poisoned: organism.materials.poisoned,
+        offspring: organism.counters.offspring,
+        descendants: organism.counters.descendants,
+        simulation_id: organism.identity.simulation_id,
+        unique_id: organism.identity.absolute_id,
+        virus_timer: organism.effects.virus_build_timer,
+        new_mutations: organism.program.dna.metadata().mutations,
+        total_mutations: organism.program.mutation_metadata.total_mutations,
+        dna_length: organism.program.dna.blocks().len() as u32,
+        gene_count: organism.program.dna.gene_count().max(0) as u32,
         phenotype: organism.phenotype.clone(),
         vision: VisionSnapshot::from_memory(&organism.program.memory, organism.materials.aim),
     }

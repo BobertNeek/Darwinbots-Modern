@@ -91,5 +91,5 @@ pub use timing::PhaseTimings;
 pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use vision::{EyeSnapshot, VisionSnapshot, absolute_eye_width, eye_sight_distance, eye_value};
 pub use visual_phenotype::{SkinPoint, VisualPhenotype, default_skin, generated_skin};
-pub use vm::{DnaVm, VmContext, VmMemory, VmReport, VmTermination};
-pub use world::{Engine, OrganismSnapshot, Snapshot};
+pub use vm::{ActivationFrame, DnaVm, VmContext, VmMemory, VmReport, VmTermination};
+pub use world::{Engine, MemoryCellSnapshot, OrganismSnapshot, Snapshot};

@@ -7,6 +7,7 @@ public enum LegacyCommandId
     FileSaveSimulation,
     FileSaveWithoutMutations,
     FilePauseSimulation,
+    FileIgnoreErrors,
     FileQuit,
 
     EditInsertOrganism,
@@ -77,6 +78,7 @@ public enum LegacyCommandId
     InternetTeleporter,
 
     RecordingSafemodeBackup,
+    RecordingRecoverLatestAutosave,
     RecordingSnapshotLiving,
     RecordingDeadEnable,
     RecordingDeadExcludeRepopulating,

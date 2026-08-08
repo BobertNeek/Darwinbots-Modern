@@ -28,6 +28,8 @@
           <Button x:Name="ContestResultsButton" Height="34" Content="CONTEST" Click="ContestResults_Click" />
           <Button x:Name="SaveButton" Height="34" Content="SAVE" Click="Save_Click" />
           <Button x:Name="LoadButton" Height="34" Content="LOAD" Click="Load_Click" />
+          <CheckBox x:Name="IgnoreErrorsToggle" Content="IGNORE ERRORS" VerticalContentAlignment="Center" IsCheckedChanged="IgnoreErrors_Changed" />
+          <Button x:Name="TrayButton" Height="34" Content="TRAY" Click="HideToTray_Click" />
         </StackPanel>
         <StackPanel Grid.Column="8" Margin="8,0,0,0" VerticalAlignment="Center">
           <TextBlock Classes="section" Text="TICK" />

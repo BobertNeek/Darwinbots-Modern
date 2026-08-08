@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -14,6 +15,8 @@ namespace Darwinbots.Desktop.Views;
 
 public sealed partial class MainWindow : Window
 {
+    private const string TrayPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAlSURBVDhPY1BQV/1PCQYb4FNrQBYeNWDUABAeNYCaBpCPVf8DAN1j1wSVGu34AAAAAElFTkSuQmCC";
+
     private void MainWindow_KeyDown(object? sender, KeyEventArgs e)
     {
         var routed = new RoutedEventArgs();
@@ -76,6 +79,7 @@ public sealed partial class MainWindow : Window
     private bool _controlsReady;
     private EnvironmentUpdate _liveEnvironment;
     private readonly LegacyCommandRouter _legacyCommands;
+    private readonly OfflineDiagnosticRecovery _diagnostics = new();
     private bool _safemodeBackup = true;
     private bool _hasBackgroundImage;
     private bool _deadRecordingEnabled;
@@ -89,6 +93,8 @@ public sealed partial class MainWindow : Window
     private LegacyDocumentWindow? _rgbMonitorWindow;
     private GraphSuiteWindow? _graphWindow;
     private ContestResultsWindow? _contestResultsWindow;
+    private TrayIcon? _trayIcon;
+    private NativeMenuItem? _trayIgnoreErrorsItem;
 
     public MainWindow() : this([], new WorldSetupOptions(), NativeEngineClientFactory.Instance, AvaloniaDesktopStorageService.Instance) { }
 
@@ -119,6 +125,7 @@ public sealed partial class MainWindow : Window
         InsertionSpeciesSelector.ItemsSource = _insertionSpecies;
         if (_insertionSpecies.Count > 0)
             InsertionSpeciesSelector.SelectedIndex = 0;
+        InitializeTray();
         KeyDown += PlayerBot_KeyDown;
         _legacyCommands = CreateLegacyCommandRouter();
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
@@ -221,6 +228,107 @@ public sealed partial class MainWindow : Window
         RefreshLegacyMenuStates();
     }
 
+    private void InitializeTray()
+    {
+        if (Application.Current is not { } application)
+            return;
+
+        try
+        {
+            var trayIcon = new TrayIcon
+            {
+                Icon = CreateTrayIcon(),
+                ToolTipText = "Darwinbots Modern",
+                IsVisible = !_globalSettings.Main.HideTray,
+            };
+            var menu = new NativeMenu();
+            var restore = new NativeMenuItem("Restore Darwinbots");
+            restore.Click += (_, _) => RestoreFromTray();
+            _trayIgnoreErrorsItem = new NativeMenuItem("Ignore errors")
+            {
+                ToggleType = MenuItemToggleType.CheckBox,
+                IsChecked = _diagnostics.IgnoreErrors,
+            };
+            _trayIgnoreErrorsItem.Click += (_, _) => SetIgnoreErrors(!_diagnostics.IgnoreErrors);
+            var exit = new NativeMenuItem("Exit");
+            exit.Click += (_, _) => Close();
+            menu.Add(restore);
+            menu.Add(_trayIgnoreErrorsItem);
+            menu.Add(exit);
+            trayIcon.Menu = menu;
+            trayIcon.Clicked += (_, _) => RestoreFromTray();
+
+            var icons = new TrayIcons();
+            icons.Add(trayIcon);
+            TrayIcon.SetIcons(application, icons);
+            _trayIcon = trayIcon;
+        }
+        catch
+        {
+            // Tray support is optional on headless and desktop environments without a tray host.
+            _trayIcon = null;
+        }
+    }
+
+    private static WindowIcon CreateTrayIcon()
+    {
+        using var stream = new MemoryStream(Convert.FromBase64String(TrayPngBase64));
+        return new WindowIcon(stream);
+    }
+
+    private void SetIgnoreErrors(bool enabled)
+    {
+        _diagnostics.SetIgnoreErrors(enabled);
+        if (IgnoreErrorsToggle.IsChecked != enabled)
+            IgnoreErrorsToggle.IsChecked = enabled;
+        if (_trayIgnoreErrorsItem is not null)
+            _trayIgnoreErrorsItem.IsChecked = enabled;
+        RefreshLegacyMenuStates();
+    }
+
+    private LegacyCommandResult ToggleIgnoreErrors()
+    {
+        var enabled = !_diagnostics.IgnoreErrors;
+        SetIgnoreErrors(enabled);
+        return LegacyCommandResult.Success(enabled ? "IGNORE ERRORS ON" : "IGNORE ERRORS OFF");
+    }
+
+    private void IgnoreErrors_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_controlsReady)
+            SetIgnoreErrors(IgnoreErrorsToggle.IsChecked == true);
+    }
+
+    private void HideToTray_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_globalSettings.Main.HideTray)
+        {
+            _viewModel.Status = "TRAY HIDDEN IN GLOBAL SETTINGS";
+            return;
+        }
+        if (_trayIcon is null)
+        {
+            _viewModel.Status = "TRAY UNAVAILABLE ON THIS DESKTOP";
+            return;
+        }
+
+        _diagnostics.HideToTray();
+        _trayIcon.IsVisible = true;
+        Hide();
+    }
+
+    private void RestoreFromTray()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            _diagnostics.RestoreFromTray();
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            _viewModel.Status = "RESTORED FROM TRAY";
+        });
+    }
+
     private LegacyCommandRouter CreateLegacyCommandRouter()
     {
         const string pending = "This historical command is not implemented in the modern runtime yet.";
@@ -232,6 +340,9 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.FilePauseSimulation] = Handler(
             () => LegacyCommandState.Available,
             _ => Task.FromResult(PauseSimulation()));
+        handlers[LegacyCommandId.FileIgnoreErrors] = Handler(
+            () => new LegacyCommandState(true, _diagnostics.IgnoreErrors),
+            _ => Task.FromResult(ToggleIgnoreErrors()));
         handlers[LegacyCommandId.FileNewSimulation] = Handler(
             () => LegacyCommandState.Available,
             _ => Task.FromResult(OpenNewSimulationSetup()));
@@ -399,6 +510,12 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.RecordingSafemodeBackup] = Handler(
             () => new LegacyCommandState(true, _safemodeBackup),
             _ => Task.FromResult(ToggleSafemodeBackup()));
+        handlers[LegacyCommandId.RecordingRecoverLatestAutosave] = Handler(
+            () => new LegacyCommandState(
+                _session is not null && RecoveryArtifactPath() is not null,
+                false,
+                _session is null ? "Start a simulation first." : "No autosave recovery artifact is available."),
+            async _ => await RecoverLatestAutosaveAsync());
         handlers[LegacyCommandId.RecordingSnapshotLiving] = Handler(
             EngineState,
             async _ => await SaveLivingSnapshotAsync());
@@ -848,6 +965,8 @@ public sealed partial class MainWindow : Window
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
         _globalSettings = dialog.Settings;
+        if (_trayIcon is not null)
+            _trayIcon.IsVisible = !_globalSettings.Main.HideTray;
         _viewModel.Status = "GLOBAL SETTINGS SAVED FOR NEXT WORLD";
         return LegacyCommandResult.Success("GLOBAL SETTINGS SAVED");
     }
@@ -860,12 +979,10 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        var species = _session?.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
+        var session = _session!;
         Viewport.SelectSlot(organism.Slot);
-        return await ShowDocumentAsync(
-            $"Robot {organism.Slot}:{organism.Generation}",
-            species?.Name ?? "Unassigned species",
-            $"Stable ID: {organism.Slot}:{organism.Generation}\nSpecies: {species?.Name ?? "Unassigned"}\nAge: {organism.Age:N0}\nEnergy: {organism.Energy:N0}\nBody: {organism.Body:N0}\nWaste: {organism.Waste:N0}\nChloroplasts: {organism.Chloroplasts:N0}\nShell / Slime: {organism.Shell:N0} / {organism.Slime:N0}\nPoison / Venom: {organism.Poison:N0} / {organism.Venom:N0}\nAim: {organism.Aim}\nPosition: {organism.Position[0]:0.0}, {organism.Position[1]:0.0}\nVelocity: {organism.Velocity[0]:0.00}, {organism.Velocity[1]:0.00}\nLineage: {organism.Phenotype.LineageId}\nAccumulated mutations: {organism.Phenotype.AccumulatedMutations:N0}");
+        new RobotDetailsWindow(session, new OrganismKey(organism.Slot, organism.Generation)).Show(this);
+        return LegacyCommandResult.Success("ROBOT DETAILS OPEN");
     }
 
     private async Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
@@ -902,10 +1019,11 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ShowSelectedGeneActivationsAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        var dna = await _session!.ExportDnaAsync(organism.Slot, organism.Generation);
-        var genes = dna.Split("cond", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var report = genes.Length == 0 ? "No cond/start gene blocks were found." : string.Join("\n\n", genes.Select((gene, index) => $"GENE {index + 1}\ncond{gene}"));
-        return await ShowDocumentAsync("Gene Activations", $"DNA blocks for {organism.Slot}:{organism.Generation}", report);
+        new RobotDetailsWindow(
+            _session!,
+            new OrganismKey(organism.Slot, organism.Generation),
+            RobotDetailsTab.GeneActivations).Show(this);
+        return LegacyCommandResult.Success("GENE ACTIVATIONS OPEN");
     }
 
     private async Task<LegacyCommandResult> MakeSelectedNewSpeciesAsync()
@@ -1151,6 +1269,67 @@ public sealed partial class MainWindow : Window
         else _autosaveTimer.Stop();
         return LegacyCommandResult.Success(_safemodeBackup ? "SAFEMODE BACKUP ON" : "SAFEMODE BACKUP OFF");
     }
+
+    private string? RecoveryArtifactPath()
+    {
+        if (_diagnostics.RecoveryArtifactPath is { } remembered && File.Exists(remembered))
+            return remembered;
+        return _storage.FindLatestAutosave();
+    }
+
+    private async Task<LegacyCommandResult> RecoverLatestAutosaveAsync()
+    {
+        if (_session is null)
+            return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var path = RecoveryArtifactPath();
+        if (path is null)
+            return LegacyCommandResult.Failure("NO AUTOSAVE RECOVERY ARTIFACT");
+
+        try
+        {
+            _runTimer.Stop();
+            await _session.LoadAsync(await File.ReadAllBytesAsync(path));
+            _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
+            return LegacyCommandResult.Success(_viewModel.Status);
+        }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: false);
+            return LegacyCommandResult.Failure(_viewModel.Status);
+        }
+    }
+
+    private async Task HandleEngineErrorAsync(Exception error, bool attemptRecovery)
+    {
+        var tick = _session?.LatestSnapshot.Tick ?? 0;
+        if (_diagnostics.IgnoreErrors)
+        {
+            var ignored = _diagnostics.HandleError(error, tick, null);
+            _viewModel.Status = ignored.Status;
+            RefreshLegacyMenuStates();
+            return;
+        }
+
+        _runTimer.Stop();
+        var artifact = RecoveryArtifactPath();
+        if (attemptRecovery && _safemodeBackup && _session is not null)
+        {
+            try
+            {
+                await _storage.SaveAutosaveAsync(await _session.SaveAsync());
+                artifact = _storage.FindLatestAutosave() ?? artifact;
+            }
+            catch
+            {
+                // Keep the previous artifact available when the failing engine cannot be saved again.
+            }
+        }
+
+        var decision = _diagnostics.HandleError(error, tick, artifact);
+        _viewModel.Status = decision.Status;
+        RefreshLegacyMenuStates();
+    }
+
     private async void Window_Opened(object? sender, EventArgs e)
     {
         try
@@ -1190,7 +1369,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception error)
         {
-            _viewModel.Status = $"ENGINE ERROR — {error.Message}";
+            await HandleEngineErrorAsync(error, attemptRecovery: true);
         }
     }
 
@@ -1223,7 +1402,14 @@ public sealed partial class MainWindow : Window
     private async void Step_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        await _session.StepAsync();
+        try
+        {
+            await _session.StepAsync();
+        }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: true);
+        }
     }
 
     private async void Kill_Click(object? sender, RoutedEventArgs e)
@@ -1359,7 +1545,7 @@ public sealed partial class MainWindow : Window
             await _session.SwitchBackendAsync(target);
             _viewModel.Status = $"BACKEND SWITCHED TO {_session.LatestSnapshot.Backend}";
         }
-        catch (Exception error) { _viewModel.Status = $"BACKEND SWITCH FAILED · {error.Message}"; }
+        catch (Exception error) { await HandleEngineErrorAsync(error, attemptRecovery: true); }
     }
 
     private void AddObstacle_Click(object? sender, RoutedEventArgs e)
@@ -1716,6 +1902,10 @@ public sealed partial class MainWindow : Window
             if (adaptive)
                 _maximumBatch = DesktopControlRules.AdaptMaximumBatch(batch, Stopwatch.GetElapsedTime(started), _turbo);
         }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: true);
+        }
         finally { _tickInFlight = false; }
     }
 
@@ -1736,6 +1926,7 @@ public sealed partial class MainWindow : Window
         _autosaveTimer.Stop();
         _graphWindow?.Close();
         _contestResultsWindow?.Close();
+        _trayIcon?.Dispose();
         if (_session is not null) await _session.DisposeAsync();
     }
 

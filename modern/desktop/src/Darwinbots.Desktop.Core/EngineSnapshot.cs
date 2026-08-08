@@ -48,7 +48,32 @@ public sealed record OrganismSnapshot(
 {
     public VisualPhenotypeSnapshot Phenotype { get; init; } = VisualPhenotypeSnapshot.Default;
     public VisionSnapshot Vision { get; init; } = VisionSnapshot.Default;
+    public uint CurrentGene { get; init; }
+    public uint ConditionCount { get; init; }
+    public bool[] ActivationBitmap { get; init; } = [];
+    public IReadOnlyList<ActivationFrameSnapshot> ActivationHistory { get; init; } = [];
+    public string DebugText { get; init; } = string.Empty;
+    public IReadOnlyList<MemoryCellSnapshot> Memory { get; init; } = [];
+    public int Mass { get; init; }
+    public float Radius { get; init; }
+    public int PermanentWaste { get; init; }
+    public ulong Offspring { get; init; }
+    public ulong Descendants { get; init; }
+    public ulong SimulationId { get; init; }
+    public ulong UniqueId { get; init; }
+    public int VirusTimer { get; init; }
+    public ulong NewMutations { get; init; }
+    public ulong TotalMutations { get; init; }
+    public uint DnaLength { get; init; }
+    public uint GeneCount { get; init; }
 }
+
+public sealed record ActivationFrameSnapshot(ulong Tick, bool[] Activations)
+{
+    public int ActiveGeneCount => Activations.Count(active => active);
+}
+
+public sealed record MemoryCellSnapshot(ushort Address, int Value);
 
 public sealed record SpeciesSnapshot(
     string Name,

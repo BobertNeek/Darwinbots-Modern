@@ -49,6 +49,10 @@ impl VmMemory {
             self.write(address, value);
         }
     }
+
+    pub fn entries(&self) -> impl Iterator<Item = (u16, i32)> + '_ {
+        self.cells.iter().copied()
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -75,6 +79,12 @@ pub struct VmReport {
     pub debug_text: String,
     pub energy_cost: f64,
     pub termination: VmTermination,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActivationFrame {
+    pub tick: u64,
+    pub activations: Vec<bool>,
 }
 
 pub struct DnaVm {

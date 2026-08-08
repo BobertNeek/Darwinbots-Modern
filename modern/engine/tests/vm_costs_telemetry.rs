@@ -59,6 +59,29 @@ fn gene_numbers_conditions_and_activations_match_flow() {
 }
 
 #[test]
+fn normal_tick_publishes_vm_activation_telemetry_for_live_diagnostics() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let robot = engine
+        .spawn_at(
+            LegacyDna::parse("cond 1 0 > start 11 100 store stop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let program = &engine.robot_state(robot).unwrap().program;
+    assert_eq!(program.current_gene, 1);
+    assert_eq!(program.activation_bitmap, vec![false, true]);
+
+    let snapshot = serde_json::to_value(engine.snapshot()).unwrap();
+    assert_eq!(
+        snapshot["organisms"][0]["activation_history"],
+        serde_json::json!([{"tick": 1, "activations": [false, true]}])
+    );
+}
+
+#[test]
 fn token_and_relative_store_costs_are_charged_exactly() {
     let category_cases = [
         (

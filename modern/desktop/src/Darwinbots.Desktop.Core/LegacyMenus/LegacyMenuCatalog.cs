@@ -23,6 +23,7 @@ public static class LegacyMenuCatalog
             L("Save Simulation", LegacyCommandId.FileSaveSimulation, "save", "F3"),
             L("Save Sim Without Mutations", LegacyCommandId.FileSaveWithoutMutations, "save-clean", "Ctrl+F3"),
             L("Pause Sim (F12)", LegacyCommandId.FilePauseSimulation, "pause", "F12"),
+            L("Ignore errors", LegacyCommandId.FileIgnoreErrors, "ignore-errors", check: LegacyMenuCheckKind.Check),
             S(),
             L("Quit", LegacyCommandId.FileQuit, "quit", "Ctrl+Q")),
 
@@ -119,6 +120,7 @@ public static class LegacyMenuCatalog
 
         LegacyMenuItem.Top("Recording",
             L("Safemode Backup", LegacyCommandId.RecordingSafemodeBackup, "backup", check: LegacyMenuCheckKind.Check),
+            L("Recover latest autosave", LegacyCommandId.RecordingRecoverLatestAutosave, "recover"),
             L("Snapshot of the living", LegacyCommandId.RecordingSnapshotLiving, "snapshot-living"),
             G("Snapshot of the dead", "snapshot-dead",
                 L("Enable recording", LegacyCommandId.RecordingDeadEnable, "record", check: LegacyMenuCheckKind.Check),

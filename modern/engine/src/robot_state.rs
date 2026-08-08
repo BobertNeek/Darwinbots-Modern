@@ -1,4 +1,5 @@
 use crate::dna::LEGACY_OCCURRENCE_CENSUS_SLOTS;
+use crate::vm::ActivationFrame;
 use crate::{
     BiologyState, EngineError, LegacyDna, OrganismId, PhysicsBatch, PointMutationSchedule,
     SpeciesId, StandardMutationProfile, VisualPhenotype, VmMemory,
@@ -113,6 +114,8 @@ pub struct RobotProgramState {
     pub current_gene: u32,
     pub condition_count: u32,
     pub activation_bitmap: Vec<bool>,
+    #[serde(default)]
+    pub activation_history: Vec<ActivationFrame>,
 }
 
 impl RobotProgramState {
@@ -130,6 +133,7 @@ impl RobotProgramState {
             current_gene: 0,
             condition_count: 0,
             activation_bitmap: Vec::new(),
+            activation_history: Vec::new(),
         }
     }
 

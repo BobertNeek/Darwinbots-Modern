@@ -38,6 +38,28 @@ public static class NativeSnapshotParser
         {
             Phenotype = ParsePhenotype(organism.Phenotype),
             Vision = ParseVision(organism.Vision),
+            CurrentGene = organism.CurrentGene,
+            ConditionCount = organism.ConditionCount,
+            ActivationBitmap = organism.ActivationBitmap ?? [],
+            ActivationHistory = (organism.ActivationHistory ?? [])
+                .Select(frame => new ActivationFrameSnapshot(frame.Tick, frame.Activations ?? []))
+                .ToArray(),
+            DebugText = organism.DebugText ?? string.Empty,
+            Memory = (organism.Memory ?? [])
+                .Select(cell => new MemoryCellSnapshot(cell.Address, cell.Value))
+                .ToArray(),
+            Mass = organism.Mass,
+            Radius = organism.Radius,
+            PermanentWaste = organism.PermanentWaste,
+            Offspring = organism.Offspring,
+            Descendants = organism.Descendants,
+            SimulationId = organism.SimulationId,
+            UniqueId = organism.UniqueId,
+            VirusTimer = organism.VirusTimer,
+            NewMutations = organism.NewMutations,
+            TotalMutations = organism.TotalMutations,
+            DnaLength = organism.DnaLength,
+            GeneCount = organism.GeneCount,
         }).ToArray();
         var renderInstances = (native.RenderInstances ?? []).Select(instance => new RenderInstanceSnapshot(
             instance.Slot,
@@ -500,7 +522,33 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("poisoned")] int Poisoned,
         [property: JsonPropertyName("parents")] NativeId?[]? Parents,
         [property: JsonPropertyName("phenotype")] NativeVisualPhenotype? Phenotype,
-        [property: JsonPropertyName("vision")] NativeVision? Vision);
+        [property: JsonPropertyName("vision")] NativeVision? Vision,
+        [property: JsonPropertyName("current_gene")] uint CurrentGene,
+        [property: JsonPropertyName("condition_count")] uint ConditionCount,
+        [property: JsonPropertyName("activation_bitmap")] bool[]? ActivationBitmap,
+        [property: JsonPropertyName("activation_history")] NativeActivationFrame[]? ActivationHistory,
+        [property: JsonPropertyName("debug_text")] string? DebugText,
+        [property: JsonPropertyName("memory")] NativeMemoryCell[]? Memory,
+        [property: JsonPropertyName("mass")] int Mass,
+        [property: JsonPropertyName("radius")] float Radius,
+        [property: JsonPropertyName("permanent_waste")] int PermanentWaste,
+        [property: JsonPropertyName("offspring")] ulong Offspring,
+        [property: JsonPropertyName("descendants")] ulong Descendants,
+        [property: JsonPropertyName("simulation_id")] ulong SimulationId,
+        [property: JsonPropertyName("unique_id")] ulong UniqueId,
+        [property: JsonPropertyName("virus_timer")] int VirusTimer,
+        [property: JsonPropertyName("new_mutations")] ulong NewMutations,
+        [property: JsonPropertyName("total_mutations")] ulong TotalMutations,
+        [property: JsonPropertyName("dna_length")] uint DnaLength,
+        [property: JsonPropertyName("gene_count")] uint GeneCount);
+
+    private sealed record NativeActivationFrame(
+        [property: JsonPropertyName("tick")] ulong Tick,
+        [property: JsonPropertyName("activations")] bool[]? Activations);
+
+    private sealed record NativeMemoryCell(
+        [property: JsonPropertyName("address")] ushort Address,
+        [property: JsonPropertyName("value")] int Value);
 
     private sealed record NativeSkinPoint(
         [property: JsonPropertyName("radius")] float Radius,
