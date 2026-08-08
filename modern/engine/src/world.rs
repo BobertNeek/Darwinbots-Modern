@@ -2389,11 +2389,10 @@ impl Engine {
             return Ok(());
         };
         if config.restart_on_extinction && self.mode_heterotroph_population() == 0 {
-            self.restart_mode_world(None)?;
-            self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
-            self.local_mode.current_round = self.local_mode.current_round.saturating_add(1);
-            self.local_mode.cycle_in_round = 0;
-            self.local_mode.status = LocalModeStatus::Running;
+            if self.local_mode.current_round < config.maximum_rounds {
+                self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
+            }
+            self.finish_local_mode_round(None, "extinction".to_owned(), true)?;
             return Ok(());
         }
         if self.local_mode.cycle_in_round >= config.maximum_cycles {
@@ -2403,6 +2402,14 @@ impl Engine {
     }
 
     fn restart_mode_world(&mut self, keep_species: Option<SpeciesId>) -> Result<(), EngineError> {
+        let winner_seed = keep_species.and_then(|species| {
+            self.slots
+                .iter()
+                .filter_map(|slot| slot.organism.as_ref())
+                .filter(|organism| organism.identity.species == species)
+                .max_by_key(|organism| (organism.materials.energy, organism.counters.age))
+                .cloned()
+        });
         let ids: Vec<_> = self
             .slots
             .iter()
@@ -2469,13 +2476,55 @@ impl Engine {
                 ];
                 let id =
                     self.spawn_species_at_unpublished(template.dna.clone(), species, position)?;
+                let absolute_id = winner_seed
+                    .as_ref()
+                    .map(|_| self.allocate_absolute_identity());
                 let organism = self.slots.get_mut(id)?;
-                organism.materials.energy = template.initial_energy;
-                organism.materials.synchronize_energy();
-                organism
-                    .program
-                    .memory
-                    .write(MEM_NRG, template.initial_energy);
+                if let Some(seed) = winner_seed.as_ref() {
+                    organism.program = seed.program.clone();
+                    organism.materials = seed.materials.clone();
+                    organism.flags = seed.flags.clone();
+                    organism.counters = seed.counters.clone();
+                    organism.heredity = seed.heredity.clone();
+                    organism.buoyancy = seed.buoyancy;
+                    organism.phenotype = seed.phenotype.clone();
+                    organism.identity.species = species;
+                    organism.identity.parents = [None, None];
+                    organism.identity.absolute_id = absolute_id.unwrap_or_default();
+                    organism.flags.exists = true;
+                    organism.flags.corpse = false;
+                    organism.flags.dead = false;
+                    organism.flags.vegetable = false;
+                    organism.materials.energy = organism.materials.energy.max(1);
+                    organism.materials.synchronize_energy();
+                    organism.materials.publish(&mut organism.program.memory);
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_XPOS, organism.kinematics.position[0].round() as i32);
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_YPOS, organism.kinematics.position[1].round() as i32);
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_NRG, organism.materials.energy);
+                    organism.program.memory.write(
+                        MEM_MY_EYE,
+                        organism
+                            .program
+                            .dna
+                            .address_reference_count(MEM_EYE1, MEM_EYE9),
+                    );
+                } else {
+                    organism.materials.energy = template.initial_energy;
+                    organism.materials.synchronize_energy();
+                    organism
+                        .program
+                        .memory
+                        .write(MEM_NRG, template.initial_energy);
+                }
                 spawned += 1;
             }
         }
