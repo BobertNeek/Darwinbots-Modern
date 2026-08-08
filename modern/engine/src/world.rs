@@ -70,7 +70,6 @@ pub(crate) enum DefensivePoisonRoute {
 const MEM_REF_NRG: i32 = 709;
 const MEM_REF_AGE: i32 = 710;
 const MEM_EYE1: i32 = 501;
-const MEM_EYE9: i32 = 509;
 const MEM_TIE_PRESENT: i32 = 454;
 const MEM_NUMBER_OF_TIES: i32 = 466;
 const MEM_MULTI: i32 = 470;
@@ -2645,13 +2644,7 @@ impl Engine {
                         .program
                         .memory
                         .write(MEM_NRG, organism.materials.energy);
-                    organism.program.memory.write(
-                        MEM_MY_EYE,
-                        organism
-                            .program
-                            .dna
-                            .address_reference_count(MEM_EYE1, MEM_EYE9),
-                    );
+                    organism.refresh_occurrence_census();
                 } else {
                     organism.materials.energy = template.initial_energy;
                     organism.materials.synchronize_energy();
@@ -2806,7 +2799,6 @@ impl Engine {
         memory.write(MEM_NRG, 1_000);
         memory.write(MEM_XPOS, position[0].round() as i32);
         memory.write(MEM_YPOS, position[1].round() as i32);
-        memory.write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
         initial_biology.publish(&mut memory);
         let state = RobotState::new(
             dna,
@@ -2979,11 +2971,8 @@ impl Engine {
 
     pub fn replace_dna(&mut self, id: OrganismId, dna: LegacyDna) -> Result<(), EngineError> {
         let organism = self.slots.get_mut(id)?;
-        organism
-            .program
-            .memory
-            .write(MEM_MY_EYE, dna.address_reference_count(MEM_EYE1, MEM_EYE9));
         organism.program.dna = dna;
+        organism.refresh_occurrence_census();
         self.publish_snapshot();
         Ok(())
     }
@@ -3190,6 +3179,7 @@ impl Engine {
             self.record_history();
         }
 
+        self.refresh_occurrence_census_readbacks();
         trace.phase(CyclePhase::Dna);
         let started = Instant::now();
         self.execute_dna_phase(&mut trace)?;
@@ -3316,6 +3306,7 @@ impl Engine {
         let started = Instant::now();
         self.vegetation_feed_phase();
         self.phase_timings.vegetation += elapsed_ms(started);
+        self.refresh_occurrence_census_readbacks();
         trace.phase(CyclePhase::Publication);
         self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
         if publish {
@@ -4103,6 +4094,14 @@ impl Engine {
                 }),
                 &mut robot.program.memory,
             );
+        }
+    }
+
+    fn refresh_occurrence_census_readbacks(&mut self) {
+        for slot in self.slots.iter_mut() {
+            if let Some(robot) = slot.organism.as_mut() {
+                robot.refresh_occurrence_census();
+            }
         }
     }
 
@@ -5579,13 +5578,7 @@ impl Engine {
                         );
                         let boundary = random as usize % boundary_count.saturating_add(1);
                         target_robot.program.dna = target_dna.insert_gene(&gene, boundary);
-                        target_robot.program.memory.write(
-                            MEM_MY_EYE,
-                            target_robot
-                                .program
-                                .dna
-                                .address_reference_count(MEM_EYE1, MEM_EYE9),
-                        );
+                        target_robot.refresh_occurrence_census();
                         publish_reproductive_readbacks(target_robot);
                         true
                     }
@@ -6824,13 +6817,7 @@ impl Engine {
                 &organism.program.mutation_profile,
                 policy,
             );
-            organism.program.memory.write(
-                MEM_MY_EYE,
-                organism
-                    .program
-                    .dna
-                    .address_reference_count(MEM_EYE1, MEM_EYE9),
-            );
+            organism.refresh_occurrence_census();
             organism.program.rng_state = mutator.random_state();
             if report.changes > 0 {
                 let vegetable = self
@@ -7035,6 +7022,7 @@ impl Engine {
 
     fn publish_snapshot(&mut self) {
         self.refresh_tie_projections();
+        self.refresh_occurrence_census_readbacks();
         let organisms: Vec<_> = self
             .slots
             .par_iter()
@@ -7165,13 +7153,7 @@ impl Engine {
         engine.species_templates.resize(engine.species.len(), None);
         for slot in &mut engine.slots {
             if let Some(organism) = slot.organism.as_mut() {
-                organism.program.memory.write(
-                    MEM_MY_EYE,
-                    organism
-                        .program
-                        .dna
-                        .address_reference_count(MEM_EYE1, MEM_EYE9),
-                );
+                organism.refresh_occurrence_census();
                 if organism.phenotype.lineage_id == 0
                     && let Some(species) = engine.species.get(organism.identity.species.0 as usize)
                 {

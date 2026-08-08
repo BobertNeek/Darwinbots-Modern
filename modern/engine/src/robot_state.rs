@@ -1,3 +1,4 @@
+use crate::dna::LEGACY_OCCURRENCE_CENSUS_SLOTS;
 use crate::{
     BiologyState, EngineError, LegacyDna, OrganismId, PhysicsBatch, PointMutationSchedule,
     SpeciesId, StandardMutationProfile, VisualPhenotype, VmMemory,
@@ -140,8 +141,10 @@ impl RobotProgramState {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RobotSenseState {
+    /// Stable 11-element projection of legacy occurrence slots 1 through 11.
+    #[serde(default = "default_occurrence_census")]
     pub vision_reference_occurrences: Vec<u16>,
     pub focused_opponent: Option<OrganismId>,
     pub touch: i32,
@@ -149,6 +152,24 @@ pub struct RobotSenseState {
     pub eye_configuration: [i32; 9],
     pub console_reference: Option<OrganismId>,
     pub rgb_monitor: [i32; 3],
+}
+
+impl Default for RobotSenseState {
+    fn default() -> Self {
+        Self {
+            vision_reference_occurrences: default_occurrence_census(),
+            focused_opponent: None,
+            touch: 0,
+            taste: 0,
+            eye_configuration: [0; 9],
+            console_reference: None,
+            rgb_monitor: [0; 3],
+        }
+    }
+}
+
+fn default_occurrence_census() -> Vec<u16> {
+    vec![0; LEGACY_OCCURRENCE_CENSUS_SLOTS]
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -230,7 +251,7 @@ impl RobotState {
         materials: BiologyState,
         phenotype: VisualPhenotype,
     ) -> Self {
-        Self {
+        let mut state = Self {
             identity: RobotIdentity {
                 species,
                 parents,
@@ -250,6 +271,21 @@ impl RobotState {
             heredity: RobotHeredityState::default(),
             ties: [None; 10],
             phenotype,
+        };
+        state.refresh_occurrence_census();
+        state
+    }
+
+    pub(crate) fn refresh_occurrence_census(&mut self) {
+        const OWN_READBACK_BASE: i32 = 721;
+
+        let occurrences = self.program.dna.occurrence_census_248();
+        self.senses.vision_reference_occurrences = occurrences.to_vec();
+        for (index, occurrence) in occurrences.into_iter().enumerate() {
+            self.program.memory.write(
+                OWN_READBACK_BASE + i32::try_from(index).unwrap(),
+                i32::from(occurrence),
+            );
         }
     }
 }

@@ -5,6 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub use crate::dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
 
+pub(crate) const LEGACY_OCCURRENCE_CENSUS_SLOTS: usize = 11;
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum Instruction {
     Number(i32),
@@ -301,6 +303,47 @@ impl LegacyDna {
             })
             .count()
             .min(i32::MAX as usize) as i32
+    }
+
+    pub(crate) fn occurrence_census_248(&self) -> [u16; LEGACY_OCCURRENCE_CENSUS_SLOTS] {
+        let coding_end = self
+            .blocks
+            .iter()
+            .take(MAX_DNA_BLOCKS)
+            .position(|block| block.class == TokenClass::End && block.value == 1)
+            .unwrap_or_else(|| self.blocks.len().min(MAX_DNA_BLOCKS));
+        let blocks = &self.blocks[..coding_end];
+        let mut occurrences = [0_u16; LEGACY_OCCURRENCE_CENSUS_SLOTS];
+
+        for (index, block) in blocks.iter().enumerate() {
+            match block.class {
+                TokenClass::Number => {
+                    if block.value == 330 {
+                        occurrences[8] = occurrences[8].saturating_add(1);
+                    }
+                    if blocks
+                        .get(index + 1)
+                        .is_some_and(|next| next.class == TokenClass::Store)
+                    {
+                        match block.value {
+                            1..=7 => {
+                                let slot = usize::try_from(block.value - 1).unwrap();
+                                occurrences[slot] = occurrences[slot].saturating_add(1);
+                            }
+                            826 => occurrences[9] = occurrences[9].saturating_add(1),
+                            824 => occurrences[10] = occurrences[10].saturating_add(1),
+                            _ => {}
+                        }
+                    }
+                }
+                TokenClass::Dereference if 500 < block.value && block.value < 510 => {
+                    occurrences[7] = occurrences[7].saturating_add(1);
+                }
+                _ => {}
+            }
+        }
+
+        occurrences
     }
 
     pub(crate) fn blocks_mut(&mut self) -> &mut Vec<DnaBlock> {
