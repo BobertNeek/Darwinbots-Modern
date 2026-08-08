@@ -41,6 +41,7 @@ public sealed record WorldSetupOptions
     public bool ToroidalWorld { get; init; } = true;
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
+    public GlobalSettings GlobalSettings { get; init; } = new();
     public string? LoadSavePath { get; init; }
 
     public int EffectiveMetabolismCost => StartingMode == StartingMode.StarterBotsAndVegetables

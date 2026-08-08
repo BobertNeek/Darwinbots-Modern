@@ -32,6 +32,7 @@ public static class LegacyMenuCatalog
             L("Species...", LegacyCommandId.EditSpecies, "species", "Ctrl+X"),
             L("General Settings...", LegacyCommandId.EditGeneralSettings, "settings", "Ctrl+P"),
             L("Physics and Costs...", LegacyCommandId.EditPhysicsAndCosts, "physics", "F5"),
+            L("Global Settings...", LegacyCommandId.EditGlobalSettings, "settings"),
             L("Global Mutation Rates...", LegacyCommandId.EditGlobalMutationRates, "mutation", "Ctrl+G"),
             L("Restart and Leagues...", LegacyCommandId.EditRestartAndLeagues, "restart", "Ctrl+F"),
             L("Internet Options...", LegacyCommandId.EditInternetOptions, "internet"),

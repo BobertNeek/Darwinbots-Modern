@@ -7,17 +7,18 @@ use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_
 use crate::simulation_cycle::CycleRecorder;
 use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_DEADBAND};
 use crate::{
-    BackendCapabilities, BackendKind, BackendPreference, BiologyState, CommandOutcome,
-    CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm,
-    EngineConfig, EngineError, EyeSnapshot, FileTeleporter, GenomeMutator, GpuPhysicsBackend,
-    HistorySample, LegacyDna, LegacyOrganism, LegacySimulationFile, Obstacle, OrganismId,
-    PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch, PhysicsSettings,
-    PlantLightInput, ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn,
-    ProjectileTarget, QueueChangeKind, RenderInstance, ShotSettings, ShotSnapshot, SimulationStats,
-    SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId, StandardMutationProfile,
-    StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands, TieReadbacks, TieSnapshot,
-    TieState, VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot,
-    VisualPhenotype, VmMemory, TokenClass, eye_value, generated_skin, projectile_effect,
+    AdvancedMutationSettings, BackendCapabilities, BackendKind, BackendPreference, BiologyState,
+    CommandOutcome, CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaCosts,
+    DnaMetadata, DnaVm, EngineConfig, EngineError, EyeSnapshot, FileTeleporter, GenomeMutator,
+    GpuPhysicsBackend, HistorySample, LegacyDna, LegacyOrganism, LegacySimulationFile,
+    MutationPolicyInput, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings,
+    PhysicsBackend, PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect,
+    ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind,
+    RenderInstance, ShotSettings, ShotSnapshot, SimulationCostAction, SimulationStats, SkinPoint,
+    SpatialIndex, SpeciesDefinition, SpeciesId, StandardMutationProfile, StoredGeneticMaterial,
+    SysvarRuntime, Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState, TokenClass,
+    VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype,
+    VmMemory, apply_advanced_mutation_policies, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -88,6 +89,14 @@ const TIED_REFERENCE_ADDRESSES: [i32; 26] = [
     437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 456, 457, 458, 459, 460, 461,
     462, 463, 464, 465, 475, 478, 479,
 ];
+
+fn settle_simulation_cost(robot: &mut RobotState, cost: f64) {
+    if !cost.is_finite() || cost == 0.0 {
+        return;
+    }
+    let whole = robot.program.settle_dna_energy_cost(cost);
+    robot.materials.energy = robot.materials.energy.saturating_sub(whole);
+}
 
 fn write_directional_sensor(
     memory: &mut VmMemory,
@@ -564,6 +573,7 @@ impl From<Db3sV2DnaCosts> for DnaCosts {
             dna_upkeep: value.dna_upkeep,
             dna_copy: 0.0,
             global_multiplier: value.global_multiplier,
+            ..DnaCosts::default()
         }
     }
 }
@@ -589,6 +599,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             shots: value.shots.into(),
             vegetation: value.vegetation.into(),
             dna_costs: value.dna_costs.into(),
+            advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: value.auto_speciation,
             speciation_genetic_distance_percent: value.speciation_genetic_distance_percent,
             force_gpu_unavailable_for_tests: false,
@@ -2140,6 +2151,55 @@ impl Engine {
         Ok(())
     }
 
+    pub fn advanced_mutation_settings(&self) -> &AdvancedMutationSettings {
+        &self.config.advanced_mutation
+    }
+
+    pub fn update_advanced_mutation_settings(
+        &mut self,
+        settings: AdvancedMutationSettings,
+    ) -> Result<(), EngineError> {
+        if settings.normalization_enabled && settings.normalization_dna_length == 0 {
+            return Err(EngineError::Invariant(
+                "mutation normalization DNA length must be positive".to_owned(),
+            ));
+        }
+        if settings.delta2.enabled && settings.delta2.interval == 0 {
+            return Err(EngineError::Invariant(
+                "Delta2 interval must be positive when enabled".to_owned(),
+            ));
+        }
+        if !settings.oscillation.amplitude.is_finite()
+            || !settings.epigenetic.amplification.is_finite()
+        {
+            return Err(EngineError::Invariant(
+                "advanced mutation values must be finite".to_owned(),
+            ));
+        }
+        self.config.advanced_mutation = settings;
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn cost_settings(&self) -> &DnaCosts {
+        &self.config.dna_costs
+    }
+
+    pub fn update_cost_settings(&mut self, costs: DnaCosts) -> Result<(), EngineError> {
+        if !costs.global_multiplier.is_finite()
+            || costs.global_multiplier < 0.0
+            || !costs.dynamic_cost_multiplier.is_finite()
+            || !costs.dynamic_sensitivity.is_finite()
+        {
+            return Err(EngineError::Invariant(
+                "simulation cost settings must be finite and nonnegative where required".to_owned(),
+            ));
+        }
+        self.config.dna_costs = costs;
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub fn set_ties_enabled(&mut self, enabled: bool) {
         self.ties_enabled = enabled;
         if !enabled {
@@ -3682,12 +3742,20 @@ impl Engine {
 
     fn upkeep_phase(&mut self) {
         let metabolism = self.config.metabolism_cost.max(0);
+        let population = self.population();
+        let costs = &self.config.dna_costs;
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
-            robot.materials.energy = robot.materials.energy.saturating_sub(metabolism);
-            robot.materials.waste = robot.materials.waste.saturating_add(metabolism);
+            let cost = costs.upkeep_cost(
+                f64::from(robot.materials.body),
+                1,
+                population,
+            ) + f64::from(metabolism) * costs.dynamic_multiplier(population);
+            settle_simulation_cost(robot, cost);
+            let waste = cost.max(0.0).floor().min(f64::from(i32::MAX)) as i32;
+            robot.materials.waste = robot.materials.waste.saturating_add(waste);
         }
     }
 
@@ -3734,6 +3802,8 @@ impl Engine {
     fn movement_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
         let settings = &self.config.physics;
+        let costs = &self.config.dna_costs;
+        let population = self.population();
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -3770,6 +3840,14 @@ impl Engine {
                 settings,
             );
             robot.kinematics.pending_velocity = movement.velocity;
+            let amount = [commands.up, commands.down, commands.left, commands.right]
+                .into_iter()
+                .map(|value| f64::from(value.unsigned_abs()))
+                .sum();
+            settle_simulation_cost(
+                robot,
+                costs.action_cost_for(SimulationCostAction::Movement, amount, population),
+            );
         }
     }
 
@@ -3923,6 +4001,8 @@ impl Engine {
 
     fn material_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let costs = &self.config.dna_costs;
+        let population = self.population();
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -3955,6 +4035,29 @@ impl Engine {
             robot
                 .materials
                 .apply_outputs(&mut robot.program.memory, 0, aim, commands);
+            let material_cost = costs.action_cost_for(
+                SimulationCostAction::Shell,
+                f64::from(commands.make_shell.max(0)),
+                population,
+            ) + costs.action_cost_for(
+                SimulationCostAction::Slime,
+                f64::from(commands.make_slime.max(0)),
+                population,
+            ) + costs.action_cost_for(
+                SimulationCostAction::Venom,
+                f64::from(commands.make_venom.max(0)),
+                population,
+            ) + costs.action_cost_for(
+                SimulationCostAction::Poison,
+                f64::from(commands.make_poison.max(0)),
+                population,
+            ) + costs.action_cost_for(
+                SimulationCostAction::ChloroplastConstruction,
+                f64::from(commands.make_chloroplasts.max(0)),
+                population,
+            );
+            settle_simulation_cost(robot, material_cost);
+            robot.materials.publish(&mut robot.program.memory);
             robot.program.memory.write(
                 MEM_READ_BUOYANCY,
                 (robot.buoyancy * 32_000.0).round_ties_even() as i32,
@@ -3964,11 +4067,15 @@ impl Engine {
 
     fn age_timer_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let costs = &self.config.dna_costs;
+        let population = self.population();
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
             robot.counters.age = robot.counters.age.saturating_add(1);
+            settle_simulation_cost(robot, costs.age_cost(robot.counters.age, population));
+            robot.materials.publish(&mut robot.program.memory);
             runtime.publish(
                 PhaseReadbacks::Core(CoreReadbacks {
                     values: vec![(
@@ -4876,6 +4983,17 @@ impl Engine {
                 first_port,
                 second_port,
             ));
+            let tie_cost = self.config.dna_costs.action_cost_for(
+                SimulationCostAction::TieFormation,
+                1.0,
+                self.population(),
+            );
+            if let Some(first_robot) = self.slots[first_slot].organism.as_mut() {
+                settle_simulation_cost(first_robot, tie_cost);
+                first_robot
+                    .materials
+                    .publish(&mut first_robot.program.memory);
+            }
             self.stats.ties_created = self.stats.ties_created.saturating_add(1);
             if trace.is_enabled() {
                 trace.effect(CyclePhase::TieFire, Some(first), second, "tie_created");
@@ -4891,6 +5009,8 @@ impl Engine {
             .filter(|_| self.local_mode.status == LocalModeStatus::Running)
             .map(|config| config.restrictions.clone());
         let runtime = SysvarRuntime::new();
+        let costs = &self.config.dna_costs;
+        let population = self.population();
         for attacker_slot in 0..self.slots.len() {
             let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
                 continue;
@@ -4934,6 +5054,15 @@ impl Engine {
             } else {
                 commands.value.abs().max(1)
             };
+            settle_simulation_cost(
+                attacker,
+                costs.action_cost_for(
+                    SimulationCostAction::ShotFormation,
+                    f64::from(value),
+                    population,
+                ),
+            );
+            attacker.materials.publish(&mut attacker.program.memory);
             let mut angle = attacker.materials.aim as f32 / 200.0;
             if commands.backshot != 0 {
                 angle -= std::f32::consts::PI;
@@ -6500,10 +6629,18 @@ impl Engine {
             );
 
             let mut charged_copy_cost = false;
+            let copy_cost = self
+                .slots
+                .get(birth.parent)
+                .map(|parent_organism| {
+                    self.config.dna_costs.action_cost_for(
+                        SimulationCostAction::DnaCopy,
+                        parent_organism.program.dna.blocks().len() as f64,
+                        self.population(),
+                    )
+                })
+                .unwrap_or(0.0);
             if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
-                let copy_cost = parent_organism.program.dna.blocks().len() as f64
-                    * self.config.dna_costs.dna_copy
-                    * self.config.dna_costs.global_multiplier;
                 let whole_copy_cost = parent_organism.program.settle_dna_energy_cost(copy_cost);
                 if whole_copy_cost > 0 {
                     parent_organism.materials.energy = parent_organism
@@ -6603,11 +6740,75 @@ impl Engine {
     }
 
     fn mutation_phase(&mut self) {
+        if !self.mutations_enabled {
+            return;
+        }
+        let settings = self.config.advanced_mutation.clone();
+        let base_multiplier = f64::from(self.global_mutation_multiplier);
+        let delta2_due = settings.delta2.enabled
+            && settings.delta2.interval > 0
+            && self.tick.is_multiple_of(settings.delta2.interval);
+        if delta2_due {
+            let policy_settings = AdvancedMutationSettings {
+                epigenetic: Default::default(),
+                ..settings.clone()
+            };
+            for slot in self.slots.iter_mut() {
+                let Some(organism) = slot.organism.as_mut() else {
+                    continue;
+                };
+                if !organism.flags.can_mutate {
+                    continue;
+                }
+                apply_advanced_mutation_policies(
+                    &mut organism.program.mutation_profile,
+                    &policy_settings,
+                    MutationPolicyInput {
+                        cycle: self.tick,
+                        dna_len: organism.program.dna.blocks().len(),
+                        mutation_count: organism.program.mutation_metadata.total_mutations,
+                        base_multiplier,
+                    },
+                    &mut organism.heredity.epigenetic_staging,
+                );
+            }
+        }
         let pending_mutations = std::mem::take(&mut self.pending_mutations);
+        let mut pending_settings = settings;
+        if delta2_due {
+            pending_settings.delta2.enabled = false;
+        }
         for id in pending_mutations {
             let Ok(organism) = self.slots.get_mut(id) else {
                 continue;
             };
+            if !organism.flags.can_mutate {
+                continue;
+            }
+            let policy = apply_advanced_mutation_policies(
+                &mut organism.program.mutation_profile,
+                &pending_settings,
+                MutationPolicyInput {
+                    cycle: self.tick,
+                    dna_len: organism.program.dna.blocks().len(),
+                    mutation_count: organism.program.mutation_metadata.total_mutations,
+                    base_multiplier,
+                },
+                &mut organism.heredity.epigenetic_staging,
+            );
+            if !matches!(
+                policy.epigenetic_action,
+                crate::EpigeneticPolicyAction::None
+            ) {
+                organism
+                    .program
+                    .mutation_metadata
+                    .detailed_log
+                    .push(format!(
+                        "epigenetic:{:?}:one_in={:.3}",
+                        policy.epigenetic_action, policy.effective_one_in
+                    ));
+            }
             let mut mutator = GenomeMutator::new(organism.program.rng_state);
             let report = mutator.mutate(&mut organism.program.dna);
             organism.program.memory.write(
@@ -6632,6 +6833,12 @@ impl Engine {
                     .phenotype
                     .accumulated_mutations
                     .saturating_add(report.changes);
+                organism.program.mutation_metadata.total_mutations = organism
+                    .program
+                    .mutation_metadata
+                    .total_mutations
+                    .saturating_add(report.changes as u64);
+                organism.program.mutation_metadata.last_mutation_cycle = Some(self.tick);
                 let threshold = ((organism.program.dna.instructions().len().max(1) as f32)
                     * self
                         .config

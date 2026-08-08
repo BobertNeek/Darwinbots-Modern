@@ -30,7 +30,8 @@ public sealed partial class NativeEngineClient : IEngineClient
         options.Vegetation,
         options.AutoSpeciation,
         options.SpeciationGeneticDistancePercent,
-        options.ToroidalWorld)
+        options.ToroidalWorld,
+        options.GlobalSettings)
     {
     }
 
@@ -52,7 +53,8 @@ public sealed partial class NativeEngineClient : IEngineClient
         Db2VegetationOptions? vegetation = null,
         bool autoSpeciation = false,
         float speciationGeneticDistancePercent = 20f,
-        bool toroidalWorld = true)
+        bool toroidalWorld = true,
+        GlobalSettings? globalSettings = null)
     {
         _worldWidth = worldWidth;
         _worldHeight = worldHeight;
@@ -61,6 +63,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         physics ??= Db2PhysicsOptions.Default;
         shots ??= Db2ShotOptions.Default;
         vegetation ??= Db2VegetationOptions.Default;
+        globalSettings ??= new GlobalSettings();
         ValidatePosition(gravity);
         var bytes = JsonSerializer.SerializeToUtf8Bytes(new
         {
@@ -83,6 +86,8 @@ public sealed partial class NativeEngineClient : IEngineClient
             auto_speciation = autoSpeciation,
             speciation_genetic_distance_percent = speciationGeneticDistancePercent,
             toroidal_world = toroidalWorld,
+            dna_costs = NativeCommandSerializer.DnaCosts(globalSettings.Costs),
+            advanced_mutation = NativeCommandSerializer.AdvancedMutation(globalSettings.AdvancedMutation, globalSettings.Main),
         });
         ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
         if (_engine == IntPtr.Zero)

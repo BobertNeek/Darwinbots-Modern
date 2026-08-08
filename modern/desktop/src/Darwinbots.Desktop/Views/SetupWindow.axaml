@@ -20,6 +20,7 @@
           </MenuItem>
           <MenuItem x:Name="ViewMenu" Header="_VIEW">
             <MenuItem x:Name="AdvancedMenuItem" Header="ADVANCED SETTINGS" HotKey="Ctrl+," Click="Advanced_Click"/>
+            <MenuItem x:Name="GlobalSettingsMenuItem" Header="GLOBAL SETTINGS" HotKey="Ctrl+G" Click="GlobalSettings_Click"/>
           </MenuItem>
           <MenuItem x:Name="HelpMenu" Header="_HELP">
             <MenuItem x:Name="AboutMenuItem" Header="ABOUT DARWINBOTS MODERN" HotKey="F1" Click="About_Click"/>
@@ -98,6 +99,7 @@
         <TextBlock x:Name="SustenanceHint" TextWrapping="Wrap" Foreground="#6F716D" FontSize="12"/>
         <CheckBox x:Name="AutomaticProgression" IsChecked="True" Content="AUTOMATIC ZEROBOT PROGRESSION" Margin="0,8,0,0"/>
         <Button x:Name="AdvancedSettingsButton" Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
+        <Button x:Name="GlobalSettingsButton" Content="☷  GLOBAL SETTINGS" Click="GlobalSettings_Click"/>
         <Button x:Name="CreateWorldButton" Content="▶  CREATE WORLD" Background="#4C7D30" Foreground="White" FontWeight="Bold" FontSize="18" Height="58" Margin="0,12,0,0" Click="CreateWorld_Click"/>
         <Button x:Name="RecoverButton" Content="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
       </StackPanel></ScrollViewer>

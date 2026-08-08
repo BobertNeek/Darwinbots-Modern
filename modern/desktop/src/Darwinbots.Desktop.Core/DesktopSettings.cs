@@ -14,6 +14,7 @@ public sealed record DesktopSettings
     public int OrganismCapacity { get; init; } = 100_000;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
+    public GlobalSettings GlobalSettings { get; init; } = new();
 
     public string ToJson() => JsonSerializer.Serialize(this, SerializerOptions);
 

@@ -138,4 +138,76 @@ public static class NativeCommandSerializer
         day_night_enabled = value.DayNightEnabled,
         cycle_length = value.CycleLength,
     };
+
+    internal static object DnaCosts(GlobalSimulationCostSettings value) => new
+    {
+        number = value.DnaNumber,
+        dereference = value.DnaDereference,
+        basic = value.DnaBasic,
+        advanced = value.DnaAdvanced,
+        bitwise = value.DnaBitwise,
+        condition = value.DnaCondition,
+        logic = value.DnaLogic,
+        store = value.DnaStore,
+        flow = value.DnaFlow,
+        dna_upkeep = value.DnaUpkeep,
+        dna_copy = value.DnaCopy,
+        movement = value.Movement,
+        rotation = value.Rotation,
+        tie_formation = value.TieFormation,
+        shot_formation = value.ShotFormation,
+        venom = value.Venom,
+        poison = value.Poison,
+        slime = value.Slime,
+        shell = value.Shell,
+        body_upkeep = value.BodyUpkeep,
+        chloroplast_construction = value.ChloroplastConstruction,
+        virus = value.Virus,
+        age_base = value.AgeBase,
+        age_start = value.AgeStart,
+        age_linear = value.AgeLinear,
+        age_logarithmic = value.AgeLogarithmic,
+        dynamic_cost_multiplier = value.DynamicMultiplier,
+        dynamic_all_robots = value.DynamicAllRobots,
+        dynamic_target_population = value.DynamicTargetPopulation,
+        dynamic_population_range = value.DynamicPopulationRange,
+        dynamic_sensitivity = value.DynamicSensitivity,
+        dynamic_allow_negative = value.DynamicAllowNegative,
+        dynamic_lower_zero_threshold = value.DynamicLowerZeroThreshold,
+        dynamic_upper_zero_threshold = value.DynamicUpperZeroThreshold,
+        dynamic_lower_reinstate_threshold = value.DynamicLowerReinstateThreshold,
+        dynamic_upper_reinstate_threshold = value.DynamicUpperReinstateThreshold,
+        global_multiplier = value.GlobalMultiplier,
+    };
+
+    internal static object AdvancedMutation(GlobalAdvancedMutationSettings value, GlobalMainSettings main) => new
+    {
+        point2_enabled = value.Point2Enabled,
+        copy_error2_enabled = value.CopyError2Enabled,
+        amplification_enabled = value.AmplificationEnabled,
+        translocation_enabled = value.TranslocationEnabled,
+        normalization_enabled = value.NormalizationEnabled,
+        normalization_dna_length = value.NormalizationDnaLength,
+        delta2 = new
+        {
+            enabled = value.Delta2Enabled,
+            interval = value.Delta2Interval,
+            rate_step = value.Delta2RateStep,
+            distribution_step = value.Delta2DistributionStep,
+            preference_step_percent = value.Delta2PreferenceStepPercent,
+        },
+        oscillation = new
+        {
+            mode = value.OscillationMode.ToString(),
+            period = value.OscillationPeriod,
+            amplitude = value.OscillationAmplitude,
+        },
+        epigenetic = new
+        {
+            reset_enabled = value.EpigeneticReset || main.EpigeneticReset,
+            amplification = value.EpigeneticAmplification * main.EpigeneticAmplification,
+            overload_threshold = value.EpigeneticOverloadThreshold,
+            save_as_temporary_gene = value.SaveAsTemporaryGene || main.TemporaryGeneData,
+        },
+    };
 }

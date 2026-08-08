@@ -1,4 +1,4 @@
-use crate::{BackendPreference, DnaCosts};
+use crate::{AdvancedMutationSettings, BackendPreference, DnaCosts};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -114,6 +114,8 @@ pub struct EngineConfig {
     #[serde(default)]
     pub dna_costs: DnaCosts,
     #[serde(default)]
+    pub advanced_mutation: AdvancedMutationSettings,
+    #[serde(default)]
     pub auto_speciation: bool,
     #[serde(default = "default_speciation_genetic_distance_percent")]
     pub speciation_genetic_distance_percent: f32,
@@ -142,6 +144,7 @@ impl Default for EngineConfig {
             shots: ShotSettings::default(),
             vegetation: VegetationSettings::default(),
             dna_costs: DnaCosts::default(),
+            advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: false,
             speciation_genetic_distance_percent: default_speciation_genetic_distance_percent(),
             force_gpu_unavailable_for_tests: false,

@@ -54,6 +54,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _autosaveTimer;
     private readonly IReadOnlyList<string> _startupBots;
     private readonly WorldSetupOptions _setup;
+    private GlobalSettings _globalSettings;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
@@ -103,6 +104,7 @@ public sealed partial class MainWindow : Window
     {
         _startupBots = ParseStartupBots(arguments);
         _setup = setup;
+        _globalSettings = setup.GlobalSettings;
         _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _zerobotProgression = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables
@@ -256,10 +258,14 @@ public sealed partial class MainWindow : Window
                      LegacyCommandId.EditSpecies,
                      LegacyCommandId.EditGeneralSettings,
                      LegacyCommandId.EditPhysicsAndCosts,
+                     LegacyCommandId.EditGlobalSettings,
                      LegacyCommandId.EditGlobalMutationRates,
                      LegacyCommandId.RobotMutationRates,
                  })
             handlers[command] = Handler(EngineState, async _ => await OpenAdvancedSettingsCommandAsync());
+        handlers[LegacyCommandId.EditGlobalSettings] = Handler(
+            () => LegacyCommandState.Available,
+            async _ => await OpenGlobalSettingsCommandAsync());
         handlers[LegacyCommandId.ViewShowVisionGrid] = Handler(
             () => new LegacyCommandState(true, Viewport.ShowSelectedVision),
             _ => Task.FromResult(ToggleVisionGrid()));
@@ -808,6 +814,16 @@ public sealed partial class MainWindow : Window
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = dialog.Update;
         return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+    }
+
+    private async Task<LegacyCommandResult> OpenGlobalSettingsCommandAsync()
+    {
+        var dialog = new GlobalSettingsWindow(_globalSettings);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        _globalSettings = dialog.Settings;
+        _viewModel.Status = "GLOBAL SETTINGS SAVED FOR NEXT WORLD";
+        return LegacyCommandResult.Success("GLOBAL SETTINGS SAVED");
     }
 
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()

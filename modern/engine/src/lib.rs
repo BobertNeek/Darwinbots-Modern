@@ -39,7 +39,7 @@ pub use biology::RobotMaterials;
 pub use config::{EngineConfig, PhysicsSettings, ShotSettings, VegetationSettings};
 pub use corpse::CorpseSnapshot;
 pub use dna::{DnaMetadata, LegacyDna};
-pub use dna_costs::DnaCosts;
+pub use dna_costs::{DnaCosts, SimulationCostAction, SimulationCostInput, SimulationCostReport};
 pub use dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
 pub use environment::{FileTeleporter, Obstacle, Teleporter, TeleporterFilters};
 pub use error::EngineError;
@@ -51,9 +51,12 @@ pub use modes::{
     LocalModeResult, LocalModeState, LocalModeStatus,
 };
 pub use mutation::{
-    GenomeMutator, MutationKind, MutationPreference, MutationRate, MutationReport,
+    AdvancedMutationSettings, Delta2Settings, EpigeneticPolicyAction, EpigeneticSettings,
+    GenomeMutator, MutationKind, MutationOscillationMode, MutationOscillationSettings,
+    MutationPolicyInput, MutationPolicyReport, MutationPreference, MutationRate, MutationReport,
     PointMutationSchedule, PointMutator, StandardMutationEvent, StandardMutationKind,
-    StandardMutationProfile, StandardMutationReport, apply_standard_mutation,
+    StandardMutationProfile, StandardMutationReport, apply_advanced_mutation_policies,
+    apply_standard_mutation,
 };
 pub use persistence::SaveFile;
 pub use physics::{

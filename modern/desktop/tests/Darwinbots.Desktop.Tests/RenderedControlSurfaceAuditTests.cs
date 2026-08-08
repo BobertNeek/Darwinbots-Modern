@@ -67,6 +67,11 @@ public sealed class RenderedControlSurfaceAuditTests
                 "advanced.repopulationcooldown", "advanced.feedingtobody", "advanced.daytime",
                 "advanced.daynightenabled", "advanced.cyclelength", "advanced.cancel", "advanced.apply",
             ],
+            [nameof(GlobalSettingsRenderedSurfaceShowsFourTabs)] =
+            [
+                "global.main", "global.advanced_mutation", "global.league", "global.evolution",
+                "global.cancel", "global.apply",
+            ],
             [nameof(DnaEditorRenderedControlsDispatchThroughVisualTree)] =
             ["dna.editor", "dna.save", "dna.clone", "dna.apply"],
         };
@@ -259,6 +264,31 @@ public sealed class RenderedControlSurfaceAuditTests
             Click(cancel, Named<Button>(cancel, "CancelButton"));
             Assert.False(cancel.Accepted);
             Assert.False(cancel.IsVisible);
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task GlobalSettingsRenderedSurfaceShowsFourTabs()
+    {
+        var headless = DesktopTestApplication.Session;
+        await headless.Dispatch(() =>
+        {
+            var window = new GlobalSettingsWindow(new GlobalSettings
+            {
+                Main = new GlobalMainSettings { NewSeed = true },
+                AdvancedMutation = new GlobalAdvancedMutationSettings { Delta2Enabled = true },
+                Evolution = new GlobalEvolutionSettings { Mode = EvolutionMode.Zerobot },
+            });
+            ShowAndCapture(window, 1050, 780, "global-settings-four-tabs.png");
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            Assert.Equal(
+                ["MAIN", "ADVANCED MUTATION", "LEAGUE", "EVOLUTION"],
+                tabs.Items.Cast<TabItem>().Select(item => item.Header?.ToString() ?? string.Empty).ToArray());
+            Assert.NotNull(window.FindControl<CheckBox>("NewSeed"));
+            Assert.NotNull(window.FindControl<CheckBox>("Delta2Enabled"));
+            Assert.NotNull(window.FindControl<CheckBox>("LeagueOfflineOwned"));
+            Assert.NotNull(window.FindControl<ComboBox>("EvolutionMode"));
+            window.Close();
         }, CancellationToken.None);
     }
 

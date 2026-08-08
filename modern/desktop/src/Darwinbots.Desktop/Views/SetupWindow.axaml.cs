@@ -12,6 +12,7 @@ public sealed partial class SetupWindow : Window
     private bool _controlsReady;
     private readonly IDesktopStorageService _storage;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
+    private GlobalSettings _globalSettings = new();
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
     private const string FeederReproducerDna = "cond\nstart\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
@@ -113,6 +114,7 @@ public sealed partial class SetupWindow : Window
             ToroidalWorld = _environment.ToroidalWorld,
             TicksPerUpdate = speed,
             Species = species,
+            GlobalSettings = _globalSettings,
         });
     }
 
@@ -132,9 +134,26 @@ public sealed partial class SetupWindow : Window
         }
     }
 
+    private async void GlobalSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new GlobalSettingsWindow(_globalSettings);
+            await dialog.ShowDialog(this);
+            if (!dialog.Accepted) return;
+            _globalSettings = dialog.Settings;
+            SetupStatus.Text = "GLOBAL SETTINGS SAVED";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"GLOBAL SETTINGS FAILED: {error.Message}";
+        }
+    }
+
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
+        _globalSettings = new GlobalSettings();
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
         WorldHeight.Value = 12_000;

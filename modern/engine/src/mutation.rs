@@ -156,6 +156,230 @@ impl StandardMutationProfile {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MutationOscillationMode {
+    #[default]
+    Disabled,
+    Sine,
+    Sawtooth,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MutationOscillationSettings {
+    pub mode: MutationOscillationMode,
+    pub period: u64,
+    pub amplitude: f64,
+}
+
+impl Default for MutationOscillationSettings {
+    fn default() -> Self {
+        Self {
+            mode: MutationOscillationMode::Disabled,
+            period: 0,
+            amplitude: 0.0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Delta2Settings {
+    pub enabled: bool,
+    pub interval: u64,
+    pub rate_step: f64,
+    pub distribution_step: f64,
+    pub preference_step_percent: i16,
+}
+
+impl Default for Delta2Settings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            interval: 100,
+            rate_step: 1.0,
+            distribution_step: 0.0,
+            preference_step_percent: 0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct EpigeneticSettings {
+    pub reset_enabled: bool,
+    pub amplification: f64,
+    pub overload_threshold: u64,
+    pub save_as_temporary_gene: bool,
+}
+
+impl Default for EpigeneticSettings {
+    fn default() -> Self {
+        Self {
+            reset_enabled: false,
+            amplification: 1.0,
+            overload_threshold: 32,
+            save_as_temporary_gene: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AdvancedMutationSettings {
+    pub point2_enabled: bool,
+    pub copy_error2_enabled: bool,
+    pub amplification_enabled: bool,
+    pub translocation_enabled: bool,
+    pub normalization_enabled: bool,
+    pub normalization_dna_length: usize,
+    pub delta2: Delta2Settings,
+    pub oscillation: MutationOscillationSettings,
+    pub epigenetic: EpigeneticSettings,
+}
+
+impl Default for AdvancedMutationSettings {
+    fn default() -> Self {
+        Self {
+            point2_enabled: false,
+            copy_error2_enabled: false,
+            amplification_enabled: false,
+            translocation_enabled: false,
+            normalization_enabled: false,
+            normalization_dna_length: 32_000,
+            delta2: Delta2Settings::default(),
+            oscillation: MutationOscillationSettings::default(),
+            epigenetic: EpigeneticSettings::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EpigeneticPolicyAction {
+    None,
+    Amplified,
+    Reset,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MutationPolicyInput {
+    pub cycle: u64,
+    pub dna_len: usize,
+    pub mutation_count: u64,
+    pub base_multiplier: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MutationPolicyReport {
+    pub effective_multiplier: f64,
+    pub effective_one_in: f64,
+    pub delta2_applied: bool,
+    pub epigenetic_action: EpigeneticPolicyAction,
+}
+
+pub fn apply_advanced_mutation_policies(
+    profile: &mut StandardMutationProfile,
+    settings: &AdvancedMutationSettings,
+    input: MutationPolicyInput,
+    epigenetic_staging: &mut [i32; 15],
+) -> MutationPolicyReport {
+    let delta2_applied = if settings.delta2.enabled
+        && settings.delta2.interval > 0
+        && input.cycle.is_multiple_of(settings.delta2.interval)
+    {
+        apply_delta2(profile, settings.delta2);
+        true
+    } else {
+        false
+    };
+    let effective_multiplier =
+        oscillating_multiplier(input.base_multiplier, settings.oscillation, input.cycle);
+    let mut effective_one_in =
+        profile.effective_one_in(StandardMutationKind::Point, effective_multiplier);
+    if settings.normalization_enabled && settings.normalization_dna_length > 0 {
+        effective_one_in *= input.dna_len.max(1) as f64 / settings.normalization_dna_length as f64;
+    }
+    let epigenetic_action = apply_epigenetic_policy(
+        settings.epigenetic,
+        input.mutation_count,
+        epigenetic_staging,
+    );
+    MutationPolicyReport {
+        effective_multiplier,
+        effective_one_in: effective_one_in.max(1.0),
+        delta2_applied,
+        epigenetic_action,
+    }
+}
+
+fn apply_delta2(profile: &mut StandardMutationProfile, settings: Delta2Settings) {
+    for kind in [
+        StandardMutationKind::Point,
+        StandardMutationKind::Delta,
+        StandardMutationKind::CopyError,
+        StandardMutationKind::Insertion,
+        StandardMutationKind::Reversal,
+        StandardMutationKind::MinorDeletion,
+        StandardMutationKind::MajorDeletion,
+    ] {
+        let rate = profile.rate_mut(kind);
+        rate.one_in = (rate.one_in + settings.rate_step).max(1.0);
+        rate.mean += settings.distribution_step;
+        rate.std_dev = (rate.std_dev + settings.distribution_step).max(0.0);
+    }
+    let preference_step = i32::from(settings.preference_step_percent);
+    profile.point_value_change_percent =
+        (i32::from(profile.point_value_change_percent) + preference_step).clamp(0, 100) as u8;
+    profile.copy_error_value_change_percent =
+        (i32::from(profile.copy_error_value_change_percent) + preference_step).clamp(0, 100) as u8;
+}
+
+fn oscillating_multiplier(
+    base_multiplier: f64,
+    settings: MutationOscillationSettings,
+    cycle: u64,
+) -> f64 {
+    let base_multiplier = if base_multiplier.is_finite() && base_multiplier > 0.0 {
+        base_multiplier
+    } else {
+        1.0
+    };
+    if settings.period == 0 || !settings.amplitude.is_finite() {
+        return base_multiplier;
+    }
+    let phase = cycle % settings.period;
+    let phase = phase as f64 / settings.period as f64;
+    let wave = match settings.mode {
+        MutationOscillationMode::Disabled => 0.0,
+        MutationOscillationMode::Sine => (phase * std::f64::consts::TAU).sin(),
+        MutationOscillationMode::Sawtooth => phase * 2.0 - 1.0,
+    };
+    (base_multiplier * (1.0 + settings.amplitude.clamp(-1.0, 1.0) * wave)).max(0.000_001)
+}
+
+fn apply_epigenetic_policy(
+    settings: EpigeneticSettings,
+    mutation_count: u64,
+    staging: &mut [i32; 15],
+) -> EpigeneticPolicyAction {
+    if settings.overload_threshold == 0 || mutation_count < settings.overload_threshold {
+        return EpigeneticPolicyAction::None;
+    }
+    if settings.reset_enabled {
+        staging.fill(0);
+        return EpigeneticPolicyAction::Reset;
+    }
+    if settings.amplification.is_finite() && settings.amplification != 1.0 {
+        for value in staging {
+            *value = (f64::from(*value) * settings.amplification)
+                .round()
+                .clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32;
+        }
+        return EpigeneticPolicyAction::Amplified;
+    }
+    EpigeneticPolicyAction::None
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutationPreference {
     Value,

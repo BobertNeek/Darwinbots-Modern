@@ -13,6 +13,7 @@ public enum LegacyCommandId
     EditSpecies,
     EditGeneralSettings,
     EditPhysicsAndCosts,
+    EditGlobalSettings,
     EditGlobalMutationRates,
     EditRestartAndLeagues,
     EditInternetOptions,
