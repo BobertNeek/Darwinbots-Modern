@@ -1,4 +1,5 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, OrganismId, SaveFile};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna, OrganismId, SaveFile, SpeciesDefinition};
+use serde_json::{Value, json};
 
 fn tie_test_config() -> EngineConfig {
     EngineConfig {
@@ -31,6 +32,582 @@ fn assert_tie_float(engine: &Engine, field: &str, expected: f64) {
         (actual - expected).abs() < 0.000_001,
         "expected tie {field}={expected}, got {actual}"
     );
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct TieMaterialValues {
+    energy: i32,
+    body: i32,
+    waste: i32,
+    permanent_waste: i32,
+    venom: i32,
+    poison: i32,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct TieResourceCase {
+    name: &'static str,
+    tieloc: i32,
+    tieval: i32,
+    source: TieMaterialValues,
+    target: TieMaterialValues,
+    expected_source: TieMaterialValues,
+    expected_target: TieMaterialValues,
+    expected_source_poisoning: (bool, i32, i32, i32),
+    expected_target_paralysis: (bool, i32, i32, i32),
+}
+
+fn tie_material_values(engine: &Engine, id: OrganismId) -> TieMaterialValues {
+    let robot = engine.robot_state(id).unwrap();
+    TieMaterialValues {
+        energy: robot.materials.energy,
+        body: robot.materials.body,
+        waste: robot.materials.waste,
+        permanent_waste: robot.materials.permanent_waste,
+        venom: robot.materials.venom,
+        poison: robot.materials.poison,
+    }
+}
+
+fn set_tie_memory(memory: &mut Value, address: u16, value: i32) {
+    let cells = memory["cells"].as_array_mut().unwrap();
+    cells.retain(|cell| cell[0].as_u64() != Some(u64::from(address)));
+    if value != 0 {
+        cells.push(json!([address, value]));
+        cells.sort_by_key(|cell| cell[0].as_u64().unwrap());
+    }
+}
+
+fn set_tie_materials(payload: &mut Value, id: OrganismId, values: TieMaterialValues) {
+    let robot = &mut payload["slots"][id.slot() as usize]["organism"];
+    let materials = &mut robot["materials"];
+    materials["energy"] = json!(values.energy);
+    materials["body"] = json!(values.body);
+    materials["waste"] = json!(values.waste);
+    materials["permanent_waste"] = json!(values.permanent_waste);
+    materials["venom"] = json!(values.venom);
+    materials["poison"] = json!(values.poison);
+    materials["previous_energy"] = json!(values.energy);
+    set_tie_memory(&mut robot["program"]["memory"], 310, values.energy);
+    set_tie_memory(&mut robot["program"]["memory"], 311, values.body);
+    set_tie_memory(&mut robot["program"]["memory"], 828, values.waste);
+    set_tie_memory(&mut robot["program"]["memory"], 829, values.permanent_waste);
+    set_tie_memory(&mut robot["program"]["memory"], 825, values.venom);
+    set_tie_memory(&mut robot["program"]["memory"], 827, values.poison);
+}
+
+fn tie_resource_engine(case: TieResourceCase) -> (Engine, OrganismId, OrganismId) {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        world_width: 3_000.0,
+        world_height: 2_000.0,
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source_species = engine.register_species(SpeciesDefinition {
+        name: "Tie source".to_owned(),
+        ..SpeciesDefinition::default()
+    });
+    let target_species = engine.register_species(SpeciesDefinition {
+        name: "Tie target".to_owned(),
+        ..SpeciesDefinition::default()
+    });
+    let source = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            source_species,
+            [400.0, 1_000.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            target_species,
+            [700.0, 1_000.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse(&format!(
+                "start\n41 .tienum store\n{} .tieloc store\n{} .tieval store\n0 .fdbody store\n0 .strbody store\nstop",
+                case.tieloc, case.tieval
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    set_tie_materials(&mut payload, source, case.source);
+    set_tie_materials(&mut payload, target, case.target);
+    set_tie_memory(
+        &mut payload["slots"][source.slot() as usize]["organism"]["program"]["memory"],
+        835,
+        777,
+    );
+    set_tie_memory(
+        &mut payload["slots"][source.slot() as usize]["organism"]["program"]["memory"],
+        836,
+        456,
+    );
+    set_tie_memory(
+        &mut payload["slots"][target.slot() as usize]["organism"]["program"]["memory"],
+        834,
+        888,
+    );
+    set_tie_memory(
+        &mut payload["slots"][target.slot() as usize]["organism"]["program"]["memory"],
+        839,
+        654,
+    );
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    (SaveFile::decode(&save).unwrap(), source, target)
+}
+
+#[test]
+fn negative_tieloc_resource_exchange_runs_in_engine_tick() {
+    let cases = [
+        TieResourceCase {
+            name: "energy give",
+            tieloc: -1,
+            tieval: 1_000,
+            source: TieMaterialValues {
+                energy: 1_500,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 500,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_700,
+                body: 1_029,
+                waste: 10,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "energy give clamps and rounds",
+            tieloc: -1,
+            tieval: 3_000,
+            source: TieMaterialValues {
+                energy: 1_500,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_234,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 500,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_934,
+                body: 1_029,
+                waste: 10,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "venom inject",
+            tieloc: -3,
+            tieval: 100,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 150,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 50,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (true, 777, 456, 100),
+        },
+        TieResourceCase {
+            name: "venom steal clamps",
+            tieloc: -3,
+            tieval: -100,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 37,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 37,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "waste give",
+            tieloc: -4,
+            tieval: 1_000,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 1_000,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 10,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 990,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "waste take",
+            tieloc: -4,
+            tieval: -1_000,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 250,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 248,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 3,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "body give",
+            tieloc: -6,
+            tieval: 300,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 101,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_000,
+                body: 1,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_003,
+                body: 1_099,
+                waste: 1,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "body take",
+            tieloc: -6,
+            tieval: -300,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_234,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_009,
+                body: 1_296,
+                waste: 3,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_000,
+                body: 934,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_source_poisoning: (false, 0, 0, 0),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "energy take poison defense",
+            tieloc: -1,
+            tieval: -100,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 100,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 75,
+            },
+            expected_source_poisoning: (true, 888, 654, 25),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+        TieResourceCase {
+            name: "body take poison defense",
+            tieloc: -6,
+            tieval: -100,
+            source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 100,
+            },
+            expected_source: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 0,
+            },
+            expected_target: TieMaterialValues {
+                energy: 1_000,
+                body: 1_000,
+                waste: 0,
+                permanent_waste: 0,
+                venom: 0,
+                poison: 75,
+            },
+            expected_source_poisoning: (true, 888, 654, 25),
+            expected_target_paralysis: (false, 0, 0, 0),
+        },
+    ];
+
+    for case in cases {
+        let (mut engine, source, target) = tie_resource_engine(case);
+        engine.tick().unwrap();
+
+        assert_eq!(
+            tie_material_values(&engine, source),
+            case.expected_source,
+            "{} source",
+            case.name
+        );
+        assert_eq!(
+            tie_material_values(&engine, target),
+            case.expected_target,
+            "{} target",
+            case.name
+        );
+        let source_effects = &engine.robot_state(source).unwrap().effects;
+        assert_eq!(
+            (
+                source_effects.poisoning_active,
+                source_effects.poisoning_location,
+                source_effects.poisoning_value,
+                source_effects.poisoning_countdown.round() as i32,
+            ),
+            case.expected_source_poisoning,
+            "{} source poison",
+            case.name
+        );
+        let target_effects = &engine.robot_state(target).unwrap().effects;
+        assert_eq!(
+            (
+                target_effects.paralysis_active,
+                target_effects.paralysis_location,
+                target_effects.paralysis_value,
+                target_effects.paralysis_countdown.round() as i32,
+            ),
+            case.expected_target_paralysis,
+            "{} target paralysis",
+            case.name
+        );
+    }
 }
 
 fn spawn_soft_tie() -> (Engine, OrganismId, OrganismId) {

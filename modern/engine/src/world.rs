@@ -4405,6 +4405,48 @@ impl Engine {
         });
         self.refresh_tie_projections();
 
+        let mut resource_channels = Vec::new();
+        for tie in &self.ties {
+            for (source_slot, target_slot, source_port) in [
+                (
+                    tie.first.slot() as usize,
+                    tie.second.slot() as usize,
+                    tie.first_port,
+                ),
+                (
+                    tie.second.slot() as usize,
+                    tie.first.slot() as usize,
+                    tie.second_port,
+                ),
+            ] {
+                if self.slots[source_slot].organism.is_none() {
+                    continue;
+                }
+                let commands = phase_commands[source_slot].unwrap_or_default();
+                if commands.number != 0
+                    && commands.number == source_port
+                    && matches!(commands.location, -1 | -3 | -4 | -6)
+                    && commands.value != 0
+                {
+                    resource_channels.push((
+                        source_slot,
+                        target_slot,
+                        commands.location,
+                        commands.value,
+                    ));
+                }
+            }
+        }
+
+        for (source, target, location, value) in resource_channels {
+            let source_id = OrganismId::new(source as u32, self.slots[source].generation);
+            let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+            if let Some(kind) = apply_tie_resource(&mut self.slots, source, target, location, value)
+            {
+                trace.effect(CyclePhase::Tie, Some(source_id), target_id, kind);
+            }
+        }
+
         let mut channels = Vec::new();
         for tie in self.ties.iter().filter(|tie| tie.hardened) {
             for (source_slot, target_slot) in [
@@ -4508,6 +4550,15 @@ impl Engine {
                     CommandOutcome::Consumed,
                     &mut organism.program.memory,
                 );
+            }
+            if commands.is_some_and(|commands| matches!(commands.location, -1 | -3 | -4 | -6)) {
+                for address in [452, 453] {
+                    runtime.finish_command(
+                        address,
+                        CommandOutcome::Consumed,
+                        &mut organism.program.memory,
+                    );
+                }
             }
             for address in [331, 469, 480, 481, 482, 483, 484, 485, 486, 487] {
                 runtime.finish_command(
@@ -6483,6 +6534,280 @@ impl Engine {
         engine.physics = physics;
         engine.publish_snapshot();
         Ok(engine)
+    }
+}
+
+fn apply_tie_resource(
+    slots: &mut [RobotSlot],
+    source_slot: usize,
+    target_slot: usize,
+    location: i32,
+    requested: i32,
+) -> Option<&'static str> {
+    if source_slot == target_slot || source_slot >= slots.len() || target_slot >= slots.len() {
+        return None;
+    }
+    let (source_slot, target_slot) = if source_slot < target_slot {
+        let (left, right) = slots.split_at_mut(target_slot);
+        (left.get_mut(source_slot)?, right.get_mut(0)?)
+    } else {
+        let (left, right) = slots.split_at_mut(source_slot);
+        (right.get_mut(0)?, left.get_mut(target_slot)?)
+    };
+    let (source, target) = (
+        source_slot.organism.as_mut()?,
+        target_slot.organism.as_mut()?,
+    );
+    if source.counters.age == 0 {
+        return None;
+    }
+
+    let result = match location {
+        -1 => apply_tie_energy(source, target, requested),
+        -3 => apply_tie_venom(source, target, requested),
+        -4 => apply_tie_waste(source, target, requested),
+        -6 => apply_tie_body(source, target, requested),
+        _ => None,
+    };
+    if result.is_some() {
+        source.materials.previous_energy = source.materials.energy;
+        target.materials.previous_energy = target.materials.energy;
+        source.materials.mass = derived_mass(
+            source.materials.body,
+            source.materials.shell,
+            source.materials.chloroplasts,
+        )
+        .clamp(1.0, 32_000.0);
+        source.materials.radius =
+            crate::physics::organism_radius(source.materials.body, source.materials.chloroplasts);
+        target.materials.mass = derived_mass(
+            target.materials.body,
+            target.materials.shell,
+            target.materials.chloroplasts,
+        )
+        .clamp(1.0, 32_000.0);
+        target.materials.radius =
+            crate::physics::organism_radius(target.materials.body, target.materials.chloroplasts);
+    }
+    result
+}
+
+fn apply_tie_energy(
+    source: &mut RobotState,
+    target: &mut RobotState,
+    requested: i32,
+) -> Option<&'static str> {
+    if source.materials.body < 0 || source.materials.energy < 0 {
+        return None;
+    }
+    let requested = requested.clamp(-3_000, 1_000);
+    if requested > 0 {
+        let amount = requested.min(source.materials.energy.max(0));
+        if amount == 0 {
+            return None;
+        }
+        source.materials.energy = source.materials.energy.saturating_sub(amount);
+        add_tie_store(
+            &mut target.materials.energy,
+            scale_tie_amount(amount, 0.70),
+            true,
+        );
+        add_tie_store(
+            &mut target.materials.body,
+            scale_tie_amount(amount, 0.029),
+            true,
+        );
+        add_tie_store(
+            &mut target.materials.waste,
+            scale_tie_amount(amount, 0.01),
+            false,
+        );
+        return Some("tie_resource_energy");
+    }
+
+    let amount = (-requested).min(target.materials.energy.max(0));
+    if amount == 0 {
+        return None;
+    }
+    if apply_tie_poison_defense(source, target, amount) {
+        return Some("tie_resource_poison_defense");
+    }
+    target.materials.energy = target.materials.energy.saturating_sub(amount);
+    add_tie_store(
+        &mut source.materials.energy,
+        scale_tie_amount(amount, 0.70),
+        true,
+    );
+    add_tie_store(
+        &mut source.materials.body,
+        scale_tie_amount(amount, 0.029),
+        true,
+    );
+    add_tie_store(
+        &mut source.materials.waste,
+        scale_tie_amount(amount, 0.01),
+        false,
+    );
+    Some("tie_resource_energy")
+}
+
+fn apply_tie_venom(
+    source: &mut RobotState,
+    target: &mut RobotState,
+    requested: i32,
+) -> Option<&'static str> {
+    let requested = requested.clamp(-100, 100);
+    if requested > 0 {
+        let amount = requested.min(source.materials.venom.max(0));
+        if amount == 0 {
+            return None;
+        }
+        source.materials.venom = source.materials.venom.saturating_sub(amount);
+        target.effects.paralysis_active = true;
+        target.effects.paralysis_countdown =
+            (target.effects.paralysis_countdown + amount as f32).min(32_000.0);
+        target.effects.paralysis_location = toxin_location(target, source.program.memory.read(835));
+        target.effects.paralysis_value = source.program.memory.read(836);
+        source.program.memory.write(825, source.materials.venom);
+        return Some("tie_resource_venom");
+    }
+
+    let amount = (-requested).min(target.materials.venom.max(0));
+    if amount == 0 {
+        return None;
+    }
+    target.materials.venom = target.materials.venom.saturating_sub(amount);
+    add_tie_store(&mut source.materials.venom, amount, true);
+    target.program.memory.write(825, target.materials.venom);
+    source.program.memory.write(825, source.materials.venom);
+    Some("tie_resource_venom")
+}
+
+fn apply_tie_waste(
+    source: &mut RobotState,
+    target: &mut RobotState,
+    requested: i32,
+) -> Option<&'static str> {
+    let requested = requested.clamp(-1_000, 1_000);
+    if requested > 0 {
+        let amount = requested.min(source.materials.waste.max(0));
+        if amount == 0 {
+            return None;
+        }
+        source.materials.waste = source.materials.waste.saturating_sub(amount);
+        add_tie_store(
+            &mut target.materials.waste,
+            scale_tie_amount(amount, 0.99),
+            false,
+        );
+        add_tie_store(
+            &mut source.materials.permanent_waste,
+            scale_tie_amount(amount, 0.01),
+            true,
+        );
+        return Some("tie_resource_waste");
+    }
+
+    let amount = (-requested).min(target.materials.waste.max(0));
+    if amount == 0 {
+        return None;
+    }
+    target.materials.waste = target.materials.waste.saturating_sub(amount);
+    add_tie_store(
+        &mut source.materials.waste,
+        scale_tie_amount(amount, 0.99),
+        false,
+    );
+    add_tie_store(
+        &mut target.materials.permanent_waste,
+        scale_tie_amount(amount, 0.01),
+        true,
+    );
+    Some("tie_resource_waste")
+}
+
+fn apply_tie_body(
+    source: &mut RobotState,
+    target: &mut RobotState,
+    requested: i32,
+) -> Option<&'static str> {
+    if source.materials.body < 0 || source.materials.energy < 0 {
+        return None;
+    }
+    let requested = requested.clamp(-300, 100);
+    if requested > 0 {
+        let amount = requested.min(source.materials.body.max(0));
+        if amount == 0 {
+            return None;
+        }
+        source.materials.body = source.materials.body.saturating_sub(amount);
+        add_tie_store(
+            &mut target.materials.energy,
+            scale_tie_amount(amount, 0.03),
+            true,
+        );
+        add_tie_store(
+            &mut target.materials.body,
+            scale_tie_amount(amount, 0.987),
+            true,
+        );
+        add_tie_store(
+            &mut target.materials.waste,
+            scale_tie_amount(amount, 0.01),
+            false,
+        );
+        return Some("tie_resource_body");
+    }
+
+    let amount = (-requested).min(target.materials.body.max(0));
+    if amount == 0 {
+        return None;
+    }
+    if apply_tie_poison_defense(source, target, amount) {
+        return Some("tie_resource_poison_defense");
+    }
+    target.materials.body = target.materials.body.saturating_sub(amount);
+    add_tie_store(
+        &mut source.materials.energy,
+        scale_tie_amount(amount, 0.03),
+        true,
+    );
+    add_tie_store(
+        &mut source.materials.body,
+        scale_tie_amount(amount, 0.987),
+        true,
+    );
+    add_tie_store(
+        &mut source.materials.waste,
+        scale_tie_amount(amount, 0.01),
+        false,
+    );
+    Some("tie_resource_body")
+}
+
+fn apply_tie_poison_defense(source: &mut RobotState, target: &mut RobotState, amount: i32) -> bool {
+    let poison_tag = scale_tie_amount(amount, 0.25).max(1);
+    if source.identity.species == target.identity.species || target.materials.poison <= poison_tag {
+        return false;
+    }
+    target.materials.poison = target.materials.poison.saturating_sub(poison_tag);
+    target.program.memory.write(827, target.materials.poison);
+    source.effects.poisoning_active = true;
+    source.effects.poisoning_countdown =
+        (source.effects.poisoning_countdown + poison_tag as f32).min(32_000.0);
+    source.effects.poisoning_location = toxin_location(source, target.program.memory.read(834));
+    source.effects.poisoning_value = target.program.memory.read(839);
+    true
+}
+
+fn scale_tie_amount(amount: i32, factor: f64) -> i32 {
+    (f64::from(amount) * factor).round().clamp(0.0, 32_000.0) as i32
+}
+
+fn add_tie_store(store: &mut i32, amount: i32, capped: bool) {
+    *store = (*store).max(0).saturating_add(amount.max(0));
+    if capped {
+        *store = (*store).min(32_000);
     }
 }
 
