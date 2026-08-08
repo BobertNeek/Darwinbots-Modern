@@ -17,7 +17,7 @@ use crate::{
     SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId, StandardMutationProfile,
     StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands, TieReadbacks, TieSnapshot,
     TieState, VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot,
-    VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
+    VisualPhenotype, VmMemory, TokenClass, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -1221,6 +1221,32 @@ struct Db3sV2HistorySample {
     projectile_impacts: u64,
     #[serde(default, alias = "plant_energy_produced")]
     plant_energy_generated: u64,
+    #[serde(default)]
+    average_mutations: f64,
+    #[serde(default)]
+    average_mutations_per_dna_length: f64,
+    #[serde(default)]
+    average_age: f64,
+    #[serde(default)]
+    average_descendents: f64,
+    #[serde(default)]
+    average_energy: f64,
+    #[serde(default)]
+    average_dna_length: f64,
+    #[serde(default)]
+    average_dna_conditions: f64,
+    #[serde(default)]
+    dynamic_cost_stats: f64,
+    #[serde(default)]
+    species_diversity: f64,
+    #[serde(default)]
+    average_chloroplasts: f64,
+    #[serde(default)]
+    selective_genetic_distance: f64,
+    #[serde(default)]
+    generational_distance: f64,
+    #[serde(default)]
+    slow_genetic_distance: f64,
 }
 
 impl From<Db3sV2HistorySample> for HistorySample {
@@ -1235,6 +1261,19 @@ impl From<Db3sV2HistorySample> for HistorySample {
             shots_fired: value.shots_fired,
             projectile_impacts: value.projectile_impacts,
             plant_energy_generated: value.plant_energy_generated,
+            average_mutations: value.average_mutations,
+            average_mutations_per_dna_length: value.average_mutations_per_dna_length,
+            average_age: value.average_age,
+            average_descendents: value.average_descendents,
+            average_energy: value.average_energy,
+            average_dna_length: value.average_dna_length,
+            average_dna_conditions: value.average_dna_conditions,
+            dynamic_cost_stats: value.dynamic_cost_stats,
+            species_diversity: value.species_diversity,
+            average_chloroplasts: value.average_chloroplasts,
+            selective_genetic_distance: value.selective_genetic_distance,
+            generational_distance: value.generational_distance,
+            slow_genetic_distance: value.slow_genetic_distance,
         }
     }
 }
@@ -6614,22 +6653,118 @@ impl Engine {
         }
     }
 
+    fn graph_dynamic_cost(dna: &LegacyDna, costs: &DnaCosts) -> f64 {
+        let token_cost = dna
+            .blocks()
+            .iter()
+            .map(|block| match block.class {
+                TokenClass::Number => costs.number,
+                TokenClass::Dereference => costs.dereference,
+                TokenClass::Basic => costs.basic,
+                TokenClass::Advanced => costs.advanced,
+                TokenClass::Bitwise => costs.bitwise,
+                TokenClass::Condition => costs.condition,
+                TokenClass::Logic => costs.logic,
+                TokenClass::Store => costs.store,
+                TokenClass::Flow => costs.flow,
+                TokenClass::Reserved | TokenClass::End => 0.0,
+            })
+            .sum::<f64>();
+        let upkeep = dna.blocks().len().saturating_sub(1) as f64 * costs.dna_upkeep;
+        (token_cost + upkeep) * costs.global_multiplier
+    }
+
+    fn dna_block_distance(left: &LegacyDna, right: &LegacyDna) -> usize {
+        let length = left.blocks().len().max(right.blocks().len());
+        (0..length)
+            .filter(|index| left.blocks().get(*index) != right.blocks().get(*index))
+            .count()
+    }
+
     fn record_history(&mut self) {
         if self.history.len() == 10_000 {
             self.history.remove(0);
         }
+        let organisms = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .collect::<Vec<_>>();
+        let population = organisms.len();
+        let average = |sum: f64| {
+            if population == 0 {
+                0.0
+            } else {
+                sum / population as f64
+            }
+        };
+        let average_mutations = average(
+            organisms
+                .iter()
+                .map(|robot| f64::from(robot.phenotype.accumulated_mutations))
+                .sum(),
+        );
+        let average_dna_length = average(
+            organisms
+                .iter()
+                .map(|robot| robot.program.dna.blocks().len() as f64)
+                .sum(),
+        );
+        let average_mutations_per_dna_length = if population == 0 {
+            0.0
+        } else {
+            organisms
+                .iter()
+                .map(|robot| {
+                    f64::from(robot.phenotype.accumulated_mutations)
+                        / robot.program.dna.blocks().len().max(1) as f64
+                })
+                .sum::<f64>()
+                / population as f64
+        };
+        let average_dna_conditions = average(
+            organisms
+                .iter()
+                .map(|robot| {
+                    robot
+                        .program
+                        .dna
+                        .blocks()
+                        .iter()
+                        .filter(|block| block.class == TokenClass::Condition)
+                        .count() as f64
+                })
+                .sum(),
+        );
+        let dynamic_cost_stats = average(
+            organisms
+                .iter()
+                .map(|robot| Self::graph_dynamic_cost(&robot.program.dna, &self.config.dna_costs))
+                .sum(),
+        );
+        let species_diversity = organisms
+            .iter()
+            .map(|robot| robot.identity.species.0)
+            .collect::<std::collections::BTreeSet<_>>()
+            .len() as f64;
+        let reference_dna = organisms.first().map(|robot| &robot.program.dna);
+        let slow_genetic_distance = match (reference_dna, population) {
+            (Some(reference), count) if count > 1 => {
+                organisms
+                    .iter()
+                    .skip(1)
+                    .map(|robot| Self::dna_block_distance(reference, &robot.program.dna) as f64)
+                    .sum::<f64>()
+                    / (count - 1) as f64
+            }
+            _ => 0.0,
+        };
         self.history.push(HistorySample {
             tick: self.tick,
-            population: self.population(),
-            total_energy: self
-                .slots
+            population,
+            total_energy: organisms
                 .iter()
-                .filter_map(|value| {
-                    value
-                        .organism
-                        .as_ref()
-                        .map(|robot| robot.materials.energy as i64)
-                })
+                .map(|robot| robot.materials.energy as i64)
                 .sum(),
             births: self.stats.births,
             deaths: self.stats.deaths,
@@ -6637,6 +6772,44 @@ impl Engine {
             shots_fired: self.stats.shots_fired,
             projectile_impacts: self.stats.projectile_impacts,
             plant_energy_generated: self.stats.plant_energy_generated,
+            average_mutations,
+            average_mutations_per_dna_length,
+            average_age: average(
+                organisms
+                    .iter()
+                    .map(|robot| robot.counters.age as f64)
+                    .sum(),
+            ),
+            average_descendents: average(
+                organisms
+                    .iter()
+                    .map(|robot| robot.counters.descendants as f64)
+                    .sum(),
+            ),
+            average_energy: average(
+                organisms
+                    .iter()
+                    .map(|robot| robot.materials.energy as f64)
+                    .sum(),
+            ),
+            average_dna_length,
+            average_dna_conditions,
+            dynamic_cost_stats,
+            species_diversity,
+            average_chloroplasts: average(
+                organisms
+                    .iter()
+                    .map(|robot| robot.materials.chloroplasts as f64)
+                    .sum(),
+            ),
+            selective_genetic_distance: average_mutations,
+            generational_distance: average(
+                organisms
+                    .iter()
+                    .map(|robot| f64::from(robot.counters.generation))
+                    .sum(),
+            ),
+            slow_genetic_distance,
         });
     }
 

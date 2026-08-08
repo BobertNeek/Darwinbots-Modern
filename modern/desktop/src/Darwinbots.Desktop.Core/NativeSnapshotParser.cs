@@ -89,7 +89,22 @@ public static class NativeSnapshotParser
             value.Energy,
             value.ImpactFlash)).ToArray();
         var history = (native.History ?? []).Select(value => new HistorySampleSnapshot(
-            value.Tick, value.Population, value.TotalEnergy, value.Births, value.Deaths, value.Mutations, value.ShotsFired)).ToArray();
+            value.Tick, value.Population, value.TotalEnergy, value.Births, value.Deaths, value.Mutations, value.ShotsFired)
+        {
+            AverageMutations = value.AverageMutations,
+            AverageMutationsPerDnaLength = value.AverageMutationsPerDnaLength,
+            AverageAge = value.AverageAge,
+            AverageDescendents = value.AverageDescendents,
+            AverageEnergy = value.AverageEnergy,
+            AverageDnaLength = value.AverageDnaLength,
+            AverageDnaConditions = value.AverageDnaConditions,
+            DynamicCostStats = value.DynamicCostStats,
+            SpeciesDiversity = value.SpeciesDiversity,
+            AverageChloroplasts = value.AverageChloroplasts,
+            SelectiveGeneticDistance = value.SelectiveGeneticDistance,
+            GenerationalDistance = value.GenerationalDistance,
+            SlowGeneticDistance = value.SlowGeneticDistance,
+        }).ToArray();
         var ties = (native.Ties ?? []).Select(value => new TieSnapshot(
             new OrganismKey(value.First.Slot, value.First.Generation),
             new OrganismKey(value.Second.Slot, value.Second.Generation),
@@ -165,7 +180,10 @@ public static class NativeSnapshotParser
             native.Adjudication is { } adjudication
                 ? new LocalModeAdjudication(adjudication.Winner, adjudication.Reason, adjudication.Automatic)
                 : null,
-            parsedConfig.Restrictions);
+            parsedConfig.Restrictions)
+        {
+            MinimumRounds = parsedConfig.MinimumRounds,
+        };
     }
 
     private static LocalModeKind ParseKind(string? value) => value?.ToLowerInvariant() switch
@@ -333,7 +351,20 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("births")] ulong Births,
         [property: JsonPropertyName("deaths")] ulong Deaths,
         [property: JsonPropertyName("mutations")] ulong Mutations,
-        [property: JsonPropertyName("shots_fired")] ulong ShotsFired);
+        [property: JsonPropertyName("shots_fired")] ulong ShotsFired,
+        [property: JsonPropertyName("average_mutations")] double AverageMutations,
+        [property: JsonPropertyName("average_mutations_per_dna_length")] double AverageMutationsPerDnaLength,
+        [property: JsonPropertyName("average_age")] double AverageAge,
+        [property: JsonPropertyName("average_descendents")] double AverageDescendents,
+        [property: JsonPropertyName("average_energy")] double AverageEnergy,
+        [property: JsonPropertyName("average_dna_length")] double AverageDnaLength,
+        [property: JsonPropertyName("average_dna_conditions")] double AverageDnaConditions,
+        [property: JsonPropertyName("dynamic_cost_stats")] double DynamicCostStats,
+        [property: JsonPropertyName("species_diversity")] double SpeciesDiversity,
+        [property: JsonPropertyName("average_chloroplasts")] double AverageChloroplasts,
+        [property: JsonPropertyName("selective_genetic_distance")] double SelectiveGeneticDistance,
+        [property: JsonPropertyName("generational_distance")] double GenerationalDistance,
+        [property: JsonPropertyName("slow_genetic_distance")] double SlowGeneticDistance);
 
     private sealed record NativeTie(
         [property: JsonPropertyName("first")] NativeId First,

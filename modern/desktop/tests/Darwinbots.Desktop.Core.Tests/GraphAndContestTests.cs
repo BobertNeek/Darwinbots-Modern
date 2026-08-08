@@ -61,8 +61,87 @@ public sealed class GraphAndContestTests
         Assert.Equal([0d, 2d], comparison!.Differences.Select(value => value.Difference));
         Assert.Contains("Energy / 10", suite.ExportCsv(), StringComparison.Ordinal);
 
+        var left = new GraphSeriesViewModel(
+            "left",
+            GraphMetric.Population,
+            "Left",
+            [new GraphSample(10, 1), new GraphSample(20, 2)]);
+        var right = new GraphSeriesViewModel(
+            "right",
+            GraphMetric.TotalEnergy,
+            "Right",
+            [new GraphSample(20, 10), new GraphSample(30, 20)]);
+        var overlapOnly = suite.JoinAndCompare([left, right]);
+        Assert.NotNull(overlapOnly);
+        Assert.Equal([20UL], overlapOnly!.Differences.Select(value => value.Tick));
+        Assert.Equal([-8d], overlapOnly.Differences.Select(value => value.Difference));
+
         suite.ResetAllGraphs();
         Assert.All(suite.RunningGraphs, graph => Assert.Empty(graph.Samples));
+    }
+
+    [Fact]
+    public void GraphProjectorUsesRustHistoryMetricsForEveryHistoricalTick()
+    {
+        var snapshot = new EngineSnapshot(
+            30,
+            2,
+            "CPU",
+            [
+                new OrganismSnapshot(0, 0, [0, 0], [0, 0], 100, 90, Chloroplasts: 90),
+                new OrganismSnapshot(1, 0, [1, 1], [0, 0], 100, 90, Chloroplasts: 90),
+            ])
+        {
+            History =
+            [
+                new HistorySampleSnapshot(10, 2, 20, 0, 0, 0, 0)
+                {
+                    AverageMutations = 2,
+                    AverageMutationsPerDnaLength = 0.5,
+                    AverageAge = 1.5,
+                    AverageDescendents = 3,
+                    AverageEnergy = 10,
+                    AverageDnaLength = 4,
+                    AverageDnaConditions = 5,
+                    DynamicCostStats = 6,
+                    SpeciesDiversity = 2,
+                    AverageChloroplasts = 2.5,
+                    SelectiveGeneticDistance = 7,
+                    GenerationalDistance = 8,
+                    SlowGeneticDistance = 9,
+                },
+                new HistorySampleSnapshot(20, 2, 40, 0, 0, 0, 0)
+                {
+                    AverageMutations = 4,
+                    AverageMutationsPerDnaLength = 1,
+                    AverageAge = 2.5,
+                    AverageDescendents = 6,
+                    AverageEnergy = 20,
+                    AverageDnaLength = 8,
+                    AverageDnaConditions = 10,
+                    DynamicCostStats = 12,
+                    SpeciesDiversity = 3,
+                    AverageChloroplasts = 4.5,
+                    SelectiveGeneticDistance = 14,
+                    GenerationalDistance = 16,
+                    SlowGeneticDistance = 18,
+                },
+            ],
+        };
+
+        var projected = GraphMetricSampleProjector.FromSnapshot(snapshot);
+
+        Assert.Equal([2d, 4d], projected.Select(value => value.Values[GraphMetric.AverageMutations]));
+        Assert.Equal([0.5d, 1d], projected.Select(value => value.Values[GraphMetric.AverageMutationsPerDnaLength]));
+        Assert.Equal([1.5d, 2.5d], projected.Select(value => value.Values[GraphMetric.AverageAge]));
+        Assert.Equal([4d, 8d], projected.Select(value => value.Values[GraphMetric.AverageDnaLength]));
+        Assert.Equal([5d, 10d], projected.Select(value => value.Values[GraphMetric.AverageDnaConditions]));
+        Assert.Equal([6d, 12d], projected.Select(value => value.Values[GraphMetric.DynamicCostStats]));
+        Assert.Equal([2d, 3d], projected.Select(value => value.Values[GraphMetric.SpeciesDiversity]));
+        Assert.Equal([2.5d, 4.5d], projected.Select(value => value.Values[GraphMetric.AverageChloroplasts]));
+        Assert.Equal([7d, 14d], projected.Select(value => value.Values[GraphMetric.SelectiveGeneticDistance]));
+        Assert.Equal([8d, 16d], projected.Select(value => value.Values[GraphMetric.GenerationalDistance]));
+        Assert.Equal([9d, 18d], projected.Select(value => value.Values[GraphMetric.SlowGeneticDistance]));
     }
 
     [Fact]
@@ -91,5 +170,53 @@ public sealed class GraphAndContestTests
             [ContestAdjudicationKind.ManualWin, ContestAdjudicationKind.InstantWin],
             adjudications.Select(value => value.Kind));
         Assert.Contains("INSTANT WIN", viewModel.Status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ContestResultsFromSnapshotUsesAuthoritativeRustLocalModeState()
+    {
+        var snapshot = new EngineSnapshot(
+            12,
+            3,
+            "CPU",
+            [
+                new OrganismSnapshot(0, 0, [0, 0], [0, 0], 100, 1, Species: 0),
+                new OrganismSnapshot(1, 0, [1, 1], [0, 0], 100, 1, Species: 0),
+                new OrganismSnapshot(2, 0, [2, 2], [0, 0], 100, 1, Species: 1),
+            ])
+        {
+            Species =
+            [
+                new SpeciesSnapshot("Alpha", false, 0xff0000, 0, false),
+                new SpeciesSnapshot("Beta", false, 0x00ff00, 0, false),
+            ],
+            LocalMode = new LocalModeSnapshot(
+                LocalModeStatus.Completed,
+                LocalModeKind.Contest,
+                LeaguePreset.F1,
+                2,
+                3,
+                12,
+                100,
+                0,
+                [
+                    new LocalModeResult(1, 0, 2, 200, "manual", false),
+                    new LocalModeResult(2, 0, 2, 200, "manual", false),
+                ],
+                new LocalModeAdjudication(0, "manual", false),
+                new LocalModeRestrictions()),
+        };
+
+        var result = ContestResultSnapshot.FromSnapshot(snapshot);
+
+        Assert.Equal(2, result.Round);
+        Assert.Equal(1, result.MinimumRounds);
+        Assert.Equal(3, result.MaximumRounds);
+        Assert.Equal(
+            [("Alpha", 2, 2), ("Beta", 0, 1)],
+            result.Competitors.Select(value => (value.Name, value.Wins, value.Population)));
+
+        var idle = snapshot with { LocalMode = LocalModeSnapshot.Idle };
+        Assert.Equal(ContestResultSnapshot.Empty, ContestResultSnapshot.FromSnapshot(idle));
     }
 }

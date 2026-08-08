@@ -12,43 +12,58 @@ public sealed class GraphContestRenderedTests
     [Fact]
     public async Task GraphSuiteAndContestResultsRenderTogether()
     {
-        GraphMetricSample[] graphSamples =
-        [
-            new(100, new Dictionary<GraphMetric, double>
-            {
-                [GraphMetric.Population] = 12,
-                [GraphMetric.TotalEnergy] = 1_200,
-            }),
-            new(200, new Dictionary<GraphMetric, double>
-            {
-                [GraphMetric.Population] = 18,
-                [GraphMetric.TotalEnergy] = 1_950,
-            }),
-            new(300, new Dictionary<GraphMetric, double>
-            {
-                [GraphMetric.Population] = 15,
-                [GraphMetric.TotalEnergy] = 1_710,
-            }),
-        ];
-        var graphModel = new GraphSuiteViewModel(graphSamples);
+        using var engine = new NativeEngineClient(
+            backend: "Cpu",
+            capacity: 1_000,
+            seed: 24832,
+            worldWidth: 2_000,
+            worldHeight: 1_500,
+            metabolismCost: 0,
+            vegetableEnergyPerTick: 0,
+            sunlightEnergy: 0);
+        var dna = new[] { "start\nstop", "start\n1\nstop", "start\n2\nstop", "start\n3\nstop", "start\n4\nstop" };
+        for (var index = 0; index < dna.Length; index++)
+        {
+            engine.ImportSpecies(new SpeciesImport(
+                $"Competitor {index + 1}",
+                dna[index],
+                false,
+                0xff224466u + (uint)(index * 0x001122),
+                2,
+                1_000,
+                0,
+                false,
+                0f));
+        }
+        engine.ConfigureLocalMode(new LocalModeConfig(
+            LocalModeKind.Contest,
+            LeaguePreset.F1,
+            1,
+            1,
+            200,
+            1_000,
+            true,
+            null,
+            0.5f,
+            0.5f,
+            new()));
+        engine.StartLocalMode();
+        engine.Tick(100);
+        engine.AdjudicateLocalRound(1, "rendered local adjudication");
+        var snapshot = engine.Snapshot();
+        Assert.NotEmpty(snapshot.History);
+        Assert.All(snapshot.History, sample => Assert.True(sample.AverageDnaLength > 0));
+
+        var graphModel = new GraphSuiteViewModel(GraphMetricSampleProjector.FromSnapshot(snapshot));
         graphModel.ConfigureCustomMetric(1, "Energy / 10", "total_energy / 10");
-        graphModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+        graphModel.SelectedChoice = GraphCatalog.For(GraphMetric.AverageDnaLength);
         graphModel.OpenSelectedGraph();
         graphModel.SelectedChoice = GraphCatalog.For(GraphMetric.CustomizableGraph1);
         graphModel.OpenSelectedGraph();
 
-        var result = new ContestResultSnapshot(
-            "F1 Local Practice",
-            3,
-            5,
-            10,
-            [
-                new ContestCompetitorResult("alpha", "Alpha", 2, 18),
-                new ContestCompetitorResult("beta", "Beta", 1, 15),
-                new ContestCompetitorResult("gamma", "Gamma", 0, 9),
-                new ContestCompetitorResult("delta", "Delta", 0, 7),
-                new ContestCompetitorResult("epsilon", "Epsilon", 0, 4),
-            ]);
+        var result = ContestResultSnapshot.FromSnapshot(snapshot);
+        Assert.Equal(5, result.Competitors.Count);
+        Assert.Equal(1, result.Competitors.Single(value => value.Name == "Competitor 1").Wins);
         await DesktopTestApplication.Session.Dispatch(() =>
         {
             var graphView = new GraphSuiteView(graphModel);

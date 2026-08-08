@@ -23,18 +23,31 @@ public sealed record ContestResultSnapshot(
     public static ContestResultSnapshot FromSnapshot(EngineSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot.LocalMode.Status == LocalModeStatus.Idle || snapshot.LocalMode.MaximumRounds == 0)
+            return Empty;
+
+        var winsBySpecies = snapshot.LocalMode.Results
+            .Where(value => value.Winner is not null)
+            .GroupBy(value => value.Winner!.Value)
+            .ToDictionary(group => group.Key, group => group.Count());
         var competitors = snapshot.Species
             .Select((species, index) => new ContestCompetitorResult(
                 $"species-{index}",
                 species.Name,
-                0,
-                snapshot.Organisms.Count(value => value.Species == index)))
+                winsBySpecies.GetValueOrDefault((uint)index),
+                snapshot.Organisms.Count(value => value.Species == index),
+                false))
             .Where(value => value.Population > 0)
             .Take(5)
             .ToArray();
         return competitors.Length == 0
             ? Empty
-            : new ContestResultSnapshot("Local contest result", 1, 1, 1, competitors);
+            : new ContestResultSnapshot(
+                $"Local {snapshot.LocalMode.Kind} result",
+                (int)snapshot.LocalMode.CurrentRound,
+                (int)snapshot.LocalMode.MinimumRounds,
+                (int)snapshot.LocalMode.MaximumRounds,
+                competitors);
     }
 }
 

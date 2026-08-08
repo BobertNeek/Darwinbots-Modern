@@ -272,10 +272,10 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         var right = graphs[1];
         var leftValues = left.Samples.ToDictionary(value => value.Tick, value => value.Value);
         var rightValues = right.Samples.ToDictionary(value => value.Tick, value => value.Value);
-        var differences = leftValues.Keys.Union(rightValues.Keys).Order()
+        var differences = leftValues.Keys.Intersect(rightValues.Keys).Order()
             .Select(tick => new GraphDifference(
                 tick,
-                leftValues.GetValueOrDefault(tick) - rightValues.GetValueOrDefault(tick)))
+                leftValues[tick] - rightValues[tick]))
             .ToArray();
         var comparison = new GraphComparison(left.Title, right.Title, differences);
         ComparisonText = comparison.Summary;
@@ -312,32 +312,29 @@ public static class GraphMetricSampleProjector
 {
     public static IReadOnlyList<GraphMetricSample> FromSnapshot(EngineSnapshot snapshot)
     {
-        var currentAverageAge = snapshot.Organisms.Count == 0 ? 0 : snapshot.Organisms.Average(value => (double)value.Age);
-        var currentAverageEnergy = snapshot.Organisms.Count == 0 ? 0 : snapshot.Organisms.Average(value => value.Energy);
-        var currentAverageChloroplasts = snapshot.Organisms.Count == 0 ? 0 : snapshot.Organisms.Average(value => value.Chloroplasts);
         var history = snapshot.History.Count == 0
             ? [new HistorySampleSnapshot(snapshot.Tick, snapshot.Population, snapshot.Stats.TotalEnergy, snapshot.Stats.Births, snapshot.Stats.Deaths, snapshot.Stats.Mutations, snapshot.Stats.ShotsFired)]
             : snapshot.History;
         return history.Select(sample => new GraphMetricSample(sample.Tick, new Dictionary<GraphMetric, double>
         {
             [GraphMetric.Population] = sample.Population,
-            [GraphMetric.AverageMutations] = sample.Population == 0 ? 0 : (double)sample.Mutations / sample.Population,
-            [GraphMetric.AverageMutationsPerDnaLength] = sample.Population == 0 ? 0 : (double)sample.Mutations / sample.Population,
-            [GraphMetric.AverageAge] = currentAverageAge,
-            [GraphMetric.AverageDescendents] = sample.Population == 0 ? 0 : (double)sample.Births / sample.Population,
-            [GraphMetric.AverageEnergy] = sample.Population == 0 ? 0 : (double)sample.TotalEnergy / sample.Population,
-            [GraphMetric.AverageDnaLength] = 0,
-            [GraphMetric.AverageDnaConditions] = 0,
+            [GraphMetric.AverageMutations] = sample.AverageMutations,
+            [GraphMetric.AverageMutationsPerDnaLength] = sample.AverageMutationsPerDnaLength,
+            [GraphMetric.AverageAge] = sample.AverageAge,
+            [GraphMetric.AverageDescendents] = sample.AverageDescendents,
+            [GraphMetric.AverageEnergy] = sample.AverageEnergy,
+            [GraphMetric.AverageDnaLength] = sample.AverageDnaLength,
+            [GraphMetric.AverageDnaConditions] = sample.AverageDnaConditions,
             [GraphMetric.TotalEnergy] = sample.TotalEnergy,
-            [GraphMetric.DynamicCostStats] = 0,
-            [GraphMetric.SpeciesDiversity] = snapshot.Species.Count,
-            [GraphMetric.AverageChloroplasts] = currentAverageChloroplasts,
-            [GraphMetric.SelectiveGeneticDistance] = 0,
-            [GraphMetric.GenerationalDistance] = 0,
-            [GraphMetric.SlowGeneticDistance] = 0,
-            [GraphMetric.CustomizableGraph1] = currentAverageEnergy,
+            [GraphMetric.DynamicCostStats] = sample.DynamicCostStats,
+            [GraphMetric.SpeciesDiversity] = sample.SpeciesDiversity,
+            [GraphMetric.AverageChloroplasts] = sample.AverageChloroplasts,
+            [GraphMetric.SelectiveGeneticDistance] = sample.SelectiveGeneticDistance,
+            [GraphMetric.GenerationalDistance] = sample.GenerationalDistance,
+            [GraphMetric.SlowGeneticDistance] = sample.SlowGeneticDistance,
+            [GraphMetric.CustomizableGraph1] = sample.AverageEnergy,
             [GraphMetric.CustomizableGraph2] = sample.TotalEnergy,
-            [GraphMetric.CustomizableGraph3] = currentAverageChloroplasts,
+            [GraphMetric.CustomizableGraph3] = sample.AverageChloroplasts,
         })).ToArray();
     }
 

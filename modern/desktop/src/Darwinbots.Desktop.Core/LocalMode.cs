@@ -89,6 +89,8 @@ public sealed record LocalModeSnapshot(
     LocalModeAdjudication? Adjudication,
     LocalModeRestrictions Restrictions)
 {
+    public uint MinimumRounds { get; init; } = 1;
+
     public static LocalModeSnapshot Idle { get; } = new(
         LocalModeStatus.Idle,
         LocalModeKind.League,
@@ -100,5 +102,8 @@ public sealed record LocalModeSnapshot(
         0,
         [],
         null,
-        new());
+        new())
+    {
+        MinimumRounds = 0,
+    };
 }

@@ -135,8 +135,25 @@ public sealed record ShotSnapshot(
     float Energy,
     bool ImpactFlash);
 public sealed record TieSnapshot(OrganismKey First, OrganismKey Second, float RestLength);
-public sealed record HistorySampleSnapshot(
+public sealed partial record HistorySampleSnapshot(
     ulong Tick, int Population, long TotalEnergy, ulong Births, ulong Deaths, ulong Mutations, ulong ShotsFired);
+
+public sealed partial record HistorySampleSnapshot
+{
+    public double AverageMutations { get; init; }
+    public double AverageMutationsPerDnaLength { get; init; }
+    public double AverageAge { get; init; }
+    public double AverageDescendents { get; init; }
+    public double AverageEnergy { get; init; }
+    public double AverageDnaLength { get; init; }
+    public double AverageDnaConditions { get; init; }
+    public double DynamicCostStats { get; init; }
+    public double SpeciesDiversity { get; init; }
+    public double AverageChloroplasts { get; init; }
+    public double SelectiveGeneticDistance { get; init; }
+    public double GenerationalDistance { get; init; }
+    public double SlowGeneticDistance { get; init; }
+}
 public sealed record PhaseTimingsSnapshot(
     double Dna, double Intent, double Spatial, double Sensing, double Interactions,
     double Physics, double Lifecycle, double Mutation, double Snapshot)
