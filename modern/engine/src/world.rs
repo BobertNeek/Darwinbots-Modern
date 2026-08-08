@@ -2764,6 +2764,10 @@ impl Engine {
         self.config.toroidal_world
     }
 
+    pub(crate) fn organism_capacity(&self) -> usize {
+        self.config.organism_capacity
+    }
+
     pub fn organism(&self, id: OrganismId) -> Result<OrganismSnapshot, EngineError> {
         Ok(snapshot_organism(id, self.slots.get(id)?, &self.species))
     }
@@ -5604,6 +5608,34 @@ impl Engine {
                         let _ = fs::remove_file(path);
                     }
                 }
+
+                let mut corpse_index = 0;
+                while corpse_index < self.corpses.len() && sent < settings.capacity as u64 {
+                    let corpse = self.corpses[corpse_index].clone();
+                    if !inside_file_teleporter(&settings, corpse.position)
+                        || !settings.accepts(false, true)
+                    {
+                        corpse_index += 1;
+                        continue;
+                    }
+                    let transfer = LegacySimulationFile::from_corpse(self, &corpse);
+                    let path = settings.outbound_path.join(format!(
+                        "db2-{tick:016x}-corpse-{index:08x}.dbo",
+                        tick = self.tick,
+                        index = corpse_index,
+                    ));
+                    let Ok(bytes) = transfer.encode() else {
+                        corpse_index += 1;
+                        continue;
+                    };
+                    if write_transfer_atomically(&path, &bytes).is_err() {
+                        corpse_index += 1;
+                        continue;
+                    }
+                    self.corpses.remove(corpse_index);
+                    sent = sent.saturating_add(1);
+                    emitted_path = Some(path);
+                }
             }
 
             let poll_due = if settings.inbound_path.as_os_str().is_empty() {
@@ -5640,7 +5672,11 @@ impl Engine {
                     if received >= settings.capacity as u64 {
                         break;
                     }
-                    if previous_guard.as_ref().is_some_and(|guard| guard == &path) {
+                    if previous_guard.as_ref().is_some_and(|guard| guard == &path)
+                        || emitted_path
+                            .as_ref()
+                            .is_some_and(|emitted| emitted == &path)
+                    {
                         continue;
                     }
                     let Ok(bytes) = fs::read(&path) else {
@@ -5654,7 +5690,7 @@ impl Engine {
                         || transfer
                             .organisms
                             .iter()
-                            .any(|organism| !settings.accepts(organism.vegetable, false))
+                            .any(|organism| !settings.accepts(organism.vegetable, organism.corpse))
                     {
                         continue;
                     }
@@ -5662,7 +5698,7 @@ impl Engine {
                     let mut failed = false;
                     for organism in &transfer.organisms {
                         match self.import_legacy_organism(organism) {
-                            Ok(_) => imported = imported.saturating_add(1),
+                            Ok(()) => imported = imported.saturating_add(1),
                             Err(_) => {
                                 failed = true;
                                 break;
@@ -5688,10 +5724,20 @@ impl Engine {
         Ok(())
     }
 
-    fn import_legacy_organism(
-        &mut self,
-        organism: &LegacyOrganism,
-    ) -> Result<OrganismId, EngineError> {
+    fn import_legacy_organism(&mut self, organism: &LegacyOrganism) -> Result<(), EngineError> {
+        if organism.corpse {
+            self.corpses.push(CorpseSnapshot {
+                position: organism.position,
+                velocity: organism.velocity,
+                energy: organism.energy.max(1),
+                body: organism.body.max(1),
+                age: organism.age,
+                species: organism.species,
+                repopulating: organism.repopulating,
+            });
+            self.publish_snapshot();
+            return Ok(());
+        }
         let dna = LegacyDna::parse(&organism.dna)?;
         let species = SpeciesId(organism.species);
         let species = if self.species.get(species.0 as usize).is_some() {
@@ -5718,7 +5764,7 @@ impl Engine {
             .memory
             .write(MEM_YPOS, organism.position[1].round() as i32);
         self.publish_snapshot();
-        Ok(id)
+        Ok(())
     }
 
     fn apply_environment_features(&mut self, obstacles: bool, teleporters: bool) {

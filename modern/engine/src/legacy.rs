@@ -1,23 +1,37 @@
-use crate::{Engine, EngineError, OrganismId};
+use crate::{CorpseSnapshot, Engine, EngineError, OrganismId};
 use serde::{Deserialize, Serialize};
 
 const SIMULATION_MAGIC: &[u8; 4] = b"DB2S";
-const SIMULATION_VERSION: u16 = 1;
+const SIMULATION_VERSION: u16 = 2;
 const MAX_LEGACY_STRING: usize = 1 << 20;
 const MAX_LEGACY_ITEMS: usize = 1 << 20;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LegacySpeciesStartup {
     pub name: String,
+    pub robot_path: String,
+    pub robot_count: i32,
+    pub dna_name: String,
     pub vegetable: bool,
+    pub fixed: bool,
     pub color: u32,
+    pub initial_energy: i32,
+    pub skin: [i32; 13],
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LegacySettingsFile {
     pub version: i32,
+    pub simulation_name: String,
+    pub field_size: i32,
     pub world_size: [f32; 2],
+    pub max_population: i32,
+    pub blocked_vegetables: bool,
+    pub disable_ties: bool,
+    pub population_limit_method: i32,
     pub toroidal_world: bool,
+    pub max_energy: i32,
+    pub min_vegetables: i32,
     pub gravity: [f32; 2],
     pub sunlight_energy: i32,
     pub species: Vec<LegacySpeciesStartup>,
@@ -30,8 +44,16 @@ impl LegacySettingsFile {
         let snapshot = engine.snapshot();
         Ok(Self {
             version: -1,
+            simulation_name: String::new(),
+            field_size: 0,
             world_size: snapshot.world_size,
+            max_population: engine.organism_capacity() as i32,
+            blocked_vegetables: false,
+            disable_ties: false,
+            population_limit_method: 0,
             toroidal_world: engine.toroidal_world(),
+            max_energy: 500_000,
+            min_vegetables: 0,
             gravity: [0.0, 0.0],
             sunlight_energy: 0,
             species: snapshot
@@ -39,8 +61,14 @@ impl LegacySettingsFile {
                 .iter()
                 .map(|species| LegacySpeciesStartup {
                     name: species.name.clone(),
+                    robot_path: String::new(),
+                    robot_count: 0,
+                    dna_name: species.name.clone(),
                     vegetable: species.vegetable,
+                    fixed: false,
                     color: species.color,
+                    initial_energy: 1_000,
+                    skin: [0; 13],
                 })
                 .collect(),
             raw_write_stream: None,
@@ -59,64 +87,82 @@ impl LegacySettingsFile {
         }
         let version = parse_i32(lines[0], "settings version")?;
         let species_count = parse_i32(lines[1], "settings species count")?.max(0) as usize + 1;
-        let world_size = [
-            parse_f32(lines[2], "settings world width")?,
-            parse_f32(lines[3], "settings world height")?,
-        ];
-        let toroidal_world = lines
-            .get(4)
-            .and_then(|line| parse_bool(line).ok())
-            .unwrap_or(false);
-        let gravity = [
-            lines
-                .get(5)
-                .and_then(|line| parse_f32(line, "settings gravity x").ok())
-                .unwrap_or(0.0),
-            lines
-                .get(6)
-                .and_then(|line| parse_f32(line, "settings gravity y").ok())
-                .unwrap_or(0.0),
-        ];
-        let sunlight_energy = lines
-            .get(7)
-            .and_then(|line| parse_i32(line, "settings sunlight").ok())
-            .unwrap_or(0);
-
-        let mut species = Vec::new();
-        let mut offset = 8;
-        for _ in 0..species_count.min(MAX_LEGACY_ITEMS) {
-            let Some(name_line) = lines.get(offset) else {
-                break;
-            };
-            let Ok(name) = parse_string(name_line) else {
-                break;
-            };
-            let Some(vegetable_line) = lines.get(offset + 1) else {
-                break;
-            };
-            let Ok(vegetable) = parse_bool(vegetable_line) else {
-                break;
-            };
-            let Some(color_line) = lines.get(offset + 2) else {
-                break;
-            };
-            let Ok(color) = parse_u32(color_line, "settings species color") else {
-                break;
-            };
-            species.push(LegacySpeciesStartup {
-                name,
-                vegetable,
-                color,
-            });
-            offset += 3;
+        if species_count > MAX_LEGACY_ITEMS {
+            return Err(EngineError::InvalidSave(
+                "legacy settings contain too many species".to_owned(),
+            ));
         }
 
+        const SPECIES_RECORD_LINES: usize = 40;
+        let species_start = 2;
+        let global_start = species_start + species_count * SPECIES_RECORD_LINES;
+        let mut species = Vec::with_capacity(species_count);
+        for index in 0..species_count {
+            let offset = species_start + index * SPECIES_RECORD_LINES;
+            if lines.len() < offset + SPECIES_RECORD_LINES {
+                return Err(EngineError::InvalidSave(format!(
+                    "legacy settings species record {index} is truncated"
+                )));
+            }
+            let dna_name = parse_string(lines[offset + 7])?;
+            let mut skin = [0; 13];
+            for (skin_index, value) in skin.iter_mut().enumerate() {
+                *value = parse_i32(lines[offset + 27 + skin_index], "settings species skin")?;
+            }
+            species.push(LegacySpeciesStartup {
+                name: dna_name.clone(),
+                robot_path: parse_string(lines[offset + 5])?,
+                robot_count: parse_i32(lines[offset + 6], "settings robot count")?,
+                dna_name,
+                vegetable: parse_bool(lines[offset + 8])?,
+                fixed: parse_bool(lines[offset + 9])?,
+                color: parse_u32(lines[offset + 10], "settings species color")?,
+                initial_energy: parse_i32(lines[offset + 12], "settings initial energy")?,
+                skin,
+            });
+        }
+
+        let required_global = global_start + 12;
+        if lines.len() < required_global {
+            return Err(EngineError::InvalidSave(
+                "legacy settings global record is truncated".to_owned(),
+            ));
+        }
+        let parse_optional_i32 = |offset: usize, label: &str, default| {
+            lines
+                .get(global_start + offset)
+                .and_then(|line| parse_i32(line, label).ok())
+                .unwrap_or(default)
+        };
+        let parse_optional_f32 = |offset: usize, label: &str, default| {
+            lines
+                .get(global_start + offset)
+                .and_then(|line| parse_f32(line, label).ok())
+                .unwrap_or(default)
+        };
         Ok(Self {
             version,
-            world_size,
-            toroidal_world,
-            gravity,
-            sunlight_energy,
+            simulation_name: parse_string(lines[global_start])?,
+            field_size: parse_i32(lines[global_start + 2], "settings field size")?,
+            world_size: [
+                parse_f32(lines[global_start + 3], "settings world width")?,
+                parse_f32(lines[global_start + 4], "settings world height")?,
+            ],
+            max_population: parse_i32(lines[global_start + 5], "settings maximum population")?,
+            blocked_vegetables: parse_bool(lines[global_start + 6])?,
+            disable_ties: parse_bool(lines[global_start + 7])?,
+            population_limit_method: parse_i32(
+                lines[global_start + 8],
+                "settings population limit method",
+            )?,
+            toroidal_world: parse_bool(lines[global_start + 9])?,
+            max_energy: parse_i32(lines[global_start + 10], "settings maximum energy")?,
+            min_vegetables: parse_i32(lines[global_start + 11], "settings minimum vegetables")?,
+            gravity: [
+                parse_optional_f32(18, "settings gravity x", 0.0),
+                parse_optional_f32(19, "settings gravity y", 0.0),
+            ],
+            sunlight_energy: parse_optional_i32(36, "settings light intensity", 0),
             species,
             raw_write_stream: Some(bytes.to_vec()),
         })
@@ -134,30 +180,89 @@ impl LegacySettingsFile {
         let mut text = String::new();
         text.push_str(&format!("{}\r\n", self.version));
         text.push_str(&format!("{}\r\n", self.species.len().saturating_sub(1)));
-        text.push_str(&format_float(self.world_size[0]));
-        text.push_str("\r\n");
-        text.push_str(&format_float(self.world_size[1]));
-        text.push_str("\r\n");
-        text.push_str(if self.toroidal_world {
-            "#TRUE#\r\n"
-        } else {
-            "#FALSE#\r\n"
-        });
-        text.push_str(&format_float(self.gravity[0]));
-        text.push_str("\r\n");
-        text.push_str(&format_float(self.gravity[1]));
-        text.push_str("\r\n");
-        text.push_str(&format!("{}\r\n", self.sunlight_energy));
         for species in &self.species {
-            text.push_str(&quote_write_string(&species.name));
-            text.push_str("\r\n");
+            write_line(&mut text, &format_float(self.world_size[0]));
+            write_line(&mut text, &format_float(self.world_size[1]));
+            write_line(&mut text, "0");
+            write_line(&mut text, "0");
+            write_line(&mut text, "0");
+            write_line(&mut text, &quote_write_string(&species.robot_path));
+            write_line(&mut text, &species.robot_count.to_string());
+            write_line(&mut text, &quote_write_string(&species.dna_name));
             text.push_str(if species.vegetable {
                 "#TRUE#\r\n"
             } else {
                 "#FALSE#\r\n"
             });
-            text.push_str(&format!("{}\r\n", species.color));
+            text.push_str(if species.fixed {
+                "#TRUE#\r\n"
+            } else {
+                "#FALSE#\r\n"
+            });
+            write_line(&mut text, &species.color.to_string());
+            write_line(&mut text, "0");
+            write_line(&mut text, &species.initial_energy.to_string());
+            for _ in 0..14 {
+                write_line(&mut text, "0");
+            }
+            for value in species.skin {
+                write_line(&mut text, &value.to_string());
+            }
         }
+        write_line(&mut text, &quote_write_string(&self.simulation_name));
+        write_line(&mut text, &self.species.len().to_string());
+        write_line(&mut text, &self.field_size.to_string());
+        write_line(&mut text, &format_float(self.world_size[0]));
+        write_line(&mut text, &format_float(self.world_size[1]));
+        write_line(&mut text, &self.max_population.to_string());
+        write_line(
+            &mut text,
+            if self.blocked_vegetables {
+                "#TRUE#"
+            } else {
+                "#FALSE#"
+            },
+        );
+        write_line(
+            &mut text,
+            if self.disable_ties {
+                "#TRUE#"
+            } else {
+                "#FALSE#"
+            },
+        );
+        write_line(&mut text, &self.population_limit_method.to_string());
+        write_line(
+            &mut text,
+            if self.toroidal_world {
+                "#TRUE#"
+            } else {
+                "#FALSE#"
+            },
+        );
+        write_line(&mut text, &self.max_energy.to_string());
+        write_line(&mut text, &self.min_vegetables.to_string());
+        for _ in 0..6 {
+            write_line(&mut text, "0");
+        }
+        write_line(&mut text, &format_float(self.gravity[0]));
+        write_line(&mut text, &format_float(self.gravity[1]));
+        for _ in 0..5 {
+            write_line(&mut text, "0");
+        }
+        write_line(&mut text, "\"null\"");
+        write_line(&mut text, "0");
+        write_line(&mut text, "\"null\"");
+        write_line(&mut text, "0");
+        for _ in 0..4 {
+            write_line(&mut text, "0");
+        }
+        write_line(&mut text, "\"null\"");
+        write_line(&mut text, "#FALSE#");
+        write_line(&mut text, "#FALSE#");
+        write_line(&mut text, "#FALSE#");
+        write_line(&mut text, "#FALSE#");
+        write_line(&mut text, &self.sunlight_energy.to_string());
         Ok(text.into_bytes())
     }
 }
@@ -167,6 +272,8 @@ pub struct LegacyOrganism {
     pub dna: String,
     pub species: u32,
     pub vegetable: bool,
+    pub corpse: bool,
+    pub repopulating: bool,
     pub position: [f32; 2],
     pub velocity: [f32; 2],
     pub energy: i32,
@@ -201,8 +308,14 @@ impl LegacySimulationFile {
                 .iter()
                 .map(|species| LegacySpeciesStartup {
                     name: species.name.clone(),
+                    robot_path: String::new(),
+                    robot_count: 0,
+                    dna_name: species.name.clone(),
                     vegetable: species.vegetable,
+                    fixed: false,
                     color: species.color,
+                    initial_energy: 1_000,
+                    skin: [0; 13],
                 })
                 .collect(),
             organisms,
@@ -221,12 +334,55 @@ impl LegacySimulationFile {
                 .iter()
                 .map(|species| LegacySpeciesStartup {
                     name: species.name.clone(),
+                    robot_path: String::new(),
+                    robot_count: 0,
+                    dna_name: species.name.clone(),
                     vegetable: species.vegetable,
+                    fixed: false,
                     color: species.color,
+                    initial_energy: 1_000,
+                    skin: [0; 13],
                 })
                 .collect(),
             organisms: vec![organism_from_snapshot(engine, &organism)?],
         })
+    }
+
+    pub(crate) fn from_corpse(engine: &Engine, corpse: &CorpseSnapshot) -> Self {
+        let snapshot = engine.snapshot();
+        Self {
+            tick: snapshot.tick,
+            world_size: snapshot.world_size,
+            toroidal_world: engine.toroidal_world(),
+            species: snapshot
+                .species
+                .iter()
+                .map(|species| LegacySpeciesStartup {
+                    name: species.name.clone(),
+                    robot_path: String::new(),
+                    robot_count: 0,
+                    dna_name: species.name.clone(),
+                    vegetable: species.vegetable,
+                    fixed: false,
+                    color: species.color,
+                    initial_energy: 1_000,
+                    skin: [0; 13],
+                })
+                .collect(),
+            organisms: vec![LegacyOrganism {
+                dna: String::new(),
+                species: corpse.species,
+                vegetable: false,
+                corpse: true,
+                repopulating: corpse.repopulating,
+                position: corpse.position,
+                velocity: corpse.velocity,
+                energy: corpse.energy,
+                age: corpse.age,
+                birth_cycle: 0,
+                body: corpse.body,
+            }],
+        }
     }
 
     pub fn encode(&self) -> Result<Vec<u8>, EngineError> {
@@ -248,6 +404,8 @@ impl LegacySimulationFile {
             writer.string(&organism.dna, "legacy organism DNA")?;
             writer.u32(organism.species);
             writer.bool(organism.vegetable);
+            writer.bool(organism.corpse);
+            writer.bool(organism.repopulating);
             for value in organism.position {
                 writer.f32(value);
             }
@@ -270,7 +428,7 @@ impl LegacySimulationFile {
             ));
         }
         let version = reader.u16()?;
-        if version != SIMULATION_VERSION {
+        if version == 0 || version > SIMULATION_VERSION {
             return Err(EngineError::InvalidSave(format!(
                 "unsupported DB2 simulation version {version}"
             )));
@@ -283,17 +441,30 @@ impl LegacySimulationFile {
         for _ in 0..species_count {
             species.push(LegacySpeciesStartup {
                 name: reader.string("legacy species name")?,
+                robot_path: String::new(),
+                robot_count: 0,
+                dna_name: String::new(),
                 vegetable: reader.bool()?,
+                fixed: false,
                 color: reader.u32()?,
+                initial_energy: 0,
+                skin: [0; 13],
             });
         }
         let organism_count = reader.count("legacy organisms")?;
         let mut organisms = Vec::with_capacity(organism_count);
         for _ in 0..organism_count {
+            let dna = reader.string("legacy organism DNA")?;
+            let species = reader.u32()?;
+            let vegetable = reader.bool()?;
+            let corpse = if version >= 2 { reader.bool()? } else { false };
+            let repopulating = if version >= 2 { reader.bool()? } else { false };
             organisms.push(LegacyOrganism {
-                dna: reader.string("legacy organism DNA")?,
-                species: reader.u32()?,
-                vegetable: reader.bool()?,
+                dna,
+                species,
+                vegetable,
+                corpse,
+                repopulating,
                 position: [reader.f32()?, reader.f32()?],
                 velocity: [reader.f32()?, reader.f32()?],
                 energy: reader.i32()?,
@@ -325,6 +496,8 @@ fn organism_from_snapshot(
         dna: engine.export_dna(organism.id)?,
         species: organism.species.0,
         vegetable: organism.vegetable,
+        corpse: false,
+        repopulating: false,
         position: organism.position,
         velocity: organism.velocity,
         energy: organism.energy,
@@ -374,6 +547,11 @@ fn parse_string(line: &str) -> Result<String, EngineError> {
 
 fn format_float(value: f32) -> String {
     format!("{value:?}")
+}
+
+fn write_line(text: &mut String, value: &str) {
+    text.push_str(value);
+    text.push_str("\r\n");
 }
 
 fn quote_write_string(value: &str) -> String {

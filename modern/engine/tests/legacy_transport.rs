@@ -2,7 +2,7 @@ use std::fs;
 
 use darwinbots_engine::{
     Engine, EngineConfig, FileTeleporter, LegacyDna, LegacySettingsFile, LegacySimulationFile,
-    SpeciesDefinition, Teleporter, TeleporterFilters,
+    SaveFile, SpeciesDefinition, Teleporter, TeleporterFilters,
 };
 use tempfile::tempdir;
 
@@ -21,6 +21,20 @@ fn legacy_codecs_round_trip_the_authoritative_fixture_fields() {
             .expect("installed DB2 settings re-encoding"),
         installed_settings,
     );
+    let parsed_settings =
+        LegacySettingsFile::decode(installed_settings).expect("installed DB2 settings fields");
+    assert_eq!(parsed_settings.species.len(), 2);
+    assert_eq!(
+        parsed_settings.species[0].robot_path,
+        r#"C:\Users\Owner\Desktop\Robots"#
+    );
+    assert_eq!(parsed_settings.species[0].robot_count, 5);
+    assert_eq!(
+        parsed_settings.species[0].dna_name,
+        "Alga_Minimalis_Chloroplastus.txt"
+    );
+    assert_eq!(parsed_settings.simulation_name, "");
+    assert_eq!(parsed_settings.max_population, 100);
 
     let fixtures = ["settings", "simulation"];
     for fixture in fixtures {
@@ -81,6 +95,16 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
                 }),
         )
         .expect("file teleporter registration");
+    let saved = SaveFile::encode(&engine).expect("file teleporter save");
+    let restored = SaveFile::decode(&saved).expect("file teleporter restore");
+    let saved_payload: serde_json::Value = serde_json::from_slice(&saved[10..]).unwrap();
+    let restored_payload = SaveFile::encode(&restored).expect("file teleporter re-save");
+    let restored_payload: serde_json::Value =
+        serde_json::from_slice(&restored_payload[10..]).unwrap();
+    assert_eq!(
+        saved_payload["file_teleporters"], restored_payload["file_teleporters"],
+        "file teleporter state was lost across DB3S round trip"
+    );
 
     engine
         .spawn_at(
@@ -128,6 +152,81 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
     engine.tick().expect("corrupt transfer should fail safely");
     assert_eq!(engine.population(), population_before_failure);
     assert!(bad_file.exists(), "failed inbound transfer was destroyed");
+
+    let shared = root.path().join("shared");
+    fs::create_dir_all(&shared).expect("shared teleporter directory");
+    let mut backflow_engine = Engine::new(EngineConfig::testing()).expect("backflow engine");
+    backflow_engine
+        .add_file_teleporter(
+            FileTeleporter::new(9, [150.0, 150.0], 30.0)
+                .with_paths(&shared, &shared)
+                .with_polling(1, 1)
+                .with_filters(TeleporterFilters {
+                    teleport_vegetables: false,
+                    teleport_corpses: false,
+                    teleport_heterotrophs: true,
+                }),
+        )
+        .expect("backflow teleporter registration");
+    backflow_engine
+        .spawn_at(
+            LegacyDna::parse("stop").expect("backflow dna"),
+            [150.0, 150.0],
+        )
+        .expect("backflow spawn");
+    backflow_engine.tick().expect("backflow outbound cycle");
+    assert_eq!(
+        backflow_engine.population(),
+        0,
+        "newly emitted file was immediately re-imported"
+    );
+    assert_eq!(
+        fs::read_dir(&shared)
+            .expect("shared listing")
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "dbo"))
+            .count(),
+        1,
+        "same-directory transfer was consumed as backflow"
+    );
+
+    let corpse_outbound = root.path().join("corpse-outbound");
+    fs::create_dir_all(&corpse_outbound).expect("corpse outbound directory");
+    let mut corpse_engine = Engine::new(EngineConfig {
+        metabolism_cost: 2_000,
+        ..EngineConfig::testing()
+    })
+    .expect("corpse engine");
+    corpse_engine
+        .add_file_teleporter(
+            FileTeleporter::new(10, [250.0, 250.0], 30.0)
+                .with_paths(root.path().join("unused-inbound"), &corpse_outbound)
+                .with_polling(1, 1)
+                .with_filters(TeleporterFilters {
+                    teleport_vegetables: false,
+                    teleport_corpses: true,
+                    teleport_heterotrophs: false,
+                }),
+        )
+        .expect("corpse teleporter registration");
+    corpse_engine
+        .spawn_at(
+            LegacyDna::parse("stop").expect("corpse dna"),
+            [250.0, 250.0],
+        )
+        .expect("corpse spawn");
+    corpse_engine.tick().expect("corpse creation cycle");
+    assert_eq!(corpse_engine.snapshot().corpses.len(), 1);
+    corpse_engine.tick().expect("corpse outbound cycle");
+    assert_eq!(
+        fs::read_dir(&corpse_outbound)
+            .expect("corpse outbound listing")
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "dbo"))
+            .count(),
+        1,
+        "corpse filter path never serialized a corpse"
+    );
 
     let mut local_engine = Engine::new(EngineConfig::testing()).expect("local fixture engine");
     local_engine
