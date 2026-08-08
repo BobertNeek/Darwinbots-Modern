@@ -150,6 +150,72 @@ public sealed partial class SetupWindow : Window
         }
     }
 
+    private async void SaveSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = ReadDesktopSettings();
+            SetupStatus.Text = await _storage.SaveSettingsAsync(this, settings)
+                ? "SETTINGS SAVED"
+                : "SETTINGS SAVE CANCELLED";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"SETTINGS SAVE FAILED: {error.Message}";
+        }
+    }
+
+    private async void LoadSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = await _storage.OpenSettingsAsync(this);
+            if (settings is null)
+            {
+                SetupStatus.Text = "SETTINGS LOAD CANCELLED";
+                return;
+            }
+
+            ApplyDesktopSettings(settings);
+            SetupStatus.Text = "SETTINGS LOADED";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"SETTINGS LOAD FAILED: {error.Message}";
+        }
+    }
+
+    private DesktopSettings ReadDesktopSettings() => new()
+    {
+        Backend = ((ComboBoxItem)Backend.SelectedItem!).Content?.ToString() ?? "Auto",
+        TicksPerUpdate = Speed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u },
+        OrganismCapacity = (int)(PopulationCap.Value ?? 25_000),
+        WorldWidth = (float)(WorldWidth.Value ?? 16_000),
+        WorldHeight = (float)(WorldHeight.Value ?? 12_000),
+        GlobalSettings = _globalSettings,
+    };
+
+    private void ApplyDesktopSettings(DesktopSettings settings)
+    {
+        Backend.SelectedIndex = settings.Backend.ToUpperInvariant() switch
+        {
+            "CPU" => 1,
+            "GPU" => 2,
+            _ => 0,
+        };
+        WorldWidth.Value = (decimal)settings.WorldWidth;
+        WorldHeight.Value = (decimal)settings.WorldHeight;
+        PopulationCap.Value = settings.OrganismCapacity;
+        Speed.SelectedIndex = settings.TicksPerUpdate switch
+        {
+            <= 1 => 0,
+            <= 5 => 1,
+            <= 20 => 2,
+            _ => 3,
+        };
+        _globalSettings = settings.GlobalSettings;
+    }
+
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;

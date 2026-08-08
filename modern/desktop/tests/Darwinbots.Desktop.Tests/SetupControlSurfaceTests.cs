@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.Views;
 using Xunit;
 
@@ -93,6 +94,70 @@ public sealed class SetupControlSurfaceTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task SetupSettingsButtonsRoundTripTheDesktopSettingsAuthority()
+    {
+        Assert.NotNull(typeof(IDesktopStorageService).GetMethod("OpenSettingsAsync"));
+        Assert.NotNull(typeof(IDesktopStorageService).GetMethod("SaveSettingsAsync"));
+
+        var storage = new SettingsWorkflowStorage
+        {
+            SettingsToOpen = new DesktopSettings
+            {
+                Backend = "Gpu",
+                TicksPerUpdate = 5,
+                OrganismCapacity = 44_000,
+                WorldWidth = 91_000,
+                WorldHeight = 82_000,
+                GlobalSettings = new GlobalSettings
+                {
+                    Costs = new GlobalSimulationCostSettings { DnaCopy = 4.25 },
+                },
+            },
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            window.Show();
+            try
+            {
+                typeof(SetupWindow).GetField("_globalSettings", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .SetValue(window, new GlobalSettings
+                    {
+                        Costs = new GlobalSimulationCostSettings { DnaCopy = 2.5 },
+                    });
+                window.FindControl<ComboBox>("Backend")!.SelectedIndex = 1;
+                window.FindControl<NumericUpDown>("WorldWidth")!.Value = 70_000;
+                window.FindControl<NumericUpDown>("WorldHeight")!.Value = 60_000;
+                window.FindControl<NumericUpDown>("PopulationCap")!.Value = 55_000;
+                window.FindControl<ComboBox>("Speed")!.SelectedIndex = 2;
+
+                var save = window.FindControl<Button>("SaveSettingsButton");
+                var load = window.FindControl<Button>("LoadSettingsButton");
+                Assert.NotNull(save);
+                Assert.NotNull(load);
+                save!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.Equal("Cpu", storage.SavedSettings!.Backend);
+                Assert.Equal(20u, storage.SavedSettings.TicksPerUpdate);
+                Assert.Equal(2.5, storage.SavedSettings.GlobalSettings.Costs.DnaCopy);
+                Assert.Equal(70_000f, storage.SavedSettings.WorldWidth);
+
+                load!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.FindControl<NumericUpDown>("WorldWidth")!.Value == 91_000);
+                Assert.Equal(2, window.FindControl<ComboBox>("Backend")!.SelectedIndex);
+                Assert.Equal(82_000, window.FindControl<NumericUpDown>("WorldHeight")!.Value);
+                Assert.Equal(4.25, typeof(SetupWindow).GetField("_globalSettings", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .GetValue(window) is GlobalSettings settings ? settings.Costs.DnaCopy : -1);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void Select(SetupWindow window, RadioButton radio, string modeName)
     {
         radio.IsChecked = true;
@@ -116,4 +181,37 @@ public sealed class SetupControlSurfaceTests
     private static EnvironmentUpdate GetEnvironment(SetupWindow window) =>
         (EnvironmentUpdate)typeof(SetupWindow).GetField("_environment", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(window)!;
+
+    private static async Task WaitFor(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            if (condition()) return;
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), "Timed out waiting for settings file workflow.");
+    }
+}
+
+internal sealed class SettingsWorkflowStorage : IDesktopStorageService
+{
+    public DesktopSettings? SettingsToOpen { get; init; }
+    public DesktopSettings? SavedSettings { get; private set; }
+
+    public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
+    public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult<string?>(null);
+    public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
+    public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(true);
+    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna) => Task.FromResult(true);
+    public Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync) => Task.FromResult(true);
+    public string? FindLatestAutosave() => null;
+    public Task SaveAutosaveAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
+    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
+
+    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    {
+        SavedSettings = settings;
+        return Task.FromResult(true);
+    }
 }

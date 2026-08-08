@@ -100,6 +100,7 @@
         <CheckBox x:Name="AutomaticProgression" IsChecked="True" Content="AUTOMATIC ZEROBOT PROGRESSION" Margin="0,8,0,0"/>
         <Button x:Name="AdvancedSettingsButton" Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
         <Button x:Name="GlobalSettingsButton" Content="☷  GLOBAL SETTINGS" Click="GlobalSettings_Click"/>
+        <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="LoadSettingsButton" Content="LOAD SETTINGS" Click="LoadSettings_Click"/><Button x:Name="SaveSettingsButton" Content="SAVE SETTINGS" Click="SaveSettings_Click"/></StackPanel>
         <Button x:Name="CreateWorldButton" Content="▶  CREATE WORLD" Background="#4C7D30" Foreground="White" FontWeight="Bold" FontSize="18" Height="58" Margin="0,12,0,0" Click="CreateWorld_Click"/>
         <Button x:Name="RecoverButton" Content="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
       </StackPanel></ScrollViewer>

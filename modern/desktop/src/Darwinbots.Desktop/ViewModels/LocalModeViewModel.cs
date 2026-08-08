@@ -13,6 +13,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
     private ulong _maximumCycles = 10_000;
     private int _maximumPopulation = 25_000;
     private bool _restartOnExtinction = true;
+    private int _energyHandicap;
     private bool _prohibitInformationShots;
     private bool _prohibitViruses;
     private bool _prohibitSexualReproduction;
@@ -36,6 +37,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
     public ulong MaximumCycles { get => _maximumCycles; set => Set(ref _maximumCycles, value); }
     public int MaximumPopulation { get => _maximumPopulation; set => Set(ref _maximumPopulation, value); }
     public bool RestartOnExtinction { get => _restartOnExtinction; set => Set(ref _restartOnExtinction, value); }
+    public int EnergyHandicap { get => _energyHandicap; set => Set(ref _energyHandicap, value); }
     public bool ProhibitInformationShots { get => _prohibitInformationShots; set => Set(ref _prohibitInformationShots, value); }
     public bool ProhibitViruses { get => _prohibitViruses; set => Set(ref _prohibitViruses, value); }
     public bool ProhibitSexualReproduction { get => _prohibitSexualReproduction; set => Set(ref _prohibitSexualReproduction, value); }
@@ -100,7 +102,8 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             ProhibitSexualReproduction,
             ProhibitCrossSpeciesTieTransfer,
             RobotFixingAllowed,
-            AsexualReproductionAllowed));
+            AsexualReproductionAllowed),
+        EnergyHandicap);
 
     public void MarkConfigured() => Status = LocalModeStatus.Configured;
 
@@ -115,6 +118,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         CycleInRound = snapshot.CycleInRound;
         MaximumCycles = snapshot.MaximumCycles;
         RestartCount = snapshot.RestartCount;
+        EnergyHandicap = snapshot.EnergyHandicap;
         Results = snapshot.Results;
         Adjudication = snapshot.Adjudication;
         ProhibitInformationShots = snapshot.Restrictions.ProhibitInformationShots;

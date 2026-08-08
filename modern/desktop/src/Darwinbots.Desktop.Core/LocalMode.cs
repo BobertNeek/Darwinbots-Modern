@@ -47,7 +47,8 @@ public sealed record LocalModeConfig(
     uint? SourceSpecies,
     float SelectionPopulationWeight,
     float SelectionEnergyWeight,
-    LocalModeRestrictions Restrictions)
+    LocalModeRestrictions Restrictions,
+    int EnergyHandicap = 0)
 {
     public static LocalModeConfig Default { get; } = new(
         LocalModeKind.League,
@@ -90,6 +91,7 @@ public sealed record LocalModeSnapshot(
     LocalModeRestrictions Restrictions)
 {
     public uint MinimumRounds { get; init; } = 1;
+    public int EnergyHandicap { get; init; }
 
     public static LocalModeSnapshot Idle { get; } = new(
         LocalModeStatus.Idle,

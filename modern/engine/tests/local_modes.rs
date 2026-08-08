@@ -55,6 +55,7 @@ fn local_modes_transition_through_adjudication_and_survival_restart_authority() 
                 maximum_cycles: 10,
                 maximum_population: 8,
                 restart_on_extinction: true,
+                energy_handicap: 0,
                 source_species: Some(species),
                 selection_population_weight: 0.5,
                 selection_energy_weight: 0.5,

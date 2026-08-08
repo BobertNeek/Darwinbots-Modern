@@ -327,6 +327,10 @@ struct Db3sV2EngineConfig {
     vegetable_energy_per_tick: i32,
     #[serde(default = "db3s_v2_default_sunlight_energy")]
     sunlight_energy: i32,
+    #[serde(default = "db3s_v2_default_low_memory_dna_limit")]
+    low_memory_dna_limit: usize,
+    #[serde(default = "db3s_v2_default_low_memory_detail_limit")]
+    low_memory_detail_limit: usize,
     #[serde(default)]
     gravity: [f32; 2],
     #[serde(default)]
@@ -357,6 +361,14 @@ const fn db3s_v2_default_toroidal_world() -> bool {
 
 const fn db3s_v2_default_sunlight_energy() -> i32 {
     100
+}
+
+const fn db3s_v2_default_low_memory_dna_limit() -> usize {
+    4_000_000
+}
+
+const fn db3s_v2_default_low_memory_detail_limit() -> usize {
+    3_000_000
 }
 
 const fn db3s_v2_default_speciation_genetic_distance_percent() -> f32 {
@@ -591,6 +603,8 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             metabolism_cost: value.metabolism_cost,
             vegetable_energy_per_tick: value.vegetable_energy_per_tick,
             sunlight_energy: value.sunlight_energy,
+            low_memory_dna_limit: value.low_memory_dna_limit,
+            low_memory_detail_limit: value.low_memory_detail_limit,
             gravity: value.gravity,
             drag: value.drag,
             brownian_motion: value.brownian_motion,
@@ -2414,6 +2428,108 @@ impl Engine {
             .count()
     }
 
+    fn apply_survival_handicap(&mut self) {
+        let Some(config) = self.local_mode_config().cloned() else {
+            return;
+        };
+        if self.local_mode.status != LocalModeStatus::Running
+            || !matches!(
+                config.kind,
+                LocalModeKind::SimpleSurvival | LocalModeKind::EcoSurvival
+            )
+            || config.energy_handicap == 0
+            || config.source_species.is_none()
+        {
+            return;
+        }
+        let source_species = config.source_species;
+        for slot in &mut self.slots {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            if robot.flags.vegetable {
+                continue;
+            }
+            let is_source = source_species == Some(robot.identity.species);
+            let delta = if is_source {
+                config.energy_handicap.saturating_neg()
+            } else {
+                config.energy_handicap
+            };
+            robot.materials.energy = robot.materials.energy.saturating_add(delta).max(0);
+            robot.materials.synchronize_energy();
+            robot.program.memory.write(MEM_NRG, robot.materials.energy);
+        }
+    }
+
+    fn enforce_low_memory_safety(&mut self, trace: &mut CycleRecorder) {
+        let dna_limit = self.config.low_memory_dna_limit.max(1);
+        let detail_limit = self.config.low_memory_detail_limit.max(1);
+        let total_dna = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|robot| robot.program.dna.blocks().len())
+            .sum::<usize>();
+        if total_dna > detail_limit {
+            for slot in &mut self.slots {
+                if let Some(robot) = slot.organism.as_mut() {
+                    robot.program.mutation_metadata.detailed_log.clear();
+                }
+            }
+        }
+        if total_dna <= dna_limit {
+            return;
+        }
+
+        let mut candidates: Vec<_> = self
+            .slots
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, entry)| {
+                let robot = entry.organism.as_ref()?;
+                Some((
+                    OrganismId::new(slot as u32, entry.generation),
+                    robot.program.dna.blocks().len(),
+                    i64::from(robot.materials.energy)
+                        + i64::from(robot.materials.body).saturating_mul(10),
+                ))
+            })
+            .collect();
+        candidates.sort_by_key(|(_, _, score)| *score);
+        let mut remaining = total_dna;
+        let mut removed = Vec::new();
+        for (id, dna_length, _) in candidates {
+            if remaining <= dna_limit {
+                break;
+            }
+            let Ok(robot) = self.slots.remove(id) else {
+                continue;
+            };
+            let species = robot.identity.species.0;
+            let repopulating = self
+                .species
+                .get(species as usize)
+                .is_some_and(|value| value.reseed);
+            self.corpses.push(CorpseSnapshot::new(
+                robot.kinematics.position,
+                robot.kinematics.velocity,
+                robot.materials.body,
+                robot.materials.waste,
+                species,
+                repopulating,
+            ));
+            self.stats.deaths = self.stats.deaths.saturating_add(1);
+            remaining = remaining.saturating_sub(dna_length);
+            removed.push(id);
+            trace.queue_change(CyclePhase::Restart, id, QueueChangeKind::DeathCommitted);
+        }
+        if !removed.is_empty() {
+            self.ties
+                .retain(|tie| !removed.contains(&tie.first) && !removed.contains(&tie.second));
+        }
+    }
+
     fn mode_species_score(&self, species: SpeciesId) -> (usize, i64) {
         self.slots
             .iter()
@@ -3175,6 +3291,7 @@ impl Engine {
         self.tick = next_tick;
         trace.phase(CyclePhase::ModeLogic);
         trace.phase(CyclePhase::Bookkeeping);
+        self.apply_survival_handicap();
         if self.tick.is_multiple_of(100) {
             self.record_history();
         }
@@ -3293,6 +3410,7 @@ impl Engine {
         self.commit_lifecycle_queues(lifecycle, &mut trace)?;
         trace.phase(CyclePhase::ExtinctSpecies);
         trace.phase(CyclePhase::Restart);
+        self.enforce_low_memory_safety(&mut trace);
         self.enforce_mode_population_cap()?;
         self.advance_local_mode_after_cycle()?;
         trace.phase(CyclePhase::ActualVelocity);

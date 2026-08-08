@@ -211,5 +211,15 @@ public sealed partial class GlobalSettingsWindow : Window
         Close();
     }
 
+    private async void CustomSimulationCosts_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new CustomSimulationCostsWindow(Settings);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return;
+
+        Settings = Settings with { Costs = dialog.Costs };
+        Populate(Settings);
+    }
+
     private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
 }

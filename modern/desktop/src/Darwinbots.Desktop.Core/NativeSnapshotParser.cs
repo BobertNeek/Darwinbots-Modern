@@ -160,7 +160,8 @@ public static class NativeSnapshotParser
                     restrictions.ProhibitCrossSpeciesTieTransfer,
                     restrictions.RobotFixingAllowed,
                     restrictions.AsexualReproductionAllowed)
-                : new());
+                : new(),
+            config.EnergyHandicap);
         return new LocalModeSnapshot(
             ParseStatus(native.Status),
             parsedConfig.Kind,
@@ -183,6 +184,7 @@ public static class NativeSnapshotParser
             parsedConfig.Restrictions)
         {
             MinimumRounds = parsedConfig.MinimumRounds,
+            EnergyHandicap = parsedConfig.EnergyHandicap,
         };
     }
 
@@ -297,6 +299,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("maximum_cycles")] ulong MaximumCycles,
         [property: JsonPropertyName("maximum_population")] int MaximumPopulation,
         [property: JsonPropertyName("restart_on_extinction")] bool RestartOnExtinction,
+        [property: JsonPropertyName("energy_handicap")] int EnergyHandicap,
         [property: JsonPropertyName("source_species")] uint? SourceSpecies,
         [property: JsonPropertyName("selection_population_weight")] float SelectionPopulationWeight,
         [property: JsonPropertyName("selection_energy_weight")] float SelectionEnergyWeight,

@@ -119,6 +119,10 @@ pub struct EngineConfig {
     pub auto_speciation: bool,
     #[serde(default = "default_speciation_genetic_distance_percent")]
     pub speciation_genetic_distance_percent: f32,
+    #[serde(default = "default_low_memory_dna_limit")]
+    pub low_memory_dna_limit: usize,
+    #[serde(default = "default_low_memory_detail_limit")]
+    pub low_memory_detail_limit: usize,
     #[serde(skip)]
     pub force_gpu_unavailable_for_tests: bool,
 }
@@ -147,6 +151,8 @@ impl Default for EngineConfig {
             advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: false,
             speciation_genetic_distance_percent: default_speciation_genetic_distance_percent(),
+            low_memory_dna_limit: default_low_memory_dna_limit(),
+            low_memory_detail_limit: default_low_memory_detail_limit(),
             force_gpu_unavailable_for_tests: false,
         }
     }
@@ -169,6 +175,14 @@ fn default_vegetable_population_cap() -> usize {
 }
 fn default_speciation_genetic_distance_percent() -> f32 {
     20.0
+}
+
+fn default_low_memory_dna_limit() -> usize {
+    4_000_000
+}
+
+fn default_low_memory_detail_limit() -> usize {
+    3_000_000
 }
 
 impl EngineConfig {

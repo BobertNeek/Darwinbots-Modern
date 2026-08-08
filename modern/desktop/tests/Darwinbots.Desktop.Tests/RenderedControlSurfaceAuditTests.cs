@@ -656,6 +656,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public IReadOnlyList<DesktopTextFile> DnaFiles { get; init; } = [];
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; init; }
+    public DesktopSettings? SettingsToOpen { get; init; }
     public string? LatestAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
     public string? SavedDna { get; private set; }
@@ -663,10 +664,18 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public string? SavedOrganismSuggestedFileName { get; private set; }
     public byte[]? SavedOrganism { get; private set; }
     public byte[]? Autosave { get; private set; }
+    public DesktopSettings? SavedSettings { get; private set; }
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
+    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
+
+    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    {
+        SavedSettings = settings;
+        return Task.FromResult(true);
+    }
 
     public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save)
     {

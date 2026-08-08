@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using Darwinbots.Desktop.Core;
 
 namespace Darwinbots.Desktop.Services;
 
@@ -31,6 +32,20 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return result;
     }
 
+    public async Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner)
+    {
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Load Darwinbots settings",
+            AllowMultiple = false,
+            FileTypeFilter = [SettingsFileType()],
+        });
+        if (files.FirstOrDefault() is not { } file) return null;
+        await using var stream = await file.OpenReadAsync();
+        using var reader = new StreamReader(stream);
+        return DesktopSettings.FromJson(await reader.ReadToEndAsync());
+    }
+
     public async Task<string?> PickSimulationPathAsync(TopLevel owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(SimulationOpenOptions("Open Darwinbots Modern save"));
@@ -59,6 +74,24 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await using var stream = await file.OpenWriteAsync();
         stream.SetLength(0);
         await stream.WriteAsync(save);
+        return true;
+    }
+
+    public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save Darwinbots settings",
+            SuggestedFileName = "darwinbots-settings.set",
+            DefaultExtension = "set",
+            FileTypeChoices = [SettingsFileType()],
+        });
+        if (file is null) return false;
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await using var writer = new StreamWriter(stream);
+        await writer.WriteAsync(settings.ToJson());
         return true;
     }
 
@@ -129,6 +162,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static FilePickerFileType SimulationFileType() =>
         new("Darwinbots Modern save") { Patterns = ["*.db3s"] };
+
+    private static FilePickerFileType SettingsFileType() =>
+        new("Darwinbots settings") { Patterns = ["*.set", "*.json"] };
 
     private static string? LocalPath(IStorageItem item) => item.Path.IsFile ? item.Path.LocalPath : null;
 

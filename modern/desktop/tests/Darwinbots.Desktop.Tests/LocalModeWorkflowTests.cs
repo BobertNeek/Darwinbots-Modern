@@ -18,11 +18,13 @@ public sealed class LocalModeWorkflowTests
         viewModel.LocalMode.MaximumCycles = 120;
         viewModel.LocalMode.MaximumPopulation = 16;
         viewModel.LocalMode.RestartOnExtinction = true;
+        viewModel.LocalMode.EnergyHandicap = 25;
         viewModel.LocalMode.ProhibitViruses = true;
 
         var config = viewModel.LocalMode.BuildConfiguration();
         Assert.Equal(LocalModeKind.Contest, config.Kind);
         Assert.Equal(LeaguePreset.F1, config.Preset);
+        Assert.Equal(25, config.EnergyHandicap);
         Assert.True(config.Restrictions.ProhibitViruses);
         Assert.Equal("CONFIGURED", viewModel.LocalMode.StatusLabel);
 

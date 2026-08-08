@@ -284,6 +284,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                         maximum_cycles = config.MaximumCycles,
                         maximum_population = config.MaximumPopulation,
                         restart_on_extinction = config.RestartOnExtinction,
+                        energy_handicap = config.EnergyHandicap,
                         source_species = config.SourceSpecies,
                         selection_population_weight = config.SelectionPopulationWeight,
                         selection_energy_weight = config.SelectionEnergyWeight,
