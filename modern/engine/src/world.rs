@@ -9,19 +9,21 @@ use crate::tie::{MAX_TIE_SURFACE_GAP, MAX_TIES_PER_ROBOT, TIE_DEADBAND};
 use crate::{
     BackendCapabilities, BackendKind, BackendPreference, BiologyState, CommandOutcome,
     CoreReadbacks, CorpseSnapshot, CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm,
-    EngineConfig, EngineError, EyeSnapshot, GenomeMutator, GpuPhysicsBackend, HistorySample,
-    LegacyDna, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend,
-    PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect, ProjectileImpact,
-    ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind, RenderInstance,
-    ShotSettings, ShotSnapshot, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition,
-    SpeciesId, StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter,
-    TieCommands, TieReadbacks, TieSnapshot, TieState, VegetationRuntime, VegetationSettings,
-    VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, eye_value, generated_skin,
-    projectile_effect,
+    EngineConfig, EngineError, EyeSnapshot, FileTeleporter, GenomeMutator, GpuPhysicsBackend,
+    HistorySample, LegacyDna, LegacyOrganism, LegacySimulationFile, Obstacle, OrganismId,
+    PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch, PhysicsSettings,
+    PlantLightInput, ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn,
+    ProjectileTarget, QueueChangeKind, RenderInstance, ShotSettings, ShotSnapshot, SimulationStats,
+    SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId, StandardMutationProfile,
+    StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands, TieReadbacks, TieSnapshot,
+    TieState, VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot,
+    VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
 use std::time::Instant;
 
 use crate::physics::{
@@ -1697,6 +1699,8 @@ pub struct Engine {
     #[serde(default)]
     teleporters: Vec<Teleporter>,
     #[serde(default)]
+    file_teleporters: Vec<FileTeleporter>,
+    #[serde(default)]
     corpses: Vec<CorpseSnapshot>,
     #[serde(default)]
     projectiles: ProjectilePool,
@@ -1739,6 +1743,7 @@ struct CycleCheckpoint {
     next_absolute_id: u64,
     obstacles: Vec<Obstacle>,
     teleporters: Vec<Teleporter>,
+    file_teleporters: Vec<FileTeleporter>,
     corpses: Vec<CorpseSnapshot>,
     projectiles: ProjectilePool,
     vegetation_runtime: VegetationRuntime,
@@ -1871,6 +1876,7 @@ impl Engine {
             next_absolute_id: legacy.next_absolute_id,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
             teleporters: legacy.teleporters.into_iter().map(Into::into).collect(),
+            file_teleporters: Vec::new(),
             corpses: legacy.corpses.into_iter().map(Into::into).collect(),
             projectiles: legacy.projectiles.into(),
             vegetation_runtime: legacy.vegetation_runtime.into(),
@@ -2017,6 +2023,7 @@ impl Engine {
             next_absolute_id: 1,
             obstacles: Vec::new(),
             teleporters: Vec::new(),
+            file_teleporters: Vec::new(),
             corpses: Vec::new(),
             projectiles: ProjectilePool::default(),
             vegetation_runtime: VegetationRuntime::default(),
@@ -2753,6 +2760,10 @@ impl Engine {
         self.publish_snapshot();
     }
 
+    pub fn toroidal_world(&self) -> bool {
+        self.config.toroidal_world
+    }
+
     pub fn organism(&self, id: OrganismId) -> Result<OrganismSnapshot, EngineError> {
         Ok(snapshot_organism(id, self.slots.get(id)?, &self.species))
     }
@@ -2992,6 +3003,7 @@ impl Engine {
             next_absolute_id: self.next_absolute_id,
             obstacles: self.obstacles.clone(),
             teleporters: self.teleporters.clone(),
+            file_teleporters: self.file_teleporters.clone(),
             corpses: self.corpses.clone(),
             projectiles: self.projectiles.clone(),
             vegetation_runtime: self.vegetation_runtime.clone(),
@@ -3027,6 +3039,7 @@ impl Engine {
         self.next_absolute_id = checkpoint.next_absolute_id;
         self.obstacles = checkpoint.obstacles;
         self.teleporters = checkpoint.teleporters;
+        self.file_teleporters = checkpoint.file_teleporters;
         self.corpses = checkpoint.corpses;
         self.projectiles = checkpoint.projectiles;
         self.vegetation_runtime = checkpoint.vegetation_runtime;
@@ -3093,6 +3106,7 @@ impl Engine {
 
         trace.phase(CyclePhase::RobotPipeline);
         self.trace_robot_phase(&mut trace, CyclePhase::TeleporterTest);
+        self.apply_file_teleporters()?;
         self.apply_environment_features(false, true);
         self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
         self.trace_robot_phase(&mut trace, CyclePhase::Tide);
@@ -3315,6 +3329,62 @@ impl Engine {
             )));
         }
         self.teleporters.push(teleporter);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn add_file_teleporter(
+        &mut self,
+        mut teleporter: FileTeleporter,
+    ) -> Result<(), EngineError> {
+        if !teleporter.radius.is_finite()
+            || teleporter.radius <= 0.0
+            || teleporter.center.iter().any(|value| !value.is_finite())
+        {
+            return Err(EngineError::Invariant(
+                "file teleporter geometry is invalid".to_owned(),
+            ));
+        }
+        if teleporter.inbound_path.as_os_str().is_empty()
+            && teleporter.outbound_path.as_os_str().is_empty()
+        {
+            return Err(EngineError::Invariant(
+                "file teleporter requires an inbound or outbound path".to_owned(),
+            ));
+        }
+        if teleporter.poll_interval == 0 || teleporter.capacity == 0 {
+            return Err(EngineError::Invariant(
+                "file teleporter polling and capacity must be positive".to_owned(),
+            ));
+        }
+        if self
+            .teleporters
+            .iter()
+            .any(|value| value.id == teleporter.id)
+            || self
+                .file_teleporters
+                .iter()
+                .any(|value| value.id == teleporter.id)
+        {
+            return Err(EngineError::Invariant(format!(
+                "teleporter {} already exists",
+                teleporter.id
+            )));
+        }
+        teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        self.file_teleporters.push(teleporter);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn remove_file_teleporter(&mut self, id: u32) -> Result<(), EngineError> {
+        let previous = self.file_teleporters.len();
+        self.file_teleporters.retain(|value| value.id != id);
+        if self.file_teleporters.len() == previous {
+            return Err(EngineError::Invariant(format!(
+                "file teleporter {id} does not exist"
+            )));
+        }
         self.publish_snapshot();
         Ok(())
     }
@@ -5491,6 +5561,166 @@ impl Engine {
         }
     }
 
+    fn apply_file_teleporters(&mut self) -> Result<(), EngineError> {
+        for index in 0..self.file_teleporters.len() {
+            let settings = self.file_teleporters[index].clone();
+            let previous_guard = settings.backflow_guard.clone();
+            let mut sent = 0_u64;
+            let mut emitted_path = None;
+
+            if !settings.outbound_path.as_os_str().is_empty() {
+                for id in self.slots.ids_in_slot_order() {
+                    if sent >= settings.capacity as u64 {
+                        break;
+                    }
+                    let Ok(organism) = self.organism(id) else {
+                        continue;
+                    };
+                    if !inside_file_teleporter(&settings, organism.position)
+                        || !settings.accepts(organism.vegetable, false)
+                    {
+                        continue;
+                    }
+                    let Ok(transfer) = LegacySimulationFile::from_organism(self, id) else {
+                        continue;
+                    };
+                    let filename = format!(
+                        "db2-{tick:016x}-{slot:08x}-{generation:08x}.dbo",
+                        tick = self.tick,
+                        slot = id.slot(),
+                        generation = id.generation(),
+                    );
+                    let path = settings.outbound_path.join(filename);
+                    let Ok(bytes) = transfer.encode() else {
+                        continue;
+                    };
+                    if write_transfer_atomically(&path, &bytes).is_err() {
+                        continue;
+                    }
+                    if self.remove(id).is_ok() {
+                        sent = sent.saturating_add(1);
+                        emitted_path = Some(path);
+                    } else {
+                        let _ = fs::remove_file(path);
+                    }
+                }
+            }
+
+            let poll_due = if settings.inbound_path.as_os_str().is_empty() {
+                false
+            } else {
+                let teleporter = &mut self.file_teleporters[index];
+                if teleporter.poll_countdown > 0 {
+                    teleporter.poll_countdown -= 1;
+                    teleporter.poll_countdown == 0
+                } else {
+                    teleporter.poll_countdown = teleporter.poll_interval;
+                    true
+                }
+            };
+            let mut received = 0_u64;
+            if poll_due {
+                let mut paths = fs::read_dir(&settings.inbound_path)
+                    .ok()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Result::ok)
+                    .map(|entry| entry.path())
+                    .filter(|path| {
+                        path.is_file()
+                            && path
+                                .extension()
+                                .and_then(|extension| extension.to_str())
+                                .is_some_and(|extension| extension.eq_ignore_ascii_case("dbo"))
+                    })
+                    .collect::<Vec<_>>();
+                paths.sort_by(|left, right| left.to_string_lossy().cmp(&right.to_string_lossy()));
+
+                for path in paths {
+                    if received >= settings.capacity as u64 {
+                        break;
+                    }
+                    if previous_guard.as_ref().is_some_and(|guard| guard == &path) {
+                        continue;
+                    }
+                    let Ok(bytes) = fs::read(&path) else {
+                        continue;
+                    };
+                    let Ok(transfer) = LegacySimulationFile::decode(&bytes) else {
+                        continue;
+                    };
+                    if transfer.organisms.is_empty()
+                        || transfer.organisms.len() > settings.capacity - received as usize
+                        || transfer
+                            .organisms
+                            .iter()
+                            .any(|organism| !settings.accepts(organism.vegetable, false))
+                    {
+                        continue;
+                    }
+                    let mut imported = 0_u64;
+                    let mut failed = false;
+                    for organism in &transfer.organisms {
+                        match self.import_legacy_organism(organism) {
+                            Ok(_) => imported = imported.saturating_add(1),
+                            Err(_) => {
+                                failed = true;
+                                break;
+                            }
+                        }
+                    }
+                    if !failed && imported > 0 && fs::remove_file(&path).is_ok() {
+                        received = received.saturating_add(imported);
+                    }
+                }
+            }
+
+            let teleporter = &mut self.file_teleporters[index];
+            teleporter.sent = teleporter.sent.saturating_add(sent);
+            teleporter.received = teleporter.received.saturating_add(received);
+            if poll_due {
+                teleporter.backflow_guard = None;
+            }
+            if settings.inbound_path == settings.outbound_path {
+                teleporter.backflow_guard = emitted_path;
+            }
+        }
+        Ok(())
+    }
+
+    fn import_legacy_organism(
+        &mut self,
+        organism: &LegacyOrganism,
+    ) -> Result<OrganismId, EngineError> {
+        let dna = LegacyDna::parse(&organism.dna)?;
+        let species = SpeciesId(organism.species);
+        let species = if self.species.get(species.0 as usize).is_some() {
+            species
+        } else {
+            SpeciesId::default()
+        };
+        let id = self.spawn_species_at_unpublished(dna, species, organism.position)?;
+        let state = self.slots.get_mut(id)?;
+        state.kinematics.velocity = organism.velocity;
+        state.kinematics.previous_position = organism.position;
+        state.materials.energy = organism.energy.max(1);
+        state.materials.body = organism.body.max(1);
+        state.materials.synchronize_energy();
+        state.counters.age = organism.age;
+        state.counters.birth_cycle = organism.birth_cycle;
+        state.program.memory.write(MEM_NRG, state.materials.energy);
+        state
+            .program
+            .memory
+            .write(MEM_XPOS, organism.position[0].round() as i32);
+        state
+            .program
+            .memory
+            .write(MEM_YPOS, organism.position[1].round() as i32);
+        self.publish_snapshot();
+        Ok(id)
+    }
+
     fn apply_environment_features(&mut self, obstacles: bool, teleporters: bool) {
         let mut positions: Vec<_> = self
             .slots
@@ -6868,6 +7098,27 @@ fn default_capabilities() -> BackendCapabilities {
         active: BackendKind::Cpu,
         gpu_available: false,
         fallback_reason: None,
+    }
+}
+
+fn inside_file_teleporter(teleporter: &FileTeleporter, position: [f32; 2]) -> bool {
+    let dx = position[0] - teleporter.center[0];
+    let dy = position[1] - teleporter.center[1];
+    dx * dx + dy * dy <= teleporter.radius * teleporter.radius
+}
+
+fn write_transfer_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let temporary = path.with_extension("dbo.tmp");
+    fs::write(&temporary, bytes)?;
+    match fs::rename(&temporary, path) {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            let _ = fs::remove_file(&temporary);
+            Err(error)
+        }
     }
 }
 

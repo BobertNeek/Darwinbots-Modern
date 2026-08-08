@@ -9,6 +9,7 @@ mod environment;
 mod error;
 mod history;
 mod id;
+mod legacy;
 mod modes;
 mod mutation;
 mod persistence;
@@ -40,10 +41,11 @@ pub use corpse::CorpseSnapshot;
 pub use dna::{DnaMetadata, LegacyDna};
 pub use dna_costs::DnaCosts;
 pub use dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
-pub use environment::{Obstacle, Teleporter};
+pub use environment::{FileTeleporter, Obstacle, Teleporter, TeleporterFilters};
 pub use error::EngineError;
 pub use history::HistorySample;
 pub use id::OrganismId;
+pub use legacy::{LegacyOrganism, LegacySettingsFile, LegacySimulationFile, LegacySpeciesStartup};
 pub use modes::{
     LeaguePreset, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
     LocalModeResult, LocalModeState, LocalModeStatus,

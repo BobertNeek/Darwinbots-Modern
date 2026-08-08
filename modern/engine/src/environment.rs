@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Obstacle {
@@ -13,6 +14,84 @@ pub struct Teleporter {
     pub center: [f32; 2],
     pub radius: f32,
     pub destination: [f32; 2],
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct TeleporterFilters {
+    pub teleport_vegetables: bool,
+    pub teleport_corpses: bool,
+    pub teleport_heterotrophs: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FileTeleporter {
+    pub id: u32,
+    pub center: [f32; 2],
+    pub radius: f32,
+    pub inbound_path: PathBuf,
+    pub outbound_path: PathBuf,
+    pub poll_interval: u32,
+    pub poll_countdown: u32,
+    pub capacity: usize,
+    pub filters: TeleporterFilters,
+    pub sent: u64,
+    pub received: u64,
+    #[serde(default)]
+    pub(crate) backflow_guard: Option<PathBuf>,
+}
+
+impl FileTeleporter {
+    pub fn new(id: u32, center: [f32; 2], radius: f32) -> Self {
+        Self {
+            id,
+            center,
+            radius,
+            inbound_path: PathBuf::new(),
+            outbound_path: PathBuf::new(),
+            poll_interval: 1,
+            poll_countdown: 0,
+            capacity: 1,
+            filters: TeleporterFilters {
+                teleport_vegetables: true,
+                teleport_corpses: true,
+                teleport_heterotrophs: true,
+            },
+            sent: 0,
+            received: 0,
+            backflow_guard: None,
+        }
+    }
+
+    pub fn with_paths(
+        mut self,
+        inbound_path: impl AsRef<Path>,
+        outbound_path: impl AsRef<Path>,
+    ) -> Self {
+        self.inbound_path = inbound_path.as_ref().to_path_buf();
+        self.outbound_path = outbound_path.as_ref().to_path_buf();
+        self
+    }
+
+    pub fn with_polling(mut self, poll_interval: u32, capacity: usize) -> Self {
+        self.poll_interval = poll_interval;
+        self.capacity = capacity;
+        self
+    }
+
+    pub fn with_filters(mut self, filters: TeleporterFilters) -> Self {
+        self.filters = filters;
+        self
+    }
+
+    pub(crate) fn accepts(&self, vegetable: bool, corpse: bool) -> bool {
+        if corpse {
+            self.filters.teleport_corpses
+        } else if vegetable {
+            self.filters.teleport_vegetables
+        } else {
+            self.filters.teleport_heterotrophs
+        }
+    }
 }
 
 pub(crate) fn apply_world_features(
