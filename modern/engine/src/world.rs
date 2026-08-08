@@ -5570,7 +5570,7 @@ impl Engine {
             let settings = self.file_teleporters[index].clone();
             let previous_guard = settings.backflow_guard.clone();
             let mut sent = 0_u64;
-            let mut emitted_path = None;
+            let mut emitted_paths = Vec::new();
 
             if !settings.outbound_path.as_os_str().is_empty() {
                 for id in self.slots.ids_in_slot_order() {
@@ -5603,7 +5603,7 @@ impl Engine {
                     }
                     if self.remove(id).is_ok() {
                         sent = sent.saturating_add(1);
-                        emitted_path = Some(path);
+                        emitted_paths.push(path);
                     } else {
                         let _ = fs::remove_file(path);
                     }
@@ -5634,7 +5634,7 @@ impl Engine {
                     }
                     self.corpses.remove(corpse_index);
                     sent = sent.saturating_add(1);
-                    emitted_path = Some(path);
+                    emitted_paths.push(path);
                 }
             }
 
@@ -5673,9 +5673,7 @@ impl Engine {
                         break;
                     }
                     if previous_guard.as_ref().is_some_and(|guard| guard == &path)
-                        || emitted_path
-                            .as_ref()
-                            .is_some_and(|emitted| emitted == &path)
+                        || emitted_paths.iter().any(|emitted| emitted == &path)
                     {
                         continue;
                     }
@@ -5718,7 +5716,7 @@ impl Engine {
                 teleporter.backflow_guard = None;
             }
             if settings.inbound_path == settings.outbound_path {
-                teleporter.backflow_guard = emitted_path;
+                teleporter.backflow_guard = emitted_paths.last().cloned();
             }
         }
         Ok(())

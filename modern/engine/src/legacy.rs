@@ -36,7 +36,15 @@ pub struct LegacySettingsFile {
     pub sunlight_energy: i32,
     pub species: Vec<LegacySpeciesStartup>,
     #[serde(skip)]
-    raw_write_stream: Option<Vec<u8>>,
+    source: Option<LegacySettingsSource>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct LegacySettingsSource {
+    fields: Vec<String>,
+    line_ending: String,
+    trailing_newline: bool,
+    original: Box<LegacySettingsFile>,
 }
 
 impl LegacySettingsFile {
@@ -59,10 +67,15 @@ impl LegacySettingsFile {
             species: snapshot
                 .species
                 .iter()
-                .map(|species| LegacySpeciesStartup {
+                .enumerate()
+                .map(|(index, species)| LegacySpeciesStartup {
                     name: species.name.clone(),
-                    robot_path: String::new(),
-                    robot_count: 0,
+                    robot_path: "Robots".to_owned(),
+                    robot_count: snapshot
+                        .organisms
+                        .iter()
+                        .filter(|organism| organism.species.0 == index as u32)
+                        .count() as i32,
                     dna_name: species.name.clone(),
                     vegetable: species.vegetable,
                     fixed: false,
@@ -71,7 +84,7 @@ impl LegacySettingsFile {
                     skin: [0; 13],
                 })
                 .collect(),
-            raw_write_stream: None,
+            source: None,
         })
     }
 
@@ -79,7 +92,7 @@ impl LegacySettingsFile {
         let text = std::str::from_utf8(bytes).map_err(|error| {
             EngineError::InvalidSave(format!("legacy settings are not UTF-8 text: {error}"))
         })?;
-        let lines: Vec<_> = text.lines().map(str::trim).collect();
+        let lines: Vec<_> = text.lines().collect();
         if lines.len() < 4 {
             return Err(EngineError::InvalidSave(
                 "legacy settings stream is truncated".to_owned(),
@@ -140,7 +153,7 @@ impl LegacySettingsFile {
                 .and_then(|line| parse_f32(line, label).ok())
                 .unwrap_or(default)
         };
-        Ok(Self {
+        let mut settings = Self {
             version,
             simulation_name: parse_string(lines[global_start])?,
             field_size: parse_i32(lines[global_start + 2], "settings field size")?,
@@ -164,18 +177,29 @@ impl LegacySettingsFile {
             ],
             sunlight_energy: parse_optional_i32(36, "settings light intensity", 0),
             species,
-            raw_write_stream: Some(bytes.to_vec()),
-        })
+            source: None,
+        };
+        settings.source = Some(LegacySettingsSource {
+            fields: lines.iter().map(|line| (*line).to_owned()).collect(),
+            line_ending: if text.contains("\r\n") {
+                "\r\n".to_owned()
+            } else {
+                "\n".to_owned()
+            },
+            trailing_newline: text.ends_with('\n'),
+            original: Box::new(settings.clone()),
+        });
+        Ok(settings)
     }
 
     pub fn encode(&self) -> Result<Vec<u8>, EngineError> {
-        if let Some(raw) = &self.raw_write_stream {
-            return Ok(raw.clone());
-        }
         if self.species.is_empty() {
             return Err(EngineError::InvalidSave(
                 "legacy settings require at least one species".to_owned(),
             ));
+        }
+        if let Some(source) = &self.source {
+            return self.encode_source(source);
         }
         let mut text = String::new();
         text.push_str(&format!("{}\r\n", self.version));
@@ -263,6 +287,168 @@ impl LegacySettingsFile {
         write_line(&mut text, "#FALSE#");
         write_line(&mut text, "#FALSE#");
         write_line(&mut text, &self.sunlight_energy.to_string());
+        Ok(text.into_bytes())
+    }
+
+    fn encode_source(&self, source: &LegacySettingsSource) -> Result<Vec<u8>, EngineError> {
+        const SPECIES_RECORD_LINES: usize = 40;
+        if self.species.len() != source.original.species.len() {
+            return Err(EngineError::InvalidSave(
+                "decoded legacy settings cannot resize species records".to_owned(),
+            ));
+        }
+        let global_start = 2 + self.species.len() * SPECIES_RECORD_LINES;
+        let mut fields = source.fields.clone();
+        if fields.len() < global_start + 12 {
+            return Err(EngineError::InvalidSave(
+                "decoded legacy settings are missing modeled fields".to_owned(),
+            ));
+        }
+        let original = &source.original;
+        if self.version != original.version {
+            replace_field(&mut fields, 0, self.version.to_string())?;
+        }
+        if self.species != original.species {
+            replace_field(
+                &mut fields,
+                1,
+                self.species.len().saturating_sub(1).to_string(),
+            )?;
+        }
+        for (index, species) in self.species.iter().enumerate() {
+            let original_species = &original.species[index];
+            let offset = 2 + index * SPECIES_RECORD_LINES;
+            if self.world_size != original.world_size {
+                replace_field(&mut fields, offset, format_float(self.world_size[0]))?;
+                replace_field(&mut fields, offset + 1, format_float(self.world_size[1]))?;
+            }
+            if species.robot_path != original_species.robot_path {
+                replace_field(
+                    &mut fields,
+                    offset + 5,
+                    quote_write_string(&species.robot_path),
+                )?;
+            }
+            if species.robot_count != original_species.robot_count {
+                replace_field(&mut fields, offset + 6, species.robot_count.to_string())?;
+            }
+            if species.dna_name != original_species.dna_name
+                || species.name != original_species.name
+            {
+                replace_field(
+                    &mut fields,
+                    offset + 7,
+                    quote_write_string(&species.dna_name),
+                )?;
+            }
+            if species.vegetable != original_species.vegetable {
+                replace_field(&mut fields, offset + 8, format_bool(species.vegetable))?;
+            }
+            if species.fixed != original_species.fixed {
+                replace_field(&mut fields, offset + 9, format_bool(species.fixed))?;
+            }
+            if species.color != original_species.color {
+                replace_field(&mut fields, offset + 10, species.color.to_string())?;
+            }
+            if species.initial_energy != original_species.initial_energy {
+                replace_field(&mut fields, offset + 12, species.initial_energy.to_string())?;
+            }
+            if species.skin != original_species.skin {
+                for (skin_index, value) in species.skin.iter().enumerate() {
+                    replace_field(&mut fields, offset + 27 + skin_index, value.to_string())?;
+                }
+            }
+        }
+        if self.simulation_name != original.simulation_name {
+            replace_field(
+                &mut fields,
+                global_start,
+                quote_write_string(&self.simulation_name),
+            )?;
+        }
+        if self.field_size != original.field_size {
+            replace_field(&mut fields, global_start + 2, self.field_size.to_string())?;
+        }
+        if self.world_size != original.world_size {
+            replace_field(
+                &mut fields,
+                global_start + 3,
+                format_float(self.world_size[0]),
+            )?;
+            replace_field(
+                &mut fields,
+                global_start + 4,
+                format_float(self.world_size[1]),
+            )?;
+        }
+        if self.max_population != original.max_population {
+            replace_field(
+                &mut fields,
+                global_start + 5,
+                self.max_population.to_string(),
+            )?;
+        }
+        if self.blocked_vegetables != original.blocked_vegetables {
+            replace_field(
+                &mut fields,
+                global_start + 6,
+                format_bool(self.blocked_vegetables),
+            )?;
+        }
+        if self.disable_ties != original.disable_ties {
+            replace_field(
+                &mut fields,
+                global_start + 7,
+                format_bool(self.disable_ties),
+            )?;
+        }
+        if self.population_limit_method != original.population_limit_method {
+            replace_field(
+                &mut fields,
+                global_start + 8,
+                self.population_limit_method.to_string(),
+            )?;
+        }
+        if self.toroidal_world != original.toroidal_world {
+            replace_field(
+                &mut fields,
+                global_start + 9,
+                format_bool(self.toroidal_world),
+            )?;
+        }
+        if self.max_energy != original.max_energy {
+            replace_field(&mut fields, global_start + 10, self.max_energy.to_string())?;
+        }
+        if self.min_vegetables != original.min_vegetables {
+            replace_field(
+                &mut fields,
+                global_start + 11,
+                self.min_vegetables.to_string(),
+            )?;
+        }
+        if self.gravity != original.gravity {
+            replace_optional_field(
+                &mut fields,
+                global_start + 18,
+                format_float(self.gravity[0]),
+            );
+            replace_optional_field(
+                &mut fields,
+                global_start + 19,
+                format_float(self.gravity[1]),
+            );
+        }
+        if self.sunlight_energy != original.sunlight_energy {
+            replace_optional_field(
+                &mut fields,
+                global_start + 36,
+                self.sunlight_energy.to_string(),
+            );
+        }
+        let mut text = fields.join(&source.line_ending);
+        if source.trailing_newline {
+            text.push_str(&source.line_ending);
+        }
         Ok(text.into_bytes())
     }
 }
@@ -508,19 +694,22 @@ fn organism_from_snapshot(
 }
 
 fn parse_i32(line: &str, label: &str) -> Result<i32, EngineError> {
-    line.trim_matches('"')
+    line.trim()
+        .trim_matches('"')
         .parse::<i32>()
         .map_err(|error| EngineError::InvalidSave(format!("invalid {label} {line:?}: {error}")))
 }
 
 fn parse_u32(line: &str, label: &str) -> Result<u32, EngineError> {
-    line.trim_matches('"')
+    line.trim()
+        .trim_matches('"')
         .parse::<u32>()
         .map_err(|error| EngineError::InvalidSave(format!("invalid {label} {line:?}: {error}")))
 }
 
 fn parse_f32(line: &str, label: &str) -> Result<f32, EngineError> {
-    line.trim_matches('"')
+    line.trim()
+        .trim_matches('"')
         .parse::<f32>()
         .map_err(|error| EngineError::InvalidSave(format!("invalid {label} {line:?}: {error}")))
 }
@@ -547,6 +736,28 @@ fn parse_string(line: &str) -> Result<String, EngineError> {
 
 fn format_float(value: f32) -> String {
     format!("{value:?}")
+}
+
+fn format_bool(value: bool) -> String {
+    if value {
+        "#TRUE#".to_owned()
+    } else {
+        "#FALSE#".to_owned()
+    }
+}
+
+fn replace_field(fields: &mut [String], index: usize, value: String) -> Result<(), EngineError> {
+    let field = fields.get_mut(index).ok_or_else(|| {
+        EngineError::InvalidSave(format!("decoded legacy settings field {index} is missing"))
+    })?;
+    *field = value;
+    Ok(())
+}
+
+fn replace_optional_field(fields: &mut [String], index: usize, value: String) {
+    if let Some(field) = fields.get_mut(index) {
+        *field = value;
+    }
 }
 
 fn write_line(text: &mut String, value: &str) {

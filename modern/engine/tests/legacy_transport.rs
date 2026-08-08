@@ -36,6 +36,25 @@ fn legacy_codecs_round_trip_the_authoritative_fixture_fields() {
     assert_eq!(parsed_settings.simulation_name, "");
     assert_eq!(parsed_settings.max_population, 100);
 
+    let mut edited_settings = parsed_settings.clone();
+    edited_settings.simulation_name = "Edited fixture".to_owned();
+    edited_settings.max_population = 321;
+    edited_settings.species[0].robot_path = r#"D:\Darwinbots\EditedRobots"#.to_owned();
+    edited_settings.species[0].robot_count = 17;
+    let edited_bytes = edited_settings
+        .encode()
+        .expect("edited settings should encode");
+    assert_ne!(edited_bytes, installed_settings);
+    let reparsed_settings =
+        LegacySettingsFile::decode(&edited_bytes).expect("edited settings should decode");
+    assert_eq!(reparsed_settings.simulation_name, "Edited fixture");
+    assert_eq!(reparsed_settings.max_population, 321);
+    assert_eq!(
+        reparsed_settings.species[0].robot_path,
+        r#"D:\Darwinbots\EditedRobots"#
+    );
+    assert_eq!(reparsed_settings.species[0].robot_count, 17);
+
     let fixtures = ["settings", "simulation"];
     for fixture in fixtures {
         let encoded = match fixture {
@@ -160,7 +179,7 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
         .add_file_teleporter(
             FileTeleporter::new(9, [150.0, 150.0], 30.0)
                 .with_paths(&shared, &shared)
-                .with_polling(1, 1)
+                .with_polling(1, 2)
                 .with_filters(TeleporterFilters {
                     teleport_vegetables: false,
                     teleport_corpses: false,
@@ -174,6 +193,12 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
             [150.0, 150.0],
         )
         .expect("backflow spawn");
+    backflow_engine
+        .spawn_at(
+            LegacyDna::parse("stop").expect("second backflow dna"),
+            [151.0, 150.0],
+        )
+        .expect("second backflow spawn");
     backflow_engine.tick().expect("backflow outbound cycle");
     assert_eq!(
         backflow_engine.population(),
@@ -186,7 +211,7 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
             .filter_map(Result::ok)
             .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "dbo"))
             .count(),
-        1,
+        2,
         "same-directory transfer was consumed as backflow"
     );
 
