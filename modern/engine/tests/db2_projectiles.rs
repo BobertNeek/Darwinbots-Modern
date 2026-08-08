@@ -303,6 +303,83 @@ fn sperm_shot_forces_target_reproduction() {
     assert_eq!(engine.snapshot().stats.births, 1);
 }
 
+#[test]
+fn reproductive_projectiles_use_staged_virus_and_sperm_gates() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+
+    let virus_owner = engine
+        .spawn_at(
+            LegacyDna::parse(
+                "start\n1 .mkvirus store\n-7 .shoot store\n77 .shootval store\nstop\nend",
+            )
+            .unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let virus_target = engine
+        .spawn_at(
+            LegacyDna::parse("start\n99 .shootval store\nstop\nend").unwrap(),
+            [350.0, 100.0],
+        )
+        .unwrap();
+    let sperm_owner = engine
+        .spawn_at(
+            LegacyDna::parse("start\n-8 .shoot store\nstop\nend").unwrap(),
+            [100.0, 300.0],
+        )
+        .unwrap();
+    let mother = engine
+        .spawn_at(
+            LegacyDna::parse("start\n0 .sexrepro store\nstop\nend").unwrap(),
+            [350.0, 300.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let virus_state = engine.robot_state(virus_owner).unwrap();
+    assert!(virus_state.effects.stored_virus.is_some());
+    assert!(virus_state.effects.virus_build_timer > 0);
+
+    engine.tick().unwrap();
+
+    let infected = engine.dna(virus_target).unwrap();
+    assert!(infected.blocks().iter().any(|block| block.value == 99));
+    assert!(infected.blocks().iter().any(|block| block.value == 77));
+    assert_ne!(infected, engine.dna(virus_owner).unwrap());
+
+    let sperm_state = engine.robot_state(mother).unwrap();
+    assert_eq!(sperm_state.effects.fertilization_timer, 10);
+    assert_eq!(
+        sperm_state
+            .effects
+            .stored_sperm
+            .as_ref()
+            .map(|stored| stored.source),
+        Some(Some(sperm_owner))
+    );
+    assert_eq!(engine.population(), 4);
+
+    engine
+        .replace_dna(
+            mother,
+            LegacyDna::parse("start\n50 .sexrepro store\nstop\nend").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.population(), 5);
+    assert_eq!(engine.snapshot().stats.births, 1);
+}
+
 fn segment_length(start: [f32; 2], end: [f32; 2]) -> f32 {
     (end[0] - start[0]).hypot(end[1] - start[1])
 }

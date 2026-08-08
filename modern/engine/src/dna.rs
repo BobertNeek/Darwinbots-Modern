@@ -311,6 +311,122 @@ impl LegacyDna {
         self.blocks.iter().copied().map(block_instruction).collect()
     }
 
+    pub(crate) fn gene_count(&self) -> i32 {
+        self.gene_ranges().len().min(i32::MAX as usize) as i32
+    }
+
+    pub(crate) fn gene(&self, requested: i32) -> Option<Self> {
+        let index = usize::try_from(requested.saturating_sub(1)).ok()?;
+        let (start, end) = *self.gene_ranges().get(index)?;
+        Some(self.with_blocks(self.blocks[start..end].to_vec()))
+    }
+
+    pub(crate) fn insert_gene(&self, gene: &Self, boundary: usize) -> Self {
+        let ranges = self.gene_ranges();
+        let insert_at = ranges.get(boundary).map_or_else(
+            || {
+                self.blocks
+                    .iter()
+                    .position(|block| block.class == TokenClass::End)
+                    .unwrap_or(self.blocks.len())
+            },
+            |(start, _)| *start,
+        );
+        let mut blocks = self.blocks[..insert_at].to_vec();
+        blocks.extend(
+            gene.blocks
+                .iter()
+                .copied()
+                .filter(|block| block.class != TokenClass::End),
+        );
+        blocks.extend(self.blocks[insert_at..].iter().copied());
+        self.with_blocks(blocks)
+    }
+
+    pub(crate) fn genetic_distance(&self, other: &Self) -> f32 {
+        let left = self
+            .blocks
+            .iter()
+            .filter(|block| block.class != TokenClass::End)
+            .map(|block| (block.class as i64) << 32 | i64::from(block.value as u32))
+            .collect::<Vec<_>>();
+        let right = other
+            .blocks
+            .iter()
+            .filter(|block| block.class != TokenClass::End)
+            .map(|block| (block.class as i64) << 32 | i64::from(block.value as u32))
+            .collect::<Vec<_>>();
+        let compared = left.len().max(right.len());
+        if compared == 0 {
+            return 0.0;
+        }
+        let mismatches = left
+            .iter()
+            .zip(right.iter())
+            .filter(|(left, right)| left != right)
+            .count()
+            .saturating_add(left.len().abs_diff(right.len()));
+        mismatches as f32 / compared as f32
+    }
+
+    fn gene_ranges(&self) -> Vec<(usize, usize)> {
+        let mut ranges = Vec::new();
+        let mut start = None;
+        let mut in_gene = false;
+        for (index, block) in self.blocks.iter().enumerate() {
+            if block.class == TokenClass::End {
+                break;
+            }
+            if block.class != TokenClass::Flow {
+                continue;
+            }
+            match block.value {
+                1..=3 if !in_gene => {
+                    start = Some(index);
+                    in_gene = true;
+                }
+                1..=3 => {}
+                4 => {
+                    if let Some(start) = start.take() {
+                        ranges.push((start, index + 1));
+                    }
+                    in_gene = false;
+                }
+                _ => {}
+            }
+        }
+        if let Some(start) = start {
+            let end = self
+                .blocks
+                .iter()
+                .position(|block| block.class == TokenClass::End)
+                .unwrap_or(self.blocks.len());
+            ranges.push((start, end));
+        }
+        if ranges.is_empty() {
+            let end = self
+                .blocks
+                .iter()
+                .position(|block| block.class == TokenClass::End)
+                .unwrap_or(self.blocks.len());
+            if end > 0 {
+                ranges.push((0, end));
+            }
+        }
+        ranges
+    }
+
+    fn with_blocks(&self, mut blocks: Vec<DnaBlock>) -> Self {
+        normalize_master_end(&mut blocks);
+        Self {
+            blocks,
+            user_variables: self.user_variables.clone(),
+            new_move: self.new_move,
+            compatibility_warnings: self.compatibility_warnings.clone(),
+            metadata: self.metadata.clone(),
+        }
+    }
+
     pub fn crossover(&self, other: &Self) -> Self {
         let left_end = self.blocks.len().div_ceil(2);
         let right_start = other.blocks.len() / 2;

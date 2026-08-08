@@ -14,9 +14,10 @@ use crate::{
     PhysicsBatch, PhysicsSettings, PlantLightInput, ProjectileEffect, ProjectileImpact,
     ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind, RenderInstance,
     ShotSettings, ShotSnapshot, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition,
-    SpeciesId, StandardMutationProfile, SysvarRuntime, Teleporter, TieCommands, TieReadbacks,
-    TieSnapshot, TieState, VegetationRuntime, VegetationSettings, VisionReadbacks, VisionSnapshot,
-    VisualPhenotype, VmMemory, eye_value, generated_skin, projectile_effect,
+    SpeciesId, StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter,
+    TieCommands, TieReadbacks, TieSnapshot, TieState, VegetationRuntime, VegetationSettings,
+    VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, eye_value, generated_skin,
+    projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -42,6 +43,11 @@ const MEM_SHOT_RIGHT: i32 = 212;
 const MEM_SHOT_LEFT: i32 = 213;
 const MEM_FIXED: i32 = 216;
 const MEM_REPRO: i32 = 300;
+const MEM_SEX_REPRO: i32 = 302;
+const MEM_DNA_LENGTH: i32 = 336;
+const MEM_VIRUS_TIMER: i32 = 337;
+const MEM_GENES: i32 = 339;
+const MEM_THIS_GENE: i32 = 341;
 const MEM_NRG: i32 = 310;
 const MEM_SET_BUOYANCY: i32 = 314;
 const MEM_READ_BUOYANCY: i32 = 315;
@@ -74,6 +80,8 @@ const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
 const MEM_LIGHT: i32 = 923;
 const BIRTH_BORDER_SMUDGE: f32 = 50.0;
+const FERTILIZATION_WINDOW: i32 = 10;
+const MAX_SEXUAL_GENETIC_DISTANCE: f32 = 0.6;
 const TIED_REFERENCE_ADDRESSES: [i32; 26] = [
     437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 456, 457, 458, 459, 460, 461,
     462, 463, 464, 465, 475, 478, 479,
@@ -129,6 +137,25 @@ fn write_shot_taste(robot: &mut RobotState, event_point: [f32; 2], kind: i32) {
         (relative_angle * 200.0).round_ties_even() as i32,
     );
     robot.program.memory.write(MEM_SHOT_FLAVOR, kind);
+}
+
+fn publish_reproductive_readbacks(robot: &mut RobotState) {
+    robot
+        .program
+        .memory
+        .write(MEM_DNA_LENGTH, robot.program.dna.blocks().len() as i32);
+    robot
+        .program
+        .memory
+        .write(MEM_VIRUS_TIMER, robot.effects.virus_build_timer);
+    robot
+        .program
+        .memory
+        .write(MEM_GENES, robot.program.dna.gene_count());
+    robot
+        .program
+        .memory
+        .write(MEM_THIS_GENE, robot.program.current_gene as i32);
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1617,6 +1644,8 @@ struct PendingBirth {
     percentage: i32,
     mutation_reproduction: bool,
     assisted: bool,
+    sexual: bool,
+    sperm_source: Option<OrganismId>,
 }
 
 #[derive(Default)]
@@ -3055,6 +3084,7 @@ impl Engine {
         trace.phase(CyclePhase::PlayerBot);
 
         trace.phase(CyclePhase::ShotUpdate);
+        self.advance_reproductive_timers();
         let started = Instant::now();
         self.projectile_update_phase(&mut trace);
         self.phase_timings.projectiles = elapsed_ms(started);
@@ -3657,24 +3687,116 @@ impl Engine {
         }
     }
 
-    fn virus_commands_phase(&mut self) {
-        let runtime = SysvarRuntime::new();
-        for slot in self.slots.iter_mut() {
+    fn advance_reproductive_timers(&mut self) {
+        for slot in &mut self.slots {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
-            let Some(PhaseCommands::Virus(_)) =
+            if robot.effects.virus_build_timer > 1 {
+                robot.effects.virus_build_timer -= 1;
+            }
+            if robot.effects.fertilization_timer > 0 {
+                robot.effects.fertilization_timer -= 1;
+                if robot.effects.fertilization_timer == 0 {
+                    robot.effects.stored_sperm = None;
+                }
+            }
+            publish_reproductive_readbacks(robot);
+        }
+    }
+
+    fn virus_commands_phase(&mut self) {
+        let runtime = SysvarRuntime::new();
+        let mut virus_requests = Vec::new();
+        for slot_index in 0..self.slots.len() {
+            let generation = self.slots[slot_index].generation;
+            let Some(robot) = self.slots[slot_index].organism.as_mut() else {
+                continue;
+            };
+            let Some(PhaseCommands::Virus(commands)) =
                 runtime.consume(CyclePhase::Virus, &mut robot.program.memory)
             else {
                 unreachable!("virus phase must return virus commands")
             };
-            for address in [335, 338, 340] {
-                runtime.finish_command(
-                    address,
-                    CommandOutcome::Excluded,
-                    &mut robot.program.memory,
-                );
+            let owner = OrganismId::new(slot_index as u32, generation);
+            let mut make_outcome = CommandOutcome::Excluded;
+            let mut shoot_outcome = CommandOutcome::Excluded;
+            if commands.make != 0 && robot.effects.stored_virus.is_none() {
+                let requested_gene = commands.make.max(1);
+                if let Some(gene) = robot.program.dna.gene(requested_gene) {
+                    let copy_cost = gene.blocks().len() as f64
+                        * self.config.dna_costs.dna_copy
+                        * self.config.dna_costs.global_multiplier;
+                    let whole_copy_cost = robot.program.settle_dna_energy_cost(copy_cost);
+                    robot.materials.energy = robot
+                        .materials
+                        .energy
+                        .saturating_sub(whole_copy_cost)
+                        .max(0);
+                    robot.materials.publish(&mut robot.program.memory);
+                    robot.effects.stored_virus = Some(StoredGeneticMaterial {
+                        dna: gene.clone(),
+                        source: Some(owner),
+                    });
+                    robot.effects.virus_build_timer =
+                        gene.blocks().len().saturating_mul(2).clamp(1, 32_000) as i32;
+                    make_outcome = CommandOutcome::Consumed;
+                }
             }
+            if commands.shoot != 0 && robot.effects.virus_build_timer == 1 {
+                if let Some(stored) = robot.effects.stored_virus.take() {
+                    let random = advance_random(
+                        self.config.seed
+                            ^ self.tick.rotate_left(19)
+                            ^ (slot_index as u64).rotate_left(37),
+                    );
+                    virus_requests.push((
+                        PendingProjectileRequest {
+                            owner_slot: slot_index,
+                            kind: -7,
+                            value: commands.shoot.abs().max(1),
+                            angle: (random % 6_283) as f32 / 1_000.0,
+                        },
+                        stored.dna,
+                    ));
+                    robot.effects.virus_build_timer = 0;
+                    shoot_outcome = CommandOutcome::Consumed;
+                }
+            }
+            runtime.finish_command(335, make_outcome, &mut robot.program.memory);
+            runtime.finish_command(338, shoot_outcome, &mut robot.program.memory);
+            runtime.finish_command(340, CommandOutcome::Excluded, &mut robot.program.memory);
+            publish_reproductive_readbacks(robot);
+        }
+        for (request, payload) in virus_requests {
+            let slot = request.owner_slot;
+            let Some(owner) = self.slots[slot].organism.as_ref() else {
+                continue;
+            };
+            let source_species_name = self
+                .species
+                .get(owner.identity.species.0 as usize)
+                .map(|species| species.name.clone());
+            self.projectiles.spawn(
+                ProjectileSpawn {
+                    owner: OrganismId::new(slot as u32, self.slots[slot].generation),
+                    owner_position: owner.kinematics.position,
+                    owner_actual_velocity: owner.kinematics.actual_velocity,
+                    owner_radius: crate::physics::organism_radius(
+                        owner.materials.body,
+                        owner.materials.chloroplasts,
+                    ),
+                    owner_virtual_body: owner.materials.body as f32,
+                    angle: request.angle,
+                    kind: request.kind,
+                    value: request.value,
+                    payload: Some(payload),
+                    source_species_name,
+                    toxin_memory_location: 0,
+                    toxin_memory_value: 0,
+                },
+                &self.config.shots,
+            );
         }
     }
 
@@ -4714,7 +4836,15 @@ impl Engine {
             else {
                 continue;
             };
-            let payload = matches!(request.kind, -7 | -8).then(|| owner.program.dna.clone());
+            let payload = match request.kind {
+                -7 => owner
+                    .program
+                    .dna
+                    .gene(owner.program.current_gene as i32)
+                    .or_else(|| owner.program.dna.gene(1)),
+                -8 => Some(owner.program.dna.clone()),
+                _ => None,
+            };
             let source_species_name = self
                 .species
                 .get(owner.identity.species.0 as usize)
@@ -5140,36 +5270,41 @@ impl Engine {
                     }
                     ProjectileEffect::AddGene => {
                         let Some(dna) = payload else { return false };
-                        self.slots[target].organism.as_mut().unwrap().program.dna = dna;
-                        let references = self.slots[target]
-                            .organism
-                            .as_ref()
-                            .unwrap()
-                            .program
-                            .dna
-                            .address_reference_count(MEM_EYE1, MEM_EYE9);
-                        self.slots[target]
-                            .organism
-                            .as_mut()
-                            .unwrap()
-                            .program
-                            .memory
-                            .write(MEM_MY_EYE, references);
+                        let target_robot = self.slots[target].organism.as_mut().unwrap();
+                        if !target_robot.flags.can_receive_viruses
+                            || target_robot.materials.slime > 0
+                        {
+                            return false;
+                        }
+                        let gene = dna.gene(1).unwrap_or(dna);
+                        let target_dna = target_robot.program.dna.clone();
+                        let boundary_count = target_dna.gene_count().max(0) as usize;
+                        let random = advance_random(
+                            self.config.seed
+                                ^ self.tick.rotate_left(11)
+                                ^ (target as u64).rotate_left(29),
+                        );
+                        let boundary = random as usize % boundary_count.saturating_add(1);
+                        target_robot.program.dna = target_dna.insert_gene(&gene, boundary);
+                        target_robot.program.memory.write(
+                            MEM_MY_EYE,
+                            target_robot
+                                .program
+                                .dna
+                                .address_reference_count(MEM_EYE1, MEM_EYE9),
+                        );
+                        publish_reproductive_readbacks(target_robot);
                         true
                     }
                     ProjectileEffect::Sperm => {
                         let Some(dna) = payload else { return false };
-                        let target_dna = self.slots[target]
-                            .organism
-                            .as_ref()
-                            .unwrap()
-                            .program
-                            .dna
-                            .clone();
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        target_robot.program.dna = target_dna.crossover(&dna);
-                        target_robot.program.memory.write(MEM_REPRO, 50);
-                        target_robot.effects.forced_reproduction = true;
+                        target_robot.effects.stored_sperm = Some(StoredGeneticMaterial {
+                            dna,
+                            source: Some(owner),
+                        });
+                        target_robot.effects.fertilization_timer = FERTILIZATION_WINDOW;
+                        publish_reproductive_readbacks(target_robot);
                         true
                     }
                     ProjectileEffect::WriteMemory { address, value } => {
@@ -5706,9 +5841,25 @@ impl Engine {
             else {
                 unreachable!("reproduction phase must return reproduction commands")
             };
-            let reproduction = reproduction_commands
+            let asexual_reproduction = reproduction_commands
                 .asexual
                 .max(reproduction_commands.mutated);
+            let sexual_reproduction = if reproduction_commands.sexual > 0
+                && organism.effects.fertilization_timer > 0
+                && organism
+                    .effects
+                    .stored_sperm
+                    .as_ref()
+                    .is_some_and(|stored| {
+                        organism.program.dna.genetic_distance(&stored.dna)
+                            <= MAX_SEXUAL_GENETIC_DISTANCE
+                    }) {
+                reproduction_commands.sexual
+            } else {
+                0
+            };
+            let sexual = sexual_reproduction > 0;
+            let reproduction = sexual_reproduction.max(asexual_reproduction);
             let percentage = reproduction % 100;
             let assisted_reproduction = organism.effects.forced_reproduction;
             let species_repopulates = self
@@ -5719,7 +5870,8 @@ impl Engine {
                 && organism.materials.energy > 0
                 && organism.materials.body >= 5
                 && organism.flags.can_reproduce
-                && (self.asexual_reproduction_allowed
+                && (sexual
+                    || self.asexual_reproduction_allowed
                     || assisted_reproduction
                     || species_repopulates)
             {
@@ -5732,8 +5884,18 @@ impl Engine {
                 queues.births.push(PendingBirth {
                     parent,
                     percentage,
-                    mutation_reproduction: reproduction_commands.mutated > 0,
-                    assisted: assisted_reproduction,
+                    mutation_reproduction: !sexual && reproduction_commands.mutated > 0,
+                    assisted: !sexual && assisted_reproduction,
+                    sexual,
+                    sperm_source: sexual
+                        .then(|| {
+                            organism
+                                .effects
+                                .stored_sperm
+                                .as_ref()
+                                .and_then(|stored| stored.source)
+                        })
+                        .flatten(),
                 });
             }
         }
@@ -5832,11 +5994,15 @@ impl Engine {
             };
             let mutate = birth.mutation_reproduction
                 || ((next_rng % 10_000) as f32) < configured_rate * 100.0;
-            let child = self.spawn_species_at_unpublished(
-                parent_state.program.dna.clone(),
-                species,
-                position,
-            )?;
+            let child_dna = if birth.sexual {
+                parent_state.effects.stored_sperm.as_ref().map_or_else(
+                    || parent_state.program.dna.clone(),
+                    |stored| parent_state.program.dna.crossover(&stored.dna),
+                )
+            } else {
+                parent_state.program.dna.clone()
+            };
+            let child = self.spawn_species_at_unpublished(child_dna, species, position)?;
             let absolute_id = self.allocate_absolute_identity();
             available_births -= 1;
             if vegetable_birth {
@@ -5852,7 +6018,10 @@ impl Engine {
             {
                 let child_organism = self.slots.get_mut(child)?;
                 child_organism.identity = parent_state.identity.clone();
-                child_organism.identity.parents = [Some(birth.parent), None];
+                child_organism.identity.parents = [
+                    Some(birth.parent),
+                    birth.sexual.then_some(birth.sperm_source).flatten(),
+                ];
                 child_organism.identity.absolute_id = absolute_id;
                 child_organism.flags = parent_state.flags.clone();
                 child_organism.flags.exists = true;
@@ -5943,7 +6112,21 @@ impl Engine {
                     CommandOutcome::Consumed,
                     &mut parent_organism.program.memory,
                 );
+                runtime.finish_command(
+                    MEM_SEX_REPRO as u16,
+                    if birth.sexual {
+                        CommandOutcome::Consumed
+                    } else {
+                        CommandOutcome::Excluded
+                    },
+                    &mut parent_organism.program.memory,
+                );
                 parent_organism.effects.forced_reproduction = false;
+                if birth.sexual {
+                    parent_organism.effects.stored_sperm = None;
+                    parent_organism.effects.fertilization_timer = 0;
+                    publish_reproductive_readbacks(parent_organism);
+                }
             }
             trace.effect(
                 CyclePhase::CommitBirthsDeaths,
