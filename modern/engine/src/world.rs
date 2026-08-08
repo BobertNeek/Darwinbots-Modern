@@ -11,14 +11,15 @@ use crate::{
     BiologyState, CommandOutcome, CoreReadbacks, CorpseDecaySettings, CorpseSnapshot,
     CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm, EngineConfig, EngineError,
     EyeSnapshot, FileTeleporter, GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna,
-    LegacyOrganism, LegacySimulationFile, MutationPolicyInput, Obstacle, OrganismId, PhaseCommands,
-    PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch, PhysicsSettings, PlantLightInput,
-    ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget,
-    QueueChangeKind, RenderInstance, ShapeShotPolicy, ShapeVisionPolicy, ShotSettings,
-    ShotSnapshot, SimulationCostAction, SimulationStats, SkinPoint, SpatialIndex,
-    SpeciesDefinition, SpeciesId, StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime,
-    Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime,
-    VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
+    LegacyOrganism, LegacySimulationFile, MutationContext, MutationPolicyInput, Obstacle,
+    OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch,
+    PhysicsSettings, PlantLightInput, PointMutationSchedule, ProjectileEffect, ProjectileImpact,
+    ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind, RenderInstance,
+    ShapeShotPolicy, ShapeVisionPolicy, ShotSettings, ShotSnapshot, SimulationCostAction,
+    SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId,
+    StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands,
+    TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime, VegetationSettings,
+    VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
     apply_advanced_mutation_policies, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
@@ -450,6 +451,10 @@ const fn db3s_v2_default_low_memory_detail_limit() -> usize {
 
 const fn db3s_v2_default_speciation_genetic_distance_percent() -> f32 {
     20.0
+}
+
+const fn default_speciation_fork_interval() -> u64 {
+    5_000
 }
 
 const fn db3s_v2_default_mutations_enabled() -> bool {
@@ -1865,8 +1870,14 @@ pub struct Engine {
     local_mode: LocalModeState,
     #[serde(default)]
     next_lineage_id: u64,
+    #[serde(default = "default_speciation_fork_interval")]
+    speciation_fork_interval: u64,
     #[serde(default)]
     next_absolute_id: u64,
+    #[serde(default)]
+    zerobot_checkpoint: Option<RobotState>,
+    #[serde(default)]
+    zerobot_checkpoint_score: i64,
     #[serde(default)]
     obstacles: Vec<Obstacle>,
     #[serde(default)]
@@ -1913,7 +1924,10 @@ struct CycleCheckpoint {
     asexual_reproduction_allowed: bool,
     local_mode: LocalModeState,
     next_lineage_id: u64,
+    speciation_fork_interval: u64,
     next_absolute_id: u64,
+    zerobot_checkpoint: Option<RobotState>,
+    zerobot_checkpoint_score: i64,
     obstacles: Vec<Obstacle>,
     teleporters: Vec<Teleporter>,
     file_teleporters: Vec<FileTeleporter>,
@@ -2046,7 +2060,10 @@ impl Engine {
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
             local_mode: LocalModeState::default(),
             next_lineage_id: legacy.next_lineage_id,
+            speciation_fork_interval: default_speciation_fork_interval(),
             next_absolute_id: legacy.next_absolute_id,
+            zerobot_checkpoint: None,
+            zerobot_checkpoint_score: 0,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
             teleporters: legacy.teleporters.into_iter().map(Into::into).collect(),
             file_teleporters: Vec::new(),
@@ -2198,7 +2215,10 @@ impl Engine {
             asexual_reproduction_allowed: true,
             local_mode: LocalModeState::default(),
             next_lineage_id: 2,
+            speciation_fork_interval: default_speciation_fork_interval(),
             next_absolute_id: 1,
+            zerobot_checkpoint: None,
+            zerobot_checkpoint_score: 0,
             obstacles: Vec::new(),
             teleporters: Vec::new(),
             file_teleporters: Vec::new(),
@@ -2444,6 +2464,10 @@ impl Engine {
         self.local_mode.restart_count = 0;
         self.local_mode.results.clear();
         self.local_mode.adjudication = None;
+        if config.kind == LocalModeKind::Zerobot {
+            self.zerobot_checkpoint = None;
+            self.zerobot_checkpoint_score = 0;
+        }
         self.enforce_mode_population_cap()?;
         self.publish_snapshot();
         Ok(())
@@ -2455,6 +2479,10 @@ impl Engine {
                 "a local mode must be configured before it restarts".to_owned(),
             ));
         };
+        if config.kind == LocalModeKind::Zerobot {
+            self.zerobot_checkpoint = None;
+            self.zerobot_checkpoint_score = 0;
+        }
         self.restart_mode_world(None)?;
         self.local_mode.current_round = 1;
         self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
@@ -2488,6 +2516,10 @@ impl Engine {
     fn apply_mode_restrictions(&mut self, config: &LocalModeConfig) {
         self.robot_fixing_allowed = config.restrictions.robot_fixing_allowed;
         self.asexual_reproduction_allowed = config.restrictions.asexual_reproduction_allowed;
+        if config.kind == LocalModeKind::Zerobot {
+            self.mutations_enabled = true;
+            self.asexual_reproduction_allowed = true;
+        }
         if !self.robot_fixing_allowed {
             for slot in &mut self.slots {
                 if let Some(organism) = slot.organism.as_mut() {
@@ -2658,6 +2690,15 @@ impl Engine {
             })
     }
 
+    fn best_mode_organism(&self, species: SpeciesId) -> Option<RobotState> {
+        self.slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .filter(|organism| organism.identity.species == species)
+            .max_by_key(|organism| (organism.materials.energy, organism.counters.age))
+            .cloned()
+    }
+
     fn best_mode_species(&self) -> Option<SpeciesId> {
         let config = self.local_mode_config()?;
         let mut candidates = BTreeMap::<u32, (usize, i64)>::new();
@@ -2711,33 +2752,71 @@ impl Engine {
         let (winning_population, winning_energy) = winner
             .map(|species| self.mode_species_score(species))
             .unwrap_or_default();
+        let zerobot = config.kind == LocalModeKind::Zerobot;
+        let candidate_seed = if zerobot {
+            winner.and_then(|species| self.best_mode_organism(species))
+        } else {
+            None
+        };
+        let candidate_score = candidate_seed
+            .as_ref()
+            .map(zerobot_seed_score)
+            .unwrap_or(i64::MIN);
+        let mut restart_seed = None;
+        let mut rollback = false;
+        let mut result_reason = reason;
+        if zerobot {
+            if candidate_seed.is_some() && candidate_score > self.zerobot_checkpoint_score
+                || self.zerobot_checkpoint.is_none() && candidate_seed.is_some()
+            {
+                self.zerobot_checkpoint = candidate_seed.clone();
+                self.zerobot_checkpoint_score = candidate_score;
+                restart_seed = candidate_seed;
+            } else if let Some(checkpoint) = self.zerobot_checkpoint.clone() {
+                restart_seed = Some(checkpoint);
+                rollback = true;
+                result_reason.push_str(" (zerobot rollback)");
+            }
+        }
         self.local_mode.results.push(LocalModeResult {
             round: self.local_mode.current_round,
             winner,
             winning_population,
             winning_energy,
-            reason: reason.clone(),
+            reason: result_reason.clone(),
             automatic,
         });
         self.local_mode.adjudication = Some(LocalModeAdjudication {
             winner,
-            reason,
+            reason: result_reason,
             automatic,
         });
         if self.local_mode.current_round >= config.maximum_rounds
             && self.local_mode.current_round >= config.minimum_rounds
         {
+            if zerobot && rollback {
+                self.local_mode.status = LocalModeStatus::RoundComplete;
+                let keep_species = restart_seed.as_ref().map(|seed| seed.identity.species);
+                self.restart_mode_world_with_seed(keep_species, restart_seed)?;
+            }
             self.local_mode.status = LocalModeStatus::Completed;
             self.publish_snapshot();
             return Ok(());
         }
         self.local_mode.status = LocalModeStatus::RoundComplete;
-        self.restart_mode_world(
+        let keep_species = if zerobot {
+            restart_seed.as_ref().map(|seed| seed.identity.species)
+        } else {
             (config.kind == LocalModeKind::SimpleSurvival
                 || config.kind == LocalModeKind::EcoSurvival)
                 .then_some(winner)
-                .flatten(),
-        )?;
+                .flatten()
+        };
+        if zerobot {
+            self.restart_mode_world_with_seed(keep_species, restart_seed)?;
+        } else {
+            self.restart_mode_world(keep_species)?;
+        }
         self.local_mode.current_round = self.local_mode.current_round.saturating_add(1);
         self.local_mode.cycle_in_round = 0;
         self.local_mode.status = LocalModeStatus::Running;
@@ -2775,6 +2854,14 @@ impl Engine {
                 .max_by_key(|organism| (organism.materials.energy, organism.counters.age))
                 .cloned()
         });
+        self.restart_mode_world_with_seed(keep_species, winner_seed)
+    }
+
+    fn restart_mode_world_with_seed(
+        &mut self,
+        keep_species: Option<SpeciesId>,
+        winner_seed: Option<RobotState>,
+    ) -> Result<(), EngineError> {
         let ids: Vec<_> = self
             .slots
             .iter()
@@ -3324,7 +3411,10 @@ impl Engine {
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
             local_mode: self.local_mode.clone(),
             next_lineage_id: self.next_lineage_id,
+            speciation_fork_interval: self.speciation_fork_interval,
             next_absolute_id: self.next_absolute_id,
+            zerobot_checkpoint: self.zerobot_checkpoint.clone(),
+            zerobot_checkpoint_score: self.zerobot_checkpoint_score,
             obstacles: self.obstacles.clone(),
             teleporters: self.teleporters.clone(),
             file_teleporters: self.file_teleporters.clone(),
@@ -3360,7 +3450,10 @@ impl Engine {
         self.asexual_reproduction_allowed = checkpoint.asexual_reproduction_allowed;
         self.local_mode = checkpoint.local_mode;
         self.next_lineage_id = checkpoint.next_lineage_id;
+        self.speciation_fork_interval = checkpoint.speciation_fork_interval;
         self.next_absolute_id = checkpoint.next_absolute_id;
+        self.zerobot_checkpoint = checkpoint.zerobot_checkpoint;
+        self.zerobot_checkpoint_score = checkpoint.zerobot_checkpoint_score;
         self.obstacles = checkpoint.obstacles;
         self.teleporters = checkpoint.teleporters;
         self.file_teleporters = checkpoint.file_teleporters;
@@ -3490,7 +3583,7 @@ impl Engine {
         self.phase_timings.interactions += elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::Mutation);
         let started = Instant::now();
-        self.mutation_phase();
+        self.mutation_phase(MutationContext::Lifelong);
         self.phase_timings.mutation = elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::Material);
         self.material_commands_phase();
@@ -7553,7 +7646,9 @@ impl Engine {
             }
             if mutate {
                 self.pending_mutations.push(child);
-                self.mutation_phase();
+                self.mutation_phase(MutationContext::Reproduction {
+                    forced: birth.mutation_reproduction,
+                });
             }
             self.stats.births = self.stats.births.saturating_add(1);
             trace.queue_change(
@@ -7628,55 +7723,90 @@ impl Engine {
         Ok(())
     }
 
-    fn mutation_phase(&mut self) {
+    fn mutation_phase(&mut self, context: MutationContext) {
         if !self.mutations_enabled {
             return;
         }
         let settings = self.config.advanced_mutation.clone();
         let base_multiplier = f64::from(self.global_mutation_multiplier);
-        let delta2_due = settings.delta2.enabled
-            && settings.delta2.interval > 0
-            && self.tick.is_multiple_of(settings.delta2.interval);
-        if delta2_due {
-            let policy_settings = AdvancedMutationSettings {
-                epigenetic: Default::default(),
-                ..settings.clone()
-            };
-            for slot in self.slots.iter_mut() {
-                let Some(organism) = slot.organism.as_mut() else {
+        let mut ids = match context {
+            MutationContext::Reproduction { .. } => std::mem::take(&mut self.pending_mutations),
+            MutationContext::Lifelong => Vec::new(),
+        };
+        if matches!(context, MutationContext::Lifelong) {
+            for (slot, entry) in self.slots.iter_mut().enumerate() {
+                let Some(organism) = entry.organism.as_mut() else {
                     continue;
                 };
                 if !organism.flags.can_mutate {
                     continue;
                 }
-                apply_advanced_mutation_policies(
-                    &mut organism.program.mutation_profile,
-                    &policy_settings,
-                    MutationPolicyInput {
-                        cycle: self.tick,
-                        dna_len: organism.program.dna.blocks().len(),
-                        mutation_count: organism.program.mutation_metadata.total_mutations,
-                        base_multiplier,
-                    },
-                    &mut organism.heredity.epigenetic_staging,
-                );
+                if organism.program.point_mutation_schedule.is_none() {
+                    let coding_len = organism.program.dna.blocks().len().saturating_sub(1);
+                    if coding_len == 0 {
+                        continue;
+                    }
+                    let random = advance_random(organism.program.rng_state);
+                    organism.program.rng_state = random;
+                    let rate = organism
+                        .program
+                        .mutation_profile
+                        .point
+                        .one_in
+                        .max(1.0)
+                        .min(u64::MAX as f64) as u64;
+                    let maximum_result = rate.saturating_mul(coding_len as u64).max(1);
+                    organism.program.point_mutation_schedule =
+                        PointMutationSchedule::from_geometric(
+                            organism.counters.age,
+                            organism.program.dna.blocks().len(),
+                            random % maximum_result,
+                        );
+                }
+                if organism
+                    .program
+                    .point_mutation_schedule
+                    .is_some_and(|schedule| schedule.cycle <= self.tick)
+                {
+                    ids.push(OrganismId::new(slot as u32, entry.generation));
+                }
             }
         }
-        let pending_mutations = std::mem::take(&mut self.pending_mutations);
-        let mut pending_settings = settings;
-        if delta2_due {
-            pending_settings.delta2.enabled = false;
+        for id in ids {
+            self.apply_mutation_to_organism(id, &settings, base_multiplier, context);
         }
-        for id in pending_mutations {
+    }
+
+    fn apply_mutation_to_organism(
+        &mut self,
+        id: OrganismId,
+        settings: &AdvancedMutationSettings,
+        base_multiplier: f64,
+        context: MutationContext,
+    ) {
+        let species = self
+            .slots
+            .get(id)
+            .ok()
+            .map(|organism| organism.identity.species);
+        let vegetable = species.is_some_and(|species| {
+            self.species
+                .get(species.0 as usize)
+                .is_some_and(|definition| definition.vegetable)
+        });
+        let configured_reproductive_rate = species
+            .and_then(|species| self.species.get(species.0 as usize))
+            .map_or(0.0, |definition| f64::from(definition.mutation_rate));
+        let (report, should_fork) = {
             let Ok(organism) = self.slots.get_mut(id) else {
-                continue;
+                return;
             };
             if !organism.flags.can_mutate {
-                continue;
+                return;
             }
-            let policy = apply_advanced_mutation_policies(
+            let mut policy = apply_advanced_mutation_policies(
                 &mut organism.program.mutation_profile,
-                &pending_settings,
+                settings,
                 MutationPolicyInput {
                     cycle: self.tick,
                     dna_len: organism.program.dna.blocks().len(),
@@ -7685,6 +7815,12 @@ impl Engine {
                 },
                 &mut organism.heredity.epigenetic_staging,
             );
+            if matches!(context, MutationContext::Reproduction { forced: false })
+                && configured_reproductive_rate > 0.0
+            {
+                policy.effective_one_in =
+                    (100.0 / configured_reproductive_rate).clamp(1.0, f64::MAX);
+            }
             if !matches!(
                 policy.epigenetic_action,
                 crate::EpigeneticPolicyAction::None
@@ -7699,18 +7835,19 @@ impl Engine {
                     ));
             }
             let mut mutator = GenomeMutator::new(organism.program.rng_state);
-            let report = mutator.mutate_with_policy(
+            let report = mutator.mutate_with_advanced_policy(
                 &mut organism.program.dna,
                 &organism.program.mutation_profile,
                 policy,
+                settings,
+                context,
             );
-            organism.refresh_occurrence_census();
             organism.program.rng_state = mutator.random_state();
+            organism.refresh_occurrence_census();
+            if matches!(context, MutationContext::Lifelong) {
+                organism.program.point_mutation_schedule = None;
+            }
             if report.changes > 0 {
-                let vegetable = self
-                    .species
-                    .get(organism.identity.species.0 as usize)
-                    .is_some_and(|species| species.vegetable);
                 organism.phenotype.apply_color_mutation(
                     report.changes,
                     vegetable,
@@ -7726,24 +7863,63 @@ impl Engine {
                     .total_mutations
                     .saturating_add(report.changes as u64);
                 organism.program.mutation_metadata.last_mutation_cycle = Some(self.tick);
-                let threshold = ((organism.program.dna.instructions().len().max(1) as f32)
-                    * self
-                        .config
-                        .speciation_genetic_distance_percent
-                        .clamp(0.1, 10_000.0)
-                    / 100.0)
-                    .ceil() as u32;
-                if self.config.auto_speciation
-                    && organism.phenotype.accumulated_mutations >= threshold.max(1)
-                {
-                    let lineage_id = self.next_lineage_id.max(1);
-                    self.next_lineage_id = lineage_id.saturating_add(1);
-                    organism
-                        .phenotype
-                        .apply_speciation(lineage_id, &mut organism.program.rng_state);
-                }
+                organism
+                    .program
+                    .mutation_metadata
+                    .detailed_log
+                    .push(format!("mutation:{:?}", report.kind));
             }
-            self.stats.mutations = self.stats.mutations.saturating_add(report.changes as u64);
+            (report, report.changes > 0)
+        };
+        self.stats.mutations = self.stats.mutations.saturating_add(report.changes as u64);
+        if should_fork {
+            self.maybe_auto_fork_species(id);
+        }
+    }
+
+    fn maybe_auto_fork_species(&mut self, id: OrganismId) {
+        if !self.config.auto_speciation || self.species.len() >= 49 {
+            return;
+        }
+        let Some((source_species, accumulated_mutations, dna_length)) =
+            self.slots.get(id).ok().map(|organism| {
+                (
+                    organism.identity.species,
+                    organism.phenotype.accumulated_mutations,
+                    organism.program.dna.blocks().len().saturating_sub(1),
+                )
+            })
+        else {
+            return;
+        };
+        let threshold = (dna_length.max(1) as f32
+            * self
+                .config
+                .speciation_genetic_distance_percent
+                .clamp(0.1, 10_000.0)
+            / 100.0)
+            .ceil() as u32;
+        if accumulated_mutations < threshold.max(1) {
+            return;
+        }
+        let Some(mut definition) = self.species.get(source_species.0 as usize).cloned() else {
+            return;
+        };
+        let interval = self.speciation_fork_interval.max(1).saturating_add(1);
+        self.speciation_fork_interval = interval;
+        definition.name = format!(
+            "({interval}){}",
+            strip_numeric_species_prefix(&definition.name)
+        );
+        definition.minimum_population = 0;
+        definition.reseed = false;
+        definition.lineage_id = 0;
+        let new_species = self.register_species(definition);
+        let definition = self.species[new_species.0 as usize].clone();
+        if let Ok(organism) = self.slots.get_mut(id) {
+            organism.identity.species = new_species;
+            organism.phenotype =
+                VisualPhenotype::new(definition.lineage_id, definition.color, definition.skin);
         }
     }
 
@@ -8626,6 +8802,28 @@ fn advance_random(mut value: u64) -> u64 {
     value ^= value >> 7;
     value ^= value << 17;
     value.max(1)
+}
+
+fn strip_numeric_species_prefix(name: &str) -> &str {
+    let Some(rest) = name.strip_prefix('(') else {
+        return name;
+    };
+    let Some(close) = rest.find(')') else {
+        return name;
+    };
+    if rest[..close]
+        .chars()
+        .all(|character| character.is_ascii_digit())
+    {
+        &rest[close + 1..]
+    } else {
+        name
+    }
+}
+
+fn zerobot_seed_score(robot: &RobotState) -> i64 {
+    i64::from(robot.materials.energy.max(0))
+        + i64::from(robot.materials.body.max(0)).saturating_mul(10)
 }
 
 fn default_species() -> Vec<SpeciesDefinition> {

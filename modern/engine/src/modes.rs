@@ -10,6 +10,7 @@ pub enum LocalModeKind {
     Contest,
     SimpleSurvival,
     EcoSurvival,
+    Zerobot,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

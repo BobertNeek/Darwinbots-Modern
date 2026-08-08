@@ -57,11 +57,11 @@ pub use modes::{
 };
 pub use mutation::{
     AdvancedMutationSettings, Delta2Settings, EpigeneticPolicyAction, EpigeneticSettings,
-    GenomeMutator, MutationKind, MutationOscillationMode, MutationOscillationSettings,
-    MutationPolicyInput, MutationPolicyReport, MutationPreference, MutationRate, MutationReport,
-    PointMutationSchedule, PointMutator, StandardMutationEvent, StandardMutationKind,
-    StandardMutationProfile, StandardMutationReport, apply_advanced_mutation_policies,
-    apply_standard_mutation,
+    GenomeMutator, MutationContext, MutationKind, MutationOscillationMode,
+    MutationOscillationSettings, MutationPolicyInput, MutationPolicyReport, MutationPreference,
+    MutationRate, MutationReport, PointMutationSchedule, PointMutator, StandardMutationEvent,
+    StandardMutationKind, StandardMutationProfile, StandardMutationReport,
+    apply_advanced_mutation_policies, apply_standard_mutation,
 };
 pub use persistence::SaveFile;
 pub use physics::{
