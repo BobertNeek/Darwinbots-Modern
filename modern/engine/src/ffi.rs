@@ -1,5 +1,5 @@
 use crate::persistence::SaveFile;
-use crate::{Engine, EngineConfig, LegacyDna, OrganismId, SpeciesDefinition};
+use crate::{Engine, EngineConfig, LegacyDna, LegacyOrganismFile, OrganismId, SpeciesDefinition};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
 
@@ -60,6 +60,9 @@ enum EngineCommand {
     ImportDna {
         dna: String,
         position: Option<[f32; 2]>,
+    },
+    ImportOrganism {
+        payload: Vec<u8>,
     },
     Remove {
         slot: u32,
@@ -451,6 +454,12 @@ fn db_engine_command_batch_impl(
                         })
                     })
             }),
+            EngineCommand::ImportOrganism { payload } => LegacyOrganismFile::decode(&payload)
+                .and_then(|file| {
+                    engine
+                        .import_legacy_organism_file(&file)
+                        .map(|count| serde_json::json!({ "count": count }))
+                }),
             EngineCommand::Remove { slot, generation } => engine
                 .remove(OrganismId::new(slot, generation))
                 .map(|_| serde_json::Value::Null),

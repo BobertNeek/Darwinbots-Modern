@@ -94,6 +94,18 @@ public sealed partial class NativeEngineClient : IEngineClient
         return ReadImportReport(result.GetProperty("results")[0]);
     }
 
+    public int ImportOrganism(ReadOnlyMemory<byte> payload)
+    {
+        EnsureAlive();
+        if (payload.IsEmpty) throw new ArgumentException("Organism interchange payload is empty.", nameof(payload));
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "import_organism", payload = payload.ToArray() } },
+        }, "import organism");
+        return result.GetProperty("results")[0].GetProperty("count").GetInt32();
+    }
+
     public DnaImportReport ImportSpecies(SpeciesImport species)
     {
         EnsureAlive();

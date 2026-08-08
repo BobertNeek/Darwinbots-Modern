@@ -195,6 +195,45 @@ public sealed class GraphAndContestTests
     }
 
     [Fact]
+    public void LegacyGraphJoinImportsSegmentedSamplesAndDatabaseExportUsesLegacyHeader()
+    {
+        var segmentText = string.Join('\n',
+            [
+                "trial one",
+                "16711680:Alpha,255:Beta",
+                .. Enumerable.Range(0, 999).Select(index => $"{index}\t{index * 2}"),
+            ]);
+
+        var segments = LegacyGraphJoin.Parse([segmentText]);
+        var imported = LegacyGraphJoin.ToSeries(segments);
+
+        Assert.Equal("trial one · Alpha", imported[0].Title);
+        Assert.Equal([new GraphSample(0, 0), new GraphSample(998, 998)],
+            imported[0].Samples.Where(sample => sample.Tick is 0 or 998));
+        Assert.Equal("trial one · Beta", imported[1].Title);
+        Assert.Equal(1996d, imported[1].Samples[^1].Value);
+
+        var organism = new OrganismSnapshot(7, 3, [10, 20], [0, 0], 100, 4, Species: 0)
+        {
+            Parents = [new OrganismKey(2, 1), null],
+            UniqueId = 7003,
+            TotalMutations = 12,
+            NewMutations = 3,
+            DnaLength = 18,
+            Offspring = 5,
+            Chloroplasts = 9,
+        };
+        var snapshot = new EngineSnapshot(100, 1, "CPU", [organism])
+        {
+            Species = [new SpeciesSnapshot("Alpha", false, 0xff0000, 0, false)],
+        };
+
+        var database = DatabaseExport.Serialize(snapshot);
+        Assert.StartsWith("Rob id,Parent id,Founder name,Generation,Birth cycle,Age,Mutations,New mutations,Dna length,Offspring number,kills,Fitness,Energy,Chloroplasts\r\n", database, StringComparison.Ordinal);
+        Assert.Contains("7003,2,Alpha,3,0,4,12,3,18,5,0,", database, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ContestResultsViewModelRecordsManualAndInstantWinsThroughLocalContract()
     {
         var adjudications = new List<ContestAdjudication>();

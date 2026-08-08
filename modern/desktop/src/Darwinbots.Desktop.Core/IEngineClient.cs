@@ -6,6 +6,7 @@ public interface IEngineClient : IDisposable
     EngineCapabilities Capabilities();
     void Tick(uint count = 1);
     DnaImportReport ImportDna(string dna, float[]? position = null);
+    int ImportOrganism(ReadOnlyMemory<byte> payload) => throw new NotSupportedException("This engine client does not support organism interchange.");
     DnaImportReport ImportSpecies(SpeciesImport species);
     DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position);
     void Remove(uint slot, uint generation);

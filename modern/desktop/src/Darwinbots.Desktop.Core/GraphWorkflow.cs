@@ -277,6 +277,18 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
     public string ExportCsv() => GraphExport.Serialize(RunningGraphs);
 
+    public string ExportDatabase(EngineSnapshot snapshot) => DatabaseExport.Serialize(snapshot);
+
+    public IReadOnlyList<GraphSeriesViewModel> ImportLegacyGsave(IEnumerable<string> segmentFiles)
+    {
+        var imported = LegacyGraphJoin.ToSeries(LegacyGraphJoin.Parse(segmentFiles));
+        foreach (var graph in imported) RunningGraphs.Add(graph);
+        Status = imported.Count == 0
+            ? "NO LEGACY GRAPHS IMPORTED"
+            : $"IMPORTED · {imported.Count:N0} LEGACY GRAPH SERIES";
+        return imported;
+    }
+
     public GraphComparison? JoinAndCompare(IReadOnlyList<GraphSeriesViewModel> graphs)
     {
         ArgumentNullException.ThrowIfNull(graphs);

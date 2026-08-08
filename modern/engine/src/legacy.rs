@@ -1,8 +1,10 @@
-use crate::{CorpseSnapshot, Engine, EngineError, OrganismId};
+use crate::{CorpseSnapshot, DnaBlock, Engine, EngineError, OrganismId, TokenClass};
 use serde::{Deserialize, Serialize};
 
 const SIMULATION_MAGIC: &[u8; 4] = b"DB2S";
 const SIMULATION_VERSION: u16 = 2;
+const ORGANISM_MAGIC: &[u8; 4] = b"DB2O";
+const ORGANISM_VERSION: u16 = 1;
 const MAX_LEGACY_STRING: usize = 1 << 20;
 const MAX_LEGACY_ITEMS: usize = 1 << 20;
 
@@ -455,17 +457,499 @@ impl LegacySettingsFile {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LegacyOrganism {
+    #[serde(alias = "Dna")]
     pub dna: String,
+    #[serde(alias = "Species")]
     pub species: u32,
+    #[serde(alias = "Vegetable")]
     pub vegetable: bool,
+    #[serde(default, alias = "Corpse")]
     pub corpse: bool,
+    #[serde(default, alias = "Repopulating")]
     pub repopulating: bool,
+    #[serde(alias = "Position")]
     pub position: [f32; 2],
+    #[serde(alias = "Velocity")]
     pub velocity: [f32; 2],
+    #[serde(alias = "Energy")]
     pub energy: i32,
+    #[serde(default, alias = "Age")]
     pub age: u64,
+    #[serde(default, alias = "BirthCycle", alias = "birthCycle")]
     pub birth_cycle: u64,
+    #[serde(alias = "Body")]
     pub body: i32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LegacyOrganismKey {
+    #[serde(alias = "Slot")]
+    pub slot: u32,
+    #[serde(alias = "Generation")]
+    pub generation: u32,
+}
+
+impl From<OrganismId> for LegacyOrganismKey {
+    fn from(value: OrganismId) -> Self {
+        Self {
+            slot: value.slot(),
+            generation: value.generation(),
+        }
+    }
+}
+
+impl LegacyOrganismKey {
+    pub(crate) fn id(&self) -> OrganismId {
+        OrganismId::new(self.slot, self.generation)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LegacyOrganismMember {
+    #[serde(alias = "Slot", alias = "source_slot")]
+    pub slot: u32,
+    #[serde(alias = "Generation", alias = "source_generation")]
+    pub generation: u32,
+    #[serde(flatten)]
+    pub organism: LegacyOrganism,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LegacyOrganismTie {
+    #[serde(alias = "First")]
+    pub first: LegacyOrganismKey,
+    #[serde(alias = "Second")]
+    pub second: LegacyOrganismKey,
+    #[serde(alias = "RestLength")]
+    pub rest_length: f32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LegacyOrganismFile {
+    pub version: u16,
+    pub tick: u64,
+    pub members: Vec<LegacyOrganismMember>,
+    #[serde(default)]
+    pub ties: Vec<LegacyOrganismTie>,
+}
+
+impl LegacyOrganismFile {
+    pub fn encode(&self) -> Result<Vec<u8>, EngineError> {
+        if self.version == 0 || self.version > ORGANISM_VERSION {
+            return Err(EngineError::InvalidSave(format!(
+                "unsupported DB2 organism version {}",
+                self.version
+            )));
+        }
+        if self.members.is_empty() {
+            return Err(EngineError::InvalidSave(
+                "DB2 organism file has no members".to_owned(),
+            ));
+        }
+        let payload = serde_json::to_vec(self).map_err(|error| {
+            EngineError::InvalidSave(format!("DB2 organism encode failed: {error}"))
+        })?;
+        let mut bytes = Vec::with_capacity(6 + payload.len());
+        bytes.extend_from_slice(ORGANISM_MAGIC);
+        bytes.extend_from_slice(&self.version.to_le_bytes());
+        bytes.extend_from_slice(&payload);
+        Ok(bytes)
+    }
+
+    pub fn decode(bytes: &[u8]) -> Result<Self, EngineError> {
+        let (version, payload) = if bytes.starts_with(ORGANISM_MAGIC) {
+            if bytes.len() < 6 {
+                return Err(EngineError::InvalidSave(
+                    "DB2 organism header is truncated".to_owned(),
+                ));
+            }
+            (u16::from_le_bytes([bytes[4], bytes[5]]), &bytes[6..])
+        } else if bytes.starts_with(SIMULATION_MAGIC) {
+            let simulation = LegacySimulationFile::decode(bytes)?;
+            return Ok(Self {
+                version: ORGANISM_VERSION,
+                tick: simulation.tick,
+                members: simulation
+                    .organisms
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, organism)| LegacyOrganismMember {
+                        slot: index as u32,
+                        generation: 0,
+                        organism,
+                    })
+                    .collect(),
+                ties: Vec::new(),
+            });
+        } else if bytes.first().is_some_and(|value| *value == b'{') {
+            (ORGANISM_VERSION, bytes)
+        } else {
+            return decode_vb6_organism(bytes);
+        };
+        if version == 0 || version > ORGANISM_VERSION {
+            return Err(EngineError::InvalidSave(format!(
+                "unsupported DB2 organism version {version}"
+            )));
+        }
+        let mut file: Self = serde_json::from_slice(payload).map_err(|error| {
+            EngineError::InvalidSave(format!("DB2 organism decode failed: {error}"))
+        })?;
+        file.version = version;
+        if file.members.is_empty() {
+            return Err(EngineError::InvalidSave(
+                "DB2 organism file has no members".to_owned(),
+            ));
+        }
+        Ok(file)
+    }
+}
+
+struct RawOrganismRecord {
+    organism: LegacyOrganism,
+    old_robot_number: i16,
+    ties: Vec<(i16, f32)>,
+}
+
+fn decode_vb6_organism(bytes: &[u8]) -> Result<LegacyOrganismFile, EngineError> {
+    let mut reader = RawReader::new(bytes);
+    let count = reader.i16("organism count")?;
+    if count <= 0 || count as usize > 50 {
+        return Err(EngineError::InvalidSave(
+            "legacy organism count is outside the supported range".to_owned(),
+        ));
+    }
+    let mut records = Vec::with_capacity(count as usize);
+    for index in 0..count {
+        records.push(read_vb6_record(&mut reader, index.saturating_add(1))?);
+    }
+
+    let members = records
+        .iter()
+        .map(|record| LegacyOrganismMember {
+            slot: record.old_robot_number.max(1) as u32,
+            generation: 0,
+            organism: record.organism.clone(),
+        })
+        .collect::<Vec<_>>();
+    let known = members
+        .iter()
+        .map(|member| (member.slot, member.generation))
+        .collect::<std::collections::BTreeSet<_>>();
+    let mut ties = Vec::new();
+    for record in &records {
+        let first = record.old_robot_number.max(1) as u32;
+        for &(target, length) in &record.ties {
+            let second = target.max(1) as u32;
+            if first == second || !known.contains(&(second, 0)) {
+                continue;
+            }
+            let (left, right) = if first < second {
+                (first, second)
+            } else {
+                (second, first)
+            };
+            if !ties
+                .iter()
+                .any(|tie: &LegacyOrganismTie| tie.first.slot == left && tie.second.slot == right)
+            {
+                ties.push(LegacyOrganismTie {
+                    first: LegacyOrganismKey {
+                        slot: left,
+                        generation: 0,
+                    },
+                    second: LegacyOrganismKey {
+                        slot: right,
+                        generation: 0,
+                    },
+                    rest_length: length.max(0.0),
+                });
+            }
+        }
+    }
+    Ok(LegacyOrganismFile {
+        version: ORGANISM_VERSION,
+        tick: 0,
+        members,
+        ties,
+    })
+}
+
+fn read_vb6_record(
+    reader: &mut RawReader<'_>,
+    fallback_robot_number: i16,
+) -> Result<RawOrganismRecord, EngineError> {
+    let vegetable = reader.vb_bool("vegetable")?;
+    let _wall = reader.vb_bool("wall")?;
+    let _fixed = reader.vb_bool("fixed")?;
+    let position = [reader.f32("position x")?, reader.f32("position y")?];
+    let velocity = [reader.f32("velocity x")?, reader.f32("velocity y")?];
+    let _aim = reader.f32("aim")?;
+    let _angular_momentum = reader.f32("angular momentum")?;
+    let _angular_torque = reader.f32("angular torque")?;
+
+    let mut ties = Vec::new();
+    for _ in 0..=10 {
+        let _port = reader.i16("tie port")?;
+        let target = reader.i16("tie target")?;
+        let _back_port = reader.i16("tie back port")?;
+        let _angle = reader.f32("tie angle")?;
+        let _bend = reader.f32("tie bend")?;
+        let _angle_fixed = reader.vb_bool("tie angle fixed")?;
+        let length = reader.i32("tie length")?;
+        let _shrink = reader.i32("tie shrink")?;
+        let _static = reader.vb_bool("tie static")?;
+        let _last = reader.i16("tie last")?;
+        let _memory = reader.i16("tie memory")?;
+        let _back = reader.vb_bool("tie back")?;
+        let _energy_used = reader.vb_bool("tie energy state")?;
+        let _information = reader.vb_bool("tie information state")?;
+        let _sharing = reader.vb_bool("tie sharing state")?;
+        if target > 0 {
+            ties.push((target, length as f32));
+        }
+    }
+
+    let energy = reader.f32("energy")?;
+    for _ in 0..50 {
+        let length = reader.i16("private variable name length")?;
+        reader.skip_nonnegative(length, "private variable name")?;
+        let _value = reader.i16("private variable value")?;
+    }
+    let _private_variable_count = reader.i16("private variable count")?;
+    for _ in 0..=1_000 {
+        let _memory = reader.i16("memory cell")?;
+    }
+
+    let dna_length = reader.i16("DNA length")?;
+    if !(0..=32_000).contains(&dna_length) {
+        return Err(EngineError::InvalidSave(
+            "legacy organism DNA length is invalid".to_owned(),
+        ));
+    }
+    let mut blocks = Vec::with_capacity(dna_length as usize);
+    for _ in 0..dna_length {
+        let class = reader.i16("DNA token class")?;
+        let value = reader.i16("DNA token value")? as i32;
+        blocks.push(DnaBlock {
+            class: raw_token_class(class),
+            value,
+        });
+    }
+    let dna = crate::LegacyDna::from_legacy_blocks(blocks).to_source();
+
+    for _ in 0..21 {
+        let _mutation_rate = reader.f32("mutation rate")?;
+    }
+    let _offspring = reader.i16("offspring")?;
+    let _mutations = reader.i16("mutations")?;
+    let _last_mutation = reader.i16("last mutation")?;
+    let _parent = reader.i32("parent")?;
+    let age = reader.i32("age")?;
+    let birth_cycle = reader.i32("birth cycle")?;
+    let _gene_count = reader.i16("gene count")?;
+    let _generation = reader.i16("generation")?;
+    let _stored_dna_length = reader.i16("stored DNA length")?;
+    for _ in 0..=13 {
+        let _skin = reader.i16("skin")?;
+    }
+    let _color = reader.i32("color")?;
+    let body = reader.f32("body")?;
+    let _buoyancy = reader.f32("buoyancy")?;
+    let corpse = reader.vb_bool("corpse")?;
+    let _permanent_waste = reader.f32("permanent waste")?;
+    let _waste = reader.f32("waste")?;
+    let _poison = reader.f32("poison")?;
+    let _venom = reader.f32("venom")?;
+    let _dna_length_again = reader.i16("DNA length marker")?;
+    let _exists = reader.vb_bool("exists")?;
+    let _dead = reader.vb_bool("dead")?;
+    let _species_name = reader.variable_text("species name")?;
+    let _last_owner = reader.variable_text("last owner")?;
+    let mutation_detail_length = reader.i16("mutation detail length")?;
+    let mutation_detail_length = if mutation_detail_length == 1 {
+        reader.i32("long mutation detail length")?
+    } else {
+        mutation_detail_length as i32
+    };
+    if mutation_detail_length < 0 {
+        return Err(EngineError::InvalidSave(
+            "legacy mutation detail length is invalid".to_owned(),
+        ));
+    }
+    reader.skip(mutation_detail_length as usize, "mutation details")?;
+    let _mutations_enabled = reader.vb_bool("mutations enabled")?;
+    for _ in 0..21 {
+        let _mean = reader.f32("mutation mean")?;
+        let _stddev = reader.f32("mutation standard deviation")?;
+    }
+    let _copy_error = reader.i16("copy error policy")?;
+    let _point_mutation = reader.i16("point mutation policy")?;
+    let _view = reader.vb_bool("view")?;
+    let _new_move = reader.vb_bool("new move")?;
+    let old_robot_number = reader.i16("old robot number")?;
+    let _cant_see = reader.vb_bool("cant see")?;
+    let _disable_dna = reader.vb_bool("disable DNA")?;
+    let _disable_movement = reader.vb_bool("disable movement")?;
+    let _cant_reproduce = reader.vb_bool("cant reproduce")?;
+    let _shell = reader.f32("shell")?;
+    let _slime = reader.f32("slime")?;
+    let _virus_immune = reader.vb_bool("virus immune")?;
+    let _subspecies = reader.i16("subspecies")?;
+    let sperm_length = reader.i16("sperm DNA length")?;
+    if sperm_length < 0 {
+        return Err(EngineError::InvalidSave(
+            "legacy sperm DNA length is invalid".to_owned(),
+        ));
+    }
+    for _ in 0..sperm_length {
+        let _class = reader.i16("sperm DNA class")?;
+        let _value = reader.i16("sperm DNA value")?;
+    }
+    let _fertilized = reader.i16("fertilized")?;
+    let _ancestor_count = reader.i16("ancestor count")?;
+    for _ in 0..=500 {
+        reader.skip(12, "ancestor record")?;
+    }
+    let _simulation_id = reader.i32("simulation id")?;
+    let _absolute_id = reader.i32("absolute id")?;
+    let _multibot = reader.vb_bool("multibot")?;
+    for _ in 0..=10 {
+        let _tie_type = reader.u8("tie type")?;
+        let _tie_b = reader.f32("tie damping")?;
+        let _tie_k = reader.f32("tie spring")?;
+        let _natural_length = reader.f32("tie natural length")?;
+    }
+    let _old_genetic_distance = reader.f32("old genetic distance")?;
+    let _chloroplasts = reader.f32("chloroplasts")?;
+    for _ in 0..=14 {
+        let _epigenetic = reader.i16("epigenetic memory")?;
+    }
+    reader.skip(50, "robot tag")?;
+    let _sunbelt = reader.vb_bool("sunbelt")?;
+    let _no_chloroplasts = reader.vb_bool("chloroplast restriction")?;
+    let _multibot_time = reader.u8("multibot timer")?;
+    let _chloroplast_delay = reader.u8("chloroplast delay")?;
+    let _deletion_quality = reader.u8("deletion quality")?;
+    let _old_mutations = reader.i32("old mutations")?;
+    let _actual_velocity_x = reader.f32("actual velocity x")?;
+    let _actual_velocity_y = reader.f32("actual velocity y")?;
+    if reader.take(3, "record terminator")? != [254, 254, 254] {
+        return Err(EngineError::InvalidSave(
+            "legacy organism record terminator is invalid".to_owned(),
+        ));
+    }
+
+    Ok(RawOrganismRecord {
+        organism: LegacyOrganism {
+            dna,
+            species: 0,
+            vegetable,
+            corpse,
+            repopulating: false,
+            position,
+            velocity,
+            energy: energy.round() as i32,
+            age: age.max(0) as u64,
+            birth_cycle: birth_cycle.max(0) as u64,
+            body: body.round() as i32,
+        },
+        old_robot_number: if old_robot_number > 0 {
+            old_robot_number
+        } else {
+            fallback_robot_number
+        },
+        ties,
+    })
+}
+
+fn raw_token_class(value: i16) -> TokenClass {
+    match value {
+        0 => TokenClass::Number,
+        1 => TokenClass::Dereference,
+        2 => TokenClass::Basic,
+        3 => TokenClass::Advanced,
+        4 => TokenClass::Bitwise,
+        5 => TokenClass::Condition,
+        6 => TokenClass::Logic,
+        7 => TokenClass::Store,
+        9 => TokenClass::Flow,
+        10 => TokenClass::End,
+        _ => TokenClass::Number,
+    }
+}
+
+struct RawReader<'a> {
+    bytes: &'a [u8],
+    offset: usize,
+}
+
+impl<'a> RawReader<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Self { bytes, offset: 0 }
+    }
+
+    fn take(&mut self, length: usize, label: &str) -> Result<&'a [u8], EngineError> {
+        let end = self
+            .offset
+            .checked_add(length)
+            .ok_or_else(|| EngineError::InvalidSave(format!("legacy {label} offset overflow")))?;
+        let value = self
+            .bytes
+            .get(self.offset..end)
+            .ok_or_else(|| EngineError::InvalidSave(format!("legacy {label} is truncated")))?;
+        self.offset = end;
+        Ok(value)
+    }
+
+    fn skip(&mut self, length: usize, label: &str) -> Result<(), EngineError> {
+        self.take(length, label).map(|_| ())
+    }
+
+    fn skip_nonnegative(&mut self, length: i16, label: &str) -> Result<(), EngineError> {
+        if length < 0 {
+            return Err(EngineError::InvalidSave(format!(
+                "legacy {label} length is invalid"
+            )));
+        }
+        self.skip(length as usize, label)
+    }
+
+    fn i16(&mut self, label: &str) -> Result<i16, EngineError> {
+        Ok(i16::from_le_bytes(self.take(2, label)?.try_into().unwrap()))
+    }
+
+    fn i32(&mut self, label: &str) -> Result<i32, EngineError> {
+        Ok(i32::from_le_bytes(self.take(4, label)?.try_into().unwrap()))
+    }
+
+    fn u8(&mut self, label: &str) -> Result<u8, EngineError> {
+        Ok(self.take(1, label)?[0])
+    }
+
+    fn f32(&mut self, label: &str) -> Result<f32, EngineError> {
+        let value = f32::from_le_bytes(self.take(4, label)?.try_into().unwrap());
+        if value.is_finite() {
+            Ok(value)
+        } else {
+            Err(EngineError::InvalidSave(format!(
+                "legacy {label} is not finite"
+            )))
+        }
+    }
+
+    fn vb_bool(&mut self, label: &str) -> Result<bool, EngineError> {
+        Ok(self.i16(label)? != 0)
+    }
+
+    fn variable_text(&mut self, label: &str) -> Result<String, EngineError> {
+        let length = self.i16(&format!("{label} length"))?;
+        if length < 0 || length as usize > MAX_LEGACY_STRING {
+            return Err(EngineError::InvalidSave(format!(
+                "legacy {label} length is invalid"
+            )));
+        }
+        Ok(String::from_utf8_lossy(self.take(length as usize, label)?).into_owned())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -607,12 +1091,22 @@ impl LegacySimulationFile {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, EngineError> {
-        let mut reader = Reader::new(bytes);
-        if reader.take(4)? != SIMULATION_MAGIC {
-            return Err(EngineError::InvalidSave(
-                "missing DB2 simulation header".to_owned(),
-            ));
+        if !bytes.starts_with(SIMULATION_MAGIC) {
+            let organism = decode_vb6_organism(bytes)?;
+            return Ok(Self {
+                tick: organism.tick,
+                world_size: [16_000.0, 12_000.0],
+                toroidal_world: true,
+                species: Vec::new(),
+                organisms: organism
+                    .members
+                    .into_iter()
+                    .map(|member| member.organism)
+                    .collect(),
+            });
         }
+        let mut reader = Reader::new(bytes);
+        reader.take(4)?;
         let version = reader.u16()?;
         if version == 0 || version > SIMULATION_VERSION {
             return Err(EngineError::InvalidSave(format!(

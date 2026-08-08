@@ -1,8 +1,9 @@
 use std::fs;
 
 use darwinbots_engine::{
-    Engine, EngineConfig, FileTeleporter, LegacyDna, LegacySettingsFile, LegacySimulationFile,
-    SaveFile, SpeciesDefinition, Teleporter, TeleporterFilters,
+    Engine, EngineConfig, FileTeleporter, LegacyDna, LegacyOrganism, LegacyOrganismFile,
+    LegacyOrganismKey, LegacyOrganismMember, LegacyOrganismTie, LegacySettingsFile,
+    LegacySimulationFile, SaveFile, SpeciesDefinition, Teleporter, TeleporterFilters,
 };
 use tempfile::tempdir;
 
@@ -86,6 +87,78 @@ fn legacy_codecs_round_trip_the_authoritative_fixture_fields() {
             "legacy {fixture} fixture changed on round trip"
         );
     }
+}
+
+#[test]
+fn entire_organism_interchange_restores_members_state_and_ties() {
+    let mut source = Engine::new(EngineConfig::testing()).expect("source engine");
+    let first = source
+        .spawn_at(LegacyDna::parse("stop").expect("first dna"), [12.0, 34.0])
+        .expect("first source organism");
+    let second = source
+        .spawn_at(LegacyDna::parse("stop").expect("second dna"), [50.0, 60.0])
+        .expect("second source organism");
+    let file = LegacyOrganismFile {
+        version: 1,
+        tick: 812,
+        members: vec![
+            LegacyOrganismMember {
+                slot: first.slot(),
+                generation: first.generation(),
+                organism: LegacyOrganism {
+                    dna: "stop".to_owned(),
+                    species: 0,
+                    vegetable: false,
+                    corpse: false,
+                    repopulating: false,
+                    position: [12.0, 34.0],
+                    velocity: [1.5, -2.5],
+                    energy: 777,
+                    age: 91,
+                    birth_cycle: 44,
+                    body: 321,
+                },
+            },
+            LegacyOrganismMember {
+                slot: second.slot(),
+                generation: second.generation(),
+                organism: LegacyOrganism {
+                    dna: "stop".to_owned(),
+                    species: 0,
+                    vegetable: false,
+                    corpse: false,
+                    repopulating: false,
+                    position: [50.0, 60.0],
+                    velocity: [0.0, 3.0],
+                    energy: 555,
+                    age: 12,
+                    birth_cycle: 8,
+                    body: 222,
+                },
+            },
+        ],
+        ties: vec![LegacyOrganismTie {
+            first: LegacyOrganismKey::from(first),
+            second: LegacyOrganismKey::from(second),
+            rest_length: 42.5,
+        }],
+    };
+
+    let bytes = file.encode().expect("organism interchange encoding");
+    let decoded = LegacyOrganismFile::decode(&bytes).expect("organism interchange decoding");
+    assert_eq!(decoded, file);
+
+    let mut engine = Engine::new(EngineConfig::testing()).expect("fixture engine");
+    let imported = engine
+        .import_legacy_organism_file(&decoded)
+        .expect("whole organism import");
+    assert_eq!(imported, 2);
+    assert_eq!(engine.population(), 2);
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    assert_eq!(engine.snapshot().ties[0].rest_length, 42.5);
+    assert_eq!(engine.snapshot().organisms[0].energy, 777);
+    assert_eq!(engine.snapshot().organisms[0].age, 91);
+    assert_eq!(engine.snapshot().organisms[0].body, 321);
 }
 
 #[test]

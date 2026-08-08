@@ -10,6 +10,7 @@ public sealed partial class GraphSuiteView : UserControl
 {
     private GraphSuiteViewModel _viewModel;
     private GraphSeriesViewModel? _displayedSeries;
+    private EngineSnapshot _snapshot = EngineSnapshot.Empty;
 
     public GraphSuiteView() : this(new GraphSuiteViewModel())
     {
@@ -28,6 +29,7 @@ public sealed partial class GraphSuiteView : UserControl
 
     public void SetSnapshot(EngineSnapshot snapshot)
     {
+        _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
         _viewModel.Update(snapshot);
         RefreshChart();
     }
@@ -72,6 +74,43 @@ public sealed partial class GraphSuiteView : UserControl
         var selected = _viewModel.RunningGraphs.Where(value => value.IsSelected).ToArray();
         _viewModel.JoinAndCompare(selected);
         RefreshChart();
+    }
+
+    private async void ImportLegacy_Click(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is not { } owner) return;
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import legacy Graph Join segments",
+            AllowMultiple = true,
+            FileTypeFilter = [new FilePickerFileType("Legacy Graph Join save") { Patterns = ["*.gsave"] }],
+        });
+        if (files.Count == 0) return;
+        var contents = new List<string>(files.Count);
+        foreach (var file in files.OrderBy(value => value.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            await using var stream = await file.OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            contents.Add(await reader.ReadToEndAsync());
+        }
+        _viewModel.ImportLegacyGsave(contents);
+        RefreshChart();
+    }
+
+    private async void ExportDatabase_Click(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is not { } owner) return;
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export Darwinbots database snapshot",
+            SuggestedFileName = "darwinbots-snapshot.snp",
+            FileTypeChoices = [new FilePickerFileType("Darwinbots database snapshot") { Patterns = ["*.snp", "*.csv"] }],
+        });
+        if (file is null) return;
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await using var writer = new StreamWriter(stream);
+        await writer.WriteAsync(_viewModel.ExportDatabase(_snapshot));
     }
 
     private void ViewGraph_Click(object? sender, RoutedEventArgs e)

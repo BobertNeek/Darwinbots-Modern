@@ -89,13 +89,15 @@
       </Border>
     </Grid>
 
-    <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
       <Button x:Name="ResetGraphsButton" Content="RESET ALL" Click="ResetGraphs_Click" />
       <Button x:Name="ListGraphsButton" Grid.Column="1" Content="LIST RUNNING" Click="ListGraphs_Click" />
       <Button x:Name="ExportGraphsButton" Grid.Column="2" Content="EXPORT CSV" Click="ExportGraphs_Click" />
       <Button x:Name="JoinCompareButton" Grid.Column="3" Content="JOIN / COMPARE" Click="JoinCompare_Click" />
-      <TextBlock x:Name="StatusText" Grid.Column="4" Text="{Binding Status}" VerticalAlignment="Center" FontSize="11" Foreground="#69716D" />
-      <Button x:Name="CloseButton" Grid.Column="5" Content="CLOSE" Click="Close_Click" />
+      <Button x:Name="ImportLegacyButton" Grid.Column="4" Content="IMPORT .GSAVE" Click="ImportLegacy_Click" />
+      <Button x:Name="ExportDatabaseButton" Grid.Column="5" Content="EXPORT DATABASE" Click="ExportDatabase_Click" />
+      <TextBlock x:Name="StatusText" Grid.Column="6" Text="{Binding Status}" VerticalAlignment="Center" FontSize="11" Foreground="#69716D" />
+      <Button x:Name="CloseButton" Grid.Column="7" Content="CLOSE" Click="Close_Click" />
     </Grid>
   </Grid>
 </UserControl>

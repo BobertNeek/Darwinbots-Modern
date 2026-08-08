@@ -12,12 +12,12 @@ use crate::{
     BiologyState, CommandOutcome, CoreReadbacks, CorpseDecaySettings, CorpseSnapshot,
     CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm, EngineConfig, EngineError,
     EyeSnapshot, FileTeleporter, GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna,
-    LegacyOrganism, LegacySimulationFile, MutationContext, MutationPolicyInput, Obstacle,
-    OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend, PhysicsBatch,
-    PhysicsSettings, PlantLightInput, PointMutationSchedule, ProjectileEffect, ProjectileImpact,
-    ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind, RenderInstance,
-    ShapeShotPolicy, ShapeVisionPolicy, ShotSettings, ShotSnapshot, SimulationCostAction,
-    SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId,
+    LegacyOrganism, LegacyOrganismFile, LegacySimulationFile, MutationContext, MutationPolicyInput,
+    Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend,
+    PhysicsBatch, PhysicsSettings, PlantLightInput, PointMutationSchedule, ProjectileEffect,
+    ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind,
+    RenderInstance, ShapeShotPolicy, ShapeVisionPolicy, ShotSettings, ShotSnapshot,
+    SimulationCostAction, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId,
     StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands,
     TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime, VegetationSettings,
     VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
@@ -25,7 +25,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
@@ -7107,7 +7107,7 @@ impl Engine {
                     let mut failed = false;
                     for organism in &transfer.organisms {
                         match self.import_legacy_organism(organism) {
-                            Ok(()) => imported = imported.saturating_add(1),
+                            Ok(_) => imported = imported.saturating_add(1),
                             Err(_) => {
                                 failed = true;
                                 break;
@@ -7133,7 +7133,79 @@ impl Engine {
         Ok(())
     }
 
-    fn import_legacy_organism(&mut self, organism: &LegacyOrganism) -> Result<(), EngineError> {
+    pub fn import_legacy_organism_file(
+        &mut self,
+        file: &LegacyOrganismFile,
+    ) -> Result<usize, EngineError> {
+        if file.members.is_empty() {
+            return Err(EngineError::InvalidSave(
+                "DB2 organism file has no members".to_owned(),
+            ));
+        }
+        let mut remap = HashMap::with_capacity(file.members.len());
+        for member in &file.members {
+            let source = OrganismId::new(member.slot, member.generation);
+            if remap.contains_key(&source) {
+                return Err(EngineError::InvalidSave(
+                    "DB2 organism file contains duplicate member identities".to_owned(),
+                ));
+            }
+            if let Some(imported) = self.import_legacy_organism(&member.organism)? {
+                remap.insert(source, imported);
+            }
+        }
+        for tie in &file.ties {
+            let Some(&first) = remap.get(&tie.first.id()) else {
+                continue;
+            };
+            let Some(&second) = remap.get(&tie.second.id()) else {
+                continue;
+            };
+            self.restore_imported_tie(first, second, tie.rest_length)?;
+        }
+        self.refresh_tie_projections();
+        self.publish_snapshot();
+        Ok(remap.len())
+    }
+
+    fn restore_imported_tie(
+        &mut self,
+        first: OrganismId,
+        second: OrganismId,
+        rest_length: f32,
+    ) -> Result<(), EngineError> {
+        if first == second || !rest_length.is_finite() || rest_length < 0.0 {
+            return Err(EngineError::InvalidSave(
+                "DB2 organism tie has invalid endpoints or length".to_owned(),
+            ));
+        }
+        self.valid_slot(first)?;
+        self.valid_slot(second)?;
+        if self.ties.iter().any(|tie| {
+            (tie.first == first && tie.second == second)
+                || (tie.first == second && tie.second == first)
+        }) {
+            return Ok(());
+        }
+        let first_port = self.ties.iter().filter(|tie| tie.contains(first)).count();
+        let second_port = self.ties.iter().filter(|tie| tie.contains(second)).count();
+        if first_port >= MAX_TIES_PER_ROBOT || second_port >= MAX_TIES_PER_ROBOT {
+            return Ok(());
+        }
+        self.ties.push(TieState::legacy(
+            first,
+            second,
+            rest_length,
+            first_port as i32,
+            second_port as i32,
+        ));
+        Ok(())
+    }
+
+    fn import_legacy_organism(
+        &mut self,
+        organism: &LegacyOrganism,
+    ) -> Result<Option<OrganismId>, EngineError> {
         if organism.corpse {
             self.corpses.push(CorpseSnapshot {
                 position: organism.position,
@@ -7145,7 +7217,7 @@ impl Engine {
                 repopulating: organism.repopulating,
             });
             self.publish_snapshot();
-            return Ok(());
+            return Ok(None);
         }
         let dna = LegacyDna::parse(&organism.dna)?;
         let species = SpeciesId(organism.species);
@@ -7173,7 +7245,7 @@ impl Engine {
             .memory
             .write(MEM_YPOS, organism.position[1].round() as i32);
         self.publish_snapshot();
-        Ok(())
+        Ok(Some(id))
     }
 
     fn apply_environment_features(&mut self, obstacles: bool, teleporters: bool) {

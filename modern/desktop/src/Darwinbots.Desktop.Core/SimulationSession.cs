@@ -41,6 +41,16 @@ public sealed class SimulationSession : IAsyncDisposable
         return report ?? DnaImportReport.Compatible;
     }
 
+    public async Task<int> ImportOrganismAsync(
+        ReadOnlyMemory<byte> payload,
+        CancellationToken cancellationToken = default)
+    {
+        if (payload.IsEmpty) throw new ArgumentException("Organism interchange payload is empty.", nameof(payload));
+        var imported = 0;
+        await Enqueue(engine => imported = engine.ImportOrganism(payload), cancellationToken).ConfigureAwait(false);
+        return imported;
+    }
+
     public async Task<DnaImportReport> ImportSpeciesAsync(SpeciesImport species, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(species);

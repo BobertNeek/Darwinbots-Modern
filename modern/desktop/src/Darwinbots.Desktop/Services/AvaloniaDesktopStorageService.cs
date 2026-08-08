@@ -32,6 +32,21 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return result;
     }
 
+    public async Task<byte[]?> OpenOrganismAsync(TopLevel owner)
+    {
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import Darwinbots organism",
+            AllowMultiple = false,
+            FileTypeFilter = [OrganismFileType()],
+        });
+        if (files.FirstOrDefault() is not { } file) return null;
+        await using var stream = await file.OpenReadAsync();
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory);
+        return memory.ToArray();
+    }
+
     public async Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner)
     {
         var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -121,7 +136,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             Title = "Save entire organism",
             SuggestedFileName = suggestedFileName,
             DefaultExtension = "json",
-            FileTypeChoices = [new FilePickerFileType("Darwinbots organism") { Patterns = ["*.json"] }],
+            FileTypeChoices = [OrganismFileType()],
         });
         if (file is null) return false;
         await using var stream = await file.OpenWriteAsync();
@@ -150,6 +165,22 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             File.Delete(stale);
     }
 
+    public string? FindLastStart()
+    {
+        var path = LastStartPath();
+        return File.Exists(path) ? path : null;
+    }
+
+    public async Task SaveLastStartAsync(ReadOnlyMemory<byte> settings)
+    {
+        var directory = AutosaveDirectory();
+        Directory.CreateDirectory(directory);
+        var path = LastStartPath();
+        var temporary = path + ".tmp";
+        await File.WriteAllBytesAsync(temporary, settings.ToArray());
+        File.Move(temporary, path, true);
+    }
+
     private static FilePickerOpenOptions SimulationOpenOptions(string title) => new()
     {
         Title = title,
@@ -163,6 +194,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     private static FilePickerFileType SimulationFileType() =>
         new("Darwinbots Modern save") { Patterns = ["*.db3s"] };
 
+    private static FilePickerFileType OrganismFileType() =>
+        new("Darwinbots organism") { Patterns = ["*.json", "*.dbo"] };
+
     private static FilePickerFileType SettingsFileType() =>
         new("Darwinbots settings") { Patterns = ["*.set", "*.json"] };
 
@@ -175,4 +209,6 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Darwinbots Modern",
                 "Autosaves");
+
+    private static string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 }

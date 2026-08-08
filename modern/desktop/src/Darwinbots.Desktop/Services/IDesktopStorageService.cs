@@ -8,6 +8,7 @@ public sealed record DesktopTextFile(string Name, string Content, string? LocalP
 public interface IDesktopStorageService
 {
     Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner);
+    Task<byte[]?> OpenOrganismAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
     Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner);
     Task<string?> PickSimulationPathAsync(TopLevel owner);
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);
@@ -17,4 +18,6 @@ public interface IDesktopStorageService
     Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync);
     string? FindLatestAutosave();
     Task SaveAutosaveAsync(ReadOnlyMemory<byte> save);
+    string? FindLastStart() => null;
+    Task SaveLastStartAsync(ReadOnlyMemory<byte> settings) => Task.CompletedTask;
 }

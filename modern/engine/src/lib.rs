@@ -51,7 +51,10 @@ pub use environment::{
 pub use error::EngineError;
 pub use history::HistorySample;
 pub use id::OrganismId;
-pub use legacy::{LegacyOrganism, LegacySettingsFile, LegacySimulationFile, LegacySpeciesStartup};
+pub use legacy::{
+    LegacyOrganism, LegacyOrganismFile, LegacyOrganismKey, LegacyOrganismMember, LegacyOrganismTie,
+    LegacySettingsFile, LegacySimulationFile, LegacySpeciesStartup,
+};
 pub use modes::{
     LeaguePreset, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
     LocalModeResult, LocalModeState, LocalModeStatus,

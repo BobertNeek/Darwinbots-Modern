@@ -693,6 +693,19 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ImportOrganismsCommandAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (await _storage.OpenOrganismAsync(this) is { } organismPayload)
+        {
+            try
+            {
+                var imported = await _session.ImportOrganismAsync(organismPayload);
+                return LegacyCommandResult.Success($"IMPORTED ORGANISM · {imported:N0} BOT(S)");
+            }
+            catch (Exception error)
+            {
+                await HandleEngineErrorAsync(error, attemptRecovery: false);
+                return LegacyCommandResult.Failure(_viewModel.Status);
+            }
+        }
         var files = await _storage.OpenDnaFilesAsync(this);
         if (files.Count == 0) return LegacyCommandResult.Cancel();
         var warnings = new List<string>();
@@ -1152,7 +1165,19 @@ public sealed partial class MainWindow : Window
             foreach (var member in group)
             {
                 var dna = await _session.ExportDnaAsync(member.Slot, member.Generation);
-                members.Add(new { member.Slot, member.Generation, member.Species, member.Position, member.Velocity, member.Energy, member.Body, dna });
+                members.Add(new
+                {
+                    member.Slot,
+                    member.Generation,
+                    member.Species,
+                    member.Position,
+                    member.Velocity,
+                    member.Energy,
+                    member.Age,
+                    BirthCycle = 0UL,
+                    member.Body,
+                    dna,
+                });
             }
             await System.Text.Json.JsonSerializer.SerializeAsync(stream, new { version = 1, tick = snapshot.Tick, members, ties }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         });
@@ -1338,7 +1363,7 @@ public sealed partial class MainWindow : Window
     {
         if (_diagnostics.RecoveryArtifactPath is { } remembered && File.Exists(remembered))
             return remembered;
-        return _storage.FindLatestAutosave();
+        return _storage.FindLatestAutosave() ?? _storage.FindLastStart();
     }
 
     private async Task<LegacyCommandResult> RecoverLatestAutosaveAsync()
@@ -1351,6 +1376,11 @@ public sealed partial class MainWindow : Window
 
         try
         {
+            if (Path.GetExtension(path).Equals(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                _viewModel.Status = $"LAST START SETTINGS READY · {Path.GetFileName(path)}";
+                return LegacyCommandResult.Success(_viewModel.Status);
+            }
             _runTimer.Stop();
             await _session.LoadAsync(await File.ReadAllBytesAsync(path));
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
@@ -1382,6 +1412,7 @@ public sealed partial class MainWindow : Window
             {
                 await _storage.SaveAutosaveAsync(await _session.SaveAsync());
                 artifact = _storage.FindLatestAutosave() ?? artifact;
+                _diagnostics.RecordCheckpoint(tick, artifact);
             }
             catch
             {
@@ -1398,6 +1429,9 @@ public sealed partial class MainWindow : Window
     {
         try
         {
+            await _storage.SaveLastStartAsync(
+                System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(_setup));
+            _diagnostics.BeginSession(_storage.FindLastStart());
             _runtimeClock.Restart();
             var worldSetup = CreateNextWorldSetup();
             _activeCostMultiplier = worldSetup.GlobalSettings.Costs.GlobalMultiplier;
@@ -1984,6 +2018,7 @@ public sealed partial class MainWindow : Window
         try
         {
             await _storage.SaveAutosaveAsync(await _session.SaveAsync());
+            _diagnostics.RecordCheckpoint(_session.LatestSnapshot.Tick, _storage.FindLatestAutosave());
             _viewModel.Status = "AUTOSAVED";
         }
         catch (Exception error) { _viewModel.Status = $"AUTOSAVE ERROR · {error.Message}"; }
