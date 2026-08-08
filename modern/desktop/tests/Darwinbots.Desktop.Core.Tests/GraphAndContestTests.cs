@@ -145,6 +145,56 @@ public sealed class GraphAndContestTests
     }
 
     [Fact]
+    public void ResetAllGraphsStartsANewLiveHistorySegment()
+    {
+        GraphMetricSample[] beforeReset =
+        [
+            new(10, new Dictionary<GraphMetric, double> { [GraphMetric.Population] = 4 }),
+            new(20, new Dictionary<GraphMetric, double> { [GraphMetric.Population] = 5 }),
+        ];
+        var suite = new GraphSuiteViewModel(beforeReset)
+        {
+            SelectedChoice = GraphCatalog.For(GraphMetric.Population),
+        };
+        var graph = Assert.IsType<GraphSeriesViewModel>(suite.OpenSelectedGraph());
+
+        suite.ResetAllGraphs();
+        suite.SetSamples(
+        [
+            .. beforeReset,
+            new(30, new Dictionary<GraphMetric, double> { [GraphMetric.Population] = 6 }),
+        ]);
+
+        Assert.Equal([30UL], graph.Samples.Select(sample => sample.Tick));
+        Assert.Equal([6d], graph.Samples.Select(sample => sample.Value));
+    }
+
+    [Fact]
+    public void CustomGraphDefinitionUpdatesRunningSeriesAndExportRetainsItsContract()
+    {
+        var suite = new GraphSuiteViewModel(
+        [
+            new(10, new Dictionary<GraphMetric, double> { [GraphMetric.TotalEnergy] = 80 }),
+            new(20, new Dictionary<GraphMetric, double> { [GraphMetric.TotalEnergy] = 120 }),
+        ]);
+        suite.ConfigureCustomMetric(1, "Energy / 10", "total_energy / 10");
+        suite.SelectedChoice = GraphCatalog.For(GraphMetric.CustomizableGraph1);
+        var graph = Assert.IsType<GraphSeriesViewModel>(suite.OpenSelectedGraph());
+
+        suite.ConfigureCustomMetric(1, "Energy / 5", "total_energy / 5");
+
+        Assert.Equal("Energy / 5", graph.Title);
+        Assert.Equal("total_energy / 5", graph.CustomExpression);
+        Assert.Equal([16d, 24d], graph.Samples.Select(sample => sample.Value));
+
+        var export = suite.ExportCsv();
+        Assert.StartsWith("series_id,metric,title,expression,tick,value\n", export, StringComparison.Ordinal);
+        Assert.Contains("CustomizableGraph1", export, StringComparison.Ordinal);
+        Assert.Contains("Energy / 5", export, StringComparison.Ordinal);
+        Assert.Contains("total_energy / 5", export, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ContestResultsViewModelRecordsManualAndInstantWinsThroughLocalContract()
     {
         var adjudications = new List<ContestAdjudication>();

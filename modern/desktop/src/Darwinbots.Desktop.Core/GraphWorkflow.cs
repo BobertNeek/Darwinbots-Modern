@@ -121,19 +121,28 @@ public sealed class CustomMetricSlotViewModel : INotifyPropertyChanged
 public sealed class GraphSeriesViewModel : INotifyPropertyChanged
 {
     private IReadOnlyList<GraphSample> _samples;
+    private string _title;
+    private string? _customExpression;
     private bool _isSelected;
 
-    public GraphSeriesViewModel(string id, GraphMetric metric, string title, IReadOnlyList<GraphSample> samples)
+    public GraphSeriesViewModel(
+        string id,
+        GraphMetric metric,
+        string title,
+        IReadOnlyList<GraphSample> samples,
+        string? customExpression = null)
     {
         Id = id;
         Metric = metric;
-        Title = title;
+        _title = title;
+        _customExpression = customExpression;
         _samples = samples;
     }
 
     public string Id { get; }
     public GraphMetric Metric { get; }
-    public string Title { get; }
+    public string Title { get => _title; private set => Set(ref _title, value); }
+    public string? CustomExpression { get => _customExpression; private set => Set(ref _customExpression, value); }
     public IReadOnlyList<GraphSample> Samples { get => _samples; private set => Set(ref _samples, value); }
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
     public double CurrentValue => Samples.Count == 0 ? 0 : Samples[^1].Value;
@@ -150,6 +159,12 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
 
     public void Reset() => Update([]);
 
+    public void UpdateDefinition(string title, string? customExpression)
+    {
+        Title = title;
+        CustomExpression = customExpression;
+    }
+
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
@@ -164,6 +179,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     private GraphChoice _selectedChoice = GraphCatalog.Metrics[0];
     private string _status = "SELECT A GRAPH";
     private string _comparisonText = "NO COMPARISON";
+    private ulong? _historyCutoffTick;
 
     public GraphSuiteViewModel(IReadOnlyList<GraphMetricSample>? samples = null)
     {
@@ -174,6 +190,8 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
             new CustomMetricSlotViewModel(2, "Custom graph 2", "total_energy"),
             new CustomMetricSlotViewModel(3, "Custom graph 3", "average_energy"),
         ];
+        foreach (var custom in CustomMetrics)
+            custom.PropertyChanged += CustomMetric_PropertyChanged;
     }
 
     public IReadOnlyList<GraphChoice> Choices => GraphCatalog.Items;
@@ -195,14 +213,14 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         ArgumentNullException.ThrowIfNull(snapshot);
         _samples = GraphMetricSampleProjector.FromSnapshot(snapshot);
         foreach (var graph in RunningGraphs)
-            graph.Update(GraphMetricSampleProjector.Project(_samples, graph.Metric, CustomMetric(graph.Metric)));
+            graph.Update(ProjectGraph(graph));
     }
 
     public void SetSamples(IReadOnlyList<GraphMetricSample> samples)
     {
         _samples = samples ?? throw new ArgumentNullException(nameof(samples));
         foreach (var graph in RunningGraphs)
-            graph.Update(GraphMetricSampleProjector.Project(_samples, graph.Metric, CustomMetric(graph.Metric)));
+            graph.Update(ProjectGraph(graph));
     }
 
     public void ConfigureCustomMetric(int slot, string name, string expression)
@@ -211,8 +229,6 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
             ?? throw new ArgumentOutOfRangeException(nameof(slot), "Custom graph slots are 1, 2, and 3.");
         custom.Name = string.IsNullOrWhiteSpace(name) ? $"Custom graph {slot}" : name.Trim();
         custom.Expression = string.IsNullOrWhiteSpace(expression) ? "0" : expression.Trim();
-        foreach (var graph in RunningGraphs.Where(value => value.Metric == CustomMetric(slot)))
-            graph.Update(GraphMetricSampleProjector.Project(_samples, graph.Metric, custom));
     }
 
     public GraphSeriesViewModel? OpenSelectedGraph()
@@ -235,7 +251,8 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
             $"graph-{RunningGraphs.Count + 1}",
             metric,
             title,
-            GraphMetricSampleProjector.Project(_samples, metric, custom));
+            ProjectGraph(metric, custom),
+            custom?.Expression);
         RunningGraphs.Add(graph);
         Status = $"RUNNING · {title.ToUpperInvariant()}";
         return graph;
@@ -243,6 +260,7 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
     public void ResetAllGraphs()
     {
+        _historyCutoffTick = _samples.LastOrDefault()?.Tick;
         foreach (var graph in RunningGraphs) graph.Reset();
         ComparisonText = "NO COMPARISON";
         Status = "ALL GRAPHS RESET";
@@ -300,6 +318,28 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
         _ => throw new ArgumentOutOfRangeException(nameof(slot)),
     };
 
+    private IReadOnlyList<GraphSample> ProjectGraph(GraphSeriesViewModel graph) =>
+        ProjectGraph(graph.Metric, CustomMetric(graph.Metric));
+
+    private IReadOnlyList<GraphSample> ProjectGraph(GraphMetric metric, CustomMetricSlotViewModel? custom)
+    {
+        var samples = _historyCutoffTick is { } cutoff
+            ? _samples.Where(sample => sample.Tick > cutoff).ToArray()
+            : _samples;
+        return GraphMetricSampleProjector.Project(samples, metric, custom);
+    }
+
+    private void CustomMetric_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not CustomMetricSlotViewModel custom) return;
+        var metric = CustomMetric(custom.Slot);
+        foreach (var graph in RunningGraphs.Where(value => value.Metric == metric))
+        {
+            graph.UpdateDefinition(custom.Name, custom.Expression);
+            graph.Update(ProjectGraph(graph));
+        }
+    }
+
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
@@ -355,16 +395,28 @@ public static class GraphExport
 {
     public static string Serialize(IEnumerable<GraphSeriesViewModel> graphs)
     {
-        var builder = new StringBuilder("series,tick,value\n");
+        var builder = new StringBuilder("series_id,metric,title,expression,tick,value\n");
         foreach (var graph in graphs)
         foreach (var sample in graph.Samples)
-            builder.Append(graph.Title.Replace(',', ';'))
+            builder.Append(Escape(graph.Id))
+                .Append(',')
+                .Append(Escape(graph.Metric.ToString()))
+                .Append(',')
+                .Append(Escape(graph.Title))
+                .Append(',')
+                .Append(Escape(graph.CustomExpression ?? string.Empty))
                 .Append(',')
                 .Append(sample.Tick.ToString(CultureInfo.InvariantCulture))
                 .Append(',')
-                .AppendLine(sample.Value.ToString("R", CultureInfo.InvariantCulture));
+                .Append(sample.Value.ToString("R", CultureInfo.InvariantCulture))
+                .Append('\n');
         return builder.ToString();
     }
+
+    private static string Escape(string value) =>
+        value.IndexOfAny([',', '"', '\r', '\n']) < 0
+            ? value
+            : $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 }
 
 internal static class GraphExpressionEvaluator

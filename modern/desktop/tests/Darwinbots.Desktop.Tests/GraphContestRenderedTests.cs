@@ -88,6 +88,40 @@ public sealed class GraphContestRenderedTests
                     () => graphWindow.ViewModel.RunningGraphs.Count > 0,
                     () => "Graph Suite did not open a graph from the routed window.");
 
+                graphWindow.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                openGraphButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(
+                    () => graphWindow.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 2,
+                    () => "Graph Suite did not open two live graph windows.");
+                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.NotEmpty(graph.Samples));
+
+                var preUpdateTick = graphWindow.ViewModel.RunningGraphs
+                    .SelectMany(graph => graph.Samples)
+                    .Max(sample => sample.Tick);
+                await session.StepAsync(100);
+                await WaitFor(
+                    () => graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Any(sample => sample.Tick > preUpdateTick)),
+                    () => "Live graph windows did not receive the next Rust history sample.");
+
+                var export = graphWindow.ViewModel.ExportCsv();
+                Assert.StartsWith("series_id,metric,title,expression,tick,value\n", export, StringComparison.Ordinal);
+                Assert.Contains("Population", export, StringComparison.Ordinal);
+                Assert.Contains("Average DNA length", export, StringComparison.Ordinal);
+
+                foreach (var graph in graphWindow.ViewModel.RunningGraphs) graph.IsSelected = true;
+                graphView.FindControl<Button>("JoinCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
+
+                var resetTick = graphWindow.ViewModel.RunningGraphs
+                    .SelectMany(graph => graph.Samples)
+                    .Max(sample => sample.Tick);
+                graphView.FindControl<Button>("ResetGraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.Empty(graph.Samples));
+                await session.StepAsync(100);
+                await WaitFor(
+                    () => graphWindow.ViewModel.RunningGraphs.All(graph => graph.Samples.Count > 0 && graph.Samples.Min(sample => sample.Tick) > resetTick),
+                    () => "Reset graphs did not resume from a new live history segment.");
+
                 var contestButton = window.FindControl<Button>("ContestResultsButton")!;
                 contestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(
