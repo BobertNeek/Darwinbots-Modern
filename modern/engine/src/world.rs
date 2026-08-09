@@ -5,7 +5,10 @@ use crate::modes::{
 use crate::environment::{
     blocks_backflow, inside_teleporter, teleporter_blocked_by_obstacles, TeleporterBackflow,
 };
-use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState, TieEndpointState};
+use crate::robot_state::{
+    RobotArena, RobotCounters, RobotFlags, RobotPhysicsBatch, RobotSlot, RobotState,
+    TieEndpointState,
+};
 use crate::robot_tools::{PlayerBotBinding, PlayerBotState, RestrictionColumn, RestrictionOptions};
 use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_angle};
 use crate::simulation_cycle::CycleRecorder;
@@ -306,6 +309,10 @@ pub struct OrganismSnapshot {
     pub id: OrganismId,
     #[serde(default)]
     pub generation: u32,
+    #[serde(default)]
+    pub flags: RobotFlags,
+    #[serde(default)]
+    pub counters: RobotCounters,
     pub position: [f32; 2],
     pub velocity: [f32; 2],
     pub energy: i32,
@@ -322,6 +329,12 @@ pub struct OrganismSnapshot {
     pub activation_history: Vec<ActivationFrame>,
     #[serde(default)]
     pub debug_text: String,
+    #[serde(default)]
+    pub private_variable_count: u16,
+    #[serde(default)]
+    pub used_variables: Vec<u16>,
+    #[serde(default)]
+    pub occurrence_counts: Vec<i32>,
     #[serde(default)]
     pub memory: Vec<MemoryCellSnapshot>,
     pub species: SpeciesId,
@@ -1399,6 +1412,8 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
         Self {
             id,
             generation: id.generation(),
+            flags: RobotFlags::default(),
+            counters: RobotCounters::default(),
             position: value.position,
             velocity: value.velocity,
             energy: value.energy,
@@ -1409,6 +1424,9 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             activation_bitmap: Vec::new(),
             activation_history: Vec::new(),
             debug_text: String::new(),
+            private_variable_count: 0,
+            used_variables: Vec::new(),
+            occurrence_counts: vec![0; 21],
             memory: Vec::new(),
             species: value.species.into(),
             vegetable: value.vegetable,
@@ -1861,15 +1879,40 @@ struct Db3sV2Organism {
     phenotype: Db3sV2VisualPhenotype,
     #[serde(default)]
     flags: Db3sV2Flags,
+    #[serde(default)]
+    counters: Db3sV2Counters,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(default)]
+struct Db3sV2Counters {
+    simulation_age: u64,
+    old_mutations: u64,
+    mutation_test_counter: u64,
+    epigenetic_reset_counter: u64,
+    decay_timer: u32,
+    reproduction_timer: u32,
+    multibot_time: u8,
+    chloroplast_share_delay: u8,
+    disqualification: u8,
+    slot_order: u32,
+    old_slot_number: u32,
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 struct Db3sV2Flags {
     exists: bool,
     corpse: bool,
     dead: bool,
     vegetable: bool,
+    no_chloroplasts: bool,
+    wall: bool,
     fixed: bool,
+    view: bool,
+    new_move: bool,
+    highlight: bool,
+    virus_immune: bool,
     can_see: bool,
     can_execute_dna: bool,
     can_move: bool,
@@ -1886,7 +1929,13 @@ impl Default for Db3sV2Flags {
             corpse: false,
             dead: false,
             vegetable: false,
+            no_chloroplasts: false,
+            wall: false,
             fixed: false,
+            view: false,
+            new_move: false,
+            highlight: false,
+            virus_immune: false,
             can_see: true,
             can_execute_dna: true,
             can_move: true,
@@ -1905,7 +1954,13 @@ impl From<Db3sV2Flags> for crate::RobotFlags {
             corpse: flags.corpse,
             dead: flags.dead,
             vegetable: flags.vegetable,
+            no_chloroplasts: flags.no_chloroplasts,
+            wall: flags.wall,
             fixed: flags.fixed,
+            view: flags.view,
+            new_move: flags.new_move,
+            highlight: flags.highlight,
+            virus_immune: flags.virus_immune,
             can_see: flags.can_see,
             can_execute_dna: flags.can_execute_dna,
             can_move: flags.can_move,
@@ -2219,6 +2274,17 @@ impl Engine {
                     .get(index)
                     .copied()
                     .unwrap_or_default();
+                state.counters.simulation_age = organism.counters.simulation_age;
+                state.counters.old_mutations = organism.counters.old_mutations;
+                state.counters.mutation_test_counter = organism.counters.mutation_test_counter;
+                state.counters.epigenetic_reset_counter = organism.counters.epigenetic_reset_counter;
+                state.counters.decay_timer = organism.counters.decay_timer;
+                state.counters.reproduction_timer = organism.counters.reproduction_timer;
+                state.counters.multibot_time = organism.counters.multibot_time;
+                state.counters.chloroplast_share_delay = organism.counters.chloroplast_share_delay;
+                state.counters.disqualification = organism.counters.disqualification;
+                state.counters.slot_order = organism.counters.slot_order;
+                state.counters.old_slot_number = organism.counters.old_slot_number;
                 state.effects.forced_reproduction = legacy
                     .arena
                     .forced_reproductions
@@ -5232,6 +5298,7 @@ impl Engine {
                 continue;
             };
             robot.counters.age = robot.counters.age.saturating_add(1);
+            robot.counters.simulation_age = robot.counters.simulation_age.saturating_add(1);
             robot.materials.publish(&mut robot.program.memory);
             runtime.publish(
                 PhaseReadbacks::Core(CoreReadbacks {
@@ -5293,7 +5360,7 @@ impl Engine {
     fn refresh_occurrence_census_readbacks(&mut self) {
         for slot in self.slots.iter_mut() {
             if let Some(robot) = slot.organism.as_mut() {
-                robot.refresh_occurrence_census();
+                robot.publish_occurrence_readbacks();
             }
         }
     }
@@ -5682,7 +5749,7 @@ impl Engine {
                             target.materials.energy,
                             target.counters.age,
                             target.program.memory.read(MEM_MY_EYE),
-                            target.senses.vision_reference_occurrences.clone(),
+                            target.senses.occurrence_counts.clone(),
                             target.materials.aim,
                             target.materials.body,
                             target.materials.shell,
@@ -6531,7 +6598,7 @@ impl Engine {
                             i32::from(
                                 target
                                     .senses
-                                    .vision_reference_occurrences
+                                    .occurrence_counts
                                     .get(index)
                                     .copied()
                                     .unwrap_or(0),
@@ -9173,6 +9240,7 @@ impl Engine {
                         .mutation_profile
                         .point
                         .one_in
+                        .min(organism.program.mutation_profile.delta.one_in)
                         .max(1.0)
                         .min(u64::MAX as f64) as u64;
                     let maximum_result = rate.saturating_mul(coding_len as u64).max(1);
@@ -9235,6 +9303,14 @@ impl Engine {
                 },
                 &mut organism.heredity.epigenetic_staging,
             );
+            if matches!(context, MutationContext::Lifelong) {
+                policy.effective_one_in = policy
+                    .effective_one_in
+                    .min(organism.program.mutation_profile.effective_one_in(
+                        StandardMutationKind::Delta,
+                        policy.effective_multiplier,
+                    ));
+            }
             if matches!(context, MutationContext::Reproduction { forced: false })
                 && configured_reproductive_rate > 0.0
             {
@@ -9686,7 +9762,7 @@ impl Engine {
         engine.subspecies_counters.resize(engine.species.len(), 0);
         for slot in &mut engine.slots {
             if let Some(organism) = slot.organism.as_mut() {
-                organism.refresh_occurrence_census();
+                organism.publish_occurrence_readbacks();
                 if organism.phenotype.lineage_id == 0
                     && let Some(species) = engine.species.get(organism.identity.species.0 as usize)
                 {
@@ -10163,6 +10239,8 @@ fn snapshot_organism(
     OrganismSnapshot {
         id,
         generation: organism.counters.generation,
+        flags: organism.flags.clone(),
+        counters: organism.counters.clone(),
         position: organism.kinematics.position,
         velocity: organism.kinematics.velocity,
         energy: organism.materials.energy,
@@ -10173,6 +10251,9 @@ fn snapshot_organism(
         activation_bitmap: organism.program.activation_bitmap.clone(),
         activation_history: organism.program.activation_history.clone(),
         debug_text: organism.program.debug_text.clone(),
+        private_variable_count: organism.program.private_variable_count,
+        used_variables: organism.program.used_variables.clone(),
+        occurrence_counts: organism.senses.occurrence_counts.clone(),
         memory: organism
             .program
             .memory

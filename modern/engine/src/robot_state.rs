@@ -27,7 +27,19 @@ pub struct RobotFlags {
     pub corpse: bool,
     pub dead: bool,
     pub vegetable: bool,
+    #[serde(default)]
+    pub no_chloroplasts: bool,
+    #[serde(default)]
+    pub wall: bool,
     pub fixed: bool,
+    #[serde(default)]
+    pub view: bool,
+    #[serde(default)]
+    pub new_move: bool,
+    #[serde(default)]
+    pub highlight: bool,
+    #[serde(default)]
+    pub virus_immune: bool,
     pub can_see: bool,
     pub can_execute_dna: bool,
     pub can_move: bool,
@@ -44,7 +56,13 @@ impl Default for RobotFlags {
             corpse: false,
             dead: false,
             vegetable: false,
+            no_chloroplasts: false,
+            wall: false,
             fixed: false,
+            view: false,
+            new_move: false,
+            highlight: false,
+            virus_immune: false,
             can_see: true,
             can_execute_dna: true,
             can_move: true,
@@ -83,12 +101,34 @@ impl RobotKinematics {
 pub struct RobotCounters {
     pub age: u64,
     #[serde(default)]
+    pub simulation_age: u64,
+    #[serde(default)]
     pub generation: u32,
     pub offspring: u64,
     pub descendants: u64,
     pub kills: u64,
     #[serde(default)]
     pub birth_cycle: u64,
+    #[serde(default)]
+    pub old_mutations: u64,
+    #[serde(default)]
+    pub mutation_test_counter: u64,
+    #[serde(default)]
+    pub epigenetic_reset_counter: u64,
+    #[serde(default)]
+    pub decay_timer: u32,
+    #[serde(default)]
+    pub reproduction_timer: u32,
+    #[serde(default)]
+    pub multibot_time: u8,
+    #[serde(default)]
+    pub chloroplast_share_delay: u8,
+    #[serde(default)]
+    pub disqualification: u8,
+    #[serde(default)]
+    pub slot_order: u32,
+    #[serde(default)]
+    pub old_slot_number: u32,
     pub multibot: bool,
 }
 
@@ -109,6 +149,10 @@ pub struct RobotProgramState {
     pub dna: LegacyDna,
     pub memory: VmMemory,
     pub private_variables: VmMemory,
+    #[serde(default)]
+    pub private_variable_count: u16,
+    #[serde(default)]
+    pub used_variables: Vec<u16>,
     pub rng_state: u64,
     #[serde(default)]
     pub mutation_profile: StandardMutationProfile,
@@ -134,6 +178,8 @@ impl RobotProgramState {
             dna,
             memory,
             private_variables: VmMemory::default(),
+            private_variable_count: 0,
+            used_variables: Vec::new(),
             rng_state: rng_state.max(1),
             mutation_profile: StandardMutationProfile::default(),
             point_mutation_schedule: None,
@@ -162,6 +208,11 @@ pub struct RobotSenseState {
     /// Stable 11-element projection of legacy occurrence slots 1 through 11.
     #[serde(default = "default_occurrence_census")]
     pub vision_reference_occurrences: Vec<u16>,
+    /// Full legacy `occurr(20)` storage. The first eleven values mirror the
+    /// stable sysvar projection and the remaining slots retain compatibility
+    /// state that is not currently exposed by the VM.
+    #[serde(default = "default_occurrence_counts")]
+    pub occurrence_counts: Vec<i32>,
     pub focused_opponent: Option<OrganismId>,
     pub touch: i32,
     pub taste: i32,
@@ -174,6 +225,7 @@ impl Default for RobotSenseState {
     fn default() -> Self {
         Self {
             vision_reference_occurrences: default_occurrence_census(),
+            occurrence_counts: default_occurrence_counts(),
             focused_opponent: None,
             touch: 0,
             taste: 0,
@@ -186,6 +238,10 @@ impl Default for RobotSenseState {
 
 fn default_occurrence_census() -> Vec<u16> {
     vec![0; LEGACY_OCCURRENCE_CENSUS_SLOTS]
+}
+
+fn default_occurrence_counts() -> Vec<i32> {
+    vec![0; 21]
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -269,6 +325,7 @@ impl RobotState {
         materials: BiologyState,
         phenotype: VisualPhenotype,
     ) -> Self {
+        let new_move = dna.uses_new_move();
         let mut state = Self {
             identity: RobotIdentity {
                 species,
@@ -277,6 +334,7 @@ impl RobotState {
             },
             flags: RobotFlags {
                 vegetable,
+                new_move,
                 ..RobotFlags::default()
             },
             kinematics: RobotKinematics::at(position),
@@ -296,14 +354,48 @@ impl RobotState {
     }
 
     pub(crate) fn refresh_occurrence_census(&mut self) {
-        const OWN_READBACK_BASE: i32 = 721;
-
         let occurrences = self.program.dna.occurrence_census_248();
         self.senses.vision_reference_occurrences = occurrences.to_vec();
+        self.senses.occurrence_counts.resize(21, 0);
+        for value in &mut self.senses.occurrence_counts {
+            *value = 0;
+        }
         for (index, occurrence) in occurrences.into_iter().enumerate() {
+            self.senses.occurrence_counts[index] = i32::from(occurrence);
+        }
+        self.publish_occurrence_readbacks();
+    }
+
+    pub(crate) fn publish_occurrence_readbacks(&mut self) {
+        const OWN_READBACK_BASE: i32 = 721;
+        let has_persisted_counts = self.senses.occurrence_counts.iter().any(|value| *value != 0);
+        if has_persisted_counts || self.senses.vision_reference_occurrences.is_empty() {
+            self.senses.vision_reference_occurrences = self
+                .senses
+                .occurrence_counts
+                .iter()
+                .take(LEGACY_OCCURRENCE_CENSUS_SLOTS)
+                .map(|value| (*value).clamp(0, i32::from(u16::MAX)) as u16)
+                .collect();
+        }
+        for index in 0..LEGACY_OCCURRENCE_CENSUS_SLOTS {
+            let occurrence = if has_persisted_counts {
+                self.senses
+                    .occurrence_counts
+                    .get(index)
+                    .copied()
+                    .unwrap_or_default()
+            } else {
+                self.senses
+                    .vision_reference_occurrences
+                    .get(index)
+                    .copied()
+                    .map(i32::from)
+                    .unwrap_or_default()
+            };
             self.program.memory.write(
                 OWN_READBACK_BASE + i32::try_from(index).unwrap(),
-                i32::from(occurrence),
+                occurrence,
             );
         }
     }
