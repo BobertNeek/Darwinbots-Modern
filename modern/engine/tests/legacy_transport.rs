@@ -162,6 +162,163 @@ fn entire_organism_interchange_restores_members_state_and_ties() {
 }
 
 #[test]
+fn legacy_vb6_organism_records_import_without_losing_state_or_ties() {
+    let file = LegacyOrganismFile::decode(&synthetic_vb6_organism())
+        .expect("VB6 organism record decoding");
+
+    assert_eq!(file.members.len(), 1);
+    assert_eq!(file.members[0].slot, 7);
+    assert_eq!(file.members[0].organism.position, [12.5, 34.5]);
+    assert_eq!(file.members[0].organism.velocity, [1.25, -2.5]);
+    assert_eq!(file.members[0].organism.energy, 777);
+    assert_eq!(file.members[0].organism.age, 91);
+    assert_eq!(file.members[0].organism.birth_cycle, 44);
+    assert_eq!(file.members[0].organism.body, 321);
+    assert_eq!(
+        file.ties.len(),
+        0,
+        "self-referential fixture tie must be ignored"
+    );
+}
+
+fn synthetic_vb6_organism() -> Vec<u8> {
+    let mut bytes = Vec::new();
+    push_i16(&mut bytes, 1);
+    for value in [1, 0, 0] {
+        push_i16(&mut bytes, value);
+    }
+    for value in [12.5, 34.5, 1.25, -2.5, 0.0, 0.0, 0.0] {
+        push_f32(&mut bytes, value);
+    }
+    for tie in 0..11 {
+        push_i16(&mut bytes, 1);
+        push_i16(&mut bytes, if tie == 0 { 7 } else { 0 });
+        push_i16(&mut bytes, 1);
+        push_f32(&mut bytes, 0.0);
+        push_f32(&mut bytes, 0.0);
+        push_i16(&mut bytes, 0);
+        push_i32(&mut bytes, 42);
+        push_i32(&mut bytes, 0);
+        for _ in 0..7 {
+            push_i16(&mut bytes, 0);
+        }
+    }
+    push_f32(&mut bytes, 777.0);
+    for _ in 0..50 {
+        push_i16(&mut bytes, 0);
+        push_i16(&mut bytes, 0);
+    }
+    push_i16(&mut bytes, 0);
+    for _ in 0..=1000 {
+        push_i16(&mut bytes, 0);
+    }
+    push_i16(&mut bytes, 2);
+    push_i16(&mut bytes, 2);
+    push_i16(&mut bytes, 1);
+    push_i16(&mut bytes, 10);
+    push_i16(&mut bytes, 1);
+    for _ in 0..21 {
+        push_f32(&mut bytes, 0.0);
+    }
+    for value in [3, 4, 5] {
+        push_i16(&mut bytes, value);
+    }
+    push_i32(&mut bytes, 6);
+    push_i32(&mut bytes, 91);
+    push_i32(&mut bytes, 44);
+    for value in [1, 2, 2] {
+        push_i16(&mut bytes, value);
+    }
+    for _ in 0..14 {
+        push_i16(&mut bytes, 0);
+    }
+    push_i32(&mut bytes, 0);
+    push_f32(&mut bytes, 321.0);
+    push_f32(&mut bytes, 0.0);
+    push_i16(&mut bytes, 0);
+    for _ in 0..4 {
+        push_f32(&mut bytes, 0.0);
+    }
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, -1);
+    push_i16(&mut bytes, 0);
+    push_text(&mut bytes, "");
+    push_text(&mut bytes, "");
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    for _ in 0..21 {
+        push_f32(&mut bytes, 0.0);
+        push_f32(&mut bytes, 0.0);
+    }
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 7);
+    for _ in 0..4 {
+        push_i16(&mut bytes, 0);
+    }
+    push_f32(&mut bytes, 0.0);
+    push_f32(&mut bytes, 0.0);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    for _ in 0..501 {
+        for _ in 0..3 {
+            push_i32(&mut bytes, 0);
+        }
+    }
+    push_i32(&mut bytes, 0);
+    push_i32(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    for _ in 0..11 {
+        push_u8(&mut bytes, 0);
+        push_f32(&mut bytes, 0.0);
+        push_f32(&mut bytes, 0.0);
+        push_f32(&mut bytes, 0.0);
+    }
+    push_f32(&mut bytes, 0.0);
+    push_f32(&mut bytes, 0.0);
+    for _ in 0..15 {
+        push_i16(&mut bytes, 0);
+    }
+    bytes.extend_from_slice(&[0; 50]);
+    push_i16(&mut bytes, 0);
+    push_i16(&mut bytes, 0);
+    push_u8(&mut bytes, 0);
+    push_u8(&mut bytes, 0);
+    push_u8(&mut bytes, 0);
+    push_i32(&mut bytes, 0);
+    push_f32(&mut bytes, 0.0);
+    push_f32(&mut bytes, 0.0);
+    bytes.extend_from_slice(&[254, 254, 254]);
+    bytes
+}
+
+fn push_i16(bytes: &mut Vec<u8>, value: i16) {
+    bytes.extend_from_slice(&value.to_le_bytes());
+}
+
+fn push_i32(bytes: &mut Vec<u8>, value: i32) {
+    bytes.extend_from_slice(&value.to_le_bytes());
+}
+
+fn push_f32(bytes: &mut Vec<u8>, value: f32) {
+    bytes.extend_from_slice(&value.to_le_bytes());
+}
+
+fn push_u8(bytes: &mut Vec<u8>, value: u8) {
+    bytes.push(value);
+}
+
+fn push_text(bytes: &mut Vec<u8>, value: &str) {
+    push_i16(bytes, value.len() as i16);
+    bytes.extend_from_slice(value.as_bytes());
+}
+
+#[test]
 fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
     let root = tempdir().expect("temporary teleporter root");
     let inbound = root.path().join("inbound");
