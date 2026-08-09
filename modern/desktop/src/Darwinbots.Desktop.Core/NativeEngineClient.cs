@@ -358,20 +358,16 @@ public sealed partial class NativeEngineClient : IEngineClient
             throw new ArgumentOutOfRangeException(nameof(update));
         if (update.SpeciesRates.Any(value => !float.IsFinite(value.Rate) || value.Rate is < 0 or > 100))
             throw new ArgumentOutOfRangeException(nameof(update));
-        ExecuteBatch(new
-        {
-            version = 1,
-            commands = new[]
-            {
-                new
-                {
-                    type = "update_mutation_settings",
-                    enabled = update.Enabled,
-                    global_multiplier = update.GlobalMultiplier,
-                    species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
-                },
-            },
-        }, "update mutation settings");
+        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update), "update mutation settings");
+    }
+
+    public void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ExecuteBatch(
+            NativeCommandSerializer.CreateOrganismMutationProfileBatch(
+                new OrganismKey(slot, generation), profile),
+            "update organism mutation profile");
     }
 
     public void SetTiesEnabled(bool enabled) => ExecuteBatch(

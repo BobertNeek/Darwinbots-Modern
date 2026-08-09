@@ -73,6 +73,31 @@ public static class NativeCommandSerializer
     public static string SerializeEnvironment(EnvironmentUpdate update) =>
         JsonSerializer.Serialize(CreateEnvironmentBatch(update));
 
+    public static string SerializeMutationSettings(MutationSettingsUpdate update) =>
+        JsonSerializer.Serialize(CreateMutationSettingsBatch(update));
+
+    public static string SerializeOrganismMutationProfile(
+        OrganismKey organism,
+        MutationProfileUpdate profile) =>
+        JsonSerializer.Serialize(CreateOrganismMutationProfileBatch(organism, profile));
+
+    internal static object CreateOrganismMutationProfileBatch(
+        OrganismKey organism,
+        MutationProfileUpdate profile) => new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "update_organism_mutation_profile",
+                    slot = organism.Slot,
+                    generation = organism.Generation,
+                    profile = MutationProfile(profile),
+                },
+            },
+        };
+
     public static string SerializeEngineConfig(WorldSetupOptions options) =>
         JsonSerializer.Serialize(new
         {
@@ -110,6 +135,58 @@ public static class NativeCommandSerializer
                 organisms = organisms.Select(value => new { slot = value.Slot, generation = value.Generation }).ToArray(),
             },
         },
+    };
+
+    internal static object CreateMutationSettingsBatch(MutationSettingsUpdate update) => new
+    {
+        version = 1,
+        commands = new[]
+        {
+            new
+            {
+                type = "update_mutation_settings",
+                enabled = update.Enabled,
+                global_multiplier = update.GlobalMultiplier,
+                species_rates = update.SpeciesRates.Select(value => new { species = value.Species, rate = value.Rate }).ToArray(),
+                profile = update.Profile is null ? null : MutationProfile(update.Profile),
+            },
+        },
+    };
+
+    private static object MutationProfile(MutationProfileUpdate value) => new
+    {
+        point = MutationRate(value.Point),
+        point2 = MutationRate(value.Point2),
+        delta = MutationRate(value.Delta),
+        copy_error = MutationRate(value.CopyError),
+        copy_error2 = MutationRate(value.CopyError2),
+        insertion = MutationRate(value.Insertion),
+        reversal = MutationRate(value.Reversal),
+        minor_deletion = MutationRate(value.MinorDeletion),
+        major_deletion = MutationRate(value.MajorDeletion),
+        amplification = MutationRate(value.Amplification),
+        translocation = MutationRate(value.Translocation),
+        point_value_change_percent = value.PointValueChangePercent,
+        copy_error_value_change_percent = value.CopyErrorValueChangePercent,
+        point_category_distribution = MutationCategories(value.PointCategoryDistribution),
+        copy_error_category_distribution = MutationCategories(value.CopyErrorCategoryDistribution),
+    };
+
+    private static object MutationRate(MutationRateUpdate value) => new
+    {
+        one_in = value.OneIn,
+        mean = value.Mean,
+        std_dev = value.StdDev,
+    };
+
+    private static object MutationCategories(MutationCategoryDistributionUpdate value) => new
+    {
+        number = value.Number,
+        dereference = value.Dereference,
+        @operator = value.Operator,
+        logic = value.Logic,
+        comparison = value.Comparison,
+        flow = value.Flow,
     };
 
     internal static object CreateEnvironmentBatch(EnvironmentUpdate update) => new

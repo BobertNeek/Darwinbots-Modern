@@ -2,9 +2,10 @@ use crate::dna::LEGACY_OCCURRENCE_CENSUS_SLOTS;
 use crate::vm::ActivationFrame;
 use crate::{
     BiologyState, EngineError, LegacyDna, OrganismId, PhysicsBatch, PointMutationSchedule,
-    SpeciesId, StandardMutationProfile, VisualPhenotype, VmMemory,
+    SpeciesId, StandardMutationKind, StandardMutationProfile, VisualPhenotype, VmMemory,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,6 +97,10 @@ pub struct RobotMutationMetadata {
     pub last_mutation_cycle: Option<u64>,
     pub detailed_log: Vec<String>,
     pub subspecies: i32,
+    #[serde(default)]
+    pub last_mutation_kind: Option<StandardMutationKind>,
+    #[serde(default)]
+    pub mutation_class_counts: BTreeMap<StandardMutationKind, u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

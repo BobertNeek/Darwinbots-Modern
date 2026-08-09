@@ -18,9 +18,9 @@ use crate::{
     ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind,
     RenderInstance, ShapeShotPolicy, ShapeVisionPolicy, ShotSettings, ShotSnapshot,
     SimulationCostAction, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId,
-    StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands,
-    TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime, VegetationSettings,
-    VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
+    StandardMutationKind, StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime,
+    Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime,
+    VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
     apply_advanced_mutation_policies, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
@@ -276,6 +276,18 @@ pub struct OrganismSnapshot {
     #[serde(default)]
     pub total_mutations: u64,
     #[serde(default)]
+    pub last_mutation_cycle: Option<u64>,
+    #[serde(default)]
+    pub last_mutation_kind: Option<StandardMutationKind>,
+    #[serde(default)]
+    pub mutation_log: Vec<String>,
+    #[serde(default)]
+    pub mutation_class_counts: BTreeMap<StandardMutationKind, u64>,
+    #[serde(default)]
+    pub subspecies: i32,
+    #[serde(default)]
+    pub mutation_profile: StandardMutationProfile,
+    #[serde(default)]
     pub dna_length: u32,
     #[serde(default)]
     pub gene_count: u32,
@@ -309,6 +321,8 @@ pub struct Snapshot {
     pub mutations_enabled: bool,
     #[serde(default = "default_mutation_multiplier")]
     pub global_mutation_multiplier: f32,
+    #[serde(default)]
+    pub mutation_profile: StandardMutationProfile,
     #[serde(default = "default_ties_enabled")]
     pub ties_enabled: bool,
     #[serde(default = "default_true")]
@@ -344,6 +358,7 @@ impl PartialEq for Snapshot {
             && self.ties == other.ties
             && self.render_instances == other.render_instances
             && self.species == other.species
+            && self.mutation_profile == other.mutation_profile
             && self.obstacles == other.obstacles
             && self.teleporters == other.teleporters
             && self.file_teleporters == other.file_teleporters
@@ -1314,6 +1329,12 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             virus_timer: 0,
             new_mutations: 0,
             total_mutations: 0,
+            last_mutation_cycle: None,
+            last_mutation_kind: None,
+            mutation_log: Vec::new(),
+            mutation_class_counts: BTreeMap::new(),
+            subspecies: 0,
+            mutation_profile: StandardMutationProfile::default(),
             dna_length: 0,
             gene_count: 0,
             phenotype: value.phenotype.into(),
@@ -1612,6 +1633,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             species: value.species.into_iter().map(Into::into).collect(),
             mutations_enabled: value.mutations_enabled,
             global_mutation_multiplier: value.global_mutation_multiplier,
+            mutation_profile: StandardMutationProfile::default(),
             ties_enabled: value.ties_enabled,
             robot_fixing_allowed: value.robot_fixing_allowed,
             asexual_reproduction_allowed: value.asexual_reproduction_allowed,
@@ -1898,6 +1920,10 @@ pub struct Engine {
     mutations_enabled: bool,
     #[serde(default = "default_mutation_multiplier")]
     global_mutation_multiplier: f32,
+    #[serde(default)]
+    default_mutation_profile: StandardMutationProfile,
+    #[serde(default)]
+    subspecies_counters: Vec<i32>,
     #[serde(default = "default_ties_enabled")]
     ties_enabled: bool,
     #[serde(default = "default_true")]
@@ -1961,6 +1987,8 @@ struct CycleCheckpoint {
     species_templates: Vec<Option<SpeciesTemplate>>,
     mutations_enabled: bool,
     global_mutation_multiplier: f32,
+    default_mutation_profile: StandardMutationProfile,
+    subspecies_counters: Vec<i32>,
     ties_enabled: bool,
     robot_fixing_allowed: bool,
     asexual_reproduction_allowed: bool,
@@ -2099,6 +2127,8 @@ impl Engine {
                 .collect(),
             mutations_enabled: legacy.mutations_enabled,
             global_mutation_multiplier: legacy.global_mutation_multiplier,
+            default_mutation_profile: StandardMutationProfile::default(),
+            subspecies_counters: Vec::new(),
             ties_enabled: legacy.ties_enabled,
             robot_fixing_allowed: legacy.robot_fixing_allowed,
             asexual_reproduction_allowed: legacy.asexual_reproduction_allowed,
@@ -2236,6 +2266,7 @@ impl Engine {
                 species: default_species(),
                 mutations_enabled: true,
                 global_mutation_multiplier: 1.0,
+                mutation_profile: StandardMutationProfile::default(),
                 ties_enabled: true,
                 robot_fixing_allowed: true,
                 asexual_reproduction_allowed: true,
@@ -2258,6 +2289,8 @@ impl Engine {
             species_templates: default_species_templates(),
             mutations_enabled: true,
             global_mutation_multiplier: 1.0,
+            default_mutation_profile: StandardMutationProfile::default(),
+            subspecies_counters: Vec::new(),
             ties_enabled: true,
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
@@ -2344,6 +2377,25 @@ impl Engine {
         self.global_mutation_multiplier = global_multiplier;
         for (species, rate) in species_rates {
             self.species[species.0 as usize].mutation_rate = *rate;
+        }
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn default_mutation_profile(&self) -> &StandardMutationProfile {
+        &self.default_mutation_profile
+    }
+
+    pub fn set_default_mutation_profile(
+        &mut self,
+        profile: StandardMutationProfile,
+    ) -> Result<(), EngineError> {
+        profile.validate()?;
+        self.default_mutation_profile = profile.clone();
+        for slot in &mut self.slots {
+            if let Some(organism) = slot.organism.as_mut() {
+                organism.program.mutation_profile = profile.clone();
+            }
         }
         self.publish_snapshot();
         Ok(())
@@ -3290,6 +3342,7 @@ impl Engine {
             initial_biology,
             phenotype,
         );
+        state.program.mutation_profile = self.default_mutation_profile.clone();
         apply_restriction_column(&mut state, &restriction_column);
         Ok(self.slots.spawn(state))
     }
@@ -3567,6 +3620,8 @@ impl Engine {
             species_templates: self.species_templates.clone(),
             mutations_enabled: self.mutations_enabled,
             global_mutation_multiplier: self.global_mutation_multiplier,
+            default_mutation_profile: self.default_mutation_profile.clone(),
+            subspecies_counters: self.subspecies_counters.clone(),
             ties_enabled: self.ties_enabled,
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
@@ -3608,6 +3663,8 @@ impl Engine {
         self.species_templates = checkpoint.species_templates;
         self.mutations_enabled = checkpoint.mutations_enabled;
         self.global_mutation_multiplier = checkpoint.global_mutation_multiplier;
+        self.default_mutation_profile = checkpoint.default_mutation_profile;
+        self.subspecies_counters = checkpoint.subspecies_counters;
         self.ties_enabled = checkpoint.ties_enabled;
         self.robot_fixing_allowed = checkpoint.robot_fixing_allowed;
         self.asexual_reproduction_allowed = checkpoint.asexual_reproduction_allowed;
@@ -4234,9 +4291,10 @@ impl Engine {
         id: OrganismId,
         profile: StandardMutationProfile,
     ) -> Result<(), EngineError> {
-        let organism = self.slots.get_mut(id)?;
         profile.validate()?;
+        let organism = self.slots.get_mut(id)?;
         organism.program.mutation_profile = profile;
+        self.publish_snapshot();
         Ok(())
     }
 
@@ -8314,19 +8372,18 @@ impl Engine {
                 policy.epigenetic_action,
                 crate::EpigeneticPolicyAction::None
             ) {
-                organism
-                    .program
-                    .mutation_metadata
-                    .detailed_log
-                    .push(format!(
-                        "epigenetic:{:?}:one_in={:.3}",
-                        policy.epigenetic_action, policy.effective_one_in
-                    ));
+                organism.program.mutation_metadata.detailed_log.insert(
+                    0,
+                    format!(
+                        "epigenetic:{:?}:cycle={}:one_in={:.3}",
+                        policy.epigenetic_action, self.tick, policy.effective_one_in
+                    ),
+                );
             }
             let mut mutator = GenomeMutator::new(organism.program.rng_state);
-            let report = mutator.mutate_with_advanced_policy(
+            let report = mutator.mutate_with_advanced_policy_mut(
                 &mut organism.program.dna,
-                &organism.program.mutation_profile,
+                &mut organism.program.mutation_profile,
                 policy,
                 settings,
                 context,
@@ -8352,18 +8409,55 @@ impl Engine {
                     .total_mutations
                     .saturating_add(report.changes as u64);
                 organism.program.mutation_metadata.last_mutation_cycle = Some(self.tick);
+                organism.program.mutation_metadata.last_mutation_kind = report.standard_kind;
+                if let Some(kind) = report.standard_kind {
+                    let count = organism
+                        .program
+                        .mutation_metadata
+                        .mutation_class_counts
+                        .entry(kind)
+                        .or_default();
+                    *count = count.saturating_add(report.changes as u64);
+                }
+                organism.program.mutation_metadata.detailed_log.insert(
+                    0,
+                    format!(
+                        "mutation:{:?}:cycle={}:changes={}",
+                        report.standard_kind, self.tick, report.changes
+                    ),
+                );
                 organism
                     .program
                     .mutation_metadata
                     .detailed_log
-                    .push(format!("mutation:{:?}", report.kind));
+                    .truncate(128);
             }
             (report, report.changes > 0)
         };
         self.stats.mutations = self.stats.mutations.saturating_add(report.changes as u64);
         if should_fork {
+            if let Some(species) = species {
+                let subspecies = self.next_subspecies(species);
+                if let Ok(organism) = self.slots.get_mut(id) {
+                    organism.program.mutation_metadata.subspecies = subspecies;
+                }
+            }
             self.maybe_auto_fork_species(id);
         }
+    }
+
+    fn next_subspecies(&mut self, species: SpeciesId) -> i32 {
+        let index = species.0 as usize;
+        if self.subspecies_counters.len() <= index {
+            self.subspecies_counters.resize(index + 1, 0);
+        }
+        let counter = &mut self.subspecies_counters[index];
+        *counter = if *counter >= 32_000 {
+            -32_000
+        } else {
+            counter.saturating_add(1)
+        };
+        *counter
     }
 
     fn maybe_auto_fork_species(&mut self, id: OrganismId) {
@@ -8650,6 +8744,7 @@ impl Engine {
             species: self.species.clone(),
             mutations_enabled: self.mutations_enabled,
             global_mutation_multiplier: self.global_mutation_multiplier,
+            mutation_profile: self.default_mutation_profile.clone(),
             ties_enabled: self.ties_enabled,
             robot_fixing_allowed: self.robot_fixing_allowed,
             asexual_reproduction_allowed: self.asexual_reproduction_allowed,
@@ -8695,6 +8790,12 @@ impl Engine {
         if engine.species.is_empty() {
             engine.species = default_species();
         }
+        engine
+            .default_mutation_profile
+            .validate()
+            .map_err(|error| {
+                EngineError::InvalidSave(format!("invalid default mutation profile: {error}"))
+            })?;
         let mut next_lineage_id = engine.next_lineage_id.max(1);
         for species in &mut engine.species {
             if species.lineage_id == 0 {
@@ -8706,6 +8807,7 @@ impl Engine {
             }
         }
         engine.species_templates.resize(engine.species.len(), None);
+        engine.subspecies_counters.resize(engine.species.len(), 0);
         for slot in &mut engine.slots {
             if let Some(organism) = slot.organism.as_mut() {
                 organism.refresh_occurrence_census();
@@ -9229,6 +9331,16 @@ fn snapshot_organism(
         virus_timer: organism.effects.virus_build_timer,
         new_mutations: organism.program.dna.metadata().mutations,
         total_mutations: organism.program.mutation_metadata.total_mutations,
+        last_mutation_cycle: organism.program.mutation_metadata.last_mutation_cycle,
+        last_mutation_kind: organism.program.mutation_metadata.last_mutation_kind,
+        mutation_log: organism.program.mutation_metadata.detailed_log.clone(),
+        mutation_class_counts: organism
+            .program
+            .mutation_metadata
+            .mutation_class_counts
+            .clone(),
+        subspecies: organism.program.mutation_metadata.subspecies,
+        mutation_profile: organism.program.mutation_profile.clone(),
         dna_length: organism.program.dna.blocks().len() as u32,
         gene_count: organism.program.dna.gene_count().max(0) as u32,
         phenotype: organism.phenotype.clone(),

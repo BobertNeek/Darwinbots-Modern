@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     Engine, EngineConfig, GenomeMutator, LegacyDna, MAX_DNA_BLOCKS, MutationKind, PhysicsSettings,
-    PointMutator, TokenClass,
+    PointMutator, StandardMutationKind, TokenClass,
 };
 
 fn assert_single_terminal_end(dna: &LegacyDna) {
@@ -178,6 +178,39 @@ fn mutation_reproduction_creates_mutated_child_and_records_change() {
         .id;
     assert_ne!(engine.dna(parent).unwrap(), engine.dna(child).unwrap());
     assert_eq!(engine.snapshot().stats.mutations, 1);
+}
+
+#[test]
+fn runtime_mutation_publishes_detailed_class_log_and_subspecies_metadata() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let dna = LegacyDna::parse("start\n10 .up store\n50 .mrepro store\nstop").unwrap();
+    let parent = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
+
+    let mut profile = engine.mutation_profile(parent).unwrap().clone();
+    profile.copy_error.one_in = 1.0;
+    profile.copy_error.mean = 1.0;
+    profile.copy_error.std_dev = 0.0;
+    engine.set_mutation_profile(parent, profile).unwrap();
+
+    engine.tick().unwrap();
+
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.id != parent)
+        .unwrap();
+    assert_eq!(
+        child.last_mutation_kind,
+        Some(StandardMutationKind::CopyError)
+    );
+    assert!(
+        child
+            .mutation_log
+            .first()
+            .is_some_and(|entry| entry.contains("CopyError"))
+    );
+    assert_ne!(child.subspecies, 0);
 }
 
 #[test]

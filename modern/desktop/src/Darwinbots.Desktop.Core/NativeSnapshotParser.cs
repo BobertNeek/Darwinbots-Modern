@@ -62,6 +62,12 @@ public static class NativeSnapshotParser
             Taste = organism.Taste,
             NewMutations = organism.NewMutations,
             TotalMutations = organism.TotalMutations,
+            LastMutationCycle = organism.LastMutationCycle,
+            LastMutationKind = organism.LastMutationKind,
+            MutationLog = organism.MutationLog ?? [],
+            MutationClassCounts = organism.MutationClassCounts ?? new Dictionary<string, ulong>(),
+            Subspecies = organism.Subspecies,
+            MutationProfile = ParseMutationProfile(organism.MutationProfile),
             DnaLength = organism.DnaLength,
             GeneCount = organism.GeneCount,
         }).ToArray();
@@ -182,7 +188,10 @@ public static class NativeSnapshotParser
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
                 native.MutationsEnabled ?? true,
-                native.GlobalMutationMultiplier ?? 1f),
+                native.GlobalMutationMultiplier ?? 1f)
+            {
+                Profile = ParseMutationProfile(native.MutationProfile),
+            },
             TiesEnabled = native.TiesEnabled ?? true,
             RobotFixingAllowed = native.RobotFixingAllowed ?? true,
             AsexualReproductionAllowed = native.AsexualReproductionAllowed ?? true,
@@ -201,6 +210,42 @@ public static class NativeSnapshotParser
             LocalMode = ParseLocalMode(native.LocalMode),
         };
     }
+
+    private static MutationProfileUpdate ParseMutationProfile(NativeMutationProfile? native)
+    {
+        if (native is null)
+            return MutationProfileUpdate.Default;
+
+        var defaults = MutationProfileUpdate.Default;
+        return new MutationProfileUpdate(
+            ParseMutationRate(native.Point, defaults.Point),
+            ParseMutationRate(native.Point2, defaults.Point2),
+            ParseMutationRate(native.Delta, defaults.Delta),
+            ParseMutationRate(native.CopyError, defaults.CopyError),
+            ParseMutationRate(native.CopyError2, defaults.CopyError2),
+            ParseMutationRate(native.Insertion, defaults.Insertion),
+            ParseMutationRate(native.Reversal, defaults.Reversal),
+            ParseMutationRate(native.MinorDeletion, defaults.MinorDeletion),
+            ParseMutationRate(native.MajorDeletion, defaults.MajorDeletion),
+            ParseMutationRate(native.Amplification, defaults.Amplification),
+            ParseMutationRate(native.Translocation, defaults.Translocation),
+            native.PointValueChangePercent ?? defaults.PointValueChangePercent,
+            native.CopyErrorValueChangePercent ?? defaults.CopyErrorValueChangePercent,
+            ParseMutationCategories(native.PointCategoryDistribution, defaults.PointCategoryDistribution),
+            ParseMutationCategories(native.CopyErrorCategoryDistribution, defaults.CopyErrorCategoryDistribution));
+    }
+
+    private static MutationRateUpdate ParseMutationRate(
+        NativeMutationRate? native,
+        MutationRateUpdate fallback) =>
+        native is null ? fallback : new(native.OneIn, native.Mean, native.StdDev);
+
+    private static MutationCategoryDistributionUpdate ParseMutationCategories(
+        NativeMutationCategoryDistribution? native,
+        MutationCategoryDistributionUpdate fallback) =>
+        native is null
+            ? fallback
+            : new(native.Number, native.Dereference, native.Operator, native.Logic, native.Comparison, native.Flow);
 
     private static LocalModeSnapshot ParseLocalMode(NativeLocalMode? native)
     {
@@ -370,6 +415,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("species")] NativeSpecies[]? Species,
         [property: JsonPropertyName("mutations_enabled")] bool? MutationsEnabled,
         [property: JsonPropertyName("global_mutation_multiplier")] float? GlobalMutationMultiplier,
+        [property: JsonPropertyName("mutation_profile")] NativeMutationProfile? MutationProfile,
         [property: JsonPropertyName("ties_enabled")] bool? TiesEnabled,
         [property: JsonPropertyName("robot_fixing_allowed")] bool? RobotFixingAllowed,
         [property: JsonPropertyName("asexual_reproduction_allowed")] bool? AsexualReproductionAllowed,
@@ -640,8 +686,44 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("virus_timer")] int VirusTimer,
         [property: JsonPropertyName("new_mutations")] ulong NewMutations,
         [property: JsonPropertyName("total_mutations")] ulong TotalMutations,
+        [property: JsonPropertyName("last_mutation_cycle")] ulong? LastMutationCycle,
+        [property: JsonPropertyName("last_mutation_kind")] string? LastMutationKind,
+        [property: JsonPropertyName("mutation_log")] string[]? MutationLog,
+        [property: JsonPropertyName("mutation_class_counts")] Dictionary<string, ulong>? MutationClassCounts,
+        [property: JsonPropertyName("subspecies")] int Subspecies,
+        [property: JsonPropertyName("mutation_profile")] NativeMutationProfile? MutationProfile,
         [property: JsonPropertyName("dna_length")] uint DnaLength,
         [property: JsonPropertyName("gene_count")] uint GeneCount);
+
+    private sealed record NativeMutationProfile(
+        [property: JsonPropertyName("point")] NativeMutationRate? Point,
+        [property: JsonPropertyName("point2")] NativeMutationRate? Point2,
+        [property: JsonPropertyName("delta")] NativeMutationRate? Delta,
+        [property: JsonPropertyName("copy_error")] NativeMutationRate? CopyError,
+        [property: JsonPropertyName("copy_error2")] NativeMutationRate? CopyError2,
+        [property: JsonPropertyName("insertion")] NativeMutationRate? Insertion,
+        [property: JsonPropertyName("reversal")] NativeMutationRate? Reversal,
+        [property: JsonPropertyName("minor_deletion")] NativeMutationRate? MinorDeletion,
+        [property: JsonPropertyName("major_deletion")] NativeMutationRate? MajorDeletion,
+        [property: JsonPropertyName("amplification")] NativeMutationRate? Amplification,
+        [property: JsonPropertyName("translocation")] NativeMutationRate? Translocation,
+        [property: JsonPropertyName("point_value_change_percent")] byte? PointValueChangePercent,
+        [property: JsonPropertyName("copy_error_value_change_percent")] byte? CopyErrorValueChangePercent,
+        [property: JsonPropertyName("point_category_distribution")] NativeMutationCategoryDistribution? PointCategoryDistribution,
+        [property: JsonPropertyName("copy_error_category_distribution")] NativeMutationCategoryDistribution? CopyErrorCategoryDistribution);
+
+    private sealed record NativeMutationRate(
+        [property: JsonPropertyName("one_in")] double OneIn,
+        [property: JsonPropertyName("mean")] double Mean,
+        [property: JsonPropertyName("std_dev")] double StdDev);
+
+    private sealed record NativeMutationCategoryDistribution(
+        [property: JsonPropertyName("number")] double Number,
+        [property: JsonPropertyName("dereference")] double Dereference,
+        [property: JsonPropertyName("operator")] double Operator,
+        [property: JsonPropertyName("logic")] double Logic,
+        [property: JsonPropertyName("comparison")] double Comparison,
+        [property: JsonPropertyName("flow")] double Flow);
 
     private sealed record NativeActivationFrame(
         [property: JsonPropertyName("tick")] ulong Tick,

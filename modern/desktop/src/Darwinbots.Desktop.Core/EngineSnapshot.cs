@@ -66,6 +66,13 @@ public sealed record OrganismSnapshot(
     public int VirusTimer { get; init; }
     public ulong NewMutations { get; init; }
     public ulong TotalMutations { get; init; }
+    public ulong? LastMutationCycle { get; init; }
+    public string? LastMutationKind { get; init; }
+    public IReadOnlyList<string> MutationLog { get; init; } = [];
+    public IReadOnlyDictionary<string, ulong> MutationClassCounts { get; init; } =
+        new Dictionary<string, ulong>();
+    public int Subspecies { get; init; }
+    public MutationProfileUpdate MutationProfile { get; init; } = MutationProfileUpdate.Default;
     public uint DnaLength { get; init; }
     public uint GeneCount { get; init; }
     public ulong BirthCycle { get; init; }
@@ -90,6 +97,7 @@ public sealed record SpeciesSnapshot(
 public sealed record MutationSettingsSnapshot(bool Enabled, float GlobalMultiplier)
 {
     public static MutationSettingsSnapshot Default { get; } = new(true, 1f);
+    public MutationProfileUpdate Profile { get; init; } = MutationProfileUpdate.Default;
 }
 
 public sealed record SimulationStatsSnapshot(

@@ -148,6 +148,13 @@ enum EngineCommand {
         enabled: bool,
         global_multiplier: f32,
         species_rates: Vec<SpeciesMutationRateCommand>,
+        #[serde(default)]
+        profile: Option<crate::StandardMutationProfile>,
+    },
+    UpdateOrganismMutationProfile {
+        slot: u32,
+        generation: u32,
+        profile: crate::StandardMutationProfile,
     },
     SetTiesEnabled {
         enabled: bool,
@@ -586,6 +593,7 @@ fn db_engine_command_batch_impl(
                 enabled,
                 global_multiplier,
                 species_rates,
+                profile,
             } => {
                 let rates: Vec<_> = species_rates
                     .into_iter()
@@ -593,8 +601,20 @@ fn db_engine_command_batch_impl(
                     .collect();
                 engine
                     .update_mutation_settings(enabled, global_multiplier, &rates)
+                    .and_then(|_| {
+                        profile.map_or(Ok(()), |profile| {
+                            engine.set_default_mutation_profile(profile)
+                        })
+                    })
                     .map(|_| serde_json::Value::Null)
             }
+            EngineCommand::UpdateOrganismMutationProfile {
+                slot,
+                generation,
+                profile,
+            } => engine
+                .set_mutation_profile(OrganismId::new(slot, generation), profile)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::SetTiesEnabled { enabled } => {
                 engine.set_ties_enabled(enabled);
                 Ok(serde_json::Value::Null)

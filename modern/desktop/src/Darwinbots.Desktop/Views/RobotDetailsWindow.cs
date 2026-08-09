@@ -270,6 +270,9 @@ public sealed class RobotDetailsWindow : Window
             $"VIRUS TIMER    {organism.VirusTimer:N0}",
             $"CHLOROPLASTS   {organism.Chloroplasts:N0}",
             $"NEW / TOTAL M.  {organism.NewMutations:N0} / {organism.TotalMutations:N0}",
+            $"SUBSPECIES     {organism.Subspecies:N0}",
+            $"LAST MUTATION  {organism.LastMutationKind ?? "NONE"} @ {organism.LastMutationCycle?.ToString("N0") ?? "-"}",
+            $"MUTATION LOG   {(organism.MutationLog.Count == 0 ? "NONE" : string.Join(" | ", organism.MutationLog.Take(4)))}",
             $"DNA / GENES    {organism.DnaLength:N0} / {organism.GeneCount:N0}",
             $"CURRENT GENE   {organism.CurrentGene:N0} ({organism.ConditionCount:N0} conditions)",
             $"POSITION       {FormatVector(organism.Position)}");

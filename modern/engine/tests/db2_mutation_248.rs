@@ -113,6 +113,30 @@ fn standard_profile_defaults_match_db24832() {
 }
 
 #[test]
+fn detailed_profile_serializes_all_db24832_classes_and_category_distributions() {
+    let profile = StandardMutationProfile::default();
+    let value = serde_json::to_value(profile).unwrap();
+
+    for class in [
+        "point",
+        "point2",
+        "delta",
+        "copy_error",
+        "copy_error2",
+        "insertion",
+        "reversal",
+        "minor_deletion",
+        "major_deletion",
+        "amplification",
+        "translocation",
+    ] {
+        assert!(value.get(class).is_some(), "missing mutation class {class}");
+    }
+    assert!(value.get("point_category_distribution").is_some());
+    assert!(value.get("copy_error_category_distribution").is_some());
+}
+
+#[test]
 fn multiplier_divides_the_robots_one_in_rate() {
     let profile = StandardMutationProfile::default();
 

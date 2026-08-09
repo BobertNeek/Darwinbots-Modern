@@ -521,6 +521,12 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.EditGlobalSettings] = Handler(
             () => LegacyCommandState.Available,
             async _ => await OpenGlobalSettingsCommandAsync());
+        handlers[LegacyCommandId.EditGlobalMutationRates] = Handler(
+            EngineState,
+            async _ => await OpenGlobalMutationRatesCommandAsync());
+        handlers[LegacyCommandId.RobotMutationRates] = Handler(
+            SelectedRobotState,
+            async _ => await OpenRobotMutationRatesCommandAsync());
         handlers[LegacyCommandId.ViewShowVisionGrid] = Handler(
             () => new LegacyCommandState(true, Viewport.ShowSelectedVision),
             _ => Task.FromResult(ToggleVisionGrid()));
@@ -1139,6 +1145,40 @@ public sealed partial class MainWindow : Window
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = dialog.Update;
         return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
+    }
+
+    private async Task<LegacyCommandResult> OpenGlobalMutationRatesCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var snapshot = _session.LatestSnapshot;
+        var dialog = new MutationRatesWindow(snapshot.MutationSettings.Profile);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        var speciesRates = snapshot.Species
+            .Select((species, index) => new SpeciesMutationRateUpdate((uint)index, species.MutationRate))
+            .ToArray();
+        var update = new MutationSettingsUpdate(
+            snapshot.MutationSettings.Enabled,
+            snapshot.MutationSettings.GlobalMultiplier,
+            speciesRates)
+        {
+            Profile = dialog.Profile,
+        };
+        await _session.UpdateMutationSettingsAsync(update);
+        return LegacyCommandResult.Success("GLOBAL MUTATION RATES APPLIED");
+    }
+
+    private async Task<LegacyCommandResult> OpenRobotMutationRatesCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var organism = _viewModel.SelectedOrganism;
+        if (organism is null) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
+        var dialog = new MutationRatesWindow(organism.MutationProfile);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
+        await _session.UpdateOrganismMutationProfileAsync(
+            organism.Slot, organism.Generation, dialog.Profile);
+        return LegacyCommandResult.Success($"ROBOT {organism.Slot}:{organism.Generation} MUTATION RATES APPLIED");
     }
 
     private async Task<LegacyCommandResult> OpenGlobalSettingsCommandAsync()
