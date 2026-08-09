@@ -5,13 +5,13 @@
         x:Class="Darwinbots.Desktop.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Darwinbots Modern"
-        Width="940" Height="650" MinWidth="900" MinHeight="600"
-        WindowStartupLocation="CenterScreen" WindowState="Maximized"
-        KeyDown="MainWindow_KeyDown">
-  <Grid RowDefinitions="34,*">
+         Width="940" Height="650" MinWidth="720" MinHeight="520"
+         WindowStartupLocation="CenterScreen" WindowState="Maximized"
+         KeyDown="MainWindow_KeyDown" SizeChanged="MainWindow_SizeChanged">
+  <Grid RowDefinitions="34,*" Background="{DynamicResource WindowBrush}">
     <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
-    <Grid Grid.Row="1" RowDefinitions="58,34,*,170,48,28" ColumnDefinitions="250,*,280">
-    <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
+    <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,34,*,170,48,40" ColumnDefinitions="250,*,280">
+    <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="25" VerticalAlignment="Center" />
@@ -43,8 +43,9 @@
       </Viewbox>
     </Border>
 
-    <Border Grid.Row="1" Grid.ColumnSpan="3" Background="#E9E7DE" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1" Padding="6,2">
-      <UniformGrid x:Name="LegacyToolbar" Rows="1" Columns="24" HorizontalAlignment="Stretch">
+    <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
+      <ScrollViewer x:Name="LegacyToolbarScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
+      <UniformGrid x:Name="LegacyToolbar" Rows="1" Columns="24" Width="1440" HorizontalAlignment="Left">
         <Button x:Name="ToolbarSlot01" Content="NEW" ToolTip.Tip="Create a new simulation" AutomationProperties.Name="NEW SIMULATION" AutomationProperties.HelpText="Open the new simulation setup." KeyboardNavigation.TabIndex="0" Click="ToolbarNew_Click" />
         <Button x:Name="ToolbarSlot02" Content="LOAD" ToolTip.Tip="Load a simulation" AutomationProperties.Name="LOAD SIMULATION" AutomationProperties.HelpText="Load an offline simulation file." KeyboardNavigation.TabIndex="1" Click="Load_Click" />
         <Button x:Name="ToolbarSlot03" Content="SAVE" ToolTip.Tip="Save the simulation" AutomationProperties.Name="SAVE SIMULATION" AutomationProperties.HelpText="Save the current offline simulation." KeyboardNavigation.TabIndex="2" Click="Save_Click" />
@@ -74,9 +75,10 @@
         <Button x:Name="ToolbarSlot23" Content="STEALTH" ToolTip.Tip="Hide the window to the tray" AutomationProperties.Name="STEALTH TRAY MODE" AutomationProperties.HelpText="Hide the shell while the local simulation continues." KeyboardNavigation.TabIndex="17" Click="HideToTray_Click" />
         <Button x:Name="ToolbarSlot24" Content="IGNORE OFF" ToolTip.Tip="Toggle ignored engine errors" AutomationProperties.Name="IGNORE ERRORS OFF" AutomationProperties.HelpText="Toggle the offline engine error recovery mode." KeyboardNavigation.TabIndex="18" Click="ToolbarIgnoreErrors_Click" />
       </UniformGrid>
+      </ScrollViewer>
     </Border>
 
-    <Border Grid.Row="2" Grid.Column="0" Classes="panel" Margin="8,8,4,4">
+    <Border x:Name="SpeciesPanel" Grid.Row="2" Grid.Column="0" Classes="panel" Margin="8,8,4,4">
       <Grid RowDefinitions="42,Auto,*,Auto">
         <Border BorderBrush="#D0CDC3" BorderThickness="0,0,0,1" Padding="12">
           <TextBlock Classes="section" Text="SPECIES" />
@@ -193,7 +195,7 @@
       </Grid>
     </Border>
 
-    <Border Grid.Row="2" Grid.Column="1" Classes="panel" Margin="4,8,4,4" ClipToBounds="True">
+    <Border x:Name="PlayfieldPanel" Grid.Row="2" Grid.Column="1" Classes="panel" Margin="4,8,4,4" ClipToBounds="True">
       <Grid>
         <controls:WorldViewport x:Name="Viewport" Focusable="True" AutomationProperties.Name="Simulation playfield" AutomationProperties.HelpText="Click a robot to select it. Click an empty world position for insertion or placement tools." />
         <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Spacing="6" IsHitTestVisible="False">
@@ -218,7 +220,7 @@
       </Grid>
     </Border>
 
-    <Border Grid.Row="2" Grid.Column="2" Classes="panel" Margin="4,8,8,4">
+    <Border x:Name="OrganismPanel" Grid.Row="2" Grid.Column="2" Classes="panel" Margin="4,8,8,4">
       <ScrollViewer>
         <StackPanel>
           <Border BorderBrush="#D0CDC3" BorderThickness="0,0,0,1" Padding="14"><TextBlock Classes="section" Text="ORGANISM" /></Border>
@@ -320,8 +322,24 @@
       </ItemsControl>
     </Border>
 
-    <Border Grid.Row="5" Grid.ColumnSpan="3" Background="#E6E2D8" BorderBrush="#BEBBB2" BorderThickness="0,1,0,0" Padding="10,4">
-      <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Status}" FontSize="11"/><Ellipse Grid.Column="1" Width="8" Height="8" Fill="#45A23D" VerticalAlignment="Center"/></Grid>
+    <Border Grid.Row="5" Grid.ColumnSpan="3" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8,4">
+      <Grid ColumnDefinitions="*,Auto,Auto,110,Auto,142,Auto" ColumnSpacing="6">
+        <TextBlock Text="{Binding Status}" FontSize="11" VerticalAlignment="Center" />
+        <TextBlock x:Name="InterfaceTitle" Grid.Column="1" Text="INTERFACE" Classes="section" FontSize="10" VerticalAlignment="Center" />
+        <TextBlock x:Name="ThemeLabel" Grid.Column="2" Text="THEME" FontSize="10" VerticalAlignment="Center" />
+        <ComboBox x:Name="ThemeSelector" Grid.Column="3" SelectedIndex="0" ToolTip.Tip="Select the application theme" AutomationProperties.Name="APPLICATION THEME" SelectionChanged="ThemeSelector_Changed">
+          <ComboBoxItem Content="SYSTEM" />
+          <ComboBoxItem Content="LIGHT" />
+          <ComboBoxItem Content="DARK" />
+        </ComboBox>
+        <TextBlock x:Name="CultureLabel" Grid.Column="4" Text="LANGUAGE" FontSize="10" VerticalAlignment="Center" />
+        <ComboBox x:Name="CultureSelector" Grid.Column="5" SelectedIndex="0" ToolTip.Tip="Select the interface language and number format" AutomationProperties.Name="INTERFACE LANGUAGE" SelectionChanged="CultureSelector_Changed">
+          <ComboBoxItem Content="English" />
+          <ComboBoxItem Content="Deutsch" />
+          <ComboBoxItem Content="Italiano" />
+        </ComboBox>
+        <Ellipse Grid.Column="6" Width="8" Height="8" Fill="#45A23D" VerticalAlignment="Center"/>
+      </Grid>
     </Border>
     </Grid>
   </Grid>

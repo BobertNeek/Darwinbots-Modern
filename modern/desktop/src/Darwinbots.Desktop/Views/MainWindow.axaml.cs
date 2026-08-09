@@ -4,11 +4,13 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Darwinbots.Desktop;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
+using Avalonia.VisualTree;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 
@@ -124,6 +126,16 @@ public sealed partial class MainWindow : Window
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _zerobotProgression = null;
         InitializeComponent();
+        UiPreferencesController.Register(this);
+        var numericCultureAppliedAfterExpansion = false;
+        EnergyExpander.LayoutUpdated += (_, _) =>
+        {
+            if (!EnergyExpander.IsExpanded || numericCultureAppliedAfterExpansion) return;
+            if (!EnergyExpander.GetVisualDescendants().OfType<NumericUpDown>()
+                .Any(numeric => numeric.GetVisualDescendants().OfType<TextBox>().Any())) return;
+            numericCultureAppliedAfterExpansion = true;
+            UiPreferencesController.ApplyNumericCulture(this);
+        };
         _toolWindows = new PersistentToolWindowRegistry(this);
         _activeCostMultiplier = setup.GlobalSettings.Costs.GlobalMultiplier;
         foreach (var species in setup.Species)
@@ -147,6 +159,10 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetName(ToolbarSlot24, "IGNORE ERRORS OFF");
         LocalModeKindSelector.SelectedIndex = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables ? 4 : 0;
         LocalModePreset.SelectedIndex = 0;
+        ThemeSelector.SelectedIndex = (int)DesktopUiPreferences.Theme;
+        CultureSelector.SelectedIndex = UiResources.Cultures
+            .Select((option, index) => (option, index))
+            .FirstOrDefault(value => string.Equals(value.option.Name, DesktopUiPreferences.Culture.Name, StringComparison.OrdinalIgnoreCase)).index;
         ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
         LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
         LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
@@ -249,7 +265,45 @@ public sealed partial class MainWindow : Window
         Opened += Window_Opened;
         Closed += Window_Closed;
         _controlsReady = true;
+        ApplyLocalizedUi();
+        UpdateResponsiveLayout(Bounds.Width);
         RefreshLegacyMenuStates();
+    }
+
+    private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs e) =>
+        UpdateResponsiveLayout(e.NewSize.Width);
+
+    private void UpdateResponsiveLayout(double width)
+    {
+        if (width <= 0) return;
+        var compact = width < 860;
+        SpeciesPanel.IsVisible = !compact;
+        OrganismPanel.IsVisible = !compact;
+        MainSurfaceGrid.ColumnDefinitions = new ColumnDefinitions(compact ? "0,*,0" : "250,*,280");
+        Grid.SetColumnSpan(PlayfieldPanel, compact ? 3 : 1);
+    }
+
+    private void ThemeSelector_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_controlsReady) return;
+        DesktopUiPreferences.ApplyTheme((DesktopUiTheme)Math.Clamp(ThemeSelector.SelectedIndex, 0, 2));
+    }
+
+    private void CultureSelector_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_controlsReady) return;
+        var index = Math.Clamp(CultureSelector.SelectedIndex, 0, UiResources.Cultures.Count - 1);
+        DesktopUiPreferences.ApplyCulture(UiResources.Cultures[index].Name);
+        ApplyLocalizedUi();
+        UiPreferencesController.ApplyNumericCulture(this);
+    }
+
+    private void ApplyLocalizedUi()
+    {
+        var culture = DesktopUiPreferences.Culture;
+        InterfaceTitle.Text = UiResources.Get("interface", culture);
+        ThemeLabel.Text = UiResources.Get("theme", culture);
+        CultureLabel.Text = UiResources.Get("language", culture);
     }
 
     private void InitializeTray()

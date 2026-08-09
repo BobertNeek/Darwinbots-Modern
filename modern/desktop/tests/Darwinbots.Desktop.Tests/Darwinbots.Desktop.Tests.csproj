@@ -17,7 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Darwinbots.Desktop\Darwinbots.Desktop.csproj" />
   </ItemGroup>
-  <Target Name="CopyNativeEngineForRenderedTests" AfterTargets="Build">
+  <Target Name="CopyNativeEngineForRenderedTests" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
     <Copy
       SourceFiles="$(MSBuildProjectDirectory)\..\..\..\..\target\debug\darwinbots_engine.dll"
       DestinationFolder="$(OutDir)"

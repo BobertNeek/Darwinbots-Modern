@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Core;
 
 namespace Darwinbots.Desktop.Controls;
@@ -65,6 +66,8 @@ public sealed class WorldViewport : Control
     public bool FlickerMode { get => _flickerMode; set { _flickerMode = value; InvalidateVisual(); } }
     public bool RenderSkins { get => _renderSkins; set { _renderSkins = value; InvalidateVisual(); } }
     public bool ShowDeathPoffs { get => _showDeathPoffs; set { _showDeathPoffs = value; InvalidateVisual(); } }
+    public double RenderScale => Math.Max(0.1, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0);
+    public double InputHitRadius => 14.0 / RenderScale;
 
     public void SetRgbMemoryMonitor(RgbMemoryMonitorSettings? settings)
     {
@@ -467,7 +470,7 @@ public sealed class WorldViewport : Control
         var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
         var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
         OrganismKey? best = null;
-        var bestDistance = 14.0 * 14.0;
+        var bestDistance = InputHitRadius * InputHitRadius;
         foreach (var organism in _snapshot.Organisms)
         {
             var x = organism.Position[0] * scaleX * _zoom + _pan.X;
