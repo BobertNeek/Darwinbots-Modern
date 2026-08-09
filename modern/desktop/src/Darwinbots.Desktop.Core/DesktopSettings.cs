@@ -26,7 +26,10 @@ public sealed record DesktopSettings
     public float BrownianMotion { get; init; }
     public Db2PhysicsOptions Physics { get; init; } = Db2PhysicsOptions.Default;
     public Db2ShotOptions Shots { get; init; } = Db2ShotOptions.Default;
+    public Db2CorpseDecayOptions CorpseDecay { get; init; } = new();
+    public Db2WasteOptions Waste { get; init; } = new();
     public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
+    public Db2RecordingOptions Recording { get; init; } = new();
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
@@ -55,7 +58,10 @@ public sealed record DesktopSettings
         BrownianMotion = setup.BrownianMotion,
         Physics = setup.Physics,
         Shots = setup.Shots,
+        CorpseDecay = setup.CorpseDecay,
+        Waste = setup.Waste,
         Vegetation = setup.Vegetation,
+        Recording = setup.Recording,
         AutoSpeciation = setup.AutoSpeciation,
         SpeciationGeneticDistancePercent = setup.SpeciationGeneticDistancePercent,
         ToroidalWorld = setup.ToroidalWorld,
@@ -87,7 +93,10 @@ public sealed record DesktopSettings
             BrownianMotion = BrownianMotion,
             Physics = Physics,
             Shots = Shots,
+            CorpseDecay = CorpseDecay,
+            Waste = Waste,
             Vegetation = Vegetation,
+            Recording = Recording,
             AutoSpeciation = AutoSpeciation,
             SpeciationGeneticDistancePercent = SpeciationGeneticDistancePercent,
             ToroidalWorld = ToroidalWorld,

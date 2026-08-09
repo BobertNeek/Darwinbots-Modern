@@ -73,6 +73,21 @@ public sealed partial class SetupWindow : Window
             Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false));
     }
 
+    private void DuplicateSpecies_Click(object? sender, RoutedEventArgs e)
+    {
+        var source = sender is Button { Tag: SetupSpeciesRow row }
+            ? row
+            : Species.LastOrDefault();
+        if (source is null)
+        {
+            SetupStatus.Text = "Add a species before duplicating it.";
+            return;
+        }
+
+        Species.Add(source.Duplicate());
+        SetupStatus.Text = $"DUPLICATED {source.Name.ToUpperInvariant()}";
+    }
+
     private void RemoveSpecies_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: SetupSpeciesRow row }) Species.Remove(row);
@@ -125,6 +140,7 @@ public sealed partial class SetupWindow : Window
             ZerobotSustenance = sustenance,
             AutomaticZerobotProgression = AutomaticProgression.IsChecked == true,
             Backend = ((ComboBoxItem)Backend.SelectedItem!).Content?.ToString() ?? "Auto",
+            Seed = (ulong)(Seed.Value ?? 1),
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
             WorldWidth = (float)(WorldWidth.Value ?? 16_000),
@@ -137,7 +153,10 @@ public sealed partial class SetupWindow : Window
             BrownianMotion = _environment.BrownianMotion,
             Physics = _environment.Physics,
             Shots = _environment.Shots,
+            CorpseDecay = _environment.CorpseDecay ?? new Db2CorpseDecayOptions(),
+            Waste = _environment.Waste ?? new Db2WasteOptions(),
             Vegetation = _environment.Vegetation,
+            Recording = _environment.Recording ?? new Db2RecordingOptions(),
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
             ToroidalWorld = _environment.ToroidalWorld,
@@ -242,6 +261,7 @@ public sealed partial class SetupWindow : Window
         WorldHeight.Value = (decimal)setup.WorldHeight;
         PopulationCap.Value = setup.PopulationCapacity;
         VegetablePopulationCap.Value = setup.VegetablePopulationCap;
+        Seed.Value = (decimal)setup.Seed;
         Speed.SelectedIndex = setup.TicksPerUpdate switch
         {
             <= 1 => 0,
@@ -262,7 +282,8 @@ public sealed partial class SetupWindow : Window
             Species.Clear();
             foreach (var species in setup.Species)
                 Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
-                    species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed));
+                    species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed,
+                    species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions));
         }
         _controlsReady = true;
     }
@@ -274,6 +295,7 @@ public sealed partial class SetupWindow : Window
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;
         WorldHeight.Value = 12_000;
+        Seed.Value = 1;
         PopulationCap.Value = 25_000;
         VegetablePopulationCap.Value = 500;
         Speed.SelectedIndex = 3;
@@ -283,6 +305,12 @@ public sealed partial class SetupWindow : Window
         Mode_Checked(StarterMode, e);
         _workflow.Reset(ReadSetupOptions());
         SetupStatus.Text = "New world defaults restored.";
+    }
+
+    private void ChangeSeed_Click(object? sender, RoutedEventArgs e)
+    {
+        Seed.Value = (decimal)Random.Shared.NextInt64(1, long.MaxValue);
+        SetupStatus.Text = "A new local seed is staged.";
     }
 
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)

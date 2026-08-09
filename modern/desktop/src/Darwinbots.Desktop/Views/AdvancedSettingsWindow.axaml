@@ -28,6 +28,23 @@
           <TextBlock Text="Each percentage is tested when that species reproduces. DNA-requested mutation remains under the bot's own control." TextWrapping="Wrap" Foreground="#66706B"/>
           <StackPanel x:Name="SpeciesMutationRows" Spacing="10"/>
         </StackPanel></Border>
+        <Border Classes="card"><StackPanel Spacing="8">
+          <TextBlock Classes="section" Text="DETAILED MUTATION CLASSES"/>
+          <TextBlock Text="One-in rates feed the native Gaussian mutation profile. Point, delta, copy error, indel, reversal, amplification, and translocation remain distinct." TextWrapping="Wrap" Foreground="#66706B"/>
+          <Grid ColumnDefinitions="*,105,*,105" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Text="Point" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="PointOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Column="2" Text="Point2" VerticalAlignment="Center"/><NumericUpDown Grid.Column="3" x:Name="Point2OneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="1" Text="Delta" VerticalAlignment="Center"/><NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="DeltaOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="1" Grid.Column="2" Text="Copy error" VerticalAlignment="Center"/><NumericUpDown Grid.Row="1" Grid.Column="3" x:Name="CopyErrorOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="2" Text="Copy error2" VerticalAlignment="Center"/><NumericUpDown Grid.Row="2" Grid.Column="1" x:Name="CopyError2OneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="2" Grid.Column="2" Text="Insertion" VerticalAlignment="Center"/><NumericUpDown Grid.Row="2" Grid.Column="3" x:Name="InsertionOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="3" Text="Reversal" VerticalAlignment="Center"/><NumericUpDown Grid.Row="3" Grid.Column="1" x:Name="ReversalOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="3" Grid.Column="2" Text="Minor deletion" VerticalAlignment="Center"/><NumericUpDown Grid.Row="3" Grid.Column="3" x:Name="MinorDeletionOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="4" Text="Major deletion" VerticalAlignment="Center"/><NumericUpDown Grid.Row="4" Grid.Column="1" x:Name="MajorDeletionOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="4" Grid.Column="2" Text="Amplification" VerticalAlignment="Center"/><NumericUpDown Grid.Row="4" Grid.Column="3" x:Name="AmplificationOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+            <TextBlock Grid.Row="5" Text="Translocation" VerticalAlignment="Center"/><NumericUpDown Grid.Row="5" Grid.Column="1" x:Name="TranslocationOneIn" Minimum="1" Maximum="100000000" Value="5000"/>
+          </Grid>
+        </StackPanel></Border>
       </StackPanel></ScrollViewer></TabItem>
 
       <TabItem Header="ENERGY"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
@@ -61,10 +78,25 @@
             <ComboBoxItem Content="Advance to dawn/dusk"/>
           </ComboBox></Grid>
         </StackPanel></Border>
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="WASTE + CORPSE + SAMPLING"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Alzheimer waste threshold"/><NumericUpDown Grid.Column="1" x:Name="WasteThreshold" Minimum="0" Maximum="2147483647"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Defecation threshold"/><NumericUpDown Grid.Column="1" x:Name="DefecationThreshold" Minimum="0" Maximum="2147483647"/></Grid>
+          <CheckBox x:Name="CorpseEnabled" Content="Enable corpse decay"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Death energy threshold"/><NumericUpDown Grid.Column="1" x:Name="CorpseDeathEnergyThreshold" Minimum="0" Maximum="2147483647"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Corpse mode"/><ComboBox Grid.Column="1" x:Name="CorpseMode"><ComboBoxItem Content="None"/><ComboBoxItem Content="Waste shot"/><ComboBoxItem Content="Energy shot"/></ComboBox></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Corpse packet size"/><NumericUpDown Grid.Column="1" x:Name="CorpsePacketSize" Minimum="1" Maximum="2147483647"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Corpse period"/><NumericUpDown Grid.Column="1" x:Name="CorpsePeriod" Minimum="1" Maximum="1000000000"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Graph sampling interval"/><NumericUpDown Grid.Column="1" x:Name="SamplingInterval" Minimum="1" Maximum="1000000"/></Grid>
+          <CheckBox x:Name="SafeModeBackup" Content="Keep safe-mode backup"/>
+          <CheckBox x:Name="DeadSnapshotEnabled" Content="Capture dead snapshots"/>
+          <CheckBox x:Name="ExcludeRepopulatingRobots" Content="Exclude repopulating robots from samples"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Autosave interval"/><NumericUpDown Grid.Column="1" x:Name="AutosaveInterval" Minimum="0" Maximum="1000000000"/></Grid>
+        </StackPanel></Border>
       </StackPanel></ScrollViewer></TabItem>
 
       <TabItem Header="PHYSICS"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="MOTION + MEDIUM"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Physics preset" VerticalAlignment="Center"/><ComboBox Grid.Column="1" x:Name="PhysicsPreset" SelectedIndex="0"><ComboBoxItem Content="Fluid"/><ComboBoxItem Content="Solid"/><ComboBoxItem Content="Custom"/></ComboBox></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum velocity"/><NumericUpDown Grid.Column="1" x:Name="MaxVelocity" Minimum="1" Maximum="10000"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Movement efficiency"/><NumericUpDown Grid.Column="1" x:Name="MovementEfficiency" Minimum="0.01" Maximum="10" Increment="0.01"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Gravity X"/><NumericUpDown Grid.Column="1" x:Name="GravityX" Minimum="-100" Maximum="100" Increment="0.1"/></Grid>
@@ -74,6 +106,8 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Kinetic friction"/><NumericUpDown Grid.Column="1" x:Name="KineticFriction" Minimum="0" Maximum="100" Increment="0.01"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Fluid density"/><NumericUpDown Grid.Column="1" x:Name="Density" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Viscosity"/><NumericUpDown Grid.Column="1" x:Name="Viscosity" Minimum="0" Maximum="100" Increment="0.000001" FormatString="0.######"/></Grid>
+          <Border Background="#E7EEDC" Padding="8"><StackPanel Spacing="3"><TextBlock Text="REYNOLDS DISPLAY" Classes="section"/><TextBlock x:Name="ReynoldsDisplay" Text="0 · LAMINAR" FontWeight="Bold"/><TextBlock x:Name="PhysicsHelpText" Text="Reynolds number is unitless. Values below 3E+5 are characteristic of laminar flow." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
+          <Button x:Name="PhysicsHelpButton" Content="HELP ON UNITS + GENERAL PHYSICS" HorizontalAlignment="Left" Click="PhysicsHelp_Click"/>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Collision elasticity"/><NumericUpDown Grid.Column="1" x:Name="Elasticity" Minimum="0" Maximum="2" Increment="0.01"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
           <Grid ColumnDefinitions="*,150"><StackPanel><TextBlock Text="Brownian motion"/><TextBlock Text="0% off · 75% DB2 medium · 100% high" Foreground="#758078" FontSize="11"/></StackPanel><NumericUpDown Grid.Column="1" x:Name="Brownian" Minimum="0" Maximum="100"/></Grid>

@@ -127,11 +127,20 @@ public sealed partial class NativeEngineClient : IEngineClient
                     name = species.Name,
                     vegetable = species.Vegetable,
                     color = species.Color,
+                    initial_count = species.InitialCount,
                     minimum_population = species.MinimumPopulation,
                     reseed = species.Reseed,
                     mutation_rate = species.MutationRate,
                     initial_energy = species.InitialEnergy,
-                    positions = _spawnPlacement.Next(species.InitialCount, _worldWidth, _worldHeight),
+                    placement = new
+                    {
+                        mode = species.Placement.Mode.ToString().ToLowerInvariant(),
+                        x = species.Placement.X,
+                        y = species.Placement.Y,
+                    },
+                    skin = species.Skin.Select(point => new { radius = point.Radius, angle = point.Angle }).ToArray(),
+                    restrictions = SpeciesRestrictions(species.Restrictions),
+                    positions = _spawnPlacement.Next(species, _worldWidth, _worldHeight),
                 },
             },
         }, "import species");
@@ -156,10 +165,19 @@ public sealed partial class NativeEngineClient : IEngineClient
                     name = species.Name,
                     vegetable = species.Vegetable,
                     color = species.Color,
+                    initial_count = species.InitialCount,
                     minimum_population = species.MinimumPopulation,
                     reseed = species.Reseed,
                     mutation_rate = species.MutationRate,
                     initial_energy = species.InitialEnergy,
+                    placement = new
+                    {
+                        mode = species.Placement.Mode.ToString().ToLowerInvariant(),
+                        x = species.Placement.X,
+                        y = species.Placement.Y,
+                    },
+                    skin = species.Skin.Select(point => new { radius = point.Radius, angle = point.Angle }).ToArray(),
+                    restrictions = SpeciesRestrictions(species.Restrictions),
                     positions = new[] { position },
                 },
             },
@@ -173,6 +191,20 @@ public sealed partial class NativeEngineClient : IEngineClient
         return new DnaImportReport(warnings.EnumerateArray().Select(item => item.GetString() ?? string.Empty)
             .Where(item => item.Length > 0).ToArray());
     }
+
+    private static object SpeciesRestrictions(SpeciesRestrictionSettings value) => new
+    {
+        kill_multibot = value.KillMultibot,
+        kill_disqualified = value.KillDisqualified,
+        fixed_in_place = value.FixedInPlace,
+        disable_vision = value.DisableVision,
+        disable_dna = value.DisableDna,
+        disable_movement = value.DisableMovement,
+        disable_reproduction = value.DisableReproduction,
+        virus_immune = value.VirusImmune,
+        disable_mutations = value.DisableMutations,
+        disable_chloroplasts = value.DisableChloroplasts,
+    };
 
     public void Remove(uint slot, uint generation)
     {

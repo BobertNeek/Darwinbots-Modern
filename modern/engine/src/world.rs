@@ -1091,6 +1091,8 @@ struct Db3sV2SpeciesDefinition {
     skin: [Db3sV2SkinPoint; 4],
     #[serde(default)]
     lineage_id: u64,
+    #[serde(default)]
+    restrictions: Option<RestrictionColumn>,
 }
 
 impl Default for Db3sV2SpeciesDefinition {
@@ -1104,6 +1106,7 @@ impl Default for Db3sV2SpeciesDefinition {
             mutation_rate: 0.0,
             skin: db3s_v2_default_skin(),
             lineage_id: 0,
+            restrictions: None,
         }
     }
 }
@@ -1131,6 +1134,8 @@ impl From<Db3sV2SpeciesDefinition> for SpeciesDefinition {
             mutation_rate: value.mutation_rate,
             skin: value.skin.map(Into::into),
             lineage_id: value.lineage_id,
+            restrictions: value.restrictions,
+            custom_skin: true,
         }
     }
 }
@@ -2387,7 +2392,9 @@ impl Engine {
     pub fn register_species(&mut self, mut species: SpeciesDefinition) -> SpeciesId {
         if species.lineage_id == 0 {
             species.lineage_id = self.next_lineage_id.max(1);
-            species.skin = generated_skin(&species.name, species.lineage_id);
+            if !species.custom_skin {
+                species.skin = generated_skin(&species.name, species.lineage_id);
+            }
             self.next_lineage_id = species.lineage_id.saturating_add(1);
         } else {
             self.next_lineage_id = self
@@ -2567,6 +2574,7 @@ impl Engine {
         definition.minimum_population = 0;
         definition.reseed = false;
         definition.lineage_id = 0;
+        definition.custom_skin = false;
         let new_species = self.register_species(definition);
         let lineage = self.species[new_species.0 as usize].lineage_id;
         let skin = self.species[new_species.0 as usize].skin;
@@ -3272,16 +3280,22 @@ impl Engine {
             let Some(organism) = slot.organism.as_mut() else {
                 continue;
             };
-            let column = if self
+            let column = self
                 .species
                 .get(organism.identity.species.0 as usize)
-                .is_some_and(|species| species.reseed)
-            {
-                &options.repopulating
-            } else {
-                &options.non_repopulating
-            };
-            apply_restriction_column(organism, column);
+                .and_then(|species| species.restrictions.clone())
+                .unwrap_or_else(|| {
+                    if self
+                        .species
+                        .get(organism.identity.species.0 as usize)
+                        .is_some_and(|species| species.reseed)
+                    {
+                        options.repopulating.clone()
+                    } else {
+                        options.non_repopulating.clone()
+                    }
+                });
+            apply_restriction_column(organism, &column);
         }
         self.restriction_options = options;
         self.publish_snapshot();
@@ -3380,11 +3394,16 @@ impl Engine {
         }
 
         let vegetable = self.species[species.0 as usize].vegetable;
-        let restriction_column = if self.species[species.0 as usize].reseed {
-            self.restriction_options.repopulating.clone()
-        } else {
-            self.restriction_options.non_repopulating.clone()
-        };
+        let restriction_column = self.species[species.0 as usize]
+            .restrictions
+            .clone()
+            .unwrap_or_else(|| {
+                if self.species[species.0 as usize].reseed {
+                    self.restriction_options.repopulating.clone()
+                } else {
+                    self.restriction_options.non_repopulating.clone()
+                }
+            });
         let phenotype = {
             let definition = &self.species[species.0 as usize];
             VisualPhenotype::new(definition.lineage_id, definition.color, definition.skin)
@@ -4232,6 +4251,9 @@ impl Engine {
         physics: Option<crate::PhysicsSettings>,
         shots: Option<crate::ShotSettings>,
         vegetation: Option<crate::VegetationSettings>,
+        corpse_decay: Option<crate::CorpseDecaySettings>,
+        waste: Option<crate::WasteSettings>,
+        recording: Option<crate::RecordingSettings>,
     ) -> Result<(), EngineError> {
         if let Some(physics) = physics {
             self.config.physics = physics;
@@ -4241,6 +4263,15 @@ impl Engine {
         }
         if let Some(vegetation) = vegetation {
             self.config.vegetation = vegetation;
+        }
+        if let Some(corpse_decay) = corpse_decay {
+            self.config.corpse_decay = corpse_decay;
+        }
+        if let Some(waste) = waste {
+            self.config.waste = waste;
+        }
+        if let Some(recording) = recording {
+            self.config.recording = recording;
         }
         self.publish_snapshot();
         Ok(())
@@ -8862,6 +8893,7 @@ impl Engine {
         definition.minimum_population = 0;
         definition.reseed = false;
         definition.lineage_id = 0;
+        definition.custom_skin = false;
         let new_species = self.register_species(definition);
         let definition = self.species[new_species.0 as usize].clone();
         if let Ok(organism) = self.slots.get_mut(id) {
@@ -9165,7 +9197,9 @@ impl Engine {
         for species in &mut engine.species {
             if species.lineage_id == 0 {
                 species.lineage_id = next_lineage_id;
-                species.skin = generated_skin(&species.name, species.lineage_id);
+                if !species.custom_skin {
+                    species.skin = generated_skin(&species.name, species.lineage_id);
+                }
                 next_lineage_id = next_lineage_id.saturating_add(1);
             } else {
                 next_lineage_id = next_lineage_id.max(species.lineage_id.saturating_add(1));

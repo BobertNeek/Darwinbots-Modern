@@ -58,13 +58,13 @@
         <TextBlock Classes="section" Text="SPECIES" FontSize="15" Margin="0,8,0,0"/>
         <Border Classes="panel">
           <Grid RowDefinitions="38,*">
-            <Grid ColumnDefinitions="2*,90,110,100,150,80,44" Background="#EEEAE0" Margin="1">
-              <TextBlock Text="SPECIES" Margin="10"/><TextBlock Grid.Column="1" Text="TYPE" Margin="8"/><TextBlock Grid.Column="2" Text="INITIAL COUNT" Margin="8"/><TextBlock Grid.Column="3" Text="ENERGY" Margin="8"/><TextBlock Grid.Column="4" Text="MUTATION %" Margin="8"/><TextBlock Grid.Column="5" Text="RESEED" Margin="8"/>
+            <Grid ColumnDefinitions="2*,90,100,95,135,80,105,44" Background="#EEEAE0" Margin="1">
+              <TextBlock Text="SPECIES" Margin="10"/><TextBlock Grid.Column="1" Text="TYPE" Margin="8"/><TextBlock Grid.Column="2" Text="INITIAL COUNT" Margin="8"/><TextBlock Grid.Column="3" Text="ENERGY" Margin="8"/><TextBlock Grid.Column="4" Text="MUTATION %" Margin="8"/><TextBlock Grid.Column="5" Text="RESEED" Margin="8"/><TextBlock Grid.Column="6" Text="EDITOR" Margin="8"/>
             </Grid>
             <ItemsControl x:Name="SpeciesList" Grid.Row="1" ItemsSource="{Binding Species}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="2*,90,110,100,150,80,44" Margin="6,5">
+                  <Grid ColumnDefinitions="2*,90,100,95,135,80,105,44" Margin="6,5">
                     <TextBox Text="{Binding Name}"/>
                     <CheckBox Grid.Column="1" IsChecked="{Binding Vegetable}" Content="VEG" VerticalAlignment="Center"/>
                     <NumericUpDown Grid.Column="2" Value="{Binding InitialCount}" Minimum="1" Maximum="100000"/>
@@ -74,14 +74,43 @@
                       <TextBlock Grid.Column="1" Text="{Binding MutationRate, StringFormat='{}{0:0.0}%'}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
                     <CheckBox Grid.Column="5" IsChecked="{Binding Reseed}" HorizontalAlignment="Center"/>
-                    <Button Grid.Column="6" Content="×" Tag="{Binding}" Click="RemoveSpecies_Click"/>
+                    <Expander Grid.Column="6" Header="EDIT" IsExpanded="False" HorizontalAlignment="Stretch">
+                      <StackPanel Spacing="5" MinWidth="290">
+                        <TextBlock Text="STARTUP POLICY" Classes="section"/>
+                        <Grid ColumnDefinitions="*,100"><TextBlock Text="Minimum population" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding MinimumPopulation}" Minimum="0" Maximum="100000"/></Grid>
+                        <Grid ColumnDefinitions="*,100"><TextBlock Text="Placement" VerticalAlignment="Center"/><ComboBox Grid.Column="1" SelectedIndex="{Binding PlacementIndex, Mode=TwoWay}"><ComboBoxItem Content="Random"/><ComboBoxItem Content="Center"/><ComboBoxItem Content="Fixed"/></ComboBox></Grid>
+                        <Grid ColumnDefinitions="*,100"><TextBlock Text="Fixed X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding PlacementX}" Minimum="-1000000" Maximum="1000000"/></Grid>
+                        <Grid ColumnDefinitions="*,100"><TextBlock Text="Fixed Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding PlacementY}" Minimum="-1000000" Maximum="1000000"/></Grid>
+                        <TextBlock Text="SKIN POINTS" Classes="section" Margin="0,4,0,0"/>
+                        <TextBlock Text="{Binding SkinPreview}" Foreground="#66706B" FontSize="11"/>
+                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 0" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius0}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle0}" Minimum="0" Maximum="1256"/></Grid>
+                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 1" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius1}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle1}" Minimum="0" Maximum="1256"/></Grid>
+                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 2" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius2}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle2}" Minimum="0" Maximum="1256"/></Grid>
+                        <Grid ColumnDefinitions="*,58,58"><TextBlock Text="Point 3" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding SkinRadius3}" Minimum="0.15" Maximum="0.82" Increment="0.01"/><NumericUpDown Grid.Column="2" Value="{Binding SkinAngle3}" Minimum="0" Maximum="1256"/></Grid>
+                        <TextBlock Text="RESTRICTIONS" Classes="section" Margin="0,4,0,0"/>
+                        <WrapPanel Orientation="Horizontal" ItemHeight="25">
+                          <CheckBox Content="NO VISION" IsChecked="{Binding DisableVision}"/>
+                          <CheckBox Content="NO DNA" IsChecked="{Binding DisableDna}"/>
+                          <CheckBox Content="NO MOVE" IsChecked="{Binding DisableMovement}"/>
+                          <CheckBox Content="NO REPRO" IsChecked="{Binding DisableReproduction}"/>
+                          <CheckBox Content="VIRUS IMMUNE" IsChecked="{Binding VirusImmune}"/>
+                          <CheckBox Content="NO MUTATIONS" IsChecked="{Binding DisableMutations}"/>
+                          <CheckBox Content="NO CHLOROPLASTS" IsChecked="{Binding DisableChloroplasts}"/>
+                          <CheckBox Content="FIXED" IsChecked="{Binding FixedInPlace}"/>
+                          <CheckBox Content="KILL MULTIBOT" IsChecked="{Binding KillMultibot}"/>
+                          <CheckBox Content="KILL DISQUALIFIED" IsChecked="{Binding KillDisqualified}"/>
+                        </WrapPanel>
+                        <TextBox Text="{Binding Comment}" Watermark="Species comment"/>
+                      </StackPanel>
+                    </Expander>
+                    <Button Grid.Column="7" Content="×" Tag="{Binding}" Click="RemoveSpecies_Click"/>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </Grid>
         </Border>
-        <StackPanel Orientation="Horizontal" Spacing="10"><Button x:Name="AddDnaButton" Content="＋ ADD DNA FILE" Click="AddDna_Click"/><TextBlock x:Name="SetupStatus" VerticalAlignment="Center" Foreground="#A65A23"/></StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="10"><Button x:Name="AddDnaButton" Content="＋ ADD DNA FILE" Click="AddDna_Click"/><Button x:Name="DuplicateSpeciesButton" Content="DUPLICATE SPECIES" Click="DuplicateSpecies_Click"/><TextBlock x:Name="SetupStatus" VerticalAlignment="Center" Foreground="#A65A23"/></StackPanel>
       </StackPanel>
     </ScrollViewer>
 
@@ -91,6 +120,7 @@
         <TextBlock Text="BACKEND" FontWeight="Bold"/><ComboBox x:Name="Backend" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Cpu"/><ComboBoxItem Content="Gpu"/></ComboBox>
         <TextBlock Text="WORLD SIZE" FontWeight="Bold" Margin="0,10,0,0"/>
         <Grid ColumnDefinitions="*,12,*"><NumericUpDown x:Name="WorldWidth" Value="16000" Minimum="1000" Maximum="1000000"/><TextBlock Grid.Column="1" Text="×" HorizontalAlignment="Center" VerticalAlignment="Center"/><NumericUpDown Grid.Column="2" x:Name="WorldHeight" Value="12000" Minimum="1000" Maximum="1000000"/></Grid>
+        <TextBlock Text="RANDOM SEED" FontWeight="Bold" Margin="0,10,0,0"/><Grid ColumnDefinitions="*,Auto"><NumericUpDown x:Name="Seed" Value="1" Minimum="1" Maximum="9223372036854775807"/><Button Grid.Column="1" x:Name="ChangeSeedButton" Content="CHANGE" Margin="8,0,0,0" Click="ChangeSeed_Click"/></Grid>
         <TextBlock Text="POPULATION CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="PopulationCap" Value="25000" Minimum="100" Maximum="1000000" Increment="1000"/>
         <TextBlock Text="VEGETABLE CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="VegetablePopulationCap" Value="500" Minimum="0" Maximum="1000000" Increment="50"/>
         <TextBlock Text="Maximum living vegetables" Foreground="#6F716D" FontSize="12"/>

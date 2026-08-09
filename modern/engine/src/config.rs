@@ -104,6 +104,8 @@ pub struct RecordingSettings {
     pub dead_snapshot_enabled: bool,
     pub exclude_repopulating_robots: bool,
     pub autosave_interval: u64,
+    #[serde(default = "default_sampling_interval")]
+    pub sampling_interval: u64,
 }
 
 impl Default for RecordingSettings {
@@ -113,8 +115,13 @@ impl Default for RecordingSettings {
             dead_snapshot_enabled: false,
             exclude_repopulating_robots: false,
             autosave_interval: 0,
+            sampling_interval: default_sampling_interval(),
         }
     }
+}
+
+fn default_sampling_interval() -> u64 {
+    10
 }
 
 impl Default for WasteSettings {

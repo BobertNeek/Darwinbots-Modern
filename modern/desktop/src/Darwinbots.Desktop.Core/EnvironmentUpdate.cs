@@ -2,6 +2,13 @@ using System.Text.Json;
 
 namespace Darwinbots.Desktop.Core;
 
+public enum Db2PhysicsPreset
+{
+    Fluid,
+    Solid,
+    Custom,
+}
+
 public sealed record Db2PhysicsOptions(
     float MaxVelocity,
     float MovementEfficiency,
@@ -15,7 +22,66 @@ public sealed record Db2PhysicsOptions(
     float PlanetEatersG = 0f)
 {
     public static Db2PhysicsOptions Default { get; } = new(180f, 0.66f, 2f, 0.6f, 0.4f, 0d, 0d, 0f);
+
+    public double ReynoldsNumber => Density * 60d / Math.Max(Viscosity, 1e-7d);
+
+    public string ReynoldsDescription => ReynoldsNumber < 300_000d ? "LAMINAR" : "TURBULENT";
+
+    public string ContextualHelp =>
+        "Reynolds number is the unitless ratio of turbulent to laminar flow. " +
+        "Values below 3E+5 are characteristic of laminar flow.";
+
+    public static IReadOnlyList<Db2PhysicsOptions> FluidPresets { get; } =
+    [
+        Default with { Density = 1e-7, Viscosity = 0.01 },
+        Default with { Density = 1e-7, Viscosity = 0.0005 },
+        Default with { Density = 1e-7, Viscosity = 0.000025 },
+        Default with { Density = 0d, Viscosity = 0d },
+    ];
+
+    public static IReadOnlyList<Db2PhysicsOptions> SolidPresets { get; } =
+    [
+        Default with { Density = 0d, Viscosity = 0d, SurfaceGravity = 4f, StaticFriction = 0.9f, KineticFriction = 0.75f },
+        Default with { Density = 0d, Viscosity = 0d, SurfaceGravity = 2f, StaticFriction = 0.6f, KineticFriction = 0.4f },
+        Default with { Density = 0d, Viscosity = 0d, SurfaceGravity = 1f, StaticFriction = 0.05f, KineticFriction = 0.05f },
+        Default with { Density = 0d, Viscosity = 0d, SurfaceGravity = 0f, StaticFriction = 0f, KineticFriction = 0f },
+    ];
+
+    public static IReadOnlyDictionary<Db2PhysicsPreset, Db2PhysicsOptions> Presets { get; } =
+        new Dictionary<Db2PhysicsPreset, Db2PhysicsOptions>
+        {
+            [Db2PhysicsPreset.Fluid] = FluidPresets[2],
+            [Db2PhysicsPreset.Solid] = SolidPresets[1],
+            [Db2PhysicsPreset.Custom] = Default,
+        };
+
+    public static Db2PhysicsOptions ForPreset(Db2PhysicsPreset preset) => Presets[preset];
 }
+
+public enum Db2CorpseDecayMode
+{
+    None,
+    WasteShot,
+    EnergyShot,
+}
+
+public sealed record Db2CorpseDecayOptions(
+    bool Enabled = true,
+    int DeathEnergyThreshold = 15,
+    Db2CorpseDecayMode Mode = Db2CorpseDecayMode.EnergyShot,
+    int PacketSize = 1,
+    ulong Period = 10);
+
+public sealed record Db2WasteOptions(
+    int AlzheimerThreshold = 400,
+    int DefecationThreshold = 32_000);
+
+public sealed record Db2RecordingOptions(
+    bool SafeModeBackup = false,
+    bool DeadSnapshotEnabled = false,
+    bool ExcludeRepopulatingRobots = false,
+    ulong AutosaveInterval = 0,
+    int SamplingInterval = 10);
 
 public sealed record Db2ShotOptions(
     float Speed,
@@ -66,7 +132,10 @@ public sealed record EnvironmentUpdate(
     float SpeciationGeneticDistancePercent,
     bool ToroidalWorld = true,
     bool WrapX = true,
-    bool WrapY = true)
+    bool WrapY = true,
+    Db2CorpseDecayOptions? CorpseDecay = null,
+    Db2WasteOptions? Waste = null,
+    Db2RecordingOptions? Recording = null)
 {
     public static EnvironmentUpdate Default { get; } = new(
         0, 0, 100, [0f, 0f], 0f, 0f,
@@ -75,7 +144,12 @@ public sealed record EnvironmentUpdate(
         Db2VegetationOptions.Default,
         false,
         20f,
-        true);
+        true,
+        true,
+        true,
+        new Db2CorpseDecayOptions(),
+        new Db2WasteOptions(),
+        new Db2RecordingOptions());
 }
 
 public static class NativeCommandSerializer
@@ -126,7 +200,11 @@ public static class NativeCommandSerializer
             brownian_motion = options.BrownianMotion,
             physics = Physics(options.Physics),
             shots = Shots(options.Shots),
+            corpse_decay = CorpseDecay(options.CorpseDecay),
+            waste = Waste(options.Waste),
             vegetation = Vegetation(options.Vegetation),
+            recording = Recording(options.Recording),
+            species = options.Species.Select(Species).ToArray(),
             auto_speciation = options.AutoSpeciation,
             speciation_genetic_distance_percent = options.SpeciationGeneticDistancePercent,
             toroidal_world = options.ToroidalWorld,
@@ -216,7 +294,10 @@ public static class NativeCommandSerializer
                 brownian_motion = update.BrownianMotion,
                 physics = Physics(update.Physics),
                 shots = Shots(update.Shots),
+                corpse_decay = CorpseDecay(update.CorpseDecay),
+                waste = Waste(update.Waste),
                 vegetation = Vegetation(update.Vegetation),
+                recording = Recording(update.Recording),
                 auto_speciation = update.AutoSpeciation,
                 speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
                 toroidal_world = update.ToroidalWorld,
@@ -237,6 +318,64 @@ public static class NativeCommandSerializer
         elasticity = value.Elasticity,
         planet_eaters = value.PlanetEaters,
         planet_eaters_g = value.PlanetEatersG,
+        reynolds = value.ReynoldsNumber,
+    };
+
+    internal static object CorpseDecay(Db2CorpseDecayOptions? value) => new
+    {
+        enabled = value?.Enabled ?? true,
+        death_energy_threshold = value?.DeathEnergyThreshold ?? 15,
+        mode = (value?.Mode ?? Db2CorpseDecayMode.EnergyShot).ToString().ToLowerInvariant(),
+        packet_size = value?.PacketSize ?? 1,
+        period = value?.Period ?? 10,
+    };
+
+    internal static object Waste(Db2WasteOptions? value) => new
+    {
+        alzheimer_threshold = value?.AlzheimerThreshold ?? 400,
+        defecation_threshold = value?.DefecationThreshold ?? 32_000,
+    };
+
+    internal static object Recording(Db2RecordingOptions? value) => new
+    {
+        safemode_backup = value?.SafeModeBackup ?? false,
+        dead_snapshot_enabled = value?.DeadSnapshotEnabled ?? false,
+        exclude_repopulating_robots = value?.ExcludeRepopulatingRobots ?? false,
+        autosave_interval = value?.AutosaveInterval ?? 0,
+        sampling_interval = value?.SamplingInterval ?? 10,
+    };
+
+    private static object Species(SpeciesImport value) => new
+    {
+        name = value.Name,
+        dna = value.Dna,
+        vegetable = value.Vegetable,
+        color = value.Color,
+        initial_count = value.InitialCount,
+        initial_energy = value.InitialEnergy,
+        minimum_population = value.MinimumPopulation,
+        reseed = value.Reseed,
+        mutation_rate = value.MutationRate,
+        placement = new
+        {
+            mode = value.Placement.Mode.ToString().ToLowerInvariant(),
+            x = value.Placement.X,
+            y = value.Placement.Y,
+        },
+        skin = value.Skin.Select(point => new { radius = point.Radius, angle = point.Angle }).ToArray(),
+        restrictions = new
+        {
+            kill_multibot = value.Restrictions.KillMultibot,
+            kill_disqualified = value.Restrictions.KillDisqualified,
+            fixed_in_place = value.Restrictions.FixedInPlace,
+            disable_vision = value.Restrictions.DisableVision,
+            disable_dna = value.Restrictions.DisableDna,
+            disable_movement = value.Restrictions.DisableMovement,
+            disable_reproduction = value.Restrictions.DisableReproduction,
+            virus_immune = value.Restrictions.VirusImmune,
+            disable_mutations = value.Restrictions.DisableMutations,
+            disable_chloroplasts = value.Restrictions.DisableChloroplasts,
+        },
     };
 
     internal static object Shots(Db2ShotOptions value) => new

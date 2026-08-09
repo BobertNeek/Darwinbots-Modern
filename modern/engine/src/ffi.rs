@@ -87,6 +87,14 @@ enum EngineCommand {
         #[serde(default)]
         mutation_rate: f32,
         initial_energy: i32,
+        #[serde(default)]
+        initial_count: usize,
+        #[serde(default)]
+        placement: Option<serde_json::Value>,
+        #[serde(default)]
+        skin: Option<[crate::SkinPoint; 4]>,
+        #[serde(default)]
+        restrictions: Option<crate::RestrictionColumn>,
         positions: Vec<[f32; 2]>,
     },
     MoveOrganism {
@@ -220,6 +228,12 @@ enum EngineCommand {
         shots: Option<crate::ShotSettings>,
         #[serde(default)]
         vegetation: Option<crate::VegetationSettings>,
+        #[serde(default)]
+        corpse_decay: Option<crate::CorpseDecaySettings>,
+        #[serde(default)]
+        waste: Option<crate::WasteSettings>,
+        #[serde(default)]
+        recording: Option<crate::RecordingSettings>,
         #[serde(default)]
         auto_speciation: Option<bool>,
         #[serde(default)]
@@ -498,10 +512,14 @@ fn db_engine_command_batch_impl(
                 reseed,
                 mutation_rate,
                 initial_energy,
+                initial_count: _,
+                placement: _,
+                skin,
+                restrictions,
                 positions,
             } => LegacyDna::parse(&dna).and_then(|dna| {
                 let compatibility_warnings = dna.compatibility_warnings().to_vec();
-                let species = engine.register_species(SpeciesDefinition {
+                let mut definition = SpeciesDefinition {
                     name,
                     vegetable,
                     color,
@@ -509,7 +527,13 @@ fn db_engine_command_batch_impl(
                     reseed,
                     mutation_rate,
                     ..SpeciesDefinition::default()
-                });
+                };
+                if let Some(skin) = skin {
+                    definition.skin = skin;
+                    definition.custom_skin = true;
+                }
+                definition.restrictions = restrictions;
+                let species = engine.register_species(definition);
                 engine
                     .spawn_species_batch(dna, species, positions, initial_energy)
                     .map(|ids| {
@@ -694,6 +718,9 @@ fn db_engine_command_batch_impl(
                 physics,
                 shots,
                 vegetation,
+                corpse_decay,
+                waste,
+                recording,
                 auto_speciation,
                 speciation_genetic_distance_percent,
                 toroidal_world,
@@ -707,7 +734,7 @@ fn db_engine_command_batch_impl(
                     drag,
                     brownian_motion,
                 )
-                .and_then(|_| engine.update_db2_settings(physics, shots, vegetation))
+                .and_then(|_| engine.update_db2_settings(physics, shots, vegetation, corpse_decay, waste, recording))
                 .and_then(|_| {
                     engine.update_speciation_settings(
                         auto_speciation,
