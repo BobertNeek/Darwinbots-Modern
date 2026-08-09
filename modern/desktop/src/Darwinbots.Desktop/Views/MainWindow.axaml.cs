@@ -94,7 +94,7 @@ public sealed partial class MainWindow : Window
     private bool _playerBotEnabled;
     private IReadOnlyList<PlayerBotBinding> _playerBotBindings = [];
     private bool _rgbMemoryMonitorEnabled;
-    private string _rgbMemoryChannels = ".nrg, .body, .waste";
+    private RgbMemoryMonitorSettings _rgbMemorySettings = RgbMemoryMonitorSettings.Default;
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
     private readonly PersistentToolWindowRegistry _toolWindows;
     private readonly Stopwatch _runtimeClock = new();
@@ -159,10 +159,10 @@ public sealed partial class MainWindow : Window
         Viewport.WrapY = _liveEnvironment.WrapY;
         RuntimeSpeed.SelectedIndex = _ticksPerUpdate switch { <= 1 => 0, <= 5 => 1, <= 20 => 2, _ => 3 };
         _maximumSpeed = DesktopControlRules.IsMaximumSpeed(RuntimeSpeed.SelectedIndex);
-        Viewport.OrganismSelected += slot =>
+        Viewport.OrganismKeySelected += key =>
         {
-            _viewModel.Select(slot);
-            Viewport.SelectSlot(slot);
+            _viewModel.Select(key);
+            Viewport.SelectKey(key);
             RefreshLegacyMenuStates();
         };
         Viewport.WorldClicked += async position =>
@@ -232,6 +232,14 @@ public sealed partial class MainWindow : Window
                 ? selected
                 : _session.LatestSnapshot.Organisms.FirstOrDefault(value => value.Slot == slot);
             if (organism is null) return;
+            await _session.MoveAsync(organism.Slot, organism.Generation, position);
+            _viewModel.Status = $"ORGANISM {organism.Slot}:{organism.Generation} MOVED";
+        };
+        Viewport.OrganismKeyDragCompleted += async (key, position) =>
+        {
+            if (_session is null) return;
+            if (_session.LatestSnapshot.Organisms.FirstOrDefault(value =>
+                    value.Slot == key.Slot && value.Generation == key.Generation) is not { } organism) return;
             await _session.MoveAsync(organism.Slot, organism.Generation, position);
             _viewModel.Status = $"ORGANISM {organism.Slot}:{organism.Generation} MOVED";
         };
@@ -929,15 +937,15 @@ public sealed partial class MainWindow : Window
             ? new OrganismKey(organism.Slot, organism.Generation)
             : null;
 
-    private async Task<LegacyCommandResult> OpenEyeDesignerAsync()
+    private Task<LegacyCommandResult> OpenEyeDesignerAsync()
     {
-        var organism = _viewModel.SelectedOrganism!;
-        var dialog = new LegacyValueWindow("Eye Designer", "Aim angle", organism.Aim.ToString(System.Globalization.CultureInfo.InvariantCulture), "DB2 angular units: 0 through 1256, where approximately 314 is a quarter turn.");
-        await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        if (!int.TryParse(dialog.Value, out var aim)) return LegacyCommandResult.Failure("AIM MUST BE AN INTEGER");
-        await _session!.SetOrganismAimAsync(organism.Slot, organism.Generation, aim);
-        return LegacyCommandResult.Success($"EYE AIM · {((aim % 1257) + 1257) % 1257}");
+        if (_session is null || SelectedRobotKey() is not { } focus)
+            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
+        var window = _toolWindows.ShowOrActivate(
+            $"eye-designer:{focus.Slot}:{focus.Generation}",
+            () => new EyeDesignerWindow(_session, focus));
+        window.SetSnapshot(_session.LatestSnapshot);
+        return Task.FromResult(LegacyCommandResult.Success("EYE DESIGNER OPEN"));
     }
 
     private async Task<LegacyCommandResult> ShowRestrictionOverridesAsync()
@@ -952,14 +960,22 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenRgbMonitorSettingsAsync()
     {
-        var dialog = new LegacyValueWindow("RGB Memory Monitor Settings", "Red, green, blue channels", _rgbMemoryChannels, "Enter three comma-separated DB2 values. The modern monitor currently recognizes .nrg, .body, .waste, .chlr, .shell, .slime, .venom, and .poison.");
+        if (_session is null || SelectedRobotKey() is not { } focus)
+            return LegacyCommandResult.Failure("NO ROBOT SELECTED");
+        var dialog = new RgbMemoryMonitorWindow(
+            focus,
+            _rgbMemorySettings,
+            settings =>
+            {
+                _rgbMemorySettings = settings;
+                if (_rgbMemoryMonitorEnabled) Viewport.SetRgbMemoryMonitor(settings);
+            },
+            closeOnApply: true);
+        dialog.SetSnapshot(_session.LatestSnapshot);
         await dialog.ShowDialog(this);
-        if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        var channels = dialog.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (channels.Length != 3) return LegacyCommandResult.Failure("RGB MONITOR REQUIRES THREE CHANNELS");
-        _rgbMemoryChannels = string.Join(", ", channels);
-        if (_rgbMemoryMonitorEnabled) CloseRgbMonitor();
-        return LegacyCommandResult.Success($"RGB CHANNELS · {_rgbMemoryChannels.ToUpperInvariant()}");
+        return dialog.Accepted
+            ? LegacyCommandResult.Success("RGB SETTINGS APPLIED")
+            : LegacyCommandResult.Cancel();
     }
 
     private LegacyCommandResult ToggleRgbMemoryMonitor()
@@ -969,27 +985,27 @@ public sealed partial class MainWindow : Window
             CloseRgbMonitor();
             return LegacyCommandResult.Success("RGB MEMORY MONITOR · OFF");
         }
-        var organism = _viewModel.SelectedOrganism!;
-        var channels = _rgbMemoryChannels.Split(',', StringSplitOptions.TrimEntries);
-        int Read(string channel) => channel.ToLowerInvariant() switch
-        {
-            ".nrg" => organism.Energy, ".body" => organism.Body, ".waste" => organism.Waste,
-            ".chlr" => organism.Chloroplasts, ".shell" => organism.Shell, ".slime" => organism.Slime,
-            ".venom" => organism.Venom, ".poison" => organism.Poison, _ => 0,
-        };
-        var section = $"Robot {organism.Slot}:{organism.Generation}";
-        var content = $"RED   {channels[0]} = {Read(channels[0]):N0}\nGREEN {channels[1]} = {Read(channels[1]):N0}\nBLUE  {channels[2]} = {Read(channels[2]):N0}\n\nThe three values form a diagnostic color signature for the selected robot.";
+        if (SelectedRobotKey() is not { } focus) return LegacyCommandResult.Failure("NO ROBOT SELECTED");
+        Viewport.SetRgbMemoryMonitor(_rgbMemorySettings);
         var window = _toolWindows.ShowOrActivate(RgbMonitorToolKey, () =>
         {
-            var tool = new LegacyDocumentWindow("RGB Memory Monitor", section, content);
+            var tool = new RgbMemoryMonitorWindow(
+                focus,
+                _rgbMemorySettings,
+                settings =>
+                {
+                    _rgbMemorySettings = settings;
+                    Viewport.SetRgbMemoryMonitor(settings);
+                });
             tool.Closed += (_, _) =>
             {
                 _rgbMemoryMonitorEnabled = false;
+                Viewport.SetRgbMemoryMonitor(null);
                 RefreshLegacyMenuStates();
             };
             return tool;
         });
-        window.SetDocument("RGB Memory Monitor", section, content);
+        window.SetSnapshot(_session!.LatestSnapshot);
         _rgbMemoryMonitorEnabled = true;
         return LegacyCommandResult.Success("RGB MEMORY MONITOR · ON");
     }
@@ -997,6 +1013,7 @@ public sealed partial class MainWindow : Window
     private void CloseRgbMonitor()
     {
         _rgbMemoryMonitorEnabled = false;
+        Viewport.SetRgbMemoryMonitor(null);
         _toolWindows.Close(RgbMonitorToolKey);
     }
 
@@ -1206,7 +1223,7 @@ public sealed partial class MainWindow : Window
     {
         var organism = _viewModel.SelectedOrganism!;
         var session = _session!;
-        Viewport.SelectSlot(organism.Slot);
+        Viewport.SelectKey(new OrganismKey(organism.Slot, organism.Generation));
         ShowRobotDetails(session, organism, RobotDetailsTab.Facts);
         return LegacyCommandResult.Success("ROBOT DETAILS OPEN");
     }
@@ -1228,15 +1245,15 @@ public sealed partial class MainWindow : Window
         return window;
     }
 
-    private async Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
+    private Task<LegacyCommandResult> ShowSelectedPhylogenyAsync()
     {
-        var organism = _viewModel.SelectedOrganism!;
-        var snapshot = _session!.LatestSnapshot;
-        var parents = organism.Parents is { Length: > 0 }
-            ? string.Join("\n", organism.Parents.Select((parent, index) => parent is { } value ? $"Parent {index + 1}: {value.Slot}:{value.Generation}" : $"Parent {index + 1}: unknown"))
-            : "No recorded parents (founder or legacy import).";
-        var relatives = snapshot.Organisms.Count(value => value.Phenotype.LineageId == organism.Phenotype.LineageId);
-        return await ShowDocumentAsync("Show Philogeny", "Lineage record", $"Robot: {organism.Slot}:{organism.Generation}\nLineage ID: {organism.Phenotype.LineageId}\nLiving lineage members: {relatives:N0}\nAccumulated mutations: {organism.Phenotype.AccumulatedMutations:N0}\n\n{parents}");
+        if (_session is null || SelectedRobotKey() is not { } focus)
+            return Task.FromResult(LegacyCommandResult.Failure("NO ROBOT SELECTED"));
+        var window = _toolWindows.ShowOrActivate(
+            $"phylogeny:{focus.Slot}:{focus.Generation}",
+            () => new PhylogenyWindow(_session.LatestSnapshot, focus));
+        window.SetSnapshot(_session.LatestSnapshot);
+        return Task.FromResult(LegacyCommandResult.Success("PHILOGENY OPEN"));
     }
 
     private async Task<LegacyCommandResult> ChangeSelectedSpeciesColorAsync()
@@ -1327,7 +1344,9 @@ public sealed partial class MainWindow : Window
     {
         var group = SelectedOrganismGroup();
         var selected = _viewModel.SelectedOrganism!;
-        Viewport.SelectSlots(group.Select(value => value.Slot), selected.Slot);
+        Viewport.SelectKeys(
+            group.Select(value => new OrganismKey(value.Slot, value.Generation)),
+            new OrganismKey(selected.Slot, selected.Generation));
         return LegacyCommandResult.Success($"ORGANISM SELECTED · {group.Count:N0} BOT(S)");
     }
 
@@ -1394,8 +1413,8 @@ public sealed partial class MainWindow : Window
     {
         if (_session?.LatestSnapshot.Organisms.MaxBy(organism => organism.Energy) is not { } organism)
             return LegacyCommandResult.Failure("NO LIVING ROBOTS");
-        _viewModel.Select(organism.Slot);
-        Viewport.SelectSlot(organism.Slot);
+        _viewModel.Select(new OrganismKey(organism.Slot, organism.Generation));
+        Viewport.SelectKey(new OrganismKey(organism.Slot, organism.Generation));
         return LegacyCommandResult.Success($"BEST ENERGY · {organism.Slot}:{organism.Generation} · {organism.Energy:0}");
     }
 
@@ -1628,7 +1647,7 @@ public sealed partial class MainWindow : Window
                 _playerBotBindings = snapshot.PlayerBot.Bindings;
                 _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
                 Viewport.SetSnapshot(snapshot);
-                Viewport.SelectSlot(_viewModel.SelectedSlot);
+                Viewport.SelectKey(_viewModel.SelectedKey);
                 PopulationChart.SetSnapshot(snapshot);
                 EnergyChart.SetSnapshot(snapshot);
                 _toolWindows.PublishSnapshot(snapshot);
@@ -1829,7 +1848,7 @@ public sealed partial class MainWindow : Window
     {
         if (_viewModel.SelectedOrganism is not { } organism) return;
         _following = !_following;
-        Viewport.FollowSlot(_following ? organism.Slot : null);
+        Viewport.FollowKey(_following ? new OrganismKey(organism.Slot, organism.Generation) : null);
         _viewModel.Status = _following ? $"FOLLOWING {organism.Slot}:{organism.Generation}" : "FOLLOW OFF";
     }
 

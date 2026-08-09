@@ -16,11 +16,11 @@ public sealed class WorldViewport : Control
     private Vector _pan;
     private Point? _panAnchor;
     private Vector _panAtPress;
-    private uint? _selectedSlot;
-    private readonly HashSet<uint> _selectedSlots = [];
+    private OrganismKey? _selectedKey;
+    private readonly HashSet<OrganismKey> _selectedKeys = [];
     private WorldFeatureSelection? _selectedFeature;
-    private uint? _followSlot;
-    private uint? _dragSlot;
+    private OrganismKey? _followKey;
+    private OrganismKey? _dragKey;
     private float[]? _dragPosition;
     private Point? _dragOrigin;
     private bool _dragMoved;
@@ -38,11 +38,14 @@ public sealed class WorldViewport : Control
     private bool _renderSkins = true;
     private bool _showDeathPoffs = true;
     private bool _flickerFrame;
+    private RgbMemoryMonitorSettings? _rgbMemoryMonitor;
 
     public event Action<uint>? OrganismSelected;
+    public event Action<OrganismKey>? OrganismKeySelected;
     public event Action<float[]>? WorldClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
     public event Action<uint, float[]>? OrganismDragCompleted;
+    public event Action<OrganismKey, float[]>? OrganismKeyDragCompleted;
 
     public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
     public bool ShowSelectedVision { get => _showSelectedVision; set { _showSelectedVision = value; InvalidateVisual(); } }
@@ -63,20 +66,48 @@ public sealed class WorldViewport : Control
     public bool RenderSkins { get => _renderSkins; set { _renderSkins = value; InvalidateVisual(); } }
     public bool ShowDeathPoffs { get => _showDeathPoffs; set { _showDeathPoffs = value; InvalidateVisual(); } }
 
+    public void SetRgbMemoryMonitor(RgbMemoryMonitorSettings? settings)
+    {
+        settings?.Validate();
+        _rgbMemoryMonitor = settings;
+        InvalidateVisual();
+    }
+
     public void SelectSlot(uint? slot)
     {
-        _selectedSlot = slot;
-        _selectedSlots.Clear();
-        if (slot is { } selected) _selectedSlots.Add(selected);
+        SelectKey(slot is { } value
+            ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == value) is { } organism
+                ? new OrganismKey(organism.Slot, organism.Generation)
+                : null
+            : null);
+    }
+
+    public void SelectKey(OrganismKey? key)
+    {
+        _selectedKey = key is { } value && _snapshot.Organisms.Any(organism =>
+            organism.Slot == value.Slot && organism.Generation == value.Generation) ? key : null;
+        _selectedKeys.Clear();
+        if (_selectedKey is { } selected) _selectedKeys.Add(selected);
         InvalidateVisual();
     }
 
     public void SelectSlots(IEnumerable<uint> slots, uint primary)
     {
-        _selectedSlot = primary;
-        _selectedSlots.Clear();
-        foreach (var slot in slots) _selectedSlots.Add(slot);
-        _selectedSlots.Add(primary);
+        var keys = slots.Select(slot => _snapshot.Organisms.FirstOrDefault(value => value.Slot == slot))
+            .OfType<OrganismSnapshot>()
+            .Select(value => new OrganismKey(value.Slot, value.Generation));
+        var primaryKey = _snapshot.Organisms.FirstOrDefault(value => value.Slot == primary) is { } organism
+            ? new OrganismKey(organism.Slot, organism.Generation)
+            : new OrganismKey(primary, 0);
+        SelectKeys(keys, primaryKey);
+    }
+
+    public void SelectKeys(IEnumerable<OrganismKey> keys, OrganismKey primary)
+    {
+        _selectedKey = primary;
+        _selectedKeys.Clear();
+        foreach (var key in keys) _selectedKeys.Add(key);
+        _selectedKeys.Add(primary);
         InvalidateVisual();
     }
 
@@ -89,7 +120,13 @@ public sealed class WorldViewport : Control
     public void SetSnapshot(EngineSnapshot snapshot)
     {
         _snapshot = snapshot;
-        if (_followSlot is { } followed && snapshot.Organisms.FirstOrDefault(value => value.Slot == followed) is { } organism)
+        if (_selectedKey is { } selected && !Contains(snapshot, selected))
+        {
+            _selectedKey = null;
+            _selectedKeys.Clear();
+        }
+        _selectedKeys.RemoveWhere(key => !Contains(snapshot, key));
+        if (_followKey is { } followed && snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
         {
             var scaleX = Bounds.Width / Math.Max(1.0, snapshot.WorldSize[0]);
             var scaleY = Bounds.Height / Math.Max(1.0, snapshot.WorldSize[1]);
@@ -101,7 +138,17 @@ public sealed class WorldViewport : Control
 
     public void FollowSlot(uint? slot)
     {
-        _followSlot = slot;
+        _followKey = slot is { } value
+            ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == value) is { } organism
+                ? KeyOf(organism)
+                : null
+            : null;
+        InvalidateVisual();
+    }
+
+    public void FollowKey(OrganismKey? key)
+    {
+        _followKey = key;
         InvalidateVisual();
     }
 
@@ -154,17 +201,17 @@ public sealed class WorldViewport : Control
         var selectedDrawn = false;
         for (var index = 0; index < _snapshot.RenderInstances.Count; index += stride)
         {
-            var instance = _snapshot.RenderInstances[index];
+        var instance = _snapshot.RenderInstances[index];
             var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
             var details = radius >= 3.25
                 && !(_snapshot.RenderInstances.Count > 20_000 && _zoom < 1)
                 && stride == 1;
             DrawOrganism(context, instance, scaleX, scaleY, details);
-            selectedDrawn |= _selectedSlots.Contains(instance.Slot);
+            selectedDrawn |= _selectedKeys.Contains(KeyOf(instance));
         }
 
-        if (!selectedDrawn && _selectedSlot is { } selected
-            && _snapshot.RenderInstances.FirstOrDefault(candidate => candidate.Slot == selected) is { } selectedInstance)
+        if (!selectedDrawn && _selectedKey is { } selected
+            && _snapshot.RenderInstances.FirstOrDefault(candidate => KeyOf(candidate) == selected) is { } selectedInstance)
         {
             DrawOrganism(context, selectedInstance, scaleX, scaleY, details: true);
         }
@@ -177,12 +224,15 @@ public sealed class WorldViewport : Control
         double scaleY,
         bool details)
     {
-        var position = _dragSlot == instance.Slot && _dragPosition is not null ? _dragPosition : instance.Position;
+        var position = _dragKey == KeyOf(instance) && _dragPosition is not null ? _dragPosition : instance.Position;
         var center = ScreenPoint(position, scaleX, scaleY);
         var radiusScale = Math.Min(scaleX, scaleY);
         var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
-        var color = Color.FromUInt32(instance.Color);
-        var selected = _selectedSlots.Contains(instance.Slot);
+        var organism = _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == KeyOf(instance));
+        var color = organism is not null && _rgbMemoryMonitor is { } monitor
+            ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
+            : Color.FromUInt32(instance.Color);
+        var selected = _selectedKeys.Contains(KeyOf(instance));
         var edgeColor = ContrastColor(color, strong: false);
         context.DrawEllipse(
             new SolidColorBrush(color),
@@ -245,15 +295,15 @@ public sealed class WorldViewport : Control
     private void DrawSelectedVision(DrawingContext context, double scaleX, double scaleY)
     {
         if (!ShowSelectedVision) return;
-        if (_selectedSlot is not { } selected
-            || _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == selected) is not { } organism)
+        if (_selectedKey is not { } selected
+            || _snapshot.Organisms.FirstOrDefault(organism => KeyOf(organism) == selected) is not { } organism)
         {
             return;
         }
         var center = ScreenPoint(organism.Position, scaleX, scaleY);
         var radiusScale = Math.Min(scaleX, scaleY) * _zoom;
         var organismRadius = _snapshot.RenderInstances
-            .FirstOrDefault(instance => instance.Slot == selected)?.Radius ?? 8f;
+            .FirstOrDefault(instance => KeyOf(instance) == selected)?.Radius ?? 8f;
         var sectors = OrganismVisualGeometry.EyeSectors(organism.Vision, organism.Aim, organismRadius);
         foreach (var sector in sectors)
         {
@@ -295,8 +345,10 @@ public sealed class WorldViewport : Control
         foreach (var organism in _snapshot.Organisms)
         {
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
-            var color = Color.FromUInt32(organism.Phenotype.Color);
-            var selected = _selectedSlots.Contains(organism.Slot);
+            var color = _rgbMemoryMonitor is { } monitor
+                ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
+                : Color.FromUInt32(organism.Phenotype.Color);
+            var selected = _selectedKeys.Contains(KeyOf(organism));
             context.DrawEllipse(
                 new SolidColorBrush(color),
                 new Pen(selected ? Brushes.Black : new SolidColorBrush(ContrastColor(color, false)), selected ? 2.2 : 0.8),
@@ -351,9 +403,10 @@ public sealed class WorldViewport : Control
             ]);
             return;
         }
-        SelectSlot(selected);
-        OrganismSelected?.Invoke(selected.Value);
-        _dragSlot = selected;
+        SelectKey(selected);
+        OrganismSelected?.Invoke(selected.Value.Slot);
+        OrganismKeySelected?.Invoke(selected.Value);
+        _dragKey = selected;
         _dragPosition = WorldPoint(point.Position);
         _dragOrigin = point.Position;
         _dragMoved = false;
@@ -364,7 +417,7 @@ public sealed class WorldViewport : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (_dragSlot is not null)
+        if (_dragKey is not null)
         {
             var pointer = e.GetPosition(this);
             if (_dragOrigin is { } origin && DesktopControlRules.IsDragGesture(pointer.X - origin.X, pointer.Y - origin.Y))
@@ -376,7 +429,7 @@ public sealed class WorldViewport : Control
             return;
         }
         if (_panAnchor is not { } anchor) return;
-        _followSlot = null;
+        _followKey = null;
         var point = e.GetPosition(this);
         _pan = _panAtPress + (point - anchor);
         InvalidateVisual();
@@ -386,9 +439,11 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerReleased(e);
         _panAnchor = null;
-        if (_dragMoved && _dragSlot is { } slot && _dragPosition is { } position)
-            OrganismDragCompleted?.Invoke(slot, position);
-        _dragSlot = null;
+        if (_dragMoved && _dragKey is { } key && _dragPosition is { } position)
+        {
+            OrganismKeyDragCompleted?.Invoke(key, position);
+        }
+        _dragKey = null;
         _dragPosition = null;
         _dragOrigin = null;
         _dragMoved = false;
@@ -407,11 +462,11 @@ public sealed class WorldViewport : Control
         e.Handled = true;
     }
 
-    private uint? FindNearest(Point pointer)
+    private OrganismKey? FindNearest(Point pointer)
     {
         var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
         var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
-        uint? best = null;
+        OrganismKey? best = null;
         var bestDistance = 14.0 * 14.0;
         foreach (var organism in _snapshot.Organisms)
         {
@@ -420,7 +475,7 @@ public sealed class WorldViewport : Control
             var distance = (pointer.X - x) * (pointer.X - x) + (pointer.Y - y) * (pointer.Y - y);
             if (distance >= bestDistance) continue;
             bestDistance = distance;
-            best = organism.Slot;
+            best = KeyOf(organism);
         }
         return best;
     }
@@ -434,6 +489,15 @@ public sealed class WorldViewport : Control
             (float)Math.Clamp((point.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
         ];
     }
+
+    private static OrganismKey KeyOf(OrganismSnapshot organism) =>
+        new(organism.Slot, organism.Generation);
+
+    private static OrganismKey KeyOf(RenderInstanceSnapshot instance) =>
+        new(instance.Slot, instance.Generation);
+
+    private static bool Contains(EngineSnapshot snapshot, OrganismKey key) =>
+        snapshot.Organisms.Any(organism => KeyOf(organism) == key);
 
     private void DrawToroidalEdges(DrawingContext context)
     {

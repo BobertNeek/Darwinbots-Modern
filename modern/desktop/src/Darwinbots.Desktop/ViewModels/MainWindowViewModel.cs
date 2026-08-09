@@ -8,7 +8,8 @@ namespace Darwinbots.Desktop.ViewModels;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
-    private uint? _selectedSlot;
+    private OrganismKey? _selectedKey;
+    private bool _selectionWasLost;
     private ulong _tick;
     private int _population;
     private string _backend = "STARTING";
@@ -110,20 +111,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public OrganismSnapshot? SelectedOrganism => _selectedSlot is { } slot
-        ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == slot)
+    public OrganismSnapshot? SelectedOrganism => _selectedKey is { } key
+        ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == key.Slot && organism.Generation == key.Generation)
         : null;
-    public uint? SelectedSlot => _selectedSlot;
+    public uint? SelectedSlot => _selectedKey?.Slot;
+    public OrganismKey? SelectedKey => _selectedKey;
 
     public void Select(uint slot)
     {
-        _selectedSlot = slot;
+        var organism = _snapshot.Organisms.FirstOrDefault(value => value.Slot == slot);
+        _selectedKey = organism is null ? null : new OrganismKey(organism.Slot, organism.Generation);
+        _selectionWasLost = _selectedKey is null;
+        ApplySelection();
+    }
+
+    public void Select(OrganismKey key)
+    {
+        _selectedKey = _snapshot.Organisms.Any(value => value.Slot == key.Slot && value.Generation == key.Generation)
+            ? key
+            : null;
+        _selectionWasLost = _selectedKey is null;
         ApplySelection();
     }
 
     public void ClearSelection()
     {
-        _selectedSlot = null;
+        _selectedKey = null;
+        _selectionWasLost = true;
         ApplySelection();
     }
 
@@ -137,8 +151,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Tick = snapshot.Tick;
         Population = snapshot.Population;
         Backend = snapshot.Backend;
-        if (_selectedSlot is null || snapshot.Organisms.All(organism => organism.Slot != _selectedSlot))
-            _selectedSlot = SelectDefaultOrganism(snapshot);
+        if (_selectedKey is null)
+        {
+            if (!_selectionWasLost) _selectedKey = SelectDefaultOrganism(snapshot);
+        }
+        else if (snapshot.Organisms.All(organism =>
+                     organism.Slot != _selectedKey.Value.Slot || organism.Generation != _selectedKey.Value.Generation))
+        {
+            _selectedKey = null;
+            _selectionWasLost = true;
+        }
         SpeciesCount = Math.Max(0, snapshot.Species.Count - 1);
         ApplySelection();
         Births = snapshot.Stats.Births;
@@ -257,7 +279,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     : "IDLE";
     }
 
-    private static uint? SelectDefaultOrganism(EngineSnapshot snapshot)
+    private static OrganismKey? SelectDefaultOrganism(EngineSnapshot snapshot)
     {
         var animals = snapshot.Organisms.Where(organism => !organism.Vegetable).ToArray();
         var candidates = animals.Length > 0 ? animals : snapshot.Organisms;
@@ -268,7 +290,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var offsetX = organism.Position.ElementAtOrDefault(0) - centerX;
             var offsetY = organism.Position.ElementAtOrDefault(1) - centerY;
             return offsetX * offsetX + offsetY * offsetY;
-        })?.Slot;
+        }) is { } selected
+            ? new OrganismKey(selected.Slot, selected.Generation)
+            : null;
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)

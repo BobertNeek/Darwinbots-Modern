@@ -85,6 +85,22 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void SnapshotReplacementDoesNotRebindSelectedFocusToAReusedSlot()
+    {
+        var original = new OrganismSnapshot(7, 2, [100f, 100f], [0f, 0f], 100, 1);
+        var replacement = original with { Generation = 3, Energy = 900 };
+        var viewModel = new MainWindowViewModel();
+
+        viewModel.Update(new EngineSnapshot(1, 1, "CPU", [original]));
+        viewModel.Select(new OrganismKey(7, 2));
+        viewModel.Update(new EngineSnapshot(2, 1, "CPU", []));
+        viewModel.Update(new EngineSnapshot(3, 1, "CPU", [replacement]));
+
+        Assert.Null(viewModel.SelectedKey);
+        Assert.Null(viewModel.SelectedOrganism);
+    }
+
+    [Fact]
     public void InspectorReportsPublishedMotionParentageAndActivityInsteadOfStaticLabels()
     {
         var organism = new OrganismSnapshot(
