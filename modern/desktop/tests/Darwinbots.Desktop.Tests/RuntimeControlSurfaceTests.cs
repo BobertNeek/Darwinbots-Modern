@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
+using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -625,6 +626,78 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task ImportAndSaveSelectedOrganismRoundTripsThroughNativeStorageRoute()
+    {
+        var fixture = SyntheticVb6Organism();
+        var (storage, storageState) = OrganismRouteStorage.Create(fixture);
+        var setup = new WorldSetupOptions
+        {
+            CorpseDecay = new Db2CorpseDecayOptions(Mode: Db2CorpseDecayMode.None),
+        };
+        var engine = NativeEngineClientFactory.Instance.Create(setup);
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage);
+            SimulationSession? windowSession = null;
+            try
+            {
+                window.Show();
+                windowSession = Field<SimulationSession>(window, "_session");
+                SetField(window, "_session", simulation);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+                await WaitFor(() => simulation.LatestSnapshot.Organisms.Any(organism =>
+                    organism.Position.SequenceEqual([12.5f, 34.5f])
+                    && organism.Velocity.SequenceEqual([1.25f, -2.5f])
+                    && organism.Energy == 777
+                    && organism.Age == 91
+                    && organism.Body == 321));
+                var imported = Assert.Single(simulation.LatestSnapshot.Organisms.Where(organism =>
+                    organism.Position.SequenceEqual([12.5f, 34.5f])
+                    && organism.Velocity.SequenceEqual([1.25f, -2.5f])
+                    && organism.Energy == 777
+                    && organism.Age == 91
+                    && organism.Body == 321));
+                viewModel.Update(simulation.LatestSnapshot);
+                viewModel.Select(imported.Slot);
+                window.FindControl<WorldViewport>("Viewport")!.SelectSlot(imported.Slot);
+                engine.SetOrganismEnergy(imported.Slot, imported.Generation, 1234);
+                await simulation.StepAsync(0);
+                Assert.Equal(1234, Assert.Single(simulation.LatestSnapshot.Organisms,
+                    organism => organism.Slot == imported.Slot).Energy);
+                window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null);
+
+                window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveEntireOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+                await WaitFor(() => storageState.SavedOrganism is not null);
+                var exported = Db2OrganismFile.Decode(storageState.SavedOrganism!);
+                var member = Assert.Single(exported.Members);
+                Assert.Equal(1, exported.Version);
+                Assert.Equal([12.5f, 34.5f], member.Position);
+                Assert.Equal([1.25f, -2.5f], member.Velocity);
+                Assert.Equal(1234, member.Energy);
+                Assert.Equal(91UL, member.Age);
+                Assert.Equal(321, member.Body);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                if (windowSession is not null) await windowSession.DisposeAsync();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task TeleporterPlacementDispatchesTheDb2SourceDestinationWorkflow()
     {
         var engine = new RecordingEngineClient();
@@ -783,6 +856,149 @@ public sealed class RuntimeControlSurfaceTests
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10);
         Assert.True(condition(), $"Timed out waiting for the serialized UI command batch. Calls: {details?.Invoke()}");
+    }
+
+    private static byte[] SyntheticVb6Organism()
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
+        writer.Write((short)1);
+        foreach (var value in new short[] { 1, 0, 0 }) writer.Write(value);
+        foreach (var value in new[] { 12.5f, 34.5f, 1.25f, -2.5f, 0f, 0f, 0f }) writer.Write(value);
+        for (var tie = 0; tie < 11; tie++)
+        {
+            writer.Write((short)1);
+            writer.Write((short)(tie == 0 ? 7 : 0));
+            writer.Write((short)1);
+            writer.Write(0f);
+            writer.Write(0f);
+            writer.Write((short)0);
+            writer.Write(42);
+            writer.Write(0);
+            for (var value = 0; value < 7; value++) writer.Write((short)0);
+        }
+        writer.Write(777f);
+        for (var value = 0; value < 50; value++)
+        {
+            writer.Write((short)0);
+            writer.Write((short)0);
+        }
+        writer.Write((short)0);
+        for (var value = 0; value <= 1000; value++) writer.Write((short)0);
+        writer.Write((short)2);
+        writer.Write((short)2);
+        writer.Write((short)1);
+        writer.Write((short)10);
+        writer.Write((short)1);
+        for (var value = 0; value < 21; value++) writer.Write(0f);
+        foreach (var value in new short[] { 3, 4, 5 }) writer.Write(value);
+        writer.Write(6);
+        writer.Write(91);
+        writer.Write(44);
+        foreach (var value in new short[] { 1, 2, 2 }) writer.Write(value);
+        for (var value = 0; value < 14; value++) writer.Write((short)0);
+        writer.Write(0);
+        writer.Write(321f);
+        writer.Write(0f);
+        writer.Write((short)0);
+        for (var value = 0; value < 4; value++) writer.Write(0f);
+        writer.Write((short)0);
+        writer.Write((short)-1);
+        writer.Write((short)0);
+        WriteText(writer, "");
+        WriteText(writer, "");
+        writer.Write((short)0);
+        writer.Write((short)0);
+        for (var value = 0; value < 21; value++)
+        {
+            writer.Write(0f);
+            writer.Write(0f);
+        }
+        for (var value = 0; value < 5; value++) writer.Write((short)0);
+        writer.Write((short)7);
+        for (var value = 0; value < 4; value++) writer.Write((short)0);
+        writer.Write(0f);
+        writer.Write(0f);
+        for (var value = 0; value < 5; value++) writer.Write((short)0);
+        for (var value = 0; value < 501; value++)
+        {
+            for (var component = 0; component < 3; component++) writer.Write(0);
+        }
+        writer.Write(0);
+        writer.Write(0);
+        writer.Write((short)0);
+        for (var value = 0; value < 11; value++)
+        {
+            writer.Write((byte)0);
+            writer.Write(0f);
+            writer.Write(0f);
+            writer.Write(0f);
+        }
+        writer.Write(0f);
+        writer.Write(0f);
+        for (var value = 0; value < 15; value++) writer.Write((short)0);
+        writer.Write(new byte[50]);
+        writer.Write((short)0);
+        writer.Write((short)0);
+        writer.Write((byte)0);
+        writer.Write((byte)0);
+        writer.Write((byte)0);
+        writer.Write(0);
+        writer.Write(0f);
+        writer.Write(0f);
+        writer.Write(new byte[] { 254, 254, 254 });
+        writer.Flush();
+        return stream.ToArray();
+    }
+
+    private static void WriteText(BinaryWriter writer, string value)
+    {
+        writer.Write((short)value.Length);
+        writer.Write(Encoding.UTF8.GetBytes(value));
+    }
+
+    private class OrganismRouteStorage : DispatchProxy
+    {
+        private byte[] _fixture = [];
+
+        public byte[]? SavedOrganism { get; private set; }
+
+        public static (IDesktopStorageService Storage, OrganismRouteStorage State) Create(byte[] fixture)
+        {
+            var storage = DispatchProxy.Create<IDesktopStorageService, OrganismRouteStorage>();
+            var state = (OrganismRouteStorage)(object)storage;
+            state._fixture = fixture;
+            return (storage, state);
+        }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod is null) throw new MissingMethodException();
+            if (targetMethod.Name == nameof(IDesktopStorageService.OpenOrganismAsync))
+                return Task.FromResult<byte[]?>(_fixture);
+            if (targetMethod.Name == nameof(IDesktopStorageService.SaveOrganismAsync))
+                return SaveAsync((Func<Stream, Task>)args![2]!);
+            if (targetMethod.ReturnType == typeof(Task)) return Task.CompletedTask;
+            if (targetMethod.ReturnType.IsGenericType
+                && targetMethod.ReturnType.GetGenericTypeDefinition() == typeof(Task<>))
+            {
+                var resultType = targetMethod.ReturnType.GetGenericArguments()[0];
+                return typeof(Task).GetMethod(nameof(Task.FromResult))!
+                    .MakeGenericMethod(resultType)
+                    .Invoke(null, [resultType.IsValueType ? Activator.CreateInstance(resultType) : null]);
+            }
+            return targetMethod.ReturnType.IsValueType
+                ? Activator.CreateInstance(targetMethod.ReturnType)
+                : null;
+        }
+
+        private async Task<bool> SaveAsync(Func<Stream, Task> writeAsync)
+        {
+            await using var stream = new MemoryStream();
+            await writeAsync(stream);
+            SavedOrganism = stream.ToArray();
+            return true;
+        }
     }
 }
 
