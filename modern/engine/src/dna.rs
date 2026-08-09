@@ -376,6 +376,18 @@ impl LegacyDna {
         Some(self.with_blocks(self.blocks[start..end].to_vec()))
     }
 
+    pub(crate) fn delete_gene(&self, requested: i32) -> Option<Self> {
+        let index = usize::try_from(requested.saturating_sub(1)).ok()?;
+        let ranges = self.gene_ranges();
+        if ranges.len() <= 1 {
+            return None;
+        }
+        let (start, end) = *ranges.get(index)?;
+        let mut blocks = self.blocks[..start].to_vec();
+        blocks.extend_from_slice(&self.blocks[end..]);
+        Some(self.with_blocks(blocks))
+    }
+
     pub(crate) fn insert_gene(&self, gene: &Self, boundary: usize) -> Self {
         let ranges = self.gene_ranges();
         let insert_at = ranges.get(boundary).map_or_else(

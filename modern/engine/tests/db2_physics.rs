@@ -351,3 +351,55 @@ fn non_toroidal_border_collision_writes_edge_sense() {
     assert_eq!(engine.memory_at(left, 214).unwrap(), 1);
     assert_eq!(engine.memory_at(right, 214).unwrap(), 1);
 }
+
+#[test]
+fn fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick() {
+    let config = |density: f64, brownian_motion: f32| EngineConfig {
+        metabolism_cost: 0,
+        gravity: [0.0, 10.0],
+        brownian_motion,
+        drag: 0.0,
+        physics: PhysicsSettings {
+            surface_gravity: 0.0,
+            density,
+            viscosity: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    };
+
+    let mut dry = Engine::new(config(0.0, 0.0)).unwrap();
+    let dry_id = dry
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    dry.tick().unwrap();
+
+    let mut wet = Engine::new(config(0.000002, 0.0)).unwrap();
+    let wet_id = wet
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    wet.tick().unwrap();
+
+    assert!(
+        wet.organism(wet_id).unwrap().velocity[1]
+            < dry.organism(dry_id).unwrap().velocity[1] * 0.5,
+        "fluid added mass must reduce gravity acceleration"
+    );
+
+    let mut dry_rotation = Engine::new(config(0.0, 100.0)).unwrap();
+    let dry_rotation_id = dry_rotation
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    dry_rotation.tick().unwrap();
+    dry_rotation.tick().unwrap();
+
+    let mut wet_rotation = Engine::new(config(0.000002, 100.0)).unwrap();
+    let wet_rotation_id = wet_rotation
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    wet_rotation.tick().unwrap();
+    wet_rotation.tick().unwrap();
+
+    assert_ne!(dry_rotation.organism(dry_rotation_id).unwrap().aim, 0);
+    assert_eq!(wet_rotation.organism(wet_rotation_id).unwrap().aim, 0);
+}

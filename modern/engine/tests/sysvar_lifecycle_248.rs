@@ -346,6 +346,25 @@ fn engine_tick_preserves_unfinished_virus_commands() {
 }
 
 #[test]
+fn engine_tick_executes_delgene_in_the_authoritative_virus_phase() {
+    let mut engine = testing_engine();
+    let robot = engine
+        .spawn(
+            LegacyDna::parse(
+                "start\n1 .delgene store\nstop\nstart\n99 .up store\nstop\nend",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    let before = engine.dna(robot).unwrap().blocks().len();
+
+    engine.tick().unwrap();
+
+    assert!(engine.dna(robot).unwrap().blocks().len() < before);
+    assert_eq!(engine.memory(robot, "delgene").unwrap(), 0);
+}
+
+#[test]
 fn engine_tick_keeps_tie_port_selectors_distinct_from_tie_count() {
     let mut engine = testing_engine();
     let first = engine

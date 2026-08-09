@@ -2,6 +2,14 @@ use crate::PhysicsSettings;
 
 const VELOCITY_EPSILON: f32 = 0.000_000_1;
 
+pub(crate) fn fluid_added_mass(radius: f32, density: f64) -> f32 {
+    if radius <= 0.0 || density <= 0.0 {
+        return 0.0;
+    }
+    (0.5 * density * (4.0_f64 / 3.0) * std::f64::consts::PI * f64::from(radius).powi(3))
+        as f32
+}
+
 pub(crate) fn environment_impulse(
     gravity: [f32; 2],
     brownian_motion: f32,

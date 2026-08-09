@@ -352,6 +352,35 @@ fn pass_through_shape_allows_a_projectile_to_reach_the_target() {
 }
 
 #[test]
+fn poff_projectile_is_ornamental_and_does_not_release_target_energy() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n-100 .shoot store\n100 .shootval store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .unwrap();
+    let before = engine.organism(target).unwrap().energy;
+
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.organism(target).unwrap().energy, before);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+}
+
+#[test]
 fn virus_shot_transfers_the_firers_dna() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

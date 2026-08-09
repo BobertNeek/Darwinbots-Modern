@@ -33,7 +33,7 @@ use std::time::Instant;
 use crate::physics::{
     MovementInput, MovementState, apply_angular_damping, apply_resistance,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
-    mutual_gravity_impulses,
+    fluid_added_mass, mutual_gravity_impulses,
 };
 
 const MEM_ROBAGE: i32 = 9;
@@ -4625,6 +4625,7 @@ impl Engine {
             let owner = OrganismId::new(slot_index as u32, generation);
             let mut make_outcome = CommandOutcome::Excluded;
             let mut shoot_outcome = CommandOutcome::Excluded;
+            let mut delete_outcome = CommandOutcome::Excluded;
             if commands.make != 0 && robot.effects.stored_virus.is_none() {
                 let requested_gene = commands.make.max(1);
                 if let Some(gene) = robot.program.dna.gene(requested_gene) {
@@ -4667,9 +4668,16 @@ impl Engine {
                     shoot_outcome = CommandOutcome::Consumed;
                 }
             }
+            if commands.delete_gene > 0 {
+                if let Some(dna) = robot.program.dna.delete_gene(commands.delete_gene) {
+                    robot.program.dna = dna;
+                    robot.refresh_occurrence_census();
+                    delete_outcome = CommandOutcome::Consumed;
+                }
+            }
             runtime.finish_command(335, make_outcome, &mut robot.program.memory);
             runtime.finish_command(338, shoot_outcome, &mut robot.program.memory);
-            runtime.finish_command(340, CommandOutcome::Excluded, &mut robot.program.memory);
+            runtime.finish_command(340, delete_outcome, &mut robot.program.memory);
             publish_reproductive_readbacks(robot);
         }
         for (request, payload) in virus_requests {
@@ -5057,22 +5065,30 @@ impl Engine {
             .enumerate()
             .for_each(|(slot, entry)| {
                 if let Some(robot) = entry.organism.as_mut() {
-                    robot.kinematics.velocity[0] += robot.kinematics.pending_velocity[0];
-                    robot.kinematics.velocity[1] += robot.kinematics.pending_velocity[1];
-                    robot.kinematics.velocity[0] += robot.kinematics.independent_impulse[0];
-                    robot.kinematics.velocity[1] += robot.kinematics.independent_impulse[1];
-                    robot.kinematics.independent_impulse = [0.0; 2];
                     let mass = derived_mass(
                         robot.materials.body,
                         robot.materials.shell,
                         robot.materials.chloroplasts,
                     )
                     .clamp(1.0, 32_000.0);
-                    robot.materials.mass = mass;
-                    robot.materials.radius = crate::physics::organism_radius(
+                    let radius = crate::physics::organism_radius(
                         robot.materials.body,
                         robot.materials.chloroplasts,
                     );
+                    let effective_mass =
+                        (mass + fluid_added_mass(radius, settings.density)).max(1.0);
+                    let force_scale = mass / effective_mass;
+                    robot.kinematics.velocity[0] +=
+                        robot.kinematics.pending_velocity[0] * force_scale;
+                    robot.kinematics.velocity[1] +=
+                        robot.kinematics.pending_velocity[1] * force_scale;
+                    robot.kinematics.velocity[0] +=
+                        robot.kinematics.independent_impulse[0] * force_scale;
+                    robot.kinematics.velocity[1] +=
+                        robot.kinematics.independent_impulse[1] * force_scale;
+                    robot.kinematics.independent_impulse = [0.0; 2];
+                    robot.materials.mass = mass;
+                    robot.materials.radius = radius;
                     let mut effective_gravity = gravity;
                     if pond_mode && effective_gravity[1] != 0.0 {
                         let buoyancy_threshold = (1.0 / tide_scaling.max(f32::EPSILON)
@@ -5086,10 +5102,10 @@ impl Engine {
                     }
                     let impulse =
                         environment_impulse(effective_gravity, brownian, mass, seed, tick, slot);
-                    robot.kinematics.velocity[0] += impulse[0];
-                    robot.kinematics.velocity[1] += impulse[1];
-                    robot.kinematics.velocity[0] += planet_impulses[slot][0];
-                    robot.kinematics.velocity[1] += planet_impulses[slot][1];
+                    robot.kinematics.velocity[0] += impulse[0] * force_scale;
+                    robot.kinematics.velocity[1] += impulse[1] * force_scale;
+                    robot.kinematics.velocity[0] += planet_impulses[slot][0] * force_scale;
+                    robot.kinematics.velocity[1] += planet_impulses[slot][1] * force_scale;
                     robot.kinematics.angular_momentum +=
                         brownian_rotation(brownian, seed, tick, slot);
                     apply_angular_damping(
@@ -6816,6 +6832,7 @@ impl Engine {
                     return false;
                 }
                 match effect {
+                    ProjectileEffect::Ornamental => false,
                     ProjectileEffect::ReleaseEnergy => {
                         if self.fire_defensive_poison(
                             target,
