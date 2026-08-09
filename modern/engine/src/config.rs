@@ -18,6 +18,8 @@ pub struct PhysicsSettings {
     pub planet_eaters: bool,
     #[serde(default)]
     pub planet_eaters_g: f32,
+    #[serde(default)]
+    pub zero_momentum: bool,
 }
 
 impl Default for PhysicsSettings {
@@ -33,6 +35,7 @@ impl Default for PhysicsSettings {
             elasticity: 0.0,
             planet_eaters: false,
             planet_eaters_g: 0.0,
+            zero_momentum: false,
         }
     }
 }

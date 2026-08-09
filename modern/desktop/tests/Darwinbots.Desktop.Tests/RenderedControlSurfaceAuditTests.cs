@@ -575,6 +575,37 @@ public sealed class RenderedControlSurfaceAuditTests
         Assert.Null(callbackFailure);
     }
 
+    [Fact]
+    public async Task MainWindowKeepsBottomDashboardVisibleAndUsableAt1500x900()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions());
+            ShowForInteraction(window, 1500, 900);
+            try
+            {
+                Capture(window, "shell-dashboard-1500x900.png");
+                var surface = Named<Grid>(window, "MainSurfaceGrid");
+                var dashboard = Named<ItemsControl>(window, "StatusInstrument");
+                var theme = Named<ComboBox>(window, "ThemeSelector");
+                var culture = Named<ComboBox>(window, "CultureSelector");
+
+                Assert.True(dashboard.IsVisible);
+                Assert.True(dashboard.Bounds.Height >= 52, $"Dashboard height was {dashboard.Bounds.Height}.");
+                Assert.InRange(dashboard.Bounds.Bottom, 0, surface.Bounds.Height);
+                Assert.InRange(theme.Bounds.Bottom, 0, surface.Bounds.Height);
+                Assert.InRange(culture.Bounds.Bottom, 0, surface.Bounds.Height);
+                Assert.True(theme.Bounds.Width >= 90);
+                Assert.True(culture.Bounds.Width >= 120);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void ShowAndCapture(Window window, double width, double height, string evidenceName)
     {
         ShowForInteraction(window, width, height);

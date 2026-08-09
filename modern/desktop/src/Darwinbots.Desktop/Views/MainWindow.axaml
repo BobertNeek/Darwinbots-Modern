@@ -10,7 +10,7 @@
          KeyDown="MainWindow_KeyDown" SizeChanged="MainWindow_SizeChanged">
   <Grid RowDefinitions="34,*" Background="{DynamicResource WindowBrush}">
     <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
-    <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,34,*,170,48,40" ColumnDefinitions="250,*,280">
+  <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,34,*,170,62,40" ColumnDefinitions="250,*,280">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
@@ -24,7 +24,8 @@
           <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" Margin="6,0,0,0">
           <ComboBox x:Name="RuntimeSpeed" Width="84" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
           <Button x:Name="BackendButton" Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />
-          <Button x:Name="SunButton" Height="34" Content="SUN ON" ToolTip.Tip="Toggle the simulation sun" AutomationProperties.Name="SUN ON" AutomationProperties.HelpText="Toggle daytime sunlight in the local simulation." Click="Sun_Click" />
+           <Button x:Name="SunButton" Height="34" Content="SUN ON" ToolTip.Tip="Toggle the simulation sun" AutomationProperties.Name="SUN ON" AutomationProperties.HelpText="Toggle daytime sunlight in the local simulation." Click="Sun_Click" />
+           <Button x:Name="InternetButton" Height="34" Content="INTERNET OFFLINE" IsEnabled="False" ToolTip.Tip="Online play is disabled in this local-only build." AutomationProperties.Name="INTERNET OFFLINE" AutomationProperties.HelpText="Historical internet controls remain visible but disabled and inert." />
           <Button x:Name="ContestIndicator" Height="34" Content="CONTEST RESULTS" ToolTip.Tip="Open local contest results" AutomationProperties.Name="CONTEST RESULTS" AutomationProperties.HelpText="Open local contest results. Online play is disabled." Click="ContestResults_Click" />
           <Button x:Name="GraphsButton" Height="34" Content="GRAPHS" Click="Graphs_Click" />
           <Button x:Name="ContestResultsButton" Height="34" Content="CONTEST" Click="ContestResults_Click" />
@@ -346,7 +347,7 @@
           <ComboBoxItem Content="DARK" />
         </ComboBox>
         <TextBlock x:Name="CultureLabel" Grid.Column="4" Text="LANGUAGE" FontSize="10" VerticalAlignment="Center" />
-        <ComboBox x:Name="CultureSelector" Grid.Column="5" SelectedIndex="0" ToolTip.Tip="Select the interface language and number format" AutomationProperties.Name="INTERFACE LANGUAGE" SelectionChanged="CultureSelector_Changed">
+        <ComboBox x:Name="CultureSelector" Grid.Column="5" MinWidth="120" SelectedIndex="0" ToolTip.Tip="Select the interface language and number format" AutomationProperties.Name="INTERFACE LANGUAGE" SelectionChanged="CultureSelector_Changed">
           <ComboBoxItem Content="English" />
           <ComboBoxItem Content="Deutsch" />
           <ComboBoxItem Content="Italiano" />

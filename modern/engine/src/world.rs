@@ -671,6 +671,7 @@ impl From<Db3sV2PhysicsSettings> for PhysicsSettings {
             elasticity: value.elasticity,
             planet_eaters: false,
             planet_eaters_g: 0.0,
+            zero_momentum: false,
         }
     }
 }
@@ -5492,6 +5493,9 @@ impl Engine {
             .enumerate()
             .for_each(|(slot, entry)| {
                 if let Some(robot) = entry.organism.as_mut() {
+                    if settings.zero_momentum {
+                        robot.kinematics.velocity = [0.0; 2];
+                    }
                     let mass = derived_mass(
                         robot.materials.body,
                         robot.materials.shell,

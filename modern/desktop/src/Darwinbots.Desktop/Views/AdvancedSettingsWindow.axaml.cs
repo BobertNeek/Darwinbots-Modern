@@ -22,7 +22,7 @@ public sealed partial class AdvancedSettingsWindow : Window
     };
     public EnvironmentUpdate Update => new(
         (int)(Metabolism.Value ?? 1), (int)(VegetableEnergy.Value ?? 0), (int)(Sunlight.Value ?? 100), [(float)(GravityX.Value ?? 0), (float)(GravityY.Value ?? 0)], (float)(Drag.Value ?? 0), Db2BrownianScale.FromPercent(Brownian.Value ?? 0),
-        new Db2PhysicsOptions((float)(MaxVelocity.Value ?? 180), (float)(MovementEfficiency.Value ?? 0.66m), (float)(SurfaceGravity.Value ?? 2), (float)(StaticFriction.Value ?? 0.6m), (float)(KineticFriction.Value ?? 0.4m), (double)(Density.Value ?? 0), (double)(Viscosity.Value ?? 0), (float)(Elasticity.Value ?? 0m), PlanetEaters.IsChecked == true, (float)(PlanetEatersG.Value ?? 0m)),
+        new Db2PhysicsOptions((float)(MaxVelocity.Value ?? 180), (float)(MovementEfficiency.Value ?? 0.66m), (float)(SurfaceGravity.Value ?? 2), (float)(StaticFriction.Value ?? 0.6m), (float)(KineticFriction.Value ?? 0.4m), (double)(Density.Value ?? 0), (double)(Viscosity.Value ?? 0), (float)(Elasticity.Value ?? 0m), PlanetEaters.IsChecked == true, (float)(PlanetEatersG.Value ?? 0m), ZeroMomentum.IsChecked == true),
         new Db2ShotOptions((float)(ShotSpeed.Value ?? 40), (float)(ShotRangeMultiplier.Value ?? 1), (float)(ShotDecay.Value ?? 40), EnergyShotsNoDecay.IsChecked == true, WasteShotsNoDecay.IsChecked == true),
         new Db2VegetationOptions((int)(StartChloroplasts.Value ?? 16_000), (int)(MaxPlantEnergy.Value ?? 40), (int)(MinimumChloroplastEquivalents.Value ?? 10), (int)(RepopulationAmount.Value ?? 10), (ulong)(RepopulationCooldown.Value ?? 25), (float)(FeedingToBody.Value ?? 0.5m), Daytime.IsChecked == true, DayNightEnabled.IsChecked == true, (ulong)(CycleLength.Value ?? 10_000), PondMode.IsChecked == true, (float)(PondLightIntensity.Value ?? 100m), (float)(PondGradient.Value ?? 1m), (uint)(TidePeriod.Value ?? 0), (int)(TideOffset.Value ?? 0), WeatherEnabled.IsChecked == true, SunUpEnabled.IsChecked == true, (int)(SunUpThreshold.Value ?? 500_000), SunDownEnabled.IsChecked == true, (int)(SunDownThreshold.Value ?? 1_000_000), SunThresholdMode.SelectedIndex),
         AutoSpeciation.IsChecked == true,
@@ -47,9 +47,10 @@ public sealed partial class AdvancedSettingsWindow : Window
             (int)(SamplingInterval.Value ?? 10)));
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
-    public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null)
+    public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0)
     {
         InitializeComponent();
+        SettingsTabs.SelectedIndex = Math.Clamp(selectedTab, 0, 3);
         ToroidalWorld.IsCheckedChanged += (_, _) =>
         {
             if (_initializing || _updatingTopology || ToroidalWorld.IsChecked is null) return;
@@ -111,6 +112,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         Elasticity.Value = (decimal)physics.Elasticity;
         PlanetEaters.IsChecked = physics.PlanetEaters;
         PlanetEatersG.Value = (decimal)physics.PlanetEatersG;
+        ZeroMomentum.IsChecked = physics.ZeroMomentum;
         PhysicsPreset.SelectedIndex = physics == Db2PhysicsOptions.ForPreset(Db2PhysicsPreset.Fluid)
             ? (int)Db2PhysicsPreset.Fluid
             : physics == Db2PhysicsOptions.ForPreset(Db2PhysicsPreset.Solid)

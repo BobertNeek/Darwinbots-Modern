@@ -588,9 +588,7 @@ public sealed partial class MainWindow : Window
             async _ => await ShowRestrictionOverridesAsync());
         foreach (var command in new[]
                  {
-                     LegacyCommandId.EditSpecies,
-                     LegacyCommandId.EditGeneralSettings,
-                     LegacyCommandId.EditPhysicsAndCosts,
+                      LegacyCommandId.EditSpecies,
                      LegacyCommandId.EditGlobalSettings,
                      LegacyCommandId.EditGlobalMutationRates,
                      LegacyCommandId.RobotMutationRates,
@@ -599,6 +597,12 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.EditGlobalSettings] = Handler(
             () => LegacyCommandState.Available,
             async _ => await OpenGlobalSettingsCommandAsync());
+        handlers[LegacyCommandId.EditGeneralSettings] = Handler(
+            EngineState,
+            async _ => await OpenAdvancedSettingsCommandAsync(1));
+        handlers[LegacyCommandId.EditPhysicsAndCosts] = Handler(
+            EngineState,
+            async _ => await OpenAdvancedSettingsCommandAsync(2));
         handlers[LegacyCommandId.EditGlobalMutationRates] = Handler(
             EngineState,
             async _ => await OpenGlobalMutationRatesCommandAsync());
@@ -1231,10 +1235,10 @@ public sealed partial class MainWindow : Window
         return Task.FromResult(LegacyCommandResult.Success(title.ToUpperInvariant()));
     }
 
-    private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync()
+    private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab = 0)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot);
+        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
         await _session.UpdateEnvironmentAsync(dialog.Update);
@@ -2273,7 +2277,7 @@ public sealed partial class MainWindow : Window
     private async void LiveAdvanced_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot);
+        var dialog = new AdvancedSettingsWindow(_liveEnvironment, _session.LatestSnapshot, selectedTab: 2);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return;
         var update = dialog.Update;

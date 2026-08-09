@@ -19,7 +19,8 @@ public sealed record Db2PhysicsOptions(
     double Viscosity,
     float Elasticity,
     bool PlanetEaters = false,
-    float PlanetEatersG = 0f)
+    float PlanetEatersG = 0f,
+    bool ZeroMomentum = false)
 {
     public static Db2PhysicsOptions Default { get; } = new(180f, 0.66f, 2f, 0.6f, 0.4f, 0d, 0d, 0f);
 
@@ -29,7 +30,9 @@ public sealed record Db2PhysicsOptions(
 
     public string ContextualHelp =>
         "Reynolds number is the unitless ratio of turbulent to laminar flow. " +
-        "Values below 3E+5 are characteristic of laminar flow.";
+        "Values below 3E+5 are characteristic of laminar flow. " +
+        "Mass is measured in Masses. Force is Mass twip per cycle per cycle. " +
+        "Energy is NRG, and impulse is a Bang.";
 
     public static IReadOnlyList<Db2PhysicsOptions> FluidPresets { get; } =
     [
@@ -318,6 +321,7 @@ public static class NativeCommandSerializer
         elasticity = value.Elasticity,
         planet_eaters = value.PlanetEaters,
         planet_eaters_g = value.PlanetEatersG,
+        zero_momentum = value.ZeroMomentum,
         reynolds = value.ReynoldsNumber,
     };
 

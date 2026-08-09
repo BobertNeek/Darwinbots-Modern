@@ -16,7 +16,7 @@
       </Grid>
     </Border>
 
-    <TabControl Grid.Row="1" TabStripPlacement="Left" Margin="16" Background="Transparent">
+    <TabControl x:Name="SettingsTabs" Grid.Row="1" TabStripPlacement="Left" Margin="16" Background="Transparent">
       <TabItem Header="MUTATION"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
         <Border Classes="card"><StackPanel Spacing="12">
           <TextBlock Classes="section" Text="GLOBAL MUTATION PRESSURE"/>
@@ -112,7 +112,8 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
           <Grid ColumnDefinitions="*,150"><StackPanel><TextBlock Text="Brownian motion"/><TextBlock Text="0% off · 75% DB2 medium · 100% high" Foreground="#758078" FontSize="11"/></StackPanel><NumericUpDown Grid.Column="1" x:Name="Brownian" Minimum="0" Maximum="100"/></Grid>
           <CheckBox x:Name="PlanetEaters" Content="Enable Planet Eaters mutual gravity"/>
-          <Grid ColumnDefinitions="*,150"><TextBlock Text="Planet Eaters G"/><NumericUpDown Grid.Column="1" x:Name="PlanetEatersG" Minimum="0" Maximum="1000000" Increment="0.01"/></Grid>
+           <Grid ColumnDefinitions="*,150"><TextBlock Text="Planet Eaters G"/><NumericUpDown Grid.Column="1" x:Name="PlanetEatersG" Minimum="0" Maximum="1000000" Increment="0.01"/></Grid>
+           <CheckBox x:Name="ZeroMomentum" Content="Zero momentum (no carried motion)"/>
         </StackPanel></Border>
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="SHOTS"/>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Speed"/><NumericUpDown Grid.Column="1" x:Name="ShotSpeed" Minimum="1" Maximum="1000"/></Grid>
@@ -120,12 +121,12 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Decay"/><NumericUpDown Grid.Column="1" x:Name="ShotDecay" Minimum="0" Maximum="10000"/></Grid>
           <CheckBox x:Name="EnergyShotsNoDecay" Content="Energy shots do not decay"/><CheckBox x:Name="WasteShotsNoDecay" Content="Waste shots do not decay"/>
         </StackPanel></Border>
-      </StackPanel></ScrollViewer></TabItem>
-
+       </StackPanel></ScrollViewer></TabItem>
       <TabItem Header="WORLD"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="WORLD TOPOLOGY"/><CheckBox x:Name="ToroidalWorld" Content="Wrap both axes (toroidal world)"/><CheckBox x:Name="WrapX" Content="Wrap left and right edges"/><CheckBox x:Name="WrapY" Content="Wrap top and bottom edges"/><TextBlock Text="Each axis is independent. Bounded edges keep the robot radius inside the world and report edge contact." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="LINEAGES"/><CheckBox x:Name="AutoSpeciation" Content="Automatic speciation after accumulated DNA mutations"/><Grid ColumnDefinitions="*,150"><TextBlock Text="Genetic distance threshold (%)"/><NumericUpDown Grid.Column="1" x:Name="SpeciationDistance" Minimum="0.1" Maximum="10000" Increment="0.5" FormatString="0.0"/></Grid><TextBlock Text="A lineage receives a modest inherited skin-color change after this percentage of its DNA has mutated." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
-      </StackPanel></ScrollViewer></TabItem>
+       </StackPanel></ScrollViewer></TabItem>
+       <TabItem Header="INTERNET" IsEnabled="False"><Border Classes="card" Margin="18,0,4,20"><StackPanel Spacing="8"><TextBlock Classes="section" Text="INTERNET DISABLED"/><TextBlock Text="Historical internet settings remain visible for compatibility. This local-only runtime does not connect, transfer, or start online services." TextWrapping="Wrap"/><TextBlock Text="No online backend is configured." Foreground="#794A1D"/></StackPanel></Border></TabItem>
     </TabControl>
 
     <Border Grid.Row="2" Background="#E5E0D4" BorderBrush="#C8C3B6" BorderThickness="0,1,0,0" Padding="16,10"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Changes apply to the running simulation on the engine thread." VerticalAlignment="Center" Foreground="#66706B"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click"/><Button x:Name="ApplyButton" Classes="primary" Content="APPLY CHANGES" Click="Apply_Click"/></StackPanel></Grid></Border>

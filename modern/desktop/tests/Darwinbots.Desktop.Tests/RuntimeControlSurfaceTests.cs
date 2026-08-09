@@ -5,7 +5,9 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.ViewModels;
@@ -197,6 +199,78 @@ public sealed class RuntimeControlSurfaceTests
                 () => string.Join(", ", engine.Calls));
             window.Close();
             return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task HistoricSettingsRoutesKeepDistinctWorkflowsPublishPhysicsAndLeaveOnlineControlsInert()
+    {
+        var engine = new RecordingEngineClient();
+        await using var simulation = new SimulationSession(engine);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = RuntimeWindow(simulation);
+            window.Show();
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var general = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
+                general.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                var generalDialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.Equal(1, generalDialog.GetVisualDescendants().OfType<TabControl>().Single().SelectedIndex);
+                generalDialog.Close();
+
+                var physics = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditPhysicsAndCosts)!;
+                physics.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                var physicsDialog = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.Equal(2, physicsDialog.GetVisualDescendants().OfType<TabControl>().Single().SelectedIndex);
+
+                physicsDialog.FindControl<ComboBox>("PhysicsPreset")!.SelectedIndex = (int)Db2PhysicsPreset.Custom;
+                physicsDialog.FindControl<Button>("PhysicsHelpButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var physicsHelp = physicsDialog.FindControl<TextBlock>("PhysicsHelpText")!.Text!;
+                Assert.Contains("Mass", physicsHelp, StringComparison.Ordinal);
+                Assert.Contains("Bang", physicsHelp, StringComparison.Ordinal);
+                Assert.NotNull(physicsDialog.FindControl<CheckBox>("ZeroMomentum"));
+                physicsDialog.FindControl<NumericUpDown>("MaxVelocity")!.Value = 360;
+                physicsDialog.FindControl<NumericUpDown>("MovementEfficiency")!.Value = 0.72m;
+                physicsDialog.FindControl<NumericUpDown>("GravityX")!.Value = 7;
+                physicsDialog.FindControl<NumericUpDown>("GravityY")!.Value = -3;
+                physicsDialog.FindControl<NumericUpDown>("SurfaceGravity")!.Value = 3;
+                physicsDialog.FindControl<NumericUpDown>("StaticFriction")!.Value = 0.8m;
+                physicsDialog.FindControl<NumericUpDown>("KineticFriction")!.Value = 0.5m;
+                physicsDialog.FindControl<NumericUpDown>("Density")!.Value = 0.0001m;
+                physicsDialog.FindControl<NumericUpDown>("Viscosity")!.Value = 0.0002m;
+                physicsDialog.FindControl<NumericUpDown>("Elasticity")!.Value = 1.5m;
+                physicsDialog.FindControl<NumericUpDown>("Drag")!.Value = 0.25m;
+                physicsDialog.FindControl<NumericUpDown>("Brownian")!.Value = 75;
+                physicsDialog.FindControl<CheckBox>("PlanetEaters")!.IsChecked = true;
+                physicsDialog.FindControl<NumericUpDown>("PlanetEatersG")!.Value = 2.5m;
+                physicsDialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                await WaitFor(() => engine.EnvironmentUpdates.Count == 1, () => string.Join(", ", engine.Calls));
+                var update = engine.EnvironmentUpdates.Single();
+                Assert.Equal([7f, -3f], update.Gravity);
+                Assert.Equal(0.25f, update.Drag);
+                Assert.Equal(0.75f, update.BrownianMotion);
+                Assert.Equal(new Db2PhysicsOptions(360f, 0.72f, 3f, 0.8f, 0.5f, 0.0001d, 0.0002d, 1.5f, true, 2.5f), update.Physics);
+                Assert.Contains("\"zero_momentum\":false", NativeCommandSerializer.SerializeEnvironment(update), StringComparison.Ordinal);
+
+                var timer = Field<DispatcherTimer>(window, "_runTimer");
+                window.FindControl<Button>("ToolbarSlot09")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.False(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!.IsEnabled);
+                Assert.Equal(TimeSpan.FromMilliseconds(67), timer.Interval);
+                Assert.DoesNotContain("Internet", engine.Calls);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 
