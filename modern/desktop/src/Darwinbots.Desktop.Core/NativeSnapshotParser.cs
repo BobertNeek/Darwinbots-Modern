@@ -40,6 +40,7 @@ public static class NativeSnapshotParser
             Vision = ParseVision(organism.Vision),
             CurrentGene = organism.CurrentGene,
             ConditionCount = organism.ConditionCount,
+            BirthCycle = organism.BirthCycle,
             ActivationBitmap = organism.ActivationBitmap ?? [],
             ActivationHistory = (organism.ActivationHistory ?? [])
                 .Select(frame => new ActivationFrameSnapshot(frame.Tick, frame.Activations ?? []))
@@ -52,6 +53,7 @@ public static class NativeSnapshotParser
             Radius = organism.Radius,
             PermanentWaste = organism.PermanentWaste,
             Offspring = organism.Offspring,
+            Kills = organism.Kills,
             Descendants = organism.Descendants,
             SimulationId = organism.SimulationId,
             UniqueId = organism.UniqueId,
@@ -122,7 +124,20 @@ public static class NativeSnapshotParser
             value.Sent,
             value.Received,
             value.BackflowGuard)).ToArray();
-        var corpses = (native.Corpses ?? []).Select(value => new CorpseSnapshot(value.Position, value.Velocity, value.Energy, value.Body, value.Age, value.Species, value.Repopulating)).ToArray();
+        var corpses = (native.Corpses ?? []).Select(value => new CorpseSnapshot(value.Position, value.Velocity, value.Energy, value.Body, value.Age, value.Species, value.Repopulating)
+        {
+            Dna = value.Dna ?? string.Empty,
+            Generation = value.Generation,
+            BirthCycle = value.BirthCycle,
+            Parent = value.Parent is null ? null : new OrganismKey(value.Parent.Slot, value.Parent.Generation),
+            Offspring = value.Offspring,
+            Kills = value.Kills,
+            NewMutations = value.NewMutations,
+            TotalMutations = value.TotalMutations,
+            DnaLength = value.DnaLength,
+            UniqueId = value.UniqueId,
+            Chloroplasts = value.Chloroplasts,
+        }).ToArray();
         var shots = (native.Shots ?? []).Select(value => new ShotSnapshot(
             new OrganismKey(value.Owner.Slot, value.Owner.Generation),
             value.Start,
@@ -450,7 +465,18 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("body")] int Body,
         [property: JsonPropertyName("age")] ulong Age,
         [property: JsonPropertyName("species")] uint Species,
-        [property: JsonPropertyName("repopulating")] bool Repopulating);
+        [property: JsonPropertyName("repopulating")] bool Repopulating,
+        [property: JsonPropertyName("dna")] string? Dna,
+        [property: JsonPropertyName("generation")] uint Generation,
+        [property: JsonPropertyName("birth_cycle")] ulong BirthCycle,
+        [property: JsonPropertyName("parent")] NativeId? Parent,
+        [property: JsonPropertyName("offspring")] ulong Offspring,
+        [property: JsonPropertyName("kills")] ulong Kills,
+        [property: JsonPropertyName("new_mutations")] ulong NewMutations,
+        [property: JsonPropertyName("total_mutations")] ulong TotalMutations,
+        [property: JsonPropertyName("dna_length")] uint DnaLength,
+        [property: JsonPropertyName("unique_id")] ulong UniqueId,
+        [property: JsonPropertyName("chloroplasts")] int Chloroplasts);
 
     private sealed record NativeShot(
         [property: JsonPropertyName("owner")] NativeId Owner,
@@ -579,6 +605,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("velocity")] float[] Velocity,
         [property: JsonPropertyName("energy")] int Energy,
         [property: JsonPropertyName("age")] ulong Age,
+        [property: JsonPropertyName("birth_cycle")] ulong BirthCycle,
         [property: JsonPropertyName("species")] uint Species,
         [property: JsonPropertyName("vegetable")] bool Vegetable,
         [property: JsonPropertyName("body")] int Body,
@@ -606,6 +633,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("radius")] float Radius,
         [property: JsonPropertyName("permanent_waste")] int PermanentWaste,
         [property: JsonPropertyName("offspring")] ulong Offspring,
+        [property: JsonPropertyName("kills")] ulong Kills,
         [property: JsonPropertyName("descendants")] ulong Descendants,
         [property: JsonPropertyName("simulation_id")] ulong SimulationId,
         [property: JsonPropertyName("unique_id")] ulong UniqueId,

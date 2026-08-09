@@ -927,21 +927,39 @@ public sealed partial class MainWindow : Window
         var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
         {
             Title = "Save snapshot of the living",
-            SuggestedFileName = $"darwinbots-living-{_session.LatestSnapshot.Tick}.json",
-            DefaultExtension = "json",
-            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots living snapshot") { Patterns = ["*.json"] }],
+            SuggestedFileName = $"darwinbots-living-{_session.LatestSnapshot.Tick}.snp",
+            DefaultExtension = "snp",
+            FileTypeChoices =
+            [
+                new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots living snapshot") { Patterns = ["*.snp"] },
+                new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots Modern JSON snapshot") { Patterns = ["*.json"] },
+            ],
         });
         if (file is null) return LegacyCommandResult.Cancel();
         await using var stream = await file.OpenWriteAsync();
-        await System.Text.Json.JsonSerializer.SerializeAsync(stream, new
+        stream.SetLength(0);
+        if (Path.GetExtension(file.Name).Equals(".json", StringComparison.OrdinalIgnoreCase))
         {
-            version = 1,
-            tick = _session.LatestSnapshot.Tick,
-            world_size = _session.LatestSnapshot.WorldSize,
-            organisms = _session.LatestSnapshot.Organisms,
-            species = _session.LatestSnapshot.Species,
-            stats = _session.LatestSnapshot.Stats,
-        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            await System.Text.Json.JsonSerializer.SerializeAsync(stream, new
+            {
+                version = 1,
+                tick = _session.LatestSnapshot.Tick,
+                world_size = _session.LatestSnapshot.WorldSize,
+                organisms = _session.LatestSnapshot.Organisms,
+                species = _session.LatestSnapshot.Species,
+                stats = _session.LatestSnapshot.Stats,
+            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        else
+        {
+            var dna = new Dictionary<OrganismKey, string>();
+            foreach (var organism in _session.LatestSnapshot.Organisms)
+                dna[new OrganismKey(organism.Slot, organism.Generation)] =
+                    await _session.ExportDnaAsync(organism.Slot, organism.Generation);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(
+                Db2GenomeRecordFile.EncodeLiving(_session.LatestSnapshot, dna));
+            await stream.WriteAsync(bytes);
+        }
         return LegacyCommandResult.Success($"LIVING SNAPSHOT · {file.Name}");
     }
 
@@ -971,12 +989,13 @@ public sealed partial class MainWindow : Window
         {
             var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern", "records");
             Directory.CreateDirectory(directory);
-            var path = Path.Combine(directory, "dead.jsonl");
-            var lines = snapshot.Corpses.Skip(_recordedCorpseCount)
+            var path = Path.Combine(directory, "DeadRobots.snp");
+            var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
                 .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
-                .Select(corpse => System.Text.Json.JsonSerializer.Serialize(new { version = 1, tick = snapshot.Tick, corpse }))
                 .ToArray();
-            File.AppendAllLines(path, lines);
+            var text = Db2GenomeRecordFile.EncodeDead(corpses, snapshot.Species, !File.Exists(path));
+            if (corpses.Any(corpse => !string.IsNullOrWhiteSpace(corpse.Dna)))
+                File.AppendAllText(path, text, System.Text.Encoding.UTF8);
             _recordedCorpseCount = snapshot.Corpses.Count;
         }
         catch (Exception error)
@@ -1159,27 +1178,33 @@ public sealed partial class MainWindow : Window
         var memberKeys = group.Select(value => new OrganismKey(value.Slot, value.Generation)).ToHashSet();
         var snapshot = _session.LatestSnapshot;
         var ties = FilterTiesForCapturedGroup(snapshot.Ties, memberKeys);
-        var saved = await _storage.SaveOrganismAsync(this, $"organism-{_viewModel.SelectedSlot}.json", async stream =>
+        var saved = await _storage.SaveOrganismAsync(this, $"organism-{_viewModel.SelectedSlot}.dbo", async stream =>
         {
-            var members = new List<object>();
+            var members = new List<Db2OrganismMember>();
             foreach (var member in group)
             {
                 var dna = await _session.ExportDnaAsync(member.Slot, member.Generation);
-                members.Add(new
-                {
+                members.Add(new Db2OrganismMember(
                     member.Slot,
                     member.Generation,
+                    dna,
                     member.Species,
+                    member.Vegetable,
+                    false,
+                    false,
                     member.Position,
                     member.Velocity,
                     member.Energy,
                     member.Age,
-                    BirthCycle = 0UL,
-                    member.Body,
-                    dna,
-                });
+                    member.BirthCycle,
+                    member.Body));
             }
-            await System.Text.Json.JsonSerializer.SerializeAsync(stream, new { version = 1, tick = snapshot.Tick, members, ties }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            var db2Ties = ties.Select(tie => new Db2OrganismTie(
+                new Db2OrganismKey(tie.First.Slot, tie.First.Generation),
+                new Db2OrganismKey(tie.Second.Slot, tie.Second.Generation),
+                tie.RestLength)).ToArray();
+            var bytes = new Db2OrganismFile(1, snapshot.Tick, members, db2Ties).Encode();
+            await stream.WriteAsync(bytes);
         });
         return saved
             ? LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)")

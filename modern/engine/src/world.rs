@@ -264,6 +264,8 @@ pub struct OrganismSnapshot {
     #[serde(default)]
     pub descendants: u64,
     #[serde(default)]
+    pub kills: u64,
+    #[serde(default)]
     pub simulation_id: u64,
     #[serde(default)]
     pub unique_id: u64,
@@ -1306,6 +1308,7 @@ impl From<Db3sV2OrganismSnapshot> for OrganismSnapshot {
             poisoned: value.poisoned,
             offspring: 0,
             descendants: 0,
+            kills: 0,
             simulation_id: 0,
             unique_id: 0,
             virus_timer: 0,
@@ -1342,6 +1345,7 @@ impl From<Db3sV2CorpseSnapshot> for CorpseSnapshot {
             age: value.age,
             species: value.species,
             repopulating: value.repopulating,
+            ..Self::default()
         }
     }
 }
@@ -2704,14 +2708,8 @@ impl Engine {
                 .species
                 .get(species as usize)
                 .is_some_and(|value| value.reseed);
-            self.corpses.push(CorpseSnapshot::new(
-                robot.kinematics.position,
-                robot.kinematics.velocity,
-                robot.materials.body,
-                robot.materials.waste,
-                species,
-                repopulating,
-            ));
+            self.corpses
+                .push(CorpseSnapshot::from_robot(&robot, species, repopulating));
             self.stats.deaths = self.stats.deaths.saturating_add(1);
             remaining = remaining.saturating_sub(dna_length);
             removed.push(id);
@@ -7215,6 +7213,9 @@ impl Engine {
                 age: organism.age,
                 species: organism.species,
                 repopulating: organism.repopulating,
+                dna: organism.dna.clone(),
+                birth_cycle: organism.birth_cycle,
+                ..CorpseSnapshot::default()
             });
             self.publish_snapshot();
             return Ok(None);
@@ -7886,11 +7887,8 @@ impl Engine {
                     .get(species as usize)
                     .is_some_and(|value| value.reseed);
                 if self.config.corpse_decay.enabled {
-                    self.corpses.push(CorpseSnapshot::new(
-                        organism.kinematics.position,
-                        organism.kinematics.velocity,
-                        organism.materials.body,
-                        organism.materials.waste,
+                    self.corpses.push(CorpseSnapshot::from_robot(
+                        &organism,
                         species,
                         repopulating,
                     ));
@@ -9225,6 +9223,7 @@ fn snapshot_organism(
         poisoned: organism.materials.poisoned,
         offspring: organism.counters.offspring,
         descendants: organism.counters.descendants,
+        kills: organism.counters.kills,
         simulation_id: organism.identity.simulation_id,
         unique_id: organism.identity.absolute_id,
         virus_timer: organism.effects.virus_build_timer,

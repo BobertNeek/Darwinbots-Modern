@@ -473,7 +473,7 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
-    public async Task SaveEntireOrganismMenuWritesTheExactTiedGroupJsonThroughThePicker()
+    public async Task SaveEntireOrganismMenuWritesTheExactTiedGroupDb2FrameThroughThePicker()
     {
         var selected = RecordingEngineClient.Organism;
         var tied = selected with { Slot = 4, Generation = 7 };
@@ -516,27 +516,25 @@ public sealed class RuntimeControlSurfaceTests
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
                 await WaitFor(() => storage.SavedOrganism is not null);
-                Assert.Equal("organism-3.json", storage.SavedOrganismSuggestedFileName);
-                using var document = System.Text.Json.JsonDocument.Parse(storage.SavedOrganism!);
-                var root = document.RootElement;
-                Assert.Equal(1, root.GetProperty("version").GetInt32());
-                Assert.Equal(42UL, root.GetProperty("tick").GetUInt64());
+                Assert.Equal("organism-3.dbo", storage.SavedOrganismSuggestedFileName);
+                var file = Db2OrganismFile.Decode(storage.SavedOrganism!);
+                Assert.Equal(1, file.Version);
+                Assert.Equal(42UL, file.Tick);
 
-                var members = root.GetProperty("members").EnumerateArray().ToArray();
-                Assert.Equal(2, members.Length);
-                Assert.Equal((3U, 2U), (members[0].GetProperty("Slot").GetUInt32(), members[0].GetProperty("Generation").GetUInt32()));
-                Assert.Equal((4U, 7U), (members[1].GetProperty("Slot").GetUInt32(), members[1].GetProperty("Generation").GetUInt32()));
-                Assert.All(members, member => Assert.Equal("start\nstop", member.GetProperty("dna").GetString()));
+                var members = file.Members;
+                Assert.Equal(2, members.Count);
+                Assert.Equal((3U, 2U), (members[0].Slot, members[0].Generation));
+                Assert.Equal((4U, 7U), (members[1].Slot, members[1].Generation));
+                Assert.All(members, member => Assert.Equal("start\nstop", member.Dna));
 
-                var ties = root.GetProperty("ties").EnumerateArray().ToArray();
-                var tie = Assert.Single(ties);
-                Assert.Equal((3U, 2U), (tie.GetProperty("First").GetProperty("Slot").GetUInt32(), tie.GetProperty("First").GetProperty("Generation").GetUInt32()));
-                Assert.Equal((4U, 7U), (tie.GetProperty("Second").GetProperty("Slot").GetUInt32(), tie.GetProperty("Second").GetProperty("Generation").GetUInt32()));
-                var serializedSlots = members.Select(member => member.GetProperty("Slot").GetUInt32())
-                    .Concat(ties.SelectMany(value => new[]
+                var tie = Assert.Single(file.Ties);
+                Assert.Equal((3U, 2U), (tie.First.Slot, tie.First.Generation));
+                Assert.Equal((4U, 7U), (tie.Second.Slot, tie.Second.Generation));
+                var serializedSlots = members.Select(member => member.Slot)
+                    .Concat(file.Ties.SelectMany(value => new[]
                     {
-                        value.GetProperty("First").GetProperty("Slot").GetUInt32(),
-                        value.GetProperty("Second").GetProperty("Slot").GetUInt32(),
+                        value.First.Slot,
+                        value.Second.Slot,
                     }));
                 Assert.DoesNotContain(8U, serializedSlots);
                 Assert.DoesNotContain(99U, serializedSlots);

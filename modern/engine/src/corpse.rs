@@ -1,7 +1,8 @@
 use crate::config::{CorpseDecayMode, CorpseDecaySettings};
+use crate::{OrganismId, RobotState};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct CorpseSnapshot {
     pub position: [f32; 2],
     pub velocity: [f32; 2],
@@ -12,26 +13,52 @@ pub struct CorpseSnapshot {
     pub species: u32,
     #[serde(default)]
     pub repopulating: bool,
+    #[serde(default)]
+    pub dna: String,
+    #[serde(default)]
+    pub generation: u32,
+    #[serde(default)]
+    pub birth_cycle: u64,
+    #[serde(default)]
+    pub parent: Option<OrganismId>,
+    #[serde(default)]
+    pub offspring: u64,
+    #[serde(default)]
+    pub kills: u64,
+    #[serde(default)]
+    pub new_mutations: u64,
+    #[serde(default)]
+    pub total_mutations: u64,
+    #[serde(default)]
+    pub dna_length: u32,
+    #[serde(default)]
+    pub unique_id: u64,
+    #[serde(default)]
+    pub chloroplasts: i32,
 }
 
 impl CorpseSnapshot {
-    pub(crate) fn new(
-        position: [f32; 2],
-        velocity: [f32; 2],
-        body: i32,
-        waste: i32,
-        species: u32,
-        repopulating: bool,
-    ) -> Self {
-        let body = body.max(1);
+    pub(crate) fn from_robot(robot: &RobotState, species: u32, repopulating: bool) -> Self {
+        let body = robot.materials.body.max(1);
         Self {
-            position,
-            velocity,
-            energy: body.saturating_add(waste.max(0)),
+            position: robot.kinematics.position,
+            velocity: robot.kinematics.velocity,
+            energy: body.saturating_add(robot.materials.waste.max(0)),
             body,
-            age: 0,
+            age: robot.counters.age,
             species,
             repopulating,
+            dna: robot.program.dna.to_source(),
+            generation: robot.counters.generation,
+            birth_cycle: robot.counters.birth_cycle,
+            parent: robot.identity.parents[0],
+            offspring: robot.counters.offspring,
+            kills: robot.counters.kills,
+            new_mutations: robot.program.dna.metadata().mutations,
+            total_mutations: robot.program.mutation_metadata.total_mutations,
+            dna_length: robot.program.dna.blocks().len() as u32,
+            unique_id: robot.identity.absolute_id,
+            chloroplasts: robot.materials.chloroplasts,
         }
     }
 

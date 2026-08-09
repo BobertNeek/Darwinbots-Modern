@@ -1040,7 +1040,7 @@ impl LegacySimulationFile {
                 })
                 .collect(),
             organisms: vec![LegacyOrganism {
-                dna: String::new(),
+                dna: corpse.dna.clone(),
                 species: corpse.species,
                 vegetable: false,
                 corpse: true,
@@ -1049,7 +1049,7 @@ impl LegacySimulationFile {
                 velocity: corpse.velocity,
                 energy: corpse.energy,
                 age: corpse.age,
-                birth_cycle: 0,
+                birth_cycle: corpse.birth_cycle,
                 body: corpse.body,
             }],
         }

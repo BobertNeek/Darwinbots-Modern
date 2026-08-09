@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
+using System.Text;
 
 namespace Darwinbots.Desktop.Services;
 
@@ -57,8 +58,11 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         });
         if (files.FirstOrDefault() is not { } file) return null;
         await using var stream = await file.OpenReadAsync();
-        using var reader = new StreamReader(stream);
-        return DesktopSettings.FromJson(await reader.ReadToEndAsync());
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory);
+        return Path.GetExtension(file.Name).Equals(".json", StringComparison.OrdinalIgnoreCase)
+            ? DesktopSettings.FromJson(Encoding.UTF8.GetString(memory.ToArray()))
+            : Db2SettingsCodec.Decode(memory.ToArray());
     }
 
     public async Task<string?> PickSimulationPathAsync(TopLevel owner)
@@ -105,8 +109,10 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         if (file is null) return false;
         await using var stream = await file.OpenWriteAsync();
         stream.SetLength(0);
-        await using var writer = new StreamWriter(stream);
-        await writer.WriteAsync(settings.ToJson());
+        var bytes = Path.GetExtension(file.Name).Equals(".json", StringComparison.OrdinalIgnoreCase)
+            ? Encoding.UTF8.GetBytes(settings.ToJson())
+            : Db2SettingsCodec.Encode(settings);
+        await stream.WriteAsync(bytes);
         return true;
     }
 
@@ -135,8 +141,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         {
             Title = "Save entire organism",
             SuggestedFileName = suggestedFileName,
-            DefaultExtension = "json",
-            FileTypeChoices = [OrganismFileType()],
+            DefaultExtension = "dbo",
+            FileTypeChoices = [OrganismSaveFileType()],
         });
         if (file is null) return false;
         await using var stream = await file.OpenWriteAsync();
@@ -196,6 +202,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static FilePickerFileType OrganismFileType() =>
         new("Darwinbots organism") { Patterns = ["*.json", "*.dbo"] };
+
+    private static FilePickerFileType OrganismSaveFileType() =>
+        new("Darwinbots DB2 organism") { Patterns = ["*.dbo"] };
 
     private static FilePickerFileType SettingsFileType() =>
         new("Darwinbots settings") { Patterns = ["*.set", "*.json"] };

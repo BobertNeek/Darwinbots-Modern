@@ -68,6 +68,8 @@ public sealed record OrganismSnapshot(
     public ulong TotalMutations { get; init; }
     public uint DnaLength { get; init; }
     public uint GeneCount { get; init; }
+    public ulong BirthCycle { get; init; }
+    public ulong Kills { get; init; }
 }
 
 public sealed record ActivationFrameSnapshot(ulong Tick, bool[] Activations)
@@ -173,7 +175,20 @@ public sealed record FileTeleporterSnapshot(
     ulong Sent,
     ulong Received,
     string? BackflowGuardPath = null);
-public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age, uint Species = 0, bool Repopulating = false);
+public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age, uint Species = 0, bool Repopulating = false)
+{
+    public string Dna { get; init; } = string.Empty;
+    public uint Generation { get; init; }
+    public ulong BirthCycle { get; init; }
+    public OrganismKey? Parent { get; init; }
+    public ulong Offspring { get; init; }
+    public ulong Kills { get; init; }
+    public ulong NewMutations { get; init; }
+    public ulong TotalMutations { get; init; }
+    public uint DnaLength { get; init; }
+    public ulong UniqueId { get; init; }
+    public int Chloroplasts { get; init; }
+}
 public sealed record ShotSnapshot(
     OrganismKey Owner,
     float[] Start,
