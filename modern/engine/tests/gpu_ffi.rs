@@ -43,7 +43,7 @@ fn cpu_physics_integrates_and_clamps_world_bounds() {
         positions: vec![[4.0, 8.0], [99.0, 1.0]],
         velocities: vec![[2.0, -3.0], [5.0, -5.0]],
         world_size: [100.0, 100.0],
-        toroidal: false,
+        wrapped_axes: [false, false],
     };
 
     CpuPhysicsBackend.step(&mut batch).unwrap();
@@ -64,7 +64,7 @@ fn gpu_physics_matches_cpu_when_an_adapter_is_available() {
             .map(|index| [1.25, -(index as f32) * 0.01])
             .collect(),
         world_size: [256.0, 256.0],
-        toroidal: false,
+        wrapped_axes: [false, false],
     };
     let mut expected = source.clone();
     let mut actual = source;

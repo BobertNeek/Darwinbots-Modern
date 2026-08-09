@@ -10,7 +10,9 @@ public sealed record Db2PhysicsOptions(
     float KineticFriction,
     double Density,
     double Viscosity,
-    float Elasticity)
+    float Elasticity,
+    bool PlanetEaters = false,
+    float PlanetEatersG = 0f)
 {
     public static Db2PhysicsOptions Default { get; } = new(180f, 0.66f, 2f, 0.6f, 0.4f, 0d, 0d, 0f);
 }
@@ -39,7 +41,13 @@ public sealed record Db2VegetationOptions(
     float LightIntensity = 100f,
     float Gradient = 1f,
     uint Tides = 0,
-    int TidesOffset = 0)
+    int TidesOffset = 0,
+    bool WeatherEnabled = false,
+    bool SunUpEnabled = false,
+    int SunUpThreshold = 500_000,
+    bool SunDownEnabled = false,
+    int SunDownThreshold = 1_000_000,
+    int SunThresholdMode = 0)
 {
     public static Db2VegetationOptions Default { get; } = new(16_000, 40, 10, 10, 25, 0.5f, true, false, 10_000);
 }
@@ -56,7 +64,9 @@ public sealed record EnvironmentUpdate(
     Db2VegetationOptions Vegetation,
     bool AutoSpeciation,
     float SpeciationGeneticDistancePercent,
-    bool ToroidalWorld = true)
+    bool ToroidalWorld = true,
+    bool WrapX = true,
+    bool WrapY = true)
 {
     public static EnvironmentUpdate Default { get; } = new(
         0, 0, 100, [0f, 0f], 0f, 0f,
@@ -122,6 +132,7 @@ public static class NativeCommandSerializer
             toroidal_world = options.ToroidalWorld,
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
+            axis_topology = AxisTopology(options.ToroidalWorld, options.WrapX, options.WrapY),
         });
 
     public static object CreateRemoveManyBatch(IReadOnlyList<OrganismKey> organisms) => new
@@ -209,6 +220,7 @@ public static class NativeCommandSerializer
                 auto_speciation = update.AutoSpeciation,
                 speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
                 toroidal_world = update.ToroidalWorld,
+                axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
             },
         },
     };
@@ -223,6 +235,8 @@ public static class NativeCommandSerializer
         density = value.Density,
         viscosity = value.Viscosity,
         elasticity = value.Elasticity,
+        planet_eaters = value.PlanetEaters,
+        planet_eaters_g = value.PlanetEatersG,
     };
 
     internal static object Shots(Db2ShotOptions value) => new
@@ -250,7 +264,16 @@ public static class NativeCommandSerializer
         gradient = value.Gradient,
         tides = value.Tides,
         tides_offset = value.TidesOffset,
+        weather_enabled = value.WeatherEnabled,
+        sun_up_enabled = value.SunUpEnabled,
+        sun_up_threshold = value.SunUpThreshold,
+        sun_down_enabled = value.SunDownEnabled,
+        sun_down_threshold = value.SunDownThreshold,
+        sun_threshold_mode = value.SunThresholdMode,
     };
+
+    private static bool[] AxisTopology(bool toroidalWorld, bool wrapX, bool wrapY) =>
+        !toroidalWorld && wrapX && wrapY ? [false, false] : [wrapX, wrapY];
 
     internal static object DnaCosts(GlobalSimulationCostSettings value) => new
     {

@@ -38,6 +38,47 @@ fn organism_motion_wraps_across_the_world_edge() {
 }
 
 #[test]
+fn topology_wraps_x_but_bounds_y_inside_robot_radius_and_smudge() {
+    let mut engine = Engine::new(EngineConfig {
+        world_width: 1_000.0,
+        world_height: 1_000.0,
+        toroidal_world: false,
+        axis_topology: Some([true, false]),
+        metabolism_cost: 0,
+        gravity: [0.0, 0.0],
+        drag: 0.0,
+        physics: PhysicsSettings {
+            surface_gravity: 0.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let wrapped = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .sx store\nstop").unwrap(),
+            [1.0, 500.0],
+        )
+        .unwrap();
+    let bounded = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .up store\nstop").unwrap(),
+            [500.0, 999.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let wrapped_state = engine.organism(wrapped).unwrap();
+    let bounded_state = engine.organism(bounded).unwrap();
+    assert!(wrapped_state.position[0] > wrapped_state.radius);
+    assert_eq!(engine.memory_at(wrapped, 214).unwrap(), 0);
+    assert!(bounded_state.position[1] <= 1_000.0 - bounded_state.radius + 0.01);
+    assert_eq!(engine.memory_at(bounded, 214).unwrap(), 1);
+}
+
+#[test]
 fn projectile_wrap_preserves_its_travel_segment() {
     let mut engine = Engine::new(toroidal_test_config()).unwrap();
     engine

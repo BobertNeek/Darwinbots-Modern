@@ -325,7 +325,7 @@ impl ProjectilePool {
         &mut self,
         settings: &ShotSettings,
         world_size: [f32; 2],
-        toroidal: bool,
+        wrapped_axes: [bool; 2],
     ) {
         let mut expired = Vec::new();
         for slot in 0..self.alive.len() {
@@ -339,8 +339,8 @@ impl ProjectilePool {
             self.previous_positions[slot] = self.positions[slot];
             self.positions[slot][0] += self.velocities[slot][0];
             self.positions[slot][1] += self.velocities[slot][1];
-            if toroidal {
-                for (axis, extent) in world_size.iter().copied().enumerate() {
+            for (axis, extent) in world_size.iter().copied().enumerate() {
+                if wrapped_axes[axis] {
                     let extent = extent.max(1.0);
                     let unwrapped = self.positions[slot][axis];
                     let wrapped = unwrapped.rem_euclid(extent);
@@ -355,11 +355,11 @@ impl ProjectilePool {
                 self.ages[slot] = self.ages[slot].saturating_add(1);
             }
             if self.ages[slot] > self.ranges[slot]
-                || (!toroidal
-                    && (self.positions[slot][0] < 0.0
-                        || self.positions[slot][1] < 0.0
-                        || self.positions[slot][0] > world_size[0]
-                        || self.positions[slot][1] > world_size[1]))
+                || (0..2).any(|axis| {
+                    !wrapped_axes[axis]
+                        && (self.positions[slot][axis] < 0.0
+                            || self.positions[slot][axis] > world_size[axis])
+                })
             {
                 expired.push(slot as u32);
             }

@@ -12,6 +12,10 @@ pub struct PhysicsSettings {
     pub density: f64,
     pub viscosity: f64,
     pub elasticity: f32,
+    #[serde(default)]
+    pub planet_eaters: bool,
+    #[serde(default)]
+    pub planet_eaters_g: f32,
 }
 
 impl Default for PhysicsSettings {
@@ -25,6 +29,8 @@ impl Default for PhysicsSettings {
             density: 0.0,
             viscosity: 0.0,
             elasticity: 0.0,
+            planet_eaters: false,
+            planet_eaters_g: 0.0,
         }
     }
 }
@@ -160,6 +166,8 @@ pub struct EngineConfig {
     pub world_height: f32,
     #[serde(default = "default_toroidal_world")]
     pub toroidal_world: bool,
+    #[serde(default)]
+    pub axis_topology: Option<[bool; 2]>,
     pub backend: BackendPreference,
     pub allow_cpu_fallback: bool,
     #[serde(default = "default_metabolism_cost")]
@@ -209,6 +217,7 @@ impl Default for EngineConfig {
             world_width: 16_000.0,
             world_height: 12_000.0,
             toroidal_world: default_toroidal_world(),
+            axis_topology: None,
             backend: BackendPreference::Auto,
             allow_cpu_fallback: true,
             metabolism_cost: default_metabolism_cost(),
@@ -261,6 +270,11 @@ fn default_low_memory_detail_limit() -> usize {
 }
 
 impl EngineConfig {
+    pub fn axis_topology(&self) -> [bool; 2] {
+        self.axis_topology
+            .unwrap_or([self.toroidal_world; 2])
+    }
+
     pub fn testing() -> Self {
         Self {
             organism_capacity: 32,

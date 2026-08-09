@@ -31,8 +31,9 @@ use std::path::Path;
 use std::time::Instant;
 
 use crate::physics::{
-    MovementInput, MovementState, apply_resistance, apply_voluntary_impulse, derived_mass,
-    environment_impulse,
+    MovementInput, MovementState, apply_angular_damping, apply_resistance,
+    apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
+    mutual_gravity_impulses,
 };
 
 const MEM_ROBAGE: i32 = 9;
@@ -576,6 +577,8 @@ impl From<Db3sV2PhysicsSettings> for PhysicsSettings {
             density: value.density,
             viscosity: value.viscosity,
             elasticity: value.elasticity,
+            planet_eaters: false,
+            planet_eaters_g: 0.0,
         }
     }
 }
@@ -756,6 +759,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             world_width: value.world_width,
             world_height: value.world_height,
             toroidal_world: value.toroidal_world,
+            axis_topology: None,
             backend: value.backend.into(),
             allow_cpu_fallback: value.allow_cpu_fallback,
             metabolism_cost: value.metabolism_cost,
@@ -3397,11 +3401,22 @@ impl Engine {
 
     pub fn set_toroidal_world(&mut self, enabled: bool) {
         self.config.toroidal_world = enabled;
+        self.config.axis_topology = Some([enabled; 2]);
         self.publish_snapshot();
     }
 
     pub fn toroidal_world(&self) -> bool {
         self.config.toroidal_world
+    }
+
+    pub fn set_axis_topology(&mut self, wrapped_axes: [bool; 2]) {
+        self.config.axis_topology = Some(wrapped_axes);
+        self.config.toroidal_world = wrapped_axes == [true; 2];
+        self.publish_snapshot();
+    }
+
+    pub fn axis_topology(&self) -> [bool; 2] {
+        self.config.axis_topology()
     }
 
     pub(crate) fn organism_capacity(&self) -> usize {
@@ -3419,7 +3434,7 @@ impl Engine {
     pub fn physics_batch(&self) -> RobotPhysicsBatch {
         self.slots.physics_batch(
             [self.config.world_width, self.config.world_height],
-            self.config.toroidal_world,
+            self.config.axis_topology(),
         )
     }
 
@@ -4457,7 +4472,7 @@ impl Engine {
         let settings = &self.config.physics;
         let costs = &self.config.dna_costs;
         let population = self.cost_population();
-        let pond_mode = self.config.vegetation.pond_mode && !self.config.toroidal_world;
+        let pond_mode = self.config.vegetation.pond_mode && !self.config.axis_topology()[1];
         let buoyancy_cost = if pond_mode {
             f64::from(self.config.gravity[1].abs())
                 / f64::from(settings.movement_efficiency.max(f32::EPSILON))
@@ -4568,7 +4583,7 @@ impl Engine {
                 robot.materials.aim = (robot.materials.aim
                     + (turn * 200.0).round_ties_even() as i32)
                     .rem_euclid(1_257);
-                robot.kinematics.angular_momentum = turn * 0.5;
+                robot.kinematics.angular_momentum = turn;
             }
             let aim_radians = robot.materials.aim as f32 / 200.0;
             robot.kinematics.aim_vector = [aim_radians.cos(), aim_radians.sin()];
@@ -4976,7 +4991,8 @@ impl Engine {
         let configured_gravity = self.config.gravity;
         let drag = self.config.drag;
         let configured_brownian = self.config.brownian_motion.max(0.0);
-        let pond_mode = self.config.vegetation.pond_mode && !self.config.toroidal_world;
+        let wrapped_axes = self.config.axis_topology();
+        let pond_mode = self.config.vegetation.pond_mode && !wrapped_axes[1];
         let tide_period = self.config.vegetation.tides;
         let tide_scaling = self.tide_scaling();
         let world_height = self.config.world_height.max(1.0);
@@ -4993,6 +5009,36 @@ impl Engine {
         let seed = self.config.seed;
         let tick = self.tick;
         let settings = &self.config.physics;
+        let positions: Vec<[f32; 2]> = self
+            .slots
+            .iter()
+            .map(|entry| {
+                entry
+                    .organism
+                    .as_ref()
+                    .map_or([0.0; 2], |robot| robot.kinematics.position)
+            })
+            .collect();
+        let masses: Vec<f32> = self
+            .slots
+            .iter()
+            .map(|entry| {
+                entry.organism.as_ref().map_or(0.0, |robot| {
+                    derived_mass(
+                        robot.materials.body,
+                        robot.materials.shell,
+                        robot.materials.chloroplasts,
+                    )
+                    .clamp(1.0, 32_000.0)
+                })
+            })
+            .collect();
+        let planet_impulses = mutual_gravity_impulses(
+            &positions,
+            &masses,
+            settings.planet_eaters,
+            settings.planet_eaters_g,
+        );
         let movement_events = self
             .slots
             .iter()
@@ -5042,6 +5088,15 @@ impl Engine {
                         environment_impulse(effective_gravity, brownian, mass, seed, tick, slot);
                     robot.kinematics.velocity[0] += impulse[0];
                     robot.kinematics.velocity[1] += impulse[1];
+                    robot.kinematics.velocity[0] += planet_impulses[slot][0];
+                    robot.kinematics.velocity[1] += planet_impulses[slot][1];
+                    robot.kinematics.angular_momentum +=
+                        brownian_rotation(brownian, seed, tick, slot);
+                    apply_angular_damping(
+                        &mut robot.kinematics.angular_momentum,
+                        mass,
+                        settings,
+                    );
                     apply_resistance(
                         &mut robot.kinematics.velocity,
                         mass,
@@ -5476,11 +5531,13 @@ impl Engine {
             return false;
         };
         let radius = parent_state.materials.radius;
-        if !self.config.toroidal_world
+        let wrapped_axes = self.config.axis_topology();
+        if (!wrapped_axes[0]
             && (position[0] < radius + BIRTH_BORDER_SMUDGE
-                || position[0] > self.config.world_width - radius - BIRTH_BORDER_SMUDGE
-                || position[1] < radius + BIRTH_BORDER_SMUDGE
-                || position[1] > self.config.world_height - radius - BIRTH_BORDER_SMUDGE)
+                || position[0] > self.config.world_width - radius - BIRTH_BORDER_SMUDGE))
+            || (!wrapped_axes[1]
+                && (position[1] < radius + BIRTH_BORDER_SMUDGE
+                    || position[1] > self.config.world_height - radius - BIRTH_BORDER_SMUDGE))
         {
             return false;
         }
@@ -6327,23 +6384,48 @@ impl Engine {
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
         let mut keyed_batch = self.physics_batch();
-        let edge_contacts: Vec<bool> = if keyed_batch.batch.toroidal {
-            vec![false; keyed_batch.batch.positions.len()]
-        } else {
-            keyed_batch
-                .batch
-                .positions
-                .iter()
-                .zip(&keyed_batch.batch.velocities)
-                .map(|(position, velocity)| {
-                    let next = [position[0] + velocity[0], position[1] + velocity[1]];
-                    next[0] < 0.0
-                        || next[0] > keyed_batch.batch.world_size[0]
-                        || next[1] < 0.0
-                        || next[1] > keyed_batch.batch.world_size[1]
+        let wrapped_axes = keyed_batch.batch.wrapped_axes;
+        let radii: Vec<f32> = keyed_batch
+            .ids
+            .iter()
+            .map(|id| {
+                self.slots.get(*id).map_or(1.0, |organism| {
+                    crate::physics::organism_radius(
+                        organism.materials.body,
+                        organism.materials.chloroplasts,
+                    )
                 })
-                .collect()
-        };
+            })
+            .collect();
+        let edge_contacts: Vec<[bool; 2]> = keyed_batch
+            .batch
+            .positions
+            .iter()
+            .zip(&keyed_batch.batch.velocities)
+            .zip(&radii)
+            .map(|((position, velocity), radius)| {
+                std::array::from_fn(|axis| {
+                    if wrapped_axes[axis] {
+                        return false;
+                    }
+                    let extent = keyed_batch.batch.world_size[axis].max(1.0);
+                    let min_center = radius.min(extent * 0.5);
+                    let max_center = (extent - radius).max(min_center);
+                    let next = position[axis] + velocity[axis];
+                    position[axis] <= min_center
+                        || position[axis] >= max_center
+                        || next < min_center
+                        || next > max_center
+                })
+            })
+            .collect();
+        let predicted_positions: Vec<[f32; 2]> = keyed_batch
+            .batch
+            .positions
+            .iter()
+            .zip(&keyed_batch.batch.velocities)
+            .map(|(position, velocity)| [position[0] + velocity[0], position[1] + velocity[1]])
+            .collect();
         let fixed: Vec<_> = keyed_batch
             .ids
             .iter()
@@ -6355,6 +6437,13 @@ impl Engine {
                         .is_ok_and(|organism| organism.program.memory.read(216) != 0)
             })
             .collect();
+        for (index, contacts) in edge_contacts.iter().enumerate() {
+            for axis in 0..2 {
+                if contacts[axis] {
+                    keyed_batch.batch.velocities[index][axis] *= 0.95;
+                }
+            }
+        }
         if let Err(error) = self.physics.step(&mut keyed_batch.batch) {
             if self.config.allow_cpu_fallback && matches!(self.physics, RuntimePhysics::Gpu(_)) {
                 self.activate_cpu_fallback(error);
@@ -6363,13 +6452,34 @@ impl Engine {
                 return Err(error);
             }
         }
+        for index in 0..keyed_batch.batch.positions.len() {
+            let radius = radii[index];
+            for axis in 0..2 {
+                let extent = keyed_batch.batch.world_size[axis].max(1.0);
+                let min_center = radius.min(extent * 0.5);
+                let max_center = (extent - radius).max(min_center);
+                if wrapped_axes[axis] {
+                    let predicted = predicted_positions[index][axis];
+                    if predicted < 0.0 {
+                        keyed_batch.batch.positions[index][axis] =
+                            (radius + BIRTH_BORDER_SMUDGE).min(max_center);
+                    } else if predicted > extent {
+                        keyed_batch.batch.positions[index][axis] =
+                            (extent - radius - BIRTH_BORDER_SMUDGE).max(min_center);
+                    }
+                } else {
+                    keyed_batch.batch.positions[index][axis] =
+                        keyed_batch.batch.positions[index][axis].clamp(min_center, max_center);
+                }
+            }
+        }
         for (index, fixed) in fixed.into_iter().enumerate() {
             if fixed {
                 let state = self.slots.get(keyed_batch.ids[index])?;
                 keyed_batch.batch.positions[index] = state.kinematics.position;
                 keyed_batch.batch.velocities[index] = [0.0; 2];
             }
-            if edge_contacts[index] && !fixed {
+            if edge_contacts[index].into_iter().any(|contact| contact) && !fixed {
                 self.slots
                     .get_mut(keyed_batch.ids[index])?
                     .program
@@ -6443,7 +6553,7 @@ impl Engine {
         self.projectiles.advance(
             &self.config.shots,
             [self.config.world_width, self.config.world_height],
-            self.config.toroidal_world,
+            self.config.axis_topology(),
         );
         self.resolve_projectile_impacts(trace);
     }
@@ -7164,8 +7274,8 @@ impl Engine {
                 robot.kinematics.position[0] - robot.kinematics.previous_position[0],
                 robot.kinematics.position[1] - robot.kinematics.previous_position[1],
             ];
-            if self.config.toroidal_world {
-                for axis in 0..2 {
+            for axis in 0..2 {
+                if self.config.axis_topology()[axis] {
                     let extent = world_size[axis].max(1.0);
                     let half_extent = extent * 0.5;
                     displacement[axis] =
@@ -7736,8 +7846,13 @@ impl Engine {
                     first.kinematics.independent_impulse[1] += torque_vector[1];
                     second.kinematics.independent_impulse[0] -= torque_vector[0];
                     second.kinematics.independent_impulse[1] -= torque_vector[1];
+                    let angular_correction = correction
+                        .clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
                     first.kinematics.angular_momentum = (first.kinematics.angular_momentum
-                        + correction)
+                        + angular_correction)
+                        .clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
+                    second.kinematics.angular_momentum = (second.kinematics.angular_momentum
+                        - angular_correction)
                         .clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
                 }
             }

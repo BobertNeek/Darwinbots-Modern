@@ -59,6 +59,36 @@ public sealed class Db2EnvironmentSettingsTests
     }
 
     [Fact]
+    public void EnergyWeatherThresholdAndAxisTopologySettingsSerializeIntoEnvironmentCommand()
+    {
+        var vegetation = EnvironmentUpdate.Default.Vegetation with
+        {
+            Tides = 64,
+            TidesOffset = 7,
+            WeatherEnabled = true,
+            SunUpEnabled = true,
+            SunUpThreshold = 500,
+            SunDownEnabled = true,
+            SunDownThreshold = 1_000,
+            SunThresholdMode = 2,
+        };
+        var json = NativeCommandSerializer.SerializeEnvironment(EnvironmentUpdate.Default with
+        {
+            Vegetation = vegetation,
+            WrapX = true,
+            WrapY = false,
+        });
+
+        Assert.Contains("\"tides\":64", json);
+        Assert.Contains("\"tides_offset\":7", json);
+        Assert.Contains("\"weather_enabled\":true", json);
+        Assert.Contains("\"sun_up_threshold\":500", json);
+        Assert.Contains("\"sun_down_threshold\":1000", json);
+        Assert.Contains("\"sun_threshold_mode\":2", json);
+        Assert.Contains("\"axis_topology\":[true,false]", json);
+    }
+
+    [Fact]
     public void NativeRemoveManyBatchSerializesExactStableKeys()
     {
         OrganismKey[] organisms = [new(3, 2), new(7, 5)];

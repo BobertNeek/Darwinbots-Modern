@@ -25,6 +25,35 @@ fn gravity_and_drag_affect_motion() {
 }
 
 #[test]
+fn planet_eaters_apply_mutual_db2_mass_scaled_attraction() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        gravity: [0.0, 0.0],
+        physics: darwinbots_engine::PhysicsSettings {
+            planet_eaters: true,
+            planet_eaters_g: 1_000.0,
+            surface_gravity: 0.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
+            ..darwinbots_engine::PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let first = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [300.0, 500.0])
+        .unwrap();
+    let second = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 500.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert!(engine.organism(first).unwrap().velocity[0] > 0.0);
+    assert!(engine.organism(second).unwrap().velocity[0] < 0.0);
+}
+
+#[test]
 fn obstacles_reject_organisms_and_teleporters_relocate_them() {
     let mut obstacle_engine = Engine::new(EngineConfig::testing()).unwrap();
     obstacle_engine

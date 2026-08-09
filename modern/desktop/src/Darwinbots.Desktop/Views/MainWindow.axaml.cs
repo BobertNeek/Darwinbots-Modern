@@ -155,6 +155,8 @@ public sealed partial class MainWindow : Window
         LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
         WorldParametersText.Text = $"{setup.WorldWidth:N0} × {setup.WorldHeight:N0}\nCapacity {setup.PopulationCapacity:N0}\nVegetables {setup.VegetablePopulationCap:N0}";
         Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
+        Viewport.WrapX = _liveEnvironment.WrapX;
+        Viewport.WrapY = _liveEnvironment.WrapY;
         RuntimeSpeed.SelectedIndex = _ticksPerUpdate switch { <= 1 => 0, <= 5 => 1, <= 20 => 2, _ => 3 };
         _maximumSpeed = DesktopControlRules.IsMaximumSpeed(RuntimeSpeed.SelectedIndex);
         Viewport.OrganismSelected += slot =>
@@ -1144,6 +1146,8 @@ public sealed partial class MainWindow : Window
         await _session.UpdateEnvironmentAsync(dialog.Update);
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = dialog.Update;
+        Viewport.WrapX = dialog.Update.WrapX;
+        Viewport.WrapY = dialog.Update.WrapY;
         return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
     }
 
@@ -2077,16 +2081,20 @@ public sealed partial class MainWindow : Window
         await _session.UpdateEnvironmentAsync(update);
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = update;
+        Viewport.WrapX = update.WrapX;
+        Viewport.WrapY = update.WrapY;
         _viewModel.Status = "LIVE SETTINGS APPLIED";
     }
 
     private async void ToroidalWorld_Changed(object? sender, RoutedEventArgs e)
     {
         if (!_controlsReady || _session is null) return;
-        var update = _liveEnvironment with { ToroidalWorld = ToroidalWorldToggle.IsChecked == true };
+        var enabled = ToroidalWorldToggle.IsChecked == true;
+        var update = _liveEnvironment with { ToroidalWorld = enabled, WrapX = enabled, WrapY = enabled };
         await _session.UpdateEnvironmentAsync(update);
         _liveEnvironment = update;
-        Viewport.ToroidalWorld = update.ToroidalWorld;
+        Viewport.WrapX = update.WrapX;
+        Viewport.WrapY = update.WrapY;
         _viewModel.Status = update.ToroidalWorld ? "TOROIDAL WORLD ON" : "TOROIDAL WORLD OFF";
     }
 

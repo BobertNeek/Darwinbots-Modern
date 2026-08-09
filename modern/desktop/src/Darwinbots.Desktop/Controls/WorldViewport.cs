@@ -26,7 +26,8 @@ public sealed class WorldViewport : Control
     private bool _dragMoved;
     private bool _renderWaste = true;
     private bool _showSelectedVision = true;
-    private bool _toroidalWorld = true;
+    private bool _wrapX = true;
+    private bool _wrapY = true;
     private bool _showMovementVectors;
     private bool _showShotImpacts = true;
     private bool _showResourceGauges;
@@ -45,7 +46,13 @@ public sealed class WorldViewport : Control
 
     public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
     public bool ShowSelectedVision { get => _showSelectedVision; set { _showSelectedVision = value; InvalidateVisual(); } }
-    public bool ToroidalWorld { get => _toroidalWorld; set { _toroidalWorld = value; InvalidateVisual(); } }
+    public bool ToroidalWorld
+    {
+        get => _wrapX && _wrapY;
+        set { _wrapX = value; _wrapY = value; InvalidateVisual(); }
+    }
+    public bool WrapX { get => _wrapX; set { _wrapX = value; InvalidateVisual(); } }
+    public bool WrapY { get => _wrapY; set { _wrapY = value; InvalidateVisual(); } }
     public bool ShowMovementVectors { get => _showMovementVectors; set { _showMovementVectors = value; InvalidateVisual(); } }
     public bool ShowShotImpacts { get => _showShotImpacts; set { _showShotImpacts = value; InvalidateVisual(); } }
     public bool ShowResourceGauges { get => _showResourceGauges; set { _showResourceGauges = value; InvalidateVisual(); } }
@@ -430,12 +437,17 @@ public sealed class WorldViewport : Control
 
     private void DrawToroidalEdges(DrawingContext context)
     {
-        if (!ToroidalWorld) return;
         var pen = new Pen(new SolidColorBrush(Color.Parse("#239AC0"), 0.35), 2);
-        context.DrawLine(pen, new Point(1, 0), new Point(1, Bounds.Height));
-        context.DrawLine(pen, new Point(Bounds.Width - 1, 0), new Point(Bounds.Width - 1, Bounds.Height));
-        context.DrawLine(pen, new Point(0, 1), new Point(Bounds.Width, 1));
-        context.DrawLine(pen, new Point(0, Bounds.Height - 1), new Point(Bounds.Width, Bounds.Height - 1));
+        if (WrapX)
+        {
+            context.DrawLine(pen, new Point(1, 0), new Point(1, Bounds.Height));
+            context.DrawLine(pen, new Point(Bounds.Width - 1, 0), new Point(Bounds.Width - 1, Bounds.Height));
+        }
+        if (WrapY)
+        {
+            context.DrawLine(pen, new Point(0, 1), new Point(Bounds.Width, 1));
+            context.DrawLine(pen, new Point(0, Bounds.Height - 1), new Point(Bounds.Width, Bounds.Height - 1));
+        }
     }
 
     private WorldFeatureSelection? FindFeature(Point pointer)

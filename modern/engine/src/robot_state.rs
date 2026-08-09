@@ -380,7 +380,11 @@ impl RobotArena {
         Ok(state)
     }
 
-    pub(crate) fn physics_batch(&self, world_size: [f32; 2], toroidal: bool) -> RobotPhysicsBatch {
+    pub(crate) fn physics_batch(
+        &self,
+        world_size: [f32; 2],
+        wrapped_axes: [bool; 2],
+    ) -> RobotPhysicsBatch {
         let ids = self.ids_in_slot_order();
         let positions = ids
             .iter()
@@ -406,7 +410,7 @@ impl RobotArena {
                 positions,
                 velocities,
                 world_size,
-                toroidal,
+                wrapped_axes,
             },
         }
     }
@@ -796,7 +800,7 @@ mod tests {
         let mut arena = RobotArena::default();
         let first = arena.spawn(state_at([10.0, 20.0]));
         let second = arena.spawn(state_at([30.0, 40.0]));
-        let mut batch = arena.physics_batch([100.0, 100.0], false);
+        let mut batch = arena.physics_batch([100.0, 100.0], [false, false]);
         batch.batch.positions[0] = [15.0, 25.0];
         arena.remove(second).expect("second robot should be live");
 

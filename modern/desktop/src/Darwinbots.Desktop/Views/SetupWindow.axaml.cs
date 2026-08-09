@@ -112,6 +112,8 @@ public sealed partial class SetupWindow : Window
             AutoSpeciation = _environment.AutoSpeciation,
             SpeciationGeneticDistancePercent = _environment.SpeciationGeneticDistancePercent,
             ToroidalWorld = _environment.ToroidalWorld,
+            WrapX = _environment.WrapX,
+            WrapY = _environment.WrapY,
             TicksPerUpdate = speed,
             Species = species,
             GlobalSettings = _globalSettings,

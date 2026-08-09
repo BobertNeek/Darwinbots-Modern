@@ -45,6 +45,8 @@ public sealed partial class NativeEngineClient : IEngineClient
         bool autoSpeciation = false,
         float speciationGeneticDistancePercent = 20f,
         bool toroidalWorld = true,
+        bool wrapX = true,
+        bool wrapY = true,
         GlobalSettings? globalSettings = null) : this(new WorldSetupOptions
     {
         Backend = backend,
@@ -65,6 +67,8 @@ public sealed partial class NativeEngineClient : IEngineClient
         AutoSpeciation = autoSpeciation,
         SpeciationGeneticDistancePercent = speciationGeneticDistancePercent,
         ToroidalWorld = toroidalWorld,
+        WrapX = wrapX,
+        WrapY = wrapY,
         GlobalSettings = globalSettings ?? new GlobalSettings(),
     })
     {

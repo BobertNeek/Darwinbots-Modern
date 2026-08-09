@@ -39,6 +39,8 @@ public sealed record WorldSetupOptions
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
+    public bool WrapX { get; init; } = true;
+    public bool WrapY { get; init; } = true;
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public GlobalSettings GlobalSettings { get; init; } = new();
@@ -60,5 +62,7 @@ public sealed record WorldSetupOptions
         Vegetation,
         AutoSpeciation,
         SpeciationGeneticDistancePercent,
-        ToroidalWorld);
+        ToroidalWorld,
+        WrapX,
+        WrapY);
 }

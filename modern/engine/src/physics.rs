@@ -8,7 +8,10 @@ mod environment;
 mod movement;
 
 pub(crate) use collision::{resolve_collisions, segment_aabb_fraction, segment_circle_fraction};
-pub(crate) use environment::{apply_resistance, environment_impulse, integrate_body};
+pub(crate) use environment::{
+    apply_angular_damping, apply_resistance, brownian_rotation, environment_impulse,
+    integrate_body, mutual_gravity_impulses,
+};
 pub(crate) use movement::{MovementInput, MovementState, apply_voluntary_impulse, derived_mass};
 
 #[repr(C)]
@@ -211,7 +214,7 @@ pub struct PhysicsBatch {
     pub positions: Vec<[f32; 2]>,
     pub velocities: Vec<[f32; 2]>,
     pub world_size: [f32; 2],
-    pub toroidal: bool,
+    pub wrapped_axes: [bool; 2],
 }
 
 pub trait PhysicsBackend {
@@ -239,7 +242,7 @@ impl PhysicsBackend for CpuPhysicsBackend {
     fn step(&mut self, batch: &mut PhysicsBatch) -> Result<(), EngineError> {
         validate_batch(batch)?;
         for (position, velocity) in batch.positions.iter_mut().zip(&batch.velocities) {
-            integrate_body(position, *velocity, batch.world_size, batch.toroidal);
+            integrate_body(position, *velocity, batch.world_size, batch.wrapped_axes);
         }
         Ok(())
     }
@@ -827,7 +830,8 @@ impl PhysicsBackend for GpuPhysicsBackend {
         let params = GpuParams {
             world_size: batch.world_size,
             count: particles.len() as u32,
-            toroidal: u32::from(batch.toroidal),
+            topology_mask: u32::from(batch.wrapped_axes[0])
+                | (u32::from(batch.wrapped_axes[1]) << 1),
         };
         let particle_buffer = self
             .device
@@ -930,7 +934,7 @@ struct GpuParticle {
 struct GpuParams {
     world_size: [f32; 2],
     count: u32,
-    toroidal: u32,
+    topology_mask: u32,
 }
 
 const PHYSICS_SHADER: &str = r#"
@@ -942,7 +946,7 @@ struct Particle {
 struct Params {
     world_size: vec2<f32>,
     count: u32,
-    toroidal: u32,
+    topology_mask: u32,
 };
 
 @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -954,13 +958,17 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
     let next = particles[id.x].position + particles[id.x].velocity;
-    if (params.toroidal != 0u) {
-        particles[id.x].position = vec2<f32>(
-            ((next.x % params.world_size.x) + params.world_size.x) % params.world_size.x,
-            ((next.y % params.world_size.y) + params.world_size.y) % params.world_size.y
-        );
+    var integrated = next;
+    if ((params.topology_mask & 1u) != 0u) {
+        integrated.x = ((next.x % params.world_size.x) + params.world_size.x) % params.world_size.x;
     } else {
-        particles[id.x].position = clamp(next, vec2<f32>(0.0), params.world_size);
+        integrated.x = clamp(next.x, 0.0, params.world_size.x);
     }
+    if ((params.topology_mask & 2u) != 0u) {
+        integrated.y = ((next.y % params.world_size.y) + params.world_size.y) % params.world_size.y;
+    } else {
+        integrated.y = clamp(next.y, 0.0, params.world_size.y);
+    }
+    particles[id.x].position = integrated;
 }
 "#;

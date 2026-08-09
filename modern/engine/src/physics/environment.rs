@@ -22,6 +22,91 @@ pub(crate) fn environment_impulse(
     ]
 }
 
+pub(crate) fn brownian_rotation(
+    brownian_motion: f32,
+    seed: u64,
+    tick: u64,
+    stable_slot: usize,
+) -> f32 {
+    if brownian_motion <= 0.0 {
+        return 0.0;
+    }
+    let random = splitmix64(seed ^ tick.rotate_left(17) ^ (stable_slot as u64).rotate_left(33));
+    let impulse = brownian_motion * 0.5 * unit_float(random);
+    impulse / 100.0 * (unit_float(splitmix64(random)) - 0.5)
+}
+
+pub(crate) fn mutual_gravity_impulses(
+    positions: &[[f32; 2]],
+    masses: &[f32],
+    enabled: bool,
+    gravitational_constant: f32,
+) -> Vec<[f32; 2]> {
+    let mut impulses = vec![[0.0; 2]; positions.len()];
+    if !enabled || gravitational_constant == 0.0 {
+        return impulses;
+    }
+    for first in 0..positions.len() {
+        for second in first + 1..positions.len() {
+            let delta = [
+                positions[second][0] - positions[first][0],
+                positions[second][1] - positions[first][1],
+            ];
+            let distance_squared = delta[0] * delta[0] + delta[1] * delta[1];
+            if distance_squared <= f32::EPSILON {
+                continue;
+            }
+            let distance = distance_squared.sqrt();
+            let force = gravitational_constant
+                * masses
+                    .get(first)
+                    .copied()
+                    .unwrap_or(1.0)
+                    .min(192.0)
+                * masses
+                    .get(second)
+                    .copied()
+                    .unwrap_or(1.0)
+                    .min(192.0)
+                / distance_squared;
+            let unit = [delta[0] / distance, delta[1] / distance];
+            let first_acceleration = force / masses.get(first).copied().unwrap_or(1.0).max(1.0);
+            let second_acceleration =
+                force / masses.get(second).copied().unwrap_or(1.0).max(1.0);
+            impulses[first][0] += unit[0] * first_acceleration;
+            impulses[first][1] += unit[1] * first_acceleration;
+            impulses[second][0] -= unit[0] * second_acceleration;
+            impulses[second][1] -= unit[1] * second_acceleration;
+        }
+    }
+    impulses
+}
+
+pub(crate) fn apply_angular_damping(
+    angular_momentum: &mut f32,
+    mass: f32,
+    settings: &PhysicsSettings,
+) {
+    if settings.surface_gravity > 0.0 {
+        let impulse = mass * settings.surface_gravity * settings.kinetic_friction;
+        if impulse < 48.0 {
+            *angular_momentum *= (48.0 - impulse) / 48.0;
+        } else {
+            *angular_momentum = 0.0;
+        }
+    }
+    if settings.density > 0.0 {
+        if settings.density < 0.000001 {
+            *angular_momentum *= 1.0 - settings.density as f32 * 1_000_000.0;
+        } else {
+            *angular_momentum = 0.0;
+        }
+    }
+    if angular_momentum.abs() < VELOCITY_EPSILON {
+        *angular_momentum = 0.0;
+    }
+}
+
 pub(crate) fn apply_linear_drag(velocity: &mut [f32; 2], drag: f32) {
     let retention = 1.0 - drag.clamp(0.0, 0.99);
     velocity[0] *= retention;
@@ -93,15 +178,15 @@ pub(crate) fn integrate_body(
     position: &mut [f32; 2],
     velocity: [f32; 2],
     world_size: [f32; 2],
-    toroidal: bool,
+    wrapped_axes: [bool; 2],
 ) {
     let next = [position[0] + velocity[0], position[1] + velocity[1]];
-    if toroidal {
-        position[0] = next[0].rem_euclid(world_size[0].max(1.0));
-        position[1] = next[1].rem_euclid(world_size[1].max(1.0));
-    } else {
-        position[0] = next[0].clamp(0.0, world_size[0]);
-        position[1] = next[1].clamp(0.0, world_size[1]);
+    for axis in 0..2 {
+        position[axis] = if wrapped_axes[axis] {
+            next[axis].rem_euclid(world_size[axis].max(1.0))
+        } else {
+            next[axis].clamp(0.0, world_size[axis])
+        };
     }
 }
 

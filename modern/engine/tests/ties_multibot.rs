@@ -978,6 +978,40 @@ fn fixang_command_applies_canonical_tie_torque() {
 }
 
 #[test]
+fn structural_tie_torque_rotates_both_members_in_opposite_directions() {
+    let (mut engine, source, target) = spawn_soft_tie();
+    engine.tick_many(19).unwrap();
+
+    let mut batch = engine.physics_batch();
+    let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+    let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+    batch.batch.positions[source_index] = [400.0, 1_000.0];
+    batch.batch.positions[target_index] = [400.0, 1_300.0];
+    batch.batch.velocities[source_index] = [0.0; 2];
+    batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(batch).unwrap();
+
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+
+    let source_aim = engine.organism(source).unwrap().aim;
+    let target_aim = engine.organism(target).unwrap().aim;
+    let source_angular = engine
+        .robot_state(source)
+        .unwrap()
+        .kinematics
+        .angular_momentum;
+    let target_angular = engine
+        .robot_state(target)
+        .unwrap()
+        .kinematics
+        .angular_momentum;
+    assert_ne!(source_aim, 0);
+    assert_ne!(target_aim, 0);
+    assert!(source_angular * target_angular < 0.0);
+}
+
+#[test]
 fn multibot_amplifies_feeding_shot_and_virtual_body_range() {
     let mut baseline = Engine::new(tie_test_config()).unwrap();
     baseline

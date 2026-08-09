@@ -222,6 +222,8 @@ enum EngineCommand {
         speciation_genetic_distance_percent: Option<f32>,
         #[serde(default)]
         toroidal_world: Option<bool>,
+        #[serde(default)]
+        axis_topology: Option<[bool; 2]>,
     },
 }
 
@@ -695,6 +697,7 @@ fn db_engine_command_batch_impl(
                 auto_speciation,
                 speciation_genetic_distance_percent,
                 toroidal_world,
+                axis_topology,
             } => engine
                 .update_environment(
                     metabolism_cost,
@@ -714,6 +717,9 @@ fn db_engine_command_batch_impl(
                 .map(|_| {
                     if let Some(enabled) = toroidal_world {
                         engine.set_toroidal_world(enabled);
+                    }
+                    if let Some(wrapped_axes) = axis_topology {
+                        engine.set_axis_topology(wrapped_axes);
                     }
                 })
                 .map(|_| serde_json::Value::Null),

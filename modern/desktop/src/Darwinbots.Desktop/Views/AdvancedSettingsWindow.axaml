@@ -50,6 +50,16 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Pond depth gradient"/><NumericUpDown Grid.Column="1" x:Name="PondGradient" Minimum="0" Maximum="10" Increment="0.01" FormatString="0.00"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Tide period (cycles, 0 off)"/><NumericUpDown Grid.Column="1" x:Name="TidePeriod" Minimum="0" Maximum="100000000" Increment="1"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Tide phase offset"/><NumericUpDown Grid.Column="1" x:Name="TideOffset" Minimum="-100000000" Maximum="100000000" Increment="1"/></Grid>
+          <CheckBox x:Name="WeatherEnabled" Content="Enable weather and moving sun"/>
+          <CheckBox x:Name="SunUpEnabled" Content="Force sun up below total-energy threshold"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Sun-up threshold"/><NumericUpDown Grid.Column="1" x:Name="SunUpThreshold" Minimum="0" Maximum="2147483647" Increment="1000"/></Grid>
+          <CheckBox x:Name="SunDownEnabled" Content="Force sun down above total-energy threshold"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Sun-down threshold"/><NumericUpDown Grid.Column="1" x:Name="SunDownThreshold" Minimum="0" Maximum="2147483647" Increment="1000"/></Grid>
+          <Grid ColumnDefinitions="*,220"><TextBlock Text="Threshold mode"/><ComboBox Grid.Column="1" x:Name="SunThresholdMode" SelectedIndex="0">
+            <ComboBoxItem Content="Temporary suspend"/>
+            <ComboBoxItem Content="Permanent toggle"/>
+            <ComboBoxItem Content="Advance to dawn/dusk"/>
+          </ComboBox></Grid>
         </StackPanel></Border>
       </StackPanel></ScrollViewer></TabItem>
 
@@ -67,6 +77,8 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Collision elasticity"/><NumericUpDown Grid.Column="1" x:Name="Elasticity" Minimum="0" Maximum="2" Increment="0.01"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Drag"/><NumericUpDown Grid.Column="1" x:Name="Drag" Minimum="0" Maximum="1" Increment="0.01"/></Grid>
           <Grid ColumnDefinitions="*,150"><StackPanel><TextBlock Text="Brownian motion"/><TextBlock Text="0% off · 75% DB2 medium · 100% high" Foreground="#758078" FontSize="11"/></StackPanel><NumericUpDown Grid.Column="1" x:Name="Brownian" Minimum="0" Maximum="100"/></Grid>
+          <CheckBox x:Name="PlanetEaters" Content="Enable Planet Eaters mutual gravity"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Planet Eaters G"/><NumericUpDown Grid.Column="1" x:Name="PlanetEatersG" Minimum="0" Maximum="1000000" Increment="0.01"/></Grid>
         </StackPanel></Border>
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="SHOTS"/>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Speed"/><NumericUpDown Grid.Column="1" x:Name="ShotSpeed" Minimum="1" Maximum="1000"/></Grid>
@@ -77,7 +89,7 @@
       </StackPanel></ScrollViewer></TabItem>
 
       <TabItem Header="WORLD"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">
-        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="WORLD TOPOLOGY"/><CheckBox x:Name="ToroidalWorld" Content="Wrap opposite edges (toroidal world)"/><TextBlock Text="This is the default DB2-style continuous world: bots leaving one edge return from the opposite edge." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
+        <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="WORLD TOPOLOGY"/><CheckBox x:Name="ToroidalWorld" Content="Wrap both axes (toroidal world)"/><CheckBox x:Name="WrapX" Content="Wrap left and right edges"/><CheckBox x:Name="WrapY" Content="Wrap top and bottom edges"/><TextBlock Text="Each axis is independent. Bounded edges keep the robot radius inside the world and report edge contact." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
         <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="LINEAGES"/><CheckBox x:Name="AutoSpeciation" Content="Automatic speciation after accumulated DNA mutations"/><Grid ColumnDefinitions="*,150"><TextBlock Text="Genetic distance threshold (%)"/><NumericUpDown Grid.Column="1" x:Name="SpeciationDistance" Minimum="0.1" Maximum="10000" Increment="0.5" FormatString="0.0"/></Grid><TextBlock Text="A lineage receives a modest inherited skin-color change after this percentage of its DNA has mutated." TextWrapping="Wrap" Foreground="#66706B"/></StackPanel></Border>
       </StackPanel></ScrollViewer></TabItem>
     </TabControl>

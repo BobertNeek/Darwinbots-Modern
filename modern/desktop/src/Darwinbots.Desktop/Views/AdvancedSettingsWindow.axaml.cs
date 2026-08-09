@@ -10,20 +10,43 @@ public sealed partial class AdvancedSettingsWindow : Window
 {
     private readonly List<(uint Species, Slider Slider)> _speciesRates = [];
     private bool _initializing = true;
+    private bool _updatingTopology;
 
     public bool Accepted { get; private set; }
     public MutationSettingsUpdate MutationUpdate => new(MutationsEnabled.IsChecked == true, (float)(GlobalMutationRate.Value ?? 1m), _speciesRates.Select(value => new SpeciesMutationRateUpdate(value.Species, (float)value.Slider.Value)).ToArray());
     public EnvironmentUpdate Update => new(
         (int)(Metabolism.Value ?? 1), (int)(VegetableEnergy.Value ?? 0), (int)(Sunlight.Value ?? 100), [(float)(GravityX.Value ?? 0), (float)(GravityY.Value ?? 0)], (float)(Drag.Value ?? 0), Db2BrownianScale.FromPercent(Brownian.Value ?? 0),
-        new Db2PhysicsOptions((float)(MaxVelocity.Value ?? 180), (float)(MovementEfficiency.Value ?? 0.66m), (float)(SurfaceGravity.Value ?? 2), (float)(StaticFriction.Value ?? 0.6m), (float)(KineticFriction.Value ?? 0.4m), (double)(Density.Value ?? 0), (double)(Viscosity.Value ?? 0), (float)(Elasticity.Value ?? 0m)),
+        new Db2PhysicsOptions((float)(MaxVelocity.Value ?? 180), (float)(MovementEfficiency.Value ?? 0.66m), (float)(SurfaceGravity.Value ?? 2), (float)(StaticFriction.Value ?? 0.6m), (float)(KineticFriction.Value ?? 0.4m), (double)(Density.Value ?? 0), (double)(Viscosity.Value ?? 0), (float)(Elasticity.Value ?? 0m), PlanetEaters.IsChecked == true, (float)(PlanetEatersG.Value ?? 0m)),
         new Db2ShotOptions((float)(ShotSpeed.Value ?? 40), (float)(ShotRangeMultiplier.Value ?? 1), (float)(ShotDecay.Value ?? 40), EnergyShotsNoDecay.IsChecked == true, WasteShotsNoDecay.IsChecked == true),
-        new Db2VegetationOptions((int)(StartChloroplasts.Value ?? 16_000), (int)(MaxPlantEnergy.Value ?? 40), (int)(MinimumChloroplastEquivalents.Value ?? 10), (int)(RepopulationAmount.Value ?? 10), (ulong)(RepopulationCooldown.Value ?? 25), (float)(FeedingToBody.Value ?? 0.5m), Daytime.IsChecked == true, DayNightEnabled.IsChecked == true, (ulong)(CycleLength.Value ?? 10_000), PondMode.IsChecked == true, (float)(PondLightIntensity.Value ?? 100m), (float)(PondGradient.Value ?? 1m), (uint)(TidePeriod.Value ?? 0), (int)(TideOffset.Value ?? 0)),
-        AutoSpeciation.IsChecked == true, (float)(SpeciationDistance.Value ?? 20), ToroidalWorld.IsChecked == true);
+        new Db2VegetationOptions((int)(StartChloroplasts.Value ?? 16_000), (int)(MaxPlantEnergy.Value ?? 40), (int)(MinimumChloroplastEquivalents.Value ?? 10), (int)(RepopulationAmount.Value ?? 10), (ulong)(RepopulationCooldown.Value ?? 25), (float)(FeedingToBody.Value ?? 0.5m), Daytime.IsChecked == true, DayNightEnabled.IsChecked == true, (ulong)(CycleLength.Value ?? 10_000), PondMode.IsChecked == true, (float)(PondLightIntensity.Value ?? 100m), (float)(PondGradient.Value ?? 1m), (uint)(TidePeriod.Value ?? 0), (int)(TideOffset.Value ?? 0), WeatherEnabled.IsChecked == true, SunUpEnabled.IsChecked == true, (int)(SunUpThreshold.Value ?? 500_000), SunDownEnabled.IsChecked == true, (int)(SunDownThreshold.Value ?? 1_000_000), SunThresholdMode.SelectedIndex),
+        AutoSpeciation.IsChecked == true, (float)(SpeciationDistance.Value ?? 20), ToroidalWorld.IsChecked == true, WrapX.IsChecked == true, WrapY.IsChecked == true);
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
     public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null)
     {
         InitializeComponent();
+        ToroidalWorld.IsCheckedChanged += (_, _) =>
+        {
+            if (_initializing || _updatingTopology || ToroidalWorld.IsChecked is null) return;
+            _updatingTopology = true;
+            WrapX.IsChecked = ToroidalWorld.IsChecked;
+            WrapY.IsChecked = ToroidalWorld.IsChecked;
+            _updatingTopology = false;
+        };
+        WrapX.IsCheckedChanged += (_, _) =>
+        {
+            if (_initializing || _updatingTopology) return;
+            _updatingTopology = true;
+            ToroidalWorld.IsChecked = WrapX.IsChecked == true && WrapY.IsChecked == true;
+            _updatingTopology = false;
+        };
+        WrapY.IsCheckedChanged += (_, _) =>
+        {
+            if (_initializing || _updatingTopology) return;
+            _updatingTopology = true;
+            ToroidalWorld.IsChecked = WrapX.IsChecked == true && WrapY.IsChecked == true;
+            _updatingTopology = false;
+        };
         PopulateEnvironment(update);
         PopulateMutations(snapshot ?? EngineSnapshot.Empty);
         WireDirtyTracking();
@@ -34,10 +57,11 @@ public sealed partial class AdvancedSettingsWindow : Window
     {
         Metabolism.Value = update.MetabolismCost; VegetableEnergy.Value = update.VegetableEnergyPerTick; Sunlight.Value = update.SunlightEnergy;
         GravityX.Value = (decimal)update.Gravity[0]; GravityY.Value = (decimal)update.Gravity[1]; Drag.Value = (decimal)update.Drag; Brownian.Value = Db2BrownianScale.ToPercent(update.BrownianMotion);
-        MaxVelocity.Value = (decimal)update.Physics.MaxVelocity; MovementEfficiency.Value = (decimal)update.Physics.MovementEfficiency; SurfaceGravity.Value = (decimal)update.Physics.SurfaceGravity; StaticFriction.Value = (decimal)update.Physics.StaticFriction; KineticFriction.Value = (decimal)update.Physics.KineticFriction; Density.Value = (decimal)update.Physics.Density; Viscosity.Value = (decimal)update.Physics.Viscosity; Elasticity.Value = (decimal)update.Physics.Elasticity;
+        MaxVelocity.Value = (decimal)update.Physics.MaxVelocity; MovementEfficiency.Value = (decimal)update.Physics.MovementEfficiency; SurfaceGravity.Value = (decimal)update.Physics.SurfaceGravity; StaticFriction.Value = (decimal)update.Physics.StaticFriction; KineticFriction.Value = (decimal)update.Physics.KineticFriction; Density.Value = (decimal)update.Physics.Density; Viscosity.Value = (decimal)update.Physics.Viscosity; Elasticity.Value = (decimal)update.Physics.Elasticity; PlanetEaters.IsChecked = update.Physics.PlanetEaters; PlanetEatersG.Value = (decimal)update.Physics.PlanetEatersG;
         ShotSpeed.Value = (decimal)update.Shots.Speed; ShotRangeMultiplier.Value = (decimal)update.Shots.RangeMultiplier; ShotDecay.Value = (decimal)update.Shots.Decay; EnergyShotsNoDecay.IsChecked = update.Shots.EnergyShotsDoNotDecay; WasteShotsNoDecay.IsChecked = update.Shots.WasteShotsDoNotDecay;
-        StartChloroplasts.Value = update.Vegetation.StartChloroplasts; MaxPlantEnergy.Value = update.Vegetation.MaxEnergyPerTick; MinimumChloroplastEquivalents.Value = update.Vegetation.MinimumChloroplastEquivalents; RepopulationAmount.Value = update.Vegetation.RepopulationAmount; RepopulationCooldown.Value = update.Vegetation.RepopulationCooldown; FeedingToBody.Value = (decimal)update.Vegetation.FeedingToBody; Daytime.IsChecked = update.Vegetation.Daytime; DayNightEnabled.IsChecked = update.Vegetation.DayNightEnabled; CycleLength.Value = update.Vegetation.CycleLength; PondMode.IsChecked = update.Vegetation.PondMode; PondLightIntensity.Value = (decimal)update.Vegetation.LightIntensity; PondGradient.Value = (decimal)update.Vegetation.Gradient; TidePeriod.Value = update.Vegetation.Tides; TideOffset.Value = update.Vegetation.TidesOffset;
-        AutoSpeciation.IsChecked = update.AutoSpeciation; SpeciationDistance.Value = (decimal)update.SpeciationGeneticDistancePercent; ToroidalWorld.IsChecked = update.ToroidalWorld;
+        StartChloroplasts.Value = update.Vegetation.StartChloroplasts; MaxPlantEnergy.Value = update.Vegetation.MaxEnergyPerTick; MinimumChloroplastEquivalents.Value = update.Vegetation.MinimumChloroplastEquivalents; RepopulationAmount.Value = update.Vegetation.RepopulationAmount; RepopulationCooldown.Value = update.Vegetation.RepopulationCooldown; FeedingToBody.Value = (decimal)update.Vegetation.FeedingToBody; Daytime.IsChecked = update.Vegetation.Daytime; DayNightEnabled.IsChecked = update.Vegetation.DayNightEnabled; CycleLength.Value = update.Vegetation.CycleLength; PondMode.IsChecked = update.Vegetation.PondMode; PondLightIntensity.Value = (decimal)update.Vegetation.LightIntensity; PondGradient.Value = (decimal)update.Vegetation.Gradient; TidePeriod.Value = update.Vegetation.Tides; TideOffset.Value = update.Vegetation.TidesOffset; WeatherEnabled.IsChecked = update.Vegetation.WeatherEnabled; SunUpEnabled.IsChecked = update.Vegetation.SunUpEnabled; SunUpThreshold.Value = update.Vegetation.SunUpThreshold; SunDownEnabled.IsChecked = update.Vegetation.SunDownEnabled; SunDownThreshold.Value = update.Vegetation.SunDownThreshold; SunThresholdMode.SelectedIndex = update.Vegetation.SunThresholdMode;
+        AutoSpeciation.IsChecked = update.AutoSpeciation; SpeciationDistance.Value = (decimal)update.SpeciationGeneticDistancePercent;
+        WrapX.IsChecked = update.WrapX; WrapY.IsChecked = update.WrapY; ToroidalWorld.IsChecked = update.ToroidalWorld;
     }
 
     private void PopulateMutations(EngineSnapshot snapshot)

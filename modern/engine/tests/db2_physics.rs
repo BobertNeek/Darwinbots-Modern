@@ -113,6 +113,30 @@ fn drag_reduces_retained_momentum_instead_of_replacing_it() {
 }
 
 #[test]
+fn brownian_motion_rotates_aim_on_the_next_cycle() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        brownian_motion: 100.0,
+        drag: 0.0,
+        physics: PhysicsSettings {
+            surface_gravity: 0.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let id = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+
+    assert_ne!(engine.organism(id).unwrap().aim, 0);
+}
+
+#[test]
 fn elasticity_rebounds_colliding_bots_with_finite_velocity() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
