@@ -1,6 +1,8 @@
 mod support;
 
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings, VegetationSettings};
+use darwinbots_engine::{
+    DnaCosts, Engine, EngineConfig, LegacyDna, PhysicsSettings, SaveFile, VegetationSettings,
+};
 use support::db2_fixtures::{DEFAULT_MAX_VELOCITY, DEFAULT_MOVEMENT_EFFICIENCY};
 
 #[test]
@@ -85,6 +87,81 @@ fn newmove_directive_is_preserved_by_legacy_dna() {
 
     assert!(dna.uses_new_move());
     assert!(LegacyDna::parse(&dna.to_source()).unwrap().uses_new_move());
+}
+
+#[test]
+fn voluntary_motion_cost_uses_the_clipped_acceleration_magnitude() {
+    let mut config = EngineConfig::testing();
+    config.metabolism_cost = 0;
+    config.gravity = [0.0, 0.0];
+    config.drag = 0.0;
+    config.physics.movement_efficiency = 1.0;
+    config.physics.surface_gravity = 0.0;
+    config.physics.static_friction = 0.0;
+    config.physics.kinetic_friction = 0.0;
+    config.dna_costs = DnaCosts {
+        movement: 1.0,
+        ..DnaCosts::default()
+    };
+    let mut engine = Engine::new(config).unwrap();
+    let id = engine
+        .spawn_at(
+            LegacyDna::parse("start\n10000 .up store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    engine.set_organism_energy(id, 32_000).unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.organism(id).unwrap().energy, 31_820);
+    assert!((engine.organism(id).unwrap().velocity[1] - 180.0).abs() < 0.01);
+}
+
+#[test]
+fn fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost() {
+    let mut config = EngineConfig::testing();
+    config.metabolism_cost = 0;
+    config.gravity = [0.0, 0.0];
+    config.drag = 0.0;
+    config.physics.movement_efficiency = 1.0;
+    config.physics.surface_gravity = 0.0;
+    config.physics.static_friction = 0.0;
+    config.physics.kinetic_friction = 0.0;
+    config.dna_costs = DnaCosts {
+        movement: 1.0,
+        ..DnaCosts::default()
+    };
+    let mut engine = Engine::new(config).unwrap();
+    let fixed = engine
+        .spawn_at(
+            LegacyDna::parse("start\n1 .fixpos store\n100 .up store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let corpse = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1_000.0, 500.0])
+        .unwrap();
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let slots = payload["slots"].as_array_mut().unwrap();
+    slots[corpse.slot() as usize]["organism"]["flags"]["corpse"] = true.into();
+    slots[corpse.slot() as usize]["organism"]["flags"]["can_execute_dna"] = false.into();
+    slots[corpse.slot() as usize]["organism"]["flags"]["can_move"] = true.into();
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    let mut engine = SaveFile::decode(&save).unwrap();
+    engine.set_organism_memory(corpse, 1, 100).unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.organism(fixed).unwrap().energy, 1_000);
+    assert_eq!(engine.organism(fixed).unwrap().position, [500.0, 500.0]);
+    assert_eq!(engine.organism(corpse).unwrap().energy, 1_000);
+    assert_eq!(engine.organism(corpse).unwrap().position, [1_000.0, 500.0]);
 }
 
 #[test]
@@ -381,8 +458,7 @@ fn fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick(
     wet.tick().unwrap();
 
     assert!(
-        wet.organism(wet_id).unwrap().velocity[1]
-            < dry.organism(dry_id).unwrap().velocity[1] * 0.5,
+        wet.organism(wet_id).unwrap().velocity[1] < dry.organism(dry_id).unwrap().velocity[1] * 0.5,
         "fluid added mass must reduce gravity acceleration"
     );
 

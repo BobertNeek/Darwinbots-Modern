@@ -208,3 +208,74 @@ fn tie_commands_create_multibot_link_and_share_energy() {
 
     assert!(engine.organism(source).unwrap().energy < engine.organism(target).unwrap().energy);
 }
+
+#[test]
+fn late_internal_senses_publish_full_velocity_body_change_daytime_fixed_and_max_velocity() {
+    let mut config = EngineConfig::testing();
+    config.metabolism_cost = 0;
+    config.gravity = [0.0, 0.0];
+    config.drag = 0.0;
+    config.physics.max_velocity = 42.0;
+    config.physics.movement_efficiency = 1.0;
+    config.physics.surface_gravity = 0.0;
+    config.physics.static_friction = 0.0;
+    config.physics.kinetic_friction = 0.0;
+    config.vegetation.daytime = false;
+    let mut engine = Engine::new(config).unwrap();
+    let moving = engine
+        .spawn_at(
+            LegacyDna::parse("start\n5 .up store\n100 .strbody store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let fixed = engine
+        .spawn_at(
+            LegacyDna::parse("start\n1 .fixpos store\n5 .up store\nstop").unwrap(),
+            [1_000.0, 500.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(moving, "velscalar").unwrap(), 5);
+    assert_eq!(engine.memory(moving, "velsx").unwrap(), 0);
+    assert_eq!(engine.memory(moving, "veldx").unwrap(), 0);
+    assert_eq!(engine.memory(moving, "veldn").unwrap(), 0);
+    assert_eq!(engine.memory(moving, "velup").unwrap(), 5);
+    assert_eq!(engine.memory(moving, "bodloss").unwrap(), 0);
+    assert_eq!(engine.memory(moving, "bodgain").unwrap(), 10);
+    assert_eq!(engine.memory(moving, "daytime").unwrap(), 0);
+    assert_eq!(engine.memory(moving, "maxvel").unwrap(), 42);
+    assert_eq!(engine.memory(moving, "fixed").unwrap(), 0);
+    assert_eq!(engine.memory(fixed, "fixed").unwrap(), 1);
+}
+
+#[test]
+fn tie_readback_publishes_the_selected_partner_reference_state() {
+    let mut config = EngineConfig::testing();
+    config.gravity = [0.0, 0.0];
+    config.drag = 0.0;
+    config.physics.surface_gravity = 0.0;
+    config.physics.static_friction = 0.0;
+    config.physics.kinetic_friction = 0.0;
+    let mut engine = Engine::new(config).unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n1 .tie store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 100.0])
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(source, "trefbody").unwrap(), 1_000);
+    assert_eq!(engine.memory(source, "trefnrg").unwrap(), 1_000);
+    assert_eq!(engine.memory(source, "trefxpos").unwrap(), 500);
+    assert_eq!(engine.memory(source, "trefypos").unwrap(), 100);
+    assert_eq!(engine.memory(source, "trefshell").unwrap(), 0);
+    assert_eq!(engine.memory(source, "trefaim").unwrap(), 0);
+    assert_eq!(engine.memory(source, "treffixed").unwrap(), 0);
+}

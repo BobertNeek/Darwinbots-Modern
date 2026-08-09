@@ -12,7 +12,9 @@ pub(crate) use environment::{
     apply_angular_damping, apply_resistance, brownian_rotation, environment_impulse,
     fluid_added_mass, integrate_body, mutual_gravity_impulses,
 };
-pub(crate) use movement::{MovementInput, MovementState, apply_voluntary_impulse, derived_mass};
+pub(crate) use movement::{
+    MovementInput, MovementState, apply_voluntary_impulse, derived_mass, voluntary_cost_magnitude,
+};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]

@@ -37,7 +37,7 @@ use std::time::Instant;
 use crate::physics::{
     MovementInput, MovementState, apply_angular_damping, apply_resistance,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
-    fluid_added_mass, mutual_gravity_impulses,
+    fluid_added_mass, mutual_gravity_impulses, voluntary_cost_magnitude,
 };
 
 const MEM_ROBAGE: i32 = 9;
@@ -60,6 +60,15 @@ const MEM_VIRUS_TIMER: i32 = 337;
 const MEM_GENES: i32 = 339;
 const MEM_THIS_GENE: i32 = 341;
 const MEM_NRG: i32 = 310;
+const MEM_MAX_VELOCITY: i32 = 11;
+const MEM_BODY_GAIN: i32 = 194;
+const MEM_BODY_LOSS: i32 = 195;
+const MEM_VEL_SCALAR: i32 = 196;
+const MEM_VEL_SX: i32 = 197;
+const MEM_VEL_DX: i32 = 198;
+const MEM_VEL_DN: i32 = 199;
+const MEM_VEL_UP: i32 = 200;
+const MEM_FIXED_READBACK: i32 = 215;
 const MEM_SET_BUOYANCY: i32 = 314;
 const MEM_READ_BUOYANCY: i32 = 315;
 const MEM_REF_X: i32 = 689;
@@ -92,51 +101,86 @@ const MEM_REF_FIXED: i32 = 477;
 const MEM_EYE1: i32 = 501;
 const MEM_OUT_BASE: i32 = 800;
 const MEM_IN_BASE: i32 = 810;
-const MEM_TIE_ANGLE: i32 = 449;
-const MEM_TIE_LENGTH: i32 = 450;
+const MEM_TREF_BODY: i32 = 437;
+const MEM_TREF_XPOS: i32 = 438;
+const MEM_TREF_YPOS: i32 = 439;
+const MEM_TREF_VEL_MY_SX: i32 = 440;
+const MEM_TREF_VEL_MY_DX: i32 = 441;
+const MEM_TREF_VEL_MY_DN: i32 = 442;
+const MEM_TREF_VEL_MY_UP: i32 = 443;
+const MEM_TREF_VEL_SCALAR: i32 = 444;
+const MEM_TREF_VEL_YOUR_SX: i32 = 445;
+const MEM_TREF_VEL_YOUR_DX: i32 = 446;
+const MEM_TREF_VEL_YOUR_DN: i32 = 447;
+const MEM_TREF_VEL_YOUR_UP: i32 = 448;
+const MEM_TREF_SHELL: i32 = 449;
+const MEM_TIE_ANGLE: i32 = 450;
+const MEM_TIE_LENGTH: i32 = 451;
 const MEM_TIE_PRESENT: i32 = 454;
 const MEM_NUMBER_OF_TIES: i32 = 466;
 const MEM_MULTI: i32 = 470;
 const MEM_READ_TIE: i32 = 471;
 const MEM_TIE_MEMORY_VALUE: i32 = 475;
 const MEM_TIE_MEMORY_LOCATION: i32 = 476;
+const MEM_TREF_UP: i32 = 456;
+const MEM_TREF_DN: i32 = 457;
+const MEM_TREF_SX: i32 = 458;
+const MEM_TREF_DX: i32 = 459;
+const MEM_TREF_AIM_DX: i32 = 460;
+const MEM_TREF_AIM_SX: i32 = 461;
+const MEM_TREF_SHOOT: i32 = 462;
+const MEM_TREF_EYE: i32 = 463;
+const MEM_TREF_NRG: i32 = 464;
+const MEM_TREF_AGE: i32 = 465;
+const MEM_TREF_FIXED: i32 = 478;
+const MEM_TREF_AIM: i32 = 479;
 const MEM_MY_TIES: i32 = 729;
 const MEM_MY_EYE: i32 = 728;
 const MEM_XPOS: i32 = 219;
 const MEM_YPOS: i32 = 217;
+const MEM_DAYTIME: i32 = 218;
 const MEM_EDGE: i32 = 214;
 const MEM_LIGHT: i32 = 923;
 const BIRTH_BORDER_SMUDGE: f32 = 50.0;
 const FERTILIZATION_WINDOW: i32 = 10;
 const MAX_SEXUAL_GENETIC_DISTANCE: f32 = 0.6;
-const TIED_REFERENCE_ADDRESSES: [i32; 27] = [
-    437,
-    438,
-    439,
-    440,
-    441,
-    442,
-    443,
-    444,
-    445,
-    446,
-    447,
-    448,
-    MEM_TIE_ANGLE,
-    456,
-    457,
-    458,
-    459,
-    460,
-    461,
-    462,
-    463,
-    464,
-    465,
-    MEM_TIE_LENGTH,
-    475,
-    478,
-    479,
+const TIED_REFERENCE_ADDRESSES: [i32; 36] = [
+    420,
+    421,
+    422,
+    423,
+    424,
+    425,
+    426,
+    427,
+    428,
+    429,
+    MEM_TREF_BODY,
+    MEM_TREF_XPOS,
+    MEM_TREF_YPOS,
+    MEM_TREF_VEL_MY_SX,
+    MEM_TREF_VEL_MY_DX,
+    MEM_TREF_VEL_MY_DN,
+    MEM_TREF_VEL_MY_UP,
+    MEM_TREF_VEL_SCALAR,
+    MEM_TREF_VEL_YOUR_SX,
+    MEM_TREF_VEL_YOUR_DX,
+    MEM_TREF_VEL_YOUR_DN,
+    MEM_TREF_VEL_YOUR_UP,
+    MEM_TREF_SHELL,
+    MEM_TREF_UP,
+    MEM_TREF_DN,
+    MEM_TREF_SX,
+    MEM_TREF_DX,
+    MEM_TREF_AIM_DX,
+    MEM_TREF_AIM_SX,
+    MEM_TREF_SHOOT,
+    MEM_TREF_EYE,
+    MEM_TREF_NRG,
+    MEM_TREF_AGE,
+    MEM_TIE_MEMORY_VALUE,
+    MEM_TREF_FIXED,
+    MEM_TREF_AIM,
 ];
 
 fn normalize_tie_angle(angle: f32) -> f32 {
@@ -153,6 +197,30 @@ fn settle_simulation_cost(robot: &mut RobotState, cost: f64) {
     }
     let whole = robot.program.settle_dna_energy_cost(cost);
     robot.materials.energy = robot.materials.energy.saturating_sub(whole);
+}
+
+fn sensor_value(value: f32) -> i32 {
+    if value.is_finite() {
+        value.round_ties_even().clamp(-32_000.0, 32_000.0) as i32
+    } else {
+        0
+    }
+}
+
+fn velocity_readbacks(velocity: [f32; 2], aim: f32) -> [i32; 5] {
+    let forward = velocity[0] * aim.sin() + velocity[1] * aim.cos();
+    let lateral = velocity[0] * aim.cos() - velocity[1] * aim.sin();
+    [
+        sensor_value(velocity[0].hypot(velocity[1]).max(0.0)),
+        sensor_value((-lateral).max(0.0)),
+        sensor_value(lateral.max(0.0)),
+        sensor_value((-forward).max(0.0)),
+        sensor_value(forward.max(0.0)),
+    ]
+}
+
+fn robot_is_fixed(robot: &RobotState, fixing_allowed: bool) -> bool {
+    fixing_allowed && (robot.flags.fixed || robot.program.memory.read(MEM_FIXED) != 0)
 }
 
 fn write_directional_sensor(
@@ -1918,6 +1986,7 @@ impl From<&Db3sV2Biology> for BiologyState {
             paralyzed: state.paralyzed,
             poisoned: state.poisoned,
             previous_energy: state.previous_energy,
+            previous_body: state.body,
             plant_energy_carry_micros: state.plant_energy_carry_micros,
             plant_body_carry_micros: state.plant_body_carry_micros,
             chloroplast_decay_carry_micros: 0,
@@ -4537,6 +4606,7 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            robot.materials.decay_slime_and_poison();
             let cost = costs.upkeep_cost(
                 f64::from(robot.materials.body),
                 robot.program.dna.blocks().len(),
@@ -4594,6 +4664,7 @@ impl Engine {
         let settings = &self.config.physics;
         let costs = &self.config.dna_costs;
         let population = self.cost_population();
+        let robot_fixing_allowed = self.robot_fixing_allowed;
         let pond_mode = self.config.vegetation.pond_mode && !self.config.axis_topology()[1];
         let buoyancy_cost = if pond_mode {
             f64::from(self.config.gravity[1].abs())
@@ -4619,7 +4690,11 @@ impl Engine {
                     &mut robot.program.memory,
                 );
             }
-            if !robot.flags.can_move {
+            if robot.flags.corpse
+                || !robot.flags.can_execute_dna
+                || !robot.flags.can_move
+                || robot_is_fixed(robot, robot_fixing_allowed)
+            {
                 robot.kinematics.pending_velocity = [0.0; 2];
                 continue;
             }
@@ -4631,22 +4706,15 @@ impl Engine {
                 aim_radians: robot.materials.aim as f32 / 200.0,
                 new_move: robot.program.dna.uses_new_move(),
             };
-            let mut movement = MovementState::default();
-            apply_voluntary_impulse(
-                &mut movement,
-                input,
-                derived_mass(
-                    robot.materials.body,
-                    robot.materials.shell,
-                    robot.materials.chloroplasts,
-                ),
-                settings,
+            let mass = derived_mass(
+                robot.materials.body,
+                robot.materials.shell,
+                robot.materials.chloroplasts,
             );
+            let mut movement = MovementState::default();
+            apply_voluntary_impulse(&mut movement, input, mass, settings);
             robot.kinematics.pending_velocity = movement.velocity;
-            let amount = [commands.up, commands.down, commands.left, commands.right]
-                .into_iter()
-                .map(|value| f64::from(value.unsigned_abs()))
-                .sum();
+            let amount = f64::from(voluntary_cost_magnitude(input, mass, settings));
             settle_simulation_cost(
                 robot,
                 costs.action_cost_for(SimulationCostAction::Movement, amount, population),
@@ -4848,6 +4916,10 @@ impl Engine {
         for slot in self.slots.iter_mut() {
             if let Some(robot) = slot.organism.as_mut() {
                 robot.materials.energy = robot.materials.energy.min(32_000);
+                robot.materials.shell = robot.materials.shell.clamp(0, 32_000);
+                robot.materials.slime = robot.materials.slime.clamp(0, 32_000);
+                robot.materials.venom = robot.materials.venom.clamp(0, 32_000);
+                robot.materials.poison = robot.materials.poison.clamp(0, 32_000);
             }
         }
     }
@@ -4908,28 +4980,29 @@ impl Engine {
                 set: robot.materials.aim,
                 ..Default::default()
             };
-            robot
-                .materials
-                .apply_outputs(&mut robot.program.memory, 0, aim, applied_commands);
+            let applied_commands =
+                robot
+                    .materials
+                    .apply_outputs(&mut robot.program.memory, 0, aim, applied_commands);
             robot.materials.chloroplasts = robot
                 .materials
                 .chloroplasts
                 .saturating_add(accepted_chloroplasts);
             let material_cost = costs.action_cost_for(
                 SimulationCostAction::Shell,
-                f64::from(commands.make_shell.max(0)),
+                f64::from(applied_commands.make_shell.max(0)),
                 population,
             ) + costs.action_cost_for(
                 SimulationCostAction::Slime,
-                f64::from(commands.make_slime.max(0)),
+                f64::from(applied_commands.make_slime.max(0)),
                 population,
             ) + costs.action_cost_for(
                 SimulationCostAction::Venom,
-                f64::from(commands.make_venom.max(0)),
+                f64::from(applied_commands.make_venom.max(0)),
                 population,
             ) + costs.action_cost_for(
                 SimulationCostAction::Poison,
-                f64::from(commands.make_poison.max(0)),
+                f64::from(applied_commands.make_poison.max(0)),
                 population,
             ) + costs.action_cost_for(
                 SimulationCostAction::ChloroplastConstruction,
@@ -5044,15 +5117,42 @@ impl Engine {
 
     fn publish_core_senses_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let daytime = i32::from(self.config.vegetation.daytime);
+        let max_velocity = sensor_value(self.config.physics.max_velocity);
+        let robot_fixing_allowed = self.robot_fixing_allowed;
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            let (body_gain, body_loss) = robot.materials.consume_body_change();
+            let [
+                velocity_scalar,
+                velocity_sx,
+                velocity_dx,
+                velocity_dn,
+                velocity_up,
+            ] = velocity_readbacks(
+                robot.kinematics.velocity,
+                robot.materials.aim as f32 / 200.0,
+            );
             runtime.publish(
                 PhaseReadbacks::Core(CoreReadbacks {
                     values: vec![
+                        (MEM_BODY_GAIN as u16, body_gain),
+                        (MEM_BODY_LOSS as u16, body_loss),
+                        (MEM_VEL_SCALAR as u16, velocity_scalar),
+                        (MEM_VEL_SX as u16, velocity_sx),
+                        (MEM_VEL_DX as u16, velocity_dx),
+                        (MEM_VEL_DN as u16, velocity_dn),
+                        (MEM_VEL_UP as u16, velocity_up),
+                        (
+                            MEM_FIXED_READBACK as u16,
+                            i32::from(robot_is_fixed(robot, robot_fixing_allowed)),
+                        ),
                         (MEM_XPOS as u16, robot.kinematics.position[0].round() as i32),
                         (MEM_YPOS as u16, robot.kinematics.position[1].round() as i32),
+                        (MEM_DAYTIME as u16, daytime),
+                        (MEM_MAX_VELOCITY as u16, max_velocity),
                     ],
                 }),
                 &mut robot.program.memory,
@@ -5460,7 +5560,7 @@ impl Engine {
                             target.materials.venom,
                             target.counters.kills,
                             target.counters.multibot,
-                            target.flags.fixed,
+                            robot_is_fixed(target, self.robot_fixing_allowed),
                             target_memory_value,
                             outgoing,
                         ))
@@ -5519,29 +5619,20 @@ impl Engine {
             )) = sense.2
             {
                 let observer_angle = observer.materials.aim as f32 / 200.0;
-                let target_forward = target_velocity[0] * observer_angle.sin()
-                    + target_velocity[1] * observer_angle.cos();
-                let target_lateral = target_velocity[0] * observer_angle.cos()
-                    - target_velocity[1] * observer_angle.sin();
+                let [
+                    _,
+                    target_velocity_sx,
+                    target_velocity_dx,
+                    target_velocity_dn,
+                    target_velocity_up,
+                ] = velocity_readbacks(target_velocity, observer_angle);
                 values.extend([
                     (MEM_REF_X as u16, target_position[0].round() as i32),
                     (MEM_REF_Y as u16, target_position[1].round() as i32),
-                    (
-                        MEM_REF_VEL_UP as u16,
-                        target_forward.max(0.0).round() as i32,
-                    ),
-                    (
-                        MEM_REF_VEL_DN as u16,
-                        (-target_forward).max(0.0).round() as i32,
-                    ),
-                    (
-                        MEM_REF_VEL_DX as u16,
-                        target_lateral.max(0.0).round() as i32,
-                    ),
-                    (
-                        MEM_REF_VEL_SX as u16,
-                        (-target_lateral).max(0.0).round() as i32,
-                    ),
+                    (MEM_REF_VEL_UP as u16, target_velocity_up),
+                    (MEM_REF_VEL_DN as u16, target_velocity_dn),
+                    (MEM_REF_VEL_DX as u16, target_velocity_dx),
+                    (MEM_REF_VEL_SX as u16, target_velocity_sx),
                     (MEM_REF_EYE as u16, target_eye_references),
                     (MEM_REF_NRG as u16, target_energy),
                     (MEM_REF_AGE as u16, target_age.min(i32::MAX as u64) as i32),
@@ -6236,56 +6327,135 @@ impl Engine {
             latest_ports[first] = Some(tie.first_port);
             latest_ports[second] = Some(tie.second_port);
         }
-        for (slot, slot_state) in self.slots.iter_mut().enumerate() {
-            let Some(organism) = slot_state.organism.as_mut() else {
+        for slot in 0..self.slots.len() {
+            let Some(source) = self.slots[slot].organism.as_ref() else {
                 continue;
             };
-            organism.ties = endpoints[slot];
             let count = tie_counts[slot] as i32;
-            organism.counters.multibot = multibot.get(slot).copied().unwrap_or(false);
-            let selected_port = match organism.program.memory.read(MEM_READ_TIE) {
+            let multibot = multibot.get(slot).copied().unwrap_or(false);
+            let selected_port = match source.program.memory.read(MEM_READ_TIE) {
                 0 => latest_ports[slot].unwrap_or(0),
                 selected => selected,
             };
+            let selected_index = endpoints[slot].iter().position(|endpoint| {
+                endpoint.is_some_and(|endpoint| endpoint.port == selected_port)
+            });
+            let reference_values = selected_index
+                .and_then(|index| endpoints[slot][index].and_then(|endpoint| endpoint.other))
+                .and_then(|other| {
+                    let target = self.slots.get(other).ok()?;
+                    let source_aim = source.materials.aim as f32 / 200.0;
+                    let target_aim = target.materials.aim as f32 / 200.0;
+                    let target_velocity_for_source =
+                        velocity_readbacks(target.kinematics.velocity, source_aim);
+                    let source_velocity =
+                        velocity_readbacks(source.kinematics.velocity, source_aim);
+                    let target_velocity =
+                        velocity_readbacks(target.kinematics.velocity, target_aim);
+                    let memory_location = source.program.memory.read(MEM_TIE_MEMORY_LOCATION);
+                    let memory_value = if (1..=1_000).contains(&memory_location) {
+                        target.program.memory.read(memory_location)
+                    } else {
+                        0
+                    };
+                    let mut values = Vec::with_capacity(36);
+                    values.extend((0..10).map(|index| {
+                        (420 + index as u16, target.program.memory.read(410 + index))
+                    }));
+                    values.extend([
+                        (MEM_TREF_BODY as u16, target.materials.body),
+                        (
+                            MEM_TREF_XPOS as u16,
+                            sensor_value(target.kinematics.position[0]),
+                        ),
+                        (
+                            MEM_TREF_YPOS as u16,
+                            sensor_value(target.kinematics.position[1]),
+                        ),
+                        (
+                            MEM_TREF_VEL_MY_SX as u16,
+                            target_velocity_for_source[1] - source_velocity[1],
+                        ),
+                        (
+                            MEM_TREF_VEL_MY_DX as u16,
+                            target_velocity_for_source[2] - source_velocity[2],
+                        ),
+                        (
+                            MEM_TREF_VEL_MY_DN as u16,
+                            target_velocity_for_source[3] - source_velocity[3],
+                        ),
+                        (
+                            MEM_TREF_VEL_MY_UP as u16,
+                            target_velocity_for_source[4] - source_velocity[4],
+                        ),
+                        (MEM_TREF_VEL_SCALAR as u16, target_velocity[0]),
+                        (MEM_TREF_VEL_YOUR_SX as u16, target_velocity[1]),
+                        (MEM_TREF_VEL_YOUR_DX as u16, target_velocity[2]),
+                        (MEM_TREF_VEL_YOUR_DN as u16, target_velocity[3]),
+                        (MEM_TREF_VEL_YOUR_UP as u16, target_velocity[4]),
+                        (MEM_TREF_SHELL as u16, target.materials.shell),
+                    ]);
+                    for index in 0..8 {
+                        values.push((
+                            MEM_TREF_UP as u16 + index as u16,
+                            i32::from(
+                                target
+                                    .senses
+                                    .vision_reference_occurrences
+                                    .get(index)
+                                    .copied()
+                                    .unwrap_or(0),
+                            ),
+                        ));
+                    }
+                    values.extend([
+                        (MEM_TREF_NRG as u16, target.materials.energy),
+                        (
+                            MEM_TREF_AGE as u16,
+                            target.counters.age.saturating_add(1).min(i32::MAX as u64) as i32,
+                        ),
+                        (MEM_TIE_MEMORY_VALUE as u16, memory_value),
+                        (
+                            MEM_TREF_FIXED as u16,
+                            i32::from(robot_is_fixed(target, self.robot_fixing_allowed)),
+                        ),
+                        (MEM_TREF_AIM as u16, target.materials.aim),
+                    ]);
+                    Some(values)
+                });
+            let mut values = vec![
+                (
+                    MEM_TIE_ANGLE as u16,
+                    selected_index
+                        .map(|index| tie_angles[slot][index])
+                        .unwrap_or(0),
+                ),
+                (
+                    MEM_TIE_LENGTH as u16,
+                    selected_index
+                        .map(|index| tie_lengths[slot][index])
+                        .unwrap_or(0),
+                ),
+                (MEM_MULTI as u16, i32::from(multibot)),
+                (MEM_NUMBER_OF_TIES as u16, count),
+                (MEM_MY_TIES as u16, count),
+                (MEM_TIE_PRESENT as u16, latest_ports[slot].unwrap_or(0)),
+            ];
+            for index in 0..4 {
+                values.push((480 + index as u16, tie_angles[slot][index]));
+                values.push((484 + index as u16, tie_lengths[slot][index]));
+            }
+            if let Some(reference_values) = reference_values {
+                values.extend(reference_values);
+            }
+            let organism = self.slots[slot].organism.as_mut().unwrap();
+            organism.ties = endpoints[slot];
+            organism.counters.multibot = multibot;
             runtime.publish(
-                PhaseReadbacks::Tie(TieReadbacks {
-                    values: {
-                        let selected_index = organism.ties.iter().position(|endpoint| {
-                            endpoint.is_some_and(|endpoint| endpoint.port == selected_port)
-                        });
-                        let mut values = vec![
-                            (
-                                MEM_TIE_ANGLE as u16,
-                                selected_index
-                                    .map(|index| tie_angles[slot][index])
-                                    .unwrap_or(0),
-                            ),
-                            (
-                                MEM_TIE_LENGTH as u16,
-                                selected_index
-                                    .map(|index| tie_lengths[slot][index])
-                                    .unwrap_or(0),
-                            ),
-                            (MEM_MULTI as u16, i32::from(organism.counters.multibot)),
-                            (MEM_NUMBER_OF_TIES as u16, count),
-                            (MEM_MY_TIES as u16, count),
-                            (MEM_TIE_PRESENT as u16, latest_ports[slot].unwrap_or(0)),
-                        ];
-                        for index in 0..4 {
-                            values.push((480 + index as u16, tie_angles[slot][index]));
-                            values.push((484 + index as u16, tie_lengths[slot][index]));
-                        }
-                        values
-                    },
-                }),
+                PhaseReadbacks::Tie(TieReadbacks { values }),
                 &mut organism.program.memory,
             );
-            let selected_tie_is_valid = organism
-                .ties
-                .iter()
-                .flatten()
-                .any(|endpoint| endpoint.port == selected_port);
-            if !selected_tie_is_valid {
+            if selected_index.is_none() {
                 for address in TIED_REFERENCE_ADDRESSES {
                     organism.program.memory.write(address, 0);
                 }
@@ -6327,16 +6497,19 @@ impl Engine {
             if !self.ties_enabled {
                 continue;
             }
+            let deflect = {
+                let attacker = self.slots[first_slot].organism.as_mut().unwrap();
+                attacker.program.rng_state = advance_random(attacker.program.rng_state);
+                2 + (attacker.program.rng_state % 91) as i32
+            };
             if self.slots[second_slot]
                 .organism
                 .as_ref()
-                .unwrap()
-                .materials
-                .slime
-                > 0
+                .is_some_and(|robot| deflect < robot.materials.slime)
             {
                 let second = self.slots[second_slot].organism.as_mut().unwrap();
-                second.materials.slime = second.materials.slime.saturating_sub(10);
+                second.materials.slime = second.materials.slime.saturating_sub(20);
+                second.materials.publish(&mut second.program.memory);
                 continue;
             }
             let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
@@ -6576,11 +6749,9 @@ impl Engine {
             .ids
             .iter()
             .map(|id| {
-                self.robot_fixing_allowed
-                    && self
-                        .slots
-                        .get(*id)
-                        .is_ok_and(|organism| organism.program.memory.read(216) != 0)
+                self.slots.get(*id).is_ok_and(|organism| {
+                    organism.flags.corpse || robot_is_fixed(organism, self.robot_fixing_allowed)
+                })
             })
             .collect();
         for (index, contacts) in edge_contacts.iter().enumerate() {

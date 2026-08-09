@@ -773,6 +773,7 @@ impl From<&LegacyBiologyState> for BiologyState {
             paralyzed: state.paralyzed,
             poisoned: state.poisoned,
             previous_energy: state.previous_energy,
+            previous_body: state.body,
             plant_energy_carry_micros: state.plant_energy_carry_micros,
             plant_body_carry_micros: state.plant_body_carry_micros,
             chloroplast_decay_carry_micros: 0,

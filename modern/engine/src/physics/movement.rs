@@ -34,16 +34,28 @@ pub(crate) fn voluntary_impulse(
         forward * input.aim_radians.cos() - lateral * input.aim_radians.sin(),
     ];
     let magnitude = world[0].hypot(world[1]);
-    if magnitude > settings.max_velocity {
+    let max_velocity = settings.max_velocity.max(0.0);
+    if magnitude > max_velocity {
         world = [
-            world[0] / magnitude * settings.max_velocity,
-            world[1] / magnitude * settings.max_velocity,
+            world[0] / magnitude * max_velocity,
+            world[1] / magnitude * max_velocity,
         ];
     }
     [
         world[0] * settings.movement_efficiency,
         world[1] * settings.movement_efficiency,
     ]
+}
+
+pub(crate) fn voluntary_cost_magnitude(
+    input: MovementInput,
+    mass: f32,
+    settings: &PhysicsSettings,
+) -> f32 {
+    let multiplier = if input.new_move { 1.0 } else { mass.max(1.0) };
+    let forward = (input.up as i64 - input.down as i64) as f32 * multiplier;
+    let lateral = (input.left as i64 - input.right as i64) as f32 * multiplier;
+    forward.hypot(lateral).min(settings.max_velocity.max(0.0))
 }
 
 pub(crate) fn apply_voluntary_impulse(

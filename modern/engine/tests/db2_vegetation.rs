@@ -20,6 +20,80 @@ fn chloroplast_sysvars_use_db2_memory_addresses() {
 }
 
 #[test]
+fn slime_shell_poison_and_venom_use_db2_caps_costs_and_decay() {
+    let mut config = EngineConfig::testing();
+    config.metabolism_cost = 0;
+    config.gravity = [0.0, 0.0];
+    config.drag = 0.0;
+    config.physics.surface_gravity = 0.0;
+    config.physics.static_friction = 0.0;
+    config.physics.kinetic_friction = 0.0;
+    config.dna_costs = DnaCosts {
+        shell: 0.5,
+        slime: 0.5,
+        venom: 0.5,
+        poison: 0.5,
+        ..DnaCosts::default()
+    };
+    let mut engine = Engine::new(config).unwrap();
+    let id = engine
+        .spawn_at(
+            LegacyDna::parse(
+                "start\n1000 .mkshell store\n1000 .mkslime store\n1000 .mkvenom store\n1000 .mkpoison store\nstop",
+            )
+            .unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    engine.set_organism_energy(id, 32_000).unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(id, "shell").unwrap(), 100);
+    assert_eq!(engine.memory(id, "slime").unwrap(), 200);
+    assert_eq!(engine.memory(id, "venom").unwrap(), 100);
+    assert_eq!(engine.memory(id, "poison").unwrap(), 100);
+    assert_eq!(engine.organism(id).unwrap().energy, 31_595);
+
+    engine
+        .replace_dna(id, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(id, "slime").unwrap(), 196);
+    assert_eq!(engine.memory(id, "poison").unwrap(), 98);
+}
+
+#[test]
+fn slime_blocks_ties_by_the_legacy_probability_threshold() {
+    let mut config = EngineConfig::testing();
+    config.metabolism_cost = 0;
+    config.gravity = [0.0, 0.0];
+    config.drag = 0.0;
+    config.physics.surface_gravity = 0.0;
+    config.physics.static_friction = 0.0;
+    config.physics.kinetic_friction = 0.0;
+    config.organism_capacity = 128;
+    let mut engine = Engine::new(config).unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n1 .tie store\nstop").unwrap(),
+            [200.0, 500.0],
+        )
+        .unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n1 .mkslime store\nstop").unwrap(),
+            [300.0, 500.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.snapshot().stats.ties_created, 1);
+}
+
+#[test]
 fn every_db2_248_sysvar_resolves_to_its_vb6_address() {
     let source = include_str!("../../../Darwinbots2/DNATokenizing.bas");
     let mut pending_name = None;

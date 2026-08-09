@@ -42,6 +42,8 @@ pub struct RobotMaterials {
     pub paralyzed: i32,
     pub poisoned: i32,
     pub(crate) previous_energy: i32,
+    #[serde(default = "default_body")]
+    pub(crate) previous_body: i32,
     #[serde(default)]
     pub(crate) plant_energy_carry_micros: i64,
     #[serde(default)]
@@ -55,6 +57,9 @@ pub struct RobotMaterials {
 pub type BiologyState = RobotMaterials;
 
 const fn default_energy() -> i32 {
+    1_000
+}
+const fn default_body() -> i32 {
     1_000
 }
 const fn default_mass() -> f32 {
@@ -84,6 +89,7 @@ impl Default for RobotMaterials {
             paralyzed: 0,
             poisoned: 0,
             previous_energy: 1_000,
+            previous_body: default_body(),
             plant_energy_carry_micros: 0,
             plant_body_carry_micros: 0,
             chloroplast_decay_carry_micros: 0,
@@ -110,11 +116,12 @@ impl RobotMaterials {
         self.energy = (f64::from(self.energy) - transferred_energy * 1.001)
             .trunc()
             .clamp(0.0, f64::from(i32::MAX)) as i32;
+        let child_body = split_resource(&mut self.body, percentage, true);
         Self {
             energy: (transferred_energy * 0.999)
                 .trunc()
                 .clamp(0.0, f64::from(i32::MAX)) as i32,
-            body: split_resource(&mut self.body, percentage, true),
+            body: child_body,
             mass: self.mass,
             radius: self.radius,
             waste: split_resource(&mut self.waste, percentage, false),
@@ -130,6 +137,7 @@ impl RobotMaterials {
             paralyzed: 0,
             poisoned: 0,
             previous_energy: 0,
+            previous_body: child_body,
             plant_energy_carry_micros: 0,
             plant_body_carry_micros: 0,
             chloroplast_decay_carry_micros: 0,
@@ -139,6 +147,18 @@ impl RobotMaterials {
 
     pub(crate) fn synchronize_energy(&mut self) {
         self.previous_energy = self.energy;
+    }
+
+    pub(crate) fn consume_body_change(&mut self) -> (i32, i32) {
+        let gain = self.body.saturating_sub(self.previous_body).max(0);
+        let loss = self.previous_body.saturating_sub(self.body).max(0);
+        self.previous_body = self.body;
+        (gain, loss)
+    }
+
+    pub(crate) fn decay_slime_and_poison(&mut self) {
+        self.slime = decay_store(self.slime);
+        self.poison = decay_store(self.poison);
     }
 
     pub(crate) fn apply_plant_delta(&mut self, delta: f32, feeding_to_body: f32) -> (i32, i32) {
@@ -206,7 +226,7 @@ impl RobotMaterials {
         metabolism: i32,
         aim_commands: AimCommands,
         material_commands: MaterialCommands,
-    ) {
+    ) -> MaterialCommands {
         let prior = self.previous_energy;
         let absolute = aim_commands.set;
         if absolute != self.aim {
@@ -226,26 +246,39 @@ impl RobotMaterials {
             .saturating_add(fed_body.saturating_mul(10))
             .min(32_000);
 
-        self.shell = self.shell.saturating_add(spend(
+        let mut applied_commands = material_commands;
+        applied_commands.make_shell = spend_store(
             &mut self.energy,
-            material_commands.make_shell.max(0),
-            1,
-        ));
-        self.slime = self.slime.saturating_add(spend(
+            self.shell,
+            material_commands.make_shell,
+            100,
+            0.1,
+        );
+        self.shell = self.shell.saturating_add(applied_commands.make_shell);
+        applied_commands.make_slime = spend_store(
             &mut self.energy,
-            material_commands.make_slime.max(0),
-            1,
-        ));
-        self.venom = self.venom.saturating_add(spend(
+            self.slime,
+            material_commands.make_slime,
+            200,
+            0.1,
+        );
+        self.slime = self.slime.saturating_add(applied_commands.make_slime);
+        applied_commands.make_venom = spend_store(
             &mut self.energy,
-            material_commands.make_venom.max(0),
-            1,
-        ));
-        self.poison = self.poison.saturating_add(spend(
+            self.venom,
+            material_commands.make_venom,
+            100,
+            1.0,
+        );
+        self.venom = self.venom.saturating_add(applied_commands.make_venom);
+        applied_commands.make_poison = spend_store(
             &mut self.energy,
-            material_commands.make_poison.max(0),
-            1,
-        ));
+            self.poison,
+            material_commands.make_poison,
+            100,
+            0.25,
+        );
+        self.poison = self.poison.saturating_add(applied_commands.make_poison);
         self.chloroplasts = self.chloroplasts.saturating_add(spend(
             &mut self.energy,
             material_commands.make_chloroplasts.max(0),
@@ -265,6 +298,7 @@ impl RobotMaterials {
         self.pleasure = self.energy.saturating_sub(prior).max(0);
         self.previous_energy = self.energy;
         self.publish(memory);
+        applied_commands
     }
 
     pub fn publish(&self, memory: &mut VmMemory) {
@@ -331,6 +365,34 @@ fn spend(energy: &mut i32, requested: i32, unit_cost: i32) -> i32 {
     let amount = requested.min(affordable);
     *energy = energy.saturating_sub(amount.saturating_mul(unit_cost));
     amount
+}
+
+fn spend_store(
+    energy: &mut i32,
+    stored: i32,
+    requested: i32,
+    cycle_cap: i32,
+    energy_per_unit: f64,
+) -> i32 {
+    if requested <= 0 || cycle_cap <= 0 || energy_per_unit <= 0.0 {
+        return 0;
+    }
+    let room = 32_000_i32.saturating_sub(stored.max(0));
+    let mut amount = requested.min(cycle_cap).min(room);
+    while amount > 0 {
+        let cost = (f64::from(amount) * energy_per_unit).ceil() as i32;
+        if cost <= (*energy).max(0) {
+            *energy = energy.saturating_sub(cost);
+            return amount;
+        }
+        amount -= 1;
+    }
+    0
+}
+
+fn decay_store(value: i32) -> i32 {
+    let decayed = (f64::from(value.max(0)) * 0.98).floor() as i32;
+    if decayed < 1 { 0 } else { decayed }
 }
 
 fn normalize_aim(value: i32) -> i32 {
