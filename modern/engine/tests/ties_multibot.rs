@@ -1045,12 +1045,20 @@ fn hardened_tie_group_follows_teleporter_relocation() {
     assert!(engine.snapshot().ties[0].hardened);
     let source_before = engine.organism(source).unwrap().position;
     let target_before = engine.organism(target).unwrap().position;
+    let bystander = engine
+        .spawn_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            [source_before[0], source_before[1] + 40.0],
+        )
+        .unwrap();
     engine
         .add_teleporter(Teleporter {
             id: 1,
             center: source_before,
             radius: 50.0,
             destination: [source_before[0] + 800.0, source_before[1]],
+            capacity: 1,
+            ..Teleporter::new(1, source_before, 50.0, [source_before[0] + 800.0, source_before[1]])
         })
         .unwrap();
 
@@ -1059,6 +1067,10 @@ fn hardened_tie_group_follows_teleporter_relocation() {
     assert_eq!(
         engine.organism(target).unwrap().position,
         [target_before[0] + 800.0, target_before[1]]
+    );
+    assert!(
+        engine.organism(bystander).unwrap().position[0] < source_before[0] + 400.0,
+        "teleporter capacity must count the hardened group as one transfer"
     );
 }
 

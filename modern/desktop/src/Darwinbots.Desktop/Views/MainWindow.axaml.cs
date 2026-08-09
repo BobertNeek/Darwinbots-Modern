@@ -2086,17 +2086,27 @@ public sealed partial class MainWindow : Window
     private async void EditTeleporter_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature) return;
+        var localTeleporter = _session.LatestSnapshot.Teleporters.FirstOrDefault(value => value.Id == feature.Id);
+        if (localTeleporter is not null)
+        {
+            var dialog = new TeleporterEditorWindow(localTeleporter);
+            await dialog.ShowDialog(this);
+            if (dialog.Result is not { } result) return;
+            await _session.UpdateTeleporterAsync(result);
+            _viewModel.Status = $"TELEPORTER {result.Id} UPDATED · OFFLINE";
+            return;
+        }
         var teleporter = _session.LatestSnapshot.FileTeleporters.FirstOrDefault(value => value.Id == feature.Id);
         if (teleporter is null)
         {
-            _viewModel.Status = "SELECT AN OFFLINE FILE TELEPORTER";
+            _viewModel.Status = "SELECT A TELEPORTER";
             return;
         }
-        var dialog = new FileTeleporterEditorWindow(teleporter);
-        await dialog.ShowDialog(this);
-        if (dialog.Result is not { } result) return;
-        await _session.UpdateFileTeleporterAsync(result);
-        _viewModel.Status = $"FILE TELEPORTER {result.Id} UPDATED · OFFLINE";
+        var fileDialog = new FileTeleporterEditorWindow(teleporter);
+        await fileDialog.ShowDialog(this);
+        if (fileDialog.Result is not { } fileResult) return;
+        await _session.UpdateFileTeleporterAsync(fileResult);
+        _viewModel.Status = $"FILE TELEPORTER {fileResult.Id} UPDATED · OFFLINE";
     }
 
     private async void RemoveFeature_Click(object? sender, RoutedEventArgs e)
@@ -2114,10 +2124,11 @@ public sealed partial class MainWindow : Window
     private void RefreshFeatureEditorButtons()
     {
         var selectedObstacle = _selectedFeature is { Kind: WorldFeatureKind.Obstacle };
-        var selectedFileTeleporter = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature
-            && _session?.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id) == true;
+        var selectedTeleporter = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature
+            && (_session?.LatestSnapshot.Teleporters.Any(value => value.Id == feature.Id) == true
+                || _session?.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id) == true);
         EditShapeButton.IsEnabled = selectedObstacle;
-        EditTeleporterButton.IsEnabled = selectedFileTeleporter;
+        EditTeleporterButton.IsEnabled = selectedTeleporter;
     }
 
     private async void AdvanceZerobot_Click(object? sender, RoutedEventArgs e)

@@ -165,7 +165,33 @@ public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum)
     public string VisionPolicy { get; init; } = "opaque";
     public string ShotPolicy { get; init; } = "absorb";
 }
-public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination);
+public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination)
+{
+    public string Mode { get; init; } = "intrasim";
+    public uint Color { get; init; } = 0xffb9bdb6u;
+    public float[] Velocity { get; init; } = [0f, 0f];
+    public string Path { get; init; } = string.Empty;
+    public string InboundPath { get; init; } = string.Empty;
+    public string OutboundPath { get; init; } = string.Empty;
+    public bool Inbound { get; init; } = true;
+    public bool Outbound { get; init; }
+    public bool Local { get; init; } = true;
+    public bool Internet { get; init; }
+    public bool DriftHorizontal { get; init; }
+    public bool DriftVertical { get; init; }
+    public bool FixedPosition { get; init; } = true;
+    public bool Highlight { get; init; }
+    public bool TeleportVegetables { get; init; } = true;
+    public bool TeleportCorpses { get; init; } = true;
+    public bool TeleportHeterotrophs { get; init; } = true;
+    public bool RespectShapes { get; init; }
+    public ulong Sent { get; init; }
+    public ulong Received { get; init; }
+    public uint PollInterval { get; init; } = 1;
+    public uint PollCountdown { get; init; }
+    public int Capacity { get; init; } = 1;
+    public uint BackflowLimit { get; init; }
+}
 public sealed record TeleporterFilterSnapshot(
     bool TeleportVegetables,
     bool TeleportCorpses,

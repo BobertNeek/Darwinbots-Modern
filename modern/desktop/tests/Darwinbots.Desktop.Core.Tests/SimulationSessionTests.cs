@@ -173,11 +173,14 @@ public sealed class SimulationSessionTests
 
         await session.AddObstacleAsync(obstacle);
         await session.AddTeleporterAsync(teleporter);
+        await session.UpdateTeleporterAsync(teleporter with { Capacity = 3, RespectShapes = true });
         await session.RemoveObstacleAsync(7);
         await session.RemoveTeleporterAsync(8);
 
         Assert.Equal(obstacle, engine.LastObstacleAdded);
         Assert.Equal(teleporter, engine.LastTeleporterAdded);
+        Assert.Equal(3, engine.LastTeleporterUpdated!.Capacity);
+        Assert.True(engine.LastTeleporterUpdated.RespectShapes);
         Assert.Equal(7U, engine.LastObstacleRemoved);
         Assert.Equal(8U, engine.LastTeleporterRemoved);
         Assert.Single(engine.ExecutionThreads);
@@ -304,6 +307,7 @@ internal sealed class FakeEngineClient : IEngineClient
     public ObstacleSnapshot? LastObstacleAdded { get; private set; }
     public ObstacleSnapshot? LastObstacleUpdated { get; private set; }
     public TeleporterSnapshot? LastTeleporterAdded { get; private set; }
+    public TeleporterSnapshot? LastTeleporterUpdated { get; private set; }
     public FileTeleporterSnapshot? LastFileTeleporterAdded { get; private set; }
     public FileTeleporterSnapshot? LastFileTeleporterUpdated { get; private set; }
     public uint? LastObstacleRemoved { get; private set; }
@@ -438,6 +442,12 @@ internal sealed class FakeEngineClient : IEngineClient
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastTeleporterAdded = teleporter;
+    }
+
+    public void UpdateTeleporter(TeleporterSnapshot teleporter)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastTeleporterUpdated = teleporter;
     }
 
     public void RemoveTeleporter(uint id)

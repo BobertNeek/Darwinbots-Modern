@@ -1,4 +1,5 @@
 use crate::config::{CorpseDecayMode, CorpseDecaySettings};
+use crate::environment::TeleporterBackflow;
 use crate::{OrganismId, RobotState};
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +36,8 @@ pub struct CorpseSnapshot {
     pub unique_id: u64,
     #[serde(default)]
     pub chloroplasts: i32,
+    #[serde(skip)]
+    pub(crate) teleporter_backflow: Option<TeleporterBackflow>,
 }
 
 impl CorpseSnapshot {
@@ -59,6 +62,7 @@ impl CorpseSnapshot {
             dna_length: robot.program.dna.blocks().len() as u32,
             unique_id: robot.identity.absolute_id,
             chloroplasts: robot.materials.chloroplasts,
+            teleporter_backflow: None,
         }
     }
 

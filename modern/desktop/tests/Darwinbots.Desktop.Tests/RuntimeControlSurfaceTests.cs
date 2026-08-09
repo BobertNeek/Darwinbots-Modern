@@ -789,6 +789,7 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void UpdateObstacle(ObstacleSnapshot obstacle) => Calls.Enqueue($"UpdateObstacle:{obstacle.Id}");
     public void RemoveObstacle(uint id) => Calls.Enqueue($"RemoveObstacle:{id}");
     public void AddTeleporter(TeleporterSnapshot teleporter) => Calls.Enqueue($"AddTeleporter:{teleporter.Id}");
+    public void UpdateTeleporter(TeleporterSnapshot teleporter) => Calls.Enqueue($"UpdateTeleporter:{teleporter.Id}");
     public void RemoveTeleporter(uint id) => Calls.Enqueue($"RemoveTeleporter:{id}");
     public void AddFileTeleporter(FileTeleporterSnapshot teleporter) => Calls.Enqueue($"AddFileTeleporter:{teleporter.Id}");
     public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter) => Calls.Enqueue($"UpdateFileTeleporter:{teleporter.Id}");

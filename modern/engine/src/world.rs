@@ -2,6 +2,9 @@ use crate::modes::{
     LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
     LocalModeStatus,
 };
+use crate::environment::{
+    blocks_backflow, inside_teleporter, teleporter_blocked_by_obstacles, TeleporterBackflow,
+};
 use crate::robot_state::{RobotArena, RobotPhysicsBatch, RobotSlot, RobotState, TieEndpointState};
 use crate::robot_tools::{PlayerBotBinding, PlayerBotState, RestrictionColumn, RestrictionOptions};
 use crate::senses::{LegacyDirection, classify_legacy_direction, legacy_relative_angle};
@@ -4084,7 +4087,7 @@ impl Engine {
         Ok(())
     }
 
-    pub fn add_teleporter(&mut self, teleporter: Teleporter) -> Result<(), EngineError> {
+    pub fn add_teleporter(&mut self, mut teleporter: Teleporter) -> Result<(), EngineError> {
         if !teleporter.radius.is_finite()
             || teleporter.radius <= 0.0
             || teleporter
@@ -4107,7 +4110,49 @@ impl Engine {
                 teleporter.id
             )));
         }
+        teleporter.poll_interval = teleporter.poll_interval.max(1);
+        teleporter.capacity = teleporter.capacity.max(1);
+        teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
         self.teleporters.push(teleporter);
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn update_teleporter(&mut self, mut teleporter: Teleporter) -> Result<(), EngineError> {
+        if !teleporter.radius.is_finite()
+            || teleporter.radius <= 0.0
+            || teleporter
+                .center
+                .iter()
+                .chain(teleporter.destination.iter())
+                .any(|value| !value.is_finite())
+        {
+            return Err(EngineError::Invariant(
+                "teleporter geometry is invalid".to_owned(),
+            ));
+        }
+        let index = self
+            .teleporters
+            .iter()
+            .position(|value| value.id == teleporter.id)
+            .ok_or_else(|| {
+                EngineError::Invariant(format!(
+                    "teleporter {} does not exist",
+                    teleporter.id
+                ))
+            })?;
+        teleporter.poll_interval = teleporter.poll_interval.max(1);
+        teleporter.capacity = teleporter.capacity.max(1);
+        teleporter.poll_countdown = teleporter.poll_countdown.min(teleporter.poll_interval);
+        self.teleporters[index] = teleporter;
+        for slot in &mut self.slots.slots {
+            if let Some(robot) = slot.organism.as_mut() {
+                robot.teleporter_backflow = None;
+            }
+        }
+        for corpse in &mut self.corpses {
+            corpse.teleporter_backflow = None;
+        }
         self.publish_snapshot();
         Ok(())
     }
@@ -7687,6 +7732,56 @@ impl Engine {
     }
 
     fn apply_environment_features(&mut self, obstacles: bool, teleporters: bool) {
+        if obstacles {
+            let mut positions: Vec<_> = self
+                .slots
+                .iter()
+                .map(|slot| {
+                    slot.organism
+                        .as_ref()
+                        .map_or([0.0; 2], |robot| robot.kinematics.position)
+                })
+                .collect();
+            let mut velocities: Vec<_> = self
+                .slots
+                .iter()
+                .map(|slot| {
+                    slot.organism
+                        .as_ref()
+                        .map_or([0.0; 2], |robot| robot.kinematics.velocity)
+                })
+                .collect();
+            let alive: Vec<_> = self
+                .slots
+                .iter()
+                .map(|slot| slot.organism.is_some())
+                .collect();
+            crate::environment::apply_world_features(
+                &mut positions,
+                &mut velocities,
+                &alive,
+                &self.obstacles,
+                &[],
+                [self.config.world_width, self.config.world_height],
+            );
+            for (slot, (position, velocity)) in self
+                .slots
+                .iter_mut()
+                .zip(positions.into_iter().zip(velocities))
+            {
+                if let Some(robot) = slot.organism.as_mut() {
+                    robot.kinematics.position = position;
+                    robot.kinematics.velocity = velocity;
+                }
+            }
+        }
+        if teleporters {
+            self.apply_teleporter_relocation();
+        }
+    }
+
+    fn apply_teleporter_relocation(&mut self) {
+        let world_size = [self.config.world_width, self.config.world_height];
         let mut positions: Vec<_> = self
             .slots
             .iter()
@@ -7696,88 +7791,160 @@ impl Engine {
                     .map_or([0.0; 2], |robot| robot.kinematics.position)
             })
             .collect();
-        let prior_positions = positions.clone();
-        let mut velocities: Vec<_> = self
-            .slots
-            .iter()
-            .map(|slot| {
-                slot.organism
-                    .as_ref()
-                    .map_or([0.0; 2], |robot| robot.kinematics.velocity)
-            })
-            .collect();
         let alive: Vec<_> = self
             .slots
             .iter()
             .map(|slot| slot.organism.is_some())
             .collect();
-        crate::environment::apply_world_features(
-            &mut positions,
-            &mut velocities,
-            &alive,
-            if obstacles { &self.obstacles } else { &[] },
-            if teleporters { &self.teleporters } else { &[] },
-            [self.config.world_width, self.config.world_height],
-        );
-        if teleporters {
-            let mut handled = vec![false; positions.len()];
-            for seed in 0..positions.len() {
-                if !alive[seed] || handled[seed] {
+        let prior_backflow: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| slot.organism.as_ref().and_then(|robot| robot.teleporter_backflow))
+            .collect();
+        let mut next_backflow: Vec<_> = prior_backflow
+            .iter()
+            .map(|state| {
+                state.map(|state| TeleporterBackflow {
+                    remaining: state.remaining.saturating_sub(1),
+                    ..state
+                })
+            })
+            .collect();
+        let mut handled = vec![false; positions.len()];
+        let mut used_capacity = vec![0usize; self.teleporters.len()];
+        let mut sent = vec![0u64; self.teleporters.len()];
+
+        for seed in 0..positions.len() {
+            if !alive[seed] || handled[seed] {
+                continue;
+            }
+            let Some(robot) = self.slots[seed].organism.as_ref() else {
+                continue;
+            };
+            let connected = self.hardened_teleporter_group(seed, &alive);
+            for (teleporter_index, teleporter) in self.teleporters.iter().enumerate() {
+                if !teleporter.local
+                    || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
+                    || !inside_teleporter(teleporter, positions[seed])
+                    || !teleporter
+                        .filters
+                        .accepts(robot.flags.vegetable, false)
+                    || teleporter_blocked_by_obstacles(teleporter, &self.obstacles)
+                    || blocks_backflow(teleporter, prior_backflow[seed])
+                    || connected.iter().any(|member| {
+                        self.slots[*member]
+                            .organism
+                            .as_ref()
+                            .is_none_or(|member| {
+                                !teleporter.filters.accepts(member.flags.vegetable, false)
+                            })
+                    })
+                    || connected.iter().any(|member| handled[*member])
+                {
                     continue;
                 }
-                let delta = [
-                    positions[seed][0] - prior_positions[seed][0],
-                    positions[seed][1] - prior_positions[seed][1],
+
+                let destination = [
+                    teleporter.destination[0].clamp(0.0, world_size[0]),
+                    teleporter.destination[1].clamp(0.0, world_size[1]),
                 ];
-                if delta[0].abs() <= f32::EPSILON && delta[1].abs() <= f32::EPSILON {
-                    continue;
-                }
-                let mut connected = vec![seed];
-                let mut cursor = 0;
-                while cursor < connected.len() {
-                    let current = connected[cursor];
-                    for tie in &self.ties {
-                        if !tie.hardened {
-                            continue;
-                        }
-                        let first = tie.first.slot() as usize;
-                        let second = tie.second.slot() as usize;
-                        let neighbor = if first == current {
-                            Some(second)
-                        } else if second == current {
-                            Some(first)
-                        } else {
-                            None
-                        };
-                        if let Some(neighbor) = neighbor
-                            && alive.get(neighbor).copied().unwrap_or(false)
-                            && !connected.contains(&neighbor)
-                        {
-                            connected.push(neighbor);
-                        }
-                    }
-                    cursor += 1;
-                }
-                for member in connected {
+                let delta = [
+                    destination[0] - positions[seed][0],
+                    destination[1] - positions[seed][1],
+                ];
+                for member in connected.iter().copied() {
                     handled[member] = true;
                     positions[member] = [
-                        (prior_positions[member][0] + delta[0]).clamp(0.0, self.config.world_width),
-                        (prior_positions[member][1] + delta[1])
-                            .clamp(0.0, self.config.world_height),
+                        (positions[member][0] + delta[0]).clamp(0.0, world_size[0]),
+                        (positions[member][1] + delta[1]).clamp(0.0, world_size[1]),
                     ];
+                    next_backflow[member] = Some(TeleporterBackflow {
+                        source: teleporter.center,
+                        remaining: teleporter.backflow_limit,
+                    });
                 }
+                used_capacity[teleporter_index] += 1;
+                sent[teleporter_index] = sent[teleporter_index]
+                    .saturating_add(u64::try_from(connected.len()).unwrap_or(u64::MAX));
+                break;
             }
         }
-        for (slot, (position, velocity)) in self
+
+        for (slot, (position, backflow)) in self
             .slots
             .iter_mut()
-            .zip(positions.into_iter().zip(velocities))
+            .zip(positions.into_iter().zip(next_backflow))
         {
             if let Some(robot) = slot.organism.as_mut() {
                 robot.kinematics.position = position;
-                robot.kinematics.velocity = velocity;
+                robot.teleporter_backflow = backflow;
             }
         }
+
+        for corpse in &mut self.corpses {
+            let prior = corpse.teleporter_backflow;
+            let mut next = prior.map(|state| TeleporterBackflow {
+                remaining: state.remaining.saturating_sub(1),
+                ..state
+            });
+            for (teleporter_index, teleporter) in self.teleporters.iter().enumerate() {
+                if !teleporter.local
+                    || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
+                    || !inside_teleporter(teleporter, corpse.position)
+                    || !teleporter.filters.accepts(false, true)
+                    || teleporter_blocked_by_obstacles(teleporter, &self.obstacles)
+                    || blocks_backflow(teleporter, prior)
+                {
+                    continue;
+                }
+                corpse.position = [
+                    teleporter.destination[0].clamp(0.0, world_size[0]),
+                    teleporter.destination[1].clamp(0.0, world_size[1]),
+                ];
+                next = Some(TeleporterBackflow {
+                    source: teleporter.center,
+                    remaining: teleporter.backflow_limit,
+                });
+                used_capacity[teleporter_index] += 1;
+                sent[teleporter_index] = sent[teleporter_index].saturating_add(1);
+                break;
+            }
+            corpse.teleporter_backflow = next;
+        }
+
+        for (teleporter, count) in self.teleporters.iter_mut().zip(sent) {
+            teleporter.sent = teleporter.sent.saturating_add(count);
+        }
+    }
+
+    fn hardened_teleporter_group(&self, seed: usize, alive: &[bool]) -> Vec<usize> {
+        let mut connected = vec![seed];
+        let mut cursor = 0;
+        while cursor < connected.len() {
+            let current = connected[cursor];
+            for tie in &self.ties {
+                if !tie.hardened {
+                    continue;
+                }
+                let first = tie.first.slot() as usize;
+                let second = tie.second.slot() as usize;
+                let neighbor = if first == current {
+                    Some(second)
+                } else if second == current {
+                    Some(first)
+                } else {
+                    None
+                };
+                if let Some(neighbor) = neighbor
+                    && alive.get(neighbor).copied().unwrap_or(false)
+                    && !connected.contains(&neighbor)
+                {
+                    connected.push(neighbor);
+                }
+            }
+            cursor += 1;
+        }
+        connected
     }
 
     fn apply_organism_collisions(&mut self) {

@@ -316,15 +316,80 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void AddTeleporter(TeleporterSnapshot teleporter)
     {
-        ArgumentNullException.ThrowIfNull(teleporter);
-        ValidatePosition(teleporter.Center);
-        ValidatePosition(teleporter.Destination);
-        if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0) throw new ArgumentOutOfRangeException(nameof(teleporter));
-        ExecuteBatch(new { version = 1, commands = new[] { new { type = "add_teleporter", id = teleporter.Id, center = teleporter.Center, radius = teleporter.Radius, destination = teleporter.Destination } } }, "add teleporter");
+        ValidateTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { TeleporterPayload("add_teleporter", teleporter) },
+        }, "add teleporter");
+    }
+
+    public void UpdateTeleporter(TeleporterSnapshot teleporter)
+    {
+        ValidateTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { TeleporterPayload("update_teleporter", teleporter) },
+        }, "update teleporter");
     }
 
     public void RemoveTeleporter(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_teleporter", id } } }, "remove teleporter");
+
+    private static object TeleporterPayload(string command, TeleporterSnapshot teleporter)
+    {
+        var mode = teleporter.Mode.Trim().ToLowerInvariant();
+        return new
+        {
+            type = command,
+            id = teleporter.Id,
+            center = teleporter.Center,
+            radius = teleporter.Radius,
+            destination = teleporter.Destination,
+            width = teleporter.Radius * 2f,
+            height = teleporter.Radius * 2f,
+            color = teleporter.Color,
+            velocity = teleporter.Velocity,
+            path = teleporter.Path,
+            inbound_path = teleporter.InboundPath,
+            outbound_path = teleporter.OutboundPath,
+            inbound = mode is "intrasim" or "inbound",
+            outbound = mode == "outbound",
+            local = mode == "intrasim",
+            internet = mode == "internet",
+            drift_horizontal = teleporter.DriftHorizontal,
+            drift_vertical = teleporter.DriftVertical,
+            fixed_position = teleporter.FixedPosition,
+            highlight = teleporter.Highlight,
+            filters = new
+            {
+                teleport_vegetables = teleporter.TeleportVegetables,
+                teleport_corpses = teleporter.TeleportCorpses,
+                teleport_heterotrophs = teleporter.TeleportHeterotrophs,
+            },
+            respect_shapes = teleporter.RespectShapes,
+            sent = teleporter.Sent,
+            received = teleporter.Received,
+            poll_interval = teleporter.PollInterval,
+            capacity = teleporter.Capacity,
+            poll_countdown = teleporter.PollCountdown,
+            backflow_limit = teleporter.BackflowLimit,
+        };
+    }
+
+    private static void ValidateTeleporter(TeleporterSnapshot teleporter)
+    {
+        ArgumentNullException.ThrowIfNull(teleporter);
+        ValidatePosition(teleporter.Center);
+        ValidatePosition(teleporter.Destination);
+        if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (teleporter.Mode.Trim().ToLowerInvariant() is not ("intrasim" or "inbound" or "outbound"))
+            throw new ArgumentException("Online teleporters are disabled in offline mode.", nameof(teleporter));
+    }
 
     public void AddFileTeleporter(FileTeleporterSnapshot teleporter)
     {

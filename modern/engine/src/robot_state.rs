@@ -1,4 +1,5 @@
 use crate::dna::LEGACY_OCCURRENCE_CENSUS_SLOTS;
+use crate::environment::TeleporterBackflow;
 use crate::vm::ActivationFrame;
 use crate::{
     BiologyState, EngineError, LegacyDna, OrganismId, PhysicsBatch, PointMutationSchedule,
@@ -250,6 +251,8 @@ pub struct RobotState {
     pub heredity: RobotHeredityState,
     pub ties: [Option<TieEndpointState>; 10],
     pub phenotype: VisualPhenotype,
+    #[serde(skip)]
+    pub(crate) teleporter_backflow: Option<TeleporterBackflow>,
 }
 
 impl RobotState {
@@ -286,6 +289,7 @@ impl RobotState {
             heredity: RobotHeredityState::default(),
             ties: [None; 10],
             phenotype,
+            teleporter_backflow: None,
         };
         state.refresh_occurrence_census();
         state

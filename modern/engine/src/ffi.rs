@@ -141,6 +141,10 @@ enum EngineCommand {
         #[serde(flatten)]
         teleporter: crate::Teleporter,
     },
+    UpdateTeleporter {
+        #[serde(flatten)]
+        teleporter: crate::Teleporter,
+    },
     RemoveTeleporter {
         id: u32,
     },
@@ -599,6 +603,9 @@ fn db_engine_command_batch_impl(
             }
             EngineCommand::AddTeleporter { teleporter } => engine
                 .add_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateTeleporter { teleporter } => engine
+                .update_teleporter(teleporter)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::RemoveTeleporter { id } => engine
                 .remove_teleporter(id)

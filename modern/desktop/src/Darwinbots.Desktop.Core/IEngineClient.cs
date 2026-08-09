@@ -21,6 +21,7 @@ public interface IEngineClient : IDisposable
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);
+    void UpdateTeleporter(TeleporterSnapshot teleporter);
     void RemoveTeleporter(uint id);
     void AddFileTeleporter(FileTeleporterSnapshot teleporter);
     void UpdateFileTeleporter(FileTeleporterSnapshot teleporter);

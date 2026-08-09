@@ -174,6 +174,61 @@ pub struct TeleporterFilters {
     pub teleport_heterotrophs: bool,
 }
 
+impl TeleporterFilters {
+    pub(crate) fn accepts(&self, vegetable: bool, corpse: bool) -> bool {
+        if corpse {
+            self.teleport_corpses
+        } else if vegetable {
+            self.teleport_vegetables
+        } else {
+            self.teleport_heterotrophs
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct TeleporterBackflow {
+    pub(crate) source: [f32; 2],
+    pub(crate) remaining: u32,
+}
+
+pub(crate) fn inside_teleporter(teleporter: &Teleporter, position: [f32; 2]) -> bool {
+    let dx = position[0] - teleporter.center[0];
+    let dy = position[1] - teleporter.center[1];
+    dx * dx + dy * dy <= teleporter.radius * teleporter.radius
+}
+
+pub(crate) fn teleporter_blocked_by_obstacles(
+    teleporter: &Teleporter,
+    obstacles: &[Obstacle],
+) -> bool {
+    if !teleporter.respect_shapes {
+        return false;
+    }
+    obstacles.iter().any(|obstacle| {
+        let nearest_x = teleporter.center[0].clamp(obstacle.minimum[0], obstacle.maximum[0]);
+        let nearest_y = teleporter.center[1].clamp(obstacle.minimum[1], obstacle.maximum[1]);
+        let dx = teleporter.center[0] - nearest_x;
+        let dy = teleporter.center[1] - nearest_y;
+        dx * dx + dy * dy <= teleporter.radius * teleporter.radius
+    })
+}
+
+pub(crate) fn blocks_backflow(
+    teleporter: &Teleporter,
+    backflow: Option<TeleporterBackflow>,
+) -> bool {
+    let Some(backflow) = backflow else {
+        return false;
+    };
+    if backflow.remaining == 0 {
+        return false;
+    }
+    let dx = teleporter.destination[0] - backflow.source[0];
+    let dy = teleporter.destination[1] - backflow.source[1];
+    dx * dx + dy * dy <= teleporter.radius * teleporter.radius
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FileTeleporter {
     pub id: u32,

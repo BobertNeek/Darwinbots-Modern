@@ -146,6 +146,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task AddTeleporterAsync(TeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddTeleporter(teleporter), cancellationToken);
 
+    public Task UpdateTeleporterAsync(TeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateTeleporter(teleporter), cancellationToken);
+
     public Task RemoveTeleporterAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveTeleporter(id), cancellationToken);
 

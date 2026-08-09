@@ -114,7 +114,33 @@ public static class NativeSnapshotParser
             VisionPolicy = value.VisionPolicy ?? "opaque",
             ShotPolicy = value.ShotPolicy ?? "absorb",
         }).ToArray();
-        var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)).ToArray();
+        var teleporters = (native.Teleporters ?? []).Select(value => new TeleporterSnapshot(value.Id, value.Center, value.Radius, value.Destination)
+        {
+            Mode = TeleporterMode(value),
+            Color = value.Color ?? 0xffb9bdb6u,
+            Velocity = value.Velocity is { Length: 2 } ? value.Velocity : [0f, 0f],
+            Path = value.Path ?? string.Empty,
+            InboundPath = value.InboundPath ?? string.Empty,
+            OutboundPath = value.OutboundPath ?? string.Empty,
+            Inbound = value.Inbound ?? true,
+            Outbound = value.Outbound ?? false,
+            Local = value.Local ?? true,
+            Internet = value.Internet ?? false,
+            DriftHorizontal = value.DriftHorizontal ?? false,
+            DriftVertical = value.DriftVertical ?? false,
+            FixedPosition = value.FixedPosition ?? true,
+            Highlight = value.Highlight ?? false,
+            TeleportVegetables = value.Filters?.TeleportVegetables ?? true,
+            TeleportCorpses = value.Filters?.TeleportCorpses ?? true,
+            TeleportHeterotrophs = value.Filters?.TeleportHeterotrophs ?? true,
+            RespectShapes = value.RespectShapes ?? false,
+            Sent = value.Sent ?? 0,
+            Received = value.Received ?? 0,
+            PollInterval = value.PollInterval ?? 1,
+            PollCountdown = value.PollCountdown ?? 0,
+            Capacity = value.Capacity ?? 1,
+            BackflowLimit = value.BackflowLimit ?? 0,
+        }).ToArray();
         var fileTeleporters = (native.FileTeleporters ?? []).Select(value => new FileTeleporterSnapshot(
             value.Id,
             value.Center,
@@ -573,11 +599,40 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("vision_policy")] string? VisionPolicy,
         [property: JsonPropertyName("shot_policy")] string? ShotPolicy);
 
+    private static string TeleporterMode(NativeTeleporter value) =>
+        value.Internet == true ? "internet" :
+        value.Local != false ? "intrasim" :
+        value.Outbound == true ? "outbound" :
+        "inbound";
+
     private sealed record NativeTeleporter(
         [property: JsonPropertyName("id")] uint Id,
         [property: JsonPropertyName("center")] float[] Center,
         [property: JsonPropertyName("radius")] float Radius,
-        [property: JsonPropertyName("destination")] float[] Destination);
+        [property: JsonPropertyName("destination")] float[] Destination,
+        [property: JsonPropertyName("width")] float? Width = null,
+        [property: JsonPropertyName("height")] float? Height = null,
+        [property: JsonPropertyName("color")] uint? Color = null,
+        [property: JsonPropertyName("velocity")] float[]? Velocity = null,
+        [property: JsonPropertyName("path")] string? Path = null,
+        [property: JsonPropertyName("inbound_path")] string? InboundPath = null,
+        [property: JsonPropertyName("outbound_path")] string? OutboundPath = null,
+        [property: JsonPropertyName("inbound")] bool? Inbound = null,
+        [property: JsonPropertyName("outbound")] bool? Outbound = null,
+        [property: JsonPropertyName("local")] bool? Local = null,
+        [property: JsonPropertyName("internet")] bool? Internet = null,
+        [property: JsonPropertyName("drift_horizontal")] bool? DriftHorizontal = null,
+        [property: JsonPropertyName("drift_vertical")] bool? DriftVertical = null,
+        [property: JsonPropertyName("fixed_position")] bool? FixedPosition = null,
+        [property: JsonPropertyName("highlight")] bool? Highlight = null,
+        [property: JsonPropertyName("filters")] NativeTeleporterFilters? Filters = null,
+        [property: JsonPropertyName("respect_shapes")] bool? RespectShapes = null,
+        [property: JsonPropertyName("sent")] ulong? Sent = null,
+        [property: JsonPropertyName("received")] ulong? Received = null,
+        [property: JsonPropertyName("poll_interval")] uint? PollInterval = null,
+        [property: JsonPropertyName("capacity")] int? Capacity = null,
+        [property: JsonPropertyName("poll_countdown")] uint? PollCountdown = null,
+        [property: JsonPropertyName("backflow_limit")] uint? BackflowLimit = null);
 
     private sealed record NativeFileTeleporter(
         [property: JsonPropertyName("id")] uint Id,
