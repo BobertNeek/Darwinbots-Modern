@@ -8347,22 +8347,22 @@ impl Engine {
             })
             .collect();
         let max_radius = radii.iter().copied().fold(1.0_f32, f32::max);
-        let pairs = self.pending_gpu_collision_pairs.take().unwrap_or_else(|| {
-            let mut pairs = Vec::new();
-            for first in 0..self.slots.len() {
-                if self.slots[first].organism.is_none() {
-                    continue;
-                }
-                if let Some(second) =
-                    self.spatial
-                        .nearest(positions[first], Some(first), radii[first] + max_radius)
-                    && first < second
-                {
+        let mut pairs = self.pending_gpu_collision_pairs.take().unwrap_or_default();
+        for first in 0..self.slots.len() {
+            if self.slots[first].organism.is_none() {
+                continue;
+            }
+            for second in self
+                .spatial
+                .neighbors(positions[first], radii[first] + max_radius)
+            {
+                if first < second {
                     pairs.push((first, second));
                 }
             }
-            pairs
-        });
+        }
+        pairs.sort_unstable();
+        pairs.dedup();
         let masses: Vec<_> = self
             .slots
             .iter()
@@ -8374,6 +8374,15 @@ impl Engine {
                         robot.materials.chloroplasts,
                     )
                     .clamp(1.0, 32_000.0)
+                })
+            })
+            .collect();
+        let fixed: Vec<_> = self
+            .slots
+            .iter()
+            .map(|slot| {
+                slot.organism.as_ref().is_some_and(|organism| {
+                    organism.flags.corpse || robot_is_fixed(organism, self.robot_fixing_allowed)
                 })
             })
             .collect();
@@ -8401,6 +8410,7 @@ impl Engine {
             &mut velocities,
             &radii,
             &masses,
+            &fixed,
             &pairs,
             self.config.physics.elasticity,
         );
@@ -8612,7 +8622,7 @@ impl Engine {
             }
             let feeding = self.vegetation_runtime.feed(PlantLightInput {
                 daytime,
-                sunlit: !settings.weather_enabled
+                sunlit: !(settings.weather_enabled || settings.sun_on_random)
                     || is_in_sun_band(
                         organism.kinematics.position[0],
                         self.config.world_width,

@@ -80,7 +80,10 @@ impl VegetationRuntime {
         total_energy: i64,
         weather_seed: u64,
     ) -> DaylightState {
-        self.advance_weather(settings.weather_enabled, weather_seed);
+        self.advance_weather(
+            settings.weather_enabled || settings.sun_on_random,
+            weather_seed,
+        );
 
         let mut feed_this_cycle = settings.daytime;
         let mut override_day_night = false;

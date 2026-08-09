@@ -63,6 +63,7 @@ pub(crate) fn resolve_collisions(
     velocities: &mut [[f32; 2]],
     radii: &[f32],
     masses: &[f32],
+    fixed: &[bool],
     pairs: &[(usize, usize)],
     elasticity: f32,
 ) {
@@ -100,23 +101,38 @@ pub(crate) fn resolve_collisions(
             .copied()
             .unwrap_or(1.0)
             .clamp(1.0, 32_000.0);
-        let total_mass = first_mass + second_mass;
+        let first_inverse_mass = if fixed.get(first).copied().unwrap_or(false) {
+            0.0
+        } else {
+            first_mass.recip()
+        };
+        let second_inverse_mass = if fixed.get(second).copied().unwrap_or(false) {
+            0.0
+        } else {
+            second_mass.recip()
+        };
+        let total_inverse_mass = first_inverse_mass + second_inverse_mass;
         let overlap = minimum_distance - distance;
-        positions[first][0] -= normal[0] * overlap * second_mass / total_mass;
-        positions[first][1] -= normal[1] * overlap * second_mass / total_mass;
-        positions[second][0] += normal[0] * overlap * first_mass / total_mass;
-        positions[second][1] += normal[1] * overlap * first_mass / total_mass;
+        if total_inverse_mass > f32::EPSILON {
+            positions[first][0] -=
+                normal[0] * overlap * first_inverse_mass / total_inverse_mass;
+            positions[first][1] -=
+                normal[1] * overlap * first_inverse_mass / total_inverse_mass;
+            positions[second][0] +=
+                normal[0] * overlap * second_inverse_mass / total_inverse_mass;
+            positions[second][1] +=
+                normal[1] * overlap * second_inverse_mass / total_inverse_mass;
+        }
 
         let relative_speed = (velocities[second][0] - velocities[first][0]) * normal[0]
             + (velocities[second][1] - velocities[first][1]) * normal[1];
-        if relative_speed >= 0.0 {
+        if relative_speed >= 0.0 || total_inverse_mass <= f32::EPSILON {
             continue;
         }
-        let impulse =
-            -(1.0 + elasticity) * relative_speed / (first_mass.recip() + second_mass.recip());
-        velocities[first][0] -= normal[0] * impulse / first_mass;
-        velocities[first][1] -= normal[1] * impulse / first_mass;
-        velocities[second][0] += normal[0] * impulse / second_mass;
-        velocities[second][1] += normal[1] * impulse / second_mass;
+        let impulse = -(1.0 + elasticity) * relative_speed / total_inverse_mass;
+        velocities[first][0] -= normal[0] * impulse * first_inverse_mass;
+        velocities[first][1] -= normal[1] * impulse * first_inverse_mass;
+        velocities[second][0] += normal[0] * impulse * second_inverse_mass;
+        velocities[second][1] += normal[1] * impulse * second_inverse_mass;
     }
 }
