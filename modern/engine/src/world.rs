@@ -14,7 +14,8 @@ use crate::{
     ActivationFrame, AdvancedMutationSettings, BackendCapabilities, BackendKind, BackendPreference,
     BiologyState, CommandOutcome, CoreReadbacks, CorpseDecaySettings, CorpseSnapshot,
     CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm, EngineConfig, EngineError,
-    EyeSnapshot, FileTeleporter, GenomeMutator, GpuPhysicsBackend, HistorySample, LegacyDna,
+    EyeSnapshot, FileTeleporter, GenomeMutator, GpuAdapterReceipt, GpuPhysicsBackend,
+    HistorySample, LegacyDna,
     LegacyOrganism, LegacyOrganismFile, LegacySimulationFile, MutationContext, MutationPolicyInput,
     Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend,
     PhysicsBatch, PhysicsSettings, PlantLightInput, PointMutationSchedule, ProjectileEffect,
@@ -29,7 +30,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
@@ -382,6 +383,12 @@ pub struct OrganismSnapshot {
     pub phenotype: VisualPhenotype,
     #[serde(default)]
     pub vision: VisionSnapshot,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LineageEntry {
+    pub id: OrganismId,
+    pub depth: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -3564,6 +3571,84 @@ impl Engine {
         Ok(snapshot_organism(id, self.slots.get(id)?, &self.species))
     }
 
+    pub fn lineage(
+        &self,
+        id: OrganismId,
+        max_depth: u32,
+    ) -> Result<Vec<LineageEntry>, EngineError> {
+        self.valid_slot(id)?;
+
+        let mut parents_by_id = HashMap::with_capacity(self.snapshot.organisms.len());
+        let mut children_by_parent: HashMap<OrganismId, Vec<OrganismId>> = HashMap::new();
+        for organism in &self.snapshot.organisms {
+            parents_by_id.insert(organism.id, organism.parents);
+            for parent in organism.parents.into_iter().flatten() {
+                children_by_parent
+                    .entry(parent)
+                    .or_default()
+                    .push(organism.id);
+            }
+        }
+
+        let mut queue = VecDeque::from([(id, 0)]);
+        let mut visited = HashSet::new();
+        let mut entries = Vec::new();
+        while let Some((current, depth)) = queue.pop_front() {
+            if !visited.insert(current) {
+                continue;
+            }
+            entries.push(LineageEntry {
+                id: current,
+                depth,
+            });
+            if depth == max_depth {
+                continue;
+            }
+
+            if let Some(parents) = parents_by_id.get(&current) {
+                for parent in parents.iter().flatten() {
+                    queue.push_back((*parent, depth + 1));
+                }
+            }
+            if let Some(children) = children_by_parent.get(&current) {
+                for child in children {
+                    queue.push_back((*child, depth + 1));
+                }
+            }
+        }
+        Ok(entries)
+    }
+
+    fn record_offspring(&mut self, parents: [Option<OrganismId>; 2]) {
+        let mut seen = HashSet::new();
+        for parent in parents.into_iter().flatten() {
+            if !seen.insert(parent) {
+                continue;
+            }
+            if let Ok(organism) = self.slots.get_mut(parent) {
+                organism.counters.offspring = organism.counters.offspring.saturating_add(1);
+            }
+        }
+    }
+
+    fn propagate_descendant_count(&mut self, parents: [Option<OrganismId>; 2]) {
+        let mut pending = parents.into_iter().flatten().collect::<Vec<_>>();
+        let mut visited = HashSet::new();
+        while let Some(current) = pending.pop() {
+            if !visited.insert(current) {
+                continue;
+            }
+            let ancestors = match self.slots.get_mut(current) {
+                Ok(organism) => {
+                    organism.counters.descendants = organism.counters.descendants.saturating_add(1);
+                    organism.identity.parents
+                }
+                Err(_) => continue,
+            };
+            pending.extend(ancestors.into_iter().flatten());
+        }
+    }
+
     pub fn robot_state(&self, id: OrganismId) -> Result<&RobotState, EngineError> {
         self.slots.get(id)
     }
@@ -3654,6 +3739,15 @@ impl Engine {
         }
         let mut cloned_organism = self.slots.get(id)?.clone();
         cloned_organism.identity.parents = [Some(id), None];
+        cloned_organism.identity.absolute_id = self.allocate_absolute_identity();
+        cloned_organism.counters.generation = cloned_organism
+            .counters
+            .generation
+            .saturating_add(1)
+            .min(32_000);
+        cloned_organism.counters.birth_cycle = self.tick;
+        cloned_organism.counters.offspring = 0;
+        cloned_organism.counters.descendants = 0;
         cloned_organism.kinematics.position = position;
         cloned_organism.kinematics.previous_position = position;
         cloned_organism
@@ -3665,6 +3759,8 @@ impl Engine {
             .memory
             .write(MEM_YPOS, position[1].round() as i32);
         let clone = self.slots.spawn(cloned_organism);
+        self.record_offspring([Some(id), None]);
+        self.propagate_descendant_count([Some(id), None]);
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(clone)
@@ -3679,7 +3775,21 @@ impl Engine {
     }
 
     pub fn export_dna(&self, id: OrganismId) -> Result<String, EngineError> {
-        Ok(self.dna(id)?.to_source())
+        let organism = self.slots.get(id)?;
+        let dna = &organism.program.dna;
+        let generation = if organism.counters.generation == 0 {
+            dna.metadata().generation
+        } else {
+            organism.counters.generation
+        };
+        let mutations = dna
+            .metadata()
+            .mutations
+            .saturating_add(organism.program.mutation_metadata.total_mutations);
+        let tag = (!organism.identity.tag.is_empty())
+            .then_some(organism.identity.tag.as_str())
+            .or_else(|| (!dna.metadata().tag.is_empty()).then_some(dna.metadata().tag.as_str()));
+        Ok(dna.to_source_with_runtime_metadata(generation, mutations, tag))
     }
 
     pub fn manual_reproduce(
@@ -3700,11 +3810,22 @@ impl Engine {
             }
             first_organism.program.dna.clone()
         };
+        let absolute_id = self.allocate_absolute_identity();
         let child =
             self.spawn_species_at_unpublished(dna, first_organism.identity.species, position)?;
         {
             let child_organism = self.slots.get_mut(child)?;
+            child_organism.identity = first_organism.identity.clone();
             child_organism.identity.parents = [Some(first), second];
+            child_organism.identity.absolute_id = absolute_id;
+            child_organism.counters.generation = first_organism
+                .counters
+                .generation
+                .saturating_add(1)
+                .min(32_000);
+            child_organism.counters.birth_cycle = self.tick;
+            child_organism.counters.offspring = 0;
+            child_organism.counters.descendants = 0;
             child_organism.phenotype = first_organism.phenotype;
         }
         if second.is_none() {
@@ -3729,6 +3850,8 @@ impl Engine {
                 .materials
                 .publish(&mut child_organism.program.memory);
         }
+        self.record_offspring([Some(first), second]);
+        self.propagate_descendant_count([Some(first), second]);
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(child)
@@ -4063,6 +4186,13 @@ impl Engine {
 
     pub fn backend(&self) -> BackendKind {
         self.capabilities.active
+    }
+
+    pub fn gpu_adapter_receipt(&self) -> Option<&GpuAdapterReceipt> {
+        match &self.physics {
+            RuntimePhysics::Gpu(backend) => Some(backend.adapter_receipt()),
+            RuntimePhysics::Cpu(_) => None,
+        }
     }
 
     pub fn switch_backend(&mut self, preference: BackendPreference) -> Result<(), EngineError> {
@@ -8824,6 +8954,15 @@ impl Engine {
                     MEM_READ_BUOYANCY,
                     (child_organism.buoyancy * 32_000.0).round_ties_even() as i32,
                 );
+            }
+
+            let child_parents = [
+                Some(birth.parent),
+                birth.sexual.then_some(birth.sperm_source).flatten(),
+            ];
+            self.propagate_descendant_count(child_parents);
+            if birth.sexual {
+                self.record_offspring([None, child_parents[1]]);
             }
 
             if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {

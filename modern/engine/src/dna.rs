@@ -541,6 +541,21 @@ impl LegacyDna {
         }
         source
     }
+
+    pub fn to_source_with_runtime_metadata(
+        &self,
+        generation: u32,
+        mutations: u64,
+        tag: Option<&str>,
+    ) -> String {
+        let mut dna = self.clone();
+        dna.metadata.generation = generation;
+        dna.metadata.mutations = mutations;
+        if let Some(tag) = tag {
+            dna.metadata.tag = tag.to_owned();
+        }
+        dna.to_source()
+    }
 }
 
 fn parse_source_token(

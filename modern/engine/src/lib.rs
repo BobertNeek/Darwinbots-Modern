@@ -69,7 +69,8 @@ pub use mutation::{
 };
 pub use persistence::SaveFile;
 pub use physics::{
-    CpuPhysicsBackend, GpuPhysicsBackend, PhysicsBackend, PhysicsBatch, RenderInstance,
+    CpuPhysicsBackend, GpuAdapterReceipt, GpuPhysicsBackend, PhysicsBackend, PhysicsBatch,
+    RenderInstance,
 };
 pub use robot_state::{
     RobotCounters, RobotEffectState, RobotFlags, RobotHeredityState, RobotIdentity,
@@ -100,4 +101,4 @@ pub(crate) use vegetation::{PlantLightInput, VegetationRuntime};
 pub use vision::{EyeSnapshot, VisionSnapshot, absolute_eye_width, eye_sight_distance, eye_value};
 pub use visual_phenotype::{SkinPoint, VisualPhenotype, default_skin, generated_skin};
 pub use vm::{ActivationFrame, DnaVm, VmContext, VmMemory, VmReport, VmTermination};
-pub use world::{Engine, MemoryCellSnapshot, OrganismSnapshot, Snapshot};
+pub use world::{Engine, LineageEntry, MemoryCellSnapshot, OrganismSnapshot, Snapshot};

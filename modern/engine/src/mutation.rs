@@ -1125,29 +1125,37 @@ impl GenomeMutator {
                     apply_standard_mutation(dna, profile, event)
                 }
                 StandardMutationKind::CopyError => {
-                    let location = (self.next() as usize) % coding_len + 1;
+                    let length = self.sample_length(profile.copy_error, coding_len);
+                    let location = (self.next() as usize)
+                        % (coding_len.saturating_sub(length) + 1)
+                        + 1;
+                    let distribution = profile.category_distribution(kind);
+                    let replacements = (0..length)
+                        .map(|_| self.random_block_with_distribution(distribution))
+                        .collect();
                     apply_standard_mutation(
                         dna,
                         profile,
                         StandardMutationEvent::CopyError {
                             location,
-                            replacements: vec![self.random_block_with_distribution(
-                                profile.category_distribution(kind),
-                            )],
+                            replacements,
                         },
                     )
                 }
                 StandardMutationKind::Insertion => {
-                    if dna.blocks().len() >= MAX_DNA_BLOCKS {
+                    let capacity = MAX_DNA_BLOCKS.saturating_sub(dna.blocks().len());
+                    if capacity == 0 {
                         return MutationReport::default();
                     }
                     let after_location = (self.next() as usize) % coding_len + 1;
+                    let length = self.sample_length(profile.insertion, capacity);
+                    let blocks = (0..length).map(|_| self.random_block()).collect();
                     apply_standard_mutation(
                         dna,
                         profile,
                         StandardMutationEvent::Insertion {
                             after_location,
-                            blocks: vec![self.random_block()],
+                            blocks,
                         },
                     )
                 }

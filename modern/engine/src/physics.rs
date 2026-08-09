@@ -250,7 +250,15 @@ impl PhysicsBackend for CpuPhysicsBackend {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GpuAdapterReceipt {
+    pub name: String,
+    pub backend: String,
+    pub device_type: String,
+}
+
 pub struct GpuPhysicsBackend {
+    adapter_receipt: GpuAdapterReceipt,
     device: wgpu::Device,
     queue: wgpu::Queue,
     pipeline: wgpu::ComputePipeline,
@@ -282,6 +290,12 @@ impl GpuPhysicsBackend {
             })
             .await
             .map_err(|error| EngineError::GpuUnavailable(error.to_string()))?;
+        let adapter_info = adapter.get_info();
+        let adapter_receipt = GpuAdapterReceipt {
+            name: adapter_info.name,
+            backend: format!("{:?}", adapter_info.backend),
+            device_type: format!("{:?}", adapter_info.device_type),
+        };
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("darwinbots compute device"),
@@ -418,6 +432,7 @@ impl GpuPhysicsBackend {
         let grid_scatter_pipeline =
             make_grid_pipeline("darwinbots grid scatter pipeline", "scatter_members");
         Ok(Self {
+            adapter_receipt,
             device,
             queue,
             pipeline,
@@ -433,6 +448,10 @@ impl GpuPhysicsBackend {
             #[cfg(test)]
             fail_next_sensing_after_submit_for_tests: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+
+    pub fn adapter_receipt(&self) -> &GpuAdapterReceipt {
+        &self.adapter_receipt
     }
 
     #[cfg(test)]
