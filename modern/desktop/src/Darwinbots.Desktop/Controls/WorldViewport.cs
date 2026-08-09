@@ -654,7 +654,7 @@ public sealed class WorldViewport : Control
             if (!ShowShotImpacts && shot.ImpactFlash) continue;
             var color = shot.Kind switch
             {
-                -1 => "#E26722",
+                -1 => "#FFFFFF",
                 -2 => "#45A23D",
                 -3 => "#239AC0",
                 -4 => "#8A6748",

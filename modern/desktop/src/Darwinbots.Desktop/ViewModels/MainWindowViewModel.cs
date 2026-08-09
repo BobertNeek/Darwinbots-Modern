@@ -64,6 +64,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         new("Nrg"),
         new("Delta"),
         new("CostX"),
+        new("Feed"),
+        new("Move"),
+        new("Events"),
     ];
 
     public LocalModeViewModel LocalMode { get; } = new();
@@ -103,7 +106,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string LimitingPhase { get => _limitingPhase; private set => Set(ref _limitingPhase, value); }
     public string PopulationSummary => $"{Population:N0} organisms · {SpeciesCount:N0} species";
     public string LifecycleSummary => $"BIRTH {Births:N0}    DEATH {Deaths:N0}";
-    public string CombatSummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    HARVEST {EnergyHarvested:N0}    DONATED {_snapshot.Stats.EnergyDonated:N0}";
+    public string CombatSummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    HARVEST {EnergyHarvested:N0}    DONATED {_snapshot.Stats.EnergyDonated:N0}    FEED {_snapshot.Stats.FeedingEvents:N0}    MOVE {_snapshot.Stats.IntentionalMovementEvents:N0}    EFFECT {_snapshot.Stats.ProjectileEffects:N0}";
     public string EnergyActivitySummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    PLANT {PlantEnergyGenerated:N0}";
     public string PlantSummary => $"PLANT ENERGY {PlantEnergyGenerated:N0}";
     public string MutationSummary => $"MUTATIONS {Mutations:N0}";
@@ -231,6 +234,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SetPanel(10, snapshot.Stats.TotalEnergy.ToString(CultureInfo.InvariantCulture));
         SetPanel(11, energyDelta.ToString(CultureInfo.InvariantCulture));
         SetPanel(12, _costMultiplier.ToString("0.#####", CultureInfo.InvariantCulture));
+        SetPanel(13, snapshot.Stats.FeedingEvents.ToString(CultureInfo.InvariantCulture));
+        SetPanel(14, snapshot.Stats.IntentionalMovementEvents.ToString(CultureInfo.InvariantCulture));
+        SetPanel(15, snapshot.Stats.ProjectileEffects.ToString(CultureInfo.InvariantCulture));
     }
 
     private void SetPanel(int index, string value)

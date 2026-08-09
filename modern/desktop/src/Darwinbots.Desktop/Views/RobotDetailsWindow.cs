@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using System.Globalization;
 using Darwinbots.Desktop.Core;
 
 namespace Darwinbots.Desktop.Views;
@@ -210,6 +211,7 @@ public sealed class RobotDetailsWindow : Window
         try
         {
             _dna.Text = await _session.ExportDnaAsync(_focus.Slot, _focus.Generation);
+            SetSnapshot(_session.LatestSnapshot);
         }
         catch (Exception error)
         {
@@ -249,6 +251,12 @@ public sealed class RobotDetailsWindow : Window
         }
 
         var species = snapshot.Species.ElementAtOrDefault((int)organism.Species)?.Name ?? "UNASSIGNED";
+        var dnaSummary = string.IsNullOrWhiteSpace(_dna.Text)
+            ? "UNAVAILABLE"
+            : _dna.Text.Replace("\r\n", " / ", StringComparison.Ordinal).Replace('\n', ' ');
+        var memorySummary = organism.Memory.Count == 0
+            ? "NONE"
+            : string.Join(", ", organism.Memory.Select(cell => cell.Address.ToString(CultureInfo.InvariantCulture)));
         _subtitle.Text = $"LIVE ROBOT {organism.Slot}:{organism.Generation} · {species.ToUpperInvariant()} · TICK {snapshot.Tick:N0}";
         _facts.Text = string.Join(Environment.NewLine,
             $"ARRAY ID       {organism.Slot:N0}",
@@ -269,13 +277,20 @@ public sealed class RobotDetailsWindow : Window
             $"POISON         {organism.Poison:N0}",
             $"VIRUS TIMER    {organism.VirusTimer:N0}",
             $"CHLOROPLASTS   {organism.Chloroplasts:N0}",
+            $"TOUCH / TASTE  {organism.Touch:N0} / {organism.Taste:N0}",
+            $"SKIN           {organism.Phenotype.Skin.Length:N0} points · COLOR #{organism.Phenotype.Color & 0x00ffffff:X6}",
+            $"EYES           {organism.Vision.Eyes.Length:N0} · FOCUS {organism.Vision.FocusEye:N0}",
+            $"TIES           {snapshot.Ties.Count(tie => tie.First == _focus || tie.Second == _focus):N0}",
+            $"SHOTS          {snapshot.Shots.Count(shot => shot.Owner == _focus):N0}",
             $"NEW / TOTAL M.  {organism.NewMutations:N0} / {organism.TotalMutations:N0}",
             $"SUBSPECIES     {organism.Subspecies:N0}",
             $"LAST MUTATION  {organism.LastMutationKind ?? "NONE"} @ {organism.LastMutationCycle?.ToString("N0") ?? "-"}",
             $"MUTATION LOG   {(organism.MutationLog.Count == 0 ? "NONE" : string.Join(" | ", organism.MutationLog.Take(4)))}",
             $"DNA / GENES    {organism.DnaLength:N0} / {organism.GeneCount:N0}",
             $"CURRENT GENE   {organism.CurrentGene:N0} ({organism.ConditionCount:N0} conditions)",
-            $"POSITION       {FormatVector(organism.Position)}");
+            $"POSITION       {FormatVector(organism.Position)}",
+            $"DNA VIEW       {dnaSummary}",
+            $"MEMORY VIEW    {memorySummary}");
         _factsTab.Text = _facts.Text;
         _memory.Text = organism.Memory.Count == 0
             ? "No non-zero public memory cells were published."

@@ -185,7 +185,15 @@
               </StackPanel>
             </Expander>
             <Expander x:Name="HistoryExpander" Header="History" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="Population and energy history are shown below." TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
-            <Expander x:Name="StatisticsExpander" Header="Statistics" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
+            <Expander x:Name="StatisticsExpander" Header="Statistics" HorizontalContentAlignment="Stretch">
+              <StackPanel Margin="4,5" Spacing="3">
+                <TextBlock Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+                <TextBlock Text="{Binding CombatSummary}" TextWrapping="Wrap" Foreground="#A65A23" FontSize="11"/>
+                <TextBlock Text="{Binding EnergyActivitySummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+                <TextBlock Text="{Binding PlantSummary}" TextWrapping="Wrap" Foreground="#3E8E36" FontSize="11"/>
+                <TextBlock Text="{Binding MutationSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+              </StackPanel>
+            </Expander>
             <Expander x:Name="ExperimentsExpander" Header="Experiments" HorizontalContentAlignment="Stretch"><Button x:Name="AdvanceZerobotButton" Margin="4,5,0,4" Content="ADVANCE ZEROBOT" HorizontalAlignment="Stretch" Click="AdvanceZerobot_Click"/></Expander>
           </StackPanel>
         </ScrollViewer>
@@ -311,7 +319,7 @@
       <ItemsControl x:Name="StatusInstrument" ItemsSource="{Binding StatusPanels}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <UniformGrid Columns="13" />
+            <WrapPanel Orientation="Horizontal" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
