@@ -639,6 +639,7 @@ internal sealed class RecordingEngineClient : IEngineClient
     public ConcurrentQueue<string> Calls { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
     public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
+    public ConcurrentQueue<LocalModeConfig> LocalModeConfigs { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation, string Dna)> DnaReplacements { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation)> DnaExports { get; } = [];
     public string Backend { get; private set; } = "CPU";
@@ -712,7 +713,11 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
     public void UpdateRestrictionOptions(RestrictionOptions options) => Calls.Enqueue("RestrictionOptions");
-    public void ConfigureLocalMode(LocalModeConfig config) => Calls.Enqueue("ConfigureLocalMode");
+    public void ConfigureLocalMode(LocalModeConfig config)
+    {
+        LocalModeConfigs.Enqueue(config);
+        Calls.Enqueue("ConfigureLocalMode");
+    }
     public void StartLocalMode() => Calls.Enqueue("StartLocalMode");
     public void RestartLocalMode() => Calls.Enqueue("RestartLocalMode");
     public void AdjudicateLocalRound(uint? winner, string reason) => Calls.Enqueue($"AdjudicateLocalRound:{winner?.ToString() ?? "none"}");

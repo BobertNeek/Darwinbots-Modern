@@ -18,6 +18,8 @@ public interface IDesktopStorageService
     Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync);
     string? FindLatestAutosave();
     Task SaveAutosaveAsync(ReadOnlyMemory<byte> save);
+    bool IsFirstRun => false;
+    Task MarkFirstRunCompleteAsync() => Task.CompletedTask;
     string? FindLastStart() => null;
     Task SaveLastStartAsync(ReadOnlyMemory<byte> settings) => Task.CompletedTask;
 }

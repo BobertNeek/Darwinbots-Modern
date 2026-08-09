@@ -565,6 +565,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         LocalModeKind.Contest => "contest",
         LocalModeKind.SimpleSurvival => "simple_survival",
         LocalModeKind.EcoSurvival => "eco_survival",
+        LocalModeKind.Zerobot => "zerobot",
         _ => "league",
     };
 

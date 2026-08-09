@@ -14,7 +14,91 @@ public sealed record DesktopSettings
     public int OrganismCapacity { get; init; } = 100_000;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
+    public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
+    public ZerobotSustenance ZerobotSustenance { get; init; } = ZerobotSustenance.DisabledMetabolism;
+    public bool AutomaticZerobotProgression { get; init; } = true;
+    public int VegetablePopulationCap { get; init; } = 500;
+    public int MetabolismCost { get; init; }
+    public int VegetableEnergyPerTick { get; init; }
+    public int SunlightEnergy { get; init; } = 100;
+    public float[] Gravity { get; init; } = [0f, 0f];
+    public float Drag { get; init; }
+    public float BrownianMotion { get; init; }
+    public Db2PhysicsOptions Physics { get; init; } = Db2PhysicsOptions.Default;
+    public Db2ShotOptions Shots { get; init; } = Db2ShotOptions.Default;
+    public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
+    public bool AutoSpeciation { get; init; }
+    public float SpeciationGeneticDistancePercent { get; init; } = 20f;
+    public bool ToroidalWorld { get; init; } = true;
+    public bool WrapX { get; init; } = true;
+    public bool WrapY { get; init; } = true;
+    public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public GlobalSettings GlobalSettings { get; init; } = new();
+
+    public static DesktopSettings FromWorldSetup(WorldSetupOptions setup) => new()
+    {
+        Backend = setup.Backend,
+        TicksPerUpdate = setup.TicksPerUpdate,
+        SnapshotEveryTicks = 1,
+        OrganismCapacity = setup.PopulationCapacity,
+        WorldWidth = setup.WorldWidth,
+        WorldHeight = setup.WorldHeight,
+        StartingMode = setup.StartingMode,
+        ZerobotSustenance = setup.ZerobotSustenance,
+        AutomaticZerobotProgression = setup.AutomaticZerobotProgression,
+        VegetablePopulationCap = setup.VegetablePopulationCap,
+        MetabolismCost = setup.MetabolismCost,
+        VegetableEnergyPerTick = setup.VegetableEnergyPerTick,
+        SunlightEnergy = setup.SunlightEnergy,
+        Gravity = setup.Gravity.ToArray(),
+        Drag = setup.Drag,
+        BrownianMotion = setup.BrownianMotion,
+        Physics = setup.Physics,
+        Shots = setup.Shots,
+        Vegetation = setup.Vegetation,
+        AutoSpeciation = setup.AutoSpeciation,
+        SpeciationGeneticDistancePercent = setup.SpeciationGeneticDistancePercent,
+        ToroidalWorld = setup.ToroidalWorld,
+        WrapX = setup.WrapX,
+        WrapY = setup.WrapY,
+        Species = setup.Species.ToArray(),
+        GlobalSettings = setup.GlobalSettings,
+    };
+
+    public WorldSetupOptions ToWorldSetup(WorldSetupOptions? fallback = null)
+    {
+        fallback ??= new WorldSetupOptions();
+        return new WorldSetupOptions
+        {
+            StartingMode = StartingMode,
+            ZerobotSustenance = ZerobotSustenance,
+            AutomaticZerobotProgression = AutomaticZerobotProgression,
+            Backend = Backend,
+            Seed = fallback.Seed,
+            PopulationCapacity = OrganismCapacity,
+            VegetablePopulationCap = VegetablePopulationCap,
+            WorldWidth = WorldWidth,
+            WorldHeight = WorldHeight,
+            MetabolismCost = MetabolismCost,
+            VegetableEnergyPerTick = VegetableEnergyPerTick,
+            SunlightEnergy = SunlightEnergy,
+            Gravity = Gravity.ToArray(),
+            Drag = Drag,
+            BrownianMotion = BrownianMotion,
+            Physics = Physics,
+            Shots = Shots,
+            Vegetation = Vegetation,
+            AutoSpeciation = AutoSpeciation,
+            SpeciationGeneticDistancePercent = SpeciationGeneticDistancePercent,
+            ToroidalWorld = ToroidalWorld,
+            WrapX = WrapX,
+            WrapY = WrapY,
+            TicksPerUpdate = TicksPerUpdate,
+            Species = Species.Count == 0 ? fallback.Species.ToArray() : Species.ToArray(),
+            GlobalSettings = GlobalSettings,
+            LoadSavePath = fallback.LoadSavePath,
+        };
+    }
 
     public string ToJson() => JsonSerializer.Serialize(this, SerializerOptions);
 

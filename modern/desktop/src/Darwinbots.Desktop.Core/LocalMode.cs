@@ -6,6 +6,7 @@ public enum LocalModeKind
     Contest,
     SimpleSurvival,
     EcoSurvival,
+    Zerobot,
 }
 
 public enum LeaguePreset

@@ -11,6 +11,8 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private const string AutosaveDirectoryVariable = "DARWINBOTS_AUTOSAVE_DIRECTORY";
 
+    public bool IsFirstRun => !File.Exists(FirstRunMarkerPath());
+
     private AvaloniaDesktopStorageService()
     {
     }
@@ -187,6 +189,13 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         File.Move(temporary, path, true);
     }
 
+    public async Task MarkFirstRunCompleteAsync()
+    {
+        var directory = AutosaveDirectory();
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(FirstRunMarkerPath(), "completed");
+    }
+
     private static FilePickerOpenOptions SimulationOpenOptions(string title) => new()
     {
         Title = title,
@@ -220,4 +229,6 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
                 "Autosaves");
 
     private static string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
+
+    private static string FirstRunMarkerPath() => Path.Combine(AutosaveDirectory(), "first-run.complete");
 }

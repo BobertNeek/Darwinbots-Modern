@@ -11,6 +11,7 @@ public sealed partial class SetupWindow : Window
 {
     private bool _controlsReady;
     private readonly IDesktopStorageService _storage;
+    private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
     private GlobalSettings _globalSettings = new();
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
@@ -27,10 +28,13 @@ public sealed partial class SetupWindow : Window
     public SetupWindow(IDesktopStorageService storage)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _workflow = new(new WorldSetupOptions());
         InitializeComponent();
         DataContext = this;
         _controlsReady = true;
         LoadMode(StartingMode.StarterBotsAndVegetables);
+        _workflow.Reset(ReadSetupOptions());
+        OnboardingPanel.IsVisible = _storage.IsFirstRun;
     }
 
     private void Mode_Checked(object? sender, RoutedEventArgs e)
@@ -76,7 +80,32 @@ public sealed partial class SetupWindow : Window
 
     private void CreateWorld_Click(object? sender, RoutedEventArgs e)
     {
+        StartNew_Click(sender, e);
+    }
+
+    private void StartNew_Click(object? sender, RoutedEventArgs e)
+    {
         if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
+        WorldCreated?.Invoke(_workflow.StartNew());
+    }
+
+    private void Change_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
+        _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
+        WorldCreated?.Invoke(_workflow.Change());
+    }
+
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    {
+        _workflow.Cancel();
+        ApplySetupOptions(_workflow.WorkingCopy);
+        SetupStatus.Text = "WORKING COPY CANCELLED";
+    }
+
+    private WorldSetupOptions ReadSetupOptions()
+    {
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
         if (CurrentMode() != StartingMode.StarterBotsAndVegetables)
@@ -90,7 +119,7 @@ public sealed partial class SetupWindow : Window
             }
         }
         var speed = Speed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u };
-        WorldCreated?.Invoke(new WorldSetupOptions
+        return new WorldSetupOptions
         {
             StartingMode = CurrentMode(),
             ZerobotSustenance = sustenance,
@@ -117,7 +146,7 @@ public sealed partial class SetupWindow : Window
             TicksPerUpdate = speed,
             Species = species,
             GlobalSettings = _globalSettings,
-        });
+        };
     }
 
     private async void Advanced_Click(object? sender, RoutedEventArgs e)
@@ -187,35 +216,55 @@ public sealed partial class SetupWindow : Window
         }
     }
 
-    private DesktopSettings ReadDesktopSettings() => new()
+    private DesktopSettings ReadDesktopSettings()
     {
-        Backend = ((ComboBoxItem)Backend.SelectedItem!).Content?.ToString() ?? "Auto",
-        TicksPerUpdate = Speed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u },
-        OrganismCapacity = (int)(PopulationCap.Value ?? 25_000),
-        WorldWidth = (float)(WorldWidth.Value ?? 16_000),
-        WorldHeight = (float)(WorldHeight.Value ?? 12_000),
-        GlobalSettings = _globalSettings,
-    };
+        _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
+        return DesktopSettings.FromWorldSetup(_workflow.WorkingCopy);
+    }
 
     private void ApplyDesktopSettings(DesktopSettings settings)
     {
-        Backend.SelectedIndex = settings.Backend.ToUpperInvariant() switch
+        var setup = settings.ToWorldSetup(_workflow.Live);
+        ApplySetupOptions(setup);
+        _workflow.LoadWorkingCopy(setup);
+    }
+
+    private void ApplySetupOptions(WorldSetupOptions setup)
+    {
+        _controlsReady = false;
+        Backend.SelectedIndex = setup.Backend.ToUpperInvariant() switch
         {
             "CPU" => 1,
             "GPU" => 2,
             _ => 0,
         };
-        WorldWidth.Value = (decimal)settings.WorldWidth;
-        WorldHeight.Value = (decimal)settings.WorldHeight;
-        PopulationCap.Value = settings.OrganismCapacity;
-        Speed.SelectedIndex = settings.TicksPerUpdate switch
+        WorldWidth.Value = (decimal)setup.WorldWidth;
+        WorldHeight.Value = (decimal)setup.WorldHeight;
+        PopulationCap.Value = setup.PopulationCapacity;
+        VegetablePopulationCap.Value = setup.VegetablePopulationCap;
+        Speed.SelectedIndex = setup.TicksPerUpdate switch
         {
             <= 1 => 0,
             <= 5 => 1,
             <= 20 => 2,
             _ => 3,
         };
-        _globalSettings = settings.GlobalSettings;
+        Sustenance.SelectedIndex = (int)setup.ZerobotSustenance;
+        AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
+        _environment = setup.ToEnvironmentUpdate();
+        _globalSettings = setup.GlobalSettings;
+        StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
+        ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
+        ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
+        LoadMode(setup.StartingMode);
+        if (setup.Species.Count > 0)
+        {
+            Species.Clear();
+            foreach (var species in setup.Species)
+                Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
+                    species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed));
+        }
+        _controlsReady = true;
     }
 
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
@@ -232,6 +281,7 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = true;
         StarterMode.IsChecked = true;
         Mode_Checked(StarterMode, e);
+        _workflow.Reset(ReadSetupOptions());
         SetupStatus.Text = "New world defaults restored.";
     }
 
@@ -321,6 +371,20 @@ public sealed partial class SetupWindow : Window
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
         WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = latest });
+    }
+
+    private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _storage.MarkFirstRunCompleteAsync();
+            OnboardingPanel.IsVisible = false;
+            SetupStatus.Text = "ONBOARDING COMPLETE";
+        }
+        catch (Exception error)
+        {
+            SetupStatus.Text = $"ONBOARDING FAILED: {error.Message}";
+        }
     }
 
     private StartingMode CurrentMode() => ZerobotMode.IsChecked == true

@@ -122,9 +122,7 @@ public sealed partial class MainWindow : Window
         _globalSettings = setup.GlobalSettings;
         _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-        _zerobotProgression = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables
-            ? new ZerobotProgressionController(setup.AutomaticZerobotProgression)
-            : null;
+        _zerobotProgression = null;
         InitializeComponent();
         _toolWindows = new PersistentToolWindowRegistry(this);
         _activeCostMultiplier = setup.GlobalSettings.Costs.GlobalMultiplier;
@@ -147,7 +145,7 @@ public sealed partial class MainWindow : Window
         SunButton.Content = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
         ToolbarSlot24.Content = "IGNORE OFF";
         AutomationProperties.SetName(ToolbarSlot24, "IGNORE ERRORS OFF");
-        LocalModeKindSelector.SelectedIndex = 0;
+        LocalModeKindSelector.SelectedIndex = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables ? 4 : 0;
         LocalModePreset.SelectedIndex = 0;
         ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
         LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
@@ -1588,6 +1586,7 @@ public sealed partial class MainWindow : Window
             _runTimer.Stop();
             await _session.LoadAsync(await File.ReadAllBytesAsync(path));
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
+            ClearRecoveryPanel();
             return LegacyCommandResult.Success(_viewModel.Status);
         }
         catch (Exception error)
@@ -1604,6 +1603,7 @@ public sealed partial class MainWindow : Window
         {
             var ignored = _diagnostics.HandleError(error, tick, null);
             _viewModel.Status = ignored.Status;
+            ClearRecoveryPanel();
             RefreshLegacyMenuStates();
             return;
         }
@@ -1626,6 +1626,40 @@ public sealed partial class MainWindow : Window
 
         var decision = _diagnostics.HandleError(error, tick, artifact);
         _viewModel.Status = decision.Status;
+        ShowRecoveryDecision(decision);
+        RefreshLegacyMenuStates();
+    }
+
+    private void ShowRecoveryDecision(DiagnosticRecoveryDecision decision)
+    {
+        RecoveryPanel.IsVisible = true;
+        RecoveryTitle.Text = decision.Action switch
+        {
+            DiagnosticRecoveryAction.Recover => "SAFE MODE RECOVERY READY",
+            DiagnosticRecoveryAction.Report => "SAFE MODE DIAGNOSTICS",
+            _ => "ERROR HANDLING",
+        };
+        RecoveryFaultWindowText.Text = decision.FaultWindow is { } faultWindow
+            ? $"FAULT WINDOW {faultWindow.StartTick:N0}–{faultWindow.EndTick:N0} · {faultWindow.Width:N0} CYCLES"
+            : "FAULT WINDOW UNAVAILABLE";
+        RecoveryArtifactText.Text = RecoveryArtifactPath() is { } artifact
+            ? $"RECOVERY ARTIFACT · {Path.GetFileName(artifact)}"
+            : "NO RECOVERY ARTIFACT · LAST START SETTINGS MAY STILL BE AVAILABLE";
+        RecoveryRecoverButton.IsVisible = decision.Action == DiagnosticRecoveryAction.Recover;
+    }
+
+    private void ClearRecoveryPanel() => RecoveryPanel.IsVisible = false;
+
+    private async void RecoveryRecover_Click(object? sender, RoutedEventArgs e)
+    {
+        await RecoverLatestAutosaveAsync();
+    }
+
+    private void RecoveryIgnore_Click(object? sender, RoutedEventArgs e)
+    {
+        _diagnostics.SetIgnoreErrors(true);
+        ClearRecoveryPanel();
+        _viewModel.Status = "ERRORS WILL BE IGNORED";
         RefreshLegacyMenuStates();
     }
 
@@ -1672,11 +1706,35 @@ public sealed partial class MainWindow : Window
             else if (_startupBots.Count > 0) _viewModel.Status = $"IMPORTED {_startupBots.Count} STARTUP BOT(S)";
             else if (_setup.Species.Count > 0) _viewModel.Status = $"WORLD READY · {_setup.Species.Count} SPECIES";
             else if (_setup.LoadSavePath is not null) _viewModel.Status = "AUTOSAVE RECOVERED";
+            if (_setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables)
+                await ConfigureZerobotModeAsync();
             _autosaveTimer.Start();
         }
         catch (Exception error)
         {
             await HandleEngineErrorAsync(error, attemptRecovery: true);
+        }
+    }
+
+    private async Task ConfigureZerobotModeAsync()
+    {
+        if (_session is null) return;
+        _viewModel.LocalMode.SelectKind(LocalModeKind.Zerobot);
+        var config = _viewModel.LocalMode.BuildConfiguration() with
+        {
+            Kind = LocalModeKind.Zerobot,
+            MaximumPopulation = _setup.PopulationCapacity,
+        };
+        await _session.ConfigureLocalModeAsync(config);
+        _viewModel.LocalMode.MarkConfigured();
+        if (_setup.AutomaticZerobotProgression)
+        {
+            await _session.StartLocalModeAsync();
+            _viewModel.Status = "NATIVE ZEROBOT SEARCH RUNNING";
+        }
+        else
+        {
+            _viewModel.Status = "NATIVE ZEROBOT SEARCH CONFIGURED";
         }
     }
 
@@ -1967,6 +2025,17 @@ public sealed partial class MainWindow : Window
     {
         if (_zerobotProgression is null)
         {
+            if (_setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables
+                && _session is not null && !_setup.AutomaticZerobotProgression)
+            {
+                try
+                {
+                    await _session.StartLocalModeAsync();
+                    _viewModel.Status = "NATIVE ZEROBOT SEARCH RUNNING";
+                }
+                catch (Exception error) { _viewModel.Status = $"ZEROBOT START FAILED · {error.Message}"; }
+                return;
+            }
             _viewModel.Status = "ZEROBOT PROGRESSION IS NOT ACTIVE IN THIS WORLD";
             return;
         }
@@ -2070,6 +2139,7 @@ public sealed partial class MainWindow : Window
         1 => LocalModeKind.Contest,
         2 => LocalModeKind.SimpleSurvival,
         3 => LocalModeKind.EcoSurvival,
+        4 => LocalModeKind.Zerobot,
         _ => LocalModeKind.League,
     };
 

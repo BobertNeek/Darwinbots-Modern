@@ -140,6 +140,7 @@
                     <ComboBoxItem Content="CONTEST" />
                     <ComboBoxItem Content="SIMPLE SURVIVAL" />
                     <ComboBoxItem Content="ECO SURVIVAL" />
+                    <ComboBoxItem Content="ZEROBOT" />
                   </ComboBox>
                   <ComboBox x:Name="LocalModePreset" Grid.Column="1" SelectionChanged="LocalModePreset_Changed">
                     <ComboBoxItem Content="F1" />
@@ -203,6 +204,17 @@
             <TextBlock Text="OFFLINE · INTERNET DISABLED" FontSize="10" FontWeight="SemiBold" Foreground="#794A1D" />
           </Border>
         </StackPanel>
+        <Border x:Name="RecoveryPanel" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,92,0,0" Background="#FFF3E7" BorderBrush="#B46A27" BorderThickness="1" Padding="10" Width="310">
+          <StackPanel Spacing="5">
+            <TextBlock x:Name="RecoveryTitle" Text="SAFE MODE RECOVERY" FontWeight="Bold" Foreground="#794A1D" />
+            <TextBlock x:Name="RecoveryFaultWindowText" TextWrapping="Wrap" FontSize="11" />
+            <TextBlock x:Name="RecoveryArtifactText" TextWrapping="Wrap" FontSize="11" Foreground="#59615D" />
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+              <Button x:Name="RecoveryRecoverButton" Content="RECOVER" Click="RecoveryRecover_Click" />
+              <Button x:Name="RecoveryIgnoreButton" Content="IGNORE" Click="RecoveryIgnore_Click" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
       </Grid>
     </Border>
 
