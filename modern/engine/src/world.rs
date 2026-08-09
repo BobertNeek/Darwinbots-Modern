@@ -21,6 +21,7 @@ use crate::{
     StandardMutationKind, StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime,
     Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime,
     VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
+    MAX_ROBOTS, RecordingSettings,
     apply_advanced_mutation_policies, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
@@ -640,6 +641,8 @@ struct Db3sV2VegetationSettings {
     gradient: f32,
     tides: u32,
     tides_offset: i32,
+    #[serde(default)]
+    sun_on_random: bool,
 }
 
 impl Default for Db3sV2VegetationSettings {
@@ -665,6 +668,7 @@ impl Default for Db3sV2VegetationSettings {
             gradient: 1.0,
             tides: 0,
             tides_offset: 0,
+            sun_on_random: false,
         }
     }
 }
@@ -692,6 +696,7 @@ impl From<Db3sV2VegetationSettings> for VegetationSettings {
             gradient: value.gradient,
             tides: value.tides,
             tides_offset: value.tides_offset,
+            sun_on_random: value.sun_on_random,
         }
     }
 }
@@ -754,7 +759,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
     fn from(value: Db3sV2EngineConfig) -> Self {
         Self {
             seed: value.seed,
-            organism_capacity: value.organism_capacity,
+            organism_capacity: value.organism_capacity.min(MAX_ROBOTS),
             vegetable_population_cap: value.vegetable_population_cap,
             world_width: value.world_width,
             world_height: value.world_height,
@@ -775,6 +780,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             corpse_decay: CorpseDecaySettings::default(),
             waste: WasteSettings::default(),
             vegetation: value.vegetation.into(),
+            recording: RecordingSettings::default(),
             dna_costs: value.dna_costs.into(),
             advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: value.auto_speciation,
@@ -1406,6 +1412,24 @@ struct Db3sV2ShotSnapshot {
     value: i32,
     #[serde(default)]
     impact_flash: bool,
+    #[serde(default)]
+    color: u32,
+    #[serde(default)]
+    source_vegetable: bool,
+    #[serde(default)]
+    source_species_name: Option<String>,
+    #[serde(default)]
+    memory_location: i32,
+    #[serde(default)]
+    memory_value: i32,
+    #[serde(default)]
+    stored: bool,
+    #[serde(default)]
+    gene_number: i32,
+    #[serde(default)]
+    dna_length: u32,
+    #[serde(default)]
+    payload: Option<LegacyDna>,
 }
 
 impl From<Db3sV2ShotSnapshot> for ShotSnapshot {
@@ -1421,6 +1445,15 @@ impl From<Db3sV2ShotSnapshot> for ShotSnapshot {
             kind: value.kind,
             value: value.value,
             impact_flash: value.impact_flash,
+            color: value.color,
+            source_vegetable: value.source_vegetable,
+            source_species_name: value.source_species_name,
+            memory_location: value.memory_location,
+            memory_value: value.memory_value,
+            stored: value.stored,
+            gene_number: value.gene_number,
+            dna_length: value.dna_length,
+            payload: value.payload,
         }
     }
 }
@@ -1552,12 +1585,7 @@ struct Db3sV2Teleporter {
 
 impl From<Db3sV2Teleporter> for Teleporter {
     fn from(value: Db3sV2Teleporter) -> Self {
-        Self {
-            id: value.id,
-            center: value.center,
-            radius: value.radius,
-            destination: value.destination,
-        }
+        Self::new(value.id, value.center, value.radius, value.destination)
     }
 }
 
@@ -2266,6 +2294,11 @@ impl Engine {
     }
 
     pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
+        if config.organism_capacity > MAX_ROBOTS {
+            return Err(EngineError::Invariant(format!(
+                "organism capacity cannot exceed 32,000 robots"
+            )));
+        }
         let (capabilities, physics) = select_backend(&config)?;
         let world_size = [config.world_width, config.world_height];
         Ok(Self {
@@ -2466,6 +2499,19 @@ impl Engine {
             ));
         }
         self.config.dna_costs = costs;
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    pub fn recording_settings(&self) -> &RecordingSettings {
+        &self.config.recording
+    }
+
+    pub fn update_recording_settings(
+        &mut self,
+        settings: RecordingSettings,
+    ) -> Result<(), EngineError> {
+        self.config.recording = settings;
         self.publish_snapshot();
         Ok(())
     }
@@ -4708,6 +4754,14 @@ impl Engine {
                     source_species_name,
                     toxin_memory_location: 0,
                     toxin_memory_value: 0,
+                    color: owner.phenotype.color,
+                    source_vegetable: self
+                        .species
+                        .get(owner.identity.species.0 as usize)
+                        .is_some_and(|species| species.vegetable),
+                    stored: request.kind == -7,
+                    gene_number: owner.program.current_gene as i32,
+                    dna_length: 0,
                 },
                 &self.config.shots,
             );
@@ -6559,6 +6613,14 @@ impl Engine {
                     source_species_name,
                     toxin_memory_location,
                     toxin_memory_value,
+                    color: owner.phenotype.color,
+                    source_vegetable: self
+                        .species
+                        .get(owner.identity.species.0 as usize)
+                        .is_some_and(|species| species.vegetable),
+                    stored: request.kind == -7,
+                    gene_number: owner.program.current_gene as i32,
+                    dna_length: 0,
                 },
                 &self.config.shots,
             );

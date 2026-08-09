@@ -79,6 +79,7 @@ fn obstacles_reject_organisms_and_teleporters_relocate_them() {
             center: [150.0, 100.0],
             radius: 30.0,
             destination: [800.0, 700.0],
+            ..Teleporter::new(1, [150.0, 100.0], 30.0, [800.0, 700.0])
         })
         .unwrap();
     let traveler = teleporter_engine

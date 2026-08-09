@@ -51,6 +51,12 @@ enum EngineCommand {
     ConfigureLocalMode {
         config: crate::LocalModeConfig,
     },
+    UpdateCostSettings {
+        costs: crate::DnaCosts,
+    },
+    UpdateRecordingSettings {
+        settings: crate::RecordingSettings,
+    },
     StartLocalMode,
     RestartLocalMode,
     AdjudicateLocalRound {
@@ -124,10 +130,8 @@ enum EngineCommand {
         id: u32,
     },
     AddTeleporter {
-        id: u32,
-        center: [f32; 2],
-        radius: f32,
-        destination: [f32; 2],
+        #[serde(flatten)]
+        teleporter: crate::Teleporter,
     },
     RemoveTeleporter {
         id: u32,
@@ -442,6 +446,12 @@ fn db_engine_command_batch_impl(
             EngineCommand::ConfigureLocalMode { config } => engine
                 .configure_local_mode(config)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateCostSettings { costs } => engine
+                .update_cost_settings(costs)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateRecordingSettings { settings } => engine
+                .update_recording_settings(settings)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::StartLocalMode => {
                 engine.start_local_mode().map(|_| serde_json::Value::Null)
             }
@@ -563,18 +573,8 @@ fn db_engine_command_batch_impl(
             EngineCommand::RemoveObstacle { id } => {
                 engine.remove_obstacle(id).map(|_| serde_json::Value::Null)
             }
-            EngineCommand::AddTeleporter {
-                id,
-                center,
-                radius,
-                destination,
-            } => engine
-                .add_teleporter(crate::Teleporter {
-                    id,
-                    center,
-                    radius,
-                    destination,
-                })
+            EngineCommand::AddTeleporter { teleporter } => engine
+                .add_teleporter(teleporter)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::RemoveTeleporter { id } => engine
                 .remove_teleporter(id)

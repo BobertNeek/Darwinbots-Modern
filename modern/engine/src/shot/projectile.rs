@@ -17,7 +17,16 @@ pub(crate) struct ProjectileSpawn {
     pub source_species_name: Option<String>,
     pub toxin_memory_location: i32,
     pub toxin_memory_value: i32,
+    pub color: u32,
+    pub source_vegetable: bool,
+    pub stored: bool,
+    pub gene_number: i32,
+    pub dna_length: u32,
 }
+
+const INITIAL_POOL_CAPACITY: usize = 100;
+const COMPACTION_RATIO_NUMERATOR: usize = 7;
+const COMPACTION_RATIO_DENOMINATOR: usize = 10;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub(crate) struct ProjectilePool {
@@ -39,7 +48,63 @@ pub(crate) struct ProjectilePool {
     pub(crate) toxin_memory_locations: Vec<i32>,
     #[serde(default)]
     pub(crate) toxin_memory_values: Vec<i32>,
+    #[serde(default)]
+    pub(crate) colors: Vec<u32>,
+    #[serde(default)]
+    pub(crate) source_vegetables: Vec<bool>,
+    #[serde(default)]
+    pub(crate) stored: Vec<bool>,
+    #[serde(default)]
+    pub(crate) gene_numbers: Vec<i32>,
+    #[serde(default)]
+    pub(crate) dna_lengths: Vec<u32>,
+    #[serde(default)]
+    pub(crate) pool_capacity: usize,
     free_slots: Vec<u32>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent() {
+        let mut pool = ProjectilePool::default();
+        let request = ProjectileSpawn {
+            owner: OrganismId::new(1, 0),
+            owner_position: [0.0, 0.0],
+            owner_actual_velocity: [0.0, 0.0],
+            owner_radius: 1.0,
+            owner_virtual_body: 1.0,
+            angle: 0.0,
+            kind: 1,
+            value: 1,
+            payload: None,
+            source_species_name: None,
+            toxin_memory_location: 0,
+            toxin_memory_value: 0,
+            color: 0,
+            source_vegetable: false,
+            stored: false,
+            gene_number: 0,
+            dna_length: 0,
+        };
+        let settings = ShotSettings::default();
+
+        for _ in 0..101 {
+            pool.spawn(request.clone(), &settings);
+        }
+        assert_eq!(pool.capacity(), 110);
+        assert_eq!(pool.len(), 101);
+
+        for slot in 0..80 {
+            pool.deactivate(slot);
+        }
+        pool.compact_if_sparse();
+        assert_eq!(pool.len(), 21);
+        assert_eq!(pool.capacity(), 100);
+        assert_eq!(pool.live_slots(), (0..21).collect::<Vec<_>>());
+    }
 }
 
 impl ProjectilePool {
@@ -80,6 +145,12 @@ impl ProjectilePool {
             source_species_names: vec![None; projectile_count],
             toxin_memory_locations: vec![0; projectile_count],
             toxin_memory_values: vec![0; projectile_count],
+            colors: vec![0; projectile_count],
+            source_vegetables: vec![false; projectile_count],
+            stored: vec![false; projectile_count],
+            gene_numbers: vec![0; projectile_count],
+            dna_lengths: vec![0; projectile_count],
+            pool_capacity: projectile_count.max(INITIAL_POOL_CAPACITY),
             free_slots,
         }
     }
@@ -88,13 +159,104 @@ impl ProjectilePool {
         self.source_species_names.resize(self.owners.len(), None);
         self.toxin_memory_locations.resize(self.owners.len(), 0);
         self.toxin_memory_values.resize(self.owners.len(), 0);
+        self.colors.resize(self.owners.len(), 0);
+        self.source_vegetables.resize(self.owners.len(), false);
+        self.stored.resize(self.owners.len(), false);
+        self.gene_numbers.resize(self.owners.len(), 0);
+        self.dna_lengths.resize(self.owners.len(), 0);
+        self.pool_capacity = self.pool_capacity.max(self.owners.len());
+    }
+
+    pub(crate) fn capacity(&self) -> usize {
+        self.pool_capacity.max(self.owners.len())
+    }
+
+    fn allocate_slot(&mut self) -> usize {
+        if let Some(slot) = self.free_slots.pop() {
+            return slot as usize;
+        }
+        let current_capacity = self.capacity();
+        if self.owners.len() >= current_capacity {
+            self.pool_capacity = if current_capacity == 0 {
+                INITIAL_POOL_CAPACITY
+            } else {
+                current_capacity
+                    .saturating_add(current_capacity.div_ceil(10))
+                    .max(current_capacity.saturating_add(1))
+            };
+        } else if current_capacity == 0 {
+            self.pool_capacity = INITIAL_POOL_CAPACITY;
+        }
+        self.owners.len()
+    }
+
+    pub(crate) fn compact_if_sparse(&mut self) {
+        let capacity = self.capacity();
+        let live_count = self.len();
+        if capacity <= INITIAL_POOL_CAPACITY
+            || live_count.saturating_mul(COMPACTION_RATIO_DENOMINATOR)
+                >= capacity.saturating_mul(COMPACTION_RATIO_NUMERATOR)
+        {
+            return;
+        }
+
+        let live_slots: Vec<usize> = self
+            .alive
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, alive)| (*alive).then_some(slot))
+            .collect();
+        self.owners = live_slots.iter().map(|&slot| self.owners[slot]).collect();
+        self.positions = live_slots.iter().map(|&slot| self.positions[slot]).collect();
+        self.previous_positions = live_slots
+            .iter()
+            .map(|&slot| self.previous_positions[slot])
+            .collect();
+        self.velocities = live_slots.iter().map(|&slot| self.velocities[slot]).collect();
+        self.ages = live_slots.iter().map(|&slot| self.ages[slot]).collect();
+        self.ranges = live_slots.iter().map(|&slot| self.ranges[slot]).collect();
+        self.energies = live_slots.iter().map(|&slot| self.energies[slot]).collect();
+        self.kinds = live_slots.iter().map(|&slot| self.kinds[slot]).collect();
+        self.values = live_slots.iter().map(|&slot| self.values[slot]).collect();
+        self.alive = live_slots.iter().map(|&slot| self.alive[slot]).collect();
+        self.impact_flash = live_slots
+            .iter()
+            .map(|&slot| self.impact_flash[slot])
+            .collect();
+        self.payloads = live_slots
+            .iter()
+            .map(|&slot| self.payloads[slot].clone())
+            .collect();
+        self.source_species_names = live_slots
+            .iter()
+            .map(|&slot| self.source_species_names[slot].clone())
+            .collect();
+        self.toxin_memory_locations = live_slots
+            .iter()
+            .map(|&slot| self.toxin_memory_locations[slot])
+            .collect();
+        self.toxin_memory_values = live_slots
+            .iter()
+            .map(|&slot| self.toxin_memory_values[slot])
+            .collect();
+        self.colors = live_slots.iter().map(|&slot| self.colors[slot]).collect();
+        self.source_vegetables = live_slots
+            .iter()
+            .map(|&slot| self.source_vegetables[slot])
+            .collect();
+        self.stored = live_slots.iter().map(|&slot| self.stored[slot]).collect();
+        self.gene_numbers = live_slots.iter().map(|&slot| self.gene_numbers[slot]).collect();
+        self.dna_lengths = live_slots.iter().map(|&slot| self.dna_lengths[slot]).collect();
+        self.pool_capacity = if live_count < 90 {
+            INITIAL_POOL_CAPACITY
+        } else {
+            live_count.saturating_mul(12).div_ceil(10).max(INITIAL_POOL_CAPACITY)
+        };
+        self.free_slots.clear();
     }
 
     pub(crate) fn spawn(&mut self, request: ProjectileSpawn, settings: &ShotSettings) -> u32 {
-        let slot = self
-            .free_slots
-            .pop()
-            .map_or(self.owners.len(), |slot| slot as usize);
+        let slot = self.allocate_slot();
         let direction = [request.angle.cos(), -request.angle.sin()];
         let position = [
             request.owner_position[0] + direction[0] * request.owner_radius,
@@ -130,6 +292,11 @@ impl ProjectilePool {
             self.toxin_memory_locations
                 .push(request.toxin_memory_location);
             self.toxin_memory_values.push(request.toxin_memory_value);
+            self.colors.push(request.color);
+            self.source_vegetables.push(request.source_vegetable);
+            self.stored.push(request.stored);
+            self.gene_numbers.push(request.gene_number);
+            self.dna_lengths.push(request.dna_length);
         } else {
             self.owners[slot] = request.owner;
             self.positions[slot] = position;
@@ -146,6 +313,11 @@ impl ProjectilePool {
             self.source_species_names[slot] = request.source_species_name;
             self.toxin_memory_locations[slot] = request.toxin_memory_location;
             self.toxin_memory_values[slot] = request.toxin_memory_value;
+            self.colors[slot] = request.color;
+            self.source_vegetables[slot] = request.source_vegetable;
+            self.stored[slot] = request.stored;
+            self.gene_numbers[slot] = request.gene_number;
+            self.dna_lengths[slot] = request.dna_length;
         }
         slot as u32
     }
@@ -230,6 +402,11 @@ impl ProjectilePool {
             self.source_species_names.push(None);
             self.toxin_memory_locations.push(0);
             self.toxin_memory_values.push(0);
+            self.colors.push(0);
+            self.source_vegetables.push(false);
+            self.stored.push(false);
+            self.gene_numbers.push(0);
+            self.dna_lengths.push(0);
         } else {
             self.owners[slot] = owner;
             self.positions[slot] = position;
@@ -246,6 +423,11 @@ impl ProjectilePool {
             self.source_species_names[slot] = None;
             self.toxin_memory_locations[slot] = 0;
             self.toxin_memory_values[slot] = 0;
+            self.colors[slot] = 0;
+            self.source_vegetables[slot] = false;
+            self.stored[slot] = false;
+            self.gene_numbers[slot] = 0;
+            self.dna_lengths[slot] = 0;
         }
         slot as u32
     }
@@ -301,6 +483,11 @@ impl ProjectilePool {
             self.source_species_names.push(source_species_name);
             self.toxin_memory_locations.push(toxin_memory_location);
             self.toxin_memory_values.push(toxin_memory_value);
+            self.colors.push(0);
+            self.source_vegetables.push(false);
+            self.stored.push(false);
+            self.gene_numbers.push(0);
+            self.dna_lengths.push(0);
         } else {
             self.owners[slot] = owner;
             self.positions[slot] = position;
@@ -317,6 +504,11 @@ impl ProjectilePool {
             self.source_species_names[slot] = source_species_name;
             self.toxin_memory_locations[slot] = toxin_memory_location;
             self.toxin_memory_values[slot] = toxin_memory_value;
+            self.colors[slot] = 0;
+            self.source_vegetables[slot] = false;
+            self.stored[slot] = false;
+            self.gene_numbers[slot] = 0;
+            self.dna_lengths[slot] = 0;
         }
         slot as u32
     }
@@ -367,6 +559,7 @@ impl ProjectilePool {
         for slot in expired {
             self.deactivate(slot);
         }
+        self.compact_if_sparse();
     }
 
     pub(crate) fn deactivate(&mut self, slot: u32) {
@@ -443,6 +636,31 @@ impl ProjectilePool {
                     kind: self.kinds[slot],
                     value: self.values[slot],
                     impact_flash: self.impact_flash[slot],
+                    color: self.colors.get(slot).copied().unwrap_or_default(),
+                    source_vegetable: self
+                        .source_vegetables
+                        .get(slot)
+                        .copied()
+                        .unwrap_or_default(),
+                    source_species_name: self
+                        .source_species_names
+                        .get(slot)
+                        .cloned()
+                        .unwrap_or_default(),
+                    memory_location: self
+                        .toxin_memory_locations
+                        .get(slot)
+                        .copied()
+                        .unwrap_or_default(),
+                    memory_value: self
+                        .toxin_memory_values
+                        .get(slot)
+                        .copied()
+                        .unwrap_or_default(),
+                    stored: self.stored.get(slot).copied().unwrap_or_default(),
+                    gene_number: self.gene_numbers.get(slot).copied().unwrap_or_default(),
+                    dna_length: self.dna_lengths.get(slot).copied().unwrap_or_default(),
+                    payload: self.payloads.get(slot).cloned().unwrap_or_default(),
                 });
             }
         }

@@ -63,6 +63,108 @@ pub struct Teleporter {
     pub center: [f32; 2],
     pub radius: f32,
     pub destination: [f32; 2],
+    #[serde(default)]
+    pub width: f32,
+    #[serde(default)]
+    pub height: f32,
+    #[serde(default = "default_shape_color")]
+    pub color: u32,
+    #[serde(default)]
+    pub velocity: [f32; 2],
+    #[serde(default)]
+    pub path: PathBuf,
+    #[serde(default)]
+    pub inbound_path: PathBuf,
+    #[serde(default)]
+    pub outbound_path: PathBuf,
+    #[serde(default = "default_teleporter_inbound")]
+    pub inbound: bool,
+    #[serde(default)]
+    pub outbound: bool,
+    #[serde(default = "default_teleporter_local")]
+    pub local: bool,
+    #[serde(default)]
+    pub internet: bool,
+    #[serde(default)]
+    pub drift_horizontal: bool,
+    #[serde(default)]
+    pub drift_vertical: bool,
+    #[serde(default)]
+    pub fixed_position: bool,
+    #[serde(default)]
+    pub highlight: bool,
+    #[serde(default = "default_teleporter_filters")]
+    pub filters: TeleporterFilters,
+    #[serde(default)]
+    pub respect_shapes: bool,
+    #[serde(default)]
+    pub sent: u64,
+    #[serde(default)]
+    pub received: u64,
+    #[serde(default)]
+    pub poll_interval: u32,
+    #[serde(default)]
+    pub capacity: usize,
+    #[serde(default)]
+    pub poll_countdown: u32,
+    #[serde(default)]
+    pub backflow_limit: u32,
+}
+
+impl Teleporter {
+    pub fn new(id: u32, center: [f32; 2], radius: f32, destination: [f32; 2]) -> Self {
+        Self {
+            id,
+            center,
+            radius,
+            destination,
+            width: radius * 2.0,
+            height: radius * 2.0,
+            color: default_shape_color(),
+            velocity: [0.0; 2],
+            path: PathBuf::new(),
+            inbound_path: PathBuf::new(),
+            outbound_path: PathBuf::new(),
+            inbound: true,
+            outbound: false,
+            local: true,
+            internet: false,
+            drift_horizontal: false,
+            drift_vertical: false,
+            fixed_position: true,
+            highlight: false,
+            filters: default_teleporter_filters(),
+            respect_shapes: false,
+            sent: 0,
+            received: 0,
+            poll_interval: 1,
+            capacity: 1,
+            poll_countdown: 0,
+            backflow_limit: 0,
+        }
+    }
+}
+
+impl Default for Teleporter {
+    fn default() -> Self {
+        Self::new(0, [0.0; 2], 1.0, [0.0; 2])
+    }
+}
+
+fn default_teleporter_inbound() -> bool {
+    true
+}
+
+fn default_teleporter_local() -> bool {
+    true
+}
+
+fn default_teleporter_filters() -> TeleporterFilters {
+    TeleporterFilters {
+        teleport_vegetables: true,
+        teleport_corpses: true,
+        teleport_heterotrophs: true,
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

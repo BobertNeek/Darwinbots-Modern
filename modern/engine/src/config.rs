@@ -1,6 +1,8 @@
 use crate::{AdvancedMutationSettings, BackendPreference, DnaCosts};
 use serde::{Deserialize, Serialize};
 
+pub const MAX_ROBOTS: usize = 32_000;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PhysicsSettings {
@@ -95,6 +97,26 @@ pub struct WasteSettings {
     pub defecation_threshold: i32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RecordingSettings {
+    pub safemode_backup: bool,
+    pub dead_snapshot_enabled: bool,
+    pub exclude_repopulating_robots: bool,
+    pub autosave_interval: u64,
+}
+
+impl Default for RecordingSettings {
+    fn default() -> Self {
+        Self {
+            safemode_backup: false,
+            dead_snapshot_enabled: false,
+            exclude_repopulating_robots: false,
+            autosave_interval: 0,
+        }
+    }
+}
+
 impl Default for WasteSettings {
     fn default() -> Self {
         Self {
@@ -127,6 +149,8 @@ pub struct VegetationSettings {
     pub gradient: f32,
     pub tides: u32,
     pub tides_offset: i32,
+    #[serde(default)]
+    pub sun_on_random: bool,
 }
 
 impl Default for VegetationSettings {
@@ -152,6 +176,7 @@ impl Default for VegetationSettings {
             gradient: 1.0,
             tides: 0,
             tides_offset: 0,
+            sun_on_random: false,
         }
     }
 }
@@ -193,6 +218,8 @@ pub struct EngineConfig {
     #[serde(default)]
     pub vegetation: VegetationSettings,
     #[serde(default)]
+    pub recording: RecordingSettings,
+    #[serde(default)]
     pub dna_costs: DnaCosts,
     #[serde(default)]
     pub advanced_mutation: AdvancedMutationSettings,
@@ -212,7 +239,7 @@ impl Default for EngineConfig {
     fn default() -> Self {
         Self {
             seed: 1,
-            organism_capacity: 100_000,
+            organism_capacity: MAX_ROBOTS,
             vegetable_population_cap: default_vegetable_population_cap(),
             world_width: 16_000.0,
             world_height: 12_000.0,
@@ -231,6 +258,7 @@ impl Default for EngineConfig {
             corpse_decay: CorpseDecaySettings::default(),
             waste: WasteSettings::default(),
             vegetation: VegetationSettings::default(),
+            recording: RecordingSettings::default(),
             dna_costs: DnaCosts::default(),
             advanced_mutation: AdvancedMutationSettings::default(),
             auto_speciation: false,
