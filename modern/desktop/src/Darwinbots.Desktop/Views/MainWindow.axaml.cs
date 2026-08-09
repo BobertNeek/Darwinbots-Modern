@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -66,6 +67,10 @@ public sealed partial class MainWindow : Window
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
+    private bool _limitMode;
+    private bool _fastMode;
+    private bool _flickerMode;
+    private bool _syncingSpeciesSelection;
     private EnvironmentPlacement _environmentPlacement;
     private float[]? _placementOrigin;
     private WorldFeatureSelection? _selectedFeature;
@@ -126,8 +131,12 @@ public sealed partial class MainWindow : Window
         foreach (var species in setup.Species)
             _insertionSpecies.Add(species);
         InsertionSpeciesSelector.ItemsSource = _insertionSpecies;
+        ToolbarSlot17.ItemsSource = _insertionSpecies;
         if (_insertionSpecies.Count > 0)
+        {
             InsertionSpeciesSelector.SelectedIndex = 0;
+            ToolbarSlot17.SelectedIndex = 0;
+        }
         InitializeTray();
         KeyDown += PlayerBot_KeyDown;
         KeyUp += PlayerBot_KeyUp;
@@ -135,6 +144,9 @@ public sealed partial class MainWindow : Window
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
         _liveEnvironment = setup.ToEnvironmentUpdate();
+        SunButton.Content = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
+        ToolbarSlot24.Content = "IGNORE OFF";
+        AutomationProperties.SetName(ToolbarSlot24, "IGNORE ERRORS OFF");
         LocalModeKindSelector.SelectedIndex = 0;
         LocalModePreset.SelectedIndex = 0;
         ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
@@ -283,6 +295,8 @@ public sealed partial class MainWindow : Window
     private void SetIgnoreErrors(bool enabled)
     {
         _diagnostics.SetIgnoreErrors(enabled);
+        ToolbarSlot24.Content = enabled ? "IGNORE ON" : "IGNORE OFF";
+        AutomationProperties.SetName(ToolbarSlot24, enabled ? "IGNORE ERRORS ON" : "IGNORE ERRORS OFF");
         if (IgnoreErrorsToggle.IsChecked != enabled)
             IgnoreErrorsToggle.IsChecked = enabled;
         if (_trayIgnoreErrorsItem is not null)
@@ -301,6 +315,108 @@ public sealed partial class MainWindow : Window
     {
         if (_controlsReady)
             SetIgnoreErrors(IgnoreErrorsToggle.IsChecked == true);
+    }
+
+    private void ToolbarNew_Click(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.Status = OpenNewSimulationSetup().Status;
+    }
+
+    private void ToolbarSpecies_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingSpeciesSelection || ToolbarSlot17.SelectedItem is not SpeciesImport species)
+            return;
+        _syncingSpeciesSelection = true;
+        try { InsertionSpeciesSelector.SelectedItem = species; }
+        finally { _syncingSpeciesSelection = false; }
+    }
+
+    private async void Sun_Click(object? sender, RoutedEventArgs e)
+    {
+        var vegetation = _liveEnvironment.Vegetation with { Daytime = !_liveEnvironment.Vegetation.Daytime };
+        var update = _liveEnvironment with { Vegetation = vegetation };
+        _liveEnvironment = update;
+        SunButton.Content = vegetation.Daytime ? "SUN ON" : "SUN OFF";
+        AutomationProperties.SetName(SunButton, vegetation.Daytime ? "SUN ON" : "SUN OFF");
+        if (_session is null)
+        {
+            _viewModel.Status = vegetation.Daytime ? "SUN ON" : "SUN OFF";
+            return;
+        }
+        try
+        {
+            await _session.UpdateEnvironmentAsync(update);
+            _viewModel.Status = vegetation.Daytime ? "SUN ON" : "SUN OFF";
+        }
+        catch (Exception error)
+        {
+            await HandleEngineErrorAsync(error, attemptRecovery: true);
+        }
+    }
+
+    private void ToolbarLimit_Click(object? sender, RoutedEventArgs e)
+    {
+        _limitMode = !_limitMode;
+        UpdateRunTimerInterval();
+        ToolbarSlot09.Content = _limitMode ? "15 CPS ON" : "15 CPS OFF";
+        AutomationProperties.SetName(ToolbarSlot09, _limitMode ? "15 CPS LIMIT ON" : "15 CPS LIMIT OFF");
+        _viewModel.Status = _limitMode ? "THROTTLE · 15 CPS" : "THROTTLE · NORMAL";
+    }
+
+    private void ToolbarFast_Click(object? sender, RoutedEventArgs e)
+    {
+        _fastMode = !_fastMode;
+        RuntimeSpeed.SelectedIndex = _fastMode ? 3 : 0;
+        ToolbarSlot10.Content = _fastMode ? "FAST ON" : "FAST OFF";
+        AutomationProperties.SetName(ToolbarSlot10, _fastMode ? "FAST MODE ON" : "FAST MODE OFF");
+        _viewModel.Status = _fastMode ? "FAST MODE ON" : "FAST MODE OFF";
+    }
+
+    private void ToolbarFlicker_Click(object? sender, RoutedEventArgs e)
+    {
+        _flickerMode = !_flickerMode;
+        Viewport.FlickerMode = _flickerMode;
+        ToolbarSlot11.Content = _flickerMode ? "FLICKER ON" : "FLICKER OFF";
+        AutomationProperties.SetName(ToolbarSlot11, _flickerMode ? "FLICKER MODE ON" : "FLICKER MODE OFF");
+        _viewModel.Status = _flickerMode ? "FLICKER MODE ON" : "FLICKER MODE OFF";
+    }
+
+    private void ToolbarNoSkin_Click(object? sender, RoutedEventArgs e)
+    {
+        Viewport.RenderSkins = !Viewport.RenderSkins;
+        ToolbarSlot12.Content = Viewport.RenderSkins ? "SKINS ON" : "SKINS OFF";
+        AutomationProperties.SetName(ToolbarSlot12, Viewport.RenderSkins ? "ORGANISM SKINS ON" : "ORGANISM SKINS OFF");
+        _viewModel.Status = Viewport.RenderSkins ? "ORGANISM SKINS ON" : "ORGANISM SKINS OFF";
+    }
+
+    private void ToolbarNoPoffs_Click(object? sender, RoutedEventArgs e)
+    {
+        Viewport.ShowDeathPoffs = !Viewport.ShowDeathPoffs;
+        ToolbarSlot13.Content = Viewport.ShowDeathPoffs ? "POFFS ON" : "POFFS OFF";
+        AutomationProperties.SetName(ToolbarSlot13, Viewport.ShowDeathPoffs ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF");
+        _viewModel.Status = Viewport.ShowDeathPoffs ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF";
+    }
+
+    private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e)
+    {
+        Turbo_Click(sender, e);
+        ToolbarSlot14.Content = _turbo ? "GRAPHICS OFF" : "GRAPHICS ON";
+        AutomationProperties.SetName(ToolbarSlot14, _turbo ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
+    }
+
+    private void ToolbarFindBest_Click(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.Status = FindBestRobot().Status;
+    }
+
+    private async void ToolbarSnapshot_Click(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.Status = (await SaveLivingSnapshotAsync()).Status;
+    }
+
+    private void ToolbarIgnoreErrors_Click(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.Status = ToggleIgnoreErrors().Status;
     }
 
     private void HideToTray_Click(object? sender, RoutedEventArgs e)
@@ -1509,11 +1625,13 @@ public sealed partial class MainWindow : Window
         if (existing is not null)
         {
             InsertionSpeciesSelector.SelectedItem = existing;
+            ToolbarSlot17.SelectedItem = existing;
             return;
         }
 
         _insertionSpecies.Add(species);
         InsertionSpeciesSelector.SelectedItem = species;
+        ToolbarSlot17.SelectedItem = species;
     }
 
     private static IReadOnlyList<string> ParseStartupBots(IReadOnlyList<string> arguments)
@@ -1566,6 +1684,7 @@ public sealed partial class MainWindow : Window
         {
             _insertion.Cancel();
             InsertSpeciesButton.Content = "INSERT SPECIES";
+            ClearRuntimeOverlay();
             _viewModel.Status = "INSERTION CANCELLED";
             return;
         }
@@ -1584,12 +1703,25 @@ public sealed partial class MainWindow : Window
             _environmentPlacement = EnvironmentPlacement.None;
             _placementOrigin = null;
             InsertSpeciesButton.Content = "CANCEL INSERTION";
+            ShowRuntimeOverlay("INSERTION MODE", $"INSERT {species.Name.ToUpperInvariant()} · CLICK EMPTY WORLD");
             _viewModel.Status = $"INSERT {species.Name.ToUpperInvariant()} · CLICK EMPTY WORLD";
         }
         catch (Exception error)
         {
             _viewModel.Status = $"INSERTION FAILED · {error.Message}";
         }
+    }
+
+    private void ShowRuntimeOverlay(string title, string detail)
+    {
+        OverlayText.Text = $"{title}\n{detail}";
+        RuntimeOverlay.IsVisible = true;
+    }
+
+    private void ClearRuntimeOverlay()
+    {
+        OverlayText.Text = string.Empty;
+        RuntimeOverlay.IsVisible = false;
     }
 
     private async void Clone_Click(object? sender, RoutedEventArgs e)
@@ -1642,9 +1774,12 @@ public sealed partial class MainWindow : Window
         _ticksPerUpdate = DesktopControlRules.TicksForSelection(RuntimeSpeed.SelectedIndex);
         _maximumSpeed = DesktopControlRules.IsMaximumSpeed(RuntimeSpeed.SelectedIndex);
         if (_maximumSpeed) _maximumBatch = _ticksPerUpdate;
-        _runTimer.Interval = TimeSpan.FromMilliseconds(_turbo || _maximumSpeed ? 1 : 16);
+        UpdateRunTimerInterval();
         _viewModel.Status = _maximumSpeed ? "THROTTLE · MAXIMUM" : $"THROTTLE · {_ticksPerUpdate} TICKS/FRAME";
     }
+
+    private void UpdateRunTimerInterval() =>
+        _runTimer.Interval = TimeSpan.FromMilliseconds(_limitMode ? 67 : (_turbo || _maximumSpeed ? 1 : 16));
 
     private void Follow_Click(object? sender, RoutedEventArgs e)
     {
@@ -1657,9 +1792,11 @@ public sealed partial class MainWindow : Window
     private void Turbo_Click(object? sender, RoutedEventArgs e)
     {
         _turbo = !_turbo;
-        _runTimer.Interval = TimeSpan.FromMilliseconds(_turbo || _maximumSpeed ? 1 : 16);
+        UpdateRunTimerInterval();
         Viewport.IsVisible = !_turbo;
         TurboButton.Content = _turbo ? "SHOW WORLD" : "TURBO";
+        ToolbarSlot14.Content = _turbo ? "GRAPHICS OFF" : "GRAPHICS ON";
+        AutomationProperties.SetName(ToolbarSlot14, _turbo ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
         _viewModel.Status = _turbo ? "TURBO · RENDERING SUSPENDED" : "VIEWPORT RESTORED";
         if (_turbo) _runTimer.Start();
     }

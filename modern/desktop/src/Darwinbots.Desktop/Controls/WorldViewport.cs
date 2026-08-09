@@ -33,6 +33,10 @@ public sealed class WorldViewport : Control
     private bool _highlightTeleporters;
     private bool _energyGridEnabled;
     private EnergyGridSize _energyGridSize = EnergyGridSize.Large;
+    private bool _flickerMode;
+    private bool _renderSkins = true;
+    private bool _showDeathPoffs = true;
+    private bool _flickerFrame;
 
     public event Action<uint>? OrganismSelected;
     public event Action<float[]>? WorldClicked;
@@ -48,6 +52,9 @@ public sealed class WorldViewport : Control
     public bool HighlightTeleporters { get => _highlightTeleporters; set { _highlightTeleporters = value; InvalidateVisual(); } }
     public bool EnergyGridEnabled { get => _energyGridEnabled; set { _energyGridEnabled = value; InvalidateVisual(); } }
     public EnergyGridSize EnergyGridSize { get => _energyGridSize; set { _energyGridSize = value; InvalidateVisual(); } }
+    public bool FlickerMode { get => _flickerMode; set { _flickerMode = value; InvalidateVisual(); } }
+    public bool RenderSkins { get => _renderSkins; set { _renderSkins = value; InvalidateVisual(); } }
+    public bool ShowDeathPoffs { get => _showDeathPoffs; set { _showDeathPoffs = value; InvalidateVisual(); } }
 
     public void SelectSlot(uint? slot)
     {
@@ -97,6 +104,7 @@ public sealed class WorldViewport : Control
         context.FillRectangle(new SolidColorBrush(Color.Parse("#F9F8F2")), Bounds);
         if (_backgroundImage is not null) context.DrawImage(_backgroundImage, Bounds);
         DrawGrid(context);
+        if (FlickerMode && (_flickerFrame = !_flickerFrame)) return;
         DrawEnergyGrid(context);
         DrawToroidalEdges(context);
         DrawWorldFeatures(context);
@@ -186,7 +194,7 @@ public sealed class WorldViewport : Control
             return;
         }
 
-        DrawSkin(context, instance, center, radius, color);
+        if (RenderSkins) DrawSkin(context, instance, center, radius, color);
         DrawHeading(context, instance, center, radius, color);
     }
 
@@ -554,6 +562,7 @@ public sealed class WorldViewport : Control
                 radius,
                 radius);
         }
+        if (!ShowDeathPoffs) return;
         foreach (var corpse in _snapshot.Corpses)
         {
             var center = new Point(corpse.Position[0] * scaleX + _pan.X, corpse.Position[1] * scaleY + _pan.Y);

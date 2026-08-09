@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -479,6 +480,99 @@ public sealed class RenderedControlSurfaceAuditTests
             await WaitFor(() => factory.Clients.Count >= 2);
             return 0;
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task LegacyToolbarRoutesRemainingSlotsAndExposesAccessibleState()
+    {
+        var factory = new AuditEngineClientFactory();
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Species = [new SpeciesImport("Audit Species", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+        var callbackResult = new TaskCompletionSource<Exception?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            try
+            {
+                var window = new MainWindow([], setup, factory, new AuditStorageService());
+                try
+                {
+                    ShowForInteraction(window, 1280, 900);
+                    await WaitFor(
+                        () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Audit Species"),
+                        () => "Audit engine did not import the toolbar test species.");
+
+                    var toolbar = Named<UniformGrid>(window, "LegacyToolbar");
+                    var slots = toolbar.GetVisualDescendants()
+                        .Where(control => control.Name?.StartsWith("ToolbarSlot", StringComparison.Ordinal) == true)
+                        .OrderBy(control => control.Name)
+                        .ToArray();
+                    Assert.Equal(24, slots.Length);
+                    Assert.Equal(5, slots.OfType<Border>().Count());
+                    Assert.Equal(18, slots.OfType<Button>().Count());
+                    Assert.Single(slots.OfType<ComboBox>());
+                    Assert.All(slots, slot => Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(slot))));
+
+                    var buttons = slots.OfType<Button>().ToArray();
+                    var tabIndexes = buttons.Select(KeyboardNavigation.GetTabIndex).ToArray();
+                    Assert.Equal(tabIndexes.OrderBy(index => index).ToArray(), tabIndexes);
+                    Assert.Equal("NEW SIMULATION", AutomationProperties.GetName(buttons[0]));
+
+                    var viewport = Named<WorldViewport>(window, "Viewport");
+                    Assert.True(viewport.Focusable);
+                    Assert.Equal("Simulation playfield", AutomationProperties.GetName(viewport));
+                    Assert.Contains("click", AutomationProperties.GetHelpText(viewport), StringComparison.OrdinalIgnoreCase);
+                    Assert.True(Named<Border>(window, "InternetOfflineOverlay").IsVisible);
+
+                    var engine = factory.Clients.First();
+                    Click(window, Named<Button>(window, "SunButton"));
+                    await WaitFor(
+                        () => engine.EnvironmentUpdates.Any(),
+                        () => "Sun toolbar route did not publish an environment update.");
+                    Assert.False(engine.EnvironmentUpdates.Last().Vegetation.Daytime);
+
+                    Click(window, Named<Button>(window, "ToolbarSlot16"));
+                    await WaitFor(
+                        () => Named<Button>(window, "InsertSpeciesButton").Content?.ToString() == "CANCEL INSERTION",
+                        () => "Insertion toolbar slot did not enter insertion mode.");
+                    Assert.True(Named<Border>(window, "RuntimeOverlay").IsVisible);
+                    Assert.Contains("INSERTION", Named<TextBlock>(window, "OverlayText").Text, StringComparison.OrdinalIgnoreCase);
+
+                    Click(window, Named<Button>(window, "ToolbarSlot19"));
+                    await WaitFor(
+                        () => window.OwnedWindows.OfType<GraphSuiteWindow>().Any(),
+                        () => "Graph toolbar slot did not open the graph suite.");
+                    window.OwnedWindows.OfType<GraphSuiteWindow>().Single().Close();
+
+                    Click(window, Named<Button>(window, "ContestIndicator"));
+                    await WaitFor(
+                        () => window.OwnedWindows.OfType<ContestResultsWindow>().Any(),
+                        () => "Contest indicator did not open contest results.");
+                    window.OwnedWindows.OfType<ContestResultsWindow>().Single().Close();
+
+                    Click(window, Named<Button>(window, "ToolbarSlot24"));
+                    Assert.True(Field<OfflineDiagnosticRecovery>(window, "_diagnostics").IgnoreErrors);
+                    Assert.Contains("ON", Named<Button>(window, "ToolbarSlot24").Content?.ToString(), StringComparison.Ordinal);
+                }
+                finally
+                {
+                    foreach (var child in window.OwnedWindows.ToArray()) child.Close();
+                    window.Close();
+                }
+            }
+            catch (Exception exception)
+            {
+                callbackResult.TrySetResult(exception);
+                return;
+            }
+            callbackResult.TrySetResult(null);
+        }, CancellationToken.None);
+
+        var callbackFailure = await callbackResult.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Null(callbackFailure);
     }
 
     private static void ShowAndCapture(Window window, double width, double height, string evidenceName)
