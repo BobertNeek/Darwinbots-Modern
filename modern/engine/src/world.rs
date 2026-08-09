@@ -59,10 +59,14 @@ const MEM_SET_BUOYANCY: i32 = 314;
 const MEM_READ_BUOYANCY: i32 = 315;
 const MEM_REF_X: i32 = 689;
 const MEM_REF_Y: i32 = 690;
+const MEM_REF_MULTI: i32 = 686;
+const MEM_REF_SHELL: i32 = 687;
+const MEM_REF_BODY: i32 = 688;
 const MEM_REF_VEL_SX: i32 = 696;
 const MEM_REF_VEL_DX: i32 = 697;
 const MEM_REF_VEL_DN: i32 = 698;
 const MEM_REF_VEL_UP: i32 = 699;
+const MEM_REF_OCCURRENCE_BASE: i32 = 701;
 const MEM_REF_EYE: i32 = 708;
 
 #[derive(Clone, Copy)]
@@ -72,7 +76,17 @@ pub(crate) enum DefensivePoisonRoute {
 }
 const MEM_REF_NRG: i32 = 709;
 const MEM_REF_AGE: i32 = 710;
+const MEM_REF_AIM: i32 = 711;
+const MEM_REF_TIE: i32 = 712;
+const MEM_REF_POISON: i32 = 713;
+const MEM_REF_VENOM: i32 = 714;
+const MEM_REF_KILLS: i32 = 715;
+const MEM_REF_MEMORY_VALUE: i32 = 473;
+const MEM_REF_MEMORY_LOCATION: i32 = 474;
+const MEM_REF_FIXED: i32 = 477;
 const MEM_EYE1: i32 = 501;
+const MEM_OUT_BASE: i32 = 800;
+const MEM_IN_BASE: i32 = 810;
 const MEM_TIE_ANGLE: i32 = 449;
 const MEM_TIE_LENGTH: i32 = 450;
 const MEM_TIE_PRESENT: i32 = 454;
@@ -1866,6 +1880,8 @@ impl From<&Db3sV2Biology> for BiologyState {
             previous_energy: state.previous_energy,
             plant_energy_carry_micros: state.plant_energy_carry_micros,
             plant_body_carry_micros: state.plant_body_carry_micros,
+            chloroplast_decay_carry_micros: 0,
+            waste_metabolism_carry_micros: 0,
         }
     }
 }
@@ -3816,6 +3832,7 @@ impl Engine {
         self.prepare_projectile_requests_phase();
         self.projectile_spawn_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Chloroplast);
+        self.chloroplast_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Body);
         self.trace_robot_phase(&mut trace, CyclePhase::Buoyancy);
         self.trace_robot_phase(&mut trace, CyclePhase::Reproduction);
@@ -4211,6 +4228,15 @@ impl Engine {
             .count()
     }
 
+    fn cost_population(&self) -> usize {
+        if self.config.dna_costs.dynamic_all_robots {
+            self.population()
+        } else {
+            self.population()
+                .saturating_sub(self.vegetable_population())
+        }
+    }
+
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
         let slot_count = self.slots.len();
         let mut free = std::collections::HashSet::with_capacity(self.slots.free_slots.len());
@@ -4368,7 +4394,7 @@ impl Engine {
 
     fn upkeep_phase(&mut self) {
         let metabolism = self.config.metabolism_cost.max(0);
-        let population = self.population();
+        let population = self.cost_population();
         let costs = &self.config.dna_costs;
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
@@ -4378,7 +4404,8 @@ impl Engine {
                 f64::from(robot.materials.body),
                 robot.program.dna.blocks().len(),
                 population,
-            ) + f64::from(metabolism) * costs.dynamic_multiplier(population);
+            ) + costs.age_cost(robot.counters.age, population)
+                + f64::from(metabolism) * costs.dynamic_multiplier(population);
             settle_simulation_cost(robot, cost);
             let waste = cost.max(0.0).floor().min(f64::from(i32::MAX)) as i32;
             robot.materials.waste = robot.materials.waste.saturating_add(waste);
@@ -4429,7 +4456,7 @@ impl Engine {
         let runtime = SysvarRuntime::new();
         let settings = &self.config.physics;
         let costs = &self.config.dna_costs;
-        let population = self.population();
+        let population = self.cost_population();
         let pond_mode = self.config.vegetation.pond_mode && !self.config.toroidal_world;
         let buoyancy_cost = if pond_mode {
             f64::from(self.config.gravity[1].abs())
@@ -4503,6 +4530,8 @@ impl Engine {
 
     fn aim_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let costs = &self.config.dna_costs;
+        let population = self.cost_population();
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -4524,6 +4553,12 @@ impl Engine {
                 0,
                 commands,
                 Default::default(),
+            );
+            let amount = f64::from(commands.turn_right.unsigned_abs())
+                + f64::from(commands.turn_left.unsigned_abs());
+            settle_simulation_cost(
+                robot,
+                costs.action_cost_for(SimulationCostAction::Rotation, amount, population),
             );
             let turn = robot
                 .kinematics
@@ -4667,7 +4702,9 @@ impl Engine {
     fn material_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
         let costs = &self.config.dna_costs;
-        let population = self.population();
+        let population = self.cost_population();
+        let vegetable_population = self.vegetable_population();
+        let vegetable_population_cap = self.config.vegetable_population_cap;
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -4693,13 +4730,38 @@ impl Engine {
                 CommandOutcome::Consumed,
                 &mut robot.program.memory,
             );
+            let requested_chloroplasts = commands.make_chloroplasts.max(0);
+            let pressure_refusal =
+                robot.flags.vegetable && vegetable_population >= vegetable_population_cap;
+            let construction_cost = costs.action_cost_for(
+                SimulationCostAction::ChloroplastConstruction,
+                1.0,
+                population,
+            );
+            let affordable_chloroplasts = if robot.materials.energy < 100 || pressure_refusal {
+                0
+            } else if construction_cost > 0.0 {
+                (((f64::from(robot.materials.energy - 100)) / construction_cost).floor() as i32)
+                    .max(0)
+            } else {
+                requested_chloroplasts
+            };
+            let accepted_chloroplasts = requested_chloroplasts
+                .min(affordable_chloroplasts)
+                .min(32_000i32.saturating_sub(robot.materials.chloroplasts));
+            let mut applied_commands = commands;
+            applied_commands.make_chloroplasts = 0;
             let aim = crate::AimCommands {
                 set: robot.materials.aim,
                 ..Default::default()
             };
             robot
                 .materials
-                .apply_outputs(&mut robot.program.memory, 0, aim, commands);
+                .apply_outputs(&mut robot.program.memory, 0, aim, applied_commands);
+            robot.materials.chloroplasts = robot
+                .materials
+                .chloroplasts
+                .saturating_add(accepted_chloroplasts);
             let material_cost = costs.action_cost_for(
                 SimulationCostAction::Shell,
                 f64::from(commands.make_shell.max(0)),
@@ -4718,7 +4780,7 @@ impl Engine {
                 population,
             ) + costs.action_cost_for(
                 SimulationCostAction::ChloroplastConstruction,
-                f64::from(commands.make_chloroplasts.max(0)),
+                f64::from(accepted_chloroplasts),
                 population,
             );
             settle_simulation_cost(robot, material_cost);
@@ -4727,6 +4789,16 @@ impl Engine {
                 MEM_READ_BUOYANCY,
                 (robot.buoyancy * 32_000.0).round_ties_even() as i32,
             );
+        }
+    }
+
+    fn chloroplast_phase(&mut self) {
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            robot.materials.decay_chloroplasts();
+            robot.materials.publish(&mut robot.program.memory);
         }
     }
 
@@ -4799,14 +4871,11 @@ impl Engine {
 
     fn age_timer_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        let costs = &self.config.dna_costs;
-        let population = self.population();
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
             robot.counters.age = robot.counters.age.saturating_add(1);
-            settle_simulation_cost(robot, costs.age_cost(robot.counters.age, population));
             robot.materials.publish(&mut robot.program.memory);
             runtime.publish(
                 PhaseReadbacks::Core(CoreReadbacks {
@@ -5166,12 +5235,33 @@ impl Engine {
                 let reference =
                     nearest_by_eye[vision.focus_eye as usize].and_then(|(target_slot, _)| {
                         let target = self.slots[target_slot].organism.as_ref()?;
+                        let target_memory_location =
+                            observer.program.memory.read(MEM_REF_MEMORY_LOCATION);
+                        let target_memory_value = if (1..=1_000).contains(&target_memory_location) {
+                            target.program.memory.read(target_memory_location)
+                        } else {
+                            0
+                        };
+                        let outgoing: [i32; 10] = std::array::from_fn(|index| {
+                            target.program.memory.read(MEM_OUT_BASE + index as i32)
+                        });
                         Some((
                             target.kinematics.position,
                             target.kinematics.velocity,
                             target.materials.energy,
                             target.counters.age,
                             target.program.memory.read(MEM_MY_EYE),
+                            target.senses.vision_reference_occurrences.clone(),
+                            target.materials.aim,
+                            target.materials.body,
+                            target.materials.shell,
+                            target.materials.poison,
+                            target.materials.venom,
+                            target.counters.kills,
+                            target.counters.multibot,
+                            target.flags.fixed,
+                            target_memory_value,
+                            outgoing,
                         ))
                     });
                 Some((observer_slot, eye_values, reference))
@@ -5195,13 +5285,36 @@ impl Engine {
                 (MEM_REF_EYE as u16, 0),
                 (MEM_REF_NRG as u16, 0),
                 (MEM_REF_AGE as u16, 0),
+                (MEM_REF_MULTI as u16, 0),
+                (MEM_REF_SHELL as u16, 0),
+                (MEM_REF_BODY as u16, 0),
+                (MEM_REF_AIM as u16, 0),
+                (MEM_REF_TIE as u16, 0),
+                (MEM_REF_POISON as u16, 0),
+                (MEM_REF_VENOM as u16, 0),
+                (MEM_REF_KILLS as u16, 0),
+                (MEM_REF_MEMORY_VALUE as u16, 0),
+                (MEM_REF_FIXED as u16, 0),
             ]);
+            values.extend((0..7).map(|index| ((MEM_REF_OCCURRENCE_BASE + index) as u16, 0)));
+            values.extend((0..10).map(|index| ((MEM_IN_BASE + index) as u16, 0)));
             if let Some((
                 target_position,
                 target_velocity,
                 target_energy,
                 target_age,
                 target_eye_references,
+                target_occurrences,
+                target_aim,
+                target_body,
+                target_shell,
+                target_poison,
+                target_venom,
+                target_kills,
+                target_multibot,
+                target_fixed,
+                target_memory_value,
+                target_outgoing,
             )) = sense.2
             {
                 let observer_angle = observer.materials.aim as f32 / 200.0;
@@ -5231,12 +5344,58 @@ impl Engine {
                     (MEM_REF_EYE as u16, target_eye_references),
                     (MEM_REF_NRG as u16, target_energy),
                     (MEM_REF_AGE as u16, target_age.min(i32::MAX as u64) as i32),
+                    (MEM_REF_MULTI as u16, i32::from(target_multibot)),
+                    (MEM_REF_SHELL as u16, target_shell),
+                    (MEM_REF_BODY as u16, target_body),
+                    (MEM_REF_AIM as u16, target_aim),
+                    (
+                        MEM_REF_TIE as u16,
+                        i32::from(target_occurrences.get(8).copied().unwrap_or(0)),
+                    ),
+                    (MEM_REF_POISON as u16, target_poison),
+                    (MEM_REF_VENOM as u16, target_venom),
+                    (
+                        MEM_REF_KILLS as u16,
+                        target_kills.min(i32::MAX as u64) as i32,
+                    ),
+                    (MEM_REF_MEMORY_VALUE as u16, target_memory_value),
+                    (MEM_REF_FIXED as u16, i32::from(target_fixed)),
                 ]);
+                values.extend((0..7).map(|index| {
+                    (
+                        (MEM_REF_OCCURRENCE_BASE + index) as u16,
+                        i32::from(target_occurrences.get(index as usize).copied().unwrap_or(0)),
+                    )
+                }));
+                values.extend((0..10).map(|index| {
+                    (
+                        (MEM_IN_BASE + index) as u16,
+                        target_outgoing[index as usize],
+                    )
+                }));
             }
+            let incoming_values: Vec<_> = values
+                .iter()
+                .copied()
+                .filter(|(address, _)| {
+                    (MEM_IN_BASE as u16..(MEM_IN_BASE + 10) as u16).contains(address)
+                })
+                .collect();
+            let addressed_memory_value = values
+                .iter()
+                .copied()
+                .rev()
+                .find(|(address, _)| *address == MEM_REF_MEMORY_VALUE as u16);
             SysvarRuntime::new().publish(
                 PhaseReadbacks::Vision(VisionReadbacks { values }),
                 &mut observer.program.memory,
             );
+            for (address, value) in incoming_values {
+                observer.program.memory.write(i32::from(address), value);
+            }
+            if let Some((address, value)) = addressed_memory_value {
+                observer.program.memory.write(i32::from(address), value);
+            }
         }
         Ok(())
     }
@@ -6014,7 +6173,7 @@ impl Engine {
             let tie_cost = self.config.dna_costs.action_cost_for(
                 SimulationCostAction::TieFormation,
                 1.0,
-                self.population(),
+                self.cost_population(),
             );
             if let Some(first_robot) = self.slots[first_slot].organism.as_mut() {
                 settle_simulation_cost(first_robot, tie_cost);
@@ -6077,7 +6236,7 @@ impl Engine {
             .map(|config| config.restrictions.clone());
         let runtime = SysvarRuntime::new();
         let costs = &self.config.dna_costs;
-        let population = self.population();
+        let population = self.cost_population();
         for attacker_slot in 0..self.slots.len() {
             let attacker_id =
                 OrganismId::new(attacker_slot as u32, self.slots[attacker_slot].generation);
@@ -7671,12 +7830,24 @@ impl Engine {
             let Some(organism) = self.slots[slot].organism.as_mut() else {
                 continue;
             };
-            if organism.materials.energy <= 0 {
+            if !organism.flags.can_use_chloroplasts {
                 organism.program.memory.write(MEM_LIGHT, 0);
                 continue;
             }
-            if !organism.flags.can_use_chloroplasts {
+            let (waste_energy_gain, waste_body_gain) = organism
+                .materials
+                .metabolize_waste(settings.feeding_to_body);
+            self.stats.plant_energy_generated = self
+                .stats
+                .plant_energy_generated
+                .saturating_add(waste_energy_gain.max(0) as u64);
+            self.stats.plant_body_produced = self
+                .stats
+                .plant_body_produced
+                .saturating_add(waste_body_gain.max(0) as u64);
+            if organism.materials.energy <= 0 {
                 organism.program.memory.write(MEM_LIGHT, 0);
+                organism.materials.publish(&mut organism.program.memory);
                 continue;
             }
             let feeding = self.vegetation_runtime.feed(PlantLightInput {

@@ -92,6 +92,40 @@ fn species_identity_and_vegetable_energy_are_part_of_the_world_state() {
 }
 
 #[test]
+fn body_conversion_uses_db2_energy_units_and_cycle_caps() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let store = engine
+        .spawn_at(
+            LegacyDna::parse("start\n50 .strbody store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let feed = engine
+        .spawn_at(
+            LegacyDna::parse("start\n50 .fdbody store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let store_before = engine.organism(store).unwrap();
+    let feed_before = engine.organism(feed).unwrap();
+
+    engine.tick().unwrap();
+
+    let store_after = engine.organism(store).unwrap();
+    let feed_after = engine.organism(feed).unwrap();
+    assert_eq!(store_after.energy, store_before.energy - 50);
+    assert_eq!(store_after.body, store_before.body + 5);
+    assert_eq!(feed_after.energy, feed_before.energy + 50);
+    assert_eq!(feed_after.body, feed_before.body - 5);
+    assert_eq!(engine.memory(store, "strbody").unwrap(), 0);
+    assert_eq!(engine.memory(feed, "fdbody").unwrap(), 0);
+}
+
+#[test]
 fn negative_shots_feed_the_attacker_from_the_target() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let predator = LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap();
@@ -248,7 +282,7 @@ fn dna_controls_body_defenses_chloroplasts_waste_and_aim() {
     engine.tick().unwrap();
 
     let organism = engine.organism(id).unwrap();
-    assert_eq!(organism.body, 1_010);
+    assert_eq!(organism.body, 1_001);
     assert_eq!(organism.shell, 25);
     assert_eq!(organism.chloroplasts, 30);
     assert_eq!(organism.aim, 314);

@@ -46,6 +46,10 @@ pub struct RobotMaterials {
     pub(crate) plant_energy_carry_micros: i64,
     #[serde(default)]
     pub(crate) plant_body_carry_micros: i64,
+    #[serde(default)]
+    pub(crate) chloroplast_decay_carry_micros: i64,
+    #[serde(default)]
+    pub(crate) waste_metabolism_carry_micros: i64,
 }
 
 pub type BiologyState = RobotMaterials;
@@ -82,6 +86,8 @@ impl Default for RobotMaterials {
             previous_energy: 1_000,
             plant_energy_carry_micros: 0,
             plant_body_carry_micros: 0,
+            chloroplast_decay_carry_micros: 0,
+            waste_metabolism_carry_micros: 0,
         }
     }
 }
@@ -126,6 +132,8 @@ impl RobotMaterials {
             previous_energy: 0,
             plant_energy_carry_micros: 0,
             plant_body_carry_micros: 0,
+            chloroplast_decay_carry_micros: 0,
+            waste_metabolism_carry_micros: 0,
         }
     }
 
@@ -155,6 +163,43 @@ impl RobotMaterials {
         )
     }
 
+    pub(crate) fn decay_chloroplasts(&mut self) -> i32 {
+        if self.chloroplasts <= 0 {
+            return 0;
+        }
+        let decay_micros = (0.5 / 100.0_f64.powf(f64::from(self.chloroplasts) / 16_000.0)
+            * 1_000_000.0)
+            .round() as i64;
+        self.chloroplast_decay_carry_micros = self
+            .chloroplast_decay_carry_micros
+            .saturating_add(decay_micros);
+        let removed = (self.chloroplast_decay_carry_micros / 1_000_000)
+            .min(i64::from(self.chloroplasts)) as i32;
+        self.chloroplast_decay_carry_micros %= 1_000_000;
+        self.chloroplasts = self.chloroplasts.saturating_sub(removed);
+        removed
+    }
+
+    pub(crate) fn metabolize_waste(&mut self, feeding_to_body: f32) -> (i32, i32) {
+        if self.chloroplasts <= 0 || self.waste <= 0 {
+            return (0, 0);
+        }
+        let body_fraction = feeding_to_body.clamp(0.0, 1.0);
+        let delta = self.chloroplasts as f32 / 64_000.0;
+        let gains = self.apply_plant_delta(delta, body_fraction);
+        if self.energy < 32_000 || self.body < 32_000 {
+            let waste_micros = (self.chloroplasts as f64 / 32_000.0 * 1_000_000.0).round() as i64;
+            self.waste_metabolism_carry_micros = self
+                .waste_metabolism_carry_micros
+                .saturating_add(waste_micros);
+            let consumed =
+                (self.waste_metabolism_carry_micros / 1_000_000).min(i64::from(self.waste)) as i32;
+            self.waste_metabolism_carry_micros %= 1_000_000;
+            self.waste = self.waste.saturating_sub(consumed);
+        }
+        gains
+    }
+
     pub fn apply_outputs(
         &mut self,
         memory: &mut VmMemory,
@@ -170,14 +215,16 @@ impl RobotMaterials {
             self.aim = normalize_aim(self.aim + aim_commands.turn_left - aim_commands.turn_right);
         }
 
-        let body_gain = spend(&mut self.energy, material_commands.store_body.max(0), 10);
-        self.body = self.body.saturating_add(body_gain);
-        let body_feed = material_commands
-            .feed_body
-            .max(0)
-            .min(self.body.saturating_sub(1));
-        self.body -= body_feed;
-        self.energy = self.energy.saturating_add(body_feed.saturating_mul(10));
+        let stored_energy = material_commands.store_body.clamp(0, 100);
+        self.energy = self.energy.saturating_sub(stored_energy);
+        self.body = self.body.saturating_add(stored_energy / 10).min(32_000);
+        let fed_energy = material_commands.feed_body.clamp(0, 100);
+        let fed_body = (fed_energy / 10).min(self.body);
+        self.body = self.body.saturating_sub(fed_body);
+        self.energy = self
+            .energy
+            .saturating_add(fed_body.saturating_mul(10))
+            .min(32_000);
 
         self.shell = self.shell.saturating_add(spend(
             &mut self.energy,

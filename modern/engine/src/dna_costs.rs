@@ -129,7 +129,7 @@ impl DnaCosts {
 
     pub fn age_cost(&self, age: u64, population: usize) -> f64 {
         let age = age as f64;
-        if age < self.age_start {
+        if age <= 0.0 || age <= self.age_start {
             return 0.0;
         }
         let elapsed = age - self.age_start;
@@ -151,7 +151,7 @@ impl DnaCosts {
     pub fn calculate_cost(&self, input: SimulationCostInput) -> SimulationCostReport {
         let dna = input.dna_len.saturating_sub(1) as f64 * self.dna_upkeep;
         let upkeep = input.body.max(0.0) * self.body_upkeep + dna;
-        let age = if input.age as f64 >= self.age_start {
+        let age = if input.age as f64 > 0.0 && input.age as f64 > self.age_start {
             let elapsed = input.age as f64 - self.age_start;
             self.age_base
                 + elapsed.max(0.0) * self.age_linear

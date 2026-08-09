@@ -767,6 +767,8 @@ impl From<&LegacyBiologyState> for BiologyState {
             previous_energy: state.previous_energy,
             plant_energy_carry_micros: state.plant_energy_carry_micros,
             plant_body_carry_micros: state.plant_body_carry_micros,
+            chloroplast_decay_carry_micros: 0,
+            waste_metabolism_carry_micros: 0,
         }
     }
 }

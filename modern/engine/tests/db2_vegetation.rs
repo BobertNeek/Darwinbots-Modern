@@ -1,7 +1,7 @@
 mod support;
 
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, SaveFile, SpeciesDefinition, VegetationSettings,
+    DnaCosts, Engine, EngineConfig, LegacyDna, SaveFile, SpeciesDefinition, VegetationSettings,
     sysvar_address,
 };
 use support::db2_fixtures::{
@@ -184,6 +184,149 @@ fn darkness_prevents_chloroplast_feeding() {
 
     assert!(engine.organism(plant).unwrap().energy <= before);
     assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 0);
+}
+
+#[test]
+fn chloroplasts_decay_naturally_without_a_removal_command() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        vegetable_energy_per_tick: 0,
+        vegetation: VegetationSettings {
+            daytime: false,
+            start_chloroplasts: 1,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let plant = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [500.0, 500.0],
+        )
+        .unwrap();
+
+    engine.tick_many(3).unwrap();
+
+    assert_eq!(engine.organism(plant).unwrap().chloroplasts, 0);
+}
+
+#[test]
+fn chloroplast_pressure_refuses_new_chloroplasts_at_the_vegetable_cap() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        vegetable_energy_per_tick: 0,
+        vegetable_population_cap: 1,
+        vegetation: VegetationSettings {
+            daytime: false,
+            start_chloroplasts: START_CHLR,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let plant = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\n10 .mkchlr store\nstop").unwrap(),
+            vegetables,
+            [500.0, 500.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.organism(plant).unwrap().chloroplasts, START_CHLR);
+}
+
+#[test]
+fn chloroplast_construction_charges_the_configured_cost_once() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        vegetable_energy_per_tick: 0,
+        dna_costs: DnaCosts {
+            chloroplast_construction: 2.0,
+            ..DnaCosts::default()
+        },
+        vegetation: VegetationSettings {
+            daytime: false,
+            start_chloroplasts: 0,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let plant = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\n10 .mkchlr store\nstop").unwrap(),
+            vegetables,
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let before = engine.organism(plant).unwrap();
+
+    engine.tick().unwrap();
+
+    let after = engine.organism(plant).unwrap();
+    assert_eq!(after.chloroplasts, 10);
+    assert_eq!(after.energy, before.energy - 20);
+}
+
+#[test]
+fn chloroplasts_metabolize_waste_into_energy_and_body() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        vegetable_energy_per_tick: 0,
+        vegetation: VegetationSettings {
+            daytime: false,
+            feeding_to_body: 0.5,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        vegetable: true,
+        ..SpeciesDefinition::default()
+    });
+    let plant = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [500.0, 500.0],
+        )
+        .unwrap();
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let organism = &mut payload["slots"][plant.slot() as usize]["organism"];
+    organism["materials"]["chloroplasts"] = serde_json::json!(32_000);
+    organism["materials"]["waste"] = serde_json::json!(100);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    let mut engine = SaveFile::decode(&save).unwrap();
+    let before = engine.organism(plant).unwrap();
+
+    engine.tick_many(50).unwrap();
+
+    let after = engine.organism(plant).unwrap();
+    assert!(after.waste < before.waste);
+    assert!(after.energy > before.energy);
+    assert!(after.body > before.body);
 }
 
 #[test]
