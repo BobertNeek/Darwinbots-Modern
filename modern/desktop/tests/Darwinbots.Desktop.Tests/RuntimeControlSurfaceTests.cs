@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Text;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -589,6 +590,97 @@ public sealed class RuntimeControlSurfaceTests
             && engine.Calls.Contains("Move:3:2:500:600")
             && engine.Calls.Contains("Move:3:2:700:800"),
             () => string.Join(", ", engine.Calls));
+    }
+
+    [Fact]
+    public async Task SnapshotRobotAndViewportRoutesUseLiveNativeState()
+    {
+        var snapshot = RecordingEngineClient.CreateSnapshot() with
+        {
+            Tick = 42,
+            Corpses =
+            [
+                new CorpseSnapshot([4f, 5f], [0f, 0f], 0, 12, 3, 1)
+                {
+                    Dna = "start\nstop",
+                    UniqueId = 9001,
+                    Generation = 4,
+                    DnaLength = 2,
+                },
+                new CorpseSnapshot([6f, 7f], [0f, 0f], 0, 12, 3, 1, Repopulating: true)
+                {
+                    Dna = "repopulating",
+                    UniqueId = 9002,
+                    Generation = 4,
+                    DnaLength = 1,
+                },
+            ],
+        };
+        var engine = new RecordingEngineClient(snapshot);
+        await using var simulation = new SimulationSession(engine);
+        var storage = new AuditStorageService();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
+            try
+            {
+                SetField(window, "_session", simulation);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                viewModel.Update(snapshot);
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                viewport.SetSnapshot(snapshot);
+                viewport.SelectKey(new OrganismKey(3, 2));
+                Invoke(window, "RefreshLegacyMenuStates");
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+
+                Assert.NotNull(window.FindControl<Button>("ZoomInButton"));
+                Assert.NotNull(window.FindControl<Button>("ZoomOutButton"));
+                Assert.NotNull(window.FindControl<Button>("ZoomLockButton"));
+                Assert.NotNull(viewport.ContextMenu);
+                Assert.NotNull(typeof(WorldViewport).GetProperty("Zoom"));
+                Assert.NotNull(typeof(WorldViewport).GetProperty("ZoomLocked"));
+                Assert.NotNull(typeof(WorldViewport).GetEvent("OrganismDoubleClicked"));
+                Assert.NotNull(typeof(MainWindow).GetMethod("RecordDeadSnapshotAsync", BindingFlags.Instance | BindingFlags.NonPublic));
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RecordingSnapshotLiving)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => storage.SavedLivingSnapshot is not null);
+                var living = Encoding.UTF8.GetString(storage.SavedLivingSnapshot!);
+                Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", living);
+                Assert.Contains("start\nstop", living, StringComparison.Ordinal);
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotShowInfo)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotDetailsWindow>().Any());
+                window.OwnedWindows.OfType<RobotDetailsWindow>().Single().Close();
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotOpenConsole)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RobotConsoleWindow>().Any());
+                window.OwnedWindows.OfType<RobotConsoleWindow>().Single().Close();
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotShowPhilogeny)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<PhylogenyWindow>().Any());
+                window.OwnedWindows.OfType<PhylogenyWindow>().Single().Close();
+
+                SetField(window, "_deadRecordingEnabled", true);
+                SetField(window, "_excludeRepopulatingDead", true);
+                var recorder = typeof(MainWindow).GetMethod("RecordDeadSnapshotAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                await (Task)recorder.Invoke(window, [snapshot])!;
+                var dead = Encoding.UTF8.GetString(storage.DeadSnapshotWrites.Single());
+                Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", dead);
+                Assert.Contains("9001", dead, StringComparison.Ordinal);
+                Assert.DoesNotContain("9002", dead, StringComparison.Ordinal);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                SetField(window, "_session", null);
+                window.Close();
+            }
+        }, CancellationToken.None);
     }
 
     private static MainWindow RuntimeWindow(SimulationSession simulation)

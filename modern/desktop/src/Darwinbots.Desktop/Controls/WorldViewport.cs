@@ -14,6 +14,7 @@ public sealed class WorldViewport : Control
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
     private readonly Pen _gridPen = new(new SolidColorBrush(Color.Parse("#D9D8D0")), 0.6);
     private double _zoom = 1.0;
+    private bool _zoomLocked;
     private Vector _pan;
     private Point? _panAnchor;
     private Vector _panAtPress;
@@ -43,6 +44,8 @@ public sealed class WorldViewport : Control
 
     public event Action<uint>? OrganismSelected;
     public event Action<OrganismKey>? OrganismKeySelected;
+    public event Action<OrganismKey, Point>? OrganismContextRequested;
+    public event Action<OrganismKey>? OrganismDoubleClicked;
     public event Action<float[]>? WorldClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
     public event Action<uint, float[]>? OrganismDragCompleted;
@@ -68,6 +71,23 @@ public sealed class WorldViewport : Control
     public bool ShowDeathPoffs { get => _showDeathPoffs; set { _showDeathPoffs = value; InvalidateVisual(); } }
     public double RenderScale => Math.Max(0.1, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0);
     public double InputHitRadius => 14.0 / RenderScale;
+    public double Zoom => _zoom;
+    public Vector Pan => _pan;
+    public bool IsFollowing => _followKey is not null;
+    public bool ZoomLocked
+    {
+        get => _zoomLocked;
+        set
+        {
+            _zoomLocked = value;
+            if (value) _pan = ClampPan(_pan);
+            InvalidateVisual();
+        }
+    }
+
+    public void ZoomIn() => SetZoomAt(_zoom * 1.2, new Point(Bounds.Width / 2, Bounds.Height / 2));
+
+    public void ZoomOut() => SetZoomAt(_zoom / 1.2, new Point(Bounds.Width / 2, Bounds.Height / 2));
 
     public void SetRgbMemoryMonitor(RgbMemoryMonitorSettings? settings)
     {
@@ -136,6 +156,11 @@ public sealed class WorldViewport : Control
             _pan = new Vector(Bounds.Width / 2 - organism.Position[0] * scaleX * _zoom,
                 Bounds.Height / 2 - organism.Position[1] * scaleY * _zoom);
         }
+        else if (_followKey is not null)
+        {
+            _followKey = null;
+        }
+        _pan = ClampPan(_pan);
         InvalidateVisual();
     }
 
@@ -152,6 +177,14 @@ public sealed class WorldViewport : Control
     public void FollowKey(OrganismKey? key)
     {
         _followKey = key;
+        if (key is { } followed && _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
+        {
+            var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
+            var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+            _pan = new Vector(Bounds.Width / 2 - organism.Position[0] * scaleX * _zoom,
+                Bounds.Height / 2 - organism.Position[1] * scaleY * _zoom);
+            _pan = ClampPan(_pan);
+        }
         InvalidateVisual();
     }
 
@@ -379,7 +412,7 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerPressed(e);
         var point = e.GetCurrentPoint(this);
-        if (point.Properties.IsMiddleButtonPressed || point.Properties.IsRightButtonPressed)
+        if (point.Properties.IsMiddleButtonPressed)
         {
             _panAnchor = point.Position;
             _panAtPress = _pan;
@@ -388,6 +421,18 @@ public sealed class WorldViewport : Control
             return;
         }
         var selected = FindNearest(point.Position);
+        if (point.Properties.IsRightButtonPressed)
+        {
+            if (selected is { } contextKey)
+            {
+                SelectKey(contextKey);
+                OrganismSelected?.Invoke(contextKey.Slot);
+                OrganismKeySelected?.Invoke(contextKey);
+                OrganismContextRequested?.Invoke(contextKey, point.Position);
+                e.Handled = true;
+            }
+            return;
+        }
         if (selected is null)
         {
             var feature = FindFeature(point.Position);
@@ -409,6 +454,12 @@ public sealed class WorldViewport : Control
         SelectKey(selected);
         OrganismSelected?.Invoke(selected.Value.Slot);
         OrganismKeySelected?.Invoke(selected.Value);
+        if (e.ClickCount >= 2)
+        {
+            OrganismDoubleClicked?.Invoke(selected.Value);
+            e.Handled = true;
+            return;
+        }
         _dragKey = selected;
         _dragPosition = WorldPoint(point.Position);
         _dragOrigin = point.Position;
@@ -434,7 +485,7 @@ public sealed class WorldViewport : Control
         if (_panAnchor is not { } anchor) return;
         _followKey = null;
         var point = e.GetPosition(this);
-        _pan = _panAtPress + (point - anchor);
+        _pan = ClampPan(_panAtPress + (point - anchor));
         InvalidateVisual();
     }
 
@@ -457,12 +508,33 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerWheelChanged(e);
         var cursor = e.GetPosition(this);
-        var oldZoom = _zoom;
-        _zoom = Math.Clamp(_zoom * (e.Delta.Y > 0 ? 1.2 : 1 / 1.2), 0.35, 12.0);
-        var ratio = _zoom / oldZoom;
-        _pan = new Vector(cursor.X - (cursor.X - _pan.X) * ratio, cursor.Y - (cursor.Y - _pan.Y) * ratio);
-        InvalidateVisual();
+        SetZoomAt(_zoom * (e.Delta.Y > 0 ? 1.2 : 1 / 1.2), cursor);
         e.Handled = true;
+    }
+
+    private void SetZoomAt(double zoom, Point anchor)
+    {
+        var oldZoom = _zoom;
+        _zoom = Math.Clamp(zoom, 0.35, 12.0);
+        var ratio = _zoom / oldZoom;
+        _pan = ClampPan(new Vector(
+            anchor.X - (anchor.X - _pan.X) * ratio,
+            anchor.Y - (anchor.Y - _pan.Y) * ratio));
+        InvalidateVisual();
+    }
+
+    private Vector ClampPan(Vector pan)
+    {
+        if (!_zoomLocked) return pan;
+        var worldWidth = Bounds.Width * _zoom;
+        var worldHeight = Bounds.Height * _zoom;
+        var minX = Math.Min(0, Bounds.Width - worldWidth);
+        var maxX = Math.Max(0, Bounds.Width - worldWidth);
+        var minY = Math.Min(0, Bounds.Height - worldHeight);
+        var maxY = Math.Max(0, Bounds.Height - worldHeight);
+        return new Vector(
+            Math.Clamp(pan.X, minX, maxX),
+            Math.Clamp(pan.Y, minY, maxY));
     }
 
     private OrganismKey? FindNearest(Point pointer)

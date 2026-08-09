@@ -179,6 +179,22 @@ public sealed partial class MainWindow : Window
             Viewport.SelectKey(key);
             RefreshLegacyMenuStates();
         };
+        Viewport.ContextMenu = BuildViewportContextMenu();
+        Viewport.OrganismContextRequested += (key, _) =>
+        {
+            _viewModel.Select(key);
+            Viewport.SelectKey(key);
+            RefreshLegacyMenuStates();
+            Viewport.ContextMenu?.Open(Viewport);
+        };
+        Viewport.OrganismDoubleClicked += async key =>
+        {
+            _viewModel.Select(key);
+            Viewport.SelectKey(key);
+            var result = await _legacyCommands.ExecuteAsync(LegacyCommandId.RobotShowInfo);
+            _viewModel.Status = result.Status;
+            RefreshLegacyMenuStates();
+        };
         Viewport.WorldClicked += async position =>
         {
             if (_session is null) return;
@@ -790,6 +806,34 @@ public sealed partial class MainWindow : Window
     private void RefreshLegacyMenuStates() =>
         HistoricMenuBar.RefreshStates(_legacyCommands.GetState);
 
+    private ContextMenu BuildViewportContextMenu()
+    {
+        var menu = new ContextMenu();
+        foreach (var (header, command) in new[]
+        {
+            ("SHOW ROBOT INFO", LegacyCommandId.RobotShowInfo),
+            ("OPEN ROBOT CONSOLE", LegacyCommandId.RobotOpenConsole),
+            ("VIEW GENE ACTIVATIONS", LegacyCommandId.RobotViewGeneActivations),
+            ("SHOW PHILOGENY", LegacyCommandId.RobotShowPhilogeny),
+            ("SELECT ENTIRE ORGANISM", LegacyCommandId.RobotSelectEntireOrganism),
+            ("KILL ROBOT", LegacyCommandId.RobotKill),
+        })
+        {
+            var item = new MenuItem { Header = header };
+            item.Click += async (_, _) =>
+            {
+                var result = await _legacyCommands.ExecuteAsync(command);
+                _viewModel.Status = result.Status;
+                RefreshLegacyMenuStates();
+            };
+            menu.Items.Add(item);
+        }
+        var follow = new MenuItem { Header = "FOLLOW ROBOT" };
+        follow.Click += Follow_Click;
+        menu.Items.Add(follow);
+        return menu;
+    }
+
     private LegacyCommandResult PauseSimulation()
     {
         _runTimer.Stop();
@@ -1117,43 +1161,20 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> SaveLivingSnapshotAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
-        {
-            Title = "Save snapshot of the living",
-            SuggestedFileName = $"darwinbots-living-{_session.LatestSnapshot.Tick}.snp",
-            DefaultExtension = "snp",
-            FileTypeChoices =
-            [
-                new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots living snapshot") { Patterns = ["*.snp"] },
-                new Avalonia.Platform.Storage.FilePickerFileType("Darwinbots Modern JSON snapshot") { Patterns = ["*.json"] },
-            ],
-        });
-        if (file is null) return LegacyCommandResult.Cancel();
-        await using var stream = await file.OpenWriteAsync();
-        stream.SetLength(0);
-        if (Path.GetExtension(file.Name).Equals(".json", StringComparison.OrdinalIgnoreCase))
-        {
-            await System.Text.Json.JsonSerializer.SerializeAsync(stream, new
-            {
-                version = 1,
-                tick = _session.LatestSnapshot.Tick,
-                world_size = _session.LatestSnapshot.WorldSize,
-                organisms = _session.LatestSnapshot.Organisms,
-                species = _session.LatestSnapshot.Species,
-                stats = _session.LatestSnapshot.Stats,
-            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        }
-        else
+        var snapshot = _session.LatestSnapshot;
+        var suggestedFileName = $"darwinbots-living-{snapshot.Tick}.snp";
+        var saved = await _storage.SaveLivingSnapshotAsync(this, suggestedFileName, async stream =>
         {
             var dna = new Dictionary<OrganismKey, string>();
-            foreach (var organism in _session.LatestSnapshot.Organisms)
+            foreach (var organism in snapshot.Organisms)
                 dna[new OrganismKey(organism.Slot, organism.Generation)] =
                     await _session.ExportDnaAsync(organism.Slot, organism.Generation);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(
-                Db2GenomeRecordFile.EncodeLiving(_session.LatestSnapshot, dna));
+            var bytes = System.Text.Encoding.UTF8.GetBytes(Db2GenomeRecordFile.EncodeLiving(snapshot, dna));
             await stream.WriteAsync(bytes);
-        }
-        return LegacyCommandResult.Success($"LIVING SNAPSHOT · {file.Name}");
+        });
+        return saved
+            ? LegacyCommandResult.Success($"LIVING SNAPSHOT · {suggestedFileName}")
+            : LegacyCommandResult.Cancel();
     }
 
     private LegacyCommandResult ToggleDeadRecording()
@@ -1169,7 +1190,7 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"REPOPULATING DEAD · {(_excludeRepopulatingDead ? "EXCLUDED" : "INCLUDED")}");
     }
 
-    private void RecordDeadSnapshot(EngineSnapshot snapshot)
+    private async Task RecordDeadSnapshotAsync(EngineSnapshot snapshot)
     {
         if (!_deadRecordingEnabled)
         {
@@ -1178,18 +1199,22 @@ public sealed partial class MainWindow : Window
         }
         if (snapshot.Corpses.Count < _recordedCorpseCount) _recordedCorpseCount = 0;
         if (snapshot.Corpses.Count == _recordedCorpseCount) return;
+        var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
+            .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
+            .ToArray();
+        if (!corpses.Any(corpse => !string.IsNullOrWhiteSpace(corpse.Dna)))
+        {
+            _recordedCorpseCount = snapshot.Corpses.Count;
+            return;
+        }
         try
         {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Darwinbots Modern", "records");
-            Directory.CreateDirectory(directory);
-            var path = Path.Combine(directory, "DeadRobots.snp");
-            var corpses = snapshot.Corpses.Skip(_recordedCorpseCount)
-                .Where(corpse => !_excludeRepopulatingDead || !corpse.Repopulating)
-                .ToArray();
-            var text = Db2GenomeRecordFile.EncodeDead(corpses, snapshot.Species, !File.Exists(path));
-            if (corpses.Any(corpse => !string.IsNullOrWhiteSpace(corpse.Dna)))
-                File.AppendAllText(path, text, System.Text.Encoding.UTF8);
-            _recordedCorpseCount = snapshot.Corpses.Count;
+            var appended = await _storage.AppendDeadSnapshotAsync(async stream =>
+            {
+                var text = Db2GenomeRecordFile.EncodeDead(corpses, snapshot.Species, stream.Length == 0);
+                await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(text));
+            });
+            if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
         }
         catch (Exception error)
         {
@@ -1327,20 +1352,21 @@ public sealed partial class MainWindow : Window
         var organism = _viewModel.SelectedOrganism!;
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var focus = new OrganismKey(organism.Slot, organism.Generation);
-        var console = new RobotConsoleWindow(
-            _session,
-            focus,
-            () =>
-            {
-                Run_Click(this, new RoutedEventArgs());
-                return Task.CompletedTask;
-            },
-            () =>
-            {
-                Pause_Click(this, new RoutedEventArgs());
-                return Task.CompletedTask;
-            });
-        console.Show(this);
+        _toolWindows.ShowOrActivate(
+            $"robot-console:{focus.Slot}:{focus.Generation}",
+            () => new RobotConsoleWindow(
+                _session,
+                focus,
+                () =>
+                {
+                    Run_Click(this, new RoutedEventArgs());
+                    return Task.CompletedTask;
+                },
+                () =>
+                {
+                    Pause_Click(this, new RoutedEventArgs());
+                    return Task.CompletedTask;
+                }));
         return LegacyCommandResult.Success("ROBOT CONSOLE OPEN");
     }
 
@@ -1729,7 +1755,7 @@ public sealed partial class MainWindow : Window
             _activeCostMultiplier = worldSetup.GlobalSettings.Costs.GlobalMultiplier;
             _session = new SimulationSession(_engineFactory.Create(worldSetup));
             _insertion = new WorldInsertionController(_session);
-            _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() =>
+            _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(async () =>
             {
                 _playerBotEnabled = snapshot.PlayerBot.Enabled;
                 _playerBotBindings = snapshot.PlayerBot.Bindings;
@@ -1739,7 +1765,7 @@ public sealed partial class MainWindow : Window
                 PopulationChart.SetSnapshot(snapshot);
                 EnergyChart.SetSnapshot(snapshot);
                 _toolWindows.PublishSnapshot(snapshot);
-                RecordDeadSnapshot(snapshot);
+                await RecordDeadSnapshotAsync(snapshot);
                 RefreshLegacyMenuStates();
                 if (_zerobotProgression is not null && !_progressionInFlight
                     && _zerobotProgression.Observe(snapshot) is { } transition)
@@ -1962,6 +1988,25 @@ public sealed partial class MainWindow : Window
         _following = !_following;
         Viewport.FollowKey(_following ? new OrganismKey(organism.Slot, organism.Generation) : null);
         _viewModel.Status = _following ? $"FOLLOWING {organism.Slot}:{organism.Generation}" : "FOLLOW OFF";
+    }
+
+    private void ZoomIn_Click(object? sender, RoutedEventArgs e)
+    {
+        Viewport.ZoomIn();
+        _viewModel.Status = $"ZOOM · {Viewport.Zoom:0.00}X";
+    }
+
+    private void ZoomOut_Click(object? sender, RoutedEventArgs e)
+    {
+        Viewport.ZoomOut();
+        _viewModel.Status = $"ZOOM · {Viewport.Zoom:0.00}X";
+    }
+
+    private void ZoomLock_Click(object? sender, RoutedEventArgs e)
+    {
+        Viewport.ZoomLocked = !Viewport.ZoomLocked;
+        ZoomLockButton.Content = Viewport.ZoomLocked ? "LOCK ON" : "LOCK OFF";
+        _viewModel.Status = Viewport.ZoomLocked ? "CAMERA LOCKED TO WORLD" : "CAMERA UNLOCKED";
     }
 
     private void Turbo_Click(object? sender, RoutedEventArgs e)

@@ -206,6 +206,11 @@
             <TextBlock Text="OFFLINE · INTERNET DISABLED" FontSize="10" FontWeight="SemiBold" Foreground="#794A1D" />
           </Border>
         </StackPanel>
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal" Margin="0,12,12,0" Spacing="4">
+          <Button x:Name="ZoomInButton" Content="ZOOM +" ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" Click="ZoomIn_Click" />
+          <Button x:Name="ZoomOutButton" Content="ZOOM −" ToolTip.Tip="Zoom out" AutomationProperties.Name="Zoom out" Click="ZoomOut_Click" />
+          <Button x:Name="ZoomLockButton" Content="LOCK OFF" ToolTip.Tip="Keep the camera inside the world" AutomationProperties.Name="Lock camera" Click="ZoomLock_Click" />
+        </StackPanel>
         <Border x:Name="RecoveryPanel" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,92,0,0" Background="#FFF3E7" BorderBrush="#B46A27" BorderThickness="1" Padding="10" Width="310">
           <StackPanel Spacing="5">
             <TextBlock x:Name="RecoveryTitle" Text="SAFE MODE RECOVERY" FontWeight="Bold" Foreground="#794A1D" />

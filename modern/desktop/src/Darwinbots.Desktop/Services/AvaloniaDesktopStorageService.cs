@@ -153,6 +153,41 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
+    public async Task<bool> SaveLivingSnapshotAsync(
+        TopLevel owner,
+        string suggestedFileName,
+        Func<Stream, Task> writeAsync)
+    {
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save snapshot of the living",
+            SuggestedFileName = suggestedFileName,
+            DefaultExtension = "snp",
+            FileTypeChoices = [SnapshotFileType()],
+        });
+        if (file is null) return false;
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await writeAsync(stream);
+        return true;
+    }
+
+    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync)
+    {
+        var path = DeadSnapshotPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await using var stream = new FileStream(
+            path,
+            FileMode.OpenOrCreate,
+            FileAccess.ReadWrite,
+            FileShare.Read,
+            bufferSize: 4096,
+            options: FileOptions.Asynchronous);
+        stream.Seek(0, SeekOrigin.End);
+        await writeAsync(stream);
+        return true;
+    }
+
     public string? FindLatestAutosave()
     {
         var directory = AutosaveDirectory();
@@ -215,6 +250,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     private static FilePickerFileType OrganismSaveFileType() =>
         new("Darwinbots DB2 organism") { Patterns = ["*.dbo"] };
 
+    private static FilePickerFileType SnapshotFileType() =>
+        new("Darwinbots DB2 genome records") { Patterns = ["*.snp"] };
+
     private static FilePickerFileType SettingsFileType() =>
         new("Darwinbots settings") { Patterns = ["*.set", "*.json"] };
 
@@ -227,6 +265,12 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Darwinbots Modern",
                 "Autosaves");
+
+    private static string DeadSnapshotPath() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Darwinbots Modern",
+        "records",
+        "DeadRobots.snp");
 
     private static string LastStartPath() => Path.Combine(AutosaveDirectory(), "last-start.json");
 
