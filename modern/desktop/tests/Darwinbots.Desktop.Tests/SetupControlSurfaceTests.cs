@@ -2,6 +2,7 @@ using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.Views;
@@ -11,6 +12,34 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class SetupControlSurfaceTests
 {
+    [Fact]
+    public async Task MainWindowOpensWithDb24832ContestAndPresentationDefaults()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions());
+            try
+            {
+                Assert.Equal(5m, window.FindControl<NumericUpDown>("ModeMinimumRounds")!.Value);
+                Assert.Equal(1m, window.FindControl<NumericUpDown>("ModeMaximumRounds")!.Value);
+                Assert.Equal(15_000m, window.FindControl<NumericUpDown>("ModeMaximumCycles")!.Value);
+                Assert.Equal(700m, window.FindControl<NumericUpDown>("ModePopulationCap")!.Value);
+                Assert.True(window.FindControl<CheckBox>("ShowVisionToggle")!.IsChecked);
+
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                Assert.True(viewport.ShowSelectedVision);
+                Assert.True(viewport.ShowMovementVectors);
+                Assert.True(viewport.ShowShotImpacts);
+                Assert.True(viewport.ShowResourceGauges);
+                Assert.True(viewport.HighlightTeleporters);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task SetupModesMutationAndAdvancedSettingsReachTheCreatedWorld()
     {

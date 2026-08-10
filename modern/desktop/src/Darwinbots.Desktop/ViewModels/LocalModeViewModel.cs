@@ -8,10 +8,10 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
 {
     private LocalModeKind _kind = LocalModeKind.League;
     private LeaguePreset _preset = LeaguePreset.F1;
-    private uint _minimumRounds = 1;
-    private uint _maximumRounds = 3;
-    private ulong _maximumCycles = 10_000;
-    private int _maximumPopulation = 25_000;
+    private uint _minimumRounds = 5;
+    private uint _maximumRounds = 1;
+    private ulong _maximumCycles = 15_000;
+    private int _maximumPopulation = 700;
     private bool _restartOnExtinction = true;
     private int _energyHandicap;
     private bool _prohibitInformationShots;

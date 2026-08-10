@@ -7,6 +7,17 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LocalModeWorkflowTests
 {
     [Fact]
+    public void LocalModeOpensWithDb24832ContestDefaults()
+    {
+        var localMode = new MainWindowViewModel().LocalMode;
+
+        Assert.Equal(5U, localMode.MinimumRounds);
+        Assert.Equal(1U, localMode.MaximumRounds);
+        Assert.Equal(15_000UL, localMode.MaximumCycles);
+        Assert.Equal(700, localMode.MaximumPopulation);
+    }
+
+    [Fact]
     public void LeagueTabWorkflowBuildsConfigStartsObservesAndCompletesLocalMode()
     {
         var viewModel = new MainWindowViewModel();

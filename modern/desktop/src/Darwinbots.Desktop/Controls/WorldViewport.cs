@@ -30,10 +30,10 @@ public sealed class WorldViewport : Control
     private bool _showSelectedVision = true;
     private bool _wrapX = true;
     private bool _wrapY = true;
-    private bool _showMovementVectors;
+    private bool _showMovementVectors = true;
     private bool _showShotImpacts = true;
-    private bool _showResourceGauges;
-    private bool _highlightTeleporters;
+    private bool _showResourceGauges = true;
+    private bool _highlightTeleporters = true;
     private bool _energyGridEnabled;
     private EnergyGridSize _energyGridSize = EnergyGridSize.Large;
     private bool _flickerMode;

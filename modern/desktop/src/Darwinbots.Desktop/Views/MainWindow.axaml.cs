@@ -2237,10 +2237,10 @@ public sealed partial class MainWindow : Window
     {
         _viewModel.LocalMode.SelectKind(LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex));
         _viewModel.LocalMode.Preset = PresetFromIndex(LocalModePreset.SelectedIndex);
-        _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds.Value, 1);
-        _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds.Value, 3);
-        _viewModel.LocalMode.MaximumCycles = ReadULong(ModeMaximumCycles.Value, 10_000);
-        _viewModel.LocalMode.MaximumPopulation = (int)Math.Clamp(ModePopulationCap.Value ?? 25_000m, 1m, 1_000_000m);
+        _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds.Value, 5);
+        _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds.Value, 1);
+        _viewModel.LocalMode.MaximumCycles = ReadULong(ModeMaximumCycles.Value, 15_000);
+        _viewModel.LocalMode.MaximumPopulation = (int)Math.Clamp(ModePopulationCap.Value ?? 700m, 1m, 1_000_000m);
         _viewModel.LocalMode.EnergyHandicap = (int)Math.Clamp(ModeEnergyHandicap.Value ?? 0m, -100_000m, 100_000m);
         _viewModel.LocalMode.RestartOnExtinction = ModeRestartOnExtinction.IsChecked == true;
         _viewModel.LocalMode.ProhibitInformationShots = ModeProhibitInformation.IsChecked == true;
