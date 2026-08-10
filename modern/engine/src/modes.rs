@@ -83,10 +83,10 @@ impl Default for LocalModeConfig {
         Self {
             kind: LocalModeKind::League,
             preset: LeaguePreset::F1,
-            minimum_rounds: 1,
-            maximum_rounds: 3,
-            maximum_cycles: 10_000,
-            maximum_population: 25_000,
+            minimum_rounds: 5,
+            maximum_rounds: 1,
+            maximum_cycles: 15_000,
+            maximum_population: 700,
             restart_on_extinction: true,
             energy_handicap: 0,
             source_species: None,
@@ -102,8 +102,8 @@ impl LocalModeConfig {
         if self.minimum_rounds == 0 {
             return Err("minimum rounds must be greater than zero".to_owned());
         }
-        if self.maximum_rounds < self.minimum_rounds {
-            return Err("maximum rounds must be at least the minimum rounds".to_owned());
+        if self.maximum_rounds == 0 {
+            return Err("maximum rounds must be greater than zero".to_owned());
         }
         if self.maximum_cycles == 0 {
             return Err("maximum cycles must be greater than zero".to_owned());

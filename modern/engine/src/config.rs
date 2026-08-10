@@ -25,11 +25,11 @@ pub struct PhysicsSettings {
 impl Default for PhysicsSettings {
     fn default() -> Self {
         Self {
-            max_velocity: 180.0,
+            max_velocity: 60.0,
             movement_efficiency: 0.66,
-            surface_gravity: 2.0,
-            static_friction: 0.6,
-            kinetic_friction: 0.4,
+            surface_gravity: 0.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
             density: 0.0,
             viscosity: 0.0,
             elasticity: 0.0,
@@ -84,11 +84,11 @@ pub struct CorpseDecaySettings {
 impl Default for CorpseDecaySettings {
     fn default() -> Self {
         Self {
-            enabled: true,
-            death_energy_threshold: 15,
-            mode: CorpseDecayMode::EnergyShot,
-            packet_size: 1,
-            period: 10,
+            enabled: false,
+            death_energy_threshold: 0,
+            mode: CorpseDecayMode::None,
+            packet_size: 0,
+            period: 0,
         }
     }
 }
@@ -124,7 +124,7 @@ impl Default for RecordingSettings {
 }
 
 fn default_sampling_interval() -> u64 {
-    10
+    200
 }
 
 impl Default for WasteSettings {
@@ -167,11 +167,11 @@ impl Default for VegetationSettings {
     fn default() -> Self {
         Self {
             start_chloroplasts: 16_000,
-            max_energy_per_tick: 40,
-            minimum_chloroplast_equivalents: 10,
+            max_energy_per_tick: 100,
+            minimum_chloroplast_equivalents: 50,
             repopulation_amount: 10,
-            repopulation_cooldown: 25,
-            feeding_to_body: 0.5,
+            repopulation_cooldown: 10,
+            feeding_to_body: 0.75,
             daytime: true,
             day_night_enabled: false,
             cycle_length: 10_000,
@@ -183,7 +183,7 @@ impl Default for VegetationSettings {
             weather_enabled: false,
             pond_mode: false,
             light_intensity: 100.0,
-            gradient: 1.0,
+            gradient: 1.02,
             tides: 0,
             tides_offset: 0,
             sun_on_random: false,
@@ -262,7 +262,7 @@ impl Default for EngineConfig {
             sunlight_energy: default_sunlight_energy(),
             gravity: [0.0, 0.0],
             drag: 0.0,
-            brownian_motion: 0.0,
+            brownian_motion: 0.5,
             physics: PhysicsSettings::default(),
             shots: ShotSettings::default(),
             corpse_decay: CorpseDecaySettings::default(),
