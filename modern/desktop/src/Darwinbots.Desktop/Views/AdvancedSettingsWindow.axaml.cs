@@ -44,7 +44,7 @@ public sealed partial class AdvancedSettingsWindow : Window
             DeadSnapshotEnabled.IsChecked == true,
             ExcludeRepopulatingRobots.IsChecked == true,
             (ulong)(AutosaveInterval.Value ?? 0),
-            (int)(SamplingInterval.Value ?? 10)));
+            (int)(SamplingInterval.Value ?? 200)));
 
     public AdvancedSettingsWindow() : this(EnvironmentUpdate.Default, EngineSnapshot.Empty) { }
     public AdvancedSettingsWindow(EnvironmentUpdate update, EngineSnapshot? snapshot = null, int selectedTab = 0)

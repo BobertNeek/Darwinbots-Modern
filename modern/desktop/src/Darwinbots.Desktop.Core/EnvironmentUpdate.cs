@@ -22,7 +22,7 @@ public sealed record Db2PhysicsOptions(
     float PlanetEatersG = 0f,
     bool ZeroMomentum = false)
 {
-    public static Db2PhysicsOptions Default { get; } = new(180f, 0.66f, 2f, 0.6f, 0.4f, 0d, 0d, 0f);
+    public static Db2PhysicsOptions Default { get; } = new(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f);
 
     public double ReynoldsNumber => Density * 60d / Math.Max(Viscosity, 1e-7d);
 
@@ -69,11 +69,11 @@ public enum Db2CorpseDecayMode
 }
 
 public sealed record Db2CorpseDecayOptions(
-    bool Enabled = true,
-    int DeathEnergyThreshold = 15,
-    Db2CorpseDecayMode Mode = Db2CorpseDecayMode.EnergyShot,
-    int PacketSize = 1,
-    ulong Period = 10);
+    bool Enabled = false,
+    int DeathEnergyThreshold = 0,
+    Db2CorpseDecayMode Mode = Db2CorpseDecayMode.None,
+    int PacketSize = 0,
+    ulong Period = 0);
 
 public sealed record Db2WasteOptions(
     int AlzheimerThreshold = 400,
@@ -84,7 +84,7 @@ public sealed record Db2RecordingOptions(
     bool DeadSnapshotEnabled = false,
     bool ExcludeRepopulatingRobots = false,
     ulong AutosaveInterval = 0,
-    int SamplingInterval = 10);
+    int SamplingInterval = 200);
 
 public sealed record Db2ShotOptions(
     float Speed,
@@ -118,7 +118,7 @@ public sealed record Db2VegetationOptions(
     int SunDownThreshold = 1_000_000,
     int SunThresholdMode = 0)
 {
-    public static Db2VegetationOptions Default { get; } = new(16_000, 40, 10, 10, 25, 0.5f, true, false, 10_000);
+    public static Db2VegetationOptions Default { get; } = new(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000, Gradient: 1.02f);
 }
 
 public sealed record EnvironmentUpdate(
@@ -141,7 +141,7 @@ public sealed record EnvironmentUpdate(
     Db2RecordingOptions? Recording = null)
 {
     public static EnvironmentUpdate Default { get; } = new(
-        0, 0, 100, [0f, 0f], 0f, 0f,
+        0, 0, 100, [0f, 0f], 0f, 0.5f,
         Db2PhysicsOptions.Default,
         Db2ShotOptions.Default,
         Db2VegetationOptions.Default,
@@ -327,11 +327,11 @@ public static class NativeCommandSerializer
 
     internal static object CorpseDecay(Db2CorpseDecayOptions? value) => new
     {
-        enabled = value?.Enabled ?? true,
-        death_energy_threshold = value?.DeathEnergyThreshold ?? 15,
-        mode = (value?.Mode ?? Db2CorpseDecayMode.EnergyShot).ToString().ToLowerInvariant(),
-        packet_size = value?.PacketSize ?? 1,
-        period = value?.Period ?? 10,
+        enabled = value?.Enabled ?? false,
+        death_energy_threshold = value?.DeathEnergyThreshold ?? 0,
+        mode = (value?.Mode ?? Db2CorpseDecayMode.None).ToString().ToLowerInvariant(),
+        packet_size = value?.PacketSize ?? 0,
+        period = value?.Period ?? 0,
     };
 
     internal static object Waste(Db2WasteOptions? value) => new
@@ -346,7 +346,7 @@ public static class NativeCommandSerializer
         dead_snapshot_enabled = value?.DeadSnapshotEnabled ?? false,
         exclude_repopulating_robots = value?.ExcludeRepopulatingRobots ?? false,
         autosave_interval = value?.AutosaveInterval ?? 0,
-        sampling_interval = value?.SamplingInterval ?? 10,
+        sampling_interval = value?.SamplingInterval ?? 200,
     };
 
     private static object Species(SpeciesImport value) => new

@@ -11,7 +11,7 @@ public sealed record DesktopSettings
     public string Backend { get; init; } = "Auto";
     public uint TicksPerUpdate { get; init; } = 1;
     public uint SnapshotEveryTicks { get; init; } = 1;
-    public int OrganismCapacity { get; init; } = 100_000;
+    public int OrganismCapacity { get; init; } = 25_000;
     public float WorldWidth { get; init; } = 16_000f;
     public float WorldHeight { get; init; } = 12_000f;
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
@@ -23,7 +23,7 @@ public sealed record DesktopSettings
     public int SunlightEnergy { get; init; } = 100;
     public float[] Gravity { get; init; } = [0f, 0f];
     public float Drag { get; init; }
-    public float BrownianMotion { get; init; }
+    public float BrownianMotion { get; init; } = 0.5f;
     public Db2PhysicsOptions Physics { get; init; } = Db2PhysicsOptions.Default;
     public Db2ShotOptions Shots { get; init; } = Db2ShotOptions.Default;
     public Db2CorpseDecayOptions CorpseDecay { get; init; } = new();
@@ -135,7 +135,7 @@ public sealed record DesktopSettings
         Backend = ReadString(root, "backend", "Auto"),
         TicksPerUpdate = ReadUInt(root, "ticksPerUpdate", 1),
         SnapshotEveryTicks = ReadUInt(root, "snapshotEvery", 1),
-        OrganismCapacity = ReadInt(root, "capacity", 100_000),
+        OrganismCapacity = ReadInt(root, "capacity", 25_000),
         WorldWidth = ReadFloat(root, "worldWidth", 16_000f),
         WorldHeight = ReadFloat(root, "worldHeight", 12_000f),
     };
