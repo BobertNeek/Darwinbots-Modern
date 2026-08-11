@@ -1,5 +1,43 @@
 use darwinbots_engine::{DnaBlock, DnaMetadata, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
 
+struct DnaFixtureContract {
+    name: &'static str,
+    source: &'static str,
+    genes: usize,
+    comment_marker: &'static str,
+    tag: &'static str,
+    aliases: &'static [(&'static str, i32)],
+}
+
+const BUNDLED_DNA_FIXTURES: &[DnaFixtureContract] = &[
+    DnaFixtureContract {
+        name: "Alga Minimalis",
+        source: include_str!("../../../Installer/bots/Alga_Minimalis_Chloroplastus.txt"),
+        genes: 3,
+        comment_marker: "new gene from",
+        tag: "",
+        aliases: &[],
+    },
+    DnaFixtureContract {
+        name: "Animal Minimalis",
+        source: include_str!("../../../Installer/bots/Animal_Minimalis.txt"),
+        genes: 4,
+        comment_marker: "Food Finder",
+        tag: "",
+        aliases: &[],
+    },
+    DnaFixtureContract {
+        name: "Fruit Flies v0.21",
+        source: include_str!(
+            "../../../Installer/bots/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt"
+        ),
+        genes: 1,
+        comment_marker: "-- Birth",
+        tag: "Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+        aliases: &[("maxpop", 1000), ("type", 973)],
+    },
+];
+
 const ALL_CANONICAL_TOKENS: &str = r#"
 DeF ThReShOlD 50
 *ThReShOlD .ThReShOlD
@@ -565,4 +603,70 @@ fn detokenization_never_emits_an_unmapped_command() {
 
     assert!(reparsed.compatibility_warnings().is_empty());
     assert_eq!(reparsed.blocks(), dna.blocks());
+}
+
+#[test]
+fn bundled_dna_metadata_hash_and_detokenization_contract_is_table_driven() {
+    for fixture in BUNDLED_DNA_FIXTURES {
+        let dna = LegacyDna::parse(fixture.source)
+            .unwrap_or_else(|error| panic!("{} fixture must parse: {error}", fixture.name));
+        let blocks = dna.blocks();
+        let flow_count = |value: i32| {
+            blocks
+                .iter()
+                .filter(|block| block.class == TokenClass::Flow && block.value == value)
+                .count()
+        };
+
+        assert!(fixture.source.contains(fixture.comment_marker));
+        assert!(blocks.len() <= MAX_DNA_BLOCKS);
+        assert_eq!(
+            blocks.last(),
+            Some(&DnaBlock {
+                class: TokenClass::End,
+                value: 1,
+            }),
+            "{} must end with the master end token",
+            fixture.name
+        );
+        assert_eq!(
+            blocks.iter().filter(|block| block.class == TokenClass::End).count(),
+            1,
+            "{} must contain one gene terminator",
+            fixture.name
+        );
+        assert_eq!(flow_count(1), fixture.genes, "{} cond boundaries", fixture.name);
+        assert_eq!(flow_count(2), fixture.genes, "{} start boundaries", fixture.name);
+        assert_eq!(flow_count(4), fixture.genes, "{} stop boundaries", fixture.name);
+
+        assert_eq!(dna.metadata().tag, fixture.tag);
+        for &(alias, value) in fixture.aliases {
+            assert_eq!(dna.user_variable(alias), Some(value), "{} alias {alias}", fixture.name);
+        }
+
+        let canonical = dna.to_source();
+        assert!(canonical.contains("'#hash: "));
+        assert!(!canonical.contains(fixture.comment_marker));
+
+        let reparsed = LegacyDna::parse(&canonical)
+            .unwrap_or_else(|error| panic!("{} canonical source must reparse: {error}", fixture.name));
+        assert_eq!(reparsed.blocks(), blocks, "{} token round trip", fixture.name);
+        assert_eq!(reparsed.metadata().generation, dna.metadata().generation);
+        assert_eq!(reparsed.metadata().mutations, dna.metadata().mutations);
+        assert_eq!(reparsed.metadata().tag, fixture.tag);
+        assert!(reparsed.metadata().hash_valid, "{} hash", fixture.name);
+        assert_eq!(reparsed.metadata().legacy_hash.as_deref().map(str::len), Some(20));
+        assert_eq!(reparsed.to_source(), canonical, "{} canonical stability", fixture.name);
+    }
+
+    for (name, invalid_source) in [
+        ("invalid generation", "'#generation: nope\nstart\nstop\n"),
+        ("invalid mutations", "'#mutations: nope\nstart\nstop\n"),
+        ("invalid alias", "def broken nope\nstart\nstop\n"),
+    ] {
+        assert!(
+            LegacyDna::parse(invalid_source).is_err(),
+            "{name} DNA must be rejected atomically"
+        );
+    }
 }
