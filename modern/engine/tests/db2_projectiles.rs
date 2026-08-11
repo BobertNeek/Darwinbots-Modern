@@ -335,6 +335,94 @@ fn positive_memory_shot_writes_the_target_address() {
 }
 
 #[test]
+fn moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants() {
+    let mut config = darwinbots_engine::EngineConfig::default();
+    config.backend = darwinbots_engine::BackendPreference::Cpu;
+    config.world_width = 512.0;
+    config.world_height = 256.0;
+    config.fixed_bot_radii = true;
+
+    let mut engine = darwinbots_engine::Engine::new(config).unwrap();
+
+    let mut obstacle = darwinbots_engine::Obstacle::new(95, [200.0, 96.0], [240.0, 128.0]);
+    obstacle.drift = [1.0, 0.0];
+    engine.add_obstacle(obstacle).unwrap();
+
+    let mover_and_shooter = darwinbots_engine::LegacyDna::parse(
+        "cond\n*.robage 0 =\nstart\n30 .veldx store\n100 .shoot store\nstop",
+    )
+    .unwrap();
+    let mover = engine.spawn_at(mover_and_shooter, [180.0, 112.0]).unwrap();
+
+    engine.tick().unwrap();
+    engine.move_organism(mover, [180.0, 112.0]).unwrap();
+    engine.tick().unwrap();
+    let collision_snapshot = engine.snapshot();
+    let collision_mover = collision_snapshot
+        .organisms
+        .iter()
+        .find(|organism| organism.id == mover)
+        .expect("moving robot must remain present after obstacle contact");
+    let collision_obstacle = collision_snapshot
+        .obstacles
+        .iter()
+        .find(|obstacle| obstacle.id == 95)
+        .expect("real obstacle must remain in the published snapshot");
+    // DB2 resolves obstacle collision before NetForces, movement, and position publication.
+    let expanded_minimum = [
+        collision_obstacle.minimum[0] - collision_mover.radius,
+        collision_obstacle.minimum[1] - collision_mover.radius,
+    ];
+    let expanded_maximum = [
+        collision_obstacle.maximum[0] + collision_mover.radius,
+        collision_obstacle.maximum[1] + collision_mover.radius,
+    ];
+    let inside_expanded_obstacle = collision_mover.position[0] >= expanded_minimum[0]
+        && collision_mover.position[0] <= expanded_maximum[0]
+        && collision_mover.position[1] >= expanded_minimum[1]
+        && collision_mover.position[1] <= expanded_maximum[1];
+    let penetration = if inside_expanded_obstacle {
+        let left = (collision_mover.position[0] - expanded_minimum[0]).max(0.0);
+        let right = (expanded_maximum[0] - collision_mover.position[0]).max(0.0);
+        let above = (collision_mover.position[1] - expanded_minimum[1]).max(0.0);
+        let below = (expanded_maximum[1] - collision_mover.position[1]).max(0.0);
+        left.min(right).min(above).min(below)
+    } else {
+        0.0
+    };
+    let allowed_reentry = collision_obstacle.drift[0]
+        .abs()
+        .max(collision_obstacle.drift[1].abs())
+        + 0.05;
+    assert!(
+        penetration <= allowed_reentry,
+        "radius-aware obstacle re-entry must be bounded: penetration={penetration}, allowed={allowed_reentry}, position={:?}, velocity={:?}",
+        collision_mover.position,
+        collision_mover.velocity
+    );
+
+    engine.tick_many(8).unwrap();
+    let snapshot = engine.snapshot();
+
+    let final_obstacle = snapshot
+        .obstacles
+        .iter()
+        .find(|obstacle| obstacle.id == 95)
+        .expect("obstacle must still be published");
+    assert_eq!(final_obstacle.drift, [1.0, 0.0]);
+    assert!((final_obstacle.maximum[0] - final_obstacle.minimum[0] - 40.0).abs() < 0.01);
+    assert!((final_obstacle.maximum[1] - final_obstacle.minimum[1] - 32.0).abs() < 0.01);
+    assert!(final_obstacle.minimum[0] >= 0.0);
+    assert!(final_obstacle.maximum[0] <= snapshot.world_size[0]);
+
+    assert!(
+        snapshot.stats.projectile_impacts > 0
+            || snapshot.shots.iter().any(|shot| shot.impact_flash),
+        "the moving projectile must be intercepted by the obstacle before reaching the far edge"
+    );
+}
+
+#[test]
 fn obstacle_intercepts_projectile_before_target() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

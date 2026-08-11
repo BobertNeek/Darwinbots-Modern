@@ -305,6 +305,7 @@ impl FileTeleporter {
 }
 
 pub(crate) fn apply_world_features(
+    radii: &[f32],
     positions: &mut [[f32; 2]],
     velocities: &mut [[f32; 2]],
     alive: &[bool],
@@ -317,6 +318,12 @@ pub(crate) fn apply_world_features(
             continue;
         }
         for obstacle in obstacles {
+            let radius = radii.get(slot).copied().unwrap_or_default().max(0.0);
+            let obstacle = Obstacle {
+                minimum: [obstacle.minimum[0] - radius, obstacle.minimum[1] - radius],
+                maximum: [obstacle.maximum[0] + radius, obstacle.maximum[1] + radius],
+                ..obstacle.clone()
+            };
             let position = &mut positions[slot];
             if position[0] < obstacle.minimum[0]
                 || position[0] > obstacle.maximum[0]

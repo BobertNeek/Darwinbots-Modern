@@ -8458,6 +8458,19 @@ impl Engine {
                 .map(|slot| slot.organism.is_some())
                 .collect();
             crate::environment::apply_world_features(
+                &self
+                    .slots
+                    .iter()
+                    .map(|slot| {
+                        slot.organism.as_ref().map_or(0.0, |robot| {
+                            crate::physics::organism_radius(
+                                robot.materials.body,
+                                robot.materials.chloroplasts,
+                                self.config.fixed_bot_radii,
+                            )
+                        })
+                    })
+                    .collect::<Vec<_>>(),
                 &mut positions,
                 &mut velocities,
                 &alive,
