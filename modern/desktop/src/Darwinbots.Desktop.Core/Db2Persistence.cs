@@ -395,7 +395,8 @@ public sealed record Db2OrganismFile(
     [property: JsonPropertyName("version")] ushort Version,
     [property: JsonPropertyName("tick")] ulong Tick,
     [property: JsonPropertyName("members")] IReadOnlyList<Db2OrganismMember> Members,
-    [property: JsonPropertyName("ties")] IReadOnlyList<Db2OrganismTie> Ties)
+    [property: JsonPropertyName("ties")] IReadOnlyList<Db2OrganismTie> Ties,
+    [property: JsonPropertyName("selected_member")] Db2OrganismKey? SelectedMember = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -407,7 +408,7 @@ public sealed record Db2OrganismFile(
     {
         if (Version == 0 || Version > 1) throw new InvalidDataException($"Unsupported DB2 organism version {Version}.");
         if (Members.Count == 0) throw new InvalidDataException("DB2 organism file has no members.");
-        var payload = JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(Normalize(), JsonOptions);
         var bytes = new byte[6 + payload.Length];
         Encoding.ASCII.GetBytes("DB2O").CopyTo(bytes, 0);
         BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(4), Version);
@@ -424,7 +425,46 @@ public sealed record Db2OrganismFile(
             ?? throw new InvalidDataException("DB2 organism document is empty.");
         if (version == 0 || version > 1 || file.Members.Count == 0)
             throw new InvalidDataException("DB2 organism document is invalid.");
-        return file with { Version = version };
+        return (file with { Version = version }).Normalize();
+    }
+
+    private Db2OrganismFile Normalize()
+    {
+        var selected = SelectedMember ?? new Db2OrganismKey(Members[0].Slot, Members[0].Generation);
+        var selectedIndex = -1;
+        for (var index = 0; index < Members.Count; index++)
+        {
+            if (Members[index].Slot == selected.Slot && Members[index].Generation == selected.Generation)
+            {
+                selectedIndex = index;
+                break;
+            }
+        }
+
+        if (selectedIndex < 0)
+            throw new InvalidDataException("DB2 organism selected member is not in the member list.");
+
+        var anchor = Members[selectedIndex].Position;
+        var members = Members
+            .Select((member, index) => (member, index))
+            .OrderBy(value => value.index == selectedIndex ? 0 : 1)
+            .ThenBy(value => value.index)
+            .Select(value => value.member with
+            {
+                RelativePosition = RelativePositionFrom(anchor, value.member.Position),
+            })
+            .ToArray();
+        return this with { SelectedMember = selected, Members = members };
+    }
+
+    private static float[] RelativePositionFrom(float[] anchor, float[] position)
+    {
+        if (anchor.Length != 2 || position.Length != 2)
+            throw new InvalidDataException("DB2 organism positions must contain two coordinates.");
+        var relative = new[] { position[0] - anchor[0], position[1] - anchor[1] };
+        if (relative.Any(value => !float.IsFinite(value)))
+            throw new InvalidDataException("DB2 organism positions must be finite.");
+        return relative;
     }
 }
 
@@ -441,7 +481,8 @@ public sealed record Db2OrganismMember(
     [property: JsonPropertyName("energy")] int Energy,
     [property: JsonPropertyName("age")] ulong Age,
     [property: JsonPropertyName("birth_cycle")] ulong BirthCycle,
-    [property: JsonPropertyName("body")] int Body);
+    [property: JsonPropertyName("body")] int Body,
+    [property: JsonPropertyName("relative_position")] float[]? RelativePosition = null);
 
 public sealed record Db2OrganismTie(
     [property: JsonPropertyName("first")] Db2OrganismKey First,

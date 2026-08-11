@@ -227,4 +227,63 @@ public sealed class Db2PersistenceTests
         Assert.Equal(321, member.Body);
         Assert.Empty(actual.Ties);
     }
+
+    [Fact]
+    public void OrganismCodecRoundTripsMultiMemberRelativePlacementTiesAndSelectionOrder()
+    {
+        var expected = new Db2OrganismFile(
+            1,
+            812,
+            [
+                new Db2OrganismMember(
+                    7,
+                    3,
+                    "stop",
+                    0,
+                    false,
+                    false,
+                    false,
+                    [100f, 200f],
+                    [1f, -2f],
+                    777,
+                    91,
+                    44,
+                    321,
+                    [0f, 0f]),
+                new Db2OrganismMember(
+                    12,
+                    5,
+                    "stop",
+                    0,
+                    false,
+                    false,
+                    false,
+                    [138f, 226f],
+                    [0f, 3f],
+                    555,
+                    12,
+                    8,
+                    222,
+                    [38f, 26f]),
+            ],
+            [new Db2OrganismTie(
+                new Db2OrganismKey(7, 3),
+                new Db2OrganismKey(12, 5),
+                42.5f)],
+            new Db2OrganismKey(7, 3));
+
+        var actual = Db2OrganismFile.Decode(expected.Encode());
+
+        Assert.Equal(new Db2OrganismKey(7, 3), actual.SelectedMember);
+        Assert.Equal([(7u, 3u), (12u, 5u)],
+            actual.Members.Select(member => (member.Slot, member.Generation)));
+        Assert.Equal([0f, 0f], actual.Members[0].RelativePosition!);
+        Assert.Equal([38f, 26f], actual.Members[1].RelativePosition!);
+        Assert.Equal([100f, 200f], actual.Members[0].Position);
+        Assert.Equal([138f, 226f], actual.Members[1].Position);
+        var tie = Assert.Single(actual.Ties);
+        Assert.Equal((7u, 3u), (tie.First.Slot, tie.First.Generation));
+        Assert.Equal((12u, 5u), (tie.Second.Slot, tie.Second.Generation));
+        Assert.Equal(42.5f, tie.RestLength);
+    }
 }
