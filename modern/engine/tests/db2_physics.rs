@@ -30,6 +30,28 @@ fn physical_radius_is_derived_from_body_like_db2() {
 }
 
 #[test]
+fn fixed_bot_radii_config_survives_save_and_uses_db2_half_radius() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["config"]["fixed_bot_radii"] = serde_json::json!(true);
+    let payload = serde_json::to_vec(&payload).unwrap();
+
+    let mut fixed_radius_save = Vec::with_capacity(10 + payload.len());
+    fixed_radius_save.extend_from_slice(&encoded[..6]);
+    fixed_radius_save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    fixed_radius_save.extend_from_slice(&payload);
+
+    let restored = SaveFile::decode(&fixed_radius_save).unwrap();
+    let radius = restored.snapshot().render_instances[0].radius;
+    assert_eq!(radius, 60.0);
+}
+
+#[test]
 fn movement_command_adds_impulse_and_bot_coasts_without_new_thrust() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

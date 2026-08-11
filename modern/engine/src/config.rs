@@ -202,6 +202,8 @@ pub struct EngineConfig {
     #[serde(default = "default_toroidal_world")]
     pub toroidal_world: bool,
     #[serde(default)]
+    pub fixed_bot_radii: bool,
+    #[serde(default)]
     pub axis_topology: Option<[bool; 2]>,
     pub backend: BackendPreference,
     pub allow_cpu_fallback: bool,
@@ -254,6 +256,7 @@ impl Default for EngineConfig {
             world_width: 16_000.0,
             world_height: 12_000.0,
             toroidal_world: default_toroidal_world(),
+            fixed_bot_radii: false,
             axis_topology: None,
             backend: BackendPreference::Auto,
             allow_cpu_fallback: true,

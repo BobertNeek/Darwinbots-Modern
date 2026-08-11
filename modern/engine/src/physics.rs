@@ -224,7 +224,11 @@ pub trait PhysicsBackend {
     fn step(&mut self, batch: &mut PhysicsBatch) -> Result<(), EngineError>;
 }
 
-pub(crate) fn organism_radius(body: i32, chloroplasts: i32) -> f32 {
+pub(crate) fn organism_radius(body: i32, chloroplasts: i32, fixed_bot_radii: bool) -> f32 {
+    if fixed_bot_radii {
+        return 60.0;
+    }
+
     const CUBIC_TWIPS_PER_BODY: f32 = 905.0;
     const FULL_CHLOROPLAST_RADIUS: f32 = 415.0;
 
