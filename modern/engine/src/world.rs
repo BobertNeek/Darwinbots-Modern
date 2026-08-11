@@ -6264,6 +6264,10 @@ impl Engine {
         });
         self.refresh_tie_projections();
         self.apply_tie_structural_commands(&phase_commands);
+        for tie in &mut self.ties {
+            tie.sharing_first = false;
+            tie.sharing_second = false;
+        }
 
         let mut resource_channels = Vec::new();
         for tie in &self.ties {
@@ -6316,7 +6320,7 @@ impl Engine {
 
         let mut channels = Vec::new();
         let mut chloroplast_delay_requests = Vec::new();
-        for tie in self.ties.iter().filter(|tie| tie.hardened) {
+        for (tie_index, tie) in self.ties.iter().enumerate().filter(|(_, tie)| tie.hardened) {
             for (source_slot, target_slot) in [
                 (tie.first.slot() as usize, tie.second.slot() as usize),
                 (tie.second.slot() as usize, tie.first.slot() as usize),
@@ -6356,6 +6360,7 @@ impl Engine {
                     }
                 };
                 channels.push((
+                    tie_index,
                     source_slot,
                     target_slot,
                     commands.share_energy.clamp(0, 99),
@@ -6373,7 +6378,7 @@ impl Engine {
             }
         }
 
-        for (source, target, energy, waste, shell, slime, chloroplasts) in channels {
+        for (tie_index, source, target, energy, waste, shell, slime, chloroplasts) in channels {
             let source_id = OrganismId::new(source as u32, self.slots[source].generation);
             let target_id = OrganismId::new(target as u32, self.slots[target].generation);
             let energy_amount =
@@ -6404,6 +6409,14 @@ impl Engine {
                 transfer_robot_percent(&mut self.slots, source, target, shell, |robot| {
                     &mut robot.materials.shell
                 });
+            if shell_amount != 0 {
+                let tie = &mut self.ties[tie_index];
+                if source == tie.first.slot() as usize {
+                    tie.sharing_first = true;
+                } else if source == tie.second.slot() as usize {
+                    tie.sharing_second = true;
+                }
+            }
             if trace.is_enabled() && shell_amount != 0 {
                 trace.effect(
                     CyclePhase::Tie,
@@ -6699,6 +6712,7 @@ impl Engine {
                 current_length,
                 requested_length: tie.rest_length,
                 countdown: tie.last,
+                sharing_marker: i32::from(tie.sharing_first),
                 spring_velocity,
                 ..TieEndpointState::default()
             });
@@ -6712,6 +6726,7 @@ impl Engine {
                 current_length,
                 requested_length: tie.rest_length,
                 countdown: tie.last,
+                sharing_marker: i32::from(tie.sharing_second),
                 spring_velocity,
                 ..TieEndpointState::default()
             });

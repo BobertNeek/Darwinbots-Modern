@@ -31,6 +31,10 @@ pub(crate) struct TieState {
     #[serde(default)]
     pub(crate) information: bool,
     #[serde(default)]
+    pub(crate) sharing_first: bool,
+    #[serde(default)]
+    pub(crate) sharing_second: bool,
+    #[serde(default)]
     pub(crate) requested_angle: f32,
     #[serde(default)]
     pub(crate) angle_fixed: bool,
@@ -57,6 +61,8 @@ impl TieState {
             k: SOFT_TIE_K,
             hardened: false,
             information: false,
+            sharing_first: false,
+            sharing_second: false,
             requested_angle: 0.0,
             angle_fixed: false,
             angle_initialized: false,
@@ -81,6 +87,8 @@ impl TieState {
             k: HARD_TIE_K,
             hardened: true,
             information: false,
+            sharing_first: false,
+            sharing_second: false,
             requested_angle: 0.0,
             angle_fixed: false,
             angle_initialized: false,

@@ -1203,6 +1203,69 @@ fn sharing_requires_hardening() {
 }
 
 #[test]
+fn hardened_shell_share_marks_only_the_forward_tie_endpoint() {
+    let mut engine = Engine::new(tie_test_config()).unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start\n100 .mkshell store\n41 .tie store\nstop").unwrap(),
+            [400.0, 1_000.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 1_000.0])
+        .unwrap();
+    engine.tick().unwrap();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n50 .shareshell store\nstop").unwrap(),
+        )
+        .unwrap();
+
+    engine.tick_many(18).unwrap();
+    assert_eq!(engine.snapshot().tick, 19);
+    assert_eq!(engine.organism(source).unwrap().shell, 100);
+    assert_eq!(engine.organism(target).unwrap().shell, 0);
+
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().tick, 20);
+    assert!(engine.snapshot().ties[0].hardened);
+    assert_eq!(engine.organism(source).unwrap().shell, 50);
+    assert_eq!(engine.organism(target).unwrap().shell, 50);
+    assert_eq!(engine.memory(source, "shareshell").unwrap(), 0);
+    assert_eq!(
+        engine.robot_state(source).unwrap().ties[0].unwrap().sharing_marker,
+        1
+    );
+    assert_eq!(
+        engine.robot_state(target).unwrap().ties[0].unwrap().sharing_marker,
+        0
+    );
+
+    engine
+        .replace_dna(source, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine
+        .replace_dna(
+            target,
+            LegacyDna::parse("start\n50 .shareshell store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.organism(source).unwrap().shell, 75);
+    assert_eq!(engine.organism(target).unwrap().shell, 25);
+    assert_eq!(engine.memory(target, "shareshell").unwrap(), 0);
+    assert_eq!(
+        engine.robot_state(source).unwrap().ties[0].unwrap().sharing_marker,
+        0
+    );
+    assert_eq!(
+        engine.robot_state(target).unwrap().ties[0].unwrap().sharing_marker,
+        1
+    );
+}
+
+#[test]
 fn tie_breaks_when_surface_gap_exceeds_one_thousand() {
     let (mut engine, source, target) = spawn_soft_tie();
     let source_radius = engine
