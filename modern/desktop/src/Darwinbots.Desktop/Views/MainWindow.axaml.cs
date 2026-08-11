@@ -1604,17 +1604,11 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var random = new Random(unchecked((int)_session.LatestSnapshot.Tick + 0x4d42));
+        var placement = new SeededSpawnPlacement(
+            _setup.Seed ^ _session.LatestSnapshot.Tick ^ 0x4d42UL);
         var width = (float)_setup.WorldWidth;
         var height = (float)_setup.WorldHeight;
-        var shapes = Enumerable.Range(0, count).Select(_ =>
-        {
-            var shapeWidth = width * (0.025f + (float)random.NextDouble() * 0.09f);
-            var shapeHeight = height * (0.015f + (float)random.NextDouble() * 0.07f);
-            var x = (float)random.NextDouble() * Math.Max(1, width - shapeWidth);
-            var y = (float)random.NextDouble() * Math.Max(1, height - shapeHeight);
-            return (Minimum: new[] { x, y }, Maximum: new[] { x + shapeWidth, y + shapeHeight });
-        });
+        var shapes = placement.NextObstacles(count, width, height);
         await AddObstaclesAsync(shapes);
         return LegacyCommandResult.Success($"ADDED {count} RANDOM SHAPES");
     }
