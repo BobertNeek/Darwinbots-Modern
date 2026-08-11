@@ -83,4 +83,42 @@ public sealed class OfflineDiagnosticRecoveryTests
         Assert.Contains("RECOVERY READY", recovered.Status, StringComparison.Ordinal);
         Assert.False(diagnostics.IsInTray);
     }
+
+    [Fact]
+    public async Task FailedLoadExposesSafeModeFaultWindowAndValidRecoveryPublishesCheckpointWithoutMutatingFailedState()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        EngineSnapshot? visibleSnapshot = null;
+        session.SnapshotPublished += snapshot => visibleSnapshot = snapshot;
+
+        await session.StepAsync(7);
+        var checkpointSave = await session.SaveAsync();
+        var checkpoint = session.LatestSnapshot;
+        var recoveryArtifact = @"C:\recovery\autosave-7.db3s";
+        var diagnostics = new OfflineDiagnosticRecovery();
+        diagnostics.BeginSession(@"C:\recovery\last-start.json");
+        diagnostics.RecordCheckpoint(checkpoint.Tick, recoveryArtifact);
+
+        await session.StepAsync(5);
+        var failedPreState = session.LatestSnapshot;
+        Assert.Same(failedPreState, visibleSnapshot);
+
+        var fault = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => session.LoadAsync([1, 2, 3]));
+        var decision = diagnostics.HandleError(fault, failedPreState.Tick, diagnostics.RecoveryArtifactPath);
+
+        Assert.Equal(DiagnosticRecoveryAction.Recover, decision.Action);
+        Assert.True(decision.StopSimulation);
+        Assert.Equal(new FaultWindow(checkpoint.Tick, failedPreState.Tick), decision.FaultWindow);
+        Assert.Contains("RECOVERY READY", decision.Status, StringComparison.Ordinal);
+        Assert.Contains("FAULT WINDOW 7–12", decision.Status, StringComparison.Ordinal);
+        Assert.Equal(failedPreState, session.LatestSnapshot);
+        Assert.Same(failedPreState, visibleSnapshot);
+
+        await session.LoadAsync(checkpointSave);
+
+        Assert.NotSame(failedPreState, session.LatestSnapshot);
+        Assert.Equal(checkpoint.Tick, session.LatestSnapshot.Tick);
+        Assert.Equal(checkpoint.Tick, visibleSnapshot!.Tick);
+    }
 }
