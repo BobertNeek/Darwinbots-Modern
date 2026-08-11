@@ -52,6 +52,19 @@ fn assert_event_rejected_atomically(event: StandardMutationEvent) {
 fn standard_profile_defaults_match_db24832() {
     let profile = StandardMutationProfile::default();
 
+    assert_eq!(profile.point2.one_in, 5_000.0);
+    assert_eq!(profile.point2.mean, 3.0);
+    assert_eq!(profile.point2.std_dev, 1.0);
+    assert_eq!(profile.copy_error2.one_in, 5_000.0);
+    assert_eq!(profile.copy_error2.mean, 1.0);
+    assert_eq!(profile.copy_error2.std_dev, 0.0);
+    assert_eq!(profile.amplification.one_in, 5_000.0);
+    assert_eq!(profile.amplification.mean, 250.0);
+    assert_eq!(profile.amplification.std_dev, 75.0);
+    assert_eq!(profile.translocation.one_in, 5_000.0);
+    assert_eq!(profile.translocation.mean, 250.0);
+    assert_eq!(profile.translocation.std_dev, 75.0);
+
     assert_eq!(
         profile.point,
         MutationRate {
