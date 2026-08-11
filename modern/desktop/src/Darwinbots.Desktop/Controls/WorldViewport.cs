@@ -349,10 +349,17 @@ public sealed class WorldViewport : Control
         var organismRadius = _snapshot.RenderInstances
             .FirstOrDefault(instance => KeyOf(instance) == selected)?.Radius ?? 8f;
         var sectors = OrganismVisualGeometry.EyeSectors(organism.Vision, organism.Aim, organismRadius);
-        foreach (var sector in sectors)
+        for (var index = 0; index < sectors.Length; index++)
         {
+            var sector = sectors[index];
+            var eye = organism.Vision.Eyes is { Length: > 0 } eyes && index < eyes.Length
+                ? eyes[index]
+                : null;
+            var range = eye is { Value: > 0 }
+                ? 1.0 / Math.Sqrt(eye.Value) * (sector.Range + organismRadius) + organismRadius
+                : sector.Range;
             var screenRange = Math.Clamp(
-                sector.Range * radiusScale,
+                range * radiusScale,
                 18.0,
                 Math.Max(18.0, Math.Min(Bounds.Width, Bounds.Height) * 0.46));
             DrawVisionSector(context, center, screenRange, sector);

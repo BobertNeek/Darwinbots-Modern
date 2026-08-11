@@ -11,6 +11,77 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class FinalToolsVisualRenderedTests
 {
     [Fact]
+    public async Task SelectedEyeRayUsesCurrentEyeValueToChangeItsRenderedRange()
+    {
+        var focus = new OrganismKey(7, 3);
+        var baseOrganism = new OrganismSnapshot(
+            7,
+            3,
+            [50f, 50f],
+            [0f, 0f],
+            875,
+            19)
+        {
+            Radius = 12.5f,
+            Vision = new VisionSnapshot(
+                0,
+                [new EyeSnapshot(0, 35, 0f, 0.05f, 1_440f, 0)]),
+        };
+        var renderInstance = new RenderInstanceSnapshot(7, [50f, 50f], 12.5f, 0xff123456)
+        {
+            Generation = 3,
+        };
+        var wideVision = new EngineSnapshot(27, 1, "CPU", [baseOrganism])
+        {
+            RenderInstances = [renderInstance],
+            WorldSize = [100f, 100f],
+        };
+        var observedVision = wideVision with
+        {
+            Organisms =
+            [
+                baseOrganism with
+                {
+                    Vision = new VisionSnapshot(
+                        0,
+                        [new EyeSnapshot(0, 35, 0f, 0.05f, 1_440f, 32_000)]),
+                },
+            ],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var viewport = new WorldViewport
+            {
+                Width = 480,
+                Height = 360,
+                RenderSkins = false,
+                ShowMovementVectors = false,
+                ShowResourceGauges = false,
+            };
+            viewport.SetSnapshot(wideVision);
+            viewport.SelectKey(focus);
+            var viewportHost = new Window
+            {
+                Width = 480,
+                Height = 360,
+                Content = viewport,
+            };
+            viewportHost.Show();
+
+            var fullRangeFrame = CapturePng(viewportHost);
+            viewport.SetSnapshot(observedVision);
+            var observedRangeFrame = CapturePng(viewportHost);
+
+            Assert.False(
+                fullRangeFrame.SequenceEqual(observedRangeFrame),
+                "A nonzero eye reading must change the selected eye ray in the rendered viewport.");
+
+            viewportHost.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task LiveToolsAndWorldReceiptShowCompleteRobotFactsAndLegacyShotEncoding()
     {
         var focus = new OrganismKey(7, 3);
@@ -119,5 +190,14 @@ public sealed class FinalToolsVisualRenderedTests
             details.Close();
             viewportHost.Close();
         }, CancellationToken.None);
+    }
+
+    private static byte[] CapturePng(Window window)
+    {
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        using var frame = window.CaptureRenderedFrame();
+        using var stream = new MemoryStream();
+        frame.Save(stream, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+        return stream.ToArray();
     }
 }
