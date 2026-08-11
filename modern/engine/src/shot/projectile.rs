@@ -107,6 +107,24 @@ mod tests {
         assert_eq!(pool.capacity(), 100);
         assert_eq!(pool.live_slots(), (0..21).collect::<Vec<_>>());
     }
+
+    #[test]
+    fn db24832_impact_decay_uses_age_before_the_current_tick_increment() {
+        let mut pool = ProjectilePool::default();
+        let settings = ShotSettings::default();
+        pool.spawn_energy_packet(
+            OrganismId::new(1, 0),
+            [100.0, 100.0],
+            [0.0, 0.0],
+            1,
+            1,
+        );
+
+        pool.advance(&settings, [1_000.0, 1_000.0], [false, false]);
+        pool.mark_impact(0, 0.0, &settings);
+
+        assert_eq!(pool.energies[0], 40.0);
+    }
 }
 
 impl ProjectilePool {
@@ -602,7 +620,8 @@ impl ProjectilePool {
             || (self.kinds[slot] == -4 && settings.waste_shots_do_not_decay);
         if !no_decay {
             let range = self.ranges[slot].max(1) as f32;
-            let progress = self.ages[slot] as f32 / range;
+            let age_before_advance = self.ages[slot].saturating_sub(1);
+            let progress = age_before_advance as f32 / range;
             let decay = settings.decay.max(f32::EPSILON);
             let ratio = ((progress * decay - decay).atan() / (-decay).atan()).clamp(0.0, 1.0);
             self.energies[slot] *= ratio;
