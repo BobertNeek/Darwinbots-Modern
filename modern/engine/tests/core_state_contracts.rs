@@ -5,8 +5,8 @@ use darwinbots_engine::ffi::{
     DbBuffer, DbStatus,
 };
 use darwinbots_engine::{
-    Engine, EngineConfig, LocalModeConfig, LocalModeKind, RestrictionOptions, SaveFile,
-    ShotSnapshot, Teleporter,
+    Engine, EngineConfig, LegacyDna, LocalModeConfig, LocalModeKind, RestrictionOptions,
+    SaveFile, ShotSnapshot, Teleporter,
 };
 use serde_json::{json, Value};
 
@@ -219,4 +219,78 @@ fn robot_limit_rejects_configurations_above_db2_maximum() {
         Err(error) => error,
     };
     assert!(error.to_string().contains("32,000"));
+}
+
+#[test]
+fn per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically() {
+    let mut engine = Engine::new(EngineConfig::testing()).expect("engine should create");
+    engine
+        .spawn_at(LegacyDna::parse("stop").expect("test DNA should parse"), [12.5, 34.5])
+        .expect("living organism should spawn");
+
+    let mut payload = save_payload(&engine);
+    payload["slots"][0]["organism"]["kinematics"]["position"] = json!([12.5, 34.5]);
+    payload["slots"][0]["organism"]["kinematics"]["velocity"] = json!([1.25, -2.5]);
+    payload["slots"][0]["organism"]["materials"]["energy"] = json!(4321);
+    payload["slots"][0]["organism"]["materials"]["body"] = json!(77);
+    payload["slots"][0]["organism"]["materials"]["waste"] = json!(13);
+    payload["slots"][0]["organism"]["counters"]["age"] = json!(9);
+
+    let dead = json!({
+        "position": [90.5, 80.25],
+        "velocity": [-1.25, 2.5],
+        "energy": 321,
+        "body": 45,
+        "age": 6,
+        "species": 0,
+        "repopulating": false,
+        "dna": "dead-dna",
+        "generation": 4,
+        "birth_cycle": 17,
+        "parent": {"slot": 0, "generation": 0},
+        "offspring": 8,
+        "kills": 3,
+        "new_mutations": 2,
+        "total_mutations": 11,
+        "dna_length": 19,
+        "unique_id": 9001,
+        "chloroplasts": 14
+    });
+    payload["corpses"] = json!([dead.clone()]);
+
+    let encoded_payload = serde_json::to_vec(&payload).expect("payload should encode");
+    let mut frame = b"DB3S".to_vec();
+    frame.extend_from_slice(&3u16.to_le_bytes());
+    frame.extend_from_slice(&(encoded_payload.len() as u32).to_le_bytes());
+    frame.extend_from_slice(&encoded_payload);
+
+    let restored = SaveFile::decode(&frame).expect("V3 save should load");
+    assert_eq!(restored.snapshot().organisms.len(), 1);
+    assert_eq!(restored.snapshot().corpses.len(), 1);
+    assert_eq!(restored.snapshot().organisms[0].position, [12.5, 34.5]);
+    assert_eq!(restored.snapshot().organisms[0].velocity, [1.25, -2.5]);
+    assert_eq!(restored.snapshot().organisms[0].energy, 4321);
+    assert_eq!(restored.snapshot().organisms[0].body, 77);
+    assert_eq!(restored.snapshot().organisms[0].waste, 13);
+    assert_eq!(restored.snapshot().organisms[0].age, 9);
+    assert_ne!(restored.snapshot().organisms[0].unique_id, 9001);
+    assert_eq!(serde_json::to_value(&restored.snapshot().corpses[0]).unwrap(), dead);
+
+    let stable = SaveFile::encode(&restored).expect("restored save should encode");
+    let stable_again = SaveFile::encode(
+        &SaveFile::decode(&stable).expect("re-encoded save should load"),
+    )
+    .expect("reloaded save should re-encode");
+    assert_eq!(stable, stable_again);
+
+    let before_invalid = serde_json::to_value(restored.snapshot()).unwrap();
+    let mut invalid = payload;
+    invalid["corpses"][0]["body"] = json!({"invalid": true});
+    let invalid_payload = serde_json::to_vec(&invalid).unwrap();
+    let mut invalid_frame = b"DB3S".to_vec();
+    invalid_frame.extend_from_slice(&3u16.to_le_bytes());
+    invalid_frame.extend_from_slice(&(invalid_payload.len() as u32).to_le_bytes());
+    invalid_frame.extend_from_slice(&invalid_payload);
+    assert!(SaveFile::decode(&invalid_frame).is_err());
+    assert_eq!(serde_json::to_value(restored.snapshot()).unwrap(), before_invalid);
 }
