@@ -88,12 +88,46 @@ impl CorpseSnapshot {
         if !self.age.is_multiple_of(period) {
             return None;
         }
-        let amount = settings.packet_size.max(1).min(self.energy.max(0));
+        let amount = settings.packet_size.max(1).min(self.body.max(0));
         if amount == 0 {
             return None;
         }
         self.energy = self.energy.saturating_sub(amount);
         self.body = self.body.min(self.energy).max(0);
         kind.map(|kind| (kind, amount))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn energy_decay_packet_uses_body_cap_and_rejects_empty_body() {
+        let settings = CorpseDecaySettings {
+            mode: CorpseDecayMode::EnergyShot,
+            packet_size: 10,
+            period: 1,
+            ..CorpseDecaySettings::default()
+        };
+        let mut corpse = CorpseSnapshot {
+            energy: 100,
+            body: 3,
+            ..CorpseSnapshot::default()
+        };
+        assert_eq!(
+            corpse.advance([0.0, 0.0], 0.0, [100.0, 100.0], &settings),
+            Some((-2, 3))
+        );
+
+        let mut empty_body = CorpseSnapshot {
+            energy: 100,
+            body: 0,
+            ..CorpseSnapshot::default()
+        };
+        assert_eq!(
+            empty_body.advance([0.0, 0.0], 0.0, [100.0, 100.0], &settings),
+            None
+        );
     }
 }
