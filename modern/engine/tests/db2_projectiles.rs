@@ -676,6 +676,112 @@ fn reproductive_projectiles_use_staged_virus_and_sperm_gates() {
     assert_eq!(engine.snapshot().stats.births, 1);
 }
 
+#[test]
+fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundaries() {
+    struct MovingTargetCase {
+        name: &'static str,
+        position: [f32; 2],
+        expected_impacts: u64,
+    }
+
+    for case in [
+        MovingTargetCase {
+            name: "crossing hit",
+            position: [260.0, 100.0],
+            expected_impacts: 1,
+        },
+        MovingTargetCase {
+            name: "near miss",
+            position: [260.0, 500.0],
+            expected_impacts: 0,
+        },
+    ] {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 0,
+            physics: PhysicsSettings {
+                density: 0.0,
+                ..PhysicsSettings::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine
+            .spawn_at(
+                LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop")
+                    .unwrap(),
+                [100.0, 100.0],
+            )
+            .unwrap();
+        let target = engine
+            .spawn_at(LegacyDna::parse("start\nstop").unwrap(), case.position)
+            .unwrap();
+        let mut batch = engine.physics_batch();
+        let target_index = batch
+            .ids
+            .iter()
+            .position(|id| *id == target)
+            .expect("moving target must be in the physics batch");
+        batch.batch.velocities[target_index] = [-80.0, 0.0];
+        engine.apply_physics_batch(batch).unwrap();
+
+        // VB6 Shots.bas NewShotCollision solves relative shot/bot motion.
+        engine.tick_many(2).unwrap();
+        assert_eq!(
+            engine.snapshot().stats.projectile_impacts,
+            case.expected_impacts,
+            "moving-target {}",
+            case.name
+        );
+    }
+
+    for (shootval, expected_range) in [(4, 11), (5, 11), (-4, 11), (-8, 21)] {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let shooter = engine
+            .spawn_at(
+                LegacyDna::parse(&format!(
+                    "start\n-1 .shoot store\n{shootval} .shootval store\nstop"
+                ))
+                .unwrap(),
+                [100.0, 100.0],
+            )
+            .unwrap();
+
+        engine.tick().unwrap();
+        let shot = engine
+            .snapshot()
+            .shots
+            .iter()
+            .find(|shot| shot.owner == shooter)
+            .cloned()
+            .expect("range calibration shot must spawn");
+        assert_eq!(shot.range, expected_range, "shootval={shootval}");
+        assert_eq!(shot.age, 0, "shootval={shootval}");
+        assert_eq!(shot.energy, expected_range as f32 * 40.0, "shootval={shootval}");
+        engine
+            .replace_dna(shooter, LegacyDna::parse("start\nstop").unwrap())
+            .unwrap();
+
+        engine.tick_many(expected_range).unwrap();
+        assert!(
+            engine
+                .snapshot()
+                .shots
+                .iter()
+                .any(|shot| shot.owner == shooter && shot.age == expected_range),
+            "shot must survive at age == range for shootval={shootval}"
+        );
+        engine.tick().unwrap();
+        assert!(
+            engine.snapshot().shots.iter().all(|shot| shot.owner != shooter),
+            "shot must expire after age > range for shootval={shootval}"
+        );
+    }
+}
+
 fn segment_length(start: [f32; 2], end: [f32; 2]) -> f32 {
     (end[0] - start[0]).hypot(end[1] - start[1])
 }
