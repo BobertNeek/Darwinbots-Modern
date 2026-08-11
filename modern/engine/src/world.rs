@@ -6033,9 +6033,12 @@ impl Engine {
 
     fn tie_data_phase(&mut self, trace: &mut CycleRecorder) {
         let runtime = SysvarRuntime::new();
+        for tie in &mut self.ties {
+            tie.information = false;
+        }
         let phase_commands = self.capture_tie_commands();
         let mut channels = Vec::new();
-        for tie in &self.ties {
+        for (tie_index, tie) in self.ties.iter().enumerate() {
             for (source_slot, target_slot, source_port) in [
                 (
                     tie.first.slot() as usize,
@@ -6053,6 +6056,7 @@ impl Engine {
                 }
                 let commands = phase_commands[source_slot].unwrap_or_default();
                 channels.push((
+                    tie_index,
                     source_slot,
                     target_slot,
                     source_port,
@@ -6062,7 +6066,7 @@ impl Engine {
                 ));
             }
         }
-        for (source, target, source_port, selected_port, location, value) in channels {
+        for (tie_index, source, target, source_port, selected_port, location, value) in channels {
             if self.local_mode_prohibits_cross_species_tie_transfer(source, target) {
                 continue;
             }
@@ -6084,6 +6088,7 @@ impl Engine {
             target_memory.write(location, value);
             target_memory.write(MEM_TIE_MEMORY_LOCATION, location);
             target_memory.write(MEM_TIE_MEMORY_VALUE, value);
+            self.ties[tie_index].information = true;
             trace.memory_write(
                 CyclePhase::TieData,
                 target_id,
@@ -6497,6 +6502,7 @@ impl Engine {
                 other: Some(tie.second),
                 reciprocal_index: (second_index + 1) as u8,
                 port: tie.first_port,
+                information: i32::from(tie.information),
                 current_angle: first_relative_angle,
                 requested_angle: tie.requested_angle,
                 current_length,
@@ -6509,6 +6515,7 @@ impl Engine {
                 other: Some(tie.first),
                 reciprocal_index: (first_index + 1) as u8,
                 port: tie.second_port,
+                information: i32::from(tie.information),
                 current_angle: second_relative_angle,
                 requested_angle: requested_second_angle,
                 current_length,

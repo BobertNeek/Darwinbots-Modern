@@ -492,6 +492,30 @@ fn engine_tick_routes_tie_memory_only_through_the_selected_local_port() {
 }
 
 #[test]
+fn engine_tick_marks_tie_information_transfer_on_selected_endpoint() {
+    let (mut engine, source, _, _) = engine_with_two_source_ties();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n77 .tienum store\n50 .tieloc store\n1234 .tieval store\nstop")
+                .unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let marker = engine
+        .robot_state(source)
+        .unwrap()
+        .ties
+        .iter()
+        .flatten()
+        .find(|tie| tie.port == 77)
+        .map(|tie| tie.information);
+    assert_eq!(marker, Some(1));
+}
+
+#[test]
 fn engine_tick_keeps_tie_memory_pending_without_a_valid_selected_port() {
     let (mut engine, source, port_41_partner, port_77_partner) = engine_with_two_source_ties();
     engine
