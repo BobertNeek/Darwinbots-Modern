@@ -2,7 +2,9 @@ using System.Reflection;
 using System.Text;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media.Imaging;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Services;
@@ -180,6 +182,79 @@ public sealed class SetupControlSurfaceTests
                 Assert.Equal(82_000, window.FindControl<NumericUpDown>("WorldHeight")!.Value);
                 Assert.Equal(4.25, typeof(SetupWindow).GetField("_globalSettings", BindingFlags.Instance | BindingFlags.NonPublic)!
                     .GetValue(window) is GlobalSettings settings ? settings.Costs.DnaCopy : -1);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task SetupWorkingCopyRendersAndRoutesStartNewChangeLoadAndSave()
+    {
+        var storage = new SettingsWorkflowStorage
+        {
+            SettingsToOpen = new DesktopSettings
+            {
+                Backend = "Gpu",
+                WorldWidth = 91_000,
+                WorldHeight = 82_000,
+                OrganismCapacity = 44_000,
+            },
+        };
+        var created = new List<WorldSetupOptions>();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            window.WorldCreated += created.Add;
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+
+                Assert.Equal(WindowState.Maximized, window.WindowState);
+                Assert.Equal("START NEW", window.FindControl<Button>("StartNewButton")!.Content);
+                Assert.Equal("CHANGE", window.FindControl<Button>("ChangeButton")!.Content);
+                Assert.Equal("LOAD SETTINGS", window.FindControl<Button>("LoadSettingsButton")!.Content);
+                Assert.Equal("SAVE SETTINGS", window.FindControl<Button>("SaveSettingsButton")!.Content);
+                Assert.True(window.FindControl<Button>("StartNewButton")!.IsVisible);
+                Assert.True(window.FindControl<Button>("ChangeButton")!.IsVisible);
+                Assert.True(window.FindControl<Button>("LoadSettingsButton")!.IsVisible);
+                Assert.True(window.FindControl<Button>("SaveSettingsButton")!.IsVisible);
+
+                window.FindControl<NumericUpDown>("WorldWidth")!.Value = 70_000;
+                window.FindControl<Button>("ChangeButton")!
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Single(created);
+                Assert.Equal(70_000f, created[0].WorldWidth);
+
+                window.FindControl<NumericUpDown>("WorldWidth")!.Value = 71_000;
+                window.KeyPress(Key.Enter, RawInputModifiers.Control, PhysicalKey.Enter, null);
+                window.KeyRelease(Key.Enter, RawInputModifiers.Control, PhysicalKey.Enter, null);
+                Assert.Equal(2, created.Count);
+                Assert.Equal(71_000f, created[1].WorldWidth);
+
+                window.FindControl<Button>("SaveSettingsButton")!
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.Equal(71_000f, storage.SavedSettings!.WorldWidth);
+
+                window.FindControl<Button>("LoadSettingsButton")!
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.FindControl<NumericUpDown>("WorldWidth")!.Value == 91_000);
+                Assert.Equal(82_000, window.FindControl<NumericUpDown>("WorldHeight")!.Value);
+                Assert.Equal(2, window.FindControl<ComboBox>("Backend")!.SelectedIndex);
+
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = Assert.IsAssignableFrom<Bitmap>(window.CaptureRenderedFrame());
+                var directory = Environment.GetEnvironmentVariable("DARWINBOTS_GUI_AUDIT_DIR")
+                    ?? Path.Combine(Path.GetTempPath(), "darwinbots-modern-control-audit");
+                Directory.CreateDirectory(directory);
+                using var stream = File.Create(Path.Combine(directory, "set-01-setup-working-copy.png"));
+                frame.Save(stream, new PngBitmapEncoderOptions());
             }
             finally
             {
