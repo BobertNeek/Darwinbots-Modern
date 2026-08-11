@@ -317,6 +317,18 @@ fn legacy_vb6_organism_records_import_without_losing_state_or_ties() {
     );
 }
 
+#[test]
+fn legacy_organism_fixture_round_trips_and_rejects_unknown_version() {
+    let fixture = LegacyOrganismFile::decode(&synthetic_vb6_organism())
+        .expect("VB6 organism fixture decoding");
+    let encoded = fixture.encode().expect("organism fixture encoding");
+    assert_eq!(LegacyOrganismFile::decode(&encoded).unwrap(), fixture);
+
+    let mut unsupported = encoded;
+    unsupported[4..6].copy_from_slice(&2_u16.to_le_bytes());
+    assert!(LegacyOrganismFile::decode(&unsupported).is_err());
+}
+
 fn synthetic_vb6_organism() -> Vec<u8> {
     let mut bytes = Vec::new();
     push_i16(&mut bytes, 1);
