@@ -78,6 +78,37 @@ fn movement_command_adds_impulse_and_bot_coasts_without_new_thrust() {
 }
 
 #[test]
+fn db2_gravity_is_applied_after_friction_on_the_first_tick() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        gravity: [0.0, 2.0],
+        brownian_motion: 0.0,
+        drag: 0.0,
+        physics: PhysicsSettings {
+            surface_gravity: 2.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.5,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
+        .unwrap();
+
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut restored = SaveFile::decode(&encoded).unwrap();
+
+    restored.tick().unwrap();
+
+    let organism = &restored.snapshot().organisms[0];
+    assert_eq!(organism.velocity, [0.0, 2.0]);
+    assert_eq!(organism.position, [500.0, 502.0]);
+}
+
+#[test]
 fn voluntary_acceleration_is_clamped_before_efficiency_multiplier() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

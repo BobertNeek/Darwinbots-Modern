@@ -5666,6 +5666,8 @@ impl Engine {
                     let effective_mass =
                         (mass + fluid_added_mass(radius, settings.density)).max(1.0);
                     let force_scale = mass / effective_mass;
+                    robot.materials.mass = mass;
+                    robot.materials.radius = radius;
                     robot.kinematics.velocity[0] +=
                         robot.kinematics.pending_velocity[0] * force_scale;
                     robot.kinematics.velocity[1] +=
@@ -5675,8 +5677,13 @@ impl Engine {
                     robot.kinematics.velocity[1] +=
                         robot.kinematics.independent_impulse[1] * force_scale;
                     robot.kinematics.independent_impulse = [0.0; 2];
-                    robot.materials.mass = mass;
-                    robot.materials.radius = radius;
+                    let solid_impulse = apply_resistance(
+                        &mut robot.kinematics.velocity,
+                        mass,
+                        robot.materials.radius,
+                        drag,
+                        settings,
+                    );
                     let mut effective_gravity = gravity;
                     if pond_mode && effective_gravity[1] != 0.0 {
                         let buoyancy_threshold = 1.0 / tide_scaling.max(f32::EPSILON)
@@ -5695,13 +5702,6 @@ impl Engine {
                     robot.kinematics.velocity[1] += planet_impulses[slot][1] * force_scale;
                     robot.kinematics.angular_momentum +=
                         brownian_rotation(brownian, seed, tick, slot);
-                    let solid_impulse = apply_resistance(
-                        &mut robot.kinematics.velocity,
-                        mass,
-                        robot.materials.radius,
-                        drag,
-                        settings,
-                    );
                     apply_angular_damping(
                         &mut robot.kinematics.angular_momentum,
                         solid_impulse,
