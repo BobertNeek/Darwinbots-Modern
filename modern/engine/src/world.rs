@@ -2083,8 +2083,23 @@ struct LifecycleQueues {
     deaths: Vec<usize>,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct DynamicCostRuntimeState {
+    zeroed: bool,
+    saved_multiplier: f64,
+    active_multiplier: Option<f64>,
+}
+
+struct EngineCycleCheckpoint {
+    checkpoint: CycleCheckpoint,
+    dynamic_cost_state: DynamicCostRuntimeState,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
+    #[serde(default)]
+    dynamic_cost_state: DynamicCostRuntimeState,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2352,6 +2367,7 @@ impl Engine {
             pending_gpu_render_instances: None,
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
+            dynamic_cost_state: DynamicCostRuntimeState::default(),
         })
     }
 
@@ -2519,6 +2535,7 @@ impl Engine {
             pending_gpu_render_instances: None,
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
+            dynamic_cost_state: DynamicCostRuntimeState::default(),
         })
     }
 
@@ -2651,6 +2668,11 @@ impl Engine {
             return Err(EngineError::Invariant(
                 "simulation cost settings must be finite and nonnegative where required".to_owned(),
             ));
+        }
+        if self.dynamic_cost_state.zeroed {
+            self.dynamic_cost_state.saved_multiplier = costs.global_multiplier;
+        } else {
+            self.dynamic_cost_state.active_multiplier = Some(costs.global_multiplier);
         }
         self.config.dna_costs = costs;
         self.publish_snapshot();
@@ -4007,6 +4029,7 @@ impl Engine {
         let checkpoint = (matches!(self.physics, RuntimePhysics::Gpu(_))
             && !self.config.allow_cpu_fallback)
             .then(|| self.cycle_checkpoint());
+        self.update_dynamic_cost_state();
         match self.tick_internal(publish, trace_enabled) {
             Ok(trace) => Ok(trace),
             Err(error) => {
@@ -4021,51 +4044,56 @@ impl Engine {
         }
     }
 
-    fn cycle_checkpoint(&self) -> CycleCheckpoint {
-        CycleCheckpoint {
-            config: self.config.clone(),
-            slots: self.slots.clone(),
-            tick: self.tick,
-            snapshot: self.snapshot.clone(),
-            stats: self.stats.clone(),
-            capabilities: self.capabilities.clone(),
-            spatial: self.spatial.clone(),
-            sensing_spatial: self.sensing_spatial.clone(),
-            pending_mutations: self.pending_mutations.clone(),
-            ties: self.ties.clone(),
-            species: self.species.clone(),
-            species_templates: self.species_templates.clone(),
-            mutations_enabled: self.mutations_enabled,
-            global_mutation_multiplier: self.global_mutation_multiplier,
-            default_mutation_profile: self.default_mutation_profile.clone(),
-            subspecies_counters: self.subspecies_counters.clone(),
-            ties_enabled: self.ties_enabled,
-            robot_fixing_allowed: self.robot_fixing_allowed,
-            asexual_reproduction_allowed: self.asexual_reproduction_allowed,
-            player_bot: self.player_bot.clone(),
-            restriction_options: self.restriction_options.clone(),
-            local_mode: self.local_mode.clone(),
-            next_lineage_id: self.next_lineage_id,
-            speciation_fork_interval: self.speciation_fork_interval,
-            next_absolute_id: self.next_absolute_id,
-            zerobot_checkpoint: self.zerobot_checkpoint.clone(),
-            zerobot_checkpoint_score: self.zerobot_checkpoint_score,
-            obstacles: self.obstacles.clone(),
-            teleporters: self.teleporters.clone(),
-            file_teleporters: self.file_teleporters.clone(),
-            corpses: self.corpses.clone(),
-            projectiles: self.projectiles.clone(),
-            vegetation_runtime: self.vegetation_runtime.clone(),
-            pending_projectile_requests: self.pending_projectile_requests.clone(),
-            history: self.history.clone(),
-            phase_timings: self.phase_timings.clone(),
-            pending_gpu_render_instances: self.pending_gpu_render_instances.clone(),
-            pending_gpu_collision_pairs: self.pending_gpu_collision_pairs.clone(),
-            snapshot_publication_count: self.snapshot_publication_count,
+    fn cycle_checkpoint(&self) -> EngineCycleCheckpoint {
+        EngineCycleCheckpoint {
+            checkpoint: CycleCheckpoint {
+                config: self.config.clone(),
+                slots: self.slots.clone(),
+                tick: self.tick,
+                snapshot: self.snapshot.clone(),
+                stats: self.stats.clone(),
+                capabilities: self.capabilities.clone(),
+                spatial: self.spatial.clone(),
+                sensing_spatial: self.sensing_spatial.clone(),
+                pending_mutations: self.pending_mutations.clone(),
+                ties: self.ties.clone(),
+                species: self.species.clone(),
+                species_templates: self.species_templates.clone(),
+                mutations_enabled: self.mutations_enabled,
+                global_mutation_multiplier: self.global_mutation_multiplier,
+                default_mutation_profile: self.default_mutation_profile.clone(),
+                subspecies_counters: self.subspecies_counters.clone(),
+                ties_enabled: self.ties_enabled,
+                robot_fixing_allowed: self.robot_fixing_allowed,
+                asexual_reproduction_allowed: self.asexual_reproduction_allowed,
+                player_bot: self.player_bot.clone(),
+                restriction_options: self.restriction_options.clone(),
+                local_mode: self.local_mode.clone(),
+                next_lineage_id: self.next_lineage_id,
+                speciation_fork_interval: self.speciation_fork_interval,
+                next_absolute_id: self.next_absolute_id,
+                zerobot_checkpoint: self.zerobot_checkpoint.clone(),
+                zerobot_checkpoint_score: self.zerobot_checkpoint_score,
+                obstacles: self.obstacles.clone(),
+                teleporters: self.teleporters.clone(),
+                file_teleporters: self.file_teleporters.clone(),
+                corpses: self.corpses.clone(),
+                projectiles: self.projectiles.clone(),
+                vegetation_runtime: self.vegetation_runtime.clone(),
+                pending_projectile_requests: self.pending_projectile_requests.clone(),
+                history: self.history.clone(),
+                phase_timings: self.phase_timings.clone(),
+                pending_gpu_render_instances: self.pending_gpu_render_instances.clone(),
+                pending_gpu_collision_pairs: self.pending_gpu_collision_pairs.clone(),
+                snapshot_publication_count: self.snapshot_publication_count,
+            },
+            dynamic_cost_state: self.dynamic_cost_state.clone(),
         }
     }
 
-    fn restore_cycle_checkpoint(&mut self, checkpoint: CycleCheckpoint) {
+    fn restore_cycle_checkpoint(&mut self, checkpoint: EngineCycleCheckpoint) {
+        self.dynamic_cost_state = checkpoint.dynamic_cost_state;
+        let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
         self.tick = checkpoint.tick;
@@ -4700,6 +4728,41 @@ impl Engine {
         }
     }
 
+    fn update_dynamic_cost_state(&mut self) {
+        let population = self.cost_population() as f64;
+        if self.dynamic_cost_state.zeroed {
+            if population > self.config.dna_costs.dynamic_lower_reinstate_threshold {
+                self.dynamic_cost_state.zeroed = false;
+                self.dynamic_cost_state.active_multiplier =
+                    Some(self.dynamic_cost_state.saved_multiplier);
+            }
+        } else if population < self.config.dna_costs.dynamic_lower_zero_threshold
+            && self.config.dna_costs.global_multiplier != 0.0
+        {
+            self.dynamic_cost_state.saved_multiplier = self.config.dna_costs.global_multiplier;
+            self.dynamic_cost_state.zeroed = true;
+            self.dynamic_cost_state.active_multiplier = Some(0.0);
+        } else {
+            self.dynamic_cost_state.active_multiplier =
+                Some(self.config.dna_costs.global_multiplier);
+        }
+    }
+
+    fn active_dna_costs(&self) -> DnaCosts {
+        Self::active_dna_costs_from(&self.config.dna_costs, &self.dynamic_cost_state)
+    }
+
+    fn active_dna_costs_from(
+        configured: &DnaCosts,
+        state: &DynamicCostRuntimeState,
+    ) -> DnaCosts {
+        let mut costs = configured.clone();
+        costs.global_multiplier = state
+            .active_multiplier
+            .unwrap_or(costs.global_multiplier);
+        costs
+    }
+
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
         let slot_count = self.slots.len();
         let mut free = std::collections::HashSet::with_capacity(self.slots.free_slots.len());
@@ -4822,7 +4885,10 @@ impl Engine {
                         f64::from(organism.kinematics.position[0]),
                         f64::from(organism.kinematics.position[1]),
                     ],
-                    costs: &self.config.dna_costs,
+                    costs: &Self::active_dna_costs_from(
+                        &self.config.dna_costs,
+                        &self.dynamic_cost_state,
+                    ),
                     record_activations: true,
                 },
             )?;
@@ -4859,7 +4925,7 @@ impl Engine {
     fn upkeep_phase(&mut self) {
         let metabolism = self.config.metabolism_cost.max(0);
         let population = self.cost_population();
-        let costs = &self.config.dna_costs;
+        let costs = self.active_dna_costs();
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -4920,7 +4986,7 @@ impl Engine {
     fn movement_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
         let settings = &self.config.physics;
-        let costs = &self.config.dna_costs;
+        let costs = self.active_dna_costs();
         let population = self.cost_population();
         let robot_fixing_allowed = self.robot_fixing_allowed;
         let pond_mode = self.config.vegetation.pond_mode && !self.config.axis_topology()[1];
@@ -4993,7 +5059,7 @@ impl Engine {
 
     fn aim_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        let costs = &self.config.dna_costs;
+        let costs = self.active_dna_costs();
         let population = self.cost_population();
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
@@ -5058,6 +5124,7 @@ impl Engine {
     }
 
     fn virus_commands_phase(&mut self) {
+        let costs = self.active_dna_costs();
         let runtime = SysvarRuntime::new();
         let mut virus_requests = Vec::new();
         for slot_index in 0..self.slots.len() {
@@ -5078,8 +5145,8 @@ impl Engine {
                 let requested_gene = commands.make.max(1);
                 if let Some(gene) = robot.program.dna.gene(requested_gene) {
                     let copy_cost = gene.blocks().len() as f64
-                        * self.config.dna_costs.dna_copy
-                        * self.config.dna_costs.global_multiplier;
+                        * costs.dna_copy
+                        * costs.global_multiplier;
                     let whole_copy_cost = robot.program.settle_dna_energy_cost(copy_cost);
                     robot.materials.energy = robot
                         .materials
@@ -5186,7 +5253,7 @@ impl Engine {
 
     fn material_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        let costs = &self.config.dna_costs;
+        let costs = self.active_dna_costs();
         let population = self.cost_population();
         let vegetable_population = self.vegetable_population();
         let vegetable_population_cap = self.config.vegetable_population_cap;
@@ -6914,7 +6981,7 @@ impl Engine {
                 first_port,
                 second_port,
             ));
-            let tie_cost = self.config.dna_costs.action_cost_for(
+            let tie_cost = self.active_dna_costs().action_cost_for(
                 SimulationCostAction::TieFormation,
                 1.0,
                 self.cost_population(),
@@ -6979,7 +7046,7 @@ impl Engine {
             .filter(|_| self.local_mode.status == LocalModeStatus::Running)
             .map(|config| config.restrictions.clone());
         let runtime = SysvarRuntime::new();
-        let costs = &self.config.dna_costs;
+        let costs = self.active_dna_costs();
         let population = self.cost_population();
         for attacker_slot in 0..self.slots.len() {
             let attacker_id =
@@ -9354,7 +9421,7 @@ impl Engine {
                 .slots
                 .get(birth.parent)
                 .map(|parent_organism| {
-                    self.config.dna_costs.action_cost_for(
+                    self.active_dna_costs().action_cost_for(
                         SimulationCostAction::DnaCopy,
                         parent_organism.program.dna.blocks().len() as f64,
                         self.population(),

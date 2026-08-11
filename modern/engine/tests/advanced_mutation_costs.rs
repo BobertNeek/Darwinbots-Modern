@@ -1,8 +1,8 @@
 use darwinbots_engine::{
     AdvancedMutationSettings, Delta2Settings, DnaCosts, EpigeneticPolicyAction, EpigeneticSettings,
-    GenomeMutator, LegacyDna, MutationOscillationMode, MutationOscillationSettings,
-    MutationPolicyInput, MutationPolicyReport, SimulationCostAction, SimulationCostInput,
-    StandardMutationProfile, apply_advanced_mutation_policies,
+    Engine, EngineConfig, GenomeMutator, LegacyDna, MutationOscillationMode,
+    MutationOscillationSettings, MutationPolicyInput, MutationPolicyReport, SimulationCostAction,
+    SimulationCostInput, StandardMutationProfile, apply_advanced_mutation_policies,
 };
 
 #[test]
@@ -196,4 +196,60 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
         ..DnaCosts::default()
     };
     assert_eq!(dna_upkeep.upkeep_cost(0.0, 5, 0), 8.0);
+}
+
+#[test]
+fn db24832_dynamic_costs_latch_zero_and_reinstate_across_live_population_ticks() {
+    let mut config = EngineConfig::testing();
+    config.metabolism_cost = 10;
+    config.dna_costs = DnaCosts {
+        global_multiplier: 1.0,
+        dynamic_cost_multiplier: 1.0,
+        dynamic_target_population: 3,
+        dynamic_population_range: 3,
+        dynamic_lower_zero_threshold: 2.0,
+        dynamic_lower_reinstate_threshold: 4.0,
+        dynamic_sensitivity: 0.0,
+        ..DnaCosts::default()
+    };
+    let mut engine = Engine::new(config).unwrap();
+    let ids = engine
+        .spawn_batch((0..5).map(|index| {
+            (
+                LegacyDna::parse("start stop").unwrap(),
+                [100.0 + index as f32 * 200.0, 100.0],
+            )
+        }))
+        .unwrap();
+    let energy = |engine: &Engine| engine.organism(ids[0]).unwrap().energy;
+
+    let active_before = energy(&engine);
+    engine.tick().unwrap();
+    let active_cost = active_before - energy(&engine);
+    assert_eq!(active_cost, 10);
+
+    engine.remove_many(&ids[1..]).unwrap();
+    let low_before = energy(&engine);
+    engine.tick().unwrap();
+    assert_eq!(low_before - energy(&engine), 0);
+
+    engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [700.0, 100.0])
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [900.0, 100.0])
+        .unwrap();
+    let recovering_before = energy(&engine);
+    engine.tick().unwrap();
+    assert_eq!(recovering_before - energy(&engine), 0);
+
+    engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [700.0, 300.0])
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [900.0, 300.0])
+        .unwrap();
+    let reinstated_before = energy(&engine);
+    engine.tick().unwrap();
+    assert_eq!(reinstated_before - energy(&engine), active_cost);
 }
