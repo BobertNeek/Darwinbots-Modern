@@ -2932,6 +2932,24 @@ impl Engine {
         }
     }
 
+    pub fn low_memory_deletion_budget(total_robots: usize, total_dna: usize) -> usize {
+        if total_dna == 0 {
+            return 0;
+        }
+        let numerator = 1_500_u128
+            .saturating_mul(total_robots as u128)
+            .saturating_mul(425);
+        let denominator = total_dna as u128;
+        let whole = numerator / denominator;
+        let remainder = numerator % denominator;
+        let rounds_up = remainder.saturating_mul(2) > denominator
+            || (remainder.saturating_mul(2) == denominator && whole % 2 == 1);
+        whole
+            .saturating_add(u128::from(rounds_up))
+            .saturating_add(1)
+            .min(usize::MAX as u128) as usize
+    }
+
     fn enforce_low_memory_safety(&mut self, trace: &mut CycleRecorder) {
         let dna_limit = self.config.low_memory_dna_limit.max(1);
         let detail_limit = self.config.low_memory_detail_limit.max(1);
@@ -2958,21 +2976,21 @@ impl Engine {
             .enumerate()
             .filter_map(|(slot, entry)| {
                 let robot = entry.organism.as_ref()?;
+                let rank = i64::from(robot.materials.energy)
+                    + i64::from(robot.materials.body).saturating_mul(10);
+                if rank >= 320_000 {
+                    return None;
+                }
                 Some((
                     OrganismId::new(slot as u32, entry.generation),
-                    robot.program.dna.blocks().len(),
-                    i64::from(robot.materials.energy)
-                        + i64::from(robot.materials.body).saturating_mul(10),
+                    rank,
                 ))
             })
             .collect();
-        candidates.sort_by_key(|(_, _, score)| *score);
-        let mut remaining = total_dna;
+        candidates.sort_by_key(|(id, score)| (*score, id.slot(), id.generation()));
+        let deletion_budget = Self::low_memory_deletion_budget(self.population(), total_dna);
         let mut removed = Vec::new();
-        for (id, dna_length, _) in candidates {
-            if remaining <= dna_limit {
-                break;
-            }
+        for (id, _) in candidates.into_iter().take(deletion_budget) {
             let Ok(robot) = self.slots.remove(id) else {
                 continue;
             };
@@ -2984,7 +3002,6 @@ impl Engine {
             self.corpses
                 .push(CorpseSnapshot::from_robot(&robot, species, repopulating));
             self.stats.deaths = self.stats.deaths.saturating_add(1);
-            remaining = remaining.saturating_sub(dna_length);
             removed.push(id);
             trace.queue_change(CyclePhase::Restart, id, QueueChangeKind::DeathCommitted);
         }
