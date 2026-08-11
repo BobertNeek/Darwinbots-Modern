@@ -213,6 +213,87 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     [Fact]
+    public async Task MainWindowRendersSafemodeRecoveryAndRecoversAutosave()
+    {
+        var artifactPath = Path.Combine(Path.GetTempPath(), $"db24832-io05-recovery-{Guid.NewGuid():N}.db3s");
+        File.WriteAllBytes(artifactPath, [9, 8, 7]);
+        var storage = new AuditStorageService { LatestAutosave = artifactPath };
+        var factory = new AuditEngineClientFactory();
+
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new MainWindow(
+                    [],
+                    new WorldSetupOptions
+                    {
+                        Species = [new SpeciesImport("IO-05 Recovery Species", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+                    },
+                    factory,
+                    storage);
+                try
+                {
+                    ShowForInteraction(window, 1_200, 820);
+                    var viewModel = Assert.IsType<MainWindowViewModel>(window.DataContext);
+                    await WaitFor(() => viewModel.Status.Contains("WORLD READY", StringComparison.Ordinal));
+
+                    var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+                    var safemode = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RecordingSafemodeBackup)!;
+                    Assert.True(safemode.IsChecked);
+                    safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => safemode.IsChecked == false);
+                    Assert.Equal("SAFEMODE BACKUP OFF", viewModel.Status);
+                    safemode.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    await WaitFor(() => safemode.IsChecked == true);
+                    Assert.Equal("SAFEMODE BACKUP ON", viewModel.Status);
+
+                    var handleError = typeof(MainWindow).GetMethod("HandleEngineErrorAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                    await (Task)handleError.Invoke(window, [new AccessViolationException("IO-05 rendered recovery fault"), true])!;
+
+                    var panel = Named<Border>(window, "RecoveryPanel");
+                    var title = Named<TextBlock>(window, "RecoveryTitle");
+                    var faultWindow = Named<TextBlock>(window, "RecoveryFaultWindowText");
+                    var artifact = Named<TextBlock>(window, "RecoveryArtifactText");
+                    var recover = Named<Button>(window, "RecoveryRecoverButton");
+                    var ignore = Named<Button>(window, "RecoveryIgnoreButton");
+                    Assert.True(panel.IsVisible);
+                    Assert.Equal("SAFE MODE RECOVERY READY", title.Text);
+                    Assert.Contains("FAULT WINDOW", faultWindow.Text, StringComparison.Ordinal);
+                    Assert.Equal($"RECOVERY ARTIFACT · {Path.GetFileName(artifactPath)}", artifact.Text);
+                    Assert.True(recover.IsVisible);
+                    Assert.True(ignore.IsVisible);
+                    Assert.Contains("RECOVERY READY", viewModel.Status, StringComparison.Ordinal);
+                    Assert.Contains(
+                        viewModel.Status,
+                        window.GetVisualDescendants().OfType<TextBlock>().Select(value => value.Text));
+
+                    Capture(window, "io05-autosave-safemode-recovery.png");
+                    using var frame = window.CaptureRenderedFrame();
+                    using var png = new MemoryStream();
+                    frame.Save(png, new PngBitmapEncoderOptions());
+                    var bytes = png.ToArray();
+                    Assert.True(bytes.Length > 1_000, $"Rendered PNG was only {bytes.Length} bytes.");
+                    Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes.Take(8));
+
+                    Click(window, recover);
+                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED ·", StringComparison.Ordinal));
+                    Assert.False(panel.IsVisible);
+                    Assert.Equal($"RECOVERED · {Path.GetFileName(artifactPath)}", viewModel.Status);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            if (File.Exists(artifactPath)) File.Delete(artifactPath);
+        }
+    }
+
+    [Fact]
     public async Task AdvancedSettingsRenderedControlsRoundTripEveryField()
     {
         var headless = DesktopTestApplication.Session;
