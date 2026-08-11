@@ -246,6 +246,73 @@ fn seeded_cpu_ticks_are_reproducible_and_publish_snapshots() {
 }
 
 #[test]
+fn core_06_seeded_repeatability_save_resume_and_atomicity_contract() {
+    let make_engine = |seed| {
+        let mut engine = Engine::new(EngineConfig {
+            seed,
+            metabolism_cost: 0,
+            brownian_motion: 1.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine
+            .spawn_at(
+                LegacyDna::parse("start\n50 .repro store\nstop").unwrap(),
+                [500.0, 500.0],
+            )
+            .unwrap();
+        engine
+    };
+
+    let mut left = make_engine(42);
+    let mut right = make_engine(42);
+    let mut divergent = make_engine(43);
+    let assert_authoritative_match = |left: &Engine, right: &Engine| {
+        let mut left = left.snapshot().clone();
+        let mut right = right.snapshot().clone();
+        for organism in &mut left.organisms {
+            organism.activation_bitmap.clear();
+            organism.activation_history.clear();
+        }
+        for organism in &mut right.organisms {
+            organism.activation_bitmap.clear();
+            organism.activation_history.clear();
+        }
+        left.phase_timings = Default::default();
+        right.phase_timings = Default::default();
+        assert_eq!(left, right);
+    };
+
+    for (phase, cycles) in [1_u32, 2, 3].into_iter().enumerate() {
+        left.tick_many(cycles).unwrap();
+        right.tick_many(cycles).unwrap();
+        divergent.tick_many(cycles).unwrap();
+
+        assert_authoritative_match(&left, &right);
+        if phase == 0 {
+            assert_ne!(left.snapshot(), divergent.snapshot());
+        }
+
+        left.validate_invariants().unwrap();
+        right.validate_invariants().unwrap();
+        divergent.validate_invariants().unwrap();
+
+        if phase == 1 {
+            let checkpoint = SaveFile::encode(&left).unwrap();
+            left = SaveFile::decode(&checkpoint).unwrap();
+            assert_authoritative_match(&left, &right);
+        }
+    }
+
+    let before_failed_load = SaveFile::encode(&left).unwrap();
+    let mut truncated = before_failed_load.clone();
+    truncated.pop();
+    assert!(SaveFile::decode(&truncated).is_err());
+    assert_eq!(SaveFile::encode(&left).unwrap(), before_failed_load);
+    left.validate_invariants().unwrap();
+}
+
+#[test]
 fn tick_many_advances_a_batch_and_publishes_the_final_state() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     engine
