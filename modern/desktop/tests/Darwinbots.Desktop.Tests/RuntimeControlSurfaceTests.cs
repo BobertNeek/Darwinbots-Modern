@@ -809,6 +809,112 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task SaveLoadRenderedPlayerRouteRestoresLiveStateAndRejectsInvalidArtifactAtomically()
+    {
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 64,
+            VegetablePopulationCap = 0,
+            BrownianMotion = 0f,
+            Species =
+            [
+                new SpeciesImport(
+                    "IO01 Species",
+                    "start\nstop",
+                    false,
+                    0xff239ac0,
+                    1,
+                    1_000,
+                    0,
+                    false,
+                    1f),
+            ],
+        };
+        var storage = new SaveRouteStorage { AcceptSave = true };
+        MainWindow? window = null;
+        SimulationSession? session = null;
+
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage)
+                {
+                    WindowState = WindowState.Normal,
+                    Width = 1_280,
+                    Height = 900,
+                };
+                window.Show();
+
+                await WaitFor(
+                    () => window.GetType().GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)
+                        is SimulationSession candidate
+                        && candidate.LatestSnapshot.Organisms.Count == 1
+                        && Field<MainWindowViewModel>(window, "_viewModel").Status.Contains("WORLD READY", StringComparison.Ordinal),
+                    () => "The native IO-01 player route did not publish its live organism.");
+
+                session = Field<SimulationSession>(window, "_session");
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var beforeSave = session.LatestSnapshot;
+
+                window.FindControl<Button>("ToolbarSlot03")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(
+                    () => storage.SavedSimulation is not null && viewModel.Status == "SAVED",
+                    () => $"Save did not reach the rendered status surface. Requests: {storage.SaveRequests}; Status: {viewModel.Status}");
+                var savedBytes = storage.SavedSimulation!;
+                Assert.Equal("DB3S", Encoding.ASCII.GetString(savedBytes, 0, 4));
+
+                await session.StepAsync(1);
+                await WaitFor(
+                    () => session.LatestSnapshot.Tick != beforeSave.Tick,
+                    () => "The live session did not mutate after the save.");
+
+                storage.OpenedSimulation = savedBytes;
+                window.FindControl<Button>("ToolbarSlot02")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(
+                    () => viewModel.Status == "LOADED" && session.LatestSnapshot.Tick == beforeSave.Tick,
+                    () => $"Load did not restore the saved state. Tick: {session.LatestSnapshot.Tick}; Status: {viewModel.Status}");
+                Assert.Equal(beforeSave.Population, session.LatestSnapshot.Population);
+                Assert.Equal(beforeSave.Organisms, session.LatestSnapshot.Organisms);
+
+                var stable = session.LatestSnapshot;
+                storage.OpenedSimulation = [1, 2, 3];
+                var invalid = await storage.OpenSimulationAsync(window);
+                await Assert.ThrowsAnyAsync<Exception>(() => session.LoadAsync(invalid!));
+                Assert.Equal(stable.Tick, session.LatestSnapshot.Tick);
+                Assert.Equal(stable.Population, session.LatestSnapshot.Population);
+                Assert.Equal(stable.Organisms, session.LatestSnapshot.Organisms);
+
+                window.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var surfaceText = string.Join(
+                    "\n",
+                    window.GetVisualDescendants().OfType<TextBlock>()
+                        .Select(block => block.Text)
+                        .Where(text => !string.IsNullOrWhiteSpace(text)));
+                Assert.Contains("LOADED", surfaceText, StringComparison.Ordinal);
+                using var frame = window.CaptureRenderedFrame();
+                using var rendered = new MemoryStream();
+                frame.Save(rendered, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var png = rendered.ToArray();
+                Assert.True(png.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }));
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            if (window is not null) await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var ownedSession = session
+                    ?? window.GetType().GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window) as SimulationSession;
+                SetField(window, "_session", null);
+                window.Close();
+                if (ownedSession is not null) await ownedSession.DisposeAsync();
+            }, CancellationToken.None);
+        }
+    }
+
+    [Fact]
     public async Task KillEntireOrganismRemovesExactlyTheCapturedTiedGroupOnce()
     {
         var first = RecordingEngineClient.Organism;
@@ -1626,6 +1732,8 @@ public sealed class RuntimeControlSurfaceTests
         public bool AcceptSave { get; set; }
         public int SaveRequests { get; private set; }
         public byte[]? SavedSimulation { get; private set; }
+        public byte[]? OpenedSimulation { get; set; }
+        public int OpenRequests { get; private set; }
 
         public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) =>
             Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
@@ -1636,8 +1744,11 @@ public sealed class RuntimeControlSurfaceTests
         public Task<string?> PickSimulationPathAsync(TopLevel owner) =>
             Task.FromResult<string?>(null);
 
-        public Task<byte[]?> OpenSimulationAsync(TopLevel owner) =>
-            Task.FromResult<byte[]?>(null);
+        public Task<byte[]?> OpenSimulationAsync(TopLevel owner)
+        {
+            OpenRequests++;
+            return Task.FromResult(OpenedSimulation);
+        }
 
         public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings) =>
             Task.FromResult(false);
