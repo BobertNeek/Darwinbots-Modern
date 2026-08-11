@@ -743,18 +743,10 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.InternetEnabled] = DelegateLegacyCommandHandler.Disabled(offline);
         handlers[LegacyCommandId.InternetTeleporter] = DelegateLegacyCommandHandler.Disabled(offline);
         handlers[LegacyCommandId.EditInternetOptions] = DelegateLegacyCommandHandler.Disabled(offline);
-        handlers[LegacyCommandId.HelpDna] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
-            "DNA Help", "Legacy DNA quick reference",
-            "Darwinbots DNA is plain text. Conditions appear between cond and start; actions appear between start and stop. Values are pushed onto the stack, sysvars are read with * and written with store.\n\nExample:\ncond\n*.eye5 0 >\nstart\n30 .up store\nstop\nend\n\nApostrophes begin comments. Imported bot files keep the historical .txt format and sysvar names."));
-        handlers[LegacyCommandId.HelpRobotTagInformation] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
-            "Robot Tag Information", "Species and lineage identity",
-            "A robot retains a stable slot:generation identity while alive. Species name identifies its imported DNA family. Lineage color drifts only when automatic speciation creates a descendant lineage, allowing related organisms to be recognized visually.\n\nAutotroph species use green hues. Heterotroph species use the remaining palette."));
-        handlers[LegacyCommandId.HelpSurvivalInfo] = Handler(() => new LegacyCommandState(true, false, Visible: false), _ => ShowDocumentAsync(
-            "Survival Info", "Reading the ecosystem",
-            "Energy keeps a bot alive and powers movement, shots, and reproduction. Body is a durable energy reserve and influences rendered size. Vegetables gain energy from chloroplasts and sunlight; animals must feed or exchange energy.\n\nPopulation, births, deaths, energy, mutation, shots, and feeding totals are recorded below the world view."));
-        handlers[LegacyCommandId.HelpAbout] = Handler(() => new LegacyCommandState(true, false), _ => ShowDocumentAsync(
-            "About Darwinbots Modern", "Behavioral modernization",
-            "Darwinbots Modern is a cross-platform continuation of Darwinbots 2. It preserves legacy text DNA and sysvars while running a Rust simulation engine behind an Avalonia desktop interface. CPU and GPU backends share the same simulation contract.\n\nThe VB6 Darwinbots 2 runtime remains the behavioral authority for compatibility decisions."));
+        handlers[LegacyCommandId.HelpDna] = HelpHandler(LegacyCommandId.HelpDna);
+        handlers[LegacyCommandId.HelpRobotTagInformation] = HelpHandler(LegacyCommandId.HelpRobotTagInformation);
+        handlers[LegacyCommandId.HelpSurvivalInfo] = HelpHandler(LegacyCommandId.HelpSurvivalInfo);
+        handlers[LegacyCommandId.HelpAbout] = HelpHandler(LegacyCommandId.HelpAbout);
 
         return new LegacyCommandRouter(handlers);
     }
@@ -775,6 +767,14 @@ public sealed partial class MainWindow : Window
     private static DelegateLegacyCommandHandler Handler(
         Func<LegacyCommandState> state,
         Func<CancellationToken, Task<LegacyCommandResult>> execute) => new(state, execute);
+
+    private DelegateLegacyCommandHandler HelpHandler(LegacyCommandId command)
+    {
+        var topic = LegacyHelpResolver.Resolve(command);
+        return Handler(
+            () => new LegacyCommandState(true, false, Visible: topic.Visible),
+            _ => ShowDocumentAsync(topic));
+    }
 
     private DelegateLegacyCommandHandler ViewportToggle(
         Func<bool> current,
@@ -1173,7 +1173,8 @@ public sealed partial class MainWindow : Window
             foreach (var organism in snapshot.Organisms)
                 dna[new OrganismKey(organism.Slot, organism.Generation)] =
                     await _session.ExportDnaAsync(organism.Slot, organism.Generation);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(Db2GenomeRecordFile.EncodeLiving(snapshot, dna));
+            var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingSnapshotLiving).Format;
+            var bytes = System.Text.Encoding.UTF8.GetBytes(LegacyRecordingSerializer.SerializeLiving(snapshot, dna, format));
             await stream.WriteAsync(bytes);
         });
         return saved
@@ -1215,7 +1216,8 @@ public sealed partial class MainWindow : Window
         {
             var appended = await _storage.AppendDeadSnapshotAsync(async stream =>
             {
-                var text = Db2GenomeRecordFile.EncodeDead(corpses, snapshot.Species, stream.Length == 0);
+                var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable).Format;
+                var text = LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, stream.Length == 0, format);
                 await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(text));
             });
             if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
@@ -1226,6 +1228,9 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = $"DEAD RECORDING FAILED · {error.Message}";
         }
     }
+
+    private Task<LegacyCommandResult> ShowDocumentAsync(LegacyHelpTopic topic) =>
+        ShowDocumentAsync(topic.Title, topic.Section, topic.Content);
 
     private Task<LegacyCommandResult> ShowDocumentAsync(string title, string section, string content)
     {
