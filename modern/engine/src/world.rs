@@ -2063,6 +2063,7 @@ struct PendingProjectileRequest {
     owner_slot: usize,
     kind: i32,
     value: i32,
+    range_multiplier: f32,
     angle: f32,
 }
 
@@ -5047,6 +5048,7 @@ impl Engine {
                             owner_slot: slot_index,
                             kind: -7,
                             value: commands.shoot.abs().max(1),
+                            range_multiplier: 1.0,
                             angle: (random % 6_283) as f32 / 1_000.0,
                         },
                         stored.dna,
@@ -5088,6 +5090,7 @@ impl Engine {
                         owner.materials.chloroplasts,
                     ),
                     owner_virtual_body,
+                    range_multiplier: 1.0,
                     angle: request.angle,
                     kind: request.kind,
                     value: request.value,
@@ -6853,11 +6856,20 @@ impl Engine {
             }
             let normalized_kind = ProjectilePool::normalized_kind(commands.kind);
             let tie_multiplier = hardened_ties.saturating_add(1) as i32;
-            let value = if normalized_kind == -1 && commands.value == 0 {
+            let (power_multiplier, range_multiplier) = match normalized_kind {
+                -1 | -6 if commands.value > 4 => {
+                    (((commands.value as f32) / 2.0).log2(), 1.0)
+                }
+                -1 | -6 if commands.value < -4 => {
+                    (1.0, (commands.value.saturating_abs() as f32 / 2.0).log2())
+                }
+                _ => (1.0, 1.0),
+            };
+            let value = if normalized_kind == -1 {
                 20_i32
                     .saturating_add(attacker.materials.body.max(0) / 5)
                     .saturating_mul(tie_multiplier)
-            } else if normalized_kind == -6 && commands.value == 0 {
+            } else if normalized_kind == -6 {
                 10_i32
                     .saturating_add(attacker.materials.body.max(0) / 2)
                     .saturating_mul(tie_multiplier)
@@ -6874,6 +6886,9 @@ impl Engine {
             } else {
                 commands.value.abs().max(1)
             };
+            let value = ((value as f32) * power_multiplier)
+                .trunc()
+                .clamp(1.0, 32_000.0) as i32;
             settle_simulation_cost(
                 attacker,
                 costs.action_cost_for(
@@ -6902,6 +6917,7 @@ impl Engine {
                     owner_slot: attacker_slot,
                     kind: commands.kind,
                     value,
+                    range_multiplier,
                     angle,
                 });
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
@@ -7060,6 +7076,7 @@ impl Engine {
                         owner.materials.chloroplasts,
                     ),
                     owner_virtual_body,
+                    range_multiplier: request.range_multiplier,
                     angle: request.angle,
                     kind: request.kind,
                     value: request.value,

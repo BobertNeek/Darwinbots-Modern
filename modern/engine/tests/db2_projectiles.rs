@@ -7,6 +7,51 @@ use darwinbots_engine::{
 use support::db2_fixtures::SHOT_SPEED;
 
 #[test]
+fn db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let power_shooter = engine
+        .spawn_at(
+            LegacyDna::parse("start\n-1 .shoot store\n5 .shootval store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let range_shooter = engine
+        .spawn_at(
+            LegacyDna::parse("start\n-1 .shoot store\n-8 .shootval store\nstop").unwrap(),
+            [100.0, 400.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let power_shot = engine
+        .snapshot()
+        .shots
+        .iter()
+        .find(|shot| shot.owner == power_shooter)
+        .unwrap();
+    let range_shot = engine
+        .snapshot()
+        .shots
+        .iter()
+        .find(|shot| shot.owner == range_shooter)
+        .unwrap();
+
+    assert_eq!(power_shot.value, 290);
+    assert_eq!(power_shot.range, 11);
+    assert_eq!(range_shot.value, 220);
+    assert_eq!(range_shot.range, 21);
+}
+
+#[test]
 fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
     let mut engine = Engine::new(EngineConfig {
         physics: PhysicsSettings {

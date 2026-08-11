@@ -10,6 +10,7 @@ pub(crate) struct ProjectileSpawn {
     pub owner_actual_velocity: [f32; 2],
     pub owner_radius: f32,
     pub owner_virtual_body: f32,
+    pub range_multiplier: f32,
     pub angle: f32,
     pub kind: i32,
     pub value: i32,
@@ -76,6 +77,7 @@ mod tests {
             owner_actual_velocity: [0.0, 0.0],
             owner_radius: 1.0,
             owner_virtual_body: 1.0,
+            range_multiplier: 1.0,
             angle: 0.0,
             kind: 1,
             value: 1,
@@ -266,12 +268,13 @@ impl ProjectilePool {
             request.owner_actual_velocity[0] + direction[0] * settings.speed,
             request.owner_actual_velocity[1] + direction[1] * settings.speed,
         ];
+        let range_multiplier = (request.range_multiplier * settings.range_multiplier).max(1.0);
         let raw_energy =
-            request.owner_virtual_body.abs().max(1.0).ln() * 60.0 * settings.range_multiplier;
+            request.owner_virtual_body.abs().max(1.0).ln() * 60.0 * range_multiplier;
         let range = if request.owner_virtual_body > 10.0 {
             ((raw_energy + 41.0) / 40.0).floor().max(1.0) as u32
         } else {
-            settings.range_multiplier.max(1.0) as u32
+            range_multiplier as u32
         };
         let energy = range as f32 * 40.0;
 
