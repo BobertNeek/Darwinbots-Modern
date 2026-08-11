@@ -1012,6 +1012,121 @@ fn structural_tie_torque_rotates_both_members_in_opposite_directions() {
 }
 
 #[test]
+fn legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clamping() {
+    #[derive(Clone, Copy)]
+    struct CalibrationCase {
+        name: &'static str,
+        initial_angle: f32,
+        fixang: i32,
+        stifftie: i32,
+        expected_angular_momentum: f32,
+        expected_b: f64,
+        expected_k: f64,
+    }
+
+    // VB6 sources: Darwinbots2/Physics.bas:663-704 applies signed error after
+    // a 5-degree slack and clamps the resulting .ma to +/-PI/4. Ties.bas:242-272
+    // maps .fixang and .stifftie, including Mod 100, zero -> 100, and negative -> 1.
+    let cases = [
+        CalibrationCase {
+            name: "clockwise error and 99-percent stiffness",
+            initial_angle: -0.5,
+            fixang: 0,
+            stifftie: 99,
+            expected_angular_momentum: -0.41273355,
+            expected_b: 0.495,
+            expected_k: 0.2475,
+        },
+        CalibrationCase {
+            name: "counterclockwise error and 100-percent stiffness",
+            initial_angle: 0.5,
+            fixang: 0,
+            stifftie: 100,
+            expected_angular_momentum: 0.41273355,
+            expected_b: 0.5,
+            expected_k: 0.25,
+        },
+        CalibrationCase {
+            name: "five-degree deadband and modulo-one stiffness",
+            initial_angle: 0.0,
+            fixang: 17,
+            stifftie: 101,
+            expected_angular_momentum: 0.0,
+            expected_b: 0.005,
+            expected_k: 0.0025,
+        },
+        CalibrationCase {
+            name: "negative pi boundary clamps angular correction",
+            initial_angle: 0.0,
+            fixang: 628,
+            stifftie: -1,
+            expected_angular_momentum: -0.7853982,
+            expected_b: 0.005,
+            expected_k: 0.0025,
+        },
+        CalibrationCase {
+            name: "positive pi boundary clamps angular correction",
+            initial_angle: 0.0,
+            fixang: 629,
+            stifftie: 200,
+            expected_angular_momentum: 0.7853982,
+            expected_b: 0.5,
+            expected_k: 0.25,
+        },
+    ];
+
+    for case in cases {
+        let (mut engine, source, target) = spawn_soft_tie();
+        let rest_length = engine.snapshot().ties[0].rest_length;
+        let mut batch = engine.physics_batch();
+        let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+        let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+        batch.batch.positions[source_index] = [400.0, 1_000.0];
+        batch.batch.positions[target_index] = [
+            400.0 + rest_length * case.initial_angle.cos(),
+            1_000.0 + rest_length * case.initial_angle.sin(),
+        ];
+        batch.batch.velocities[source_index] = [0.0; 2];
+        batch.batch.velocities[target_index] = [0.0; 2];
+        engine.apply_physics_batch(batch).unwrap();
+        engine.tick_many(19).unwrap();
+        assert!(engine.snapshot().ties[0].hardened, "{}", case.name);
+
+        engine
+            .replace_dna(
+                source,
+                LegacyDna::parse(&format!(
+                    "start\n41 .tienum store\n{} .fixang store\n{} .stifftie store\nstop",
+                    case.fixang, case.stifftie
+                ))
+                .unwrap(),
+            )
+            .unwrap();
+        engine.tick().unwrap();
+        engine.tick().unwrap();
+
+        assert_tie_float(&engine, "b", case.expected_b);
+        assert_tie_float(&engine, "k", case.expected_k);
+        assert_close(
+            engine
+                .robot_state(source)
+                .unwrap()
+                .kinematics
+                .angular_momentum,
+            case.expected_angular_momentum,
+        );
+        assert_close(
+            engine
+                .robot_state(target)
+                .unwrap()
+                .kinematics
+                .angular_momentum,
+            -case.expected_angular_momentum,
+        );
+    }
+}
+
+#[test]
 fn multibot_amplifies_feeding_shot_and_virtual_body_range() {
     let mut baseline = Engine::new(tie_test_config()).unwrap();
     baseline
