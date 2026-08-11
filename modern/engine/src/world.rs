@@ -4241,6 +4241,7 @@ impl Engine {
         let mut lifecycle = self.prepare_lifecycle_queues(&mut trace);
         self.phase_timings.lifecycle = elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::Shock);
+        self.shock_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Senses);
         let started = Instant::now();
         self.spatial_index_phase();
@@ -9066,6 +9067,24 @@ impl Engine {
             }
         }
         queues
+    }
+
+    fn shock_phase(&mut self) {
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut() else {
+                continue;
+            };
+            if robot.flags.corpse || robot.flags.vegetable {
+                continue;
+            }
+            let energy = robot.materials.energy;
+            let previous_energy = robot.materials.previous_energy;
+            let loss = previous_energy.saturating_sub(energy);
+            if energy > 3_000 && loss > previous_energy / 2 {
+                robot.materials.energy = 0;
+                robot.materials.publish(&mut robot.program.memory);
+            }
+        }
     }
 
     fn queue_deaths(&self, queues: &mut LifecycleQueues, trace: &mut CycleRecorder) {
