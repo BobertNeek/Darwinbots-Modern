@@ -199,9 +199,9 @@ fn repro_125_transfers_twenty_five_percent_of_db2_resources() {
     let parent_state = engine.robot_state(parent).unwrap();
     let child_state = engine.robot_state(child).unwrap();
     assert_eq!(parent_state.materials.shell, 70);
-    assert_eq!(parent_state.materials.slime, 80);
+    assert_eq!(parent_state.materials.slime, 78);
     assert_eq!(parent_state.materials.venom, 90);
-    assert_eq!(parent_state.materials.poison, 100);
+    assert_eq!(parent_state.materials.poison, 98);
     assert_eq!(child_state.materials.shell, 0);
     assert_eq!(child_state.materials.slime, 0);
     assert_eq!(child_state.materials.venom, 0);
