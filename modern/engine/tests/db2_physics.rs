@@ -1,7 +1,8 @@
 mod support;
 
 use darwinbots_engine::{
-    DnaCosts, Engine, EngineConfig, LegacyDna, PhysicsSettings, SaveFile, VegetationSettings,
+    BackendKind, DnaCosts, Engine, EngineConfig, LegacyDna, PhysicsSettings, SaveFile,
+    VegetationSettings,
 };
 use support::db2_fixtures::{DEFAULT_MAX_VELOCITY, DEFAULT_MOVEMENT_EFFICIENCY};
 
@@ -679,4 +680,171 @@ fn fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick(
 
     assert_ne!(dry_rotation.organism(dry_rotation_id).unwrap().aim, 0);
     assert_eq!(wet_rotation.organism(wet_rotation_id).unwrap().aim, 0);
+}
+
+#[test]
+fn phy04_cpu_engine_physics_contract() {
+    struct Case {
+        name: &'static str,
+        command: &'static str,
+        input: i32,
+        config: EngineConfig,
+        position: [f32; 2],
+        expected_position: [f32; 2],
+        expected_velocity: [f32; 2],
+    }
+
+    let settings =
+        |max_velocity, surface_gravity, static_friction, kinetic_friction| PhysicsSettings {
+            max_velocity,
+            movement_efficiency: 1.0,
+            surface_gravity,
+            static_friction,
+            kinetic_friction,
+            density: 0.0,
+            viscosity: 0.0,
+            ..PhysicsSettings::default()
+        };
+    let config = |
+        world_size: [f32; 2],
+        topology: [bool; 2],
+        physics: PhysicsSettings,
+    | EngineConfig {
+        world_width: world_size[0],
+        world_height: world_size[1],
+        toroidal_world: false,
+        axis_topology: Some(topology),
+        fixed_bot_radii: true,
+        metabolism_cost: 0,
+        gravity: [0.0, 0.0],
+        drag: 0.0,
+        brownian_motion: 0.0,
+        physics,
+        ..EngineConfig::testing()
+    };
+    let center = [500.0, 500.0];
+    let cases = [
+        Case {
+            name: "static threshold",
+            command: "up",
+            input: 1,
+            config: config(
+                [1_000.0, 1_000.0],
+                [false, false],
+                settings(180.0, 2.0, 0.6, 0.4),
+            ),
+            position: center,
+            expected_position: center,
+            expected_velocity: [0.0, 0.0],
+        },
+        Case {
+            name: "kinetic threshold",
+            command: "up",
+            input: 4,
+            config: config(
+                [1_000.0, 1_000.0],
+                [false, false],
+                settings(180.0, 2.0, 0.6, 0.25),
+            ),
+            position: center,
+            expected_position: [500.0, 503.5],
+            expected_velocity: [0.0, 3.5],
+        },
+        Case {
+            name: "solid surface disabled",
+            command: "up",
+            input: 4,
+            config: config(
+                [1_000.0, 1_000.0],
+                [false, false],
+                settings(180.0, 0.0, 0.6, 0.4),
+            ),
+            position: center,
+            expected_position: [500.0, 504.0],
+            expected_velocity: [0.0, 4.0],
+        },
+        Case {
+            name: "zero and negative coefficients",
+            command: "up",
+            input: 4,
+            config: config(
+                [1_000.0, 1_000.0],
+                [false, false],
+                settings(180.0, -2.0, -1.0, -1.0),
+            ),
+            position: center,
+            expected_position: [500.0, 504.0],
+            expected_velocity: [0.0, 4.0],
+        },
+        Case {
+            name: "extreme kinetic coefficient",
+            command: "up",
+            input: 4,
+            config: config(
+                [1_000.0, 1_000.0],
+                [false, false],
+                settings(180.0, 2.0, 0.0, f32::MAX),
+            ),
+            position: center,
+            expected_position: center,
+            expected_velocity: [0.0, 0.0],
+        },
+        Case {
+            name: "maximum velocity clamp",
+            command: "up",
+            input: 100,
+            config: config(
+                [1_000.0, 1_000.0],
+                [false, false],
+                settings(3.0, 0.0, 0.0, 0.0),
+            ),
+            position: center,
+            expected_position: [500.0, 503.0],
+            expected_velocity: [0.0, 3.0],
+        },
+        Case {
+            name: "bounded axes",
+            command: "dx",
+            input: 100,
+            config: config(
+                [200.0, 200.0],
+                [false, false],
+                settings(100.0, 0.0, 0.0, 0.0),
+            ),
+            position: [100.0, 100.0],
+            expected_position: [140.0, 100.0],
+            expected_velocity: [95.0, 0.0],
+        },
+        Case {
+            name: "toroidal axes",
+            command: "dx",
+            input: 100,
+            config: config(
+                [200.0, 200.0],
+                [true, true],
+                settings(100.0, 0.0, 0.0, 0.0),
+            ),
+            position: [100.0, 100.0],
+            expected_position: [110.0, 110.0],
+            expected_velocity: [100.0, 0.0],
+        },
+    ];
+
+    for case in cases {
+        let dna = format!(
+            "cond\n*.robage 1 <\nstart\n{} .{} store\nstop",
+            case.input, case.command
+        );
+        let mut engine = Engine::new(case.config).unwrap();
+        assert_eq!(engine.backend(), BackendKind::Cpu, "{}", case.name);
+        let id = engine
+            .spawn_at(LegacyDna::parse(&dna).unwrap(), case.position)
+            .unwrap();
+
+        engine.tick().unwrap();
+
+        let organism = engine.organism(id).unwrap();
+        assert_eq!(organism.position, case.expected_position, "{}", case.name);
+        assert_eq!(organism.velocity, case.expected_velocity, "{}", case.name);
+    }
 }
