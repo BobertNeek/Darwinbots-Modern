@@ -9523,18 +9523,9 @@ impl Engine {
                         .memory
                         .write(971 + offset, parent_state.program.memory.read(971 + offset));
                 }
-                if self
-                    .config
-                    .advanced_mutation
-                    .epigenetic
-                    .save_as_temporary_gene
-                {
-                    for offset in 0..15 {
-                        child_organism.heredity.epigenetic_staging[offset as usize] =
-                            parent_state.program.memory.read(976 + offset);
-                    }
-                } else {
-                    child_organism.heredity.epigenetic_staging.fill(0);
+                for offset in 0..15 {
+                    child_organism.heredity.epigenetic_staging[offset as usize] =
+                        parent_state.program.memory.read(976 + offset);
                 }
                 child_organism
                     .materials
