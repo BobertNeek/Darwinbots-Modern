@@ -1,5 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Interactivity;
+using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.ViewModels;
@@ -39,8 +41,9 @@ public sealed class ToolsRenderedRouteTests
             ],
         };
 
-        await DesktopTestApplication.Session.Dispatch(async () =>
+        var receipt = await DesktopTestApplication.Session.Dispatch(async () =>
         {
+            byte[] shapeReceipt = [];
             var shape = new ShapeEditorWindow(new ObstacleSnapshot(17, [2f, 3f], [40f, 50f]));
             try
             {
@@ -52,6 +55,41 @@ public sealed class ToolsRenderedRouteTests
                 Assert.Equal(50m, Named<NumericUpDown>(shape, "MaximumY").Value);
                 Assert.Contains("SHAPE PROPERTIES", VisibleText(shape), StringComparison.Ordinal);
                 Assert.Contains("Rust owns collision, vision, shot, and drift behavior.", VisibleText(shape), StringComparison.Ordinal);
+
+                using var frame = shape.CaptureRenderedFrame();
+                Assert.NotNull(frame);
+                Assert.True(frame.PixelSize.Width >= 390, $"Rendered width was {frame.PixelSize.Width}.");
+                Assert.True(frame.PixelSize.Height >= 600, $"Rendered height was {frame.PixelSize.Height}.");
+                using var png = new MemoryStream();
+                frame.Save(png, new PngBitmapEncoderOptions());
+                var bytes = png.ToArray();
+                Assert.True(bytes.Length > 1_000, $"Rendered PNG was only {bytes.Length} bytes.");
+                Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes.Take(8));
+                shapeReceipt = bytes;
+
+                Named<NumericUpDown>(shape, "MinimumX").Value = -5m;
+                Named<NumericUpDown>(shape, "MinimumY").Value = -6m;
+                Named<NumericUpDown>(shape, "MaximumX").Value = 70m;
+                Named<NumericUpDown>(shape, "MaximumY").Value = 80m;
+                Named<TextBox>(shape, "ColorText").Text = "#FF010203";
+                Named<NumericUpDown>(shape, "OpacityValue").Value = 0.75m;
+                Named<NumericUpDown>(shape, "DriftX").Value = 1.5m;
+                Named<NumericUpDown>(shape, "DriftY").Value = -2.5m;
+                Named<ComboBox>(shape, "VisionPolicy").SelectedIndex = 1;
+                Named<ComboBox>(shape, "ShotPolicy").SelectedIndex = 1;
+                shape.GetVisualDescendants().OfType<Button>()
+                    .Single(button => button.Content?.ToString() == "APPLY")
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                var edited = Assert.IsType<ObstacleSnapshot>(shape.Result);
+                Assert.Equal(17u, edited.Id);
+                Assert.Equal([-5f, -6f], edited.Minimum);
+                Assert.Equal([70f, 80f], edited.Maximum);
+                Assert.Equal(0xFF010203u, edited.Color);
+                Assert.Equal(0.75f, edited.Opacity);
+                Assert.Equal([1.5f, -2.5f], edited.Drift);
+                Assert.Equal("see_through", edited.VisionPolicy);
+                Assert.Equal("pass_through", edited.ShotPolicy);
             }
             finally
             {
@@ -153,8 +191,9 @@ public sealed class ToolsRenderedRouteTests
                 robot.Close();
             }
 
-            return 0;
+            return shapeReceipt;
         }, CancellationToken.None);
+        WriteReceipt(receipt);
     }
 
     private static void Show(Window window, double width, double height)
@@ -181,4 +220,26 @@ public sealed class ToolsRenderedRouteTests
 
     private static T Named<T>(Control root, string name) where T : Control =>
         root.FindControl<T>(name) ?? throw new Xunit.Sdk.XunitException($"Missing {typeof(T).Name} named {name}.");
+
+    private static void WriteReceipt(byte[] bytes)
+    {
+        Assert.True(bytes.Length > 1_000, $"Rendered PNG was only {bytes.Length} bytes.");
+        Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes.Take(8));
+        var receiptPath = ReceiptPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(receiptPath)!);
+        File.WriteAllBytes(receiptPath, bytes);
+        Assert.True(File.Exists(receiptPath), $"Rendered receipt was not written: {receiptPath}");
+    }
+
+    private static string ReceiptPath()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            var gitPath = Path.Combine(directory.FullName, ".git");
+            if (File.Exists(gitPath) || Directory.Exists(gitPath))
+                return Path.Combine(directory.FullName, "docs", "parity", "receipts", "db24832-world06-shape-editor.png");
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the worktree root for the WORLD-06 receipt.");
+    }
 }
