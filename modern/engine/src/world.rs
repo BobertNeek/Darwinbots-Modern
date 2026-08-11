@@ -3249,24 +3249,37 @@ impl Engine {
             .iter()
             .enumerate()
             .filter(|(index, species)| {
-                keep_species.is_none_or(|keep| keep == SpeciesId(*index as u32))
+                let species_id = SpeciesId(*index as u32);
+                let is_winner_seed_species =
+                    winner_seed.is_some() && keep_species == Some(species_id);
+                keep_species.is_none_or(|keep| keep == species_id)
                     && !species.vegetable
-                    && self
-                        .species_templates
-                        .get(*index)
-                        .and_then(Option::as_ref)
-                        .is_some()
+                    && (is_winner_seed_species
+                        || self
+                            .species_templates
+                            .get(*index)
+                            .and_then(Option::as_ref)
+                            .is_some())
             })
             .map(|(index, species)| (SpeciesId(index as u32), species.minimum_population.max(1)))
             .collect();
         let mut spawned = 0usize;
         for (species, requested) in species_to_spawn {
-            let Some(template) = self
+            let template = self
                 .species_templates
                 .get(species.0 as usize)
                 .and_then(Option::as_ref)
-                .cloned()
-            else {
+                .cloned();
+            let dna = template
+                .as_ref()
+                .map(|template| template.dna.clone())
+                .or_else(|| {
+                    winner_seed
+                        .as_ref()
+                        .filter(|_| keep_species == Some(species))
+                        .map(|seed| seed.program.dna.clone())
+                });
+            let Some(dna) = dna else {
                 continue;
             };
             for ordinal in 0..requested {
@@ -3283,8 +3296,7 @@ impl Engine {
                     unit_coordinate(random, self.config.world_width),
                     unit_coordinate(advance_random(random), self.config.world_height),
                 ];
-                let id =
-                    self.spawn_species_at_unpublished(template.dna.clone(), species, position)?;
+                let id = self.spawn_species_at_unpublished(dna.clone(), species, position)?;
                 let absolute_id = winner_seed
                     .as_ref()
                     .map(|_| self.allocate_absolute_identity());
@@ -3321,12 +3333,15 @@ impl Engine {
                         .write(MEM_NRG, organism.materials.energy);
                     organism.refresh_occurrence_census();
                 } else {
-                    organism.materials.energy = template.initial_energy;
+                    let initial_energy = template
+                        .as_ref()
+                        .map_or(1, |template| template.initial_energy);
+                    organism.materials.energy = initial_energy;
                     organism.materials.synchronize_energy();
                     organism
                         .program
                         .memory
-                        .write(MEM_NRG, template.initial_energy);
+                        .write(MEM_NRG, initial_energy);
                 }
                 spawned += 1;
             }

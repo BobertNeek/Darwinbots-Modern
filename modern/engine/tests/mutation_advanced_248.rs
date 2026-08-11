@@ -314,3 +314,105 @@ fn zerobot_mode_mutates_selects_and_rolls_back_unstable_rounds() {
             .contains("rollback")
     );
 }
+
+#[test]
+fn mrepro_auto_forked_zerobot_checkpoint_preserves_mutation_lineage_on_rollback() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut settings = AdvancedMutationSettings::default();
+    settings.copy_error2_enabled = true;
+    engine.update_advanced_mutation_settings(settings).unwrap();
+    let source = engine.register_species(SpeciesDefinition {
+        name: "Animal Minimalis".to_owned(),
+        minimum_population: 1,
+        ..Default::default()
+    });
+    engine
+        .update_speciation_settings(Some(true), Some(0.1))
+        .unwrap();
+    let parent = engine
+        .spawn_species_batch(
+            LegacyDna::parse("start\n10 .up store\n50 .mrepro store\nstop").unwrap(),
+            source,
+            [[500.0, 500.0]],
+            10_000,
+        )
+        .unwrap()[0];
+    let mut profile = engine.mutation_profile(parent).unwrap().clone();
+    profile.copy_error2.one_in = 1.0;
+    engine.set_mutation_profile(parent, profile).unwrap();
+    engine
+        .configure_local_mode(LocalModeConfig {
+            kind: LocalModeKind::Zerobot,
+            source_species: Some(source),
+            minimum_rounds: 1,
+            maximum_rounds: 2,
+            maximum_cycles: 2,
+            restart_on_extinction: false,
+            ..Default::default()
+        })
+        .unwrap();
+    engine.start_local_mode().unwrap();
+
+    engine.tick().unwrap();
+
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.id != parent)
+        .unwrap();
+    let child_id = child.id;
+    let child_species = child.species;
+    let child_dna = engine.dna(child_id).unwrap().clone();
+    let child_log = child.mutation_log.clone();
+    let child_subspecies = child.subspecies;
+    let child_species_name = engine.snapshot().species[child_species.0 as usize]
+        .name
+        .clone();
+    assert!(child.total_mutations > 0);
+    assert!(!child_log.is_empty());
+    assert_ne!(child_subspecies, 0);
+    assert!(child_species_name.starts_with("(5001)Animal Minimalis"));
+
+    engine
+        .adjudicate_local_round(
+            Some(child_species),
+            "mutated reproduction checkpoint".to_owned(),
+        )
+        .unwrap();
+    let checkpoint = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.species == child_species)
+        .unwrap();
+    let checkpoint_id = checkpoint.id;
+    assert_eq!(
+        engine.snapshot().local_mode.results[0].winner,
+        Some(child_species)
+    );
+    assert_eq!(engine.dna(checkpoint_id).unwrap(), &child_dna);
+    assert_eq!(checkpoint.mutation_log, child_log);
+    assert_eq!(checkpoint.subspecies, child_subspecies);
+    assert_eq!(
+        engine.snapshot().species[child_species.0 as usize].name,
+        child_species_name
+    );
+
+    engine
+        .adjudicate_local_round(None, "unstable reproduction round".to_owned())
+        .unwrap();
+    let local_mode = engine.snapshot().local_mode.clone();
+    assert_eq!(local_mode.results.len(), 2);
+    assert!(local_mode.results[1].reason.contains("zerobot rollback"));
+    let restored = engine.snapshot().organisms.first().unwrap();
+    let restored_id = restored.id;
+    assert_eq!(restored.species, child_species);
+    assert_eq!(engine.dna(restored_id).unwrap(), &child_dna);
+    assert_eq!(restored.mutation_log, child_log);
+    assert_eq!(restored.subspecies, child_subspecies);
+    assert_eq!(
+        engine.snapshot().species[child_species.0 as usize].name,
+        child_species_name
+    );
+}
