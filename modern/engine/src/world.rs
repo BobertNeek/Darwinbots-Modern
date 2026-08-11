@@ -3035,6 +3035,86 @@ impl Engine {
         }
     }
 
+    fn remove_extinct_species_phase(&mut self) {
+        let mut populations = vec![0_usize; self.species.len()];
+        for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+            if let Some(population) = populations.get_mut(organism.identity.species.0 as usize) {
+                *population = population.saturating_add(1);
+            }
+        }
+
+        let mut remap = vec![None; self.species.len()];
+        let mut species = Vec::with_capacity(self.species.len());
+        let mut species_templates = Vec::with_capacity(self.species_templates.len());
+        let mut subspecies_counters = Vec::with_capacity(self.subspecies_counters.len());
+        for (index, definition) in self.species.iter().enumerate() {
+            let keep = index == 0
+                || populations[index] > 0
+                || definition.reseed
+                || definition.minimum_population > 0;
+            if keep {
+                remap[index] = Some(SpeciesId(species.len() as u32));
+                species.push(definition.clone());
+                species_templates.push(
+                    self.species_templates
+                        .get(index)
+                        .cloned()
+                        .unwrap_or_default(),
+                );
+                subspecies_counters.push(
+                    self.subspecies_counters
+                        .get(index)
+                        .copied()
+                        .unwrap_or_default(),
+                );
+            }
+        }
+
+        if remap.iter().all(Option::is_some) {
+            return;
+        }
+
+        for slot in &mut self.slots {
+            if let Some(organism) = slot.organism.as_mut() {
+                if let Some(Some(species)) = remap.get(organism.identity.species.0 as usize) {
+                    organism.identity.species = *species;
+                }
+            }
+        }
+        if let Some(config) = self.local_mode.config.as_mut() {
+            config.source_species = config.source_species.and_then(|species| {
+                remap.get(species.0 as usize).and_then(|value| *value)
+            });
+        }
+        for result in &mut self.local_mode.results {
+            result.winner = result.winner.and_then(|species| {
+                remap.get(species.0 as usize).and_then(|value| *value)
+            });
+        }
+        if let Some(adjudication) = self.local_mode.adjudication.as_mut() {
+            adjudication.winner = adjudication.winner.and_then(|species| {
+                remap.get(species.0 as usize).and_then(|value| *value)
+            });
+        }
+        let checkpoint_species = self
+            .zerobot_checkpoint
+            .as_ref()
+            .map(|checkpoint| checkpoint.identity.species);
+        match checkpoint_species.and_then(|species| {
+            remap.get(species.0 as usize).and_then(|value| *value)
+        }) {
+            Some(species) => {
+                if let Some(checkpoint) = self.zerobot_checkpoint.as_mut() {
+                    checkpoint.identity.species = species;
+                }
+            }
+            None => self.zerobot_checkpoint = None,
+        }
+        self.species = species;
+        self.species_templates = species_templates;
+        self.subspecies_counters = subspecies_counters;
+    }
+
     fn mode_species_score(&self, species: SpeciesId) -> (usize, i64) {
         self.slots
             .iter()
@@ -4311,6 +4391,7 @@ impl Engine {
         trace.phase(CyclePhase::CommitBirthsDeaths);
         self.commit_lifecycle_queues(lifecycle, &mut trace)?;
         trace.phase(CyclePhase::ExtinctSpecies);
+        self.remove_extinct_species_phase();
         trace.phase(CyclePhase::Restart);
         self.enforce_low_memory_safety(&mut trace);
         self.enforce_mode_population_cap()?;
