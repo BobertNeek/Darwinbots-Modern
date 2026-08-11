@@ -59,7 +59,8 @@ public sealed partial class MainWindow : Window
     private SimulationSession? _session;
     private readonly DispatcherTimer _runTimer;
     private readonly DispatcherTimer _autosaveTimer;
-    private readonly IReadOnlyList<string> _startupBots;
+    private readonly IReadOnlyList<string> _startupArguments;
+    private readonly IReadOnlyList<StartupDnaImport> _startupBots;
     private readonly WorldSetupOptions _setup;
     private readonly ObservableCollection<SpeciesImport> _insertionSpecies = [];
     private GlobalSettings _globalSettings;
@@ -119,9 +120,13 @@ public sealed partial class MainWindow : Window
         IEngineClientFactory engineFactory,
         IDesktopStorageService storage)
     {
-        _startupBots = ParseStartupBots(arguments);
+        _startupArguments = arguments.ToArray();
         _setup = setup;
         _globalSettings = setup.GlobalSettings;
+        _startupBots = new StartupDnaWorkflow(
+            setup.WorldWidth,
+            setup.WorldHeight,
+            setup.GlobalSettings.Main.MainDirectory).Resolve(_startupArguments);
         _engineFactory = engineFactory ?? throw new ArgumentNullException(nameof(engineFactory));
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _zerobotProgression = null;
@@ -1762,7 +1767,9 @@ public sealed partial class MainWindow : Window
                     compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
             foreach (var bot in _startupBots)
             {
-                compatibilityWarnings.AddRange((await _session.ImportDnaAsync(await File.ReadAllTextAsync(bot), [8000f, 6000f])).CompatibilityWarnings);
+                compatibilityWarnings.AddRange((await _session.ImportDnaAsync(
+                    await File.ReadAllTextAsync(bot.Path),
+                    bot.Position)).CompatibilityWarnings);
             }
             if (compatibilityWarnings.Count > 0) _viewModel.Status = $"DNA COMPATIBILITY · {string.Join(" · ", compatibilityWarnings.Distinct())}";
             else if (_startupBots.Count > 0) _viewModel.Status = $"IMPORTED {_startupBots.Count} STARTUP BOT(S)";
@@ -1815,17 +1822,6 @@ public sealed partial class MainWindow : Window
         _insertionSpecies.Add(species);
         InsertionSpeciesSelector.SelectedItem = species;
         ToolbarSlot17.SelectedItem = species;
-    }
-
-    private static IReadOnlyList<string> ParseStartupBots(IReadOnlyList<string> arguments)
-    {
-        var bots = new List<string>();
-        for (var index = 0; index < arguments.Count; index++)
-        {
-            if (arguments[index] == "--bot" && index + 1 < arguments.Count)
-                bots.Add(Path.GetFullPath(arguments[++index]));
-        }
-        return bots;
     }
 
     private async void Step_Click(object? sender, RoutedEventArgs e)
@@ -1946,7 +1942,7 @@ public sealed partial class MainWindow : Window
     private void Reset_Click(object? sender, RoutedEventArgs e)
     {
         _runTimer.Stop();
-        var replacement = new MainWindow(_startupBots, CreateNextWorldSetup(), _engineFactory, _storage);
+        var replacement = new MainWindow(_startupArguments, CreateNextWorldSetup(), _engineFactory, _storage);
         replacement.Show();
         Close();
     }
