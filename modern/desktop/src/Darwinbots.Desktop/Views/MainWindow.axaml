@@ -20,7 +20,7 @@
         <Button x:Name="StepButton" Grid.Column="3" Classes="transport" Content="▶| STEP" Margin="4,0,0,0" Click="Step_Click" />
         <Button Grid.Column="4" x:Name="TurboButton" Height="34" Content="TURBO" Margin="4,0,0,0" Click="Turbo_Click" />
         <Button x:Name="ImportButton" Grid.Column="5" Height="34" Content="IMPORT BOT" Margin="6,0,0,0" Click="Import_Click" />
-        <Button x:Name="ResetButton" Grid.Column="6" Height="34" Content="RESET" Margin="4,0,0,0" Click="Reset_Click" />
+        <Button x:Name="ResetButton" Grid.Column="6" Height="34" Content="RESET" Margin="4,0,0,0" ToolTip.Tip="Reset simulation" AutomationProperties.Name="RESET SIMULATION" AutomationProperties.HelpText="Stop the current simulation and start a fresh local world." Click="Reset_Click" />
           <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" Margin="6,0,0,0">
           <ComboBox x:Name="RuntimeSpeed" Width="84" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
           <Button x:Name="BackendButton" Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />

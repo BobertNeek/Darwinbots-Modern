@@ -88,6 +88,34 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     [Fact]
+    public async Task ClassicResetControlRendersItsPlayerFacingPresentation()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            try
+            {
+                ShowForInteraction(window, 1280, 900);
+                var reset = Named<Button>(window, "ResetButton");
+
+                Assert.Equal("RESET", reset.Content?.ToString());
+                Assert.Equal("RESET SIMULATION", AutomationProperties.GetName(reset));
+                Assert.Equal(
+                    "Stop the current simulation and start a fresh local world.",
+                    AutomationProperties.GetHelpText(reset));
+                Capture(window, "run-01-classic-reset.png");
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+
+            return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task SetupRenderedControlsDispatchThroughVisualTree()
     {
         var storage = new AuditStorageService
