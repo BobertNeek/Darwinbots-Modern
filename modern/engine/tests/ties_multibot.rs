@@ -1297,6 +1297,59 @@ fn eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity() {
 }
 
 #[test]
+fn tie_formation_skips_existing_pair_for_next_eligible_target() {
+    let mut engine = Engine::new(tie_test_config()).unwrap();
+    let nearest_target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [900.0, 1_000.0])
+        .unwrap();
+    let eligible_target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1_500.0, 1_000.0])
+        .unwrap();
+    let attacker = engine
+        .spawn_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            [700.0, 1_000.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    engine
+        .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    assert_eq!(engine.snapshot().ties.len(), 1);
+
+    engine
+        .replace_dna(
+            attacker,
+            LegacyDna::parse("start\n42 .tie store\nstop").unwrap(),
+        )
+        .unwrap();
+    let mut batch = engine.physics_batch();
+    for (index, id) in batch.ids.iter().copied().enumerate() {
+        batch.batch.velocities[index] = [0.0; 2];
+        batch.batch.positions[index] = if id == nearest_target {
+            [900.0, 1_000.0]
+        } else if id == eligible_target {
+            [1_500.0, 1_000.0]
+        } else {
+            assert_eq!(id, attacker);
+            [600.0, 1_000.0]
+        };
+    }
+    engine.apply_physics_batch(batch).unwrap();
+    engine.tick().unwrap();
+
+    let snapshot = engine.snapshot();
+    assert_eq!(snapshot.ties.len(), 2);
+    let created = snapshot
+        .ties
+        .iter()
+        .find(|tie| tie.first == attacker && tie.second == eligible_target)
+        .expect("the second attempt should use the next eligible target");
+    assert_eq!(created.first_port, 42);
+    assert_eq!(created.second_port, 1);
+}
+
+#[test]
 fn slime_is_consumed_to_resist_new_ties() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

@@ -6755,6 +6755,59 @@ impl Engine {
         }
     }
 
+    fn first_free_tie_port(&self, id: OrganismId) -> Option<i32> {
+        (1..=MAX_TIES_PER_ROBOT as i32).find(|port| {
+            self.ties.iter().all(|tie| {
+                if tie.first == id {
+                    tie.first_port != *port
+                } else if tie.second == id {
+                    tie.second_port != *port
+                } else {
+                    true
+                }
+            })
+        })
+    }
+
+    fn eligible_tie_target(&self, attacker_slot: usize, position: [f32; 2]) -> Option<usize> {
+        let attacker = OrganismId::new(
+            attacker_slot as u32,
+            self.slots[attacker_slot].generation,
+        );
+        if self.ties.iter().filter(|tie| tie.contains(attacker)).count() >= MAX_TIES_PER_ROBOT {
+            return None;
+        }
+
+        self.slots
+            .iter()
+            .enumerate()
+            .filter_map(|(target_slot, slot)| {
+                if target_slot == attacker_slot {
+                    return None;
+                }
+                let organism = slot.organism.as_ref()?;
+                let target = OrganismId::new(target_slot as u32, slot.generation);
+                if self.ties.iter().any(|tie| {
+                    (tie.first == attacker && tie.second == target)
+                        || (tie.first == target && tie.second == attacker)
+                }) {
+                    return None;
+                }
+                self.first_free_tie_port(target)?;
+                let distance = distance_squared(position, organism.kinematics.position);
+                if distance > 1_000.0 * 1_000.0 {
+                    return None;
+                }
+                Some((distance, target_slot))
+            })
+            .min_by(|left, right| {
+                left.0
+                    .total_cmp(&right.0)
+                    .then_with(|| left.1.cmp(&right.1))
+            })
+            .map(|(_, target_slot)| target_slot)
+    }
+
     fn tie_fire_phase(&mut self, trace: &mut CycleRecorder) {
         let runtime = SysvarRuntime::new();
         let phase_commands = self.capture_tie_commands();
@@ -6773,7 +6826,7 @@ impl Engine {
             else {
                 continue;
             };
-            if let Some(target) = self.spatial.nearest(position, Some(attacker_slot), 1_000.0) {
+            if let Some(target) = self.eligible_tie_target(attacker_slot, position) {
                 tie_requests.push((attacker_slot, target, commands.create));
             }
         }
@@ -6824,7 +6877,9 @@ impl Engine {
             if first_tie_count >= MAX_TIES_PER_ROBOT || second_tie_count >= MAX_TIES_PER_ROBOT {
                 continue;
             }
-            let second_port = second_tie_count as i32 + 1;
+            let Some(second_port) = self.first_free_tie_port(second) else {
+                continue;
+            };
             let first_position = self.slots[first_slot]
                 .organism
                 .as_ref()
