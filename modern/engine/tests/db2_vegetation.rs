@@ -201,6 +201,54 @@ fn vegetable_reproduction_splits_parent_biology_without_resetting_child() {
 }
 
 #[test]
+fn vegetable_reproduction_is_throttled_near_the_population_cap() {
+    let mut engine = Engine::new(EngineConfig {
+        seed: 1,
+        metabolism_cost: 0,
+        vegetable_energy_per_tick: 0,
+        vegetable_population_cap: 11,
+        vegetation: VegetationSettings {
+            daytime: false,
+            start_chloroplasts: 32_000,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let vegetables = engine.register_species(SpeciesDefinition {
+        name: "Near-cap vegetables".to_owned(),
+        vegetable: true,
+        reseed: true,
+        ..SpeciesDefinition::default()
+    });
+    let parent = engine
+        .spawn_species_at(
+            LegacyDna::parse("start\n50 .repro store\nstop").unwrap(),
+            vegetables,
+            [1_000.0, 1_000.0],
+        )
+        .unwrap();
+    engine
+        .spawn_species_batch(
+            LegacyDna::parse("start\nstop").unwrap(),
+            vegetables,
+            [
+                [3_000.0, 1_000.0],
+                [5_000.0, 1_000.0],
+                [7_000.0, 1_000.0],
+                [9_000.0, 1_000.0],
+            ],
+            1_000,
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.vegetable_population(), 5);
+    assert_eq!(engine.organism(parent).unwrap().offspring, 0);
+}
+
+#[test]
 fn full_chloroplast_plant_receives_db2_light_and_body_split() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

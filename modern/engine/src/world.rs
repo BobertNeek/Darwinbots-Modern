@@ -8961,6 +8961,13 @@ impl Engine {
     fn prepare_lifecycle_queues(&mut self, trace: &mut CycleRecorder) -> LifecycleQueues {
         let mut queues = LifecycleQueues::default();
         let runtime = SysvarRuntime::new();
+        let total_chloroplasts: i64 = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|robot| robot.materials.chloroplasts.max(0) as i64)
+            .sum();
+        let chloroplast_equivalents = (total_chloroplasts / 16_000).max(0) as usize;
         for (slot_index, slot) in self.slots.iter_mut().enumerate() {
             let Some(organism) = slot.organism.as_mut() else {
                 continue;
@@ -8995,6 +9002,10 @@ impl Engine {
                 .species
                 .get(organism.identity.species.0 as usize)
                 .is_some_and(|value| value.reseed);
+            let vegetable = self
+                .species
+                .get(organism.identity.species.0 as usize)
+                .is_some_and(|value| value.vegetable);
             if percentage > 0
                 && organism.materials.energy > 0
                 && organism.materials.body >= 5
@@ -9003,6 +9014,16 @@ impl Engine {
                     || self.asexual_reproduction_allowed
                     || assisted_reproduction
                     || species_repopulates)
+                && (assisted_reproduction
+                    || vegetable_reproduction_passes_population_throttle(
+                        vegetable,
+                        sexual,
+                        chloroplast_equivalents,
+                        self.config.vegetable_population_cap,
+                        self.config.seed,
+                        self.tick,
+                        slot_index,
+                    ))
             {
                 let parent = OrganismId::new(slot_index as u32, slot.generation);
                 trace.queue_change(
@@ -10577,6 +10598,31 @@ fn advance_random(mut value: u64) -> u64 {
     value ^= value >> 7;
     value ^= value << 17;
     value.max(1)
+}
+
+fn vegetable_reproduction_passes_population_throttle(
+    vegetable: bool,
+    sexual: bool,
+    chloroplast_equivalents: usize,
+    cap: usize,
+    seed: u64,
+    tick: u64,
+    slot_index: usize,
+) -> bool {
+    if !vegetable {
+        return true;
+    }
+    if chloroplast_equivalents > cap {
+        return false;
+    }
+    if chloroplast_equivalents.saturating_mul(10) <= cap.saturating_mul(9) {
+        return true;
+    }
+
+    let random = advance_random(
+        seed ^ tick.rotate_left(19) ^ (slot_index as u64).rotate_left(37),
+    );
+    random % if sexual { 10 } else { 11 } == 5
 }
 
 fn strip_numeric_species_prefix(name: &str) -> &str {
