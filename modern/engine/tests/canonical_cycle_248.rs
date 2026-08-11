@@ -573,6 +573,7 @@ fn teleporter_relocation_precedes_same_cycle_senses() {
             center: [100.0, 100.0],
             radius: 50.0,
             destination: [800.0, 700.0],
+            ..Teleporter::default()
         })
         .unwrap();
     let traveler = engine
@@ -592,6 +593,7 @@ fn teleporter_relocation_precedes_same_cycle_senses() {
             center: [500.0, 500.0],
             radius: 50.0,
             destination: [800.0, 700.0],
+            ..Teleporter::default()
         })
         .unwrap();
     let parent = birth_engine
