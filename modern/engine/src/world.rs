@@ -9234,7 +9234,9 @@ impl Engine {
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
         self.corpses.retain(|corpse| {
-            corpse.energy > 0 && corpse.position.iter().all(|value| value.is_finite())
+            corpse.body > 0
+                && corpse.energy > 0
+                && corpse.position.iter().all(|value| value.is_finite())
         });
     }
 
@@ -11199,5 +11201,28 @@ mod tests {
         assert_eq!(engine.snapshot().tick, 3);
         assert_eq!(engine.snapshot_publication_count(), publications_before + 1);
         assert_eq!(engine.backend(), BackendKind::Gpu);
+    }
+
+    #[test]
+    fn exhausted_corpse_is_removed_when_energy_remains() {
+        let mut engine = Engine::new(EngineConfig {
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                packet_size: 1,
+                period: 1,
+                ..CorpseDecaySettings::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine.corpses.push(CorpseSnapshot {
+            energy: 10,
+            body: 0,
+            ..CorpseSnapshot::default()
+        });
+
+        engine.tick().unwrap();
+
+        assert!(engine.snapshot().corpses.is_empty());
     }
 }
