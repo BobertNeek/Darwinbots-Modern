@@ -301,8 +301,38 @@ public sealed class GraphAndContestTests
         };
 
         var database = DatabaseExport.Serialize(snapshot);
-        Assert.StartsWith("Rob id,Parent id,Founder name,Generation,Birth cycle,Age,Mutations,New mutations,Dna length,Offspring number,kills,Fitness,Energy,Chloroplasts\r\n", database, StringComparison.Ordinal);
-        Assert.Contains("7003,2,Alpha,3,0,4,12,3,18,5,0,", database, StringComparison.Ordinal);
+        Assert.Equal(
+            "Rob id,Parent id,Founder name,Generation,Birth cycle,Age,Mutations,New mutations,Dna length,Offspring number,kills,Fitness,Energy,Chloroplasts\r\n"
+                + "7003,2,Alpha,3,0,4,12,3,18,5,0,1100,1100,9\r\n",
+            database);
+
+        var history = new GraphSuiteViewModel
+        (
+            [
+                new(10, new Dictionary<GraphMetric, double>
+                {
+                    [GraphMetric.Population] = 2,
+                    [GraphMetric.AverageEnergy] = 12.5,
+                }),
+                new(20, new Dictionary<GraphMetric, double>
+                {
+                    [GraphMetric.Population] = 4,
+                    [GraphMetric.AverageEnergy] = 18.25,
+                }),
+            ]);
+        history.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+        Assert.NotNull(history.OpenSelectedGraph());
+        history.SelectedChoice = GraphCatalog.For(GraphMetric.AverageEnergy);
+        Assert.NotNull(history.OpenSelectedGraph());
+
+        Assert.Equal("RUNNING · AVERAGE ENERGY", history.Status);
+        Assert.Equal(
+            "series_id,metric,title,expression,tick,value\r\n"
+                + "graph-1,Population,Population,,10,2\r\n"
+                + "graph-1,Population,Population,,20,4\r\n"
+                + "graph-2,AverageEnergy,Average Energy,,10,12.5\r\n"
+                + "graph-2,AverageEnergy,Average Energy,,20,18.25\r\n",
+            history.ExportCsv());
     }
 
     [Fact]
