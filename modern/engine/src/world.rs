@@ -5572,9 +5572,8 @@ impl Engine {
                     robot.materials.radius = radius;
                     let mut effective_gravity = gravity;
                     if pond_mode && effective_gravity[1] != 0.0 {
-                        let buoyancy_threshold = (1.0 / tide_scaling.max(f32::EPSILON)
-                            - robot.kinematics.position[1] / world_height)
-                            .clamp(0.0, 1.0);
+                        let buoyancy_threshold = 1.0 / tide_scaling.max(f32::EPSILON)
+                            - robot.kinematics.position[1] / world_height;
                         effective_gravity[1] = if buoyancy_threshold > robot.buoyancy {
                             effective_gravity[1].abs()
                         } else {

@@ -405,6 +405,50 @@ fn pond_buoyancy_reverses_vertical_gravity_at_the_bottom() {
 }
 
 #[test]
+fn pond_full_buoyancy_sinks_shallow_but_floats_deep_when_raw_threshold_exceeds_one() {
+    let config = EngineConfig {
+        gravity: [0.0, 6.2],
+        world_width: 2_000.0,
+        world_height: 1_000.0,
+        toroidal_world: false,
+        brownian_motion: 0.0,
+        drag: 0.0,
+        physics: PhysicsSettings {
+            density: 0.0,
+            surface_gravity: 0.0,
+            static_friction: 0.0,
+            kinetic_friction: 0.0,
+            ..PhysicsSettings::default()
+        },
+        vegetation: VegetationSettings {
+            pond_mode: true,
+            tides: 2,
+            ..VegetationSettings::default()
+        },
+        ..EngineConfig::testing()
+    };
+    let mut engine = Engine::new(config).unwrap();
+    let dna = LegacyDna::parse("start\n32000 .setboy store\nstop").unwrap();
+    let shallow = engine.spawn_at(dna.clone(), [500.0, 150.0]).unwrap();
+    let deep = engine.spawn_at(dna, [1_500.0, 850.0]).unwrap();
+
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+
+    let shallow_velocity = engine.organism(shallow).unwrap().velocity[1];
+    let deep_velocity = engine.organism(deep).unwrap().velocity[1];
+    assert!(
+        shallow_velocity > 0.0,
+        "raw buoyancy threshold above one must still sink shallow full-buoyancy robot: {shallow_velocity}"
+    );
+    assert!(
+        deep_velocity < 0.0,
+        "deeper full-buoyancy robot must float at the same tide phase: {deep_velocity}"
+    );
+}
+
+#[test]
 fn pond_tides_modulate_vertical_gravity_over_the_configured_period() {
     let config = EngineConfig {
         gravity: [0.0, 6.2],
