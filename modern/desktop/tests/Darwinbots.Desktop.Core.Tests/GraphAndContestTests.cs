@@ -306,6 +306,31 @@ public sealed class GraphAndContestTests
     }
 
     [Fact]
+    public void GraphHistoryExportUsesLegacyCrLfRecordBoundaries()
+    {
+        var suite = new GraphSuiteViewModel(
+        [
+            new GraphMetricSample(10, new Dictionary<GraphMetric, double>
+            {
+                [GraphMetric.Population] = 2,
+            }),
+            new GraphMetricSample(20, new Dictionary<GraphMetric, double>
+            {
+                [GraphMetric.Population] = 4,
+            }),
+        ]);
+
+        suite.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+        Assert.NotNull(suite.OpenSelectedGraph());
+
+        Assert.Equal(
+            "series_id,metric,title,expression,tick,value\r\n"
+                + "graph-1,Population,Population,,10,2\r\n"
+                + "graph-1,Population,Population,,20,4\r\n",
+            suite.ExportCsv());
+    }
+
+    [Fact]
     public void LegacyGraphExportWritesJoinCompatibleNineHundredNinetyNineRowSegments()
     {
         var graph = new GraphSeriesViewModel(

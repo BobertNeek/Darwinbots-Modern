@@ -410,7 +410,7 @@ public static class GraphExport
 {
     public static string Serialize(IEnumerable<GraphSeriesViewModel> graphs)
     {
-        var builder = new StringBuilder("series_id,metric,title,expression,tick,value\n");
+        var builder = new StringBuilder("series_id,metric,title,expression,tick,value\r\n");
         foreach (var graph in graphs)
         foreach (var sample in graph.Samples)
             builder.Append(Escape(graph.Id))
@@ -424,7 +424,7 @@ public static class GraphExport
                 .Append(sample.Tick.ToString(CultureInfo.InvariantCulture))
                 .Append(',')
                 .Append(sample.Value.ToString("R", CultureInfo.InvariantCulture))
-                .Append('\n');
+                .Append("\r\n");
         return builder.ToString();
     }
 
