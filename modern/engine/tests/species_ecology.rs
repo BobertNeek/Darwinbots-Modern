@@ -1810,6 +1810,244 @@ fn corpses_ignore_venom_impacts() {
 }
 
 #[test]
+fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
+    #[derive(Debug, PartialEq)]
+    struct Expected {
+        source_venom: i32,
+        impacts: u64,
+        effects: u64,
+        target: Option<[i32; 6]>, // venom, shell, paralyzed, location, value, memory[500]
+        countdown: Option<f32>,
+        corpse_unchanged: bool,
+    }
+
+    struct Case {
+        name: &'static str,
+        shared_species: bool,
+        source_venom: i32,
+        shoot_value: i32,
+        target_venom: i32,
+        target_shell: i32,
+        toxin_location: i32,
+        toxin_value: i32,
+        corpse: bool,
+        followup_paralyzed: Option<i32>,
+        expected: Expected,
+    }
+
+    let cases = [
+        Case {
+            name: "zero shootval absorbs one twentieth",
+            shared_species: true,
+            source_venom: 100,
+            shoot_value: 0,
+            target_venom: 10,
+            target_shell: 5,
+            toxin_location: 500,
+            toxin_value: 77,
+            corpse: false,
+            followup_paralyzed: None,
+            expected: Expected {
+                source_venom: 95,
+                impacts: 1,
+                effects: 1,
+                target: Some([15, 5, 0, 0, 0, 55]),
+                countdown: None,
+                corpse_unchanged: false,
+            },
+        },
+        Case {
+            name: "heterospecific payload counts down",
+            shared_species: false,
+            source_venom: 8,
+            shoot_value: 8,
+            target_venom: 0,
+            target_shell: 0,
+            toxin_location: 500,
+            toxin_value: 77,
+            corpse: false,
+            followup_paralyzed: Some(6),
+            expected: Expected {
+                source_venom: 0,
+                impacts: 1,
+                effects: 1,
+                target: Some([0, 0, 7, 500, 77, 77]),
+                countdown: Some(7.0),
+                corpse_unchanged: false,
+            },
+        },
+        Case {
+            name: "invalid delgene address is inert",
+            shared_species: false,
+            source_venom: 3,
+            shoot_value: 3,
+            target_venom: 0,
+            target_shell: 0,
+            toxin_location: 340,
+            toxin_value: 77,
+            corpse: false,
+            followup_paralyzed: None,
+            expected: Expected {
+                source_venom: 0,
+                impacts: 1,
+                effects: 1,
+                target: Some([0, 0, 2, 0, 77, 55]),
+                countdown: None,
+                corpse_unchanged: false,
+            },
+        },
+        Case {
+            name: "attenuated one-power venom writes payload without paralysis",
+            shared_species: false,
+            source_venom: 1,
+            shoot_value: 1,
+            target_venom: 0,
+            target_shell: 0,
+            toxin_location: 500,
+            toxin_value: 77,
+            corpse: false,
+            followup_paralyzed: None,
+            expected: Expected {
+                source_venom: 0,
+                impacts: 1,
+                effects: 1,
+                target: Some([0, 0, 0, 0, 0, 77]),
+                countdown: None,
+                corpse_unchanged: false,
+            },
+        },
+    ];
+
+    for case in cases {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: if case.corpse { 1 } else { 0 },
+            gravity: [0.0, 0.0],
+            drag: 0.0,
+            brownian_motion: 0.0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let species_name = format!("SHOT-07 {}", case.name);
+        let source_species = engine.register_species(SpeciesDefinition {
+            name: species_name.clone(),
+            ..SpeciesDefinition::default()
+        });
+        let target_species = if case.shared_species {
+            source_species
+        } else {
+            engine.register_species(SpeciesDefinition {
+                name: format!("{species_name} target"),
+                ..SpeciesDefinition::default()
+            })
+        };
+        let source = engine
+            .spawn_species_at(
+                LegacyDna::parse(&format!(
+                    "start\n{} .strvenom store\nstop",
+                    case.source_venom
+                ))
+                .unwrap(),
+                source_species,
+                TOXIN_SOURCE_POSITION,
+            )
+            .unwrap();
+        let target_dna = if case.corpse {
+            LegacyDna::parse("start\nstop").unwrap()
+        } else {
+            LegacyDna::parse(&format!(
+                "start\n{} .strvenom store\n{} .mkshell store\n55 500 store\nstop",
+                case.target_venom, case.target_shell
+            ))
+            .unwrap()
+        };
+        let target_position = if case.followup_paralyzed.is_some() {
+            FRACTIONAL_TOXIN_TARGET_POSITION
+        } else {
+            TOXIN_TARGET_POSITION
+        };
+        let target = if case.corpse {
+            engine
+                .spawn_species_batch(
+                    target_dna,
+                    target_species,
+                    [target_position],
+                    1,
+                )
+                .unwrap()[0]
+        } else {
+            engine
+                .spawn_species_at(target_dna, target_species, target_position)
+                .unwrap()
+        };
+        engine.tick().unwrap();
+        let corpse_before = case
+            .corpse
+            .then(|| engine.snapshot().corpses[0].clone());
+        engine
+            .replace_dna(
+                source,
+                LegacyDna::parse(&format!(
+                    "start\n-3 .shoot store\n{} .shootval store\n{} .vloc store\n{} .venval store\nstop",
+                    case.shoot_value, case.toxin_location, case.toxin_value
+                ))
+                .unwrap(),
+            )
+            .unwrap();
+        if !case.corpse {
+            engine
+                .replace_dna(target, LegacyDna::parse("start\nstop").unwrap())
+                .unwrap();
+        }
+        engine.tick().unwrap();
+        engine
+            .replace_dna(source, LegacyDna::parse("start\nstop").unwrap())
+            .unwrap();
+        for _ in 0..20 {
+            engine.tick().unwrap();
+            if engine.snapshot().stats.projectile_impacts == 1 {
+                break;
+            }
+        }
+
+        let observed = Expected {
+            source_venom: engine.organism(source).unwrap().venom,
+            impacts: engine.snapshot().stats.projectile_impacts,
+            effects: engine.snapshot().stats.projectile_effects,
+            target: (!case.corpse).then(|| {
+                let target_after = engine.organism(target).unwrap();
+                let effects = &engine.robot_state(target).unwrap().effects;
+                [
+                    target_after.venom,
+                    target_after.shell,
+                    target_after.paralyzed,
+                    effects.paralysis_location,
+                    effects.paralysis_value,
+                    engine.memory_at(target, 500).unwrap(),
+                ]
+            }),
+            countdown: (!case.corpse && case.followup_paralyzed.is_some()).then(|| {
+                engine
+                    .robot_state(target)
+                    .unwrap()
+                    .effects
+                    .paralysis_countdown
+            }),
+            corpse_unchanged: case.corpse
+                && corpse_before.as_ref().is_some_and(|before| {
+                    let after = &engine.snapshot().corpses[0];
+                    before.energy == after.energy && before.body == after.body
+                }),
+        };
+        assert_eq!(observed, case.expected, "{}", case.name);
+        if let Some(expected_paralyzed) = case.followup_paralyzed {
+            engine.tick().unwrap();
+            assert_eq!(engine.organism(target).unwrap().paralyzed, expected_paralyzed);
+            assert_eq!(engine.memory_at(target, 500).unwrap(), case.toxin_value);
+        }
+    }
+}
+
+#[test]
 fn eye_strength_uses_db2_edge_to_edge_distance() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
