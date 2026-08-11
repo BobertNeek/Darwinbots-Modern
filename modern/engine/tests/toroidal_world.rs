@@ -79,6 +79,39 @@ fn topology_wraps_x_but_bounds_y_inside_robot_radius_and_smudge() {
 }
 
 #[test]
+fn wrapped_axis_applies_border_smudge_before_integration() {
+    let mut engine = Engine::new(EngineConfig {
+        world_width: 1_000.0,
+        world_height: 1_000.0,
+        toroidal_world: false,
+        axis_topology: Some([true, false]),
+        metabolism_cost: 0,
+        gravity: [0.0, 0.0],
+        drag: 0.0,
+        physics: PhysicsSettings {
+            surface_gravity: 0.0,
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let organism = engine
+        .spawn_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            [1.0, 500.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+
+    let state = engine.organism(organism).unwrap();
+    let expected = (state.radius + 50.0).min(1_000.0 - state.radius);
+    let position = state.position;
+    assert!((position[0] - expected).abs() < 0.01, "expected smudge respawn, got {position:?}");
+    assert_eq!(engine.memory_at(organism, 214).unwrap(), 0);
+}
+
+#[test]
 fn projectile_wrap_preserves_its_travel_segment() {
     let mut engine = Engine::new(toroidal_test_config()).unwrap();
     engine

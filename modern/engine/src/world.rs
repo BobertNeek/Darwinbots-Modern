@@ -7382,12 +7382,19 @@ impl Engine {
                 let max_center = (extent - radius).max(min_center);
                 if wrapped_axes[axis] {
                     let predicted = predicted_positions[index][axis];
+                    let position = keyed_batch.batch.positions[index][axis];
+                    let smudge_min = (radius + BIRTH_BORDER_SMUDGE).min(max_center);
+                    let smudge_max = (extent - radius - BIRTH_BORDER_SMUDGE).max(min_center);
                     if predicted < 0.0 {
                         keyed_batch.batch.positions[index][axis] =
                             (radius + BIRTH_BORDER_SMUDGE).min(max_center);
                     } else if predicted > extent {
                         keyed_batch.batch.positions[index][axis] =
                             (extent - radius - BIRTH_BORDER_SMUDGE).max(min_center);
+                    } else if position < smudge_min {
+                        keyed_batch.batch.positions[index][axis] = smudge_min;
+                    } else if position > smudge_max {
+                        keyed_batch.batch.positions[index][axis] = smudge_max;
                     }
                 } else {
                     keyed_batch.batch.positions[index][axis] =
