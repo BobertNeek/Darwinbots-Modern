@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
@@ -185,6 +186,27 @@ public sealed class SetupControlSurfaceTests
                 window.Close();
             }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public void SetupStorageRoutesSetThroughDb2AndJsonThroughTheModernCodec()
+    {
+        var expected = new DesktopSettings
+        {
+            Backend = "Gpu",
+            TicksPerUpdate = 20,
+            OrganismCapacity = 44_000,
+            WorldWidth = 91_000,
+            WorldHeight = 82_000,
+        };
+
+        var legacyBytes = SetupStorageService.EncodeSettings("darwinbots.set", expected);
+        var modernBytes = SetupStorageService.EncodeSettings("darwinbots.json", expected);
+
+        Assert.Equal(Db2SettingsCodec.Encode(expected), legacyBytes);
+        Assert.Equal(Encoding.UTF8.GetBytes(expected.ToJson()), modernBytes);
+        Assert.Equal(expected.ToJson(), SetupStorageService.DecodeSettings("darwinbots.set", legacyBytes).ToJson());
+        Assert.Equal(expected.ToJson(), SetupStorageService.DecodeSettings("darwinbots.json", modernBytes).ToJson());
     }
 
     private static void Select(SetupWindow window, RadioButton radio, string modeName)
