@@ -1944,12 +1944,25 @@ public sealed partial class MainWindow : Window
     private async void Reproduce_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _viewModel.SelectedOrganism is not { } organism) return;
-        await _session.ReproduceAsync(
-            organism.Slot,
-            organism.Generation,
+        var request = new ManualReproductionRequest(
+            new OrganismKey(organism.Slot, organism.Generation),
             null,
-            null,
-            [organism.Position[0] + 20f, organism.Position[1] + 20f]);
+            [organism.Position[0] + 20f, organism.Position[1] + 20f],
+            organism.Energy,
+            organism.Body,
+            _session.LatestSnapshot.MutationSettings.Enabled
+                ? ManualReproductionMutationMode.Apply
+                : ManualReproductionMutationMode.Preserve,
+            Focus: true);
+        var child = await _session.ReproduceAsync(request);
+        if (request.Focus)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                _viewModel.Select(child);
+                Viewport.SelectKey(child);
+            });
+        }
         _viewModel.Status = "MANUAL REPRODUCTION COMPLETE · 50% SPLIT";
     }
 

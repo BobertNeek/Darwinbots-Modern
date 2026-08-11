@@ -43,6 +43,13 @@ struct OrganismIdCommand {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ManualReproductionMutationMode {
+    Preserve,
+    Apply,
+}
+
+#[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum EngineCommand {
     Tick {
@@ -122,6 +129,14 @@ enum EngineCommand {
         second_slot: Option<u32>,
         second_generation: Option<u32>,
         position: [f32; 2],
+        #[serde(default)]
+        energy: Option<i32>,
+        #[serde(default)]
+        body: Option<i32>,
+        #[serde(default)]
+        mutation_mode: Option<ManualReproductionMutationMode>,
+        #[serde(default)]
+        focus: bool,
     },
     SwitchBackend {
         backend: crate::BackendPreference,
@@ -578,12 +593,41 @@ fn db_engine_command_batch_impl(
                 second_slot,
                 second_generation,
                 position,
+                energy,
+                body,
+                mutation_mode,
+                focus: _focus,
             } => {
                 let second = second_slot
                     .zip(second_generation)
                     .map(|(slot, generation)| OrganismId::new(slot, generation));
-                engine.manual_reproduce(OrganismId::new(first_slot, first_generation), second, position)
-                    .map(|id| serde_json::json!({ "slot": id.slot(), "generation": id.generation() }))
+                match (energy, body, mutation_mode) {
+                    (None, None, None) => engine
+                        .manual_reproduce(
+                            OrganismId::new(first_slot, first_generation),
+                            second,
+                            position,
+                        )
+                        .map(|id| {
+                            serde_json::json!({ "slot": id.slot(), "generation": id.generation() })
+                        }),
+                    (Some(energy), Some(body), Some(mutation_mode)) => engine
+                        .manual_reproduce_with_payload(
+                            OrganismId::new(first_slot, first_generation),
+                            second,
+                            position,
+                            energy,
+                            body,
+                            matches!(mutation_mode, ManualReproductionMutationMode::Apply),
+                        )
+                        .map(|id| {
+                            serde_json::json!({ "slot": id.slot(), "generation": id.generation() })
+                        }),
+                    _ => Err(crate::EngineError::Invariant(
+                        "manual reproduction payload must include energy, body, and mutation_mode together"
+                            .to_owned(),
+                    )),
+                }
             }
             EngineCommand::SwitchBackend { backend } => engine
                 .switch_backend(backend)

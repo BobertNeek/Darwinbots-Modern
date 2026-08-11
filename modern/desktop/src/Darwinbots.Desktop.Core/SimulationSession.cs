@@ -128,6 +128,17 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no child ID.");
     }
 
+    public async Task<OrganismKey> ReproduceAsync(
+        ManualReproductionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        OrganismKey? result = null;
+        await Enqueue(engine => result = engine.Reproduce(request), cancellationToken).ConfigureAwait(false);
+        return result ?? throw new InvalidDataException("Engine returned no child ID.");
+    }
+
     public Task SwitchBackendAsync(string backend, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(backend);

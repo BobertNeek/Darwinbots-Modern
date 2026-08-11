@@ -16,6 +16,13 @@ public interface IEngineClient : IDisposable
     void ReplaceDna(uint slot, uint generation, string dna);
     string ExportDna(uint slot, uint generation);
     OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position);
+    OrganismKey Reproduce(ManualReproductionRequest request) =>
+        Reproduce(
+            request.Parent.Slot,
+            request.Parent.Generation,
+            request.SecondParent?.Slot,
+            request.SecondParent?.Generation,
+            request.Position);
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
     void UpdateObstacle(ObstacleSnapshot obstacle);

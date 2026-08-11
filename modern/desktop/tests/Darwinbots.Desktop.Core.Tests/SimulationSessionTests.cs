@@ -315,6 +315,7 @@ internal sealed class FakeEngineClient : IEngineClient
     public float? LastBrownianMotion { get; private set; }
     public EnvironmentUpdate? LastEnvironmentUpdate { get; private set; }
     public MutationSettingsUpdate? LastMutationSettings { get; private set; }
+    public ManualReproductionRequest? LastManualReproduction { get; private set; }
     public bool? LastTiesEnabled { get; private set; }
     public (uint Slot, uint Generation, string Dna)? LastDnaReplacement { get; private set; }
     private string _dna = "start\nstop";
@@ -410,6 +411,13 @@ internal sealed class FakeEngineClient : IEngineClient
 
     public OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position)
     {
+        _population++;
+        return new OrganismKey((uint)(_population - 1), 0);
+    }
+
+    public OrganismKey Reproduce(ManualReproductionRequest request)
+    {
+        LastManualReproduction = request;
         _population++;
         return new OrganismKey((uint)(_population - 1), 0);
     }

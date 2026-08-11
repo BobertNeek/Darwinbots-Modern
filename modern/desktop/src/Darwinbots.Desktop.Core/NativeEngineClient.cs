@@ -262,6 +262,14 @@ public sealed partial class NativeEngineClient : IEngineClient
         return ReadKey(result.GetProperty("results")[0]);
     }
 
+    public OrganismKey Reproduce(ManualReproductionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        var result = ExecuteBatchForResult(NativeCommandSerializer.CreateManualReproductionBatch(request), "manually reproduce organism");
+        return ReadKey(result.GetProperty("results")[0]);
+    }
+
     public void SwitchBackend(string backend)
     {
         EnsureAlive();

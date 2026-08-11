@@ -171,6 +171,30 @@ public static class NativeCommandSerializer
         MutationProfileUpdate profile) =>
         JsonSerializer.Serialize(CreateOrganismMutationProfileBatch(organism, profile));
 
+    public static string SerializeManualReproduction(ManualReproductionRequest request) =>
+        JsonSerializer.Serialize(CreateManualReproductionBatch(request));
+
+    internal static object CreateManualReproductionBatch(ManualReproductionRequest request) => new
+    {
+        version = 1,
+        commands = new[]
+        {
+            new
+            {
+                type = "manual_reproduce",
+                first_slot = request.Parent.Slot,
+                first_generation = request.Parent.Generation,
+                second_slot = request.SecondParent?.Slot,
+                second_generation = request.SecondParent?.Generation,
+                position = request.Position,
+                energy = request.Energy,
+                body = request.Body,
+                mutation_mode = request.MutationMode.ToString().ToLowerInvariant(),
+                focus = request.Focus,
+            },
+        },
+    };
+
     internal static object CreateOrganismMutationProfileBatch(
         OrganismKey organism,
         MutationProfileUpdate profile) => new

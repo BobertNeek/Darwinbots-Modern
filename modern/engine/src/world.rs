@@ -3866,7 +3866,44 @@ impl Engine {
         second: Option<OrganismId>,
         position: [f32; 2],
     ) -> Result<OrganismId, EngineError> {
+        self.manual_reproduce_internal(first, second, position, None, false)
+    }
+
+    pub fn manual_reproduce_with_payload(
+        &mut self,
+        first: OrganismId,
+        second: Option<OrganismId>,
+        position: [f32; 2],
+        expected_energy: i32,
+        expected_body: i32,
+        mutate: bool,
+    ) -> Result<OrganismId, EngineError> {
+        self.manual_reproduce_internal(
+            first,
+            second,
+            position,
+            Some((expected_energy, expected_body)),
+            mutate,
+        )
+    }
+
+    fn manual_reproduce_internal(
+        &mut self,
+        first: OrganismId,
+        second: Option<OrganismId>,
+        position: [f32; 2],
+        expected_materials: Option<(i32, i32)>,
+        mutate: bool,
+    ) -> Result<OrganismId, EngineError> {
         let first_organism = self.slots.get(first)?.clone();
+        if let Some((expected_energy, expected_body)) = expected_materials
+            && (first_organism.materials.energy != expected_energy
+                || first_organism.materials.body != expected_body)
+        {
+            return Err(EngineError::Invariant(
+                "manual reproduction parent energy/body changed before command execution".to_owned(),
+            ));
+        }
         let dna = if let Some(second) = second {
             let second_dna = &self.slots.get(second)?.program.dna;
             first_organism.program.dna.crossover(second_dna)
@@ -3920,6 +3957,10 @@ impl Engine {
         }
         self.record_offspring([Some(first), second]);
         self.propagate_descendant_count([Some(first), second]);
+        if mutate {
+            self.pending_mutations.push(child);
+            self.mutation_phase(MutationContext::Reproduction { forced: true });
+        }
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(child)
