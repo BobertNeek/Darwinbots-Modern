@@ -105,6 +105,10 @@ public sealed class ModeSettingsRenderedTests
                 Assert.Equal(
                     ["F1", "F2", "F3", "MULTIBOT", "SHORT BOT", "SINGLE GENE", "SINGLE STORE"],
                     presetLabels);
+                Assert.Equal(0, kinds.SelectedIndex);
+                Assert.Equal("LEAGUE", (kinds.SelectedItem as ComboBoxItem)?.Content?.ToString());
+                Assert.Equal(0, presets.SelectedIndex);
+                Assert.Equal("F1", (presets.SelectedItem as ComboBoxItem)?.Content?.ToString());
 
                 kinds.SelectedIndex = 1;
                 presets.SelectedIndex = 2;
@@ -199,33 +203,15 @@ public sealed class ModeSettingsRenderedTests
             new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A },
             bytes[..8]);
 
-        var output = Path.Combine(
-            FindRepositoryRoot(),
-            "docs",
-            "parity",
-            "receipts",
-            "db24832-mode04-extinction-restart.png");
-        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        var auditDirectory = Environment.GetEnvironmentVariable("DARWINBOTS_GUI_AUDIT_DIR");
+        Assert.False(string.IsNullOrWhiteSpace(auditDirectory), "DARWINBOTS_GUI_AUDIT_DIR must name the durable GUI audit directory.");
+        Directory.CreateDirectory(auditDirectory!);
+        var output = Path.Combine(auditDirectory!, "set07-restart-league.png");
         using (var stream = new FileStream(output, FileMode.Create, FileAccess.Write, FileShare.Read, 64 * 1024, FileOptions.WriteThrough))
         {
             stream.Write(bytes);
             stream.Flush(true);
         }
         Assert.True(File.Exists(output), $"Rendered receipt was not written: {output}");
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
-        {
-            var hasGitMarker = File.Exists(Path.Combine(directory.FullName, ".git"))
-                || Directory.Exists(Path.Combine(directory.FullName, ".git"));
-            var isRequestedWorktree = directory.Name.Equals("parity-modes-rendered-95", StringComparison.OrdinalIgnoreCase);
-            if (Directory.Exists(Path.Combine(directory.FullName, "modern"))
-                && (hasGitMarker || isRequestedWorktree))
-                return directory.FullName;
-        }
-
-        throw new DirectoryNotFoundException("Could not locate the Darwinbots Modern repository root.");
     }
 }
