@@ -687,6 +687,120 @@ public sealed class RenderedControlSurfaceAuditTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task MainWindowRenderedSettingsWalkthroughCoversShellMenuRunEnergyAndMutation()
+    {
+        var factory = new AuditEngineClientFactory();
+        var setup = new WorldSetupOptions
+        {
+            TicksPerUpdate = 1,
+            Species = [new SpeciesImport("Luna", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, factory, new AuditStorageService());
+            try
+            {
+                ShowForInteraction(window, 1_500, 900);
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var surface = Named<Grid>(window, "MainSurfaceGrid");
+                var dashboard = Named<ItemsControl>(window, "StatusInstrument");
+                var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+
+                await WaitFor(
+                    () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Luna"),
+                    () => factory.Clients.TryPeek(out var client) ? string.Join(", ", client.Calls) : "Engine client was not created.");
+                var engine = factory.Clients.First();
+
+                Assert.True(surface.IsVisible);
+                Assert.True(dashboard.IsVisible);
+                Assert.Contains("WORLD READY", viewModel.Status, StringComparison.Ordinal);
+                Assert.True(Named<Border>(window, "InternetOfflineOverlay").IsVisible);
+
+                var onlineButton = Named<Button>(window, "InternetButton");
+                var statusBeforeOnlineInput = viewModel.Status;
+                var callsBeforeOnlineInput = engine.Calls.ToArray();
+                Assert.False(onlineButton.IsEnabled);
+                Click(window, onlineButton);
+                Assert.Equal(statusBeforeOnlineInput, viewModel.Status);
+                Assert.Equal(callsBeforeOnlineInput, engine.Calls.ToArray());
+                var onlineCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!;
+                Assert.False(onlineCommand.IsEnabled);
+
+                var generalSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
+                ActivateMenu(generalSettingsCommand);
+                var generalSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.True(generalSettings.IsVisible);
+                Named<NumericUpDown>(generalSettings, "Metabolism").Value = 7;
+                Named<NumericUpDown>(generalSettings, "VegetableEnergy").Value = 33;
+                Named<NumericUpDown>(generalSettings, "Sunlight").Value = 222;
+                Named<CheckBox>(generalSettings, "Daytime").IsChecked = false;
+                Named<CheckBox>(generalSettings, "DayNightEnabled").IsChecked = true;
+                Named<NumericUpDown>(generalSettings, "CycleLength").Value = 240;
+                var appliedEnvironment = generalSettings.Update;
+                Click(generalSettings, Named<Button>(generalSettings, "ApplyButton"));
+                await WaitFor(() => engine.EnvironmentUpdates.Count >= 1);
+                Assert.Equal(appliedEnvironment, engine.EnvironmentUpdates.Single());
+                Assert.Equal(appliedEnvironment, Field<EnvironmentUpdate>(window, "_liveEnvironment"));
+                Assert.Contains("LIVE SETTINGS APPLIED", viewModel.Status, StringComparison.Ordinal);
+
+                var mutationSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGlobalMutationRates)!;
+                ActivateMenu(mutationSettingsCommand);
+                var mutationSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.True(mutationSettings.IsVisible);
+                Named<CheckBox>(mutationSettings, "MutationsEnabled").IsChecked = true;
+                Named<NumericUpDown>(mutationSettings, "GlobalMutationRate").Value = 1.75m;
+                var appliedMutation = mutationSettings.MutationUpdate;
+                Click(mutationSettings, Named<Button>(mutationSettings, "ApplyButton"));
+                await WaitFor(() => engine.MutationUpdates.Count >= 1);
+                Assert.Equal(appliedMutation, engine.MutationUpdates.Single());
+                Assert.Contains("LIVE SETTINGS APPLIED", viewModel.Status, StringComparison.Ordinal);
+
+                AssertComboSelection(window, Named<ComboBox>(window, "RuntimeSpeed"), 2);
+                Assert.Contains("5 TICKS/FRAME", viewModel.Status, StringComparison.Ordinal);
+                AssertComboSelection(window, Named<ComboBox>(window, "RuntimeSpeed"), 3);
+                Assert.Contains("MAXIMUM", viewModel.Status, StringComparison.Ordinal);
+                Click(window, Named<Button>(window, "RunButton"));
+                Assert.True(Field<DispatcherTimer>(window, "_runTimer").IsEnabled);
+                Click(window, Named<Button>(window, "PauseButton"));
+                Assert.False(Field<DispatcherTimer>(window, "_runTimer").IsEnabled);
+                Click(window, Named<Button>(window, "StepButton"));
+
+                var turbo = Named<Button>(window, "TurboButton");
+                Click(window, turbo);
+                Assert.False(Named<WorldViewport>(window, "Viewport").IsVisible);
+                Assert.Contains("TURBO", viewModel.Status, StringComparison.Ordinal);
+                Click(window, turbo);
+                Assert.True(Named<WorldViewport>(window, "Viewport").IsVisible);
+
+                Named<NumericUpDown>(window, "LiveMetabolism").Value = 6;
+                Named<NumericUpDown>(window, "LivePlantEnergy").Value = 250;
+                Named<NumericUpDown>(window, "LiveFeedingToBody").Value = 0.75m;
+                Click(window, Named<Button>(window, "ApplyEnergyButton"));
+                await WaitFor(() => engine.EnvironmentUpdates.Count >= 2);
+                Assert.Contains("ENERGY APPLIED", viewModel.Status, StringComparison.Ordinal);
+
+                var sun = Named<Button>(window, "SunButton");
+                var sunBefore = sun.Content?.ToString();
+                Click(window, sun);
+                await WaitFor(() => !string.Equals(sun.Content?.ToString(), sunBefore, StringComparison.Ordinal));
+                Assert.Contains("SUN", sun.Content?.ToString(), StringComparison.Ordinal);
+
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = window.CaptureRenderedFrame();
+                Assert.NotNull(frame);
+                Assert.True(frame.PixelSize.Width >= 400);
+                Assert.True(frame.PixelSize.Height >= 300);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void ShowAndCapture(Window window, double width, double height, string evidenceName)
     {
         ShowForInteraction(window, width, height);
