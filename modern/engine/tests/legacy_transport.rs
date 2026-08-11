@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use darwinbots_engine::{
     Engine, EngineConfig, FileTeleporter, LegacyDna, LegacyOrganism, LegacyOrganismFile,
@@ -87,6 +87,142 @@ fn legacy_codecs_round_trip_the_authoritative_fixture_fields() {
             "legacy {fixture} fixture changed on round trip"
         );
     }
+}
+
+#[test]
+fn legacy_settings_corpus_round_trips_all_shipped_assets() {
+    let assets_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../Installer/sets");
+    let mut assets = fs::read_dir(&assets_dir)
+        .unwrap_or_else(|error| {
+            panic!(
+                "{}: failed to enumerate shipped settings assets: {error}",
+                assets_dir.display()
+            )
+        })
+        .map(|entry| {
+            entry
+                .unwrap_or_else(|error| {
+                    panic!(
+                        "{}: failed to read settings asset entry: {error}",
+                        assets_dir.display()
+                    )
+                })
+                .path()
+        })
+        .filter(|path| path.extension().is_some_and(|extension| extension == "set"))
+        .collect::<Vec<_>>();
+    assets.sort();
+
+    assert_eq!(
+        assets.len(),
+        7,
+        "{}: expected exactly seven shipped .set assets",
+        assets_dir.display()
+    );
+
+    for path in assets {
+        let path_display = path.display().to_string();
+        let bytes = fs::read(&path)
+            .unwrap_or_else(|error| panic!("{path_display}: failed to read asset: {error}"));
+        let parsed = LegacySettingsFile::decode(&bytes).unwrap_or_else(|error| {
+            panic!("{path_display}: failed to parse legacy settings: {error}")
+        });
+        let encoded = parsed
+            .encode()
+            .unwrap_or_else(|error| panic!("{path_display}: failed to encode settings: {error}"));
+
+        assert_eq!(
+            encoded.as_slice(),
+            bytes.as_slice(),
+            "{path_display}: no-op encoding changed an unknown or unimplemented legacy field"
+        );
+
+        let reparsed = LegacySettingsFile::decode(&encoded).unwrap_or_else(|error| {
+            panic!("{path_display}: failed to reparse encoded settings: {error}")
+        });
+        assert_legacy_settings_semantics(&path, &parsed, &reparsed);
+    }
+}
+
+fn assert_legacy_settings_semantics(
+    path: &Path,
+    expected: &LegacySettingsFile,
+    actual: &LegacySettingsFile,
+) {
+    assert_eq!(actual.version, expected.version, "{}: version changed", path.display());
+    assert_eq!(
+        actual.simulation_name,
+        expected.simulation_name,
+        "{}: simulation name changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.field_size,
+        expected.field_size,
+        "{}: field size changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.world_size,
+        expected.world_size,
+        "{}: world size changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.max_population,
+        expected.max_population,
+        "{}: maximum population changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.blocked_vegetables,
+        expected.blocked_vegetables,
+        "{}: blocked vegetables flag changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.disable_ties,
+        expected.disable_ties,
+        "{}: disable ties flag changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.population_limit_method,
+        expected.population_limit_method,
+        "{}: population limit method changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.toroidal_world,
+        expected.toroidal_world,
+        "{}: toroidal world flag changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.max_energy,
+        expected.max_energy,
+        "{}: maximum energy changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.min_vegetables,
+        expected.min_vegetables,
+        "{}: minimum vegetables changed",
+        path.display()
+    );
+    assert_eq!(actual.gravity, expected.gravity, "{}: gravity changed", path.display());
+    assert_eq!(
+        actual.sunlight_energy,
+        expected.sunlight_energy,
+        "{}: sunlight energy changed",
+        path.display()
+    );
+    assert_eq!(
+        actual.species,
+        expected.species,
+        "{}: species startup records changed",
+        path.display()
+    );
 }
 
 #[test]
@@ -498,6 +634,7 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
             center: [200.0, 200.0],
             radius: 30.0,
             destination: [700.0, 700.0],
+            ..Teleporter::new(8, [200.0, 200.0], 30.0, [700.0, 700.0])
         })
         .expect("local teleporter registration");
     let local_id = local_engine
