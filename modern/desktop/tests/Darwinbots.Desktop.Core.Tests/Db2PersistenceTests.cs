@@ -144,6 +144,51 @@ public sealed class Db2PersistenceTests
     }
 
     [Fact]
+    public void GenomeRecordCodecRoundTripPreservesEveryLegacyHeaderFieldAndDnaPayload()
+    {
+        var organism = new OrganismSnapshot(7, 3, [12.5f, 34.5f], [1f, -2f], 875, 19, Body: 1)
+        {
+            UniqueId = 7003,
+            DnaLength = 2,
+            NewMutations = 1,
+            TotalMutations = 4,
+            Offspring = 5,
+            Chloroplasts = 12,
+            BirthCycle = 812,
+            Kills = 6,
+            Parents = [new OrganismKey(11, 2), null],
+        };
+        var snapshot = new EngineSnapshot(91, 1, "CPU", [organism])
+        {
+            Species = [new SpeciesSnapshot("Fixture", false, 0xff239ac0, 0, false)],
+        };
+        const string dna = "start\n10 .up store\nstop";
+
+        var encoded = Db2GenomeRecordFile.EncodeLiving(
+            snapshot,
+            new Dictionary<OrganismKey, string> { [new OrganismKey(7, 3)] = dna });
+
+        Assert.Equal(Db2GenomeRecordFile.Header, encoded[..encoded.IndexOf("\r\n", StringComparison.Ordinal)]);
+        var record = Assert.Single(Db2GenomeRecordFile.Decode(encoded));
+
+        Assert.Equal(7003UL, record.Id);
+        Assert.Equal(11U, record.ParentId);
+        Assert.Equal("Fixture", record.Founder);
+        Assert.Equal(3U, record.Generation);
+        Assert.Equal(812UL, record.BirthCycle);
+        Assert.Equal(19UL, record.Age);
+        Assert.Equal(4UL, record.Mutations);
+        Assert.Equal(1UL, record.NewMutations);
+        Assert.Equal(2U, record.DnaLength);
+        Assert.Equal(5UL, record.Offspring);
+        Assert.Equal(6UL, record.Kills);
+        Assert.Equal(885, record.Fitness);
+        Assert.Equal(885, record.Energy);
+        Assert.Equal(12, record.Chloroplasts);
+        Assert.Equal(dna, record.Dna);
+    }
+
+    [Fact]
     public void OrganismCodecWritesTheDb2OFrameConsumedByTheRustImporter()
     {
         var expected = new Db2OrganismFile(

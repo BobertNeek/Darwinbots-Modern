@@ -202,7 +202,61 @@ public static class Db2GenomeRecordFile
         return builder.ToString();
     }
 
-    private static GenomeRecord Record(
+    public static IReadOnlyList<Db2GenomeRecord> Decode(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+        if (normalized.EndsWith('\n')) normalized = normalized[..^1];
+        var lines = normalized.Split('\n');
+        if (lines.Length == 0 || !string.Equals(lines[0], Header, StringComparison.Ordinal))
+            throw new InvalidDataException("DB2 genome record header is invalid.");
+
+        var records = new List<Db2GenomeRecord>();
+        for (var lineIndex = 1; lineIndex < lines.Length;)
+        {
+            if (string.IsNullOrWhiteSpace(lines[lineIndex]))
+            {
+                lineIndex++;
+                continue;
+            }
+
+            var fields = CsvFields(lines[lineIndex]);
+            if (fields.Count != 14)
+                throw new InvalidDataException("DB2 genome record metadata is invalid.");
+            var record = ParseRecord(fields);
+            lineIndex++;
+
+            var payload = new List<string>();
+            while (lineIndex < lines.Length && !LooksLikeRecord(lines[lineIndex]))
+            {
+                payload.Add(lines[lineIndex]);
+                lineIndex++;
+            }
+            records.Add(record with { Dna = string.Join("\n", payload) });
+        }
+
+        return records;
+    }
+
+    private static Db2GenomeRecord ParseRecord(IReadOnlyList<string> fields) => new(
+        ParseUInt64(fields[0], "robot id"),
+        ParseUInt32(fields[1], "parent id"),
+        fields[2],
+        ParseUInt32(fields[3], "generation"),
+        ParseUInt64(fields[4], "birth cycle"),
+        ParseUInt64(fields[5], "age"),
+        ParseUInt64(fields[6], "mutations"),
+        ParseUInt64(fields[7], "new mutations"),
+        ParseUInt32(fields[8], "DNA length"),
+        ParseUInt64(fields[9], "offspring number"),
+        ParseUInt64(fields[10], "kills"),
+        ParseInt(fields[11], "fitness"),
+        ParseInt(fields[12], "energy"),
+        ParseInt(fields[13], "chloroplasts"),
+        string.Empty);
+
+    private static Db2GenomeRecord Record(
         ulong id,
         uint parentId,
         string founder,
@@ -217,7 +271,72 @@ public static class Db2GenomeRecordFile
         int energy,
         int chloroplasts,
         string dna) => new(id, parentId, founder, generation, birthCycle, age, mutations, newMutations,
-        dnaLength, offspring, kills, energy, chloroplasts, dna);
+        dnaLength, offspring, kills, Math.Max(0, energy), energy, chloroplasts, dna);
+
+    private static bool LooksLikeRecord(string line)
+    {
+        var fields = CsvFields(line);
+        if (fields.Count != 14) return false;
+        try
+        {
+            _ = ParseRecord(fields);
+            return true;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
+        }
+    }
+
+    private static List<string> CsvFields(string line)
+    {
+        var fields = new List<string>();
+        var field = new StringBuilder();
+        var quoted = false;
+        for (var index = 0; index < line.Length; index++)
+        {
+            var character = line[index];
+            if (character == '"')
+            {
+                if (quoted && index + 1 < line.Length && line[index + 1] == '"')
+                {
+                    field.Append('"');
+                    index++;
+                }
+                else
+                {
+                    quoted = !quoted;
+                }
+            }
+            else if (character == ',' && !quoted)
+            {
+                fields.Add(field.ToString());
+                field.Clear();
+            }
+            else
+            {
+                field.Append(character);
+            }
+        }
+        if (quoted) throw new InvalidDataException("DB2 genome record CSV is unterminated.");
+        fields.Add(field.ToString());
+        return fields;
+    }
+
+    private static ulong ParseUInt64(string value, string label) =>
+        ulong.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : throw new InvalidDataException($"DB2 genome record {label} is invalid.");
+
+    private static uint ParseUInt32(string value, string label) =>
+        uint.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : throw new InvalidDataException($"DB2 genome record {label} is invalid.");
+
+    private static int ParseInt(string value, string label) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : throw new InvalidDataException($"DB2 genome record {label} is invalid.");
 
     private static string SpeciesName(EngineSnapshot snapshot, uint species) =>
         SpeciesName(snapshot.Species, species);
@@ -225,7 +344,7 @@ public static class Db2GenomeRecordFile
     private static string SpeciesName(IReadOnlyList<SpeciesSnapshot> species, uint index) =>
         index < species.Count ? species[(int)index].Name : $"Species-{index}";
 
-    private static void Append(StringBuilder builder, GenomeRecord record)
+    private static void Append(StringBuilder builder, Db2GenomeRecord record)
     {
         builder.AppendLine(string.Join(",", new[]
         {
@@ -240,7 +359,7 @@ public static class Db2GenomeRecordFile
             record.DnaLength.ToString(CultureInfo.InvariantCulture),
             record.Offspring.ToString(CultureInfo.InvariantCulture),
             record.Kills.ToString(CultureInfo.InvariantCulture),
-            Math.Max(0, record.Energy).ToString(CultureInfo.InvariantCulture),
+            record.Fitness.ToString(CultureInfo.InvariantCulture),
             record.Energy.ToString(CultureInfo.InvariantCulture),
             record.Chloroplasts.ToString(CultureInfo.InvariantCulture),
         }));
@@ -253,22 +372,24 @@ public static class Db2GenomeRecordFile
             ? value
             : $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
-    private sealed record GenomeRecord(
-        ulong Id,
-        uint ParentId,
-        string Founder,
-        uint Generation,
-        ulong BirthCycle,
-        ulong Age,
-        ulong Mutations,
-        ulong NewMutations,
-        uint DnaLength,
-        ulong Offspring,
-        ulong Kills,
-        int Energy,
-        int Chloroplasts,
-        string Dna);
 }
+
+public sealed record Db2GenomeRecord(
+    ulong Id,
+    uint ParentId,
+    string Founder,
+    uint Generation,
+    ulong BirthCycle,
+    ulong Age,
+    ulong Mutations,
+    ulong NewMutations,
+    uint DnaLength,
+    ulong Offspring,
+    ulong Kills,
+    int Fitness,
+    int Energy,
+    int Chloroplasts,
+    string Dna);
 
 public sealed record Db2OrganismFile(
     [property: JsonPropertyName("version")] ushort Version,
