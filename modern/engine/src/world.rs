@@ -5932,16 +5932,46 @@ impl Engine {
                     self.config.fixed_bot_radii,
                 );
                 let mut nearest_by_eye = [None; 9];
-                for target_slot in self.sensing_spatial.neighbors(
-                    observer_position,
-                    vision.max_range() + observer_radius + max_organism_radius,
-                ) {
+                let sensing_radius = vision.max_range() + observer_radius + max_organism_radius;
+                let world_size = [self.config.world_width, self.config.world_height];
+                let wrapped_axes = self.config.axis_topology();
+                let x_offsets = [-world_size[0], 0.0, world_size[0]];
+                let y_offsets = [-world_size[1], 0.0, world_size[1]];
+                let x_offsets = if wrapped_axes[0] {
+                    &x_offsets[..]
+                } else {
+                    &x_offsets[1..2]
+                };
+                let y_offsets = if wrapped_axes[1] {
+                    &y_offsets[..]
+                } else {
+                    &y_offsets[1..2]
+                };
+                let mut target_slots = Vec::new();
+                for &x_offset in x_offsets {
+                    for &y_offset in y_offsets {
+                        target_slots.extend(self.sensing_spatial.neighbors(
+                            [observer_position[0] + x_offset, observer_position[1] + y_offset],
+                            sensing_radius,
+                        ));
+                    }
+                }
+                target_slots.sort_unstable();
+                target_slots.dedup();
+                for target_slot in target_slots {
                     if target_slot == observer_slot || self.slots[target_slot].organism.is_none() {
                         continue;
                     }
                     let target = self.slots[target_slot].organism.as_ref().unwrap();
                     let target_position = target.kinematics.position;
-                    let target_distance = distance_squared(observer_position, target_position);
+                    let target_delta = shortest_wrapped_delta(
+                        observer_position,
+                        target_position,
+                        world_size,
+                        wrapped_axes,
+                    );
+                    let target_distance =
+                        target_delta[0] * target_delta[0] + target_delta[1] * target_delta[1];
                     let target_radius = crate::physics::organism_radius(
                         target.materials.body,
                         target.materials.chloroplasts,
@@ -5964,7 +5994,10 @@ impl Engine {
                         (center_distance - observer_radius - target_radius).max(0.0);
                     let matching = vision.matching_eyes(
                         observer_position,
-                        target_position,
+                        [
+                            observer_position[0] + target_delta[0],
+                            observer_position[1] + target_delta[1],
+                        ],
                         observer_radius,
                         target_radius,
                     );
@@ -10848,6 +10881,22 @@ fn distance_squared(left: [f32; 2], right: [f32; 2]) -> f32 {
     let x = right[0] - left[0];
     let y = right[1] - left[1];
     x * x + y * y
+}
+
+fn shortest_wrapped_delta(
+    observer: [f32; 2],
+    target: [f32; 2],
+    world_size: [f32; 2],
+    wrapped_axes: [bool; 2],
+) -> [f32; 2] {
+    let mut delta = [target[0] - observer[0], target[1] - observer[1]];
+    for axis in 0..2 {
+        if wrapped_axes[axis] {
+            let extent = world_size[axis].max(1.0);
+            delta[axis] = (delta[axis] + extent * 0.5).rem_euclid(extent) - extent * 0.5;
+        }
+    }
+    delta
 }
 
 fn unit_coordinate(random: u64, extent: f32) -> f32 {

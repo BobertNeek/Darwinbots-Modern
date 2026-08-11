@@ -200,3 +200,56 @@ fn sen_01_opaque_shapes_occlude_and_disabled_vision_clears_nine_eyes() {
         assert_eq!(disabled.memory_at(observer, address).unwrap(), 0);
     }
 }
+
+#[test]
+fn sen_01_projects_each_of_nine_eyes_in_bounded_and_toroidal_geometry() {
+    let projections = (0..9).map(|index| {
+        (
+            index,
+            (4.0 - index as f32) * std::f32::consts::PI / 18.0,
+        )
+    });
+
+    for toroidal_world in [false, true] {
+        for (eye_index, expected_angle) in projections.clone() {
+            let mut config = quiet_config();
+            config.world_width = 2_000.0;
+            config.world_height = 2_000.0;
+            config.toroidal_world = toroidal_world;
+            config.axis_topology = Some([toroidal_world; 2]);
+            let mut engine = Engine::new(config).unwrap();
+            let observer_position = if toroidal_world {
+                [1_000.0, 1_900.0]
+            } else {
+                [1_000.0, 1_000.0]
+            };
+            let observer = engine
+                .spawn_at(
+                    LegacyDna::parse("start\nstop").unwrap(),
+                    observer_position,
+                )
+                .unwrap();
+            let mut target_position = [
+                observer_position[0] + 300.0 * expected_angle.sin(),
+                observer_position[1] + 300.0 * expected_angle.cos(),
+            ];
+            if toroidal_world {
+                target_position[0] = target_position[0].rem_euclid(2_000.0);
+                target_position[1] = target_position[1].rem_euclid(2_000.0);
+            }
+            engine
+                .spawn_at(LegacyDna::parse("start\nstop").unwrap(), target_position)
+                .unwrap();
+
+            engine.tick().unwrap();
+
+            let vision = &engine.organism(observer).unwrap().vision;
+            let expected_center = expected_angle.rem_euclid(std::f32::consts::TAU);
+            assert!((vision.eyes[eye_index].center_radians - expected_center).abs() < 0.001);
+            assert!(
+                engine.memory_at(observer, 501 + eye_index as i32).unwrap() > 0,
+                "eye {eye_index} did not project its centered target in toroidal={toroidal_world}"
+            );
+        }
+    }
+}
