@@ -247,7 +247,12 @@ fn dna_skips_corpse_and_dna_disabled_robots() {
 
 #[test]
 fn three_cycle_sensor_and_command_visibility_is_canonical() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        world_width: 10_000.0,
+        world_height: 10_000.0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
     let observer = engine
         .spawn_at(
             LegacyDna::parse("start\n*.eye5 50 store\n314 .setaim store\nstop").unwrap(),
@@ -528,7 +533,7 @@ fn shot_effect_occurs_after_dna_and_before_robot_passes() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     engine
         .spawn_at(
-            LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
+            LegacyDna::parse("start\n-1 .shoot store\n1 .shootval store\nstop").unwrap(),
             [100.0, 100.0],
         )
         .unwrap();
