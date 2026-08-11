@@ -850,6 +850,7 @@ impl From<Db3sV2DnaCosts> for DnaCosts {
 impl From<Db3sV2EngineConfig> for EngineConfig {
     fn from(value: Db3sV2EngineConfig) -> Self {
         Self {
+            greedy_reproduction: false,
             seed: value.seed,
             organism_capacity: value.organism_capacity.min(MAX_ROBOTS),
             vegetable_population_cap: value.vegetable_population_cap,
@@ -9195,6 +9196,10 @@ impl Engine {
                         slot_index,
                     ))
             {
+                if self.config.greedy_reproduction && percentage < 3 {
+                    organism.flags.dead = true;
+                    continue;
+                }
                 let parent = OrganismId::new(slot_index as u32, slot.generation);
                 trace.queue_change(
                     CyclePhase::Reproduction,

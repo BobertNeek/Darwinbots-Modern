@@ -192,6 +192,98 @@ fn reproduction_creates_child_with_stable_id_and_birth_statistics() {
 }
 
 #[test]
+fn reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descendant() {
+    let mut config = EngineConfig::testing();
+    config.metabolism_cost = 0;
+    config.gravity = [0.0, 0.0];
+    config.drag = 0.0;
+    config.greedy_reproduction = true;
+    let mut engine = Engine::new(config).unwrap();
+    engine.update_legacy_restrictions(true, false);
+
+    let parent = engine
+        .spawn_at(
+            LegacyDna::parse("start\n25 .repro store\nstop").unwrap(),
+            [500.0, 500.0],
+        )
+        .unwrap();
+    engine.set_organism_memory(parent, 500, 88).unwrap();
+    let before = engine.robot_state(parent).unwrap().clone();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.population(), 1);
+    assert_eq!(engine.snapshot().stats.births, 0);
+    assert_eq!(engine.snapshot().stats.deaths, 0);
+    assert_eq!(engine.memory(parent, "repro").unwrap(), 25);
+    assert_eq!(engine.memory_at(parent, 500).unwrap(), 88);
+    assert_eq!(engine.robot_state(parent).unwrap().identity, before.identity);
+    assert_eq!(engine.robot_state(parent).unwrap().counters.offspring, 0);
+
+    engine.update_legacy_restrictions(true, true);
+    engine.tick().unwrap();
+
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|organism| organism.id != parent)
+        .cloned()
+        .expect("deferred birth did not publish a child")
+        .id;
+    let parent_snapshot = engine.organism(parent).unwrap();
+    let child_snapshot = engine.organism(child).unwrap();
+    let parent_state = engine.robot_state(parent).unwrap();
+    let child_state = engine.robot_state(child).unwrap();
+    let parent_identity = parent_state.identity.clone();
+    let child_identity = child_state.identity.clone();
+
+    assert_eq!(engine.snapshot().stats.births, 1);
+    assert_eq!(engine.snapshot().stats.self_reproductions, 1);
+    assert_eq!(parent_state.counters.offspring, 1);
+    assert_eq!(parent_snapshot.descendants, 1);
+    assert_eq!(child_snapshot.descendants, 0);
+    assert_eq!(child_state.identity.parents, [Some(parent), None]);
+    assert_ne!(child_state.identity.absolute_id, parent_state.identity.absolute_id);
+    assert_eq!(
+        child_state.counters.generation,
+        parent_state.counters.generation + 1
+    );
+    assert_eq!(engine.memory(parent, "repro").unwrap(), 0);
+    assert_eq!(engine.memory_at(parent, 500).unwrap(), 88);
+    assert_eq!(engine.memory(child, "repro").unwrap(), 0);
+    assert_eq!(engine.memory_at(child, 500).unwrap(), 0);
+    assert!(child_snapshot.position[0] > parent_snapshot.position[0]);
+    assert_eq!(child_snapshot.position[1], parent_snapshot.position[1]);
+
+    engine
+        .replace_dna(child, LegacyDna::parse("start\n2 .repro store\nstop").unwrap())
+        .unwrap();
+    engine.set_organism_memory(child, 500, 144).unwrap();
+    engine.replace_dna(parent, LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine.update_legacy_restrictions(true, false);
+    engine.tick().unwrap();
+
+    assert_eq!(engine.population(), 2);
+    assert_eq!(engine.snapshot().stats.births, 1);
+    assert_eq!(engine.memory(child, "repro").unwrap(), 2);
+    assert_eq!(engine.memory_at(child, 500).unwrap(), 144);
+
+    engine.update_legacy_restrictions(true, true);
+    engine.tick().unwrap();
+
+    assert_eq!(engine.population(), 1);
+    assert_eq!(engine.snapshot().stats.births, 1);
+    assert_eq!(engine.snapshot().stats.deaths, 1);
+    assert_eq!(engine.snapshot().stats.self_reproductions, 1);
+    assert!(engine.robot_state(child).is_err());
+    let parent_after = engine.robot_state(parent).unwrap();
+    assert_eq!(parent_after.identity, parent_identity);
+    assert_eq!(parent_after.counters.offspring, 1);
+    assert_ne!(child_identity.absolute_id, parent_identity.absolute_id);
+}
+
+#[test]
 fn tie_commands_create_multibot_link_and_share_energy() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let connector = LegacyDna::parse("start\n1 .tie store\n10 .sharenrg store\nstop").unwrap();

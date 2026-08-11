@@ -243,6 +243,8 @@ pub struct EngineConfig {
     pub low_memory_dna_limit: usize,
     #[serde(default = "default_low_memory_detail_limit")]
     pub low_memory_detail_limit: usize,
+    #[serde(default)]
+    pub greedy_reproduction: bool,
     #[serde(skip)]
     pub force_gpu_unavailable_for_tests: bool,
 }
@@ -278,6 +280,7 @@ impl Default for EngineConfig {
             speciation_genetic_distance_percent: default_speciation_genetic_distance_percent(),
             low_memory_dna_limit: default_low_memory_dna_limit(),
             low_memory_detail_limit: default_low_memory_detail_limit(),
+            greedy_reproduction: false,
             force_gpu_unavailable_for_tests: false,
         }
     }
