@@ -204,6 +204,83 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task DisplayOnlyBackgroundAndOverlayTogglesLeaveCanonicalSessionSaveUnchanged()
+    {
+        var engine = new RecordingEngineClient();
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+        var beforeSnapshot = simulation.LatestSnapshot;
+        var beforeSave = await simulation.SaveAsync();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = RuntimeWindow(simulation);
+            try
+            {
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                viewport.SetSnapshot(beforeSnapshot);
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+
+                using var backgroundStream = new MemoryStream(Convert.FromBase64String(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+                var background = new Avalonia.Media.Imaging.Bitmap(backgroundStream);
+                viewport.SetBackgroundImage(background);
+                SetField(window, "_hasBackgroundImage", true);
+                Assert.True(viewport.HasBackgroundImage);
+                Assert.True(viewport.OverlayProjection.HasBackgroundImage);
+                window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null);
+
+                void InvokeMenu(Core.LegacyMenus.LegacyCommandId command) =>
+                    menu.FindCommandItem(command)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+                window.FindControl<CheckBox>("RenderWasteToggle")!.IsChecked = false;
+                window.FindControl<CheckBox>("ShowVisionToggle")!.IsChecked = false;
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.ViewShowVisionGrid);
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.ViewDisplayMovementVectors);
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.ViewDisplayShotImpacts);
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.ViewDisplayResourceGuages);
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.ObjectsHilightTeleporters);
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.EGridEnable);
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.EGridMedium);
+                window.FindControl<Button>("ToolbarSlot11")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.FindControl<Button>("ToolbarSlot12")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.FindControl<Button>("ToolbarSlot13")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.FindControl<Button>("ToolbarSlot14")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                InvokeMenu(Core.LegacyMenus.LegacyCommandId.ViewRemoveBackground);
+
+                Assert.False(viewport.HasBackgroundImage);
+                Assert.True(viewport.ShowSelectedVision);
+                Assert.False(viewport.ShowMovementVectors);
+                Assert.False(viewport.ShowShotImpacts);
+                Assert.False(viewport.ShowResourceGauges);
+                Assert.False(viewport.HighlightTeleporters);
+                Assert.True(viewport.EnergyGridEnabled);
+                Assert.Equal(EnergyGridSize.Medium, viewport.EnergyGridSize);
+                Assert.False(viewport.RenderWaste);
+                Assert.True(viewport.FlickerMode);
+                Assert.False(viewport.RenderSkins);
+                Assert.False(viewport.ShowDeathPoffs);
+                Assert.False(viewport.IsVisible);
+
+                var afterSave = await simulation.SaveAsync();
+                var afterSnapshot = simulation.LatestSnapshot;
+                Assert.Equal(beforeSave, afterSave);
+                Assert.Equal(beforeSnapshot.Tick, afterSnapshot.Tick);
+                Assert.Equal(beforeSnapshot.Population, afterSnapshot.Population);
+                Assert.Equal(beforeSnapshot.Backend, afterSnapshot.Backend);
+                Assert.Equal(beforeSnapshot.Organisms, afterSnapshot.Organisms);
+                Assert.Equal(["Tick:0", "Save", "Save"], engine.Calls.ToArray());
+                return 0;
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task HistoricSettingsRoutesKeepDistinctWorkflowsPublishPhysicsAndLeaveOnlineControlsInert()
     {
         var engine = new RecordingEngineClient();
