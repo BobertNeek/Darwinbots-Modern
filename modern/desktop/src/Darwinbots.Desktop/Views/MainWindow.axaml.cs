@@ -1516,7 +1516,12 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null || _selectedFeature is not { } feature)
             return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
-        if (feature.Kind == WorldFeatureKind.Obstacle) await _session.RemoveObstacleAsync(feature.Id);
+        if (feature.Kind == WorldFeatureKind.Obstacle)
+        {
+            if (!await ConfirmObstacleDeletionAsync(1))
+                return LegacyCommandResult.Failure("DELETION CANCELLED");
+            await _session.RemoveObstacleAsync(feature.Id);
+        }
         else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
         else await _session.RemoveTeleporterAsync(feature.Id);
         _selectedFeature = null;
@@ -1539,6 +1544,9 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var obstacles = _session.LatestSnapshot.Obstacles.ToArray();
+        if (obstacles.Length == 0) return LegacyCommandResult.Success("DELETED 0 SHAPES");
+        if (!await ConfirmObstacleDeletionAsync(obstacles.Length))
+            return LegacyCommandResult.Failure("DELETION CANCELLED");
         foreach (var obstacle in obstacles) await _session.RemoveObstacleAsync(obstacle.Id);
         return LegacyCommandResult.Success($"DELETED {obstacles.Length} SHAPE(S)");
     }
@@ -1568,8 +1576,19 @@ public sealed partial class MainWindow : Window
             .OrderBy(obstacle => HashCode.Combine(obstacle.Id, _session.LatestSnapshot.Tick))
             .Take(count)
             .ToArray();
+        if (selected.Length == 0) return LegacyCommandResult.Success("DELETED 0 RANDOM SHAPES");
+        if (!await ConfirmObstacleDeletionAsync(selected.Length))
+            return LegacyCommandResult.Failure("DELETION CANCELLED");
         foreach (var obstacle in selected) await _session.RemoveObstacleAsync(obstacle.Id);
         return LegacyCommandResult.Success($"DELETED {selected.Length} RANDOM SHAPES");
+    }
+
+    private async Task<bool> ConfirmObstacleDeletionAsync(int count)
+    {
+        var label = count == 1 ? "obstacle" : "obstacles";
+        var dialog = new DeleteConfirmationWindow($"Delete {count} {label}? This cannot be undone.");
+        await dialog.ShowDialog(this);
+        return ObstacleEditorPolicy.ConfirmDelete(dialog.Confirmed);
     }
 
     private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
@@ -2070,7 +2089,15 @@ public sealed partial class MainWindow : Window
     private async void RemoveFeature_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _selectedFeature is not { } feature) return;
-        if (feature.Kind == WorldFeatureKind.Obstacle) await _session.RemoveObstacleAsync(feature.Id);
+        if (feature.Kind == WorldFeatureKind.Obstacle)
+        {
+            if (!await ConfirmObstacleDeletionAsync(1))
+            {
+                _viewModel.Status = "DELETION CANCELLED";
+                return;
+            }
+            await _session.RemoveObstacleAsync(feature.Id);
+        }
         else if (_session.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id)) await _session.RemoveFileTeleporterAsync(feature.Id);
         else await _session.RemoveTeleporterAsync(feature.Id);
         _selectedFeature = null;

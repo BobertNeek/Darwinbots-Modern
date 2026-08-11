@@ -17,6 +17,10 @@ public sealed partial class ShapeEditorWindow : Window
     {
         _original = obstacle ?? throw new ArgumentNullException(nameof(obstacle));
         InitializeComponent();
+        MinimumX.Value = (decimal)obstacle.Minimum.ElementAtOrDefault(0);
+        MinimumY.Value = (decimal)obstacle.Minimum.ElementAtOrDefault(1);
+        MaximumX.Value = (decimal)obstacle.Maximum.ElementAtOrDefault(0);
+        MaximumY.Value = (decimal)obstacle.Maximum.ElementAtOrDefault(1);
         ColorText.Text = $"#{obstacle.Color:X8}";
         OpacityValue.Value = (decimal)obstacle.Opacity;
         DriftX.Value = (decimal)obstacle.Drift.ElementAtOrDefault(0);
@@ -32,14 +36,15 @@ public sealed partial class ShapeEditorWindow : Window
         var rawColor = (ColorText.Text ?? string.Empty).Trim().TrimStart('#');
         if (!uint.TryParse(rawColor, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var color))
             return;
-        Result = _original with
-        {
-            Color = color,
-            Opacity = (float)(OpacityValue.Value ?? 1m),
-            Drift = [(float)(DriftX.Value ?? 0m), (float)(DriftY.Value ?? 0m)],
-            VisionPolicy = VisionPolicy.SelectedIndex == 1 ? "see_through" : "opaque",
-            ShotPolicy = ShotPolicy.SelectedIndex == 1 ? "pass_through" : "absorb",
-        };
+        Result = ObstacleEditorPolicy.BuildPayload(
+            _original,
+            [(float)(MinimumX.Value ?? 0m), (float)(MinimumY.Value ?? 0m)],
+            [(float)(MaximumX.Value ?? 0m), (float)(MaximumY.Value ?? 0m)],
+            color,
+            (float)(OpacityValue.Value ?? 1m),
+            [(float)(DriftX.Value ?? 0m), (float)(DriftY.Value ?? 0m)],
+            VisionPolicy.SelectedIndex == 1 ? "see_through" : "opaque",
+            ShotPolicy.SelectedIndex == 1 ? "pass_through" : "absorb");
         Close();
     }
 

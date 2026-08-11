@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Darwinbots.Desktop.Views.ShapeEditorWindow"
-        Title="Shape properties" Width="430" Height="520" MinWidth="390" MinHeight="480"
+        Title="Shape properties" Width="430" Height="650" MinWidth="390" MinHeight="600"
         WindowStartupLocation="CenterOwner" Background="#F4F0E6">
   <Grid RowDefinitions="Auto,*,Auto" Margin="18" RowSpacing="14">
     <StackPanel Spacing="3">
@@ -9,6 +9,10 @@
     </StackPanel>
     <ScrollViewer Grid.Row="1">
       <StackPanel Spacing="9">
+        <Grid ColumnDefinitions="*,150"><TextBlock Text="Minimum X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="MinimumX" Minimum="-1000000" Maximum="1000000" Increment="1" FormatString="0.0" /></Grid>
+        <Grid ColumnDefinitions="*,150"><TextBlock Text="Minimum Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="MinimumY" Minimum="-1000000" Maximum="1000000" Increment="1" FormatString="0.0" /></Grid>
+        <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="MaximumX" Minimum="-1000000" Maximum="1000000" Increment="1" FormatString="0.0" /></Grid>
+        <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="MaximumY" Minimum="-1000000" Maximum="1000000" Increment="1" FormatString="0.0" /></Grid>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Color (ARGB hex)" VerticalAlignment="Center"/><TextBox Grid.Column="1" x:Name="ColorText" /></Grid>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Opacity" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="OpacityValue" Minimum="0" Maximum="1" Increment="0.05" FormatString="0.00" /></Grid>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Horizontal drift" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="DriftX" Minimum="-100000" Maximum="100000" Increment="0.1" FormatString="0.0" /></Grid>
