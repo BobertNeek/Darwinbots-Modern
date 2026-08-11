@@ -8106,6 +8106,9 @@ impl Engine {
                         true
                     }
                     ProjectileEffect::WriteMemory { address, value } => {
+                        if address == 340 {
+                            return false;
+                        }
                         if self.fire_defensive_poison(
                             target,
                             (projectile_energy / 2.0).round() as i32,

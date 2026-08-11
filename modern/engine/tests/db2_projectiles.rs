@@ -335,6 +335,41 @@ fn positive_memory_shot_writes_the_target_address() {
 }
 
 #[test]
+fn delgene_information_shot_is_inert_without_defensive_poison_return() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        physics: PhysicsSettings {
+            density: 0.0,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("start\n340 .shoot store\n37 .shootval store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(
+            LegacyDna::parse("start\n1000 .strpoison store\nstop").unwrap(),
+            [350.0, 100.0],
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory_at(target, 340).unwrap(), 0);
+    assert!(!engine
+        .snapshot()
+        .shots
+        .iter()
+        .any(|shot| shot.kind == -5 && shot.owner == target && !shot.impact_flash));
+}
+
+#[test]
 fn moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants() {
     let mut config = darwinbots_engine::EngineConfig::default();
     config.backend = darwinbots_engine::BackendPreference::Cpu;
