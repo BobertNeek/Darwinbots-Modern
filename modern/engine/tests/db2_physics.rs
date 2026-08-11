@@ -574,6 +574,63 @@ fn non_toroidal_border_collision_writes_edge_sense() {
 }
 
 #[test]
+fn edge_sense_matches_vb6_boundary_distance_calibration() {
+    let cases = [
+        ("left exact wall contact", [60.0, 100.0], [false, false], 1, [60.0, 100.0]),
+        ("left one-unit interior", [61.0, 100.0], [false, false], 0, [61.0, 100.0]),
+        ("left center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
+        ("left beyond-world clamp", [-1.0, 100.0], [false, false], 1, [60.0, 100.0]),
+        ("right exact wall contact", [140.0, 100.0], [false, false], 1, [140.0, 100.0]),
+        ("right one-unit interior", [139.0, 100.0], [false, false], 0, [139.0, 100.0]),
+        ("right center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
+        ("right beyond-world clamp", [201.0, 100.0], [false, false], 1, [140.0, 100.0]),
+        ("top exact wall contact", [100.0, 60.0], [false, false], 1, [100.0, 60.0]),
+        ("top one-unit interior", [100.0, 61.0], [false, false], 0, [100.0, 61.0]),
+        ("top center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
+        ("top beyond-world clamp", [100.0, -1.0], [false, false], 1, [100.0, 60.0]),
+        ("bottom exact wall contact", [100.0, 140.0], [false, false], 1, [100.0, 140.0]),
+        ("bottom one-unit interior", [100.0, 139.0], [false, false], 0, [100.0, 139.0]),
+        ("bottom center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
+        ("bottom beyond-world clamp", [100.0, 201.0], [false, false], 1, [100.0, 140.0]),
+        ("wrapped x suppresses its wall sense", [60.0, 100.0], [true, false], 0, [110.0, 100.0]),
+        ("solid y reports its wall sense", [100.0, 60.0], [true, false], 1, [100.0, 60.0]),
+    ];
+
+    for (name, position, wrapped_axes, expected_edge, expected_position) in cases {
+        let mut engine = Engine::new(EngineConfig {
+            world_width: 200.0,
+            world_height: 200.0,
+            toroidal_world: false,
+            axis_topology: Some(wrapped_axes),
+            fixed_bot_radii: true,
+            metabolism_cost: 0,
+            gravity: [0.0, 0.0],
+            drag: 0.0,
+            brownian_motion: 0.0,
+            physics: PhysicsSettings {
+                density: 0.0,
+                ..PhysicsSettings::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = engine
+            .spawn_at(LegacyDna::parse("start\nstop").unwrap(), position)
+            .unwrap();
+
+        engine.tick().unwrap();
+
+        assert_eq!(engine.memory_at(id, 214).unwrap(), expected_edge, "{name}");
+        let actual_position = engine.organism(id).unwrap().position;
+        if wrapped_axes == [false, false] {
+            assert_eq!(actual_position, expected_position, "{name}");
+        } else {
+            assert_eq!(actual_position[1], expected_position[1], "{name}");
+        }
+    }
+}
+
+#[test]
 fn fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick() {
     let config = |density: f64, brownian_motion: f32| EngineConfig {
         metabolism_cost: 0,
