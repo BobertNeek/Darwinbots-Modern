@@ -5224,6 +5224,11 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.materials.chloroplasts > 0
+                && robot.counters.chloroplast_share_delay > 0
+            {
+                robot.counters.chloroplast_share_delay -= 1;
+            }
             robot.materials.decay_chloroplasts();
             robot.materials.publish(&mut robot.program.memory);
         }
@@ -6164,6 +6169,7 @@ impl Engine {
         }
 
         let mut channels = Vec::new();
+        let mut chloroplast_delay_requests = Vec::new();
         for tie in self.ties.iter().filter(|tie| tie.hardened) {
             for (source_slot, target_slot) in [
                 (tie.first.slot() as usize, tie.second.slot() as usize),
@@ -6176,6 +6182,33 @@ impl Engine {
                     continue;
                 }
                 let commands = phase_commands[source_slot].unwrap_or_default();
+                let requested_chloroplasts = commands.share_chloroplasts.clamp(0, 99);
+                let chloroplasts = if requested_chloroplasts == 0 {
+                    0
+                } else {
+                    let Some(source_robot) = self.slots[source_slot].organism.as_ref() else {
+                        continue;
+                    };
+                    let Some(target_robot) = self.slots[target_slot].organism.as_ref() else {
+                        continue;
+                    };
+                    if !source_robot.flags.can_use_chloroplasts
+                        || source_robot.flags.no_chloroplasts
+                        || source_robot.counters.chloroplast_share_delay > 0
+                    {
+                        0
+                    } else if source_robot
+                        .program
+                        .dna
+                        .genetic_distance(&target_robot.program.dna)
+                        > 0.25
+                    {
+                        chloroplast_delay_requests.push(source_slot);
+                        0
+                    } else {
+                        requested_chloroplasts
+                    }
+                };
                 channels.push((
                     source_slot,
                     target_slot,
@@ -6183,8 +6216,14 @@ impl Engine {
                     commands.share_waste.clamp(0, 99),
                     commands.share_shell.clamp(0, 99),
                     commands.share_slime.clamp(0, 99),
-                    commands.share_chloroplasts.clamp(0, 99),
+                    chloroplasts,
                 ));
+            }
+        }
+
+        for source_slot in chloroplast_delay_requests {
+            if let Some(source_robot) = self.slots[source_slot].organism.as_mut() {
+                source_robot.counters.chloroplast_share_delay = 8;
             }
         }
 

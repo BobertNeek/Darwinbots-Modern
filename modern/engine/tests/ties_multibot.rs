@@ -1152,6 +1152,54 @@ fn sharing_requires_hardening() {
     assert_eq!(engine.snapshot().tick, 20);
     assert_eq!(engine.organism(source).unwrap().shell, 50);
     assert_eq!(engine.organism(target).unwrap().shell, 50);
+
+    let share_chloroplasts =
+        LegacyDna::parse("start\n50 .sharechlr store\nstop").unwrap();
+    engine.replace_dna(source, share_chloroplasts).unwrap();
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let source_robot = &mut payload["slots"][source.slot() as usize]["organism"];
+    source_robot["materials"]["chloroplasts"] = json!(1_000);
+    source_robot["flags"]["can_use_chloroplasts"] = json!(false);
+    source_robot["counters"]["chloroplast_share_delay"] = json!(0);
+    set_tie_memory(&mut source_robot["program"]["memory"], 920, 1_000);
+    let target_robot = &mut payload["slots"][target.slot() as usize]["organism"];
+    target_robot["materials"]["chloroplasts"] = json!(3_000);
+    target_robot["flags"]["can_use_chloroplasts"] = json!(false);
+    set_tie_memory(&mut target_robot["program"]["memory"], 920, 3_000);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    let mut engine = SaveFile::decode(&save).unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.robot_state(source).unwrap().materials.chloroplasts, 1_000);
+    assert_eq!(engine.robot_state(target).unwrap().materials.chloroplasts, 3_000);
+
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["slots"][source.slot() as usize]["organism"]["flags"]
+        ["can_use_chloroplasts"] = json!(true);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    let mut engine = SaveFile::decode(&save).unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.robot_state(source).unwrap().materials.chloroplasts, 1_000);
+    assert_eq!(engine.robot_state(target).unwrap().materials.chloroplasts, 3_000);
+    assert_eq!(
+        engine
+            .robot_state(source)
+            .unwrap()
+            .counters
+            .chloroplast_share_delay,
+        7
+    );
 }
 
 #[test]
