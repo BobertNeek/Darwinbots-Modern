@@ -11219,4 +11219,241 @@ mod tests {
 
         assert!(engine.snapshot().corpses.is_empty());
     }
+
+    #[test]
+    fn db24832_minus_six_body_feed_contract() {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        struct Observation {
+            applied: bool,
+            owner_energy: i32,
+            living: Option<[i32; 3]>,
+            corpse: Option<[i32; 2]>,
+            packet: Option<(i32, i32)>,
+        }
+
+        #[derive(Clone, Copy)]
+        enum TargetKind {
+            Living,
+            Corpse,
+            InvalidOrganism,
+        }
+
+        struct Case {
+            name: &'static str,
+            target: TargetKind,
+            power: i32,
+            energy: i32,
+            body: i32,
+            shell: i32,
+            expected: Observation,
+        }
+
+        let cases = [
+            Case {
+                name: "living target absorbs body shot in shell",
+                target: TargetKind::Living,
+                power: 100,
+                energy: 900,
+                body: 100,
+                shell: 10,
+                expected: Observation {
+                    applied: true,
+                    owner_energy: 1_000,
+                    living: Some([900, 100, 5]),
+                    corpse: None,
+                    packet: None,
+                },
+            },
+            Case {
+                name: "living target transfers through depleted shell",
+                target: TargetKind::Living,
+                power: 200,
+                energy: 1_000,
+                body: 100,
+                shell: 5,
+                expected: Observation {
+                    applied: true,
+                    owner_energy: 1_000,
+                    living: Some([980, 99, 0]),
+                    corpse: None,
+                    packet: Some((-2, 100)),
+                },
+            },
+            Case {
+                name: "living target clamps high body-shot power",
+                target: TargetKind::Living,
+                power: 100_000,
+                energy: 32_000,
+                body: 32_000,
+                shell: 0,
+                expected: Observation {
+                    applied: true,
+                    owner_energy: 1_000,
+                    living: Some([25_600, 31_744, 0]),
+                    corpse: None,
+                    packet: Some((-2, 32_000)),
+                },
+            },
+            Case {
+                name: "zero power leaves living target unchanged",
+                target: TargetKind::Living,
+                power: 0,
+                energy: 1_000,
+                body: 100,
+                shell: 5,
+                expected: Observation {
+                    applied: false,
+                    owner_energy: 1_000,
+                    living: Some([1_000, 100, 5]),
+                    corpse: None,
+                    packet: None,
+                },
+            },
+            Case {
+                name: "negative power is rejected",
+                target: TargetKind::Living,
+                power: -1,
+                energy: 1_000,
+                body: 100,
+                shell: 5,
+                expected: Observation {
+                    applied: false,
+                    owner_energy: 1_000,
+                    living: Some([1_000, 100, 5]),
+                    corpse: None,
+                    packet: None,
+                },
+            },
+            Case {
+                name: "corpse body releases a multiplied packet",
+                target: TargetKind::Corpse,
+                power: 100,
+                energy: 100,
+                body: 100,
+                shell: 0,
+                expected: Observation {
+                    applied: true,
+                    owner_energy: 1_000,
+                    living: None,
+                    corpse: Some([100, 60]),
+                    packet: Some((-2, 400)),
+                },
+            },
+            Case {
+                name: "empty corpse rejects body shot",
+                target: TargetKind::Corpse,
+                power: 100,
+                energy: 100,
+                body: 0,
+                shell: 0,
+                expected: Observation {
+                    applied: false,
+                    owner_energy: 1_000,
+                    living: None,
+                    corpse: Some([100, 0]),
+                    packet: None,
+                },
+            },
+            Case {
+                name: "invalid organism target is inert",
+                target: TargetKind::InvalidOrganism,
+                power: 100,
+                energy: 1_000,
+                body: 100,
+                shell: 5,
+                expected: Observation {
+                    applied: false,
+                    owner_energy: 1_000,
+                    living: Some([1_000, 100, 5]),
+                    corpse: None,
+                    packet: None,
+                },
+            },
+        ];
+
+        for case in cases {
+            let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+            let idle = LegacyDna::parse("start\nstop").unwrap();
+            let owner = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+            engine.slots[owner.slot() as usize]
+                .organism
+                .as_mut()
+                .unwrap()
+                .materials
+                .energy = 1_000;
+
+            let (target, live_target_slot) = match case.target {
+                TargetKind::Living | TargetKind::InvalidOrganism => {
+                    let target_id = engine.spawn_at(idle, [200.0, 100.0]).unwrap();
+                    let robot = engine.slots[target_id.slot() as usize]
+                        .organism
+                        .as_mut()
+                        .unwrap();
+                    robot.materials.energy = case.energy;
+                    robot.materials.body = case.body;
+                    robot.materials.shell = case.shell;
+                    let target = if matches!(case.target, TargetKind::InvalidOrganism) {
+                        ProjectileTarget::Organism(usize::MAX)
+                    } else {
+                        ProjectileTarget::Organism(target_id.slot() as usize)
+                    };
+                    (target, Some(target_id.slot() as usize))
+                }
+                TargetKind::Corpse => {
+                    engine.corpses.push(CorpseSnapshot {
+                        energy: case.energy,
+                        body: case.body,
+                        ..CorpseSnapshot::default()
+                    });
+                    (ProjectileTarget::Corpse(0), None)
+                }
+            };
+            let applied = engine.apply_projectile_effect(
+                owner,
+                target,
+                ProjectileEffect::ReleaseBody,
+                case.power,
+                0.0,
+                None,
+                None,
+                0,
+                0,
+                [0.0; 2],
+                [0.0; 2],
+                10,
+                100.0,
+            );
+            let living = live_target_slot.map(|slot| {
+                let materials = &engine.slots[slot].organism.as_ref().unwrap().materials;
+                [materials.energy, materials.body, materials.shell]
+            });
+            let corpse = engine
+                .corpses
+                .first()
+                .map(|corpse| [corpse.energy, corpse.body]);
+            let packet = match engine.projectiles.kinds.len() {
+                0 => None,
+                1 => Some((-2, engine.projectiles.values[0])),
+                count => panic!("{count} packets emitted for {}", case.name),
+            };
+
+            assert_eq!(
+                Observation {
+                    applied,
+                    owner_energy: engine.slots[owner.slot() as usize]
+                        .organism
+                        .as_ref()
+                        .unwrap()
+                        .materials
+                        .energy,
+                    living,
+                    corpse,
+                    packet,
+                },
+                case.expected,
+                "{}",
+                case.name
+            );
+        }
+    }
 }
