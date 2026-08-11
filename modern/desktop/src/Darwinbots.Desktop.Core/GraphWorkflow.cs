@@ -47,12 +47,12 @@ public static class GraphCatalog
     [
         new("Population", GraphMetric.Population),
         new("Average mutations", GraphMetric.AverageMutations),
-        new("Average mutations/DNA len", GraphMetric.AverageMutationsPerDnaLength),
         new("Average Age", GraphMetric.AverageAge),
         new("Average Descendents", GraphMetric.AverageDescendents),
         new("Average Energy", GraphMetric.AverageEnergy),
         new("Average DNA length", GraphMetric.AverageDnaLength),
         new("Average DNA conditions", GraphMetric.AverageDnaConditions),
+        new("Average mutations/DNA len", GraphMetric.AverageMutationsPerDnaLength),
         new("Total Energy", GraphMetric.TotalEnergy),
         new("Dynamic Cost Stats", GraphMetric.DynamicCostStats),
         new("Species Diversity", GraphMetric.SpeciesDiversity),

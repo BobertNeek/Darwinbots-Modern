@@ -12,12 +12,12 @@ public sealed class GraphAndContestTests
         [
             (GraphMetric.Population, "Population"),
             (GraphMetric.AverageMutations, "Average mutations"),
-            (GraphMetric.AverageMutationsPerDnaLength, "Average mutations/DNA len"),
             (GraphMetric.AverageAge, "Average Age"),
             (GraphMetric.AverageDescendents, "Average Descendents"),
             (GraphMetric.AverageEnergy, "Average Energy"),
             (GraphMetric.AverageDnaLength, "Average DNA length"),
             (GraphMetric.AverageDnaConditions, "Average DNA conditions"),
+            (GraphMetric.AverageMutationsPerDnaLength, "Average mutations/DNA len"),
             (GraphMetric.TotalEnergy, "Total Energy"),
             (GraphMetric.DynamicCostStats, "Dynamic Cost Stats"),
             (GraphMetric.SpeciesDiversity, "Species Diversity"),
@@ -142,6 +142,78 @@ public sealed class GraphAndContestTests
         Assert.Equal([7d, 14d], projected.Select(value => value.Values[GraphMetric.SelectiveGeneticDistance]));
         Assert.Equal([8d, 16d], projected.Select(value => value.Values[GraphMetric.GenerationalDistance]));
         Assert.Equal([9d, 18d], projected.Select(value => value.Values[GraphMetric.SlowGeneticDistance]));
+    }
+
+    [Fact]
+    public void HistoricalGraphCatalogOrderMapsEveryExposedHistoryMetric()
+    {
+        (GraphMetric Metric, string Label, double[] Values)[] expectedMetrics =
+        [
+            (GraphMetric.Population, "Population", [4d, 6d]),
+            (GraphMetric.AverageMutations, "Average mutations", [1d, 2d]),
+            (GraphMetric.AverageAge, "Average Age", [3d, 4d]),
+            (GraphMetric.AverageDescendents, "Average Descendents", [5d, 6d]),
+            (GraphMetric.AverageEnergy, "Average Energy", [7d, 8d]),
+            (GraphMetric.AverageDnaLength, "Average DNA length", [9d, 10d]),
+            (GraphMetric.AverageDnaConditions, "Average DNA conditions", [11d, 12d]),
+            (GraphMetric.AverageMutationsPerDnaLength, "Average mutations/DNA len", [13d, 14d]),
+            (GraphMetric.TotalEnergy, "Total Energy", [150d, 250d]),
+            (GraphMetric.DynamicCostStats, "Dynamic Cost Stats", [15d, 16d]),
+            (GraphMetric.SpeciesDiversity, "Species Diversity", [2d, 3d]),
+            (GraphMetric.AverageChloroplasts, "Average Chloroplasts", [17d, 18d]),
+            (GraphMetric.SelectiveGeneticDistance, "Selective Genetic Distance", [19d, 20d]),
+            (GraphMetric.GenerationalDistance, "Generational Distance", [21d, 22d]),
+            (GraphMetric.SlowGeneticDistance, "Slow Genetic Distance", [23d, 24d]),
+            (GraphMetric.CustomizableGraph1, "Customizable Graph 1", [7d, 8d]),
+            (GraphMetric.CustomizableGraph2, "Customizable Graph 2", [150d, 250d]),
+            (GraphMetric.CustomizableGraph3, "Customizable Graph 3", [17d, 18d]),
+        ];
+        var snapshot = new EngineSnapshot(30, 6, "CPU", [])
+        {
+            History =
+            [
+                new HistorySampleSnapshot(10, 4, 150, 0, 0, 0, 0)
+                {
+                    AverageMutations = 1,
+                    AverageAge = 3,
+                    AverageDescendents = 5,
+                    AverageEnergy = 7,
+                    AverageDnaLength = 9,
+                    AverageDnaConditions = 11,
+                    AverageMutationsPerDnaLength = 13,
+                    DynamicCostStats = 15,
+                    SpeciesDiversity = 2,
+                    AverageChloroplasts = 17,
+                    SelectiveGeneticDistance = 19,
+                    GenerationalDistance = 21,
+                    SlowGeneticDistance = 23,
+                },
+                new HistorySampleSnapshot(20, 6, 250, 0, 0, 0, 0)
+                {
+                    AverageMutations = 2,
+                    AverageAge = 4,
+                    AverageDescendents = 6,
+                    AverageEnergy = 8,
+                    AverageDnaLength = 10,
+                    AverageDnaConditions = 12,
+                    AverageMutationsPerDnaLength = 14,
+                    DynamicCostStats = 16,
+                    SpeciesDiversity = 3,
+                    AverageChloroplasts = 18,
+                    SelectiveGeneticDistance = 20,
+                    GenerationalDistance = 22,
+                    SlowGeneticDistance = 24,
+                },
+            ],
+        };
+
+        var projected = GraphMetricSampleProjector.FromSnapshot(snapshot);
+
+        Assert.Equal(
+            expectedMetrics.Select(value => (value.Metric, value.Label)),
+            GraphCatalog.Metrics.Select(value => (value.Metric!.Value, value.Label)));
+        foreach (var expected in expectedMetrics)
+            Assert.Equal(expected.Values, projected.Select(value => value.Values[expected.Metric]));
     }
 
     [Fact]
