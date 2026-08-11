@@ -167,6 +167,28 @@ fn robots_of_one_species_own_isolated_mutation_profiles() {
 }
 
 #[test]
+fn changing_a_robot_point_rate_reschedules_its_next_mutation() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let id = engine
+        .spawn_at(LegacyDna::parse("1 2 3 4").unwrap(), [500.0, 500.0])
+        .unwrap();
+
+    let mut slow_profile = engine.mutation_profile(id).unwrap().clone();
+    slow_profile.point.one_in = 1_000_000_000.0;
+    engine.set_mutation_profile(id, slow_profile).unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().stats.mutations, 0);
+
+    let mut fast_profile = engine.mutation_profile(id).unwrap().clone();
+    fast_profile.point.one_in = 1.0;
+    engine.set_mutation_profile(id, fast_profile).unwrap();
+    engine.tick().unwrap();
+
+    assert_eq!(engine.snapshot().stats.mutations, 1);
+    assert_eq!(engine.organism(id).unwrap().total_mutations, 1);
+}
+
+#[test]
 fn point_schedule_uses_coding_length_and_excludes_master_end() {
     let dna = LegacyDna::parse("1 2 3 4").unwrap();
     assert_exact_dna(

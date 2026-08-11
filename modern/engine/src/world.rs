@@ -4724,6 +4724,7 @@ impl Engine {
         profile.validate()?;
         let organism = self.slots.get_mut(id)?;
         organism.program.mutation_profile = profile;
+        organism.program.point_mutation_schedule = None;
         self.publish_snapshot();
         Ok(())
     }
