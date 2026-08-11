@@ -309,6 +309,138 @@ fn save_files_are_versioned_and_round_trip_reference_state() {
 }
 
 #[test]
+fn db3s_v3_configuration_groups_default_missing_fields_round_trip_and_reject_invalid_atomically() {
+    fn field<'a>(root: &'a serde_json::Value, path: &[&str]) -> &'a serde_json::Value {
+        let mut current = root;
+        for key in path {
+            current = match key.parse::<usize>() {
+                Ok(index) => current.get(index).unwrap(),
+                Err(_) => current.get(*key).unwrap(),
+            };
+        }
+        current
+    }
+
+    fn field_mut<'a>(root: &'a mut serde_json::Value, path: &[&str]) -> &'a mut serde_json::Value {
+        let mut current = root;
+        for key in path {
+            current = match key.parse::<usize>() {
+                Ok(index) => current.get_mut(index).unwrap(),
+                Err(_) => current.get_mut(*key).unwrap(),
+            };
+        }
+        current
+    }
+
+    fn remove_field(root: &mut serde_json::Value, path: &[&str]) {
+        let (parent, key) = path.split_at(path.len() - 1);
+        field_mut(root, parent).as_object_mut().unwrap().remove(key[0]);
+    }
+
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .spawn(LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let save = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    payload["obstacles"] = serde_json::json!([{
+        "id": 7,
+        "minimum": [10.0, 20.0],
+        "maximum": [30.0, 40.0],
+        "color": 4279312947_u32,
+        "opacity": 0.5,
+        "drift": [1.0, -2.0],
+        "vision_policy": "see_through",
+        "shot_policy": "pass_through"
+    }]);
+    payload["teleporters"] = serde_json::json!([{
+        "id": 8,
+        "center": [100.0, 200.0],
+        "radius": 14.0,
+        "destination": [900.0, 800.0]
+    }]);
+
+    let present = vec![
+        (vec!["config", "physics", "max_velocity"], serde_json::json!(99.0)),
+        (vec!["config", "shots", "speed"], serde_json::json!(55.0)),
+        (vec!["config", "vegetation", "cycle_length"], serde_json::json!(88)),
+        (vec!["config", "corpse_decay", "packet_size"], serde_json::json!(7)),
+        (vec!["config", "waste", "defecation_threshold"], serde_json::json!(1234)),
+        (vec!["config", "recording", "sampling_interval"], serde_json::json!(17)),
+        (vec!["config", "auto_speciation"], serde_json::json!(true)),
+        (
+            vec!["config", "speciation_genetic_distance_percent"],
+            serde_json::json!(12.5),
+        ),
+        (vec!["config", "toroidal_world"], serde_json::json!(false)),
+        (vec!["config", "axis_topology"], serde_json::json!([true, false])),
+        (
+            vec!["config", "dna_costs", "global_multiplier"],
+            serde_json::json!(11.0),
+        ),
+        (
+            vec!["config", "advanced_mutation", "delta2", "interval"],
+            serde_json::json!(24),
+        ),
+        (
+            vec!["restriction_options", "non_repopulating", "fixed_in_place"],
+            serde_json::json!(true),
+        ),
+        (vec!["player_bot", "enabled"], serde_json::json!(true)),
+        (vec!["obstacles", "0", "id"], serde_json::json!(7)),
+        (vec!["teleporters", "0", "id"], serde_json::json!(8)),
+    ];
+    let mut present_payload = payload.clone();
+    for (path, value) in &present {
+        *field_mut(&mut present_payload, path) = value.clone();
+    }
+
+    let restored = SaveFile::decode(&frame_save(3, &present_payload)).unwrap();
+    let round_trip = SaveFile::encode(&restored).unwrap();
+    let round_trip_payload: serde_json::Value = serde_json::from_slice(&round_trip[10..]).unwrap();
+    for (path, value) in &present {
+        assert_eq!(field(&round_trip_payload, path), value, "present field {path:?}");
+    }
+    let stable = SaveFile::encode(&SaveFile::decode(&round_trip).unwrap()).unwrap();
+    assert_eq!(stable, round_trip);
+
+    let missing = vec![
+        (vec!["config", "physics", "max_velocity"], vec!["config", "physics", "max_velocity"], serde_json::json!(60.0)),
+        (vec!["config", "shots", "speed"], vec!["config", "shots", "speed"], serde_json::json!(40.0)),
+        (vec!["config", "vegetation", "cycle_length"], vec!["config", "vegetation", "cycle_length"], serde_json::json!(10_000)),
+        (vec!["config", "corpse_decay", "packet_size"], vec!["config", "corpse_decay", "packet_size"], serde_json::json!(0)),
+        (vec!["config", "waste", "defecation_threshold"], vec!["config", "waste", "defecation_threshold"], serde_json::json!(32_000)),
+        (vec!["config", "recording", "sampling_interval"], vec!["config", "recording", "sampling_interval"], serde_json::json!(200)),
+        (vec!["config", "auto_speciation"], vec!["config", "auto_speciation"], serde_json::json!(false)),
+        (vec!["config", "speciation_genetic_distance_percent"], vec!["config", "speciation_genetic_distance_percent"], serde_json::json!(20.0)),
+        (vec!["config", "toroidal_world"], vec!["config", "toroidal_world"], serde_json::json!(true)),
+        (vec!["config", "axis_topology"], vec!["config", "axis_topology"], serde_json::Value::Null),
+        (vec!["config", "dna_costs", "global_multiplier"], vec!["config", "dna_costs", "global_multiplier"], serde_json::json!(1.0)),
+        (vec!["config", "advanced_mutation", "delta2", "interval"], vec!["config", "advanced_mutation", "delta2", "interval"], serde_json::json!(100)),
+        (vec!["restriction_options"], vec!["restriction_options", "non_repopulating", "fixed_in_place"], serde_json::json!(false)),
+        (vec!["player_bot"], vec!["player_bot", "enabled"], serde_json::json!(false)),
+        (vec!["obstacles"], vec!["obstacles"], serde_json::json!([])),
+        (vec!["teleporters"], vec!["teleporters"], serde_json::json!([])),
+    ];
+    for (remove_path, assert_path, default) in &missing {
+        let mut candidate = present_payload.clone();
+        remove_field(&mut candidate, remove_path);
+        let restored = SaveFile::decode(&frame_save(3, &candidate)).unwrap();
+        let migrated = SaveFile::encode(&restored).unwrap();
+        let migrated_payload: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();
+        assert_eq!(field(&migrated_payload, assert_path), default, "missing field {remove_path:?}");
+    }
+
+    let baseline = SaveFile::decode(&frame_save(3, &present_payload)).unwrap();
+    let baseline_snapshot = baseline.snapshot().clone();
+    let mut invalid = present_payload;
+    invalid["slots"][0]["organism"]["program"]["mutation_profile"]["point"]["one_in"] =
+        serde_json::json!(0.0);
+    assert!(SaveFile::decode(&frame_save(3, &invalid)).is_err());
+    assert_eq!(baseline.snapshot(), &baseline_snapshot);
+}
+
+#[test]
 fn db3s_v3_old_save_defaults_standard_mutation_profile() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let id = engine
