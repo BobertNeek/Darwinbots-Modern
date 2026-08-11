@@ -829,6 +829,78 @@ public sealed class RenderedControlSurfaceAuditTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task MainWindowMutationSurfaceRendersDefaultsAndPublishesGlobalAndSpeciesPressure()
+    {
+        var factory = new AuditEngineClientFactory();
+        var setup = new WorldSetupOptions
+        {
+            TicksPerUpdate = 1,
+            Species = [new SpeciesImport("Luna", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, factory, new AuditStorageService());
+            try
+            {
+                ShowForInteraction(window, 1_200, 820);
+                await WaitFor(
+                    () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Luna"),
+                    () => "The real MainWindow route did not create the Luna simulation.");
+
+                var engine = factory.Clients.Single();
+                var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+                ActivateMenu(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!);
+                await WaitFor(
+                    () => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(),
+                    () => "MainWindow did not open the live settings surface.");
+
+                var settings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Named<TabControl>(settings, "SettingsTabs").SelectedIndex = 0;
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Assert.True(settings.IsVisible);
+                Assert.True(Named<CheckBox>(settings, "MutationsEnabled").IsChecked);
+                Assert.Equal(1m, Named<NumericUpDown>(settings, "GlobalMutationRate").Value);
+                var speciesRows = Named<StackPanel>(settings, "SpeciesMutationRows");
+                var speciesRate = Assert.Single(speciesRows.GetVisualDescendants().OfType<NumericUpDown>());
+                Assert.Equal(0m, speciesRate.Value);
+                Assert.Contains("GLOBAL MUTATION PRESSURE", settings.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
+                Assert.Equal(
+                    Avalonia.Media.Color.Parse("#F4F0E6"),
+                    Assert.IsType<Avalonia.Media.SolidColorBrush>(settings.Background).Color);
+
+                using var frame = settings.CaptureRenderedFrame();
+                Assert.True(frame.PixelSize.Width >= 760);
+                Assert.True(frame.PixelSize.Height >= 620);
+
+                Named<NumericUpDown>(settings, "GlobalMutationRate").Value = 2.25m;
+                speciesRate.Value = 12.5m;
+                var staged = settings.MutationUpdate;
+                Assert.Equal(2.25f, staged.GlobalMultiplier);
+                Assert.Equal(12.5f, Assert.Single(staged.SpeciesRates).Rate);
+                Click(settings, Named<Button>(settings, "ApplyButton"));
+                await WaitFor(() => engine.MutationUpdates.Count == 1);
+                var applied = engine.MutationUpdates.Single();
+                Assert.Equal(2.25f, applied.GlobalMultiplier);
+                Assert.Equal(12.5f, Assert.Single(applied.SpeciesRates).Rate);
+
+                ActivateMenu(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!);
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                var canceled = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Named<TabControl>(canceled, "SettingsTabs").SelectedIndex = 0;
+                Named<NumericUpDown>(canceled, "GlobalMutationRate").Value = 4m;
+                Click(canceled, Named<Button>(canceled, "CancelButton"));
+                Assert.Equal(1, engine.MutationUpdates.Count);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void ShowAndCapture(Window window, double width, double height, string evidenceName)
     {
         ShowForInteraction(window, width, height);
