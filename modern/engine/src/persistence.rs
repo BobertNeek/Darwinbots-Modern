@@ -36,6 +36,30 @@ impl SaveFile {
             })?;
             definition.insert("mutation_rate".to_owned(), serde_json::json!(0.0));
         }
+        let slots = object
+            .get_mut("slots")
+            .and_then(serde_json::Value::as_array_mut)
+            .ok_or_else(|| {
+                EngineError::Invariant("serialized engine slots must be an array".to_owned())
+            })?;
+        for slot in slots {
+            let slot = slot.as_object_mut().ok_or_else(|| {
+                EngineError::Invariant("serialized engine slot must be an object".to_owned())
+            })?;
+            let Some(organism) = slot
+                .get_mut("organism")
+                .and_then(serde_json::Value::as_object_mut)
+            else {
+                continue;
+            };
+            let flags = organism
+                .get_mut("flags")
+                .and_then(serde_json::Value::as_object_mut)
+                .ok_or_else(|| {
+                    EngineError::Invariant("serialized organism flags must be an object".to_owned())
+                })?;
+            flags.insert("can_mutate".to_owned(), serde_json::Value::Bool(false));
+        }
 
         Ok(Self::frame_payload(serde_json::to_vec(&value)?))
     }

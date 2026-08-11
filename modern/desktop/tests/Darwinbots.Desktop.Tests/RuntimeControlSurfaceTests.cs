@@ -15,6 +15,7 @@ using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Services;
 using Darwinbots.Desktop.ViewModels;
 using Darwinbots.Desktop.Views;
+using System.Text.Json;
 using Xunit;
 
 namespace Darwinbots.Desktop.Tests;
@@ -612,37 +613,197 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
-    public async Task SaveWithoutMutationsUsesTheMutationFreeEnginePath()
+    public async Task SaveWithoutMutationsRenderedPlayerRoutePreservesLiveWorldAndDisablesOnlySavedMutationState()
     {
-        var engine = new RecordingEngineClient();
-        await using var simulation = new SimulationSession(engine);
-        var storage = new AuditStorageService();
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            PopulationCapacity = 64,
+            VegetablePopulationCap = 0,
+            BrownianMotion = 0f,
+            Species =
+            [
+                new SpeciesImport(
+                    "IO02 Species",
+                    "start\nstop",
+                    false,
+                    0xff239ac0,
+                    1,
+                    1_000,
+                    0,
+                    false,
+                    3.5f),
+            ],
+        };
+        var storage = new SaveRouteStorage();
         MainWindow? window = null;
+        SimulationSession? session = null;
 
         try
         {
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
-                window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
-                SetField(window, "_session", simulation);
-                Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
-                window.GetType().GetMethod("RefreshLegacyMenuStates", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .Invoke(window, null);
-                var result = await (Task<Core.LegacyMenus.LegacyCommandResult>)window.GetType()
-                    .GetMethod("SaveSimulationCommandAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .Invoke(window, ["SAVED WITHOUT MUTATION SETTINGS", true])!;
-                Assert.True(result.Succeeded, result.Status);
-                Assert.Equal([9, 8, 7], storage.SavedSimulation);
-                Assert.DoesNotContain("Save", engine.Calls);
+                window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage)
+                {
+                    WindowState = WindowState.Normal,
+                    Width = 1_280,
+                    Height = 900,
+                };
+                window.Show();
+
+                await WaitFor(
+                    () => window.GetType().GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)
+                        is SimulationSession candidate
+                        && candidate.LatestSnapshot.Organisms.Count == 1
+                        && Field<MainWindowViewModel>(window, "_viewModel").Status.Contains("WORLD READY", StringComparison.Ordinal),
+                    () => "The native IO-02 player route did not publish its live organism.");
+
+                session = Field<SimulationSession>(window, "_session");
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var liveOrganism = Assert.Single(session.LatestSnapshot.Organisms);
+                var mutationSettings = new MutationSettingsUpdate(
+                    true,
+                    2.5f,
+                    [new SpeciesMutationRateUpdate(liveOrganism.Species, 3.5f)]);
+                await session.UpdateMutationSettingsAsync(mutationSettings);
+                await session.UpdateOrganismMutationProfileAsync(
+                    liveOrganism.Slot,
+                    liveOrganism.Generation,
+                    MutationProfileUpdate.Default with
+                    {
+                        Point = new MutationRateUpdate(1_250, 3, 1),
+                        Delta = new MutationRateUpdate(2_000, 500, 150),
+                    });
+                await session.StepAsync(0);
+                await WaitFor(
+                    () => session.LatestSnapshot.MutationSettings.Enabled
+                        && Math.Abs(session.LatestSnapshot.MutationSettings.GlobalMultiplier - 2.5f) < 0.001f
+                        && Math.Abs(Assert.Single(session.LatestSnapshot.Species, species => species.Name == "IO02 Species").MutationRate - 3.5f) < 0.001f
+                        && Math.Abs(Assert.Single(session.LatestSnapshot.Organisms).MutationProfile.Point.OneIn - 1_250) < 0.001,
+                    () => "The live mutation settings were not published before the save.");
+
+                var liveBeforeSave = session.LatestSnapshot;
+                var liveBeforeOrganism = Assert.Single(liveBeforeSave.Organisms);
+                var saveMenu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
+                    .FindCommandItem(Core.LegacyMenus.LegacyCommandId.FileSaveWithoutMutations)!;
+                Assert.Equal("Save Sim Without Mutations", saveMenu.Header?.ToString());
+                Assert.True(saveMenu.IsVisible);
+                Assert.True(saveMenu.IsEnabled);
+
+                storage.AcceptSave = false;
+                saveMenu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(
+                    () => storage.SaveRequests == 1 && viewModel.Status == "CANCELED",
+                    () => $"Picker cancel did not reach the rendered status surface. Requests: {storage.SaveRequests}; Status: {viewModel.Status}");
+                Assert.Null(storage.SavedSimulation);
+
+                storage.AcceptSave = true;
+                saveMenu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(
+                    () => storage.SaveRequests == 2
+                        && storage.SavedSimulation is not null
+                        && viewModel.Status == "SAVED WITHOUT MUTATION SETTINGS",
+                    () => $"Picker success did not reach the rendered status surface. Requests: {storage.SaveRequests}; Status: {viewModel.Status}");
+
+                var savedBytes = storage.SavedSimulation!;
+                Assert.Equal("DB3S", Encoding.ASCII.GetString(savedBytes, 0, 4));
+                Assert.Equal((ushort)3, BitConverter.ToUInt16(savedBytes, 4));
+                Assert.Equal(savedBytes.Length - 10, BitConverter.ToInt32(savedBytes, 6));
+
+                using (var payload = JsonDocument.Parse(savedBytes.AsMemory(10)))
+                {
+                    var root = payload.RootElement;
+                    Assert.False(root.GetProperty("mutations_enabled").GetBoolean());
+                    Assert.Equal(0f, root.GetProperty("global_mutation_multiplier").GetSingle());
+                    Assert.All(
+                        root.GetProperty("species").EnumerateArray(),
+                        species => Assert.Equal(0f, species.GetProperty("mutation_rate").GetSingle()));
+                    var savedSlot = Assert.Single(
+                        root.GetProperty("slots").EnumerateArray(),
+                        slot => slot.GetProperty("organism").ValueKind != JsonValueKind.Null);
+                    Assert.False(
+                        savedSlot.GetProperty("organism")
+                            .GetProperty("flags")
+                            .GetProperty("can_mutate")
+                            .GetBoolean());
+                }
+
+                var liveAfterSave = session.LatestSnapshot;
+                Assert.Equal(liveBeforeSave.Tick, liveAfterSave.Tick);
+                Assert.Equal(liveBeforeSave.WorldSize, liveAfterSave.WorldSize);
+                Assert.Equal(liveBeforeSave.MutationSettings, liveAfterSave.MutationSettings);
+                Assert.Equal(liveBeforeSave.Species, liveAfterSave.Species);
+                var liveAfterOrganism = Assert.Single(liveAfterSave.Organisms);
+                Assert.Equal(liveBeforeOrganism.Slot, liveAfterOrganism.Slot);
+                Assert.Equal(liveBeforeOrganism.Generation, liveAfterOrganism.Generation);
+                Assert.Equal(liveBeforeOrganism.Position, liveAfterOrganism.Position);
+                Assert.Equal(liveBeforeOrganism.Velocity, liveAfterOrganism.Velocity);
+                Assert.Equal(liveBeforeOrganism.Energy, liveAfterOrganism.Energy);
+                Assert.Equal(liveBeforeOrganism.MutationProfile, liveAfterOrganism.MutationProfile);
+
+                using (var restored = new NativeEngineClient(setup with { Species = [] }))
+                {
+                    restored.Load(savedBytes);
+                    var savedSnapshot = restored.Snapshot();
+                    Assert.Equal(liveBeforeSave.Tick, savedSnapshot.Tick);
+                    Assert.Equal(liveBeforeSave.WorldSize, savedSnapshot.WorldSize);
+                    var savedOrganism = Assert.Single(savedSnapshot.Organisms);
+                    Assert.Equal(liveBeforeOrganism.Slot, savedOrganism.Slot);
+                    Assert.Equal(liveBeforeOrganism.Generation, savedOrganism.Generation);
+                    Assert.Equal(liveBeforeOrganism.Position, savedOrganism.Position);
+                    Assert.Equal(liveBeforeOrganism.Velocity, savedOrganism.Velocity);
+                    Assert.Equal(liveBeforeOrganism.Energy, savedOrganism.Energy);
+                    Assert.Equal(liveBeforeOrganism.MutationProfile, savedOrganism.MutationProfile);
+                    Assert.False(savedSnapshot.MutationSettings.Enabled);
+                    Assert.Equal(0f, savedSnapshot.MutationSettings.GlobalMultiplier);
+                    Assert.All(savedSnapshot.Species, species => Assert.Equal(0f, species.MutationRate));
+                }
+
+                window.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var statusInstrument = window.FindControl<ItemsControl>("StatusInstrument")!;
+                Assert.True(menu.Bounds.Width >= 1_000, $"Menu width was {menu.Bounds.Width}.");
+                Assert.True(menu.Bounds.Height >= 20, $"Menu height was {menu.Bounds.Height}.");
+                Assert.True(statusInstrument.IsVisible);
+                Assert.True(statusInstrument.Bounds.Width >= 1_000, $"Status width was {statusInstrument.Bounds.Width}.");
+                Assert.True(statusInstrument.Bounds.Height >= 20, $"Status height was {statusInstrument.Bounds.Height}.");
+                var surfaceText = string.Join(
+                    "\n",
+                    window.GetVisualDescendants().OfType<TextBlock>()
+                        .Select(block => block.Text)
+                        .Where(text => !string.IsNullOrWhiteSpace(text)));
+                Assert.Contains("SAVED WITHOUT MUTATION SETTINGS", surfaceText, StringComparison.Ordinal);
+                Assert.Contains("SAVED WITHOUT MUTATION SETTINGS", viewModel.Status, StringComparison.Ordinal);
+
+                using var frame = Assert.IsAssignableFrom<Avalonia.Media.Imaging.Bitmap>(window.CaptureRenderedFrame());
+                Assert.True(frame.PixelSize.Width >= 1_000, $"Rendered width was {frame.PixelSize.Width}.");
+                Assert.True(frame.PixelSize.Height >= 700, $"Rendered height was {frame.PixelSize.Height}.");
+                var pixelRect = new PixelRect(0, 0, frame.PixelSize.Width, frame.PixelSize.Height);
+                var stride = pixelRect.Width * 4;
+                var pixelBytes = new byte[stride * pixelRect.Height];
+                var pixelBuffer = Marshal.AllocHGlobal(pixelBytes.Length);
+                try
+                {
+                    frame.CopyPixels(pixelRect, pixelBuffer, pixelBytes.Length, stride);
+                    Marshal.Copy(pixelBuffer, pixelBytes, 0, pixelBytes.Length);
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(pixelBuffer);
+                }
+                Assert.True(ContainsApproximateColor(pixelBytes, 0xDC, 0xD8, 0xCD));
             }, CancellationToken.None);
         }
         finally
         {
-            if (window is not null) await DesktopTestApplication.Session.Dispatch(() =>
+            if (window is not null) await DesktopTestApplication.Session.Dispatch(async () =>
             {
+                var ownedSession = session
+                    ?? window.GetType().GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window) as SimulationSession;
                 SetField(window, "_session", null);
                 window.Close();
-                return Task.CompletedTask;
+                if (ownedSession is not null) await ownedSession.DisposeAsync();
             }, CancellationToken.None);
         }
     }
@@ -1458,6 +1619,47 @@ public sealed class RuntimeControlSurfaceTests
             SavedOrganism = stream.ToArray();
             return true;
         }
+    }
+
+    private sealed class SaveRouteStorage : IDesktopStorageService
+    {
+        public bool AcceptSave { get; set; }
+        public int SaveRequests { get; private set; }
+        public byte[]? SavedSimulation { get; private set; }
+
+        public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) =>
+            Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
+
+        public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) =>
+            Task.FromResult<DesktopSettings?>(null);
+
+        public Task<string?> PickSimulationPathAsync(TopLevel owner) =>
+            Task.FromResult<string?>(null);
+
+        public Task<byte[]?> OpenSimulationAsync(TopLevel owner) =>
+            Task.FromResult<byte[]?>(null);
+
+        public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings) =>
+            Task.FromResult(false);
+
+        public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save)
+        {
+            SaveRequests++;
+            if (AcceptSave) SavedSimulation = save.ToArray();
+            return Task.FromResult(AcceptSave);
+        }
+
+        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna) =>
+            Task.FromResult(false);
+
+        public Task<bool> SaveOrganismAsync(
+            TopLevel owner,
+            string suggestedFileName,
+            Func<Stream, Task> writeAsync) => Task.FromResult(false);
+
+        public string? FindLatestAutosave() => null;
+
+        public Task SaveAutosaveAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
     }
 }
 
