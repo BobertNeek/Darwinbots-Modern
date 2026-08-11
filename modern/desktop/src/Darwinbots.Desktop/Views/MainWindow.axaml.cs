@@ -673,12 +673,12 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.ObjectsDeleteTenRandomShapes] = Handler(
             EngineState,
             async _ => await DeleteRandomObstaclesCommandAsync(10));
-        handlers[LegacyCommandId.ObjectsHorizontalMaze] = MazeHandler(MazePattern.Horizontal);
-        handlers[LegacyCommandId.ObjectsVerticalMaze] = MazeHandler(MazePattern.Vertical);
-        handlers[LegacyCommandId.ObjectsSprial] = MazeHandler(MazePattern.Spiral);
-        handlers[LegacyCommandId.ObjectsCheckerboard] = MazeHandler(MazePattern.Checkerboard);
-        handlers[LegacyCommandId.ObjectsPolarIce] = MazeHandler(MazePattern.PolarIce);
-        handlers[LegacyCommandId.ObjectsTrashCompactor] = MazeHandler(MazePattern.TrashCompactor);
+        handlers[LegacyCommandId.ObjectsHorizontalMaze] = MazeHandler(MazePreset.Horizontal);
+        handlers[LegacyCommandId.ObjectsVerticalMaze] = MazeHandler(MazePreset.Vertical);
+        handlers[LegacyCommandId.ObjectsSprial] = MazeHandler(MazePreset.Spiral);
+        handlers[LegacyCommandId.ObjectsCheckerboard] = MazeHandler(MazePreset.Checkerboard);
+        handlers[LegacyCommandId.ObjectsPolarIce] = MazeHandler(MazePreset.PolarIce);
+        handlers[LegacyCommandId.ObjectsTrashCompactor] = MazeHandler(MazePreset.TrashCompactor);
         handlers[LegacyCommandId.RobotKill] = Handler(
             SelectedRobotState,
             async _ => await KillSelectedAsync());
@@ -796,7 +796,7 @@ public sealed partial class MainWindow : Window
             return Task.FromResult(LegacyCommandResult.Success($"E-GRID SIZE · {size.ToString().ToUpperInvariant()}"));
         });
 
-    private DelegateLegacyCommandHandler MazeHandler(MazePattern pattern) => Handler(
+    private DelegateLegacyCommandHandler MazeHandler(MazePreset pattern) => Handler(
         EngineState,
         async _ => await AddMazeCommandAsync(pattern));
 
@@ -1560,82 +1560,24 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"DELETED {selected.Length} RANDOM SHAPES");
     }
 
-    private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePattern pattern)
+    private async Task<LegacyCommandResult> AddMazeCommandAsync(MazePreset pattern)
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var width = (float)_setup.WorldWidth;
-        var height = (float)_setup.WorldHeight;
-        var thickness = Math.Max(20f, Math.Min(width, height) * 0.012f);
-        var shapes = new List<(float[] Minimum, float[] Maximum)>();
-        void Add(float x1, float y1, float x2, float y2) =>
-            shapes.Add((new[] { x1, y1 }, new[] { x2, y2 }));
-
-        switch (pattern)
-        {
-            case MazePattern.Horizontal:
-                for (var row = 1; row <= 6; row++)
-                {
-                    var y = height * row / 7f;
-                    if (row % 2 == 0) Add(0, y, width * 0.78f, y + thickness);
-                    else Add(width * 0.22f, y, width, y + thickness);
-                }
-                break;
-            case MazePattern.Vertical:
-                for (var column = 1; column <= 6; column++)
-                {
-                    var x = width * column / 7f;
-                    if (column % 2 == 0) Add(x, 0, x + thickness, height * 0.78f);
-                    else Add(x, height * 0.22f, x + thickness, height);
-                }
-                break;
-            case MazePattern.Spiral:
-                for (var ring = 0; ring < 4; ring++)
-                {
-                    var left = width * (0.12f + ring * 0.1f);
-                    var right = width - left;
-                    var top = height * (0.12f + ring * 0.1f);
-                    var bottom = height - top;
-                    Add(left, top, right, top + thickness);
-                    Add(right - thickness, top, right, bottom);
-                    Add(left + width * 0.08f, bottom - thickness, right, bottom);
-                    if (ring < 3) Add(left, top + height * 0.08f, left + thickness, bottom);
-                }
-                break;
-            case MazePattern.Checkerboard:
-                for (var y = 0; y < 5; y++)
-                for (var x = 0; x < 7; x++)
-                    if ((x + y) % 2 == 0)
-                        Add(width * x / 7f, height * y / 5f, width * (x + 0.58f) / 7f, height * (y + 0.58f) / 5f);
-                break;
-            case MazePattern.PolarIce:
-                Add(0, 0, width * 0.42f, height * 0.12f);
-                Add(width * 0.58f, 0, width, height * 0.12f);
-                Add(0, height * 0.88f, width * 0.42f, height);
-                Add(width * 0.58f, height * 0.88f, width, height);
-                break;
-            case MazePattern.TrashCompactor:
-                Add(0, 0, width * 0.16f, height);
-                Add(width * 0.84f, 0, width, height);
-                for (var row = 0; row < 6; row++)
-                {
-                    var y = height * (row + 0.5f) / 6f;
-                    Add(width * 0.16f, y, width * 0.3f, y + thickness);
-                    Add(width * 0.7f, y, width * 0.84f, y + thickness);
-                }
-                break;
-        }
-
+        var shapes = MazePresetBuilder.Build(pattern, _setup.WorldWidth, _setup.WorldHeight);
         await AddObstaclesAsync(shapes);
         return LegacyCommandResult.Success($"{pattern.ToString().ToUpperInvariant()} MAZE ADDED · {shapes.Count} SHAPES");
     }
 
-    private async Task AddObstaclesAsync(IEnumerable<(float[] Minimum, float[] Maximum)> shapes)
+    private async Task AddObstaclesAsync(IEnumerable<MazePresetShape> shapes)
     {
         if (_session is null) return;
         var id = _session.LatestSnapshot.Obstacles.Select(obstacle => obstacle.Id).DefaultIfEmpty().Max() + 1;
         foreach (var shape in shapes)
-            await _session.AddObstacleAsync(new ObstacleSnapshot(id++, shape.Minimum, shape.Maximum));
+            await _session.AddObstacleAsync(new ObstacleSnapshot(id++, shape.Minimum, shape.Maximum) { Drift = shape.Drift });
     }
+
+    private Task AddObstaclesAsync(IEnumerable<(float[] Minimum, float[] Maximum)> shapes) =>
+        AddObstaclesAsync(shapes.Select(shape => new MazePresetShape(shape.Minimum, shape.Maximum)));
 
     private LegacyCommandResult ToggleSafemodeBackup()
     {
@@ -2462,4 +2404,3 @@ public sealed partial class MainWindow : Window
 }
 
 internal enum EnvironmentPlacement { None, Obstacle, Teleporter }
-internal enum MazePattern { Horizontal, Vertical, Spiral, Checkerboard, PolarIce, TrashCompactor }
