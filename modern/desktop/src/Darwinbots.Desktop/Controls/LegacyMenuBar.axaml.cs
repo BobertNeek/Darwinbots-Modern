@@ -55,6 +55,10 @@ public partial class LegacyMenuBar : UserControl
             Name = topLevel ? $"Menu{Sanitize(model.Label)}" : null,
             IsVisible = model.VisibleByDefault,
         };
+        AutomationProperties.SetName(item, model.Label);
+        AutomationProperties.SetHelpText(
+            item,
+            model.IsLeaf ? $"Activate {model.Label}." : $"Open the {model.Label} menu.");
         AutomationProperties.SetAutomationId(item, item.Name ?? $"MenuGroup{Sanitize(model.Label)}");
 
         if (model.Children.Count > 0)
