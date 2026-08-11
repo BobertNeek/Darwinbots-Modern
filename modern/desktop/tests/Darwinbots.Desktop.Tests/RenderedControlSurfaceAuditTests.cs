@@ -685,6 +685,97 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     [Fact]
+    public async Task Online01RealPlayerSetupRouteKeepsHistoricalControlsVisibleDisabledAndInert()
+    {
+        var factory = new AuditEngineClientFactory();
+        var setup = new WorldSetupOptions
+        {
+            Species = [new SpeciesImport("Luna", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, factory, new AuditStorageService());
+            SetupWindow? setupWindow = null;
+            try
+            {
+                ShowForInteraction(window, 1_280, 900);
+                await WaitFor(
+                    () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Luna"),
+                    () => factory.Clients.TryPeek(out var client) ? string.Join(", ", client.Calls) : "Audit engine was not created.");
+
+                var engine = factory.Clients.First();
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+                var onlineButton = Named<Button>(window, "InternetButton");
+                var offlineOverlay = Named<Border>(window, "InternetOfflineOverlay");
+                var onlineCommands = new[]
+                {
+                    Core.LegacyMenus.LegacyCommandId.InternetEnabled,
+                    Core.LegacyMenus.LegacyCommandId.InternetTeleporter,
+                    Core.LegacyMenus.LegacyCommandId.EditInternetOptions,
+                };
+
+                Assert.True(offlineOverlay.IsVisible);
+                Assert.Contains("disabled", AutomationProperties.GetHelpText(offlineOverlay), StringComparison.OrdinalIgnoreCase);
+                Assert.False(onlineButton.IsEnabled);
+                Assert.Equal("INTERNET OFFLINE", onlineButton.Content?.ToString());
+                Assert.Contains("disabled", AutomationProperties.GetHelpText(onlineButton), StringComparison.OrdinalIgnoreCase);
+
+                var statusBefore = viewModel.Status;
+                var callsBefore = engine.Calls.ToArray();
+                onlineButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Click(window, onlineButton);
+                onlineButton.Focus();
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                Assert.Equal(statusBefore, viewModel.Status);
+                Assert.Equal(callsBefore, engine.Calls.ToArray());
+
+                foreach (var command in onlineCommands)
+                {
+                    var item = menu.FindCommandItem(command)!;
+                    Assert.True(item.IsVisible, $"Historical command {command} disappeared from the player menu.");
+                    Assert.False(item.IsEnabled, $"Historical command {command} must remain disabled in offline mode.");
+                    Assert.Contains("online", ToolTip.GetTip(item)?.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    Assert.Equal(statusBefore, viewModel.Status);
+                    Assert.Equal(callsBefore, engine.Calls.ToArray());
+                }
+
+                setupWindow = new SetupWindow(new AuditStorageService());
+                ShowForInteraction(setupWindow, 1_280, 820);
+                var tabs = Named<TabControl>(setupWindow, "SimulationSettingsTabs");
+                var internetTab = tabs.Items.OfType<TabItem>().Single(tab => Equals(tab.Header?.ToString(), "INTERNET"));
+                Assert.True(internetTab.IsVisible);
+                Assert.Contains("disabled", string.Join(" ", setupWindow.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text)), StringComparison.OrdinalIgnoreCase);
+                var setupStateBefore = setupWindow.Species.Select(species => species.Name).ToArray();
+                internetTab.RaiseEvent(new RoutedEventArgs(TabItem.PointerPressedEvent));
+                Click(setupWindow, internetTab);
+                internetTab.Focus();
+                setupWindow.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                setupWindow.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                Assert.Equal(setupStateBefore, setupWindow.Species.Select(species => species.Name).ToArray());
+
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = setupWindow.CaptureRenderedFrame();
+                Assert.True(frame.PixelSize.Width >= 1_000);
+                Assert.True(frame.PixelSize.Height >= 600);
+                Assert.True(offlineOverlay.Bounds.Width > 0);
+                Assert.True(offlineOverlay.Bounds.Bottom <= window.Bounds.Height);
+                Assert.True(internetTab.Bounds.Width > 0);
+                Assert.True(internetTab.Bounds.Height > 0);
+            }
+            finally
+            {
+                setupWindow?.Close();
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task MainWindowKeepsBottomDashboardVisibleAndUsableAt1500x900()
     {
         await DesktopTestApplication.Session.Dispatch(() =>
