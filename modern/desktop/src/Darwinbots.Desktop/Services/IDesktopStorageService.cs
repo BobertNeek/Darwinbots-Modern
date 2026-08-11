@@ -19,6 +19,7 @@ public interface IDesktopStorageService
     Task<byte[]?> OpenSimulationAsync(TopLevel owner);
     Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings);
     Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save);
+    Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(false);
     Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna);
     Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync);
     string? FindLatestAutosave();

@@ -53,6 +53,7 @@ public interface IEngineClient : IDisposable
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
     byte[] Save();
+    byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");
     byte[] SaveWithoutMutations();
     void Load(byte[] save);
     EngineSnapshot Snapshot();

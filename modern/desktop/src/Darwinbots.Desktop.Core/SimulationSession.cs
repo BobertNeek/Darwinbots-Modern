@@ -254,6 +254,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return save ?? throw new InvalidDataException("Engine returned no save data.");
     }
 
+    public async Task<byte[]> SaveLegacyAsync(CancellationToken cancellationToken = default)
+    {
+        byte[]? save = null;
+        await Enqueue(engine => save = engine.SaveLegacy(), cancellationToken).ConfigureAwait(false);
+        return save ?? throw new InvalidDataException("Engine returned no legacy save data.");
+    }
+
     public async Task<byte[]> SaveWithoutMutationsAsync(CancellationToken cancellationToken = default)
     {
         byte[]? save = null;

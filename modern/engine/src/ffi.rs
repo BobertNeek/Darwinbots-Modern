@@ -1,5 +1,8 @@
 use crate::persistence::SaveFile;
-use crate::{Engine, EngineConfig, LegacyDna, LegacyOrganismFile, OrganismId, SpeciesDefinition};
+use crate::{
+    Engine, EngineConfig, LegacyDna, LegacyOrganismFile, LegacySimulationFile, OrganismId,
+    SpeciesDefinition,
+};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
 
@@ -866,6 +869,26 @@ pub extern "C" fn db_engine_save(engine: *const Engine, out_buffer: *mut DbBuffe
     }
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_save_legacy(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    let (Some(engine), Some(out_buffer)) =
+        (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
+    else {
+        return DbStatus::NullPointer;
+    };
+    if !out_buffer.data.is_null() {
+        return fail(DbStatus::EngineError, "output buffer must be empty");
+    }
+    match LegacySimulationFile::from_engine(engine).and_then(|file| file.encode()) {
+        Ok(bytes) => write_buffer(out_buffer, bytes),
+        Err(error) => fail(DbStatus::EngineError, error),
+    }
+}
+
 // ABI v1 keeps this C entry point safe while retaining its pointer contract.
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
@@ -987,6 +1010,29 @@ fn ffi_guard(operation: &str, action: impl FnOnce() -> DbStatus) -> DbStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_save_emits_db2s_payload_for_file_command() {
+        let mut engine = Engine::new(EngineConfig::testing()).expect("fixture engine");
+        engine
+            .spawn_at(LegacyDna::parse("stop").expect("fixture DNA"), [12.0, 34.0])
+            .expect("fixture organism");
+        let mut buffer = DbBuffer::default();
+
+        assert_eq!(
+            db_engine_save_legacy(&engine, &mut buffer),
+            DbStatus::Ok,
+            "legacy file command must return a payload"
+        );
+        let bytes = unsafe { slice::from_raw_parts(buffer.data, buffer.len) }.to_vec();
+        assert_eq!(&bytes[..4], b"DB2S");
+        let decoded = LegacySimulationFile::decode(&bytes).expect("DB2S payload");
+        assert_eq!(decoded.organisms.len(), 1);
+        let canonical_dna = &decoded.organisms[0].dna;
+        assert!(canonical_dna.contains("stop end"));
+        LegacyDna::parse(canonical_dna).expect("canonical legacy DNA should parse");
+        assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
+    }
 
     #[test]
     fn ffi_guard_converts_panics_to_structured_engine_errors() {

@@ -724,6 +724,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         finally { NativeMethods.BufferFree(ref buffer); }
     }
 
+    public byte[] SaveLegacy()
+    {
+        EnsureAlive();
+        var buffer = new NativeBuffer();
+        ThrowIfFailed(NativeMethods.EngineSaveLegacy(_engine, ref buffer), "save legacy simulation");
+        try { return CopyBuffer(buffer); }
+        finally { NativeMethods.BufferFree(ref buffer); }
+    }
+
     public byte[] SaveWithoutMutations()
     {
         EnsureAlive();
@@ -874,6 +883,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save")]
         internal static partial DbStatus EngineSave(IntPtr engine, ref NativeBuffer buffer);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_save_legacy")]
+        internal static partial DbStatus EngineSaveLegacy(IntPtr engine, ref NativeBuffer buffer);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save_without_mutations")]
         internal static partial DbStatus EngineSaveWithoutMutations(IntPtr engine, ref NativeBuffer buffer);

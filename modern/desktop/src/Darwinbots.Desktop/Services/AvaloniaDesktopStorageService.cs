@@ -95,6 +95,22 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
+    public async Task<bool> SaveLegacySimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save)
+    {
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save legacy Darwinbots simulation",
+            SuggestedFileName = "simulation.sim",
+            DefaultExtension = "sim",
+            FileTypeChoices = [LegacySimulationFileType()],
+        });
+        if (file is null) return false;
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await stream.WriteAsync(save);
+        return true;
+    }
+
     public async Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -238,6 +254,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
 
     private static FilePickerFileType SimulationFileType() =>
         new("Darwinbots Modern save") { Patterns = ["*.db3s"] };
+
+    private static FilePickerFileType LegacySimulationFileType() =>
+        new("Darwinbots legacy simulation") { Patterns = ["*.sim"] };
 
     private static FilePickerFileType OrganismFileType() =>
         new("Darwinbots organism") { Patterns = ["*.json", "*.dbo"] };
