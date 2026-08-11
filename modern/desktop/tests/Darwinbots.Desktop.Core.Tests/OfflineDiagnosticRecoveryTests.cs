@@ -54,4 +54,33 @@ public sealed class OfflineDiagnosticRecoveryTests
         Assert.Contains("FAULT WINDOW 10,000–11,987", decision.Status, StringComparison.Ordinal);
         Assert.Contains("LAST START READY", decision.Status, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void DecisionPolicyLogsRecoverableFaultsButRecoversNativeCorruptionEvenWhenIgnoreErrorsIsEnabled()
+    {
+        var diagnostics = new OfflineDiagnosticRecovery();
+        diagnostics.SetIgnoreErrors(true);
+
+        var ignored = diagnostics.HandleError(
+            new InvalidOperationException("transient simulation fault"),
+            tick: 200,
+            recoveryArtifactPath: null);
+
+        Assert.Equal(DiagnosticRecoveryAction.Ignore, ignored.Action);
+        Assert.False(ignored.StopSimulation);
+        Assert.Equal("transient simulation fault", diagnostics.LastErrorMessage);
+        Assert.Equal((ulong)200, diagnostics.LastErrorTick);
+        Assert.False(diagnostics.IsInTray);
+
+        var recovered = diagnostics.HandleError(
+            new AccessViolationException("native corruption"),
+            tick: 201,
+            recoveryArtifactPath: @"C:\recovery\autosave-201.db3s");
+
+        Assert.Equal(DiagnosticRecoveryAction.Recover, recovered.Action);
+        Assert.True(recovered.StopSimulation);
+        Assert.Equal(@"C:\recovery\autosave-201.db3s", diagnostics.RecoveryArtifactPath);
+        Assert.Contains("RECOVERY READY", recovered.Status, StringComparison.Ordinal);
+        Assert.False(diagnostics.IsInTray);
+    }
 }

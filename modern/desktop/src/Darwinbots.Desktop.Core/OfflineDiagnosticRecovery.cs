@@ -64,6 +64,15 @@ public sealed class OfflineDiagnosticRecovery
         var faultStatus = $" · FAULT WINDOW {CurrentFaultWindow.StartTick:N0}–{CurrentFaultWindow.EndTick:N0}";
         var lastStartStatus = LastStartArtifactPath is null ? string.Empty : " · LAST START READY";
 
+        if (error is AccessViolationException && !string.IsNullOrWhiteSpace(RecoveryArtifactPath))
+            return new(
+                DiagnosticRecoveryAction.Recover,
+                true,
+                $"ENGINE ERROR · TICK {tick:N0} · RECOVERY READY · {Path.GetFileName(RecoveryArtifactPath)}{faultStatus}{lastStartStatus}")
+            {
+                FaultWindow = CurrentFaultWindow,
+            };
+
         if (IgnoreErrors)
             return new(DiagnosticRecoveryAction.Ignore, false, $"ERROR IGNORED · {error.Message}{faultStatus}{lastStartStatus}")
             {
