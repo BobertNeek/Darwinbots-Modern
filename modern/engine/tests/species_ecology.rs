@@ -183,6 +183,44 @@ fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
 }
 
 #[test]
+fn automatic_overflow_defecation_subtracts_the_emitted_waste_packet() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let owner = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let robot = &mut payload["slots"][owner.slot() as usize]["organism"];
+    robot["materials"]["waste"] = serde_json::json!(32_001);
+    robot["materials"]["permanent_waste"] = serde_json::json!(7);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    let mut engine = SaveFile::decode(&save).unwrap();
+
+    engine.tick().unwrap();
+
+    let after = engine.robot_state(owner).unwrap();
+    assert_eq!(after.materials.waste, 31_000);
+    assert_eq!(after.materials.permanent_waste, 12);
+    assert_eq!(engine.snapshot().tick, 1);
+    let packet = engine
+        .snapshot()
+        .shots
+        .iter()
+        .find(|shot| shot.owner == owner && shot.kind == -4 && shot.value == 500)
+        .expect("automatic defecation packet missing");
+    assert_eq!(packet.age, 0);
+}
+
+#[test]
 fn species_batches_publish_once_with_configured_initial_energy() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let species = engine.register_species(SpeciesDefinition {

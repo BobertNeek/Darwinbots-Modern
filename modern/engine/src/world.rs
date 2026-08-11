@@ -5333,9 +5333,7 @@ impl Engine {
                     robot.materials.waste.min(200)
                 };
                 if amount > 0 {
-                    if !overflow {
-                        robot.materials.waste = robot.materials.waste.saturating_sub(amount);
-                    }
+                    robot.materials.waste = robot.materials.waste.saturating_sub(amount);
                     robot.materials.permanent_waste = robot
                         .materials
                         .permanent_waste
