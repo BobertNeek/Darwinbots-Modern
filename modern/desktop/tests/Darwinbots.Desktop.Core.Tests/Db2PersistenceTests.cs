@@ -37,6 +37,25 @@ public sealed class Db2PersistenceTests
     }
 
     [Fact]
+    public void SettingsCodecMapsLegacyCorpseDecayFieldsWithoutModernExtension()
+    {
+        var lines = Enumerable.Repeat("0", 100).ToArray();
+        lines[0] = "-1";
+        lines[1] = "0";
+        lines[45] = "91000";
+        lines[46] = "82000";
+        lines[47] = "44000";
+        lines[79] = "#TRUE#";
+        lines[80] = "75";
+        lines[84] = "2";
+        lines[85] = "3";
+
+        var actual = Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(string.Join("\r\n", lines)));
+
+        Assert.Equal(new Db2CorpseDecayOptions(true, 0, Db2CorpseDecayMode.WasteShot, 75, 3), actual.CorpseDecay);
+    }
+
+    [Fact]
     public void DeadGenomeRecordsKeepTheDb2HeaderAndSkipEmptyDna()
     {
         var corpse = new CorpseSnapshot([2f, 3f], [0f, 0f], 42, 4, 9, 0, false)

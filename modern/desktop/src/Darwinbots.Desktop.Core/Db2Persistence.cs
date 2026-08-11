@@ -72,12 +72,13 @@ public static class Db2SettingsCodec
         var globalStart = 2 + (speciesMinusOne + 1) * 40;
         if (lines.Length <= globalStart + 9)
             throw new InvalidDataException("DB2 settings global record is truncated.");
-        return new DesktopSettings
+        var settings = new DesktopSettings
         {
             WorldWidth = ParseFloat(lines[globalStart + 3], "world width"),
             WorldHeight = ParseFloat(lines[globalStart + 4], "world height"),
             OrganismCapacity = ParseInt(lines[globalStart + 5], "maximum population"),
         };
+        return settings with { CorpseDecay = DecodeLegacyCorpseDecay(lines, globalStart) };
     }
 
     private static string Float(float value) => value.ToString("R", CultureInfo.InvariantCulture);
@@ -89,6 +90,49 @@ public static class Db2SettingsCodec
 
     private static int ParseInt(string value, string label) =>
         int.TryParse(value.Trim().Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : throw new InvalidDataException($"DB2 settings {label} is invalid.");
+
+    private static Db2CorpseDecayOptions DecodeLegacyCorpseDecay(string[] lines, int globalStart)
+    {
+        var enabled = OptionalBool(lines, globalStart + 37, false, "corpse decay enabled");
+        var packetSize = OptionalInt(lines, globalStart + 38, 0, "corpse decay packet size");
+        var modeValue = OptionalInt(lines, globalStart + 42, 1, "corpse decay mode");
+        var period = OptionalUInt(lines, globalStart + 43, 0, "corpse decay period");
+        var mode = modeValue switch
+        {
+            0 or 1 => Db2CorpseDecayMode.None,
+            2 => Db2CorpseDecayMode.WasteShot,
+            3 => Db2CorpseDecayMode.EnergyShot,
+            _ => throw new InvalidDataException($"DB2 settings corpse decay mode '{modeValue}' is invalid."),
+        };
+
+        return new Db2CorpseDecayOptions(enabled, 0, mode, packetSize, period);
+    }
+
+    private static bool OptionalBool(string[] lines, int index, bool fallback, string label) =>
+        HasValue(lines, index) ? ParseBool(lines[index], label) : fallback;
+
+    private static int OptionalInt(string[] lines, int index, int fallback, string label) =>
+        HasValue(lines, index) ? ParseInt(lines[index], label) : fallback;
+
+    private static ulong OptionalUInt(string[] lines, int index, ulong fallback, string label) =>
+        HasValue(lines, index) ? ParseUInt(lines[index], label) : fallback;
+
+    private static bool HasValue(string[] lines, int index) =>
+        index >= 0 && index < lines.Length && !string.IsNullOrWhiteSpace(lines[index]);
+
+    private static bool ParseBool(string value, string label)
+    {
+        var normalized = value.Trim().Trim('"').Trim('#');
+        if (bool.TryParse(normalized, out var parsed)) return parsed;
+        if (int.TryParse(normalized, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
+            return integer != 0;
+        throw new InvalidDataException($"DB2 settings {label} is invalid.");
+    }
+
+    private static ulong ParseUInt(string value, string label) =>
+        ulong.TryParse(value.Trim().Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : throw new InvalidDataException($"DB2 settings {label} is invalid.");
 }
