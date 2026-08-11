@@ -1,6 +1,12 @@
 using System.Reflection;
+using System.Linq;
+using System.Runtime.InteropServices;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -9,6 +15,139 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class CustomSimulationCostsTests
 {
+    [Fact]
+    public async Task CustomSimulationCostsDialogExposesActualSurfaceAndCommitsOnlyOnSave()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var main = new MainWindow([], new WorldSetupOptions());
+            main.Show();
+
+            try
+            {
+                var cancelSettings = new GlobalSettings();
+                var originalDnaCopy = Convert.ToDecimal(cancelSettings.Costs.DnaCopy);
+                var originalDynamicMultiplier = Convert.ToDecimal(cancelSettings.Costs.DynamicMultiplier);
+                var cancelDialog = new CustomSimulationCostsWindow(cancelSettings);
+                cancelDialog.Show(main);
+
+                try
+                {
+                    var numericNames = new[]
+                    {
+                        "GlobalCostMultiplier", "DnaNumber", "DnaDereference", "DnaBasic", "DnaAdvanced",
+                        "DnaBitwise", "DnaCondition", "DnaLogic", "DnaStore", "DnaFlow", "DnaUpkeep", "DnaCopy",
+                        "MovementCost", "RotationCost", "TieFormationCost", "ShotFormationCost", "VenomCost",
+                        "PoisonCost", "SlimeCost", "ShellCost", "BodyUpkeep", "ChloroplastConstructionCost",
+                        "VirusCost", "AgeBase", "AgeStart", "AgeLinear", "AgeLogarithmic", "DynamicMultiplier",
+                        "DynamicTargetPopulation", "DynamicPopulationRange", "DynamicSensitivity",
+                        "DynamicLowerZeroThreshold", "DynamicUpperZeroThreshold", "DynamicLowerReinstateThreshold",
+                        "DynamicUpperReinstateThreshold"
+                    };
+
+                    Assert.All(numericNames, name => Assert.NotNull(cancelDialog.FindControl<NumericUpDown>(name)));
+                    Assert.NotNull(cancelDialog.FindControl<CheckBox>("DynamicAllRobots"));
+                    Assert.NotNull(cancelDialog.FindControl<CheckBox>("DynamicAllowNegative"));
+
+                    var cancelButton = cancelDialog.FindControl<Button>("CancelButton")!;
+                    var applyButton = cancelDialog.FindControl<Button>("ApplyButton")!;
+                    Assert.Equal("CANCEL", cancelButton.Content?.ToString());
+                    Assert.Equal("SAVE COSTS", applyButton.Content?.ToString());
+
+                    Assert.Equal(originalDnaCopy, Convert.ToDecimal(cancelDialog.FindControl<NumericUpDown>("DnaCopy")!.Value));
+                    Assert.Equal(originalDynamicMultiplier, Convert.ToDecimal(cancelDialog.FindControl<NumericUpDown>("DynamicMultiplier")!.Value));
+
+                    var surfaceText = string.Join(
+                        "\n",
+                        cancelDialog.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text));
+                    Assert.Contains("CUSTOM SIMULATION COSTS", surfaceText);
+                    Assert.Contains("BASE COSTS", surfaceText);
+                    Assert.Contains("DYNAMIC COSTS", surfaceText);
+                    Assert.Contains("Changes apply to the next world setup.", surfaceText);
+
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    using var frame = Assert.IsAssignableFrom<Bitmap>(cancelDialog.CaptureRenderedFrame());
+                    Assert.True(frame.PixelSize.Width >= 620);
+                    Assert.True(frame.PixelSize.Height >= 620);
+
+                    var pixelRect = new PixelRect(0, 0, frame.PixelSize.Width, frame.PixelSize.Height);
+                    var stride = pixelRect.Width * 4;
+                    var pixelBytes = new byte[stride * pixelRect.Height];
+                    var pixelBuffer = Marshal.AllocHGlobal(pixelBytes.Length);
+                    try
+                    {
+                        frame.CopyPixels(pixelRect, pixelBuffer, pixelBytes.Length, stride);
+                        Marshal.Copy(pixelBuffer, pixelBytes, 0, pixelBytes.Length);
+                    }
+                    finally
+                    {
+                        Marshal.FreeHGlobal(pixelBuffer);
+                    }
+
+                    Assert.True(ContainsApproximateColor(pixelBytes, 0xF4, 0xF0, 0xE6));
+                    Assert.True(ContainsApproximateColor(pixelBytes, 0x41, 0x6E, 0x35));
+
+                    cancelDialog.FindControl<NumericUpDown>("DnaCopy")!.Value = 9.25m;
+                    cancelButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.False(ReadAccepted(cancelDialog));
+                    Assert.Equal(originalDnaCopy, Convert.ToDecimal(cancelSettings.Costs.DnaCopy));
+                    Assert.Equal(originalDynamicMultiplier, Convert.ToDecimal(cancelSettings.Costs.DynamicMultiplier));
+                }
+                finally
+                {
+                    cancelDialog.Close();
+                }
+
+                var applySettings = new GlobalSettings();
+                var applyDialog = new CustomSimulationCostsWindow(applySettings);
+                applyDialog.Show(main);
+                try
+                {
+                    applyDialog.FindControl<NumericUpDown>("DnaCopy")!.Value = 3.75m;
+                    applyDialog.FindControl<NumericUpDown>("DynamicMultiplier")!.Value = 1.5m;
+                    applyDialog.FindControl<Button>("ApplyButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                    Assert.True(ReadAccepted(applyDialog));
+                    Assert.Equal(3.75m, Convert.ToDecimal(applyDialog.Costs.DnaCopy));
+                    Assert.Equal(1.5m, Convert.ToDecimal(applyDialog.Costs.DynamicMultiplier));
+                }
+                finally
+                {
+                    applyDialog.Close();
+                }
+            }
+            finally
+            {
+                main.Close();
+            }
+        }, CancellationToken.None);
+
+        static bool ReadAccepted(CustomSimulationCostsWindow dialog)
+        {
+            return (bool)typeof(CustomSimulationCostsWindow)
+                .GetProperty("Accepted", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+                .GetValue(dialog)!;
+        }
+
+        static bool ContainsApproximateColor(byte[] pixels, byte red, byte green, byte blue)
+        {
+            for (var index = 0; index + 3 < pixels.Length; index += 4)
+            {
+                var bgra = Close(pixels[index], blue)
+                    && Close(pixels[index + 1], green)
+                    && Close(pixels[index + 2], red);
+                var rgba = Close(pixels[index], red)
+                    && Close(pixels[index + 1], green)
+                    && Close(pixels[index + 2], blue);
+                if (bgra || rgba) return true;
+            }
+
+            return false;
+
+            static bool Close(byte left, byte right) => Math.Abs(left - right) <= 24;
+        }
+    }
+
     [Fact]
     public async Task CustomCostEditReachesTheRustEngineConfigPayload()
     {
