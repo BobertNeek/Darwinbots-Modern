@@ -2,7 +2,7 @@ use darwinbots_engine::{
     AdvancedMutationSettings, DnaBlock, Engine, EngineConfig, EpigeneticPolicyAction,
     GenomeMutator, LegacyDna, LocalModeConfig, LocalModeKind, MutationContext,
     MutationPolicyReport, SpeciesDefinition, SpeciesId, StandardMutationEvent,
-    StandardMutationProfile, TokenClass, apply_standard_mutation,
+    StandardMutationKind, StandardMutationProfile, TokenClass, apply_standard_mutation,
 };
 
 fn number(value: i32) -> DnaBlock {
@@ -159,6 +159,150 @@ fn amplification_copies_and_translocation_moves_coding_segments() {
             end()
         ]
     );
+}
+
+#[test]
+fn engine_advanced_mutations_cover_all_four_sunline_operators_deterministically() {
+    let settings = AdvancedMutationSettings {
+        point2_enabled: true,
+        copy_error2_enabled: true,
+        amplification_enabled: true,
+        translocation_enabled: true,
+        ..Default::default()
+    };
+    let run = |kind: StandardMutationKind| {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        engine
+            .update_advanced_mutation_settings(settings.clone())
+            .unwrap();
+
+        let dna = if kind == StandardMutationKind::Point2 {
+            LegacyDna::parse("1 2 3 4 5 6").unwrap()
+        } else {
+            LegacyDna::parse("start\n10 .up store\n50 .mrepro store\nstop").unwrap()
+        };
+        let parent = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
+        let parent_dna = engine.dna(parent).unwrap().clone();
+        let mut profile = engine.mutation_profile(parent).unwrap().clone();
+        for rate in [
+            &mut profile.point,
+            &mut profile.delta,
+            &mut profile.copy_error,
+            &mut profile.insertion,
+            &mut profile.reversal,
+            &mut profile.minor_deletion,
+            &mut profile.major_deletion,
+            &mut profile.point2,
+            &mut profile.copy_error2,
+            &mut profile.amplification,
+            &mut profile.translocation,
+        ] {
+            rate.one_in = f64::MAX;
+            rate.mean = 1.0;
+            rate.std_dev = 0.0;
+        }
+        match kind {
+            StandardMutationKind::Point2 => {
+                profile.point.one_in = 2.0;
+                profile.point2.one_in = 1.0;
+            }
+            StandardMutationKind::CopyError2 => profile.copy_error2.one_in = 1.0,
+            StandardMutationKind::Amplification => profile.amplification.one_in = 1.0,
+            StandardMutationKind::Translocation => profile.translocation.one_in = 1.0,
+            _ => unreachable!(),
+        }
+        engine.set_mutation_profile(parent, profile).unwrap();
+
+        let target = if kind == StandardMutationKind::Point2 {
+            let mut target = None;
+            for _ in 0..64 {
+                engine.tick().unwrap();
+                if engine
+                    .snapshot()
+                    .organisms
+                    .iter()
+                    .find(|organism| organism.id == parent)
+                    .and_then(|organism| organism.last_mutation_kind)
+                    == Some(kind)
+                {
+                    target = Some(parent);
+                    break;
+                }
+            }
+            target.expect("Point2 profile must reach the lifelong mutation path")
+        } else {
+            engine.tick().unwrap();
+            engine
+                .snapshot()
+                .organisms
+                .iter()
+                .find(|organism| organism.id != parent)
+                .map(|organism| organism.id)
+                .expect("reproductive mutation profile must produce a child")
+        };
+        let organism = engine
+            .snapshot()
+            .organisms
+            .iter()
+            .find(|organism| organism.id == target)
+            .unwrap()
+            .clone();
+        let final_dna = engine.dna(target).unwrap().clone();
+        let parent_after = engine.dna(parent).unwrap().clone();
+        (
+            final_dna,
+            organism,
+            parent_dna,
+            parent_after,
+            engine.snapshot().stats.mutations,
+        )
+    };
+
+    let point2 = run(StandardMutationKind::Point2);
+    let point2_repeat = run(StandardMutationKind::Point2);
+    assert_eq!(point2.0, point2_repeat.0);
+    assert_eq!(point2.1.mutation_log, point2_repeat.1.mutation_log);
+    assert_eq!(point2.1.total_mutations, point2_repeat.1.total_mutations);
+    assert_eq!(point2.1.last_mutation_kind, Some(StandardMutationKind::Point2));
+    assert_eq!(
+        point2.1.mutation_class_counts.get(&StandardMutationKind::Point2),
+        Some(&point2.1.total_mutations)
+    );
+    assert_ne!(point2.0, point2.2);
+
+    for kind in [
+        StandardMutationKind::CopyError2,
+        StandardMutationKind::Amplification,
+        StandardMutationKind::Translocation,
+    ] {
+        let observed = run(kind);
+        let repeated = run(kind);
+        assert_eq!(observed.0, repeated.0);
+        assert_eq!(observed.1.mutation_log, repeated.1.mutation_log);
+        assert_eq!(observed.1.total_mutations, repeated.1.total_mutations);
+        assert_eq!(observed.1.last_mutation_kind, Some(kind));
+        assert_eq!(observed.1.mutation_log.len(), 1);
+        assert_eq!(observed.1.total_mutations, 1);
+        assert_eq!(observed.1.mutation_class_counts.get(&kind), Some(&1));
+        assert_eq!(observed.2, observed.3);
+        assert_eq!(observed.4, 1);
+        assert_eq!(observed.0.blocks().last(), Some(&end()));
+        match kind {
+            StandardMutationKind::CopyError2 => {
+                assert_eq!(observed.0.blocks().len(), observed.2.blocks().len());
+            }
+            StandardMutationKind::Amplification => {
+                assert_eq!(
+                    observed.0.blocks().len(),
+                    observed.2.blocks().len() + 1
+                );
+            }
+            StandardMutationKind::Translocation => {
+                assert_eq!(observed.0.blocks().len(), observed.2.blocks().len());
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[test]
