@@ -107,6 +107,11 @@ public sealed class PlayerBotSettingsWindow : Window
         {
             var binding = new PlayerBotBinding(key, memory, value, _invert.IsChecked == true);
             binding.Validate();
+            if (_bindings.Any(existing => existing.KeyCode == binding.KeyCode))
+            {
+                _status.Text = "KEY ALREADY MAPPED";
+                return;
+            }
             _bindings.Add(binding);
             _status.Text = "BINDING ADDED";
         }
