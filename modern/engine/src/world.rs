@@ -6995,7 +6995,7 @@ impl Engine {
             else {
                 unreachable!("shot phase must return shot commands")
             };
-            for address in [7, 8, 900, 901] {
+            for address in [7, 8] {
                 runtime.finish_command(
                     address,
                     CommandOutcome::Consumed,
@@ -7013,6 +7013,13 @@ impl Engine {
             }
             if commands.kind == 0 || ProjectilePool::normalized_kind(commands.kind) == -5 {
                 continue;
+            }
+            for address in [900, 901] {
+                runtime.finish_command(
+                    address,
+                    CommandOutcome::Consumed,
+                    &mut attacker.program.memory,
+                );
             }
             let normalized_kind = ProjectilePool::normalized_kind(commands.kind);
             let tie_multiplier = hardened_ties.saturating_add(1) as i32;

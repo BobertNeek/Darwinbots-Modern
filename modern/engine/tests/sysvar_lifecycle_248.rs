@@ -346,6 +346,22 @@ fn engine_tick_preserves_unfinished_virus_commands() {
 }
 
 #[test]
+fn engine_tick_keeps_aimshoot_when_shoot_kind_has_no_handler() {
+    let mut engine = testing_engine();
+    let robot = engine
+        .spawn(
+            LegacyDna::parse("start\n-5 .shoot store\n456 .aimshoot store\nstop").unwrap(),
+        )
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.memory(robot, "shoot").unwrap(), 0);
+    assert_eq!(engine.memory(robot, "shootval").unwrap(), 0);
+    assert_eq!(engine.memory(robot, "aimshoot").unwrap(), 456);
+}
+
+#[test]
 fn engine_tick_executes_delgene_in_the_authoritative_virus_phase() {
     let mut engine = testing_engine();
     let robot = engine
