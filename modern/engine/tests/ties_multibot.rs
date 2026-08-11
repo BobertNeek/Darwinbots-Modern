@@ -1282,6 +1282,39 @@ fn slime_is_consumed_to_resist_new_ties() {
 }
 
 #[test]
+fn successful_tie_attack_consumes_twenty_slime() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let source = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+    let target = engine
+        .spawn_at(
+            LegacyDna::parse("start\n10 .mkslime store\nstop").unwrap(),
+            [120.0, 100.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n1 .tie store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine
+        .replace_dna(target, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    assert_eq!(engine.organism(target).unwrap().slime, 0);
+}
+
+#[test]
 fn dragging_one_member_moves_the_tied_organism_and_clears_momentum() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

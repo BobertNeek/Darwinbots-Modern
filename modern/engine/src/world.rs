@@ -6709,9 +6709,15 @@ impl Engine {
                 .is_some_and(|robot| deflect < robot.materials.slime)
             {
                 let second = self.slots[second_slot].organism.as_mut().unwrap();
-                second.materials.slime = second.materials.slime.saturating_sub(20);
+                second.materials.slime = second.materials.slime.saturating_sub(20).max(0);
                 second.materials.publish(&mut second.program.memory);
                 continue;
+            }
+            if let Some(second) = self.slots[second_slot].organism.as_mut() {
+                if second.materials.slime > 0 {
+                    second.materials.slime = second.materials.slime.saturating_sub(20).max(0);
+                    second.materials.publish(&mut second.program.memory);
+                }
             }
             let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
             let second = OrganismId::new(second_slot as u32, self.slots[second_slot].generation);
