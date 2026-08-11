@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Darwinbots.Desktop.Core;
 using Xunit;
 
@@ -36,7 +37,7 @@ public sealed class Db2EnvironmentSettingsTests
     {
         var json = NativeCommandSerializer.SerializeEnvironment(EnvironmentUpdate.Default);
 
-        Assert.Contains("\"max_velocity\":180", json);
+        Assert.Contains("\"max_velocity\":60", json);
         Assert.Contains("\"movement_efficiency\":0.66", json);
         Assert.Contains("\"speed\":40", json);
         Assert.Contains("\"start_chloroplasts\":16000", json);
@@ -58,14 +59,64 @@ public sealed class Db2EnvironmentSettingsTests
     }
 
     [Fact]
+    public void EnergyWeatherThresholdAndAxisTopologySettingsSerializeIntoEnvironmentCommand()
+    {
+        var vegetation = EnvironmentUpdate.Default.Vegetation with
+        {
+            Tides = 64,
+            TidesOffset = 7,
+            WeatherEnabled = true,
+            SunUpEnabled = true,
+            SunUpThreshold = 500,
+            SunDownEnabled = true,
+            SunDownThreshold = 1_000,
+            SunThresholdMode = 2,
+        };
+        var json = NativeCommandSerializer.SerializeEnvironment(EnvironmentUpdate.Default with
+        {
+            Vegetation = vegetation,
+            WrapX = true,
+            WrapY = false,
+        });
+
+        Assert.Contains("\"tides\":64", json);
+        Assert.Contains("\"tides_offset\":7", json);
+        Assert.Contains("\"weather_enabled\":true", json);
+        Assert.Contains("\"sun_up_threshold\":500", json);
+        Assert.Contains("\"sun_down_threshold\":1000", json);
+        Assert.Contains("\"sun_threshold_mode\":2", json);
+        Assert.Contains("\"axis_topology\":[true,false]", json);
+    }
+
+    [Fact]
+    public void NativeRemoveManyBatchSerializesExactStableKeys()
+    {
+        OrganismKey[] organisms = [new(3, 2), new(7, 5)];
+
+        var json = JsonSerializer.Serialize(NativeCommandSerializer.CreateRemoveManyBatch(organisms));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.Equal(1, root.GetProperty("version").GetInt32());
+        var command = Assert.Single(root.GetProperty("commands").EnumerateArray());
+        Assert.Equal("remove_many", command.GetProperty("type").GetString());
+        var serializedOrganisms = command.GetProperty("organisms").EnumerateArray().ToArray();
+        Assert.Equal(2, serializedOrganisms.Length);
+        Assert.Equal(3U, serializedOrganisms[0].GetProperty("slot").GetUInt32());
+        Assert.Equal(2U, serializedOrganisms[0].GetProperty("generation").GetUInt32());
+        Assert.Equal(7U, serializedOrganisms[1].GetProperty("slot").GetUInt32());
+        Assert.Equal(5U, serializedOrganisms[1].GetProperty("generation").GetUInt32());
+    }
+
+    [Fact]
     public void DesktopDefaultsMatchDb2NormalSimulationDefaults()
     {
         var update = EnvironmentUpdate.Default;
 
-        Assert.Equal(0f, update.BrownianMotion);
-        Assert.Equal(new Db2PhysicsOptions(180f, 0.66f, 2f, 0.6f, 0.4f, 0d, 0d, 0f), update.Physics);
+        Assert.Equal(0.5f, update.BrownianMotion);
+        Assert.Equal(new Db2PhysicsOptions(60f, 0.66f, 0f, 0f, 0f, 0d, 0d, 0f), update.Physics);
         Assert.Equal(new Db2ShotOptions(40f, 1f, 40f, false, false), update.Shots);
-        Assert.Equal(new Db2VegetationOptions(16_000, 40, 10, 10, 25, 0.5f, true, false, 10_000), update.Vegetation);
+        Assert.Equal(new Db2VegetationOptions(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000, Gradient: 1.02f), update.Vegetation);
         Assert.False(update.AutoSpeciation);
         Assert.Equal(20f, update.SpeciationGeneticDistancePercent);
 

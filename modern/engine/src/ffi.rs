@@ -1,5 +1,5 @@
-use crate::{Engine, EngineConfig, LegacyDna, OrganismId, SpeciesDefinition};
 use crate::persistence::SaveFile;
+use crate::{Engine, EngineConfig, LegacyDna, LegacyOrganismFile, OrganismId, SpeciesDefinition};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
 
@@ -31,11 +31,52 @@ struct CommandBatch {
 }
 
 #[derive(Deserialize)]
+struct SpeciesMutationRateCommand {
+    species: u32,
+    rate: f32,
+}
+
+#[derive(Deserialize)]
+struct OrganismIdCommand {
+    slot: u32,
+    generation: u32,
+}
+
+#[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum EngineCommand {
-    Tick { count: u32 },
-    ImportDna { dna: String, position: Option<[f32; 2]> },
-    Remove { slot: u32, generation: u32 },
+    Tick {
+        count: u32,
+    },
+    ConfigureLocalMode {
+        config: crate::LocalModeConfig,
+    },
+    UpdateCostSettings {
+        costs: crate::DnaCosts,
+    },
+    UpdateRecordingSettings {
+        settings: crate::RecordingSettings,
+    },
+    StartLocalMode,
+    RestartLocalMode,
+    AdjudicateLocalRound {
+        winner: Option<crate::SpeciesId>,
+        reason: String,
+    },
+    ImportDna {
+        dna: String,
+        position: Option<[f32; 2]>,
+    },
+    ImportOrganism {
+        payload: Vec<u8>,
+    },
+    Remove {
+        slot: u32,
+        generation: u32,
+    },
+    RemoveMany {
+        organisms: Vec<OrganismIdCommand>,
+    },
     ImportSpecies {
         dna: String,
         name: String,
@@ -46,12 +87,35 @@ enum EngineCommand {
         #[serde(default)]
         mutation_rate: f32,
         initial_energy: i32,
+        #[serde(default)]
+        initial_count: usize,
+        #[serde(default)]
+        placement: Option<serde_json::Value>,
+        #[serde(default)]
+        skin: Option<[crate::SkinPoint; 4]>,
+        #[serde(default)]
+        restrictions: Option<crate::RestrictionColumn>,
         positions: Vec<[f32; 2]>,
     },
-    MoveOrganism { slot: u32, generation: u32, position: [f32; 2] },
-    CloneOrganism { slot: u32, generation: u32, position: [f32; 2] },
-    ReplaceDna { slot: u32, generation: u32, dna: String },
-    ExportDna { slot: u32, generation: u32 },
+    MoveOrganism {
+        slot: u32,
+        generation: u32,
+        position: [f32; 2],
+    },
+    CloneOrganism {
+        slot: u32,
+        generation: u32,
+        position: [f32; 2],
+    },
+    ReplaceDna {
+        slot: u32,
+        generation: u32,
+        dna: String,
+    },
+    ExportDna {
+        slot: u32,
+        generation: u32,
+    },
     ManualReproduce {
         first_slot: u32,
         first_generation: u32,
@@ -59,12 +123,102 @@ enum EngineCommand {
         second_generation: Option<u32>,
         position: [f32; 2],
     },
-    SwitchBackend { backend: crate::BackendPreference },
-    AddObstacle { id: u32, minimum: [f32; 2], maximum: [f32; 2] },
-    RemoveObstacle { id: u32 },
-    AddTeleporter { id: u32, center: [f32; 2], radius: f32, destination: [f32; 2] },
-    RemoveTeleporter { id: u32 },
-    SetBrownianMotion { value: f32 },
+    SwitchBackend {
+        backend: crate::BackendPreference,
+    },
+    AddObstacle {
+        id: u32,
+        minimum: [f32; 2],
+        maximum: [f32; 2],
+    },
+    UpdateObstacle {
+        obstacle: crate::Obstacle,
+    },
+    RemoveObstacle {
+        id: u32,
+    },
+    AddTeleporter {
+        #[serde(flatten)]
+        teleporter: crate::Teleporter,
+    },
+    UpdateTeleporter {
+        #[serde(flatten)]
+        teleporter: crate::Teleporter,
+    },
+    RemoveTeleporter {
+        id: u32,
+    },
+    AddFileTeleporter {
+        teleporter: crate::FileTeleporter,
+    },
+    UpdateFileTeleporter {
+        teleporter: crate::FileTeleporter,
+    },
+    RemoveFileTeleporter {
+        id: u32,
+    },
+    SetBrownianMotion {
+        value: f32,
+    },
+    UpdateMutationSettings {
+        enabled: bool,
+        global_multiplier: f32,
+        species_rates: Vec<SpeciesMutationRateCommand>,
+        #[serde(default)]
+        profile: Option<crate::StandardMutationProfile>,
+    },
+    UpdateOrganismMutationProfile {
+        slot: u32,
+        generation: u32,
+        profile: crate::StandardMutationProfile,
+    },
+    SetTiesEnabled {
+        enabled: bool,
+    },
+    SetSpeciesColor {
+        species: u32,
+        color: u32,
+    },
+    MakeNewSpecies {
+        slot: u32,
+        generation: u32,
+        name: String,
+        color: u32,
+    },
+    UpdateLegacyRestrictions {
+        robot_fixing_allowed: bool,
+        asexual_reproduction_allowed: bool,
+    },
+    ConfigurePlayerBot {
+        enabled: bool,
+        focus: Option<OrganismIdCommand>,
+        bindings: Vec<crate::PlayerBotBinding>,
+    },
+    SetPlayerBotKey {
+        slot: u32,
+        generation: u32,
+        key: u32,
+        pressed: bool,
+    },
+    SetOrganismMemory {
+        slot: u32,
+        generation: u32,
+        address: u16,
+        value: i32,
+    },
+    SetOrganismEnergy {
+        slot: u32,
+        generation: u32,
+        energy: i32,
+    },
+    UpdateRestrictionOptions {
+        options: crate::RestrictionOptions,
+    },
+    SetOrganismAim {
+        slot: u32,
+        generation: u32,
+        aim: i32,
+    },
     UpdateEnvironment {
         metabolism_cost: i32,
         vegetable_energy_per_tick: i32,
@@ -79,17 +233,29 @@ enum EngineCommand {
         #[serde(default)]
         vegetation: Option<crate::VegetationSettings>,
         #[serde(default)]
+        corpse_decay: Option<crate::CorpseDecaySettings>,
+        #[serde(default)]
+        waste: Option<crate::WasteSettings>,
+        #[serde(default)]
+        recording: Option<crate::RecordingSettings>,
+        #[serde(default)]
         auto_speciation: Option<bool>,
         #[serde(default)]
         speciation_genetic_distance_percent: Option<f32>,
         #[serde(default)]
         toroidal_world: Option<bool>,
+        #[serde(default)]
+        axis_topology: Option<[bool; 2]>,
     },
 }
 
 impl Default for DbBuffer {
     fn default() -> Self {
-        Self { data: ptr::null_mut(), len: 0, capacity: 0 }
+        Self {
+            data: ptr::null_mut(),
+            len: 0,
+            capacity: 0,
+        }
     }
 }
 
@@ -102,6 +268,8 @@ pub extern "C" fn db_api_version() -> u32 {
     ABI_VERSION
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_backend(engine: *const Engine) -> i32 {
     let Some(engine) = (unsafe { engine.as_ref() }) else {
@@ -119,10 +287,16 @@ pub extern "C" fn db_engine_create(
     config_len: usize,
     out_engine: *mut *mut Engine,
 ) -> DbStatus {
-    ffi_guard("create engine", || db_engine_create_impl(config_data, config_len, out_engine))
+    ffi_guard("create engine", || {
+        db_engine_create_impl(config_data, config_len, out_engine)
+    })
 }
 
-fn db_engine_create_impl(config_data: *const u8, config_len: usize, out_engine: *mut *mut Engine) -> DbStatus {
+fn db_engine_create_impl(
+    config_data: *const u8,
+    config_len: usize,
+    out_engine: *mut *mut Engine,
+) -> DbStatus {
     if out_engine.is_null() || (config_data.is_null() && config_len != 0) {
         return DbStatus::NullPointer;
     }
@@ -148,6 +322,8 @@ fn db_engine_create_impl(config_data: *const u8, config_len: usize, out_engine: 
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_destroy(engine: *mut Engine) -> DbStatus {
     if engine.is_null() {
@@ -172,6 +348,8 @@ fn db_engine_tick_impl(engine: *mut Engine) -> DbStatus {
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_import_dna(
     engine: *mut Engine,
@@ -184,7 +362,11 @@ pub extern "C" fn db_engine_import_dna(
     if dna_data.is_null() && dna_len != 0 {
         return DbStatus::NullPointer;
     }
-    let bytes = if dna_len == 0 { &[] } else { unsafe { slice::from_raw_parts(dna_data, dna_len) } };
+    let bytes = if dna_len == 0 {
+        &[]
+    } else {
+        unsafe { slice::from_raw_parts(dna_data, dna_len) }
+    };
     let text = match std::str::from_utf8(bytes) {
         Ok(text) => text,
         Err(error) => return fail(DbStatus::InvalidUtf8, error),
@@ -199,9 +381,16 @@ pub extern "C" fn db_engine_import_dna(
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
-pub extern "C" fn db_engine_snapshot_json(engine: *const Engine, out_buffer: *mut DbBuffer) -> DbStatus {
-    let (Some(engine), Some(out_buffer)) = (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() }) else {
+pub extern "C" fn db_engine_snapshot_json(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    let (Some(engine), Some(out_buffer)) =
+        (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
+    else {
         return DbStatus::NullPointer;
     };
     if !out_buffer.data.is_null() {
@@ -237,11 +426,17 @@ fn db_engine_command_batch_impl(
     command_len: usize,
     out_buffer: *mut DbBuffer,
 ) -> DbStatus {
-    let (Some(engine), Some(out_buffer)) = (unsafe { engine.as_mut() }, unsafe { out_buffer.as_mut() }) else {
+    let (Some(engine), Some(out_buffer)) =
+        (unsafe { engine.as_mut() }, unsafe { out_buffer.as_mut() })
+    else {
         return DbStatus::NullPointer;
     };
-    if command_data.is_null() || command_len == 0 { return fail(DbStatus::InvalidCommand, "command batch is empty"); }
-    if !out_buffer.data.is_null() { return fail(DbStatus::EngineError, "output buffer must be empty"); }
+    if command_data.is_null() || command_len == 0 {
+        return fail(DbStatus::InvalidCommand, "command batch is empty");
+    }
+    if !out_buffer.data.is_null() {
+        return fail(DbStatus::EngineError, "output buffer must be empty");
+    }
     let bytes = unsafe { slice::from_raw_parts(command_data, command_len) };
     let text = match std::str::from_utf8(bytes) {
         Ok(text) => text,
@@ -252,25 +447,66 @@ fn db_engine_command_batch_impl(
         Err(error) => return fail(DbStatus::InvalidCommand, error),
     };
     if batch.version != ABI_VERSION {
-        return fail(DbStatus::InvalidCommand, format!("unsupported command batch version {}", batch.version));
+        return fail(
+            DbStatus::InvalidCommand,
+            format!("unsupported command batch version {}", batch.version),
+        );
     }
     let mut command_results = Vec::with_capacity(batch.commands.len());
     for command in batch.commands {
         let result = match command {
             EngineCommand::Tick { count } => {
-                if count > 1_000_000 { return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit"); }
+                if count > 1_000_000 {
+                    return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
+                }
                 engine.tick_many(count).map(|_| serde_json::Value::Null)
             }
+            EngineCommand::ConfigureLocalMode { config } => engine
+                .configure_local_mode(config)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateCostSettings { costs } => engine
+                .update_cost_settings(costs)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateRecordingSettings { settings } => engine
+                .update_recording_settings(settings)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::StartLocalMode => {
+                engine.start_local_mode().map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::RestartLocalMode => {
+                engine.restart_local_mode().map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::AdjudicateLocalRound { winner, reason } => engine
+                .adjudicate_local_round(winner, reason)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::ImportDna { dna, position } => LegacyDna::parse(&dna).and_then(|dna| {
                 let compatibility_warnings = dna.compatibility_warnings().to_vec();
-                engine.spawn_at(dna, position.unwrap_or([0.0; 2])).map(|id| serde_json::json!({
-                    "slot": id.slot(),
-                    "generation": id.generation(),
-                    "compatibility_warnings": compatibility_warnings,
-                }))
+                engine
+                    .spawn_at(dna, position.unwrap_or([0.0; 2]))
+                    .map(|id| {
+                        serde_json::json!({
+                            "slot": id.slot(),
+                            "generation": id.generation(),
+                            "compatibility_warnings": compatibility_warnings,
+                        })
+                    })
             }),
-            EngineCommand::Remove { slot, generation } => engine.remove(OrganismId::new(slot, generation))
+            EngineCommand::ImportOrganism { payload } => LegacyOrganismFile::decode(&payload)
+                .and_then(|file| {
+                    engine
+                        .import_legacy_organism_file(&file)
+                        .map(|count| serde_json::json!({ "count": count }))
+                }),
+            EngineCommand::Remove { slot, generation } => engine
+                .remove(OrganismId::new(slot, generation))
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::RemoveMany { organisms } => {
+                let ids: Vec<_> = organisms
+                    .into_iter()
+                    .map(|organism| OrganismId::new(organism.slot, organism.generation))
+                    .collect();
+                engine.remove_many(&ids).map(|_| serde_json::Value::Null)
+            }
             EngineCommand::ImportSpecies {
                 dna,
                 name,
@@ -280,10 +516,14 @@ fn db_engine_command_batch_impl(
                 reseed,
                 mutation_rate,
                 initial_energy,
+                initial_count: _,
+                placement: _,
+                skin,
+                restrictions,
                 positions,
             } => LegacyDna::parse(&dna).and_then(|dna| {
                 let compatibility_warnings = dna.compatibility_warnings().to_vec();
-                let species = engine.register_species(SpeciesDefinition {
+                let mut definition = SpeciesDefinition {
                     name,
                     vegetable,
                     color,
@@ -291,23 +531,46 @@ fn db_engine_command_batch_impl(
                     reseed,
                     mutation_rate,
                     ..SpeciesDefinition::default()
-                });
-                engine.spawn_species_batch(dna, species, positions, initial_energy).map(|ids| serde_json::json!({
-                    "species": species.0,
-                    "count": ids.len(),
-                    "compatibility_warnings": compatibility_warnings,
-                }))
+                };
+                if let Some(skin) = skin {
+                    definition.skin = skin;
+                    definition.custom_skin = true;
+                }
+                definition.restrictions = restrictions;
+                let species = engine.register_species(definition);
+                engine
+                    .spawn_species_batch(dna, species, positions, initial_energy)
+                    .map(|ids| {
+                        serde_json::json!({
+                            "species": species.0,
+                            "count": ids.len(),
+                            "compatibility_warnings": compatibility_warnings,
+                        })
+                    })
             }),
-            EngineCommand::MoveOrganism { slot, generation, position } =>
-                engine.move_organism(OrganismId::new(slot, generation), position)
-                    .map(|_| serde_json::Value::Null),
-            EngineCommand::CloneOrganism { slot, generation, position } =>
-                engine.clone_organism(OrganismId::new(slot, generation), position)
-                    .map(|id| serde_json::json!({ "slot": id.slot(), "generation": id.generation() })),
-            EngineCommand::ReplaceDna { slot, generation, dna } => LegacyDna::parse(&dna)
+            EngineCommand::MoveOrganism {
+                slot,
+                generation,
+                position,
+            } => engine
+                .move_organism(OrganismId::new(slot, generation), position)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::CloneOrganism {
+                slot,
+                generation,
+                position,
+            } => engine
+                .clone_organism(OrganismId::new(slot, generation), position)
+                .map(|id| serde_json::json!({ "slot": id.slot(), "generation": id.generation() })),
+            EngineCommand::ReplaceDna {
+                slot,
+                generation,
+                dna,
+            } => LegacyDna::parse(&dna)
                 .and_then(|dna| engine.replace_dna(OrganismId::new(slot, generation), dna))
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::ExportDna { slot, generation } => engine.export_dna(OrganismId::new(slot, generation))
+            EngineCommand::ExportDna { slot, generation } => engine
+                .export_dna(OrganismId::new(slot, generation))
                 .map(|dna| serde_json::json!({ "dna": dna })),
             EngineCommand::ManualReproduce {
                 first_slot,
@@ -316,20 +579,142 @@ fn db_engine_command_batch_impl(
                 second_generation,
                 position,
             } => {
-                let second = second_slot.zip(second_generation)
+                let second = second_slot
+                    .zip(second_generation)
                     .map(|(slot, generation)| OrganismId::new(slot, generation));
                 engine.manual_reproduce(OrganismId::new(first_slot, first_generation), second, position)
                     .map(|id| serde_json::json!({ "slot": id.slot(), "generation": id.generation() }))
             }
-            EngineCommand::SwitchBackend { backend } => engine.switch_backend(backend)
+            EngineCommand::SwitchBackend { backend } => engine
+                .switch_backend(backend)
                 .map(|_| serde_json::json!({ "backend": format!("{:?}", engine.backend()) })),
-            EngineCommand::AddObstacle { id, minimum, maximum } =>
-                engine.add_obstacle(crate::Obstacle { id, minimum, maximum }).map(|_| serde_json::Value::Null),
-            EngineCommand::RemoveObstacle { id } => engine.remove_obstacle(id).map(|_| serde_json::Value::Null),
-            EngineCommand::AddTeleporter { id, center, radius, destination } =>
-                engine.add_teleporter(crate::Teleporter { id, center, radius, destination }).map(|_| serde_json::Value::Null),
-            EngineCommand::RemoveTeleporter { id } => engine.remove_teleporter(id).map(|_| serde_json::Value::Null),
-            EngineCommand::SetBrownianMotion { value } => engine.set_brownian_motion(value).map(|_| serde_json::Value::Null),
+            EngineCommand::AddObstacle {
+                id,
+                minimum,
+                maximum,
+            } => engine
+                .add_obstacle(crate::Obstacle::new(id, minimum, maximum))
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateObstacle { obstacle } => engine
+                .update_obstacle(obstacle)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::RemoveObstacle { id } => {
+                engine.remove_obstacle(id).map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::AddTeleporter { teleporter } => engine
+                .add_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateTeleporter { teleporter } => engine
+                .update_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::RemoveTeleporter { id } => engine
+                .remove_teleporter(id)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::AddFileTeleporter { teleporter } => engine
+                .add_file_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateFileTeleporter { teleporter } => engine
+                .update_file_teleporter(teleporter)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::RemoveFileTeleporter { id } => engine
+                .remove_file_teleporter(id)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetBrownianMotion { value } => engine
+                .set_brownian_motion(value)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateMutationSettings {
+                enabled,
+                global_multiplier,
+                species_rates,
+                profile,
+            } => {
+                let rates: Vec<_> = species_rates
+                    .into_iter()
+                    .map(|value| (crate::SpeciesId(value.species), value.rate))
+                    .collect();
+                engine
+                    .update_mutation_settings(enabled, global_multiplier, &rates)
+                    .and_then(|_| {
+                        profile.map_or(Ok(()), |profile| {
+                            engine.set_default_mutation_profile(profile)
+                        })
+                    })
+                    .map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::UpdateOrganismMutationProfile {
+                slot,
+                generation,
+                profile,
+            } => engine
+                .set_mutation_profile(OrganismId::new(slot, generation), profile)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetTiesEnabled { enabled } => {
+                engine.set_ties_enabled(enabled);
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::SetSpeciesColor { species, color } => engine
+                .set_species_color(crate::SpeciesId(species), color)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::MakeNewSpecies {
+                slot,
+                generation,
+                name,
+                color,
+            } => engine
+                .make_new_species(OrganismId::new(slot, generation), name, color)
+                .map(|species| serde_json::json!({ "species": species.0 })),
+            EngineCommand::UpdateLegacyRestrictions {
+                robot_fixing_allowed,
+                asexual_reproduction_allowed,
+            } => {
+                engine
+                    .update_legacy_restrictions(robot_fixing_allowed, asexual_reproduction_allowed);
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::ConfigurePlayerBot {
+                enabled,
+                focus,
+                bindings,
+            } => engine
+                .configure_player_bot(
+                    enabled,
+                    focus.map(|value| OrganismId::new(value.slot, value.generation)),
+                    bindings,
+                )
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetPlayerBotKey {
+                slot,
+                generation,
+                key,
+                pressed,
+            } => engine
+                .set_player_bot_key(OrganismId::new(slot, generation), key, pressed)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetOrganismMemory {
+                slot,
+                generation,
+                address,
+                value,
+            } => engine
+                .set_organism_memory(OrganismId::new(slot, generation), address, value)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetOrganismEnergy {
+                slot,
+                generation,
+                energy,
+            } => engine
+                .set_organism_energy(OrganismId::new(slot, generation), energy)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateRestrictionOptions { options } => engine
+                .update_restriction_options(options)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::SetOrganismAim {
+                slot,
+                generation,
+                aim,
+            } => engine
+                .set_organism_aim(OrganismId::new(slot, generation), aim)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateEnvironment {
                 metabolism_cost,
                 vegetable_energy_per_tick,
@@ -340,9 +725,13 @@ fn db_engine_command_batch_impl(
                 physics,
                 shots,
                 vegetation,
+                corpse_decay,
+                waste,
+                recording,
                 auto_speciation,
                 speciation_genetic_distance_percent,
                 toroidal_world,
+                axis_topology,
             } => engine
                 .update_environment(
                     metabolism_cost,
@@ -352,14 +741,19 @@ fn db_engine_command_batch_impl(
                     drag,
                     brownian_motion,
                 )
-                .and_then(|_| engine.update_db2_settings(physics, shots, vegetation))
-                .and_then(|_| engine.update_speciation_settings(
-                    auto_speciation,
-                    speciation_genetic_distance_percent,
-                ))
+                .and_then(|_| engine.update_db2_settings(physics, shots, vegetation, corpse_decay, waste, recording))
+                .and_then(|_| {
+                    engine.update_speciation_settings(
+                        auto_speciation,
+                        speciation_genetic_distance_percent,
+                    )
+                })
                 .map(|_| {
                     if let Some(enabled) = toroidal_world {
                         engine.set_toroidal_world(enabled);
+                    }
+                    if let Some(wrapped_axes) = axis_topology {
+                        engine.set_axis_topology(wrapped_axes);
                     }
                 })
                 .map(|_| serde_json::Value::Null),
@@ -382,12 +776,21 @@ fn db_engine_command_batch_impl(
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
-pub extern "C" fn db_engine_capabilities_json(engine: *const Engine, out_buffer: *mut DbBuffer) -> DbStatus {
-    let (Some(engine), Some(out_buffer)) = (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() }) else {
+pub extern "C" fn db_engine_capabilities_json(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    let (Some(engine), Some(out_buffer)) =
+        (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
+    else {
         return DbStatus::NullPointer;
     };
-    if !out_buffer.data.is_null() { return fail(DbStatus::EngineError, "output buffer must be empty"); }
+    if !out_buffer.data.is_null() {
+        return fail(DbStatus::EngineError, "output buffer must be empty");
+    }
     let capabilities = engine.capabilities();
     let result = serde_json::json!({
         "version": ABI_VERSION,
@@ -401,26 +804,65 @@ pub extern "C" fn db_engine_capabilities_json(engine: *const Engine, out_buffer:
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_save(engine: *const Engine, out_buffer: *mut DbBuffer) -> DbStatus {
-    let (Some(engine), Some(out_buffer)) = (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() }) else {
+    let (Some(engine), Some(out_buffer)) =
+        (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
+    else {
         return DbStatus::NullPointer;
     };
-    if !out_buffer.data.is_null() { return fail(DbStatus::EngineError, "output buffer must be empty"); }
+    if !out_buffer.data.is_null() {
+        return fail(DbStatus::EngineError, "output buffer must be empty");
+    }
     match SaveFile::encode(engine) {
         Ok(bytes) => write_buffer(out_buffer, bytes),
         Err(error) => fail(DbStatus::EngineError, error),
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
-pub extern "C" fn db_engine_load(engine: *mut Engine, save_data: *const u8, save_len: usize) -> DbStatus {
-    ffi_guard("load engine", || db_engine_load_impl(engine, save_data, save_len))
+pub extern "C" fn db_engine_save_without_mutations(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    ffi_guard("save engine without mutations", || {
+        let (Some(engine), Some(out_buffer)) =
+            (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
+        else {
+            return DbStatus::NullPointer;
+        };
+        if !out_buffer.data.is_null() {
+            return fail(DbStatus::EngineError, "output buffer must be empty");
+        }
+        match SaveFile::encode_without_mutations(engine) {
+            Ok(bytes) => write_buffer(out_buffer, bytes),
+            Err(error) => fail(DbStatus::EngineError, error),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_load(
+    engine: *mut Engine,
+    save_data: *const u8,
+    save_len: usize,
+) -> DbStatus {
+    ffi_guard("load engine", || {
+        db_engine_load_impl(engine, save_data, save_len)
+    })
 }
 
 fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usize) -> DbStatus {
-    let Some(engine) = (unsafe { engine.as_mut() }) else { return DbStatus::NullPointer };
-    if save_data.is_null() || save_len == 0 { return fail(DbStatus::EngineError, "save buffer is empty"); }
+    let Some(engine) = (unsafe { engine.as_mut() }) else {
+        return DbStatus::NullPointer;
+    };
+    if save_data.is_null() || save_len == 0 {
+        return fail(DbStatus::EngineError, "save buffer is empty");
+    }
     let bytes = unsafe { slice::from_raw_parts(save_data, save_len) };
     match SaveFile::decode(bytes) {
         Ok(loaded) => {
@@ -431,10 +873,16 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_last_error_json(out_buffer: *mut DbBuffer) -> DbStatus {
-    let Some(out_buffer) = (unsafe { out_buffer.as_mut() }) else { return DbStatus::NullPointer };
-    if !out_buffer.data.is_null() { return DbStatus::EngineError; }
+    let Some(out_buffer) = (unsafe { out_buffer.as_mut() }) else {
+        return DbStatus::NullPointer;
+    };
+    if !out_buffer.data.is_null() {
+        return DbStatus::EngineError;
+    }
     let message = LAST_ERROR.with(|last_error| last_error.borrow().clone());
     match serde_json::to_vec(&serde_json::json!({ "version": ABI_VERSION, "message": message })) {
         Ok(bytes) => write_buffer(out_buffer, bytes),
@@ -442,13 +890,21 @@ pub extern "C" fn db_last_error_json(out_buffer: *mut DbBuffer) -> DbStatus {
     }
 }
 
+// ABI v1 keeps this C entry point safe while retaining its pointer contract.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn db_buffer_free(buffer: *mut DbBuffer) -> DbStatus {
     let Some(buffer) = (unsafe { buffer.as_mut() }) else {
         return DbStatus::NullPointer;
     };
     if !buffer.data.is_null() {
-        unsafe { drop(Vec::from_raw_parts(buffer.data, buffer.len, buffer.capacity)) };
+        unsafe {
+            drop(Vec::from_raw_parts(
+                buffer.data,
+                buffer.len,
+                buffer.capacity,
+            ))
+        };
     }
     *buffer = DbBuffer::default();
     DbStatus::Ok
@@ -471,10 +927,15 @@ fn ffi_guard(operation: &str, action: impl FnOnce() -> DbStatus) -> DbStatus {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(action)) {
         Ok(status) => status,
         Err(payload) => {
-            let detail = payload.downcast_ref::<&str>().copied()
+            let detail = payload
+                .downcast_ref::<&str>()
+                .copied()
                 .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
                 .unwrap_or("unknown native panic");
-            fail(DbStatus::EngineError, format!("{operation} panicked: {detail}"))
+            fail(
+                DbStatus::EngineError,
+                format!("{operation} panicked: {detail}"),
+            )
         }
     }
 }

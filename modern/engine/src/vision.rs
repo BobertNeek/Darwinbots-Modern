@@ -40,9 +40,7 @@ impl VisionSnapshot {
                 direction,
                 width,
                 center_radians: eye_center_radians(aim, index, direction),
-                half_width_radians: absolute_eye_width(width) as f32
-                    / AIM_UNITS_PER_RADIAN
-                    / 2.0,
+                half_width_radians: absolute_eye_width(width) as f32 / AIM_UNITS_PER_RADIAN / 2.0,
                 range: eye_sight_distance(width),
                 value: memory.read(EYE_VALUE_START + index as i32),
             }
@@ -108,10 +106,13 @@ pub fn eye_sight_distance(width: i32) -> f32 {
     let range = if absolute == STANDARD_EYE_WIDTH {
         STANDARD_SIGHT_DISTANCE
     } else {
-        STANDARD_SIGHT_DISTANCE
-            * (1.0 - ((absolute as f32 / STANDARD_EYE_WIDTH as f32).ln() / 4.0))
+        STANDARD_SIGHT_DISTANCE * (1.0 - ((absolute as f32 / STANDARD_EYE_WIDTH as f32).ln() / 4.0))
     };
-    if range.is_finite() { range.max(0.0) } else { 0.0 }
+    if range.is_finite() {
+        range.max(0.0)
+    } else {
+        0.0
+    }
 }
 
 pub fn eye_value(range: f32, edge_distance: f32) -> i32 {
@@ -136,6 +137,5 @@ fn eye_center_radians(aim: i32, index: usize, direction: i32) -> f32 {
 }
 
 fn signed_angle(angle: f32) -> f32 {
-    (angle + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU)
-        - std::f32::consts::PI
+    (angle + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI
 }

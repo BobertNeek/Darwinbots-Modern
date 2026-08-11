@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.FileTeleporterEditorWindow"
+        Title="Offline file teleporter" Width="520" Height="690" MinWidth="480" MinHeight="620"
+        WindowStartupLocation="CenterOwner" Background="#F4F0E6">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="18" RowSpacing="14">
+    <StackPanel Spacing="3">
+      <TextBlock Text="OFFLINE FILE TELEPORTER" FontSize="20" FontWeight="Bold" />
+      <TextBlock Text="Transfers use local .dbo files. Online play is not enabled." Foreground="#66706B" TextWrapping="Wrap" />
+    </StackPanel>
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Spacing="9">
+        <Grid ColumnDefinitions="*,180"><TextBlock Text="Center X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="CenterX" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,180"><TextBlock Text="Center Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="CenterY" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,180"><TextBlock Text="Radius" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="Radius" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
+        <TextBlock Text="INBOUND PATH" FontWeight="Bold" Margin="0,8,0,0" />
+        <TextBox x:Name="InboundPath" PlaceholderText="Optional local folder or file path" />
+        <TextBlock Text="OUTBOUND PATH" FontWeight="Bold" />
+        <TextBox x:Name="OutboundPath" PlaceholderText="Optional local folder or file path" />
+        <Grid ColumnDefinitions="*,180"><TextBlock Text="Poll interval" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="PollInterval" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,180"><TextBlock Text="Capacity per poll" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="Capacity" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
+        <CheckBox x:Name="TeleportVegetables" Content="Transfer vegetables" />
+        <CheckBox x:Name="TeleportCorpses" Content="Transfer corpses" />
+        <CheckBox x:Name="TeleportHeterotrophs" Content="Transfer heterotrophs" />
+        <TextBlock x:Name="Statistics" Foreground="#66706B" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="CANCEL" Click="Cancel_Click" />
+      <Button Content="APPLY" Background="#416E35" Foreground="White" Click="Apply_Click" />
+    </StackPanel>
+  </Grid>
+</Window>

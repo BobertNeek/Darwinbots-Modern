@@ -41,6 +41,16 @@ public sealed class SimulationSession : IAsyncDisposable
         return report ?? DnaImportReport.Compatible;
     }
 
+    public async Task<int> ImportOrganismAsync(
+        ReadOnlyMemory<byte> payload,
+        CancellationToken cancellationToken = default)
+    {
+        if (payload.IsEmpty) throw new ArgumentException("Organism interchange payload is empty.", nameof(payload));
+        var imported = 0;
+        await Enqueue(engine => imported = engine.ImportOrganism(payload), cancellationToken).ConfigureAwait(false);
+        return imported;
+    }
+
     public async Task<DnaImportReport> ImportSpeciesAsync(SpeciesImport species, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(species);
@@ -50,8 +60,32 @@ public sealed class SimulationSession : IAsyncDisposable
         return report ?? DnaImportReport.Compatible;
     }
 
+    public async Task<DnaImportReport> InsertSpeciesAtAsync(
+        SpeciesImport species,
+        float[] position,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(species);
+        species.Validate();
+        ValidatePosition(position);
+        DnaImportReport? report = null;
+        float[] requestedPosition = [.. position];
+        await Enqueue(engine => report = engine.InsertSpeciesAt(species, requestedPosition), cancellationToken)
+            .ConfigureAwait(false);
+        return report ?? DnaImportReport.Compatible;
+    }
+
     public Task RemoveAsync(uint slot, uint generation, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Remove(slot, generation), cancellationToken);
+
+    public Task RemoveManyAsync(IReadOnlyList<OrganismKey> organisms, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        OrganismKey[] stableOrganisms = [.. organisms];
+        return Enqueue(engine => engine.RemoveMany(stableOrganisms), cancellationToken);
+    }
 
     public Task MoveAsync(uint slot, uint generation, float[] position, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Move(slot, generation, position), cancellationToken);
@@ -103,17 +137,101 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task AddObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddObstacle(obstacle), cancellationToken);
 
+    public Task UpdateObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateObstacle(obstacle), cancellationToken);
+
     public Task RemoveObstacleAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveObstacle(id), cancellationToken);
 
     public Task AddTeleporterAsync(TeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddTeleporter(teleporter), cancellationToken);
 
+    public Task UpdateTeleporterAsync(TeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateTeleporter(teleporter), cancellationToken);
+
     public Task RemoveTeleporterAsync(uint id, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.RemoveTeleporter(id), cancellationToken);
 
+    public Task AddFileTeleporterAsync(FileTeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.AddFileTeleporter(teleporter), cancellationToken);
+
+    public Task UpdateFileTeleporterAsync(FileTeleporterSnapshot teleporter, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateFileTeleporter(teleporter), cancellationToken);
+
+    public Task RemoveFileTeleporterAsync(uint id, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RemoveFileTeleporter(id), cancellationToken);
+
     public Task SetBrownianMotionAsync(float value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetBrownianMotion(value), cancellationToken);
+
+    public Task UpdateMutationSettingsAsync(MutationSettingsUpdate update, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateMutationSettings(update), cancellationToken);
+
+    public Task UpdateOrganismMutationProfileAsync(
+        uint slot,
+        uint generation,
+        MutationProfileUpdate profile,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateOrganismMutationProfile(slot, generation, profile), cancellationToken);
+
+    public Task SetTiesEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetTiesEnabled(enabled), cancellationToken);
+
+    public Task SetSpeciesColorAsync(uint species, uint color, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetSpeciesColor(species, color), cancellationToken);
+
+    public Task MakeNewSpeciesAsync(uint slot, uint generation, string name, uint color, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.MakeNewSpecies(slot, generation, name, color), cancellationToken);
+
+    public Task UpdateLegacyRestrictionsAsync(bool robotFixingAllowed, bool asexualReproductionAllowed, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateLegacyRestrictions(robotFixingAllowed, asexualReproductionAllowed), cancellationToken);
+
+    public Task ConfigurePlayerBotAsync(PlayerBotConfig config, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        foreach (var binding in config.Bindings) binding.Validate();
+        return Enqueue(engine => engine.ConfigurePlayerBot(config), cancellationToken);
+    }
+
+    public Task SetPlayerBotKeyAsync(OrganismKey focus, int keyCode, bool pressed, CancellationToken cancellationToken = default)
+    {
+        if (keyCode is < 0 or > 65_535)
+            throw new ArgumentOutOfRangeException(nameof(keyCode));
+        return Enqueue(engine => engine.SetPlayerBotKey(focus.Slot, focus.Generation, keyCode, pressed), cancellationToken);
+    }
+
+    public Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
+
+    public Task SetOrganismEnergyAsync(uint slot, uint generation, int energy, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrganismEnergy(slot, generation, energy), cancellationToken);
+
+    public Task UpdateRestrictionOptionsAsync(RestrictionOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return Enqueue(engine => engine.UpdateRestrictionOptions(options), cancellationToken);
+    }
+
+    public Task ConfigureLocalModeAsync(LocalModeConfig config, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return Enqueue(engine => engine.ConfigureLocalMode(config), cancellationToken);
+    }
+
+    public Task StartLocalModeAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.StartLocalMode(), cancellationToken);
+
+    public Task RestartLocalModeAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.RestartLocalMode(), cancellationToken);
+
+    public Task AdjudicateLocalRoundAsync(uint? winner, string reason, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        return Enqueue(engine => engine.AdjudicateLocalRound(winner, reason), cancellationToken);
+    }
+
+    public Task SetOrganismAimAsync(uint slot, uint generation, int aim, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.SetOrganismAim(slot, generation, aim), cancellationToken);
 
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
@@ -123,6 +241,13 @@ public sealed class SimulationSession : IAsyncDisposable
         byte[]? save = null;
         await Enqueue(engine => save = engine.Save(), cancellationToken).ConfigureAwait(false);
         return save ?? throw new InvalidDataException("Engine returned no save data.");
+    }
+
+    public async Task<byte[]> SaveWithoutMutationsAsync(CancellationToken cancellationToken = default)
+    {
+        byte[]? save = null;
+        await Enqueue(engine => save = engine.SaveWithoutMutations(), cancellationToken).ConfigureAwait(false);
+        return save ?? throw new InvalidDataException("Engine returned no mutation-free save data.");
     }
 
     public Task LoadAsync(byte[] save, CancellationToken cancellationToken = default)
@@ -139,6 +264,13 @@ public sealed class SimulationSession : IAsyncDisposable
         var command = new SessionCommand(action, completion, cancellationToken);
         _commands.Add(command, cancellationToken);
         return completion.Task;
+    }
+
+    private static void ValidatePosition(float[] position)
+    {
+        ArgumentNullException.ThrowIfNull(position);
+        if (position.Length != 2 || position.Any(value => !float.IsFinite(value)))
+            throw new ArgumentException("World position must contain two finite coordinates.", nameof(position));
     }
 
     private void ProcessCommands()

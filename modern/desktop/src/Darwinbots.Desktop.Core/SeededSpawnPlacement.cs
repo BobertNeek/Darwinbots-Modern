@@ -26,6 +26,23 @@ public sealed class SeededSpawnPlacement(ulong seed)
         return positions;
     }
 
+    public float[][] Next(SpeciesImport species, float worldWidth, float worldHeight)
+    {
+        ArgumentNullException.ThrowIfNull(species);
+        species.Validate();
+        return species.Placement.Mode switch
+        {
+            SpeciesPlacementMode.Random => Next(species.InitialCount, worldWidth, worldHeight),
+            SpeciesPlacementMode.Center => Enumerable.Range(0, species.InitialCount)
+                .Select(_ => new[] { worldWidth / 2f, worldHeight / 2f })
+                .ToArray(),
+            SpeciesPlacementMode.Fixed => Enumerable.Range(0, species.InitialCount)
+                .Select(_ => new[] { species.Placement.X, species.Placement.Y })
+                .ToArray(),
+            _ => throw new ArgumentOutOfRangeException(nameof(species.Placement)),
+        };
+    }
+
     private float NextUnit() => (NextRandom() >> 40) / 16_777_216f;
 
     private ulong NextRandom()

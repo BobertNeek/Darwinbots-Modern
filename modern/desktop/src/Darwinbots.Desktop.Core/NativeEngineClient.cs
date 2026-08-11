@@ -12,26 +12,18 @@ public sealed partial class NativeEngineClient : IEngineClient
     private readonly float _worldHeight;
     private readonly SeededSpawnPlacement _spawnPlacement;
 
-    public NativeEngineClient(WorldSetupOptions options) : this(
-        options.Backend,
-        options.PopulationCapacity,
-        options.Seed,
-        options.WorldWidth,
-        options.WorldHeight,
-        options.EffectiveMetabolismCost,
-        options.VegetableEnergyPerTick,
-        options.SunlightEnergy,
-        options.Gravity,
-        options.Drag,
-        options.BrownianMotion,
-        options.VegetablePopulationCap,
-        options.Physics,
-        options.Shots,
-        options.Vegetation,
-        options.AutoSpeciation,
-        options.SpeciationGeneticDistancePercent,
-        options.ToroidalWorld)
+    public NativeEngineClient(WorldSetupOptions options)
     {
+        _worldWidth = options.WorldWidth;
+        _worldHeight = options.WorldHeight;
+        _spawnPlacement = new SeededSpawnPlacement(options.Seed);
+        ValidatePosition(options.Gravity);
+        var bytes = Encoding.UTF8.GetBytes(NativeCommandSerializer.SerializeEngineConfig(options));
+        ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
+        if (_engine == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("Native engine creation returned a null handle.");
+        }
     }
 
     public NativeEngineClient(
@@ -52,43 +44,34 @@ public sealed partial class NativeEngineClient : IEngineClient
         Db2VegetationOptions? vegetation = null,
         bool autoSpeciation = false,
         float speciationGeneticDistancePercent = 20f,
-        bool toroidalWorld = true)
+        bool toroidalWorld = true,
+        bool wrapX = true,
+        bool wrapY = true,
+        GlobalSettings? globalSettings = null) : this(new WorldSetupOptions
     {
-        _worldWidth = worldWidth;
-        _worldHeight = worldHeight;
-        _spawnPlacement = new SeededSpawnPlacement(seed);
-        gravity ??= [0f, 0f];
-        physics ??= Db2PhysicsOptions.Default;
-        shots ??= Db2ShotOptions.Default;
-        vegetation ??= Db2VegetationOptions.Default;
-        ValidatePosition(gravity);
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            seed,
-            organism_capacity = capacity,
-            vegetable_population_cap = vegetablePopulationCap,
-            world_width = worldWidth,
-            world_height = worldHeight,
-            backend,
-            allow_cpu_fallback = true,
-            metabolism_cost = metabolismCost,
-            vegetable_energy_per_tick = vegetableEnergyPerTick,
-            sunlight_energy = sunlightEnergy,
-            gravity,
-            drag,
-            brownian_motion = brownianMotion,
-            physics = NativeCommandSerializer.Physics(physics),
-            shots = NativeCommandSerializer.Shots(shots),
-            vegetation = NativeCommandSerializer.Vegetation(vegetation),
-            auto_speciation = autoSpeciation,
-            speciation_genetic_distance_percent = speciationGeneticDistancePercent,
-            toroidal_world = toroidalWorld,
-        });
-        ThrowIfFailed(NativeMethods.EngineCreate(bytes, (nuint)bytes.Length, out _engine), "create engine");
-        if (_engine == IntPtr.Zero)
-        {
-            throw new InvalidOperationException("Native engine creation returned a null handle.");
-        }
+        Backend = backend,
+        PopulationCapacity = capacity,
+        Seed = seed,
+        WorldWidth = worldWidth,
+        WorldHeight = worldHeight,
+        MetabolismCost = metabolismCost,
+        VegetableEnergyPerTick = vegetableEnergyPerTick,
+        SunlightEnergy = sunlightEnergy,
+        Gravity = gravity ?? [0f, 0f],
+        Drag = drag,
+        BrownianMotion = brownianMotion,
+        VegetablePopulationCap = vegetablePopulationCap,
+        Physics = physics ?? Db2PhysicsOptions.Default,
+        Shots = shots ?? Db2ShotOptions.Default,
+        Vegetation = vegetation ?? Db2VegetationOptions.Default,
+        AutoSpeciation = autoSpeciation,
+        SpeciationGeneticDistancePercent = speciationGeneticDistancePercent,
+        ToroidalWorld = toroidalWorld,
+        WrapX = wrapX,
+        WrapY = wrapY,
+        GlobalSettings = globalSettings ?? new GlobalSettings(),
+    })
+    {
     }
 
     public string Backend => NativeMethods.EngineBackend(_engine) switch
@@ -115,6 +98,18 @@ public sealed partial class NativeEngineClient : IEngineClient
         return ReadImportReport(result.GetProperty("results")[0]);
     }
 
+    public int ImportOrganism(ReadOnlyMemory<byte> payload)
+    {
+        EnsureAlive();
+        if (payload.IsEmpty) throw new ArgumentException("Organism interchange payload is empty.", nameof(payload));
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "import_organism", payload = payload.ToArray() } },
+        }, "import organism");
+        return result.GetProperty("results")[0].GetProperty("count").GetInt32();
+    }
+
     public DnaImportReport ImportSpecies(SpeciesImport species)
     {
         EnsureAlive();
@@ -132,14 +127,61 @@ public sealed partial class NativeEngineClient : IEngineClient
                     name = species.Name,
                     vegetable = species.Vegetable,
                     color = species.Color,
+                    initial_count = species.InitialCount,
                     minimum_population = species.MinimumPopulation,
                     reseed = species.Reseed,
                     mutation_rate = species.MutationRate,
                     initial_energy = species.InitialEnergy,
-                    positions = _spawnPlacement.Next(species.InitialCount, _worldWidth, _worldHeight),
+                    placement = new
+                    {
+                        mode = species.Placement.Mode.ToString().ToLowerInvariant(),
+                        x = species.Placement.X,
+                        y = species.Placement.Y,
+                    },
+                    skin = species.Skin.Select(point => new { radius = point.Radius, angle = point.Angle }).ToArray(),
+                    restrictions = SpeciesRestrictions(species.Restrictions),
+                    positions = _spawnPlacement.Next(species, _worldWidth, _worldHeight),
                 },
             },
         }, "import species");
+        return ReadImportReport(result.GetProperty("results")[0]);
+    }
+
+    public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(species);
+        species.Validate();
+        ValidatePosition(position);
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "import_species",
+                    dna = species.Dna,
+                    name = species.Name,
+                    vegetable = species.Vegetable,
+                    color = species.Color,
+                    initial_count = species.InitialCount,
+                    minimum_population = species.MinimumPopulation,
+                    reseed = species.Reseed,
+                    mutation_rate = species.MutationRate,
+                    initial_energy = species.InitialEnergy,
+                    placement = new
+                    {
+                        mode = species.Placement.Mode.ToString().ToLowerInvariant(),
+                        x = species.Placement.X,
+                        y = species.Placement.Y,
+                    },
+                    skin = species.Skin.Select(point => new { radius = point.Radius, angle = point.Angle }).ToArray(),
+                    restrictions = SpeciesRestrictions(species.Restrictions),
+                    positions = new[] { position },
+                },
+            },
+        }, "insert species");
         return ReadImportReport(result.GetProperty("results")[0]);
     }
 
@@ -150,6 +192,20 @@ public sealed partial class NativeEngineClient : IEngineClient
             .Where(item => item.Length > 0).ToArray());
     }
 
+    private static object SpeciesRestrictions(SpeciesRestrictionSettings value) => new
+    {
+        kill_multibot = value.KillMultibot,
+        kill_disqualified = value.KillDisqualified,
+        fixed_in_place = value.FixedInPlace,
+        disable_vision = value.DisableVision,
+        disable_dna = value.DisableDna,
+        disable_movement = value.DisableMovement,
+        disable_reproduction = value.DisableReproduction,
+        virus_immune = value.VirusImmune,
+        disable_mutations = value.DisableMutations,
+        disable_chloroplasts = value.DisableChloroplasts,
+    };
+
     public void Remove(uint slot, uint generation)
     {
         EnsureAlive();
@@ -158,6 +214,15 @@ public sealed partial class NativeEngineClient : IEngineClient
             version = 1,
             commands = new[] { new { type = "remove", slot, generation } },
         }, "remove organism");
+    }
+
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count == 0)
+            throw new ArgumentException("At least one organism is required.", nameof(organisms));
+        EnsureAlive();
+        ExecuteBatch(NativeCommandSerializer.CreateRemoveManyBatch(organisms), "remove organisms");
     }
 
     public void Move(uint slot, uint generation, float[] position)
@@ -213,26 +278,348 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "add_obstacle", id = obstacle.Id, minimum = obstacle.Minimum, maximum = obstacle.Maximum } } }, "add obstacle");
     }
 
+    public void UpdateObstacle(ObstacleSnapshot obstacle)
+    {
+        ArgumentNullException.ThrowIfNull(obstacle);
+        ValidatePosition(obstacle.Minimum);
+        ValidatePosition(obstacle.Maximum);
+        if (!float.IsFinite(obstacle.Opacity) || obstacle.Opacity is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(obstacle));
+        if (obstacle.Drift is not { Length: 2 } || obstacle.Drift.Any(value => !float.IsFinite(value)))
+            throw new ArgumentException("Obstacle drift must contain two finite values.", nameof(obstacle));
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "update_obstacle",
+                    obstacle = new
+                    {
+                        id = obstacle.Id,
+                        minimum = obstacle.Minimum,
+                        maximum = obstacle.Maximum,
+                        color = obstacle.Color,
+                        opacity = obstacle.Opacity,
+                        drift = obstacle.Drift,
+                        vision_policy = obstacle.VisionPolicy,
+                        shot_policy = obstacle.ShotPolicy,
+                    },
+                },
+            },
+        }, "update obstacle");
+    }
+
     public void RemoveObstacle(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_obstacle", id } } }, "remove obstacle");
 
     public void AddTeleporter(TeleporterSnapshot teleporter)
     {
-        ArgumentNullException.ThrowIfNull(teleporter);
-        ValidatePosition(teleporter.Center);
-        ValidatePosition(teleporter.Destination);
-        if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0) throw new ArgumentOutOfRangeException(nameof(teleporter));
-        ExecuteBatch(new { version = 1, commands = new[] { new { type = "add_teleporter", id = teleporter.Id, center = teleporter.Center, radius = teleporter.Radius, destination = teleporter.Destination } } }, "add teleporter");
+        ValidateTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { TeleporterPayload("add_teleporter", teleporter) },
+        }, "add teleporter");
+    }
+
+    public void UpdateTeleporter(TeleporterSnapshot teleporter)
+    {
+        ValidateTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { TeleporterPayload("update_teleporter", teleporter) },
+        }, "update teleporter");
     }
 
     public void RemoveTeleporter(uint id) => ExecuteBatch(
         new { version = 1, commands = new[] { new { type = "remove_teleporter", id } } }, "remove teleporter");
+
+    private static object TeleporterPayload(string command, TeleporterSnapshot teleporter)
+    {
+        var mode = teleporter.Mode.Trim().ToLowerInvariant();
+        return new
+        {
+            type = command,
+            id = teleporter.Id,
+            center = teleporter.Center,
+            radius = teleporter.Radius,
+            destination = teleporter.Destination,
+            width = teleporter.Radius * 2f,
+            height = teleporter.Radius * 2f,
+            color = teleporter.Color,
+            velocity = teleporter.Velocity,
+            path = teleporter.Path,
+            inbound_path = teleporter.InboundPath,
+            outbound_path = teleporter.OutboundPath,
+            inbound = mode is "intrasim" or "inbound",
+            outbound = mode == "outbound",
+            local = mode == "intrasim",
+            internet = mode == "internet",
+            drift_horizontal = teleporter.DriftHorizontal,
+            drift_vertical = teleporter.DriftVertical,
+            fixed_position = teleporter.FixedPosition,
+            highlight = teleporter.Highlight,
+            filters = new
+            {
+                teleport_vegetables = teleporter.TeleportVegetables,
+                teleport_corpses = teleporter.TeleportCorpses,
+                teleport_heterotrophs = teleporter.TeleportHeterotrophs,
+            },
+            respect_shapes = teleporter.RespectShapes,
+            sent = teleporter.Sent,
+            received = teleporter.Received,
+            poll_interval = teleporter.PollInterval,
+            capacity = teleporter.Capacity,
+            poll_countdown = teleporter.PollCountdown,
+            backflow_limit = teleporter.BackflowLimit,
+        };
+    }
+
+    private static void ValidateTeleporter(TeleporterSnapshot teleporter)
+    {
+        ArgumentNullException.ThrowIfNull(teleporter);
+        ValidatePosition(teleporter.Center);
+        ValidatePosition(teleporter.Destination);
+        if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (teleporter.Mode.Trim().ToLowerInvariant() is not ("intrasim" or "inbound" or "outbound"))
+            throw new ArgumentException("Online teleporters are disabled in offline mode.", nameof(teleporter));
+    }
+
+    public void AddFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ValidateFileTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "add_file_teleporter", teleporter = FileTeleporterPayload(teleporter) } },
+        }, "add file teleporter");
+    }
+
+    public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ValidateFileTeleporter(teleporter);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "update_file_teleporter", teleporter = FileTeleporterPayload(teleporter) } },
+        }, "update file teleporter");
+    }
+
+    public void RemoveFileTeleporter(uint id) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "remove_file_teleporter", id } } }, "remove file teleporter");
+
+    private static object FileTeleporterPayload(FileTeleporterSnapshot teleporter) => new
+    {
+        id = teleporter.Id,
+        center = teleporter.Center,
+        radius = teleporter.Radius,
+        inbound_path = teleporter.InboundPath,
+        outbound_path = teleporter.OutboundPath,
+        poll_interval = teleporter.PollInterval,
+        poll_countdown = teleporter.PollCountdown,
+        capacity = teleporter.Capacity,
+        filters = new
+        {
+            teleport_vegetables = teleporter.Filters.TeleportVegetables,
+            teleport_corpses = teleporter.Filters.TeleportCorpses,
+            teleport_heterotrophs = teleporter.Filters.TeleportHeterotrophs,
+        },
+        sent = teleporter.Sent,
+        received = teleporter.Received,
+    };
+
+    private void ValidateFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ArgumentNullException.ThrowIfNull(teleporter);
+        ValidatePosition(teleporter.Center);
+        if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (string.IsNullOrWhiteSpace(teleporter.InboundPath) && string.IsNullOrWhiteSpace(teleporter.OutboundPath))
+            throw new ArgumentException("A file teleporter needs an inbound or outbound path.", nameof(teleporter));
+        if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(teleporter));
+    }
 
     public void SetBrownianMotion(float value)
     {
         if (!float.IsFinite(value) || value < 0) throw new ArgumentOutOfRangeException(nameof(value));
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_brownian_motion", value } } }, "set Brownian motion");
     }
+
+    public void UpdateMutationSettings(MutationSettingsUpdate update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        if (!float.IsFinite(update.GlobalMultiplier) || update.GlobalMultiplier is < 0 or > 100)
+            throw new ArgumentOutOfRangeException(nameof(update));
+        if (update.SpeciesRates.Any(value => !float.IsFinite(value.Rate) || value.Rate is < 0 or > 100))
+            throw new ArgumentOutOfRangeException(nameof(update));
+        ExecuteBatch(NativeCommandSerializer.CreateMutationSettingsBatch(update), "update mutation settings");
+    }
+
+    public void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ExecuteBatch(
+            NativeCommandSerializer.CreateOrganismMutationProfileBatch(
+                new OrganismKey(slot, generation), profile),
+            "update organism mutation profile");
+    }
+
+    public void SetTiesEnabled(bool enabled) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_ties_enabled", enabled } } },
+        "update tie policy");
+
+    public void SetSpeciesColor(uint species, uint color) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_species_color", species, color } } },
+        "change species color");
+
+    public void MakeNewSpecies(uint slot, uint generation, string name, uint color)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "make_new_species", slot, generation, name, color } } }, "make new species");
+    }
+
+    public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "update_legacy_restrictions", robot_fixing_allowed = robotFixingAllowed, asexual_reproduction_allowed = asexualReproductionAllowed } } },
+        "update legacy restrictions");
+
+    public void ConfigurePlayerBot(PlayerBotConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        foreach (var binding in config.Bindings) binding.Validate();
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "configure_player_bot",
+                    enabled = config.Enabled,
+                    focus = OrganismPayload(config.Focus),
+                    bindings = config.Bindings.Select(binding => new
+                    {
+                        key = binding.KeyCode,
+                        memory_address = binding.MemoryAddress,
+                        value = binding.Value,
+                        invert = binding.Invert,
+                    }).ToArray(),
+                },
+            },
+        }, "configure PlayerBot");
+    }
+
+    public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed)
+    {
+        if (keyCode is < 0 or > 65_535)
+            throw new ArgumentOutOfRangeException(nameof(keyCode));
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_player_bot_key", slot, generation, key = keyCode, pressed } },
+        }, "update PlayerBot key state");
+    }
+
+    public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_organism_memory", slot, generation, address, value } },
+        }, "set organism memory");
+
+    public void SetOrganismEnergy(uint slot, uint generation, int energy) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[] { new { type = "set_organism_energy", slot, generation, energy } },
+        }, "set organism energy");
+
+    public void UpdateRestrictionOptions(RestrictionOptions options) => ExecuteBatch(
+        new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "update_restriction_options",
+                    options = new
+                    {
+                        non_repopulating = RestrictionColumnPayload(options.NonRepopulating),
+                        repopulating = RestrictionColumnPayload(options.Repopulating),
+                    },
+                },
+            },
+        }, "update restriction options");
+
+    public void ConfigureLocalMode(LocalModeConfig config)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(config);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "configure_local_mode",
+                    config = new
+                    {
+                        kind = ModeKindName(config.Kind),
+                        preset = PresetName(config.Preset),
+                        minimum_rounds = config.MinimumRounds,
+                        maximum_rounds = config.MaximumRounds,
+                        maximum_cycles = config.MaximumCycles,
+                        maximum_population = config.MaximumPopulation,
+                        restart_on_extinction = config.RestartOnExtinction,
+                        energy_handicap = config.EnergyHandicap,
+                        source_species = config.SourceSpecies,
+                        selection_population_weight = config.SelectionPopulationWeight,
+                        selection_energy_weight = config.SelectionEnergyWeight,
+                        restrictions = new
+                        {
+                            prohibit_information_shots = config.Restrictions.ProhibitInformationShots,
+                            prohibit_viruses = config.Restrictions.ProhibitViruses,
+                            prohibit_sexual_reproduction = config.Restrictions.ProhibitSexualReproduction,
+                            prohibit_cross_species_tie_transfer = config.Restrictions.ProhibitCrossSpeciesTieTransfer,
+                            robot_fixing_allowed = config.Restrictions.RobotFixingAllowed,
+                            asexual_reproduction_allowed = config.Restrictions.AsexualReproductionAllowed,
+                        },
+                    },
+                },
+            },
+        }, "configure local mode");
+    }
+
+    public void StartLocalMode() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "start_local_mode" } } },
+        "start local mode");
+
+    public void RestartLocalMode() => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "restart_local_mode" } } },
+        "restart local mode");
+
+    public void AdjudicateLocalRound(uint? winner, string reason)
+    {
+        EnsureAlive();
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new { type = "adjudicate_local_round", winner, reason } },
+        }, "adjudicate local round");
+    }
+
+    public void SetOrganismAim(uint slot, uint generation, int aim) => ExecuteBatch(
+        new { version = 1, commands = new[] { new { type = "set_organism_aim", slot, generation, aim } } },
+        "set organism aim");
 
     public void UpdateEnvironment(EnvironmentUpdate update)
     {
@@ -251,6 +638,44 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (position.Length != 2 || position.Any(value => !float.IsFinite(value)))
             throw new ArgumentException("Position must contain two finite coordinates.", nameof(position));
     }
+
+    private static object? OrganismPayload(OrganismKey? key) => key is { } value
+        ? new { slot = value.Slot, generation = value.Generation }
+        : null;
+
+    private static object RestrictionColumnPayload(RestrictionColumn value) => new
+    {
+        kill_multibot = value.KillMultibot,
+        kill_disqualified = value.KillDisqualified,
+        disable_chloroplasts = value.DisableChloroplasts,
+        fixed_in_place = value.FixedInPlace,
+        disable_vision = value.DisableVision,
+        disable_dna = value.DisableDna,
+        disable_reproduction = value.DisableReproduction,
+        virus_immune = value.VirusImmune,
+        disable_mutations = value.DisableMutations,
+        disable_movement = value.DisableMovement,
+    };
+
+    private static string ModeKindName(LocalModeKind kind) => kind switch
+    {
+        LocalModeKind.Contest => "contest",
+        LocalModeKind.SimpleSurvival => "simple_survival",
+        LocalModeKind.EcoSurvival => "eco_survival",
+        LocalModeKind.Zerobot => "zerobot",
+        _ => "league",
+    };
+
+    private static string PresetName(LeaguePreset preset) => preset switch
+    {
+        LeaguePreset.F2 => "f2",
+        LeaguePreset.F3 => "f3",
+        LeaguePreset.Multibot => "multibot",
+        LeaguePreset.ShortBot => "short_bot",
+        LeaguePreset.SingleGene => "single_gene",
+        LeaguePreset.SingleStore => "single_store",
+        _ => "f1",
+    };
 
     public EngineCapabilities Capabilities()
     {
@@ -280,6 +705,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         EnsureAlive();
         var buffer = new NativeBuffer();
         ThrowIfFailed(NativeMethods.EngineSave(_engine, ref buffer), "save simulation");
+        try { return CopyBuffer(buffer); }
+        finally { NativeMethods.BufferFree(ref buffer); }
+    }
+
+    public byte[] SaveWithoutMutations()
+    {
+        EnsureAlive();
+        var buffer = new NativeBuffer();
+        ThrowIfFailed(NativeMethods.EngineSaveWithoutMutations(_engine, ref buffer), "save simulation without mutations");
         try { return CopyBuffer(buffer); }
         finally { NativeMethods.BufferFree(ref buffer); }
     }
@@ -425,6 +859,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_save")]
         internal static partial DbStatus EngineSave(IntPtr engine, ref NativeBuffer buffer);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_save_without_mutations")]
+        internal static partial DbStatus EngineSaveWithoutMutations(IntPtr engine, ref NativeBuffer buffer);
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_load")]
         internal static partial DbStatus EngineLoad(IntPtr engine, byte[] save, nuint saveLength);

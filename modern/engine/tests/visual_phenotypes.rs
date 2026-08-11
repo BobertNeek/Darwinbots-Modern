@@ -52,8 +52,7 @@ fn generated_skin_is_stable_and_inside_the_bot() {
 
 #[test]
 fn real_mutation_drifts_color_but_zero_changes_do_not() {
-    let mut phenotype =
-        VisualPhenotype::new(3, 0xff23_9ac0, generated_skin("Animal", 3));
+    let mut phenotype = VisualPhenotype::new(3, 0xff23_9ac0, generated_skin("Animal", 3));
     let original = phenotype.clone();
     let mut random = 91;
 
@@ -79,8 +78,7 @@ fn autotroph_mutations_remain_green() {
 
 #[test]
 fn speciation_changes_one_skin_point_and_resets_distance() {
-    let mut phenotype =
-        VisualPhenotype::new(9, 0xff23_9ac0, generated_skin("Animal", 9));
+    let mut phenotype = VisualPhenotype::new(9, 0xff23_9ac0, generated_skin("Animal", 9));
     phenotype.accumulated_mutations = 12;
     let before = phenotype.skin;
     let mut random = 17;
@@ -140,13 +138,13 @@ fn crossing_speciation_threshold_changes_skin_once() {
 }
 
 #[test]
-fn phenotype_round_trips_through_version_two_save() {
+fn phenotype_round_trips_through_version_three_save() {
     let mut engine = phenotype_engine(true, 1.0);
     spawn_mutating_parent(&mut engine, true);
     engine.tick().unwrap();
 
     let bytes = SaveFile::encode(&engine).unwrap();
-    assert_eq!(&bytes[..6], &[b'D', b'B', b'3', b'S', 2, 0]);
+    assert_eq!(&bytes[..6], &[b'D', b'B', b'3', b'S', 3, 0]);
     let restored = SaveFile::decode(&bytes).unwrap();
 
     assert_eq!(restored.snapshot().organisms, engine.snapshot().organisms);

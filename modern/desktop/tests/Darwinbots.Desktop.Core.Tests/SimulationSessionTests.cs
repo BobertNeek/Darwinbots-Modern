@@ -104,6 +104,21 @@ public sealed class SimulationSessionTests
     }
 
     [Fact]
+    public async Task RemoveManyPreservesStableOrganismKeysAndRunsOnTheEngineThread()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        OrganismKey[] organisms = [new(3, 2), new(7, 5)];
+        var callerThread = Environment.CurrentManagedThreadId;
+
+        await session.RemoveManyAsync(organisms);
+
+        Assert.Equal(organisms, Assert.Single(engine.RemoveManyCalls));
+        var executionThread = Assert.Single(engine.ExecutionThreads);
+        Assert.NotEqual(callerThread, executionThread);
+    }
+
+    [Fact]
     public async Task ManualToolsReturnIdsAndDnaThroughTheSession()
     {
         var engine = new FakeEngineClient();
@@ -158,13 +173,43 @@ public sealed class SimulationSessionTests
 
         await session.AddObstacleAsync(obstacle);
         await session.AddTeleporterAsync(teleporter);
+        await session.UpdateTeleporterAsync(teleporter with { Capacity = 3, RespectShapes = true });
         await session.RemoveObstacleAsync(7);
         await session.RemoveTeleporterAsync(8);
 
         Assert.Equal(obstacle, engine.LastObstacleAdded);
         Assert.Equal(teleporter, engine.LastTeleporterAdded);
+        Assert.Equal(3, engine.LastTeleporterUpdated!.Capacity);
+        Assert.True(engine.LastTeleporterUpdated.RespectShapes);
         Assert.Equal(7U, engine.LastObstacleRemoved);
         Assert.Equal(8U, engine.LastTeleporterRemoved);
+        Assert.Single(engine.ExecutionThreads);
+    }
+
+    [Fact]
+    public async Task ShapeAndOfflineTeleporterEditorsForwardAllProperties()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        var obstacle = new ObstacleSnapshot(7, [10f, 20f], [30f, 40f])
+        {
+            Color = 0xff112233u,
+            Opacity = 0.4f,
+            Drift = [2f, -3f],
+            VisionPolicy = "see_through",
+            ShotPolicy = "pass_through",
+        };
+        var teleporter = new FileTeleporterSnapshot(
+            9, [50f, 60f], 15f, "in", "out", 3, 1, 4,
+            new TeleporterFilterSnapshot(false, true, true), 8, 5);
+
+        await session.UpdateObstacleAsync(obstacle);
+        await session.AddFileTeleporterAsync(teleporter);
+        await session.UpdateFileTeleporterAsync(teleporter with { PollInterval = 5 });
+
+        Assert.Equal(obstacle, engine.LastObstacleUpdated);
+        Assert.Equal(teleporter, engine.LastFileTeleporterAdded);
+        Assert.Equal(5U, engine.LastFileTeleporterUpdated!.PollInterval);
         Assert.Single(engine.ExecutionThreads);
     }
 
@@ -202,6 +247,19 @@ public sealed class SimulationSessionTests
     }
 
     [Fact]
+    public async Task MutationSettingsRunOnTheEngineThread()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        var update = new MutationSettingsUpdate(false, 2.25f, [new SpeciesMutationRateUpdate(1, 3.5f)]);
+
+        await session.UpdateMutationSettingsAsync(update);
+
+        Assert.Equal(update, engine.LastMutationSettings);
+        Assert.Single(engine.ExecutionThreads);
+    }
+
+    [Fact]
     public async Task SaveAndLoadRunOnEngineThreadAndRepublishLoadedSnapshot()
     {
         var engine = new FakeEngineClient();
@@ -216,6 +274,20 @@ public sealed class SimulationSessionTests
         Assert.Equal(7UL, session.LatestSnapshot.Tick);
         Assert.Single(engine.ExecutionThreads);
     }
+
+    [Fact]
+    public async Task SaveWithoutMutationsRunsOnEngineThreadWithoutUsingOrdinarySave()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+
+        var save = await session.SaveWithoutMutationsAsync();
+
+        Assert.Equal([9, 8, 7], save);
+        Assert.True(engine.SavedWithoutMutations);
+        Assert.False(engine.SavedNormally);
+        Assert.Single(engine.ExecutionThreads);
+    }
 }
 
 internal sealed class FakeEngineClient : IEngineClient
@@ -227,17 +299,28 @@ internal sealed class FakeEngineClient : IEngineClient
     public string? LastDna { get; private set; }
     public float[]? LastImportPosition { get; private set; }
     public SpeciesImport? LastSpeciesImport { get; private set; }
+    public SpeciesImport? LastInsertedSpecies { get; private set; }
+    public float[]? LastInsertedPosition { get; private set; }
     public (uint Slot, uint Generation)? LastRemoved { get; private set; }
+    public List<IReadOnlyList<OrganismKey>> RemoveManyCalls { get; } = [];
     public float[]? LastMovePosition { get; private set; }
     public ObstacleSnapshot? LastObstacleAdded { get; private set; }
+    public ObstacleSnapshot? LastObstacleUpdated { get; private set; }
     public TeleporterSnapshot? LastTeleporterAdded { get; private set; }
+    public TeleporterSnapshot? LastTeleporterUpdated { get; private set; }
+    public FileTeleporterSnapshot? LastFileTeleporterAdded { get; private set; }
+    public FileTeleporterSnapshot? LastFileTeleporterUpdated { get; private set; }
     public uint? LastObstacleRemoved { get; private set; }
     public uint? LastTeleporterRemoved { get; private set; }
     public float? LastBrownianMotion { get; private set; }
     public EnvironmentUpdate? LastEnvironmentUpdate { get; private set; }
+    public MutationSettingsUpdate? LastMutationSettings { get; private set; }
+    public bool? LastTiesEnabled { get; private set; }
     public (uint Slot, uint Generation, string Dna)? LastDnaReplacement { get; private set; }
     private string _dna = "start\nstop";
     public HashSet<int> ExecutionThreads { get; } = [];
+    public bool SavedNormally { get; private set; }
+    public bool SavedWithoutMutations { get; private set; }
 
     public EngineSnapshot Snapshot()
     {
@@ -247,7 +330,19 @@ internal sealed class FakeEngineClient : IEngineClient
 
     public EngineCapabilities Capabilities() => new(1, Backend, false, null);
 
-    public byte[] Save() => BitConverter.GetBytes(_tick);
+    public byte[] Save()
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        SavedNormally = true;
+        return BitConverter.GetBytes(_tick);
+    }
+
+    public byte[] SaveWithoutMutations()
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        SavedWithoutMutations = true;
+        return [9, 8, 7];
+    }
 
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
 
@@ -274,11 +369,27 @@ internal sealed class FakeEngineClient : IEngineClient
         return new DnaImportReport(["legacy warning"]);
     }
 
+    public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastInsertedSpecies = species;
+        LastInsertedPosition = position;
+        _population++;
+        return new DnaImportReport(["legacy warning"]);
+    }
+
     public void Remove(uint slot, uint generation)
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastRemoved = (slot, generation);
         _population = Math.Max(0, _population - 1);
+    }
+
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        RemoveManyCalls.Add([.. organisms]);
+        _population = Math.Max(0, _population - organisms.Count);
     }
 
     public void Move(uint slot, uint generation, float[] position) => LastMovePosition = position;
@@ -315,6 +426,12 @@ internal sealed class FakeEngineClient : IEngineClient
         LastObstacleAdded = obstacle;
     }
 
+    public void UpdateObstacle(ObstacleSnapshot obstacle)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastObstacleUpdated = obstacle;
+    }
+
     public void RemoveObstacle(uint id)
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
@@ -327,10 +444,33 @@ internal sealed class FakeEngineClient : IEngineClient
         LastTeleporterAdded = teleporter;
     }
 
+    public void UpdateTeleporter(TeleporterSnapshot teleporter)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastTeleporterUpdated = teleporter;
+    }
+
     public void RemoveTeleporter(uint id)
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastTeleporterRemoved = id;
+    }
+
+    public void AddFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastFileTeleporterAdded = teleporter;
+    }
+
+    public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastFileTeleporterUpdated = teleporter;
+    }
+
+    public void RemoveFileTeleporter(uint id)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
     }
 
     public void SetBrownianMotion(float value)
@@ -344,6 +484,31 @@ internal sealed class FakeEngineClient : IEngineClient
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastEnvironmentUpdate = update;
     }
+
+    public void UpdateMutationSettings(MutationSettingsUpdate update)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastMutationSettings = update;
+    }
+
+    public void SetTiesEnabled(bool enabled)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastTiesEnabled = enabled;
+    }
+    public void SetSpeciesColor(uint species, uint color) { }
+    public void MakeNewSpecies(uint slot, uint generation, string name, uint color) { }
+    public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) { }
+    public void ConfigurePlayerBot(PlayerBotConfig config) { }
+    public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) { }
+    public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) { }
+    public void SetOrganismEnergy(uint slot, uint generation, int energy) { }
+    public void UpdateRestrictionOptions(RestrictionOptions options) { }
+    public void ConfigureLocalMode(LocalModeConfig config) { }
+    public void StartLocalMode() { }
+    public void RestartLocalMode() { }
+    public void AdjudicateLocalRound(uint? winner, string reason) { }
+    public void SetOrganismAim(uint slot, uint generation, int aim) { }
 
     public void Dispose() { }
 }

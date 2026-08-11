@@ -48,14 +48,57 @@ public sealed record OrganismSnapshot(
 {
     public VisualPhenotypeSnapshot Phenotype { get; init; } = VisualPhenotypeSnapshot.Default;
     public VisionSnapshot Vision { get; init; } = VisionSnapshot.Default;
+    public uint CurrentGene { get; init; }
+    public uint ConditionCount { get; init; }
+    public bool[] ActivationBitmap { get; init; } = [];
+    public IReadOnlyList<ActivationFrameSnapshot> ActivationHistory { get; init; } = [];
+    public string DebugText { get; init; } = string.Empty;
+    public IReadOnlyList<MemoryCellSnapshot> Memory { get; init; } = [];
+    public int Mass { get; init; }
+    public float Radius { get; init; }
+    public int Touch { get; init; }
+    public int Taste { get; init; }
+    public int PermanentWaste { get; init; }
+    public ulong Offspring { get; init; }
+    public ulong Descendants { get; init; }
+    public ulong SimulationId { get; init; }
+    public ulong UniqueId { get; init; }
+    public int VirusTimer { get; init; }
+    public ulong NewMutations { get; init; }
+    public ulong TotalMutations { get; init; }
+    public ulong? LastMutationCycle { get; init; }
+    public string? LastMutationKind { get; init; }
+    public IReadOnlyList<string> MutationLog { get; init; } = [];
+    public IReadOnlyDictionary<string, ulong> MutationClassCounts { get; init; } =
+        new Dictionary<string, ulong>();
+    public int Subspecies { get; init; }
+    public MutationProfileUpdate MutationProfile { get; init; } = MutationProfileUpdate.Default;
+    public uint DnaLength { get; init; }
+    public uint GeneCount { get; init; }
+    public ulong BirthCycle { get; init; }
+    public ulong Kills { get; init; }
 }
+
+public sealed record ActivationFrameSnapshot(ulong Tick, bool[] Activations)
+{
+    public int ActiveGeneCount => Activations.Count(active => active);
+}
+
+public sealed record MemoryCellSnapshot(ushort Address, int Value);
 
 public sealed record SpeciesSnapshot(
     string Name,
     bool Vegetable,
     uint Color,
     int MinimumPopulation,
-    bool Reseed);
+    bool Reseed,
+    float MutationRate = 0f);
+
+public sealed record MutationSettingsSnapshot(bool Enabled, float GlobalMultiplier)
+{
+    public static MutationSettingsSnapshot Default { get; } = new(true, 1f);
+    public MutationProfileUpdate Profile { get; init; } = MutationProfileUpdate.Default;
+}
 
 public sealed record SimulationStatsSnapshot(
     ulong Births,
@@ -114,9 +157,72 @@ internal static class VisualSnapshotDefaults
         (value % MathF.Tau + MathF.Tau) % MathF.Tau;
 }
 
-public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum);
-public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination);
-public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age);
+public sealed record ObstacleSnapshot(uint Id, float[] Minimum, float[] Maximum)
+{
+    public uint Color { get; init; } = 0xffb9bdb6u;
+    public float Opacity { get; init; } = 1f;
+    public float[] Drift { get; init; } = [0f, 0f];
+    public string VisionPolicy { get; init; } = "opaque";
+    public string ShotPolicy { get; init; } = "absorb";
+}
+public sealed record TeleporterSnapshot(uint Id, float[] Center, float Radius, float[] Destination)
+{
+    public string Mode { get; init; } = "intrasim";
+    public uint Color { get; init; } = 0xffb9bdb6u;
+    public float[] Velocity { get; init; } = [0f, 0f];
+    public string Path { get; init; } = string.Empty;
+    public string InboundPath { get; init; } = string.Empty;
+    public string OutboundPath { get; init; } = string.Empty;
+    public bool Inbound { get; init; } = true;
+    public bool Outbound { get; init; }
+    public bool Local { get; init; } = true;
+    public bool Internet { get; init; }
+    public bool DriftHorizontal { get; init; }
+    public bool DriftVertical { get; init; }
+    public bool FixedPosition { get; init; } = true;
+    public bool Highlight { get; init; }
+    public bool TeleportVegetables { get; init; } = true;
+    public bool TeleportCorpses { get; init; } = true;
+    public bool TeleportHeterotrophs { get; init; } = true;
+    public bool RespectShapes { get; init; }
+    public ulong Sent { get; init; }
+    public ulong Received { get; init; }
+    public uint PollInterval { get; init; } = 1;
+    public uint PollCountdown { get; init; }
+    public int Capacity { get; init; } = 1;
+    public uint BackflowLimit { get; init; }
+}
+public sealed record TeleporterFilterSnapshot(
+    bool TeleportVegetables,
+    bool TeleportCorpses,
+    bool TeleportHeterotrophs);
+public sealed record FileTeleporterSnapshot(
+    uint Id,
+    float[] Center,
+    float Radius,
+    string InboundPath,
+    string OutboundPath,
+    uint PollInterval,
+    uint PollCountdown,
+    int Capacity,
+    TeleporterFilterSnapshot Filters,
+    ulong Sent,
+    ulong Received,
+    string? BackflowGuardPath = null);
+public sealed record CorpseSnapshot(float[] Position, float[] Velocity, int Energy, int Body, ulong Age, uint Species = 0, bool Repopulating = false)
+{
+    public string Dna { get; init; } = string.Empty;
+    public uint Generation { get; init; }
+    public ulong BirthCycle { get; init; }
+    public OrganismKey? Parent { get; init; }
+    public ulong Offspring { get; init; }
+    public ulong Kills { get; init; }
+    public ulong NewMutations { get; init; }
+    public ulong TotalMutations { get; init; }
+    public uint DnaLength { get; init; }
+    public ulong UniqueId { get; init; }
+    public int Chloroplasts { get; init; }
+}
 public sealed record ShotSnapshot(
     OrganismKey Owner,
     float[] Start,
@@ -129,8 +235,25 @@ public sealed record ShotSnapshot(
     float Energy,
     bool ImpactFlash);
 public sealed record TieSnapshot(OrganismKey First, OrganismKey Second, float RestLength);
-public sealed record HistorySampleSnapshot(
+public sealed partial record HistorySampleSnapshot(
     ulong Tick, int Population, long TotalEnergy, ulong Births, ulong Deaths, ulong Mutations, ulong ShotsFired);
+
+public sealed partial record HistorySampleSnapshot
+{
+    public double AverageMutations { get; init; }
+    public double AverageMutationsPerDnaLength { get; init; }
+    public double AverageAge { get; init; }
+    public double AverageDescendents { get; init; }
+    public double AverageEnergy { get; init; }
+    public double AverageDnaLength { get; init; }
+    public double AverageDnaConditions { get; init; }
+    public double DynamicCostStats { get; init; }
+    public double SpeciesDiversity { get; init; }
+    public double AverageChloroplasts { get; init; }
+    public double SelectiveGeneticDistance { get; init; }
+    public double GenerationalDistance { get; init; }
+    public double SlowGeneticDistance { get; init; }
+}
 public sealed record PhaseTimingsSnapshot(
     double Dna, double Intent, double Spatial, double Sensing, double Interactions,
     double Physics, double Lifecycle, double Mutation, double Snapshot)
@@ -146,15 +269,23 @@ public sealed record EngineSnapshot(
 {
     public IReadOnlyList<RenderInstanceSnapshot> RenderInstances { get; init; } = [];
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
+    public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;
+    public bool TiesEnabled { get; init; } = true;
+    public bool RobotFixingAllowed { get; init; } = true;
+    public bool AsexualReproductionAllowed { get; init; } = true;
+    public PlayerBotSnapshot PlayerBot { get; init; } = PlayerBotSnapshot.Default;
+    public RestrictionOptions RestrictionOptions { get; init; } = RestrictionOptions.Default;
     public SimulationStatsSnapshot Stats { get; init; } = SimulationStatsSnapshot.Empty;
     public float[] WorldSize { get; init; } = [16_000f, 12_000f];
     public IReadOnlyList<ObstacleSnapshot> Obstacles { get; init; } = [];
     public IReadOnlyList<TeleporterSnapshot> Teleporters { get; init; } = [];
+    public IReadOnlyList<FileTeleporterSnapshot> FileTeleporters { get; init; } = [];
     public IReadOnlyList<CorpseSnapshot> Corpses { get; init; } = [];
     public IReadOnlyList<ShotSnapshot> Shots { get; init; } = [];
     public IReadOnlyList<TieSnapshot> Ties { get; init; } = [];
     public IReadOnlyList<HistorySampleSnapshot> History { get; init; } = [];
     public PhaseTimingsSnapshot PhaseTimings { get; init; } = PhaseTimingsSnapshot.Empty;
+    public LocalModeSnapshot LocalMode { get; init; } = LocalModeSnapshot.Idle;
     public double TicksPerSecond { get; init; }
     public double SnapshotsPerSecond { get; init; }
     public static EngineSnapshot Empty { get; } = new(0, 0, "UNKNOWN", []);

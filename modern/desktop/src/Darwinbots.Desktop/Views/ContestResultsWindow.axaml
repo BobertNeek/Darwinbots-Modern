@@ -1,0 +1,9 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:Darwinbots.Desktop.Views"
+        x:Class="Darwinbots.Desktop.Views.ContestResultsWindow"
+        Title="Darwinbots Contest Results"
+        Width="980" Height="620" MinWidth="820" MinHeight="500"
+        WindowStartupLocation="CenterOwner">
+  <views:ContestResultsView x:Name="ResultsView" />
+</Window>

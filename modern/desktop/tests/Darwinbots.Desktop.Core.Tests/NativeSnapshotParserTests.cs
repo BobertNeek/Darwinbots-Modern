@@ -315,4 +315,56 @@ public sealed class NativeSnapshotParserTests
         Assert.Equal(new OrganismKey(5, 3), snapshot.Ties[0].Second);
         Assert.Equal(42.5f, snapshot.Ties[0].RestLength);
     }
+
+    [Fact]
+    public void ParsesShapePoliciesAndOfflineTeleporterState()
+    {
+        const string json = """
+            {
+              "tick": 12,
+              "organisms": [],
+              "obstacles": [
+                {
+                  "id": 7,
+                  "minimum": [10, 20],
+                  "maximum": [30, 40],
+                  "color": 4279312947,
+                  "opacity": 0.35,
+                  "drift": [2, -3],
+                  "vision_policy": "see_through",
+                  "shot_policy": "pass_through"
+                }
+              ],
+              "file_teleporters": [
+                {
+                  "id": 9,
+                  "center": [50, 60],
+                  "radius": 15,
+                  "inbound_path": "in",
+                  "outbound_path": "out",
+                  "poll_interval": 3,
+                  "poll_countdown": 1,
+                  "capacity": 4,
+                  "filters": { "teleport_vegetables": false, "teleport_corpses": true, "teleport_heterotrophs": true },
+                  "sent": 8,
+                  "received": 5,
+                  "backflow_guard": "out/db2-guard.dbo"
+                }
+              ]
+            }
+            """;
+
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+
+        Assert.Equal("see_through", snapshot.Obstacles[0].VisionPolicy);
+        Assert.Equal("pass_through", snapshot.Obstacles[0].ShotPolicy);
+        Assert.Equal([2f, -3f], snapshot.Obstacles[0].Drift);
+        Assert.Equal(0.35f, snapshot.Obstacles[0].Opacity);
+        var teleporter = Assert.Single(snapshot.FileTeleporters);
+        Assert.Equal("in", teleporter.InboundPath);
+        Assert.Equal(8UL, teleporter.Sent);
+        Assert.Equal(5UL, teleporter.Received);
+        Assert.False(teleporter.Filters.TeleportVegetables);
+        Assert.Equal("out/db2-guard.dbo", teleporter.BackflowGuardPath);
+    }
 }

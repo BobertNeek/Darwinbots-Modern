@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -46,6 +47,12 @@ public sealed class RenderedControlSurfaceAuditTests
                 "live.expander.world", "live.expander.parameters", "live.expander.environment",
                 "live.expander.physics", "live.expander.senses", "live.expander.energy",
                 "live.expander.history", "live.expander.statistics", "live.expander.experiments",
+                "live.expander.league", "live.local_mode.kind", "live.local_mode.preset",
+                "live.local_mode.minimum_rounds", "live.local_mode.maximum_rounds",
+                "live.local_mode.maximum_cycles", "live.local_mode.population_cap",
+                "live.local_mode.restart", "live.local_mode.info", "live.local_mode.viruses",
+                "live.local_mode.sexual", "live.local_mode.configure", "live.local_mode.start",
+                "live.local_mode.restart_button", "live.local_mode.adjudicate", "live.local_mode.reason",
             ],
             [nameof(AdvancedSettingsRenderedControlsRoundTripEveryField)] =
             [
@@ -61,6 +68,11 @@ public sealed class RenderedControlSurfaceAuditTests
                 "advanced.repopulationcooldown", "advanced.feedingtobody", "advanced.daytime",
                 "advanced.daynightenabled", "advanced.cyclelength", "advanced.cancel", "advanced.apply",
             ],
+            [nameof(GlobalSettingsRenderedSurfaceShowsFourTabs)] =
+            [
+                "global.main", "global.advanced_mutation", "global.league", "global.evolution",
+                "global.cancel", "global.apply",
+            ],
             [nameof(DnaEditorRenderedControlsDispatchThroughVisualTree)] =
             ["dna.editor", "dna.save", "dna.clone", "dna.apply"],
         };
@@ -70,7 +82,7 @@ public sealed class RenderedControlSurfaceAuditTests
     {
         var ids = Coverage.Values.SelectMany(value => value).ToArray();
 
-        Assert.Equal(109, ids.Length);
+        Assert.Equal(125, ids.Length);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.All(ids, id => Assert.False(string.IsNullOrWhiteSpace(id)));
     }
@@ -206,36 +218,44 @@ public sealed class RenderedControlSurfaceAuditTests
         var headless = DesktopTestApplication.Session;
         await headless.Dispatch(() =>
         {
-            var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default);
-            ShowAndCapture(window, 860, 760, "advanced-initial.png");
-
-            string[] numericNames =
-            [
-                "Metabolism", "VegetableEnergy", "Sunlight", "SpeciationDistance", "MaxVelocity",
-                "MovementEfficiency", "GravityX", "GravityY", "SurfaceGravity", "StaticFriction",
-                "KineticFriction", "Density", "Viscosity", "Elasticity", "Drag", "Brownian",
-                "ShotSpeed", "ShotRangeMultiplier", "ShotDecay", "StartChloroplasts", "MaxPlantEnergy",
-                "MinimumChloroplastEquivalents", "RepopulationAmount", "RepopulationCooldown",
-                "FeedingToBody", "CycleLength",
-            ];
-            foreach (var name in numericNames)
-                AssertKeyboardIncrement(window, Named<NumericUpDown>(window, name), resetToMinimum: true);
-
-            string[] checkNames =
-            [
-                "AutoSpeciation", "ToroidalWorld", "EnergyShotsNoDecay", "WasteShotsNoDecay",
-                "Daytime", "DayNightEnabled",
-            ];
-            foreach (var name in checkNames)
+            var snapshot = EngineSnapshot.Empty with
             {
-                var check = Named<CheckBox>(window, name);
-                var before = check.IsChecked;
-                Click(window, check);
-                Assert.True(before != check.IsChecked, $"{name} did not toggle from {before}.");
+                Species =
+                [
+                    new SpeciesSnapshot("Unassigned", false, 0xff858982, 0, false),
+                    new SpeciesSnapshot("Animal Minimalis", false, 0xff239ac0, 0, false, 1f),
+                    new SpeciesSnapshot("Alga Minimalis", true, 0xff4f9f45, 0, false, 0.5f),
+                ],
+            };
+            var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default, snapshot);
+            ShowAndCapture(window, 860, 760, "advanced-initial.png");
+            var tabs = window.GetVisualDescendants().OfType<TabControl>().Single();
+            (int Tab, string[] Numeric, string[] Checks)[] groups =
+            [
+                (0, ["GlobalMutationRate"], ["MutationsEnabled"]),
+                (1, ["Metabolism", "VegetableEnergy", "Sunlight", "StartChloroplasts", "MaxPlantEnergy", "MinimumChloroplastEquivalents", "RepopulationAmount", "RepopulationCooldown", "FeedingToBody", "CycleLength"], ["Daytime", "DayNightEnabled"]),
+                (2, ["MaxVelocity", "MovementEfficiency", "GravityX", "GravityY", "SurfaceGravity", "StaticFriction", "KineticFriction", "Density", "Viscosity", "Elasticity", "Drag", "Brownian", "ShotSpeed", "ShotRangeMultiplier", "ShotDecay"], ["EnergyShotsNoDecay", "WasteShotsNoDecay"]),
+                (3, ["SpeciationDistance"], ["AutoSpeciation", "ToroidalWorld"]),
+            ];
+            foreach (var group in groups)
+            {
+                tabs.SelectedIndex = group.Tab;
+                window.UpdateLayout();
+                foreach (var name in group.Numeric) AssertKeyboardIncrement(window, Named<NumericUpDown>(window, name), resetToMinimum: true);
+                foreach (var name in group.Checks)
+                {
+                    var check = Named<CheckBox>(window, name);
+                    var before = check.IsChecked;
+                    Click(window, check);
+                    Assert.True(before != check.IsChecked, $"{name} did not toggle from {before}.");
+                }
             }
 
             var update = window.Update;
             Assert.NotEqual(EnvironmentUpdate.Default, update);
+            Assert.NotEqual(MutationSettingsUpdate.Default, window.MutationUpdate);
+            Assert.Equal(2, window.MutationUpdate.SpeciesRates.Count);
+            Assert.True(Named<Border>(window, "DirtyBadge").IsVisible);
             Click(window, Named<Button>(window, "ApplyButton"));
             Assert.True(window.Accepted);
             Assert.False(window.IsVisible);
@@ -245,6 +265,31 @@ public sealed class RenderedControlSurfaceAuditTests
             Click(cancel, Named<Button>(cancel, "CancelButton"));
             Assert.False(cancel.Accepted);
             Assert.False(cancel.IsVisible);
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task GlobalSettingsRenderedSurfaceShowsFourTabs()
+    {
+        var headless = DesktopTestApplication.Session;
+        await headless.Dispatch(() =>
+        {
+            var window = new GlobalSettingsWindow(new GlobalSettings
+            {
+                Main = new GlobalMainSettings { NewSeed = true },
+                AdvancedMutation = new GlobalAdvancedMutationSettings { Delta2Enabled = true },
+                Evolution = new GlobalEvolutionSettings { Mode = EvolutionMode.Zerobot },
+            });
+            ShowAndCapture(window, 1050, 780, "global-settings-four-tabs.png");
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            Assert.Equal(
+                ["MAIN", "ADVANCED MUTATION", "LEAGUE", "EVOLUTION"],
+                tabs.Items.Cast<TabItem>().Select(item => item.Header?.ToString() ?? string.Empty).ToArray());
+            Assert.NotNull(window.FindControl<CheckBox>("NewSeed"));
+            Assert.NotNull(window.FindControl<CheckBox>("Delta2Enabled"));
+            Assert.NotNull(window.FindControl<CheckBox>("LeagueOfflineOwned"));
+            Assert.NotNull(window.FindControl<ComboBox>("EvolutionMode"));
+            window.Close();
         }, CancellationToken.None);
     }
 
@@ -303,6 +348,14 @@ public sealed class RenderedControlSurfaceAuditTests
         {
             var window = new MainWindow([], setup, factory, storage);
             ShowAndCapture(window, 1500, 900, "runtime-initial.png");
+            var historicMenu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+            foreach (var topLevel in historicMenu.TopLevelItems)
+            {
+                topLevel.IsSubMenuOpen = true;
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Assert.True(topLevel.IsSubMenuOpen, $"Historic menu {topLevel.Header} did not open.");
+                topLevel.IsSubMenuOpen = false;
+            }
             await WaitFor(
                 () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Audit Species"),
                 () => factory.Clients.TryPeek(out var client) ? string.Join(", ", client.Calls) : "Engine client was not created.");
@@ -352,6 +405,22 @@ public sealed class RenderedControlSurfaceAuditTests
             ClickExpander(window, Named<Expander>(window, "ExperimentsExpander"));
             Click(window, Named<Button>(window, "AdvanceZerobotButton"));
 
+            AssertComboSelection(window, Named<ComboBox>(window, "LocalModeKindSelector"), 1);
+            AssertComboSelection(window, Named<ComboBox>(window, "LocalModePreset"), 1);
+            Named<NumericUpDown>(window, "ModeMinimumRounds").Value = 1;
+            Named<NumericUpDown>(window, "ModeMaximumRounds").Value = 2;
+            Named<NumericUpDown>(window, "ModeMaximumCycles").Value = 120;
+            Named<NumericUpDown>(window, "ModePopulationCap").Value = 16;
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeRestartOnExtinction"));
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeProhibitInformation"));
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeProhibitViruses"));
+            ToggleAndAssert(window, Named<CheckBox>(window, "ModeProhibitSexual"));
+            Named<TextBox>(window, "LocalModeReason").Text = "rendered adjudication";
+            Click(window, Named<Button>(window, "ConfigureModeButton"));
+            Click(window, Named<Button>(window, "StartModeButton"));
+            Click(window, Named<Button>(window, "RestartModeButton"));
+            Click(window, Named<Button>(window, "AdjudicateModeButton"));
+
             var viewport = Named<WorldViewport>(window, "Viewport");
             ClickAt(window, viewport, 0.5, 0.5);
             Assert.Equal(3U, viewModel.SelectedSlot);
@@ -396,14 +465,144 @@ public sealed class RenderedControlSurfaceAuditTests
                 && engine.Calls.Contains("Clone:3:2")
                 && engine.Calls.Contains("Reproduce:3:2")
                 && engine.Calls.Contains("Remove:3:2")
+                && engine.Calls.Contains("ConfigureLocalMode")
+                && engine.Calls.Contains("StartLocalMode")
+                && engine.Calls.Contains("RestartLocalMode")
+                && engine.Calls.Any(call => call.StartsWith("AdjudicateLocalRound:", StringComparison.Ordinal))
                 && engine.EnvironmentUpdates.Count >= 3
                 && storage.SavedSimulation is not null,
                 () => string.Join(", ", engine.Calls));
+            window.Height = 1200;
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Capture(window, "runtime-exercised.png");
 
             Click(window, Named<Button>(window, "ResetButton"));
             await WaitFor(() => factory.Clients.Count >= 2);
             return 0;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task LegacyToolbarRoutesRemainingSlotsAndExposesAccessibleState()
+    {
+        var factory = new AuditEngineClientFactory();
+        var setup = new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            Species = [new SpeciesImport("Audit Species", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+        var callbackResult = new TaskCompletionSource<Exception?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            try
+            {
+                var window = new MainWindow([], setup, factory, new AuditStorageService());
+                try
+                {
+                    ShowForInteraction(window, 1280, 900);
+                    await WaitFor(
+                        () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Audit Species"),
+                        () => "Audit engine did not import the toolbar test species.");
+
+                    var toolbar = Named<UniformGrid>(window, "LegacyToolbar");
+                    var slots = toolbar.GetVisualDescendants()
+                        .Where(control => control.Name?.StartsWith("ToolbarSlot", StringComparison.Ordinal) == true)
+                        .OrderBy(control => control.Name)
+                        .ToArray();
+                    Assert.Equal(24, slots.Length);
+                    Assert.Equal(5, slots.OfType<Border>().Count());
+                    Assert.Equal(18, slots.OfType<Button>().Count());
+                    Assert.Single(slots.OfType<ComboBox>());
+                    Assert.All(slots, slot => Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(slot))));
+
+                    var buttons = slots.OfType<Button>().ToArray();
+                    var tabIndexes = buttons.Select(KeyboardNavigation.GetTabIndex).ToArray();
+                    Assert.Equal(tabIndexes.OrderBy(index => index).ToArray(), tabIndexes);
+                    Assert.Equal("NEW SIMULATION", AutomationProperties.GetName(buttons[0]));
+
+                    var viewport = Named<WorldViewport>(window, "Viewport");
+                    Assert.True(viewport.Focusable);
+                    Assert.Equal("Simulation playfield", AutomationProperties.GetName(viewport));
+                    Assert.Contains("click", AutomationProperties.GetHelpText(viewport), StringComparison.OrdinalIgnoreCase);
+                    Assert.True(Named<Border>(window, "InternetOfflineOverlay").IsVisible);
+
+                    var engine = factory.Clients.First();
+                    Click(window, Named<Button>(window, "SunButton"));
+                    await WaitFor(
+                        () => engine.EnvironmentUpdates.Any(),
+                        () => "Sun toolbar route did not publish an environment update.");
+                    Assert.False(engine.EnvironmentUpdates.Last().Vegetation.Daytime);
+
+                    Click(window, Named<Button>(window, "ToolbarSlot16"));
+                    await WaitFor(
+                        () => Named<Button>(window, "InsertSpeciesButton").Content?.ToString() == "CANCEL INSERTION",
+                        () => "Insertion toolbar slot did not enter insertion mode.");
+                    Assert.True(Named<Border>(window, "RuntimeOverlay").IsVisible);
+                    Assert.Contains("INSERTION", Named<TextBlock>(window, "OverlayText").Text, StringComparison.OrdinalIgnoreCase);
+
+                    Click(window, Named<Button>(window, "ToolbarSlot19"));
+                    await WaitFor(
+                        () => window.OwnedWindows.OfType<GraphSuiteWindow>().Any(),
+                        () => "Graph toolbar slot did not open the graph suite.");
+                    window.OwnedWindows.OfType<GraphSuiteWindow>().Single().Close();
+
+                    Click(window, Named<Button>(window, "ContestIndicator"));
+                    await WaitFor(
+                        () => window.OwnedWindows.OfType<ContestResultsWindow>().Any(),
+                        () => "Contest indicator did not open contest results.");
+                    window.OwnedWindows.OfType<ContestResultsWindow>().Single().Close();
+
+                    Click(window, Named<Button>(window, "ToolbarSlot24"));
+                    Assert.True(Field<OfflineDiagnosticRecovery>(window, "_diagnostics").IgnoreErrors);
+                    Assert.Contains("ON", Named<Button>(window, "ToolbarSlot24").Content?.ToString(), StringComparison.Ordinal);
+                }
+                finally
+                {
+                    foreach (var child in window.OwnedWindows.ToArray()) child.Close();
+                    window.Close();
+                }
+            }
+            catch (Exception exception)
+            {
+                callbackResult.TrySetResult(exception);
+                return;
+            }
+            callbackResult.TrySetResult(null);
+        }, CancellationToken.None);
+
+        var callbackFailure = await callbackResult.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Null(callbackFailure);
+    }
+
+    [Fact]
+    public async Task MainWindowKeepsBottomDashboardVisibleAndUsableAt1500x900()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions());
+            ShowForInteraction(window, 1500, 900);
+            try
+            {
+                Capture(window, "shell-dashboard-1500x900.png");
+                var surface = Named<Grid>(window, "MainSurfaceGrid");
+                var dashboard = Named<ItemsControl>(window, "StatusInstrument");
+                var theme = Named<ComboBox>(window, "ThemeSelector");
+                var culture = Named<ComboBox>(window, "CultureSelector");
+
+                Assert.True(dashboard.IsVisible);
+                Assert.True(dashboard.Bounds.Height >= 52, $"Dashboard height was {dashboard.Bounds.Height}.");
+                Assert.InRange(dashboard.Bounds.Bottom, 0, surface.Bounds.Height);
+                Assert.InRange(theme.Bounds.Bottom, 0, surface.Bounds.Height);
+                Assert.InRange(culture.Bounds.Bottom, 0, surface.Bounds.Height);
+                Assert.True(theme.Bounds.Width >= 90);
+                Assert.True(culture.Bounds.Width >= 120);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 
@@ -582,14 +781,28 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public IReadOnlyList<DesktopTextFile> DnaFiles { get; init; } = [];
     public string? PickedSimulationPath { get; init; }
     public byte[]? OpenedSimulation { get; init; }
+    public DesktopSettings? SettingsToOpen { get; init; }
     public string? LatestAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
     public string? SavedDna { get; private set; }
+    public byte[]? SavedLivingSnapshot { get; private set; }
+    public List<byte[]> DeadSnapshotWrites { get; } = [];
+    public bool AcceptOrganismSave { get; init; } = true;
+    public string? SavedOrganismSuggestedFileName { get; private set; }
+    public byte[]? SavedOrganism { get; private set; }
     public byte[]? Autosave { get; private set; }
+    public DesktopSettings? SavedSettings { get; private set; }
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
+    public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
     public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(PickedSimulationPath);
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult(OpenedSimulation);
+
+    public Task<bool> SaveSettingsAsync(TopLevel owner, DesktopSettings settings)
+    {
+        SavedSettings = settings;
+        return Task.FromResult(true);
+    }
 
     public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save)
     {
@@ -601,6 +814,32 @@ internal sealed class AuditStorageService : IDesktopStorageService
     {
         SavedDna = dna;
         return Task.FromResult(true);
+    }
+
+    public async Task<bool> SaveLivingSnapshotAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync)
+    {
+        using var stream = new MemoryStream();
+        await writeAsync(stream);
+        SavedLivingSnapshot = stream.ToArray();
+        return true;
+    }
+
+    public async Task<bool> AppendDeadSnapshotAsync(Func<Stream, Task> writeAsync)
+    {
+        using var stream = new MemoryStream();
+        await writeAsync(stream);
+        DeadSnapshotWrites.Add(stream.ToArray());
+        return true;
+    }
+
+    public async Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync)
+    {
+        SavedOrganismSuggestedFileName = suggestedFileName;
+        if (!AcceptOrganismSave) return false;
+        using var stream = new MemoryStream();
+        await writeAsync(stream);
+        SavedOrganism = stream.ToArray();
+        return true;
     }
 
     public string? FindLatestAutosave() => LatestAutosave;
@@ -629,6 +868,7 @@ internal sealed class AuditEngineClient : IEngineClient
     private ulong _tick;
     private string _backend = "CPU";
     private EngineSnapshot _snapshot;
+    private LocalModeConfig _localModeConfig = LocalModeConfig.Default;
 
     public AuditEngineClient()
     {
@@ -652,13 +892,20 @@ internal sealed class AuditEngineClient : IEngineClient
     public OrganismSnapshot Organism { get; }
     public ConcurrentQueue<string> Calls { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
+    public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public string Backend => _backend;
 
     public EngineCapabilities Capabilities() => new(1, _backend, true, null);
     public void Tick(uint count = 1) { _tick += count; Calls.Enqueue($"Tick:{count}"); }
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return DnaImportReport.Compatible; }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue($"ImportSpecies:{species.Name}"); return DnaImportReport.Compatible; }
+    public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)
+    {
+        Calls.Enqueue($"InsertSpeciesAt:{species.Name}:{position[0]:0}:{position[1]:0}");
+        return DnaImportReport.Compatible;
+    }
     public void Remove(uint slot, uint generation) => Calls.Enqueue($"Remove:{slot}:{generation}");
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => Calls.Enqueue($"RemoveMany:{string.Join(',', organisms.Select(value => $"{value.Slot}:{value.Generation}"))}");
     public void Move(uint slot, uint generation, float[] position) => Calls.Enqueue($"Move:{slot}:{generation}:{position[0]:0}:{position[1]:0}");
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position) { Calls.Enqueue($"Clone:{slot}:{generation}"); return new OrganismKey(40, 0); }
     public void ReplaceDna(uint slot, uint generation, string dna) => Calls.Enqueue($"ReplaceDna:{slot}:{generation}");
@@ -670,12 +917,74 @@ internal sealed class AuditEngineClient : IEngineClient
     }
     public void SwitchBackend(string backend) { _backend = backend.ToUpperInvariant(); Calls.Enqueue($"Switch:{backend}"); }
     public void AddObstacle(ObstacleSnapshot obstacle) { Calls.Enqueue("AddObstacle"); _snapshot = _snapshot with { Obstacles = [.. _snapshot.Obstacles, obstacle] }; }
+    public void UpdateObstacle(ObstacleSnapshot obstacle) { Calls.Enqueue("UpdateObstacle"); _snapshot = _snapshot with { Obstacles = _snapshot.Obstacles.Select(value => value.Id == obstacle.Id ? obstacle : value).ToArray() }; }
     public void RemoveObstacle(uint id) { Calls.Enqueue($"RemoveObstacle:{id}"); _snapshot = _snapshot with { Obstacles = _snapshot.Obstacles.Where(value => value.Id != id).ToArray() }; }
     public void AddTeleporter(TeleporterSnapshot teleporter) { Calls.Enqueue("AddTeleporter"); _snapshot = _snapshot with { Teleporters = [.. _snapshot.Teleporters, teleporter] }; }
+    public void UpdateTeleporter(TeleporterSnapshot teleporter) { Calls.Enqueue("UpdateTeleporter"); _snapshot = _snapshot with { Teleporters = _snapshot.Teleporters.Select(value => value.Id == teleporter.Id ? teleporter : value).ToArray() }; }
     public void RemoveTeleporter(uint id) { Calls.Enqueue($"RemoveTeleporter:{id}"); _snapshot = _snapshot with { Teleporters = _snapshot.Teleporters.Where(value => value.Id != id).ToArray() }; }
+    public void AddFileTeleporter(FileTeleporterSnapshot teleporter) { Calls.Enqueue("AddFileTeleporter"); _snapshot = _snapshot with { FileTeleporters = [.. _snapshot.FileTeleporters, teleporter] }; }
+    public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter) { Calls.Enqueue("UpdateFileTeleporter"); _snapshot = _snapshot with { FileTeleporters = _snapshot.FileTeleporters.Select(value => value.Id == teleporter.Id ? teleporter : value).ToArray() }; }
+    public void RemoveFileTeleporter(uint id) { Calls.Enqueue($"RemoveFileTeleporter:{id}"); _snapshot = _snapshot with { FileTeleporters = _snapshot.FileTeleporters.Where(value => value.Id != id).ToArray() }; }
     public void SetBrownianMotion(float value) => Calls.Enqueue($"Brownian:{value}");
     public void UpdateEnvironment(EnvironmentUpdate update) { EnvironmentUpdates.Enqueue(update); Calls.Enqueue("Environment"); }
+    public void UpdateMutationSettings(MutationSettingsUpdate update) { MutationUpdates.Enqueue(update); Calls.Enqueue("Mutations"); }
+    public void SetTiesEnabled(bool enabled) => Calls.Enqueue($"Ties:{enabled}");
+    public void SetSpeciesColor(uint species, uint color) => Calls.Enqueue($"Color:{species}:{color}");
+    public void MakeNewSpecies(uint slot, uint generation, string name, uint color) => Calls.Enqueue($"NewSpecies:{slot}:{generation}:{name}");
+    public void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed) => Calls.Enqueue($"Restrictions:{robotFixingAllowed}:{asexualReproductionAllowed}");
+    public void ConfigurePlayerBot(PlayerBotConfig config) => Calls.Enqueue("ConfigurePlayerBot");
+    public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) => Calls.Enqueue($"PlayerBotKey:{slot}:{generation}:{keyCode}:{pressed}");
+    public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
+    public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
+    public void UpdateRestrictionOptions(RestrictionOptions options) => Calls.Enqueue("RestrictionOptions");
+    public void ConfigureLocalMode(LocalModeConfig config)
+    {
+        Calls.Enqueue("ConfigureLocalMode");
+        _localModeConfig = config;
+        _snapshot = _snapshot with { LocalMode = LocalModeSnapshotFor(config, LocalModeStatus.Configured, 0, 0, 0, []) };
+    }
+    public void StartLocalMode()
+    {
+        Calls.Enqueue("StartLocalMode");
+        _snapshot = _snapshot with { LocalMode = LocalModeSnapshotFor(_localModeConfig, LocalModeStatus.Running, 1, 0, 0, []) };
+    }
+    public void RestartLocalMode()
+    {
+        Calls.Enqueue("RestartLocalMode");
+        _snapshot = _snapshot with { LocalMode = LocalModeSnapshotFor(_localModeConfig, LocalModeStatus.Running, 1, 0, 1, []) };
+    }
+    public void AdjudicateLocalRound(uint? winner, string reason)
+    {
+        Calls.Enqueue($"AdjudicateLocalRound:{winner?.ToString() ?? "none"}");
+        var result = new LocalModeResult(1, winner, 1, 1_000, reason);
+        _snapshot = _snapshot with
+        {
+            LocalMode = LocalModeSnapshotFor(_localModeConfig, LocalModeStatus.Completed, 1, 0, 1, [result], new LocalModeAdjudication(winner, reason)),
+        };
+    }
+
+    private static LocalModeSnapshot LocalModeSnapshotFor(
+        LocalModeConfig config,
+        LocalModeStatus status,
+        uint round,
+        ulong cycle,
+        uint restarts,
+        IReadOnlyList<LocalModeResult> results,
+        LocalModeAdjudication? adjudication = null) => new(
+        status,
+        config.Kind,
+        config.Preset,
+        round,
+        config.MaximumRounds,
+        cycle,
+        config.MaximumCycles,
+        restarts,
+        results,
+        adjudication,
+        config.Restrictions);
+    public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return [1, 2, 3, 4]; }
+    public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }
     public void Load(byte[] save) => Calls.Enqueue("Load");
     public EngineSnapshot Snapshot() => _snapshot with { Tick = _tick, Backend = _backend };
     public void Dispose() => Calls.Enqueue("Dispose");

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Darwinbots.Desktop.Core;
 
@@ -7,7 +8,8 @@ namespace Darwinbots.Desktop.ViewModels;
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
-    private uint? _selectedSlot;
+    private OrganismKey? _selectedKey;
+    private bool _selectionWasLost;
     private ulong _tick;
     private int _population;
     private string _backend = "STARTING";
@@ -42,7 +44,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double _ticksPerSecond;
     private double _snapshotsPerSecond;
     private string _limitingPhase = "WAITING";
+    private long? _previousTotalEnergy;
+    private ulong? _previousShots;
+    private ulong? _previousTick;
+    private double _costMultiplier = 1.0;
 
+    private readonly StatusPanelViewModel[] _statusPanels =
+    [
+        new("CPS"),
+        new("Tot"),
+        new("Bots"),
+        new("Chlr"),
+        new("Born"),
+        new("Cycles"),
+        new("Time"),
+        new("Mut"),
+        new("Restarts"),
+        new("Shots"),
+        new("Nrg"),
+        new("Delta"),
+        new("CostX"),
+        new("Feed"),
+        new("Move"),
+        new("Events"),
+    ];
+
+    public LocalModeViewModel LocalMode { get; } = new();
     public ulong Tick { get => _tick; private set => Set(ref _tick, value); }
     public int Population { get => _population; private set => Set(ref _population, value); }
     public string Backend { get => _backend; private set => Set(ref _backend, value); }
@@ -79,32 +106,64 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string LimitingPhase { get => _limitingPhase; private set => Set(ref _limitingPhase, value); }
     public string PopulationSummary => $"{Population:N0} organisms · {SpeciesCount:N0} species";
     public string LifecycleSummary => $"BIRTH {Births:N0}    DEATH {Deaths:N0}";
-    public string CombatSummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    HARVEST {EnergyHarvested:N0}    DONATED {_snapshot.Stats.EnergyDonated:N0}";
+    public string CombatSummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    HARVEST {EnergyHarvested:N0}    DONATED {_snapshot.Stats.EnergyDonated:N0}    FEED {_snapshot.Stats.FeedingEvents:N0}    MOVE {_snapshot.Stats.IntentionalMovementEvents:N0}    EFFECT {_snapshot.Stats.ProjectileEffects:N0}";
     public string EnergyActivitySummary => $"FIRED {Shots:N0}    IMPACT {ProjectileImpacts:N0}    PLANT {PlantEnergyGenerated:N0}";
     public string PlantSummary => $"PLANT ENERGY {PlantEnergyGenerated:N0}";
     public string MutationSummary => $"MUTATIONS {Mutations:N0}";
+    public IReadOnlyList<StatusPanelViewModel> StatusPanels => _statusPanels;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public OrganismSnapshot? SelectedOrganism => _selectedSlot is { } slot
-        ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == slot)
+    public OrganismSnapshot? SelectedOrganism => _selectedKey is { } key
+        ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == key.Slot && organism.Generation == key.Generation)
         : null;
-    public uint? SelectedSlot => _selectedSlot;
+    public uint? SelectedSlot => _selectedKey?.Slot;
+    public OrganismKey? SelectedKey => _selectedKey;
 
     public void Select(uint slot)
     {
-        _selectedSlot = slot;
+        var organism = _snapshot.Organisms.FirstOrDefault(value => value.Slot == slot);
+        _selectedKey = organism is null ? null : new OrganismKey(organism.Slot, organism.Generation);
+        _selectionWasLost = _selectedKey is null;
         ApplySelection();
     }
 
-    public void Update(EngineSnapshot snapshot)
+    public void Select(OrganismKey key)
     {
+        _selectedKey = _snapshot.Organisms.Any(value => value.Slot == key.Slot && value.Generation == key.Generation)
+            ? key
+            : null;
+        _selectionWasLost = _selectedKey is null;
+        ApplySelection();
+    }
+
+    public void ClearSelection()
+    {
+        _selectedKey = null;
+        _selectionWasLost = true;
+        ApplySelection();
+    }
+
+    public void Update(EngineSnapshot snapshot, TimeSpan? elapsed = null, double? costMultiplier = null)
+    {
+        var (energyDelta, shotsThisCycle) = CalculateDeltas(snapshot);
+        if (costMultiplier is { } value)
+            _costMultiplier = value;
         _snapshot = snapshot;
+        LocalMode.Observe(snapshot.LocalMode);
         Tick = snapshot.Tick;
         Population = snapshot.Population;
         Backend = snapshot.Backend;
-        if (_selectedSlot is null || snapshot.Organisms.All(organism => organism.Slot != _selectedSlot))
-            _selectedSlot = SelectDefaultOrganism(snapshot);
+        if (_selectedKey is null)
+        {
+            if (!_selectionWasLost) _selectedKey = SelectDefaultOrganism(snapshot);
+        }
+        else if (snapshot.Organisms.All(organism =>
+                     organism.Slot != _selectedKey.Value.Slot || organism.Generation != _selectedKey.Value.Generation))
+        {
+            _selectedKey = null;
+            _selectionWasLost = true;
+        }
         SpeciesCount = Math.Max(0, snapshot.Species.Count - 1);
         ApplySelection();
         Births = snapshot.Stats.Births;
@@ -129,12 +188,66 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         };
         var limiting = phases.MaxBy(value => value.Value);
         LimitingPhase = $"{limiting.Key} {limiting.Value:0.0} ms";
+        UpdateStatusPanels(snapshot, elapsed ?? TimeSpan.Zero, energyDelta, shotsThisCycle);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PopulationSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LifecycleSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CombatSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EnergyActivitySummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlantSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MutationSummary)));
+    }
+
+    private (long EnergyDelta, ulong ShotsThisCycle) CalculateDeltas(EngineSnapshot snapshot)
+    {
+        var advancing = _previousTick is { } previousTick
+            && snapshot.Tick > previousTick
+            && _previousTotalEnergy is not null
+            && _previousShots is not null;
+        var energyDelta = advancing
+            ? snapshot.Stats.TotalEnergy - _previousTotalEnergy!.Value
+            : 0;
+        var shotsThisCycle = advancing && snapshot.Stats.ShotsFired >= _previousShots!.Value
+            ? snapshot.Stats.ShotsFired - _previousShots.Value
+            : 0;
+        _previousTick = snapshot.Tick;
+        _previousTotalEnergy = snapshot.Stats.TotalEnergy;
+        _previousShots = snapshot.Stats.ShotsFired;
+        return (energyDelta, shotsThisCycle);
+    }
+
+    private void UpdateStatusPanels(
+        EngineSnapshot snapshot,
+        TimeSpan elapsed,
+        long energyDelta,
+        ulong shotsThisCycle)
+    {
+        SetPanel(0, snapshot.TicksPerSecond.ToString("0.###", CultureInfo.InvariantCulture));
+        SetPanel(1, snapshot.Population.ToString(CultureInfo.InvariantCulture));
+        SetPanel(2, snapshot.Organisms.Count(organism => !organism.Vegetable).ToString(CultureInfo.InvariantCulture));
+        SetPanel(3, snapshot.Organisms.Sum(organism => organism.Chloroplasts).ToString(CultureInfo.InvariantCulture));
+        SetPanel(4, snapshot.Stats.Births.ToString(CultureInfo.InvariantCulture));
+        SetPanel(5, snapshot.Tick.ToString(CultureInfo.InvariantCulture));
+        SetPanel(6, FormatElapsed(elapsed));
+        SetPanel(7, $"{snapshot.MutationSettings.GlobalMultiplier.ToString("0.###", CultureInfo.InvariantCulture)}x");
+        SetPanel(8, snapshot.LocalMode.RestartCount.ToString(CultureInfo.InvariantCulture));
+        SetPanel(9, shotsThisCycle.ToString(CultureInfo.InvariantCulture));
+        SetPanel(10, snapshot.Stats.TotalEnergy.ToString(CultureInfo.InvariantCulture));
+        SetPanel(11, energyDelta.ToString(CultureInfo.InvariantCulture));
+        SetPanel(12, _costMultiplier.ToString("0.#####", CultureInfo.InvariantCulture));
+        SetPanel(13, snapshot.Stats.FeedingEvents.ToString(CultureInfo.InvariantCulture));
+        SetPanel(14, snapshot.Stats.IntentionalMovementEvents.ToString(CultureInfo.InvariantCulture));
+        SetPanel(15, snapshot.Stats.ProjectileEffects.ToString(CultureInfo.InvariantCulture));
+    }
+
+    private void SetPanel(int index, string value)
+    {
+        _statusPanels[index].SetValue(value);
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        var hours = (long)Math.Max(0, elapsed.TotalHours);
+        return $"{hours}h{elapsed.Minutes}m{elapsed.Seconds}s";
     }
 
     private void ApplySelection()
@@ -172,7 +285,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     : "IDLE";
     }
 
-    private static uint? SelectDefaultOrganism(EngineSnapshot snapshot)
+    private static OrganismKey? SelectDefaultOrganism(EngineSnapshot snapshot)
     {
         var animals = snapshot.Organisms.Where(organism => !organism.Vegetable).ToArray();
         var candidates = animals.Length > 0 ? animals : snapshot.Organisms;
@@ -183,7 +296,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var offsetX = organism.Position.ElementAtOrDefault(0) - centerX;
             var offsetY = organism.Position.ElementAtOrDefault(1) - centerY;
             return offsetX * offsetX + offsetY * offsetY;
-        })?.Slot;
+        }) is { } selected
+            ? new OrganismKey(selected.Slot, selected.Generation)
+            : null;
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)

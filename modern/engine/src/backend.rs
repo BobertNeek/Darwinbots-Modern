@@ -20,4 +20,3 @@ pub struct BackendCapabilities {
     pub gpu_available: bool,
     pub fallback_reason: Option<String>,
 }
-

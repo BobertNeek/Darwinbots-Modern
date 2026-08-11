@@ -1,11 +1,16 @@
+mod probe;
+
 use clap::{Parser, Subcommand, ValueEnum};
 use darwinbots_engine::{BackendPreference, Engine, EngineConfig, LegacyDna};
 use serde_json::json;
-use std::{error::Error, ffi::OsString, fs, io::Write, path::PathBuf, time::Instant};
 use std::hash::{Hash, Hasher};
+use std::{error::Error, ffi::OsString, fs, io::Write, path::PathBuf, time::Instant};
 
 #[derive(Debug, Parser)]
-#[command(name = "darwinbots", about = "Headless Darwinbots simulation and benchmark runner")]
+#[command(
+    name = "darwinbots",
+    about = "Headless Darwinbots simulation and benchmark runner"
+)]
 struct Arguments {
     #[command(subcommand)]
     command: Command,
@@ -16,6 +21,14 @@ enum Command {
     Run {
         #[arg(long, required = true)]
         bot: Vec<PathBuf>,
+        #[arg(long, default_value_t = 1)]
+        population: usize,
+        #[arg(long)]
+        vegetable_bot: Option<PathBuf>,
+        #[arg(long, default_value_t = 0)]
+        vegetable_population: usize,
+        #[arg(long, default_value_t = 1_000)]
+        initial_energy: i32,
         #[arg(long, default_value_t = 1_000)]
         ticks: u64,
         #[arg(long, value_enum, default_value_t = BackendArgument::Auto)]
@@ -79,22 +92,36 @@ where
     W: Write,
 {
     match Arguments::try_parse_from(arguments)?.command {
-        Command::Run { bot, ticks, backend, seed } => {
-            let mut engine = create_engine(bot.len().max(1), backend, seed)?;
-            for path in bot {
-                engine.spawn(read_bot(&path)?)?;
-            }
-            let started = Instant::now();
-            advance(&mut engine, ticks)?;
-            let elapsed = started.elapsed().as_secs_f64();
-            serde_json::to_writer(&mut output, &json!({
-                "tick": engine.snapshot().tick,
-                "population": engine.population(),
-                "backend": format!("{:?}", engine.backend()),
-                "elapsed_seconds": elapsed,
-            }))?;
+        Command::Run {
+            bot,
+            population,
+            vegetable_bot,
+            vegetable_population,
+            initial_energy,
+            ticks,
+            backend,
+            seed,
+        } => {
+            let report = probe::execute(probe::Options {
+                bot,
+                population,
+                vegetable_bot,
+                vegetable_population,
+                initial_energy,
+                ticks,
+                seed,
+                backend: backend.into(),
+            })?;
+            serde_json::to_writer(&mut output, &report)?;
         }
-        Command::Bench { bot, population, ticks, warmup_ticks, backend, seed } => {
+        Command::Bench {
+            bot,
+            population,
+            ticks,
+            warmup_ticks,
+            backend,
+            seed,
+        } => {
             let dna = read_bot(&bot)?;
             let mut engine = create_engine(population, backend, seed)?;
             populate(&mut engine, &dna, population)?;
@@ -102,21 +129,35 @@ where
             let started = Instant::now();
             advance(&mut engine, ticks)?;
             let elapsed = started.elapsed().as_secs_f64().max(f64::EPSILON);
-            serde_json::to_writer(&mut output, &json!({
-                "population": engine.population(),
-                "ticks": ticks,
-                "warmup_ticks": warmup_ticks,
-                "backend": format!("{:?}", engine.backend()),
-                "layout": "uniform-grid",
-                "elapsed_seconds": elapsed,
-                "ticks_per_second": ticks as f64 / elapsed,
-                "phase_ms": engine.last_phase_timings(),
-            }))?;
+            serde_json::to_writer(
+                &mut output,
+                &json!({
+                    "population": engine.population(),
+                    "ticks": ticks,
+                    "warmup_ticks": warmup_ticks,
+                    "backend": format!("{:?}", engine.backend()),
+                    "layout": "uniform-grid",
+                    "elapsed_seconds": elapsed,
+                    "ticks_per_second": ticks as f64 / elapsed,
+                    "phase_ms": engine.last_phase_timings(),
+                }),
+            )?;
         }
-        Command::Stress { bot, population, ticks, invariant_interval, backend, seed, metabolism_cost } => {
-            if invariant_interval == 0 { return Err("invariant interval must be positive".into()); }
+        Command::Stress {
+            bot,
+            population,
+            ticks,
+            invariant_interval,
+            backend,
+            seed,
+            metabolism_cost,
+        } => {
+            if invariant_interval == 0 {
+                return Err("invariant interval must be positive".into());
+            }
             let dna = read_bot(&bot)?;
-            let mut engine = create_engine_with_metabolism(population, backend, seed, metabolism_cost)?;
+            let mut engine =
+                create_engine_with_metabolism(population, backend, seed, metabolism_cost)?;
             populate(&mut engine, &dna, population)?;
             let started = Instant::now();
             let mut checks = 0u64;
@@ -133,21 +174,28 @@ where
             let snapshot = serde_json::to_vec(&canonical_snapshot)?;
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             snapshot.hash(&mut hasher);
-            serde_json::to_writer(&mut output, &json!({
-                "backend": format!("{:?}", engine.backend()),
-                "ticks": ticks,
-                "population": engine.population(),
-                "invariant_checks": checks,
-                "elapsed_seconds": elapsed,
-                "final_state_hash": format!("{:016x}", hasher.finish()),
-            }))?;
+            serde_json::to_writer(
+                &mut output,
+                &json!({
+                    "backend": format!("{:?}", engine.backend()),
+                    "ticks": ticks,
+                    "population": engine.population(),
+                    "invariant_checks": checks,
+                    "elapsed_seconds": elapsed,
+                    "final_state_hash": format!("{:016x}", hasher.finish()),
+                }),
+            )?;
         }
     }
     writeln!(output)?;
     Ok(())
 }
 
-fn create_engine(capacity: usize, backend: BackendArgument, seed: u64) -> Result<Engine, Box<dyn Error>> {
+fn create_engine(
+    capacity: usize,
+    backend: BackendArgument,
+    seed: u64,
+) -> Result<Engine, Box<dyn Error>> {
     create_engine_with_metabolism(capacity, backend, seed, 1)
 }
 

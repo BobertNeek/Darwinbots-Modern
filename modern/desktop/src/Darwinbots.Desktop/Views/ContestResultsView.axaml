@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="using:Darwinbots.Desktop.Core"
+             x:Class="Darwinbots.Desktop.Views.ContestResultsView"
+             x:DataType="core:ContestResultsViewModel">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="18" RowSpacing="12">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+      <StackPanel Spacing="2">
+        <TextBlock Classes="section" Text="CONTEST RESULTS" />
+        <TextBlock Text="{Binding ContestName}" FontSize="18" FontWeight="SemiBold" />
+      </StackPanel>
+      <Border Grid.Column="1" Background="#E8F0E1" Padding="10,7" VerticalAlignment="Top">
+        <StackPanel Spacing="2">
+          <TextBlock Text="LOCAL ONLY" FontWeight="SemiBold" HorizontalAlignment="Center" />
+          <TextBlock Text="ONLINE PLAY DISABLED" FontSize="10" Foreground="#52605A" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+      <TextBlock Text="{Binding RoundText}" Classes="section" />
+      <TextBlock Grid.Column="1" Text="Manual adjudication does not start or advance a contest." FontSize="11" Foreground="#69716D" />
+    </Grid>
+
+    <Border Grid.Row="2" Classes="panel" Padding="12">
+      <Grid RowDefinitions="Auto,*" RowSpacing="8">
+        <Grid ColumnDefinitions="*,55,80,95,60,92" ColumnSpacing="8" Margin="6,0">
+          <TextBlock Classes="section" Text="COMPETITOR" />
+          <TextBlock Grid.Column="1" Classes="section" Text="WINS" />
+          <TextBlock Grid.Column="2" Classes="section" Text="POPULATION" />
+          <TextBlock Grid.Column="3" Classes="section" Text="STATUS" />
+          <TextBlock Grid.Column="4" Classes="section" Text="MANUAL" />
+          <TextBlock Grid.Column="5" Classes="section" Text="INSTANT" />
+        </Grid>
+        <ScrollViewer Grid.Row="1">
+          <Grid>
+            <ItemsControl x:Name="CompetitorList" ItemsSource="{Binding Competitors}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="core:ContestCompetitorViewModel">
+                  <Border BorderBrush="#D4D0C4" BorderThickness="0,0,0,1" Padding="6,9">
+                    <Grid ColumnDefinitions="*,55,80,95,60,92" ColumnSpacing="8">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Wins}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="2" Text="{Binding Population}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="3" Text="{Binding Status}" FontSize="11" VerticalAlignment="Center" />
+                      <Button Grid.Column="4" Content="W" Tag="{Binding Id}" IsEnabled="{Binding CanAdjudicate}" Click="ManualWin_Click" />
+                      <Button Grid.Column="5" Content="INSTANT WIN" FontSize="9" Tag="{Binding Id}" IsEnabled="{Binding CanAdjudicate}" Click="InstantWin_Click" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock x:Name="EmptyText" Text="No local result has been published." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#69716D" IsVisible="False" />
+          </Grid>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+      <TextBlock x:Name="StatusText" Text="{Binding Status}" VerticalAlignment="Center" FontSize="11" Foreground="#2D826F" />
+      <Button Grid.Column="1" x:Name="CloseButton" Content="CLOSE" Click="Close_Click" />
+    </Grid>
+  </Grid>
+</UserControl>

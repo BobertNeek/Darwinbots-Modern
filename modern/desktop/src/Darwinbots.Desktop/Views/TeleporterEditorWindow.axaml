@@ -1,0 +1,45 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.TeleporterEditorWindow"
+        Title="Teleporter properties" Width="560" Height="780" MinWidth="520" MinHeight="700"
+        WindowStartupLocation="CenterOwner" Background="#F4F0E6">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="18" RowSpacing="14">
+    <StackPanel Spacing="3">
+      <TextBlock Text="TELEPORTER PROPERTIES" FontSize="20" FontWeight="Bold" />
+      <TextBlock Text="Rust owns relocation, filters, capacity, shape blocking, and backflow." Foreground="#66706B" TextWrapping="Wrap" />
+    </StackPanel>
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Spacing="9">
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Type" VerticalAlignment="Center"/><ComboBox Grid.Column="1" x:Name="Mode" AutomationProperties.Name="TELEPORTER TYPE">
+          <ComboBoxItem Content="Intrasim" />
+          <ComboBoxItem Content="Inbound file" />
+          <ComboBoxItem Content="Outbound file" />
+          <ComboBoxItem Content="Internet (disabled)" IsEnabled="False" />
+        </ComboBox></Grid>
+        <TextBlock Text="GEOMETRY" FontWeight="Bold" Margin="0,8,0,0" />
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Center X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="CenterX" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Center Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="CenterY" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Destination X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="DestinationX" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Destination Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="DestinationY" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Radius" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="Radius" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
+        <TextBlock Text="TRANSFER POLICY" FontWeight="Bold" Margin="0,8,0,0" />
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Poll interval" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="PollInterval" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Capacity per poll" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="Capacity" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
+        <Grid ColumnDefinitions="*,200"><TextBlock Text="Backflow limit" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="BackflowLimit" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
+        <CheckBox x:Name="TeleportVegetables" Content="Transfer autotrophs" />
+        <CheckBox x:Name="TeleportCorpses" Content="Transfer corpses" />
+        <CheckBox x:Name="TeleportHeterotrophs" Content="Transfer heterotrophs" />
+        <CheckBox x:Name="FixedPosition" Content="Fixed position" />
+        <CheckBox x:Name="RespectShapes" Content="Respect blocking shapes" />
+        <TextBlock Text="LOCAL PATHS" FontWeight="Bold" Margin="0,8,0,0" />
+        <TextBox x:Name="Path" PlaceholderText="Optional local exchange path" />
+        <TextBox x:Name="InboundPath" PlaceholderText="Optional inbound path" />
+        <TextBox x:Name="OutboundPath" PlaceholderText="Optional outbound path" />
+        <TextBlock x:Name="Statistics" Foreground="#66706B" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="CancelButton" Content="CANCEL" Click="Cancel_Click" />
+      <Button x:Name="ApplyButton" Content="APPLY" Background="#416E35" Foreground="White" Click="Apply_Click" />
+    </StackPanel>
+  </Grid>
+</Window>

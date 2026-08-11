@@ -18,10 +18,7 @@ fn eye_direction_moves_detection_into_eye_five() {
         )
         .unwrap();
     engine
-        .spawn_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            [850.0, 500.0],
-        )
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [850.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -37,10 +34,7 @@ fn eye_snapshot_contains_width_range_and_default_focus() {
     let mut engine = vision_engine();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse(
-                "start\n70 .eye5width store\n0 .focuseye store\nstop",
-            )
-            .unwrap(),
+            LegacyDna::parse("start\n70 .eye5width store\n0 .focuseye store\nstop").unwrap(),
             [500.0, 500.0],
         )
         .unwrap();
@@ -59,18 +53,12 @@ fn focus_eye_selects_reference_target() {
     let mut engine = vision_engine();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse(
-                "start\n314 .eye5dir store\n0 .focuseye store\nstop",
-            )
-            .unwrap(),
+            LegacyDna::parse("start\n314 .eye5dir store\n0 .focuseye store\nstop").unwrap(),
             [500.0, 500.0],
         )
         .unwrap();
     engine
-        .spawn_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            [850.0, 500.0],
-        )
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [850.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();

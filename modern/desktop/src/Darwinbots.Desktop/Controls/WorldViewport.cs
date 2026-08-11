@@ -2,41 +2,135 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Core;
 
 namespace Darwinbots.Desktop.Controls;
 
 public sealed class WorldViewport : Control
 {
+    private Bitmap? _backgroundImage;
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
     private readonly Pen _gridPen = new(new SolidColorBrush(Color.Parse("#D9D8D0")), 0.6);
     private double _zoom = 1.0;
+    private bool _zoomLocked;
     private Vector _pan;
     private Point? _panAnchor;
     private Vector _panAtPress;
-    private uint? _selectedSlot;
+    private OrganismKey? _selectedKey;
+    private readonly HashSet<OrganismKey> _selectedKeys = [];
     private WorldFeatureSelection? _selectedFeature;
-    private uint? _followSlot;
-    private uint? _dragSlot;
+    private OrganismKey? _followKey;
+    private OrganismKey? _dragKey;
     private float[]? _dragPosition;
     private Point? _dragOrigin;
     private bool _dragMoved;
     private bool _renderWaste = true;
     private bool _showSelectedVision = true;
-    private bool _toroidalWorld = true;
+    private bool _wrapX = true;
+    private bool _wrapY = true;
+    private bool _showMovementVectors = true;
+    private bool _showShotImpacts = true;
+    private bool _showResourceGauges = true;
+    private bool _highlightTeleporters = true;
+    private bool _energyGridEnabled;
+    private EnergyGridSize _energyGridSize = EnergyGridSize.Large;
+    private bool _flickerMode;
+    private bool _renderSkins = true;
+    private bool _showDeathPoffs = true;
+    private bool _flickerFrame;
+    private RgbMemoryMonitorSettings? _rgbMemoryMonitor;
 
     public event Action<uint>? OrganismSelected;
+    public event Action<OrganismKey>? OrganismKeySelected;
+    public event Action<OrganismKey, Point>? OrganismContextRequested;
+    public event Action<OrganismKey>? OrganismDoubleClicked;
     public event Action<float[]>? WorldClicked;
     public event Action<WorldFeatureSelection>? WorldFeatureSelected;
     public event Action<uint, float[]>? OrganismDragCompleted;
+    public event Action<OrganismKey, float[]>? OrganismKeyDragCompleted;
 
     public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
     public bool ShowSelectedVision { get => _showSelectedVision; set { _showSelectedVision = value; InvalidateVisual(); } }
-    public bool ToroidalWorld { get => _toroidalWorld; set { _toroidalWorld = value; InvalidateVisual(); } }
+    public bool ToroidalWorld
+    {
+        get => _wrapX && _wrapY;
+        set { _wrapX = value; _wrapY = value; InvalidateVisual(); }
+    }
+    public bool WrapX { get => _wrapX; set { _wrapX = value; InvalidateVisual(); } }
+    public bool WrapY { get => _wrapY; set { _wrapY = value; InvalidateVisual(); } }
+    public bool ShowMovementVectors { get => _showMovementVectors; set { _showMovementVectors = value; InvalidateVisual(); } }
+    public bool ShowShotImpacts { get => _showShotImpacts; set { _showShotImpacts = value; InvalidateVisual(); } }
+    public bool ShowResourceGauges { get => _showResourceGauges; set { _showResourceGauges = value; InvalidateVisual(); } }
+    public bool HighlightTeleporters { get => _highlightTeleporters; set { _highlightTeleporters = value; InvalidateVisual(); } }
+    public bool EnergyGridEnabled { get => _energyGridEnabled; set { _energyGridEnabled = value; InvalidateVisual(); } }
+    public EnergyGridSize EnergyGridSize { get => _energyGridSize; set { _energyGridSize = value; InvalidateVisual(); } }
+    public bool FlickerMode { get => _flickerMode; set { _flickerMode = value; InvalidateVisual(); } }
+    public bool RenderSkins { get => _renderSkins; set { _renderSkins = value; InvalidateVisual(); } }
+    public bool ShowDeathPoffs { get => _showDeathPoffs; set { _showDeathPoffs = value; InvalidateVisual(); } }
+    public double RenderScale => Math.Max(0.1, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0);
+    public double InputHitRadius => 14.0 / RenderScale;
+    public double Zoom => _zoom;
+    public Vector Pan => _pan;
+    public bool IsFollowing => _followKey is not null;
+    public bool ZoomLocked
+    {
+        get => _zoomLocked;
+        set
+        {
+            _zoomLocked = value;
+            if (value) _pan = ClampPan(_pan);
+            InvalidateVisual();
+        }
+    }
+
+    public void ZoomIn() => SetZoomAt(_zoom * 1.2, new Point(Bounds.Width / 2, Bounds.Height / 2));
+
+    public void ZoomOut() => SetZoomAt(_zoom / 1.2, new Point(Bounds.Width / 2, Bounds.Height / 2));
+
+    public void SetRgbMemoryMonitor(RgbMemoryMonitorSettings? settings)
+    {
+        settings?.Validate();
+        _rgbMemoryMonitor = settings;
+        InvalidateVisual();
+    }
 
     public void SelectSlot(uint? slot)
     {
-        _selectedSlot = slot;
+        SelectKey(slot is { } value
+            ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == value) is { } organism
+                ? new OrganismKey(organism.Slot, organism.Generation)
+                : null
+            : null);
+    }
+
+    public void SelectKey(OrganismKey? key)
+    {
+        _selectedKey = key is { } value && _snapshot.Organisms.Any(organism =>
+            organism.Slot == value.Slot && organism.Generation == value.Generation) ? key : null;
+        _selectedKeys.Clear();
+        if (_selectedKey is { } selected) _selectedKeys.Add(selected);
+        InvalidateVisual();
+    }
+
+    public void SelectSlots(IEnumerable<uint> slots, uint primary)
+    {
+        var keys = slots.Select(slot => _snapshot.Organisms.FirstOrDefault(value => value.Slot == slot))
+            .OfType<OrganismSnapshot>()
+            .Select(value => new OrganismKey(value.Slot, value.Generation));
+        var primaryKey = _snapshot.Organisms.FirstOrDefault(value => value.Slot == primary) is { } organism
+            ? new OrganismKey(organism.Slot, organism.Generation)
+            : new OrganismKey(primary, 0);
+        SelectKeys(keys, primaryKey);
+    }
+
+    public void SelectKeys(IEnumerable<OrganismKey> keys, OrganismKey primary)
+    {
+        _selectedKey = primary;
+        _selectedKeys.Clear();
+        foreach (var key in keys) _selectedKeys.Add(key);
+        _selectedKeys.Add(primary);
         InvalidateVisual();
     }
 
@@ -49,19 +143,48 @@ public sealed class WorldViewport : Control
     public void SetSnapshot(EngineSnapshot snapshot)
     {
         _snapshot = snapshot;
-        if (_followSlot is { } followed && snapshot.Organisms.FirstOrDefault(value => value.Slot == followed) is { } organism)
+        if (_selectedKey is { } selected && !Contains(snapshot, selected))
+        {
+            _selectedKey = null;
+            _selectedKeys.Clear();
+        }
+        _selectedKeys.RemoveWhere(key => !Contains(snapshot, key));
+        if (_followKey is { } followed && snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
         {
             var scaleX = Bounds.Width / Math.Max(1.0, snapshot.WorldSize[0]);
             var scaleY = Bounds.Height / Math.Max(1.0, snapshot.WorldSize[1]);
             _pan = new Vector(Bounds.Width / 2 - organism.Position[0] * scaleX * _zoom,
                 Bounds.Height / 2 - organism.Position[1] * scaleY * _zoom);
         }
+        else if (_followKey is not null)
+        {
+            _followKey = null;
+        }
+        _pan = ClampPan(_pan);
         InvalidateVisual();
     }
 
     public void FollowSlot(uint? slot)
     {
-        _followSlot = slot;
+        _followKey = slot is { } value
+            ? _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == value) is { } organism
+                ? KeyOf(organism)
+                : null
+            : null;
+        InvalidateVisual();
+    }
+
+    public void FollowKey(OrganismKey? key)
+    {
+        _followKey = key;
+        if (key is { } followed && _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
+        {
+            var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
+            var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+            _pan = new Vector(Bounds.Width / 2 - organism.Position[0] * scaleX * _zoom,
+                Bounds.Height / 2 - organism.Position[1] * scaleY * _zoom);
+            _pan = ClampPan(_pan);
+        }
         InvalidateVisual();
     }
 
@@ -69,7 +192,10 @@ public sealed class WorldViewport : Control
     {
         base.Render(context);
         context.FillRectangle(new SolidColorBrush(Color.Parse("#F9F8F2")), Bounds);
+        if (_backgroundImage is not null) context.DrawImage(_backgroundImage, Bounds);
         DrawGrid(context);
+        if (FlickerMode && (_flickerFrame = !_flickerFrame)) return;
+        DrawEnergyGrid(context);
         DrawToroidalEdges(context);
         DrawWorldFeatures(context);
         if (_snapshot.Organisms.Count == 0)
@@ -91,11 +217,15 @@ public sealed class WorldViewport : Control
         {
             DrawOrganisms(context, scaleX, scaleY);
             DrawSelectedVision(context, scaleX, scaleY);
+            DrawMovementVectors(context, scaleX, scaleY);
+            DrawResourceGauges(context, scaleX, scaleY);
             return;
         }
 
         DrawFallbackOrganisms(context, scaleX, scaleY);
         DrawSelectedVision(context, scaleX, scaleY);
+        DrawMovementVectors(context, scaleX, scaleY);
+        DrawResourceGauges(context, scaleX, scaleY);
     }
 
     private void DrawOrganisms(DrawingContext context, double scaleX, double scaleY)
@@ -107,17 +237,17 @@ public sealed class WorldViewport : Control
         var selectedDrawn = false;
         for (var index = 0; index < _snapshot.RenderInstances.Count; index += stride)
         {
-            var instance = _snapshot.RenderInstances[index];
+        var instance = _snapshot.RenderInstances[index];
             var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
             var details = radius >= 3.25
                 && !(_snapshot.RenderInstances.Count > 20_000 && _zoom < 1)
                 && stride == 1;
             DrawOrganism(context, instance, scaleX, scaleY, details);
-            selectedDrawn |= _selectedSlot == instance.Slot;
+            selectedDrawn |= _selectedKeys.Contains(KeyOf(instance));
         }
 
-        if (!selectedDrawn && _selectedSlot is { } selected
-            && _snapshot.RenderInstances.FirstOrDefault(candidate => candidate.Slot == selected) is { } selectedInstance)
+        if (!selectedDrawn && _selectedKey is { } selected
+            && _snapshot.RenderInstances.FirstOrDefault(candidate => KeyOf(candidate) == selected) is { } selectedInstance)
         {
             DrawOrganism(context, selectedInstance, scaleX, scaleY, details: true);
         }
@@ -130,12 +260,15 @@ public sealed class WorldViewport : Control
         double scaleY,
         bool details)
     {
-        var position = _dragSlot == instance.Slot && _dragPosition is not null ? _dragPosition : instance.Position;
+        var position = _dragKey == KeyOf(instance) && _dragPosition is not null ? _dragPosition : instance.Position;
         var center = ScreenPoint(position, scaleX, scaleY);
         var radiusScale = Math.Min(scaleX, scaleY);
         var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
-        var color = Color.FromUInt32(instance.Color);
-        var selected = _selectedSlot == instance.Slot;
+        var organism = _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == KeyOf(instance));
+        var color = organism is not null && _rgbMemoryMonitor is { } monitor
+            ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
+            : Color.FromUInt32(instance.Color);
+        var selected = _selectedKeys.Contains(KeyOf(instance));
         var edgeColor = ContrastColor(color, strong: false);
         context.DrawEllipse(
             new SolidColorBrush(color),
@@ -154,7 +287,7 @@ public sealed class WorldViewport : Control
             return;
         }
 
-        DrawSkin(context, instance, center, radius, color);
+        if (RenderSkins) DrawSkin(context, instance, center, radius, color);
         DrawHeading(context, instance, center, radius, color);
     }
 
@@ -198,15 +331,15 @@ public sealed class WorldViewport : Control
     private void DrawSelectedVision(DrawingContext context, double scaleX, double scaleY)
     {
         if (!ShowSelectedVision) return;
-        if (_selectedSlot is not { } selected
-            || _snapshot.Organisms.FirstOrDefault(organism => organism.Slot == selected) is not { } organism)
+        if (_selectedKey is not { } selected
+            || _snapshot.Organisms.FirstOrDefault(organism => KeyOf(organism) == selected) is not { } organism)
         {
             return;
         }
         var center = ScreenPoint(organism.Position, scaleX, scaleY);
         var radiusScale = Math.Min(scaleX, scaleY) * _zoom;
         var organismRadius = _snapshot.RenderInstances
-            .FirstOrDefault(instance => instance.Slot == selected)?.Radius ?? 8f;
+            .FirstOrDefault(instance => KeyOf(instance) == selected)?.Radius ?? 8f;
         var sectors = OrganismVisualGeometry.EyeSectors(organism.Vision, organism.Aim, organismRadius);
         foreach (var sector in sectors)
         {
@@ -248,8 +381,10 @@ public sealed class WorldViewport : Control
         foreach (var organism in _snapshot.Organisms)
         {
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
-            var color = Color.FromUInt32(organism.Phenotype.Color);
-            var selected = _selectedSlot == organism.Slot;
+            var color = _rgbMemoryMonitor is { } monitor
+                ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
+                : Color.FromUInt32(organism.Phenotype.Color);
+            var selected = _selectedKeys.Contains(KeyOf(organism));
             context.DrawEllipse(
                 new SolidColorBrush(color),
                 new Pen(selected ? Brushes.Black : new SolidColorBrush(ContrastColor(color, false)), selected ? 2.2 : 0.8),
@@ -277,7 +412,7 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerPressed(e);
         var point = e.GetCurrentPoint(this);
-        if (point.Properties.IsMiddleButtonPressed || point.Properties.IsRightButtonPressed)
+        if (point.Properties.IsMiddleButtonPressed)
         {
             _panAnchor = point.Position;
             _panAtPress = _pan;
@@ -286,6 +421,18 @@ public sealed class WorldViewport : Control
             return;
         }
         var selected = FindNearest(point.Position);
+        if (point.Properties.IsRightButtonPressed)
+        {
+            if (selected is { } contextKey)
+            {
+                SelectKey(contextKey);
+                OrganismSelected?.Invoke(contextKey.Slot);
+                OrganismKeySelected?.Invoke(contextKey);
+                OrganismContextRequested?.Invoke(contextKey, point.Position);
+                e.Handled = true;
+            }
+            return;
+        }
         if (selected is null)
         {
             var feature = FindFeature(point.Position);
@@ -304,9 +451,16 @@ public sealed class WorldViewport : Control
             ]);
             return;
         }
-        SelectSlot(selected);
-        OrganismSelected?.Invoke(selected.Value);
-        _dragSlot = selected;
+        SelectKey(selected);
+        OrganismSelected?.Invoke(selected.Value.Slot);
+        OrganismKeySelected?.Invoke(selected.Value);
+        if (e.ClickCount >= 2)
+        {
+            OrganismDoubleClicked?.Invoke(selected.Value);
+            e.Handled = true;
+            return;
+        }
+        _dragKey = selected;
         _dragPosition = WorldPoint(point.Position);
         _dragOrigin = point.Position;
         _dragMoved = false;
@@ -317,7 +471,7 @@ public sealed class WorldViewport : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (_dragSlot is not null)
+        if (_dragKey is not null)
         {
             var pointer = e.GetPosition(this);
             if (_dragOrigin is { } origin && DesktopControlRules.IsDragGesture(pointer.X - origin.X, pointer.Y - origin.Y))
@@ -329,9 +483,9 @@ public sealed class WorldViewport : Control
             return;
         }
         if (_panAnchor is not { } anchor) return;
-        _followSlot = null;
+        _followKey = null;
         var point = e.GetPosition(this);
-        _pan = _panAtPress + (point - anchor);
+        _pan = ClampPan(_panAtPress + (point - anchor));
         InvalidateVisual();
     }
 
@@ -339,9 +493,11 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerReleased(e);
         _panAnchor = null;
-        if (_dragMoved && _dragSlot is { } slot && _dragPosition is { } position)
-            OrganismDragCompleted?.Invoke(slot, position);
-        _dragSlot = null;
+        if (_dragMoved && _dragKey is { } key && _dragPosition is { } position)
+        {
+            OrganismKeyDragCompleted?.Invoke(key, position);
+        }
+        _dragKey = null;
         _dragPosition = null;
         _dragOrigin = null;
         _dragMoved = false;
@@ -352,20 +508,41 @@ public sealed class WorldViewport : Control
     {
         base.OnPointerWheelChanged(e);
         var cursor = e.GetPosition(this);
-        var oldZoom = _zoom;
-        _zoom = Math.Clamp(_zoom * (e.Delta.Y > 0 ? 1.2 : 1 / 1.2), 0.35, 12.0);
-        var ratio = _zoom / oldZoom;
-        _pan = new Vector(cursor.X - (cursor.X - _pan.X) * ratio, cursor.Y - (cursor.Y - _pan.Y) * ratio);
-        InvalidateVisual();
+        SetZoomAt(_zoom * (e.Delta.Y > 0 ? 1.2 : 1 / 1.2), cursor);
         e.Handled = true;
     }
 
-    private uint? FindNearest(Point pointer)
+    private void SetZoomAt(double zoom, Point anchor)
+    {
+        var oldZoom = _zoom;
+        _zoom = Math.Clamp(zoom, 0.35, 12.0);
+        var ratio = _zoom / oldZoom;
+        _pan = ClampPan(new Vector(
+            anchor.X - (anchor.X - _pan.X) * ratio,
+            anchor.Y - (anchor.Y - _pan.Y) * ratio));
+        InvalidateVisual();
+    }
+
+    private Vector ClampPan(Vector pan)
+    {
+        if (!_zoomLocked) return pan;
+        var worldWidth = Bounds.Width * _zoom;
+        var worldHeight = Bounds.Height * _zoom;
+        var minX = Math.Min(0, Bounds.Width - worldWidth);
+        var maxX = Math.Max(0, Bounds.Width - worldWidth);
+        var minY = Math.Min(0, Bounds.Height - worldHeight);
+        var maxY = Math.Max(0, Bounds.Height - worldHeight);
+        return new Vector(
+            Math.Clamp(pan.X, minX, maxX),
+            Math.Clamp(pan.Y, minY, maxY));
+    }
+
+    private OrganismKey? FindNearest(Point pointer)
     {
         var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
         var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
-        uint? best = null;
-        var bestDistance = 14.0 * 14.0;
+        OrganismKey? best = null;
+        var bestDistance = InputHitRadius * InputHitRadius;
         foreach (var organism in _snapshot.Organisms)
         {
             var x = organism.Position[0] * scaleX * _zoom + _pan.X;
@@ -373,7 +550,7 @@ public sealed class WorldViewport : Control
             var distance = (pointer.X - x) * (pointer.X - x) + (pointer.Y - y) * (pointer.Y - y);
             if (distance >= bestDistance) continue;
             bestDistance = distance;
-            best = organism.Slot;
+            best = KeyOf(organism);
         }
         return best;
     }
@@ -388,14 +565,28 @@ public sealed class WorldViewport : Control
         ];
     }
 
+    private static OrganismKey KeyOf(OrganismSnapshot organism) =>
+        new(organism.Slot, organism.Generation);
+
+    private static OrganismKey KeyOf(RenderInstanceSnapshot instance) =>
+        new(instance.Slot, instance.Generation);
+
+    private static bool Contains(EngineSnapshot snapshot, OrganismKey key) =>
+        snapshot.Organisms.Any(organism => KeyOf(organism) == key);
+
     private void DrawToroidalEdges(DrawingContext context)
     {
-        if (!ToroidalWorld) return;
         var pen = new Pen(new SolidColorBrush(Color.Parse("#239AC0"), 0.35), 2);
-        context.DrawLine(pen, new Point(1, 0), new Point(1, Bounds.Height));
-        context.DrawLine(pen, new Point(Bounds.Width - 1, 0), new Point(Bounds.Width - 1, Bounds.Height));
-        context.DrawLine(pen, new Point(0, 1), new Point(Bounds.Width, 1));
-        context.DrawLine(pen, new Point(0, Bounds.Height - 1), new Point(Bounds.Width, Bounds.Height - 1));
+        if (WrapX)
+        {
+            context.DrawLine(pen, new Point(1, 0), new Point(1, Bounds.Height));
+            context.DrawLine(pen, new Point(Bounds.Width - 1, 0), new Point(Bounds.Width - 1, Bounds.Height));
+        }
+        if (WrapY)
+        {
+            context.DrawLine(pen, new Point(0, 1), new Point(Bounds.Width, 1));
+            context.DrawLine(pen, new Point(0, Bounds.Height - 1), new Point(Bounds.Width, Bounds.Height - 1));
+        }
     }
 
     private WorldFeatureSelection? FindFeature(Point pointer)
@@ -412,6 +603,14 @@ public sealed class WorldViewport : Control
             if (bounds.Contains(pointer)) return new WorldFeatureSelection(WorldFeatureKind.Obstacle, obstacle.Id);
         }
         foreach (var teleporter in _snapshot.Teleporters.AsEnumerable().Reverse())
+        {
+            var x = teleporter.Center[0] * scaleX + _pan.X;
+            var y = teleporter.Center[1] * scaleY + _pan.Y;
+            var radius = Math.Max(6, teleporter.Radius * Math.Min(scaleX, scaleY));
+            if ((pointer.X - x) * (pointer.X - x) + (pointer.Y - y) * (pointer.Y - y) <= radius * radius)
+                return new WorldFeatureSelection(WorldFeatureKind.Teleporter, teleporter.Id);
+        }
+        foreach (var teleporter in _snapshot.FileTeleporters.AsEnumerable().Reverse())
         {
             var x = teleporter.Center[0] * scaleX + _pan.X;
             var y = teleporter.Center[1] * scaleY + _pan.Y;
@@ -452,9 +651,10 @@ public sealed class WorldViewport : Control
         foreach (var shot in _snapshot.Shots)
         {
             if (!RenderWaste && shot.Kind == -4) continue;
+            if (!ShowShotImpacts && shot.ImpactFlash) continue;
             var color = shot.Kind switch
             {
-                -1 => "#E26722",
+                -1 => "#FFFFFF",
                 -2 => "#45A23D",
                 -3 => "#239AC0",
                 -4 => "#8A6748",
@@ -483,7 +683,7 @@ public sealed class WorldViewport : Control
                 obstacle.Minimum[1] * scaleY + _pan.Y,
                 (obstacle.Maximum[0] - obstacle.Minimum[0]) * scaleX,
                 (obstacle.Maximum[1] - obstacle.Minimum[1]) * scaleY);
-            context.FillRectangle(new SolidColorBrush(Color.Parse("#B9BDB6")), rectangle);
+            context.FillRectangle(new SolidColorBrush(Color.FromUInt32(obstacle.Color), Math.Clamp(obstacle.Opacity, 0f, 1f)), rectangle);
             var selected = _selectedFeature is { Kind: WorldFeatureKind.Obstacle } feature && feature.Id == obstacle.Id;
             context.DrawRectangle(null, new Pen(new SolidColorBrush(Color.Parse(selected ? "#202725" : "#69716D")), selected ? 2.4 : 1.2), rectangle);
         }
@@ -492,8 +692,28 @@ public sealed class WorldViewport : Control
             var center = new Point(teleporter.Center[0] * scaleX + _pan.X, teleporter.Center[1] * scaleY + _pan.Y);
             var radius = Math.Max(4.0, teleporter.Radius * Math.Min(scaleX, scaleY));
             var selected = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature && feature.Id == teleporter.Id;
-            context.DrawEllipse(new SolidColorBrush(Color.Parse("#35239AC0")), new Pen(new SolidColorBrush(Color.Parse(selected ? "#202725" : "#239AC0")), selected ? 3 : 2), center, radius, radius);
+            var highlighted = selected || HighlightTeleporters;
+            context.DrawEllipse(
+                new SolidColorBrush(Color.Parse(HighlightTeleporters ? "#55239AC0" : "#35239AC0")),
+                new Pen(new SolidColorBrush(Color.Parse(highlighted ? "#E26722" : "#239AC0")), highlighted ? 3 : 2),
+                center,
+                radius,
+                radius);
         }
+        foreach (var teleporter in _snapshot.FileTeleporters)
+        {
+            var center = new Point(teleporter.Center[0] * scaleX + _pan.X, teleporter.Center[1] * scaleY + _pan.Y);
+            var radius = Math.Max(4.0, teleporter.Radius * Math.Min(scaleX, scaleY));
+            var selected = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature && feature.Id == teleporter.Id;
+            var highlighted = selected || HighlightTeleporters;
+            context.DrawEllipse(
+                new SolidColorBrush(Color.Parse("#553E7B36")),
+                new Pen(new SolidColorBrush(Color.Parse(highlighted ? "#E26722" : "#3E7B36")), highlighted ? 3 : 2),
+                center,
+                radius,
+                radius);
+        }
+        if (!ShowDeathPoffs) return;
         foreach (var corpse in _snapshot.Corpses)
         {
             var center = new Point(corpse.Position[0] * scaleX + _pan.X, corpse.Position[1] * scaleY + _pan.Y);
@@ -508,7 +728,76 @@ public sealed class WorldViewport : Control
         }
     }
 
+    public void SetBackgroundImage(Bitmap? image)
+    {
+        _backgroundImage?.Dispose();
+        _backgroundImage = image;
+        InvalidateVisual();
+    }
+
+    private void DrawMovementVectors(DrawingContext context, double scaleX, double scaleY)
+    {
+        if (!ShowMovementVectors) return;
+        var stride = _snapshot.Organisms.Count > 20_000 ? 8 : _snapshot.Organisms.Count > 5_000 ? 3 : 1;
+        var pen = new Pen(new SolidColorBrush(Color.Parse("#A5239AC0")), 0.9);
+        for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
+        {
+            var organism = _snapshot.Organisms[index];
+            var start = ScreenPoint(organism.Position, scaleX, scaleY);
+            var end = new Point(
+                start.X + organism.Velocity[0] * scaleX * _zoom * 12,
+                start.Y + organism.Velocity[1] * scaleY * _zoom * 12);
+            context.DrawLine(pen, start, end);
+        }
+    }
+
+    private void DrawResourceGauges(DrawingContext context, double scaleX, double scaleY)
+    {
+        if (!ShowResourceGauges) return;
+        var stride = _snapshot.Organisms.Count > 10_000 ? 6 : _snapshot.Organisms.Count > 3_000 ? 2 : 1;
+        for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
+        {
+            var organism = _snapshot.Organisms[index];
+            var center = ScreenPoint(organism.Position, scaleX, scaleY);
+            var width = 18.0;
+            var ratio = Math.Clamp(organism.Energy / 20_000.0, 0.0, 1.0);
+            var origin = new Point(center.X - width / 2, center.Y - 12);
+            context.FillRectangle(new SolidColorBrush(Color.Parse("#A0D0CEC5")), new Rect(origin, new Size(width, 2.5)));
+            context.FillRectangle(new SolidColorBrush(Color.Parse("#D045A23D")), new Rect(origin, new Size(width * ratio, 2.5)));
+        }
+    }
+
+    private void DrawEnergyGrid(DrawingContext context)
+    {
+        if (!EnergyGridEnabled || _snapshot.Organisms.Count == 0) return;
+        var cellSize = _energyGridSize switch
+        {
+            EnergyGridSize.Large => 128.0,
+            EnergyGridSize.Medium => 80.0,
+            _ => 48.0,
+        };
+        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
+        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+        var cells = new Dictionary<(int X, int Y), (int Count, double Energy)>();
+        foreach (var organism in _snapshot.Organisms)
+        {
+            var point = ScreenPoint(organism.Position, scaleX, scaleY);
+            var key = ((int)Math.Floor(point.X / cellSize), (int)Math.Floor(point.Y / cellSize));
+            cells.TryGetValue(key, out var value);
+            cells[key] = (value.Count + 1, value.Energy + organism.Energy);
+        }
+        var maximum = Math.Max(1.0, cells.Values.Max(value => value.Energy));
+        foreach (var (cell, value) in cells)
+        {
+            var intensity = (byte)Math.Clamp(24 + value.Energy / maximum * 92, 24, 116);
+            context.FillRectangle(
+                new SolidColorBrush(Color.FromArgb(intensity, 63, 145, 56)),
+                new Rect(cell.X * cellSize, cell.Y * cellSize, cellSize, cellSize));
+        }
+    }
+
 }
 
+public enum EnergyGridSize { Large, Medium, Small }
 public enum WorldFeatureKind { Obstacle, Teleporter }
 public sealed record WorldFeatureSelection(WorldFeatureKind Kind, uint Id);

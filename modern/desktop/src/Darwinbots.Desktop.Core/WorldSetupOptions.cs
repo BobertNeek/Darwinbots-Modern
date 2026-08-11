@@ -35,12 +35,18 @@ public sealed record WorldSetupOptions
     public float BrownianMotion { get; init; } = 0.5f;
     public Db2PhysicsOptions Physics { get; init; } = Db2PhysicsOptions.Default;
     public Db2ShotOptions Shots { get; init; } = Db2ShotOptions.Default;
+    public Db2CorpseDecayOptions CorpseDecay { get; init; } = new();
+    public Db2WasteOptions Waste { get; init; } = new();
     public Db2VegetationOptions Vegetation { get; init; } = Db2VegetationOptions.Default;
+    public Db2RecordingOptions Recording { get; init; } = new();
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
+    public bool WrapX { get; init; } = true;
+    public bool WrapY { get; init; } = true;
     public uint TicksPerUpdate { get; init; } = 1;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
+    public GlobalSettings GlobalSettings { get; init; } = new();
     public string? LoadSavePath { get; init; }
 
     public int EffectiveMetabolismCost => StartingMode == StartingMode.StarterBotsAndVegetables
@@ -59,5 +65,10 @@ public sealed record WorldSetupOptions
         Vegetation,
         AutoSpeciation,
         SpeciationGeneticDistancePercent,
-        ToroidalWorld);
+        ToroidalWorld,
+        WrapX,
+        WrapY,
+        CorpseDecay,
+        Waste,
+        Recording);
 }

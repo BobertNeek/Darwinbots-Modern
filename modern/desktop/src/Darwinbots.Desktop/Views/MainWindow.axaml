@@ -5,11 +5,13 @@
         x:Class="Darwinbots.Desktop.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Darwinbots Modern"
-        Width="940" Height="650" MinWidth="900" MinHeight="600"
-        WindowStartupLocation="CenterScreen" WindowState="Maximized"
-        KeyDown="MainWindow_KeyDown">
-  <Grid RowDefinitions="58,*,170,28" ColumnDefinitions="250,*,280">
-    <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
+         Width="940" Height="650" MinWidth="720" MinHeight="520"
+         WindowStartupLocation="CenterScreen" WindowState="Maximized"
+         KeyDown="MainWindow_KeyDown" SizeChanged="MainWindow_SizeChanged">
+  <Grid RowDefinitions="34,*" Background="{DynamicResource WindowBrush}">
+    <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
+  <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,34,*,170,62,40" ColumnDefinitions="250,*,280">
+    <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="25" VerticalAlignment="Center" />
@@ -19,11 +21,18 @@
         <Button Grid.Column="4" x:Name="TurboButton" Height="34" Content="TURBO" Margin="4,0,0,0" Click="Turbo_Click" />
         <Button x:Name="ImportButton" Grid.Column="5" Height="34" Content="IMPORT BOT" Margin="6,0,0,0" Click="Import_Click" />
         <Button x:Name="ResetButton" Grid.Column="6" Height="34" Content="RESET" Margin="4,0,0,0" Click="Reset_Click" />
-        <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" Margin="6,0,0,0">
+          <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" Margin="6,0,0,0">
           <ComboBox x:Name="RuntimeSpeed" Width="84" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
           <Button x:Name="BackendButton" Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />
+           <Button x:Name="SunButton" Height="34" Content="SUN ON" ToolTip.Tip="Toggle the simulation sun" AutomationProperties.Name="SUN ON" AutomationProperties.HelpText="Toggle daytime sunlight in the local simulation." Click="Sun_Click" />
+           <Button x:Name="InternetButton" Height="34" Content="INTERNET OFFLINE" IsEnabled="False" ToolTip.Tip="Online play is disabled in this local-only build." AutomationProperties.Name="INTERNET OFFLINE" AutomationProperties.HelpText="Historical internet controls remain visible but disabled and inert." />
+          <Button x:Name="ContestIndicator" Height="34" Content="CONTEST RESULTS" ToolTip.Tip="Open local contest results" AutomationProperties.Name="CONTEST RESULTS" AutomationProperties.HelpText="Open local contest results. Online play is disabled." Click="ContestResults_Click" />
+          <Button x:Name="GraphsButton" Height="34" Content="GRAPHS" Click="Graphs_Click" />
+          <Button x:Name="ContestResultsButton" Height="34" Content="CONTEST" Click="ContestResults_Click" />
           <Button x:Name="SaveButton" Height="34" Content="SAVE" Click="Save_Click" />
           <Button x:Name="LoadButton" Height="34" Content="LOAD" Click="Load_Click" />
+          <CheckBox x:Name="IgnoreErrorsToggle" Content="IGNORE ERRORS" VerticalContentAlignment="Center" IsCheckedChanged="IgnoreErrors_Changed" />
+          <Button x:Name="TrayButton" Height="34" Content="TRAY" Click="HideToTray_Click" />
         </StackPanel>
         <StackPanel Grid.Column="8" Margin="8,0,0,0" VerticalAlignment="Center">
           <TextBlock Classes="section" Text="TICK" />
@@ -35,13 +44,56 @@
       </Viewbox>
     </Border>
 
-    <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="8,8,4,4">
+    <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
+      <ScrollViewer x:Name="LegacyToolbarScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
+      <UniformGrid x:Name="LegacyToolbar" Rows="1" Columns="24" Width="1440" HorizontalAlignment="Left">
+        <Button x:Name="ToolbarSlot01" Content="NEW" ToolTip.Tip="Create a new simulation" AutomationProperties.Name="NEW SIMULATION" AutomationProperties.HelpText="Open the new simulation setup." KeyboardNavigation.TabIndex="0" Click="ToolbarNew_Click" />
+        <Button x:Name="ToolbarSlot02" Content="LOAD" ToolTip.Tip="Load a simulation" AutomationProperties.Name="LOAD SIMULATION" AutomationProperties.HelpText="Load an offline simulation file." KeyboardNavigation.TabIndex="1" Click="Load_Click" />
+        <Button x:Name="ToolbarSlot03" Content="SAVE" ToolTip.Tip="Save the simulation" AutomationProperties.Name="SAVE SIMULATION" AutomationProperties.HelpText="Save the current offline simulation." KeyboardNavigation.TabIndex="2" Click="Save_Click" />
+        <Border x:Name="ToolbarSlot04" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 1" AutomationProperties.HelpText="Toolbar separator" />
+        <Button x:Name="ToolbarSlot05" Content="PLAY" ToolTip.Tip="Run the simulation" AutomationProperties.Name="PLAY SIMULATION" AutomationProperties.HelpText="Run the Rust-backed simulation." KeyboardNavigation.TabIndex="3" Click="Run_Click" />
+        <Button x:Name="ToolbarSlot06" Content="STEP" ToolTip.Tip="Advance one simulation step" AutomationProperties.Name="STEP SIMULATION" AutomationProperties.HelpText="Advance the simulation by the selected batch." KeyboardNavigation.TabIndex="4" Click="Step_Click" />
+        <Button x:Name="ToolbarSlot07" Content="STOP" ToolTip.Tip="Pause the simulation" AutomationProperties.Name="STOP SIMULATION" AutomationProperties.HelpText="Pause the simulation clock." KeyboardNavigation.TabIndex="5" Click="Pause_Click" />
+        <Border x:Name="ToolbarSlot08" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 2" AutomationProperties.HelpText="Toolbar separator" />
+        <Button x:Name="ToolbarSlot09" Content="15 CPS OFF" ToolTip.Tip="Limit speed to 15 cycles per second" AutomationProperties.Name="15 CPS LIMIT OFF" AutomationProperties.HelpText="Toggle the legacy 15 cycles per second limit." KeyboardNavigation.TabIndex="6" Click="ToolbarLimit_Click" />
+        <Button x:Name="ToolbarSlot10" Content="FAST OFF" ToolTip.Tip="Toggle fast mode" AutomationProperties.Name="FAST MODE OFF" AutomationProperties.HelpText="Toggle the fast simulation speed." KeyboardNavigation.TabIndex="7" Click="ToolbarFast_Click" />
+        <Button x:Name="ToolbarSlot11" Content="FLICKER OFF" ToolTip.Tip="Toggle flicker mode" AutomationProperties.Name="FLICKER MODE OFF" AutomationProperties.HelpText="Toggle reduced-detail alternating rendering." KeyboardNavigation.TabIndex="8" Click="ToolbarFlicker_Click" />
+        <Button x:Name="ToolbarSlot12" Content="SKINS ON" ToolTip.Tip="Toggle organism skins" AutomationProperties.Name="ORGANISM SKINS ON" AutomationProperties.HelpText="Show or hide organism skin details." KeyboardNavigation.TabIndex="9" Click="ToolbarNoSkin_Click" />
+        <Button x:Name="ToolbarSlot13" Content="POFFS ON" ToolTip.Tip="Toggle death effects" AutomationProperties.Name="DEATH EFFECTS ON" AutomationProperties.HelpText="Show or hide corpse effects in the playfield." KeyboardNavigation.TabIndex="10" Click="ToolbarNoPoffs_Click" />
+        <Button x:Name="ToolbarSlot14" Content="GRAPHICS ON" ToolTip.Tip="Toggle world rendering" AutomationProperties.Name="WORLD GRAPHICS ON" AutomationProperties.HelpText="Suspend or restore playfield rendering while the simulation runs." KeyboardNavigation.TabIndex="11" Click="ToolbarNoGraphics_Click" />
+        <Border x:Name="ToolbarSlot15" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 3" AutomationProperties.HelpText="Toolbar separator" />
+        <Button x:Name="ToolbarSlot16" Content="INSERT" ToolTip.Tip="Toggle robot insertion mode" AutomationProperties.Name="INSERTION MODE" AutomationProperties.HelpText="Toggle insertion mode, then click an empty playfield position." KeyboardNavigation.TabIndex="12" Click="InsertSpecies_Click" />
+        <ComboBox x:Name="ToolbarSlot17" PlaceholderText="SPECIES" ToolTip.Tip="Species used by insertion mode" AutomationProperties.Name="INSERTION SPECIES" AutomationProperties.HelpText="Choose the species used by insertion mode." KeyboardNavigation.TabIndex="13" SelectionChanged="ToolbarSpecies_Changed">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:CompileBindings="False"><TextBlock Text="{Binding Name}" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button x:Name="ToolbarSlot18" Content="BEST" ToolTip.Tip="Find the most successful robot" AutomationProperties.Name="FIND BEST ROBOT" AutomationProperties.HelpText="Select the living robot with the highest energy." KeyboardNavigation.TabIndex="14" Click="ToolbarFindBest_Click" />
+        <Button x:Name="ToolbarSlot19" Content="GRAPH" ToolTip.Tip="Open graph suite" AutomationProperties.Name="OPEN GRAPHS" AutomationProperties.HelpText="Open the nonmodal local graph suite." KeyboardNavigation.TabIndex="15" Click="Graphs_Click" />
+        <Border x:Name="ToolbarSlot20" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 4" AutomationProperties.HelpText="Toolbar separator" />
+        <Button x:Name="ToolbarSlot21" Content="SNAPSHOT" ToolTip.Tip="Capture all living robots" AutomationProperties.Name="LIVING SNAPSHOT" AutomationProperties.HelpText="Save a snapshot of all living robots." KeyboardNavigation.TabIndex="16" Click="ToolbarSnapshot_Click" />
+        <Border x:Name="ToolbarSlot22" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 5" AutomationProperties.HelpText="Toolbar separator" />
+        <Button x:Name="ToolbarSlot23" Content="STEALTH" ToolTip.Tip="Hide the window to the tray" AutomationProperties.Name="STEALTH TRAY MODE" AutomationProperties.HelpText="Hide the shell while the local simulation continues." KeyboardNavigation.TabIndex="17" Click="HideToTray_Click" />
+        <Button x:Name="ToolbarSlot24" Content="IGNORE OFF" ToolTip.Tip="Toggle ignored engine errors" AutomationProperties.Name="IGNORE ERRORS OFF" AutomationProperties.HelpText="Toggle the offline engine error recovery mode." KeyboardNavigation.TabIndex="18" Click="ToolbarIgnoreErrors_Click" />
+      </UniformGrid>
+      </ScrollViewer>
+    </Border>
+
+    <Border x:Name="SpeciesPanel" Grid.Row="2" Grid.Column="0" Classes="panel" Margin="8,8,4,4">
       <Grid RowDefinitions="42,Auto,*,Auto">
         <Border BorderBrush="#D0CDC3" BorderThickness="0,0,0,1" Padding="12">
           <TextBlock Classes="section" Text="SPECIES" />
         </Border>
-        <Border Grid.Row="1" Background="#E5ECD9" Padding="12,9">
-          <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Active species" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding SpeciesCount}"/></Grid>
+        <Border Grid.Row="1" Background="#E5ECD9" Padding="10,8">
+          <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Active species" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding SpeciesCount}"/></Grid>
+            <ComboBox x:Name="InsertionSpeciesSelector" PlaceholderText="SELECT SPECIES" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:CompileBindings="False"><TextBlock Text="{Binding Name}" /></DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button x:Name="InsertSpeciesButton" Content="INSERT SPECIES" Click="InsertSpecies_Click" />
+          </StackPanel>
         </Border>
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="12,16" Spacing="8">
@@ -57,6 +109,9 @@
                     <CheckBox x:Name="RenderWasteToggle" Content="RENDER WASTE" FontSize="11" IsChecked="True" IsCheckedChanged="RenderWaste_Changed"/>
                     <Button x:Name="AddObstacleButton" Content="＋ OBSTACLE" FontSize="11" HorizontalAlignment="Stretch" Click="AddObstacle_Click"/>
                     <Button x:Name="AddTeleporterButton" Content="＋ TELEPORTER" FontSize="11" HorizontalAlignment="Stretch" Click="AddTeleporter_Click"/>
+                    <Button x:Name="AddFileTeleporterButton" Content="＋ FILE TELEPORTER" FontSize="11" HorizontalAlignment="Stretch" Click="AddFileTeleporter_Click"/>
+                    <Button x:Name="EditShapeButton" Content="EDIT SHAPE PROPERTIES" FontSize="11" HorizontalAlignment="Stretch" Click="EditShape_Click"/>
+                    <Button x:Name="EditTeleporterButton" Content="EDIT TELEPORTER" FontSize="11" HorizontalAlignment="Stretch" Click="EditTeleporter_Click"/>
                     <Button x:Name="RemoveFeatureButton" Content="REMOVE FEATURE" FontSize="11" HorizontalAlignment="Stretch" Click="RemoveFeature_Click"/>
                   </StackPanel>
                 </Expander>
@@ -79,8 +134,67 @@
                 </Expander>
               </StackPanel>
             </Expander>
+            <Expander x:Name="LeagueExpander" Header="League / Local modes" IsExpanded="True" HorizontalContentAlignment="Stretch">
+              <StackPanel Spacing="6" Margin="4,6,0,5">
+                <TextBlock Classes="section" Text="LEAGUE TAB" />
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="5" RowSpacing="5">
+                  <ComboBox x:Name="LocalModeKindSelector" SelectionChanged="LocalModeKind_Changed">
+                    <ComboBoxItem Content="LEAGUE" />
+                    <ComboBoxItem Content="CONTEST" />
+                    <ComboBoxItem Content="SIMPLE SURVIVAL" />
+                    <ComboBoxItem Content="ECO SURVIVAL" />
+                    <ComboBoxItem Content="ZEROBOT" />
+                  </ComboBox>
+                  <ComboBox x:Name="LocalModePreset" Grid.Column="1" SelectionChanged="LocalModePreset_Changed">
+                    <ComboBoxItem Content="F1" />
+                    <ComboBoxItem Content="F2" />
+                    <ComboBoxItem Content="F3" />
+                    <ComboBoxItem Content="MULTIBOT" />
+                    <ComboBoxItem Content="SHORT BOT" />
+                    <ComboBoxItem Content="SINGLE GENE" />
+                    <ComboBoxItem Content="SINGLE STORE" />
+                  </ComboBox>
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
+                  <StackPanel Spacing="2"><TextBlock Text="Rounds" FontSize="10"/><NumericUpDown x:Name="ModeMinimumRounds" Minimum="1" Maximum="100" Value="5" /></StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="2"><TextBlock Text="Round cap" FontSize="10"/><NumericUpDown x:Name="ModeMaximumRounds" Minimum="1" Maximum="100" Value="1" /></StackPanel>
+                </Grid>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
+                  <StackPanel Spacing="2"><TextBlock Text="Cycles" FontSize="10"/><NumericUpDown x:Name="ModeMaximumCycles" Minimum="1" Maximum="1000000000" Value="15000" /></StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="2"><TextBlock Text="Population cap" FontSize="10"/><NumericUpDown x:Name="ModePopulationCap" Minimum="1" Maximum="1000000" Value="700" /></StackPanel>
+                </Grid>
+                <StackPanel Spacing="2"><TextBlock Text="Energy handicap" FontSize="10"/><NumericUpDown x:Name="ModeEnergyHandicap" Minimum="-100000" Maximum="100000" Value="0" /></StackPanel>
+                <CheckBox x:Name="ModeRestartOnExtinction" Content="RESTART AFTER EXTINCTION" IsChecked="True" FontSize="10" />
+                <CheckBox x:Name="ModeProhibitInformation" Content="PROHIBIT INFORMATION SHOTS" FontSize="10" />
+                <CheckBox x:Name="ModeProhibitViruses" Content="PROHIBIT VIRUSES" FontSize="10" />
+                <CheckBox x:Name="ModeProhibitSexual" Content="PROHIBIT SEXUAL REPRODUCTION" FontSize="10" />
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" ColumnSpacing="5" RowSpacing="5">
+                  <Button x:Name="ConfigureModeButton" Content="CONFIGURE" Click="ConfigureLocalMode_Click" />
+                  <Button x:Name="StartModeButton" Grid.Column="1" Content="START" Click="StartLocalMode_Click" />
+                  <Button x:Name="RestartModeButton" Grid.Row="1" Content="RESTART" Click="RestartLocalMode_Click" />
+                  <Button x:Name="AdjudicateModeButton" Grid.Row="1" Grid.Column="1" Content="ADJUDICATE" Click="AdjudicateLocalMode_Click" />
+                </Grid>
+                <TextBox x:Name="LocalModeReason" PlaceholderText="Adjudication reason" FontSize="10" />
+                <Border Background="#E5ECD9" Padding="6">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding LocalMode.StatusLabel}" FontWeight="Bold" />
+                    <TextBlock Text="{Binding LocalMode.RoundLabel}" FontSize="10" />
+                    <TextBlock Text="{Binding LocalMode.CycleLabel}" FontSize="10" />
+                    <TextBlock Text="{Binding LocalMode.AdjudicationLabel}" FontSize="10" Foreground="#2D826F" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Expander>
             <Expander x:Name="HistoryExpander" Header="History" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="Population and energy history are shown below." TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
-            <Expander x:Name="StatisticsExpander" Header="Statistics" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
+            <Expander x:Name="StatisticsExpander" Header="Statistics" HorizontalContentAlignment="Stretch">
+              <StackPanel Margin="4,5" Spacing="3">
+                <TextBlock Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+                <TextBlock Text="{Binding CombatSummary}" TextWrapping="Wrap" Foreground="#A65A23" FontSize="11"/>
+                <TextBlock Text="{Binding EnergyActivitySummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+                <TextBlock Text="{Binding PlantSummary}" TextWrapping="Wrap" Foreground="#3E8E36" FontSize="11"/>
+                <TextBlock Text="{Binding MutationSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
+              </StackPanel>
+            </Expander>
             <Expander x:Name="ExperimentsExpander" Header="Experiments" HorizontalContentAlignment="Stretch"><Button x:Name="AdvanceZerobotButton" Margin="4,5,0,4" Content="ADVANCE ZEROBOT" HorizontalAlignment="Stretch" Click="AdvanceZerobot_Click"/></Expander>
           </StackPanel>
         </ScrollViewer>
@@ -90,11 +204,37 @@
       </Grid>
     </Border>
 
-    <Border Grid.Row="1" Grid.Column="1" Classes="panel" Margin="4,8,4,4" ClipToBounds="True">
-      <controls:WorldViewport x:Name="Viewport" />
+    <Border x:Name="PlayfieldPanel" Grid.Row="2" Grid.Column="1" Classes="panel" Margin="4,8,4,4" ClipToBounds="True">
+      <Grid>
+        <controls:WorldViewport x:Name="Viewport" Focusable="True" AutomationProperties.Name="Simulation playfield" AutomationProperties.HelpText="Click a robot to select it. Click an empty world position for insertion or placement tools." />
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Spacing="6" IsHitTestVisible="False">
+          <Border x:Name="RuntimeOverlay" IsVisible="False" Background="#EAF7E6" BorderBrush="#3E7B36" BorderThickness="1" Padding="8,4">
+            <TextBlock x:Name="OverlayText" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#1C4F28" />
+          </Border>
+          <Border x:Name="InternetOfflineOverlay" IsVisible="True" Background="#F5EBDD" BorderBrush="#B46A27" BorderThickness="1" Padding="8,3" AutomationProperties.Name="Internet offline mode" AutomationProperties.HelpText="Online play and internet controls are disabled in this local-only build.">
+            <TextBlock Text="OFFLINE · INTERNET DISABLED" FontSize="10" FontWeight="SemiBold" Foreground="#794A1D" />
+          </Border>
+        </StackPanel>
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal" Margin="0,12,12,0" Spacing="4">
+          <Button x:Name="ZoomInButton" Content="ZOOM +" ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" Click="ZoomIn_Click" />
+          <Button x:Name="ZoomOutButton" Content="ZOOM −" ToolTip.Tip="Zoom out" AutomationProperties.Name="Zoom out" Click="ZoomOut_Click" />
+          <Button x:Name="ZoomLockButton" Content="LOCK OFF" ToolTip.Tip="Keep the camera inside the world" AutomationProperties.Name="Lock camera" Click="ZoomLock_Click" />
+        </StackPanel>
+        <Border x:Name="RecoveryPanel" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,92,0,0" Background="#FFF3E7" BorderBrush="#B46A27" BorderThickness="1" Padding="10" Width="310">
+          <StackPanel Spacing="5">
+            <TextBlock x:Name="RecoveryTitle" Text="SAFE MODE RECOVERY" FontWeight="Bold" Foreground="#794A1D" />
+            <TextBlock x:Name="RecoveryFaultWindowText" TextWrapping="Wrap" FontSize="11" />
+            <TextBlock x:Name="RecoveryArtifactText" TextWrapping="Wrap" FontSize="11" Foreground="#59615D" />
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+              <Button x:Name="RecoveryRecoverButton" Content="RECOVER" Click="RecoveryRecover_Click" />
+              <Button x:Name="RecoveryIgnoreButton" Content="IGNORE" Click="RecoveryIgnore_Click" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
     </Border>
 
-    <Border Grid.Row="1" Grid.Column="2" Classes="panel" Margin="4,8,8,4">
+    <Border x:Name="OrganismPanel" Grid.Row="2" Grid.Column="2" Classes="panel" Margin="4,8,8,4">
       <ScrollViewer>
         <StackPanel>
           <Border BorderBrush="#D0CDC3" BorderThickness="0,0,0,1" Padding="14"><TextBlock Classes="section" Text="ORGANISM" /></Border>
@@ -146,7 +286,7 @@
       </ScrollViewer>
     </Border>
 
-    <Grid Grid.Row="2" Grid.ColumnSpan="3" ColumnDefinitions="1*,1*,1.2*" Margin="8,4,8,6">
+    <Grid Grid.Row="3" Grid.ColumnSpan="3" ColumnDefinitions="1*,1*,1.2*" Margin="8,4,8,6">
       <Border Grid.Column="0" Classes="panel" Margin="0,0,4,0" Padding="14">
         <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
           <TextBlock Classes="section" Text="POPULATION"/>
@@ -176,8 +316,45 @@
       </Border>
     </Grid>
 
-    <Border Grid.Row="3" Grid.ColumnSpan="3" Background="#E6E2D8" BorderBrush="#BEBBB2" BorderThickness="0,1,0,0" Padding="10,4">
-      <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Status}" FontSize="11"/><Ellipse Grid.Column="1" Width="8" Height="8" Fill="#45A23D" VerticalAlignment="Center"/></Grid>
+    <Border Grid.Row="4" Grid.ColumnSpan="3" Background="#DCD8CD" BorderBrush="#BEBBB2" BorderThickness="0,1,0,0" Padding="6,4">
+      <ItemsControl x:Name="StatusInstrument" ItemsSource="{Binding StatusPanels}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:StatusPanelViewModel">
+            <Border BorderBrush="#BEBBB2" BorderThickness="0,0,1,0" Padding="5,1">
+              <StackPanel Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Label}" FontSize="9" Foreground="#69716D" />
+                <TextBlock Text="{Binding Value}" FontSize="11" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </Border>
+
+    <Border Grid.Row="5" Grid.ColumnSpan="3" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="8,4">
+      <Grid ColumnDefinitions="*,Auto,Auto,110,Auto,142,Auto" ColumnSpacing="6">
+        <TextBlock Text="{Binding Status}" FontSize="11" VerticalAlignment="Center" />
+        <TextBlock x:Name="InterfaceTitle" Grid.Column="1" Text="INTERFACE" Classes="section" FontSize="10" VerticalAlignment="Center" />
+        <TextBlock x:Name="ThemeLabel" Grid.Column="2" Text="THEME" FontSize="10" VerticalAlignment="Center" />
+        <ComboBox x:Name="ThemeSelector" Grid.Column="3" SelectedIndex="0" ToolTip.Tip="Select the application theme" AutomationProperties.Name="APPLICATION THEME" SelectionChanged="ThemeSelector_Changed">
+          <ComboBoxItem Content="SYSTEM" />
+          <ComboBoxItem Content="LIGHT" />
+          <ComboBoxItem Content="DARK" />
+        </ComboBox>
+        <TextBlock x:Name="CultureLabel" Grid.Column="4" Text="LANGUAGE" FontSize="10" VerticalAlignment="Center" />
+        <ComboBox x:Name="CultureSelector" Grid.Column="5" MinWidth="120" SelectedIndex="0" ToolTip.Tip="Select the interface language and number format" AutomationProperties.Name="INTERFACE LANGUAGE" SelectionChanged="CultureSelector_Changed">
+          <ComboBoxItem Content="English" />
+          <ComboBoxItem Content="Deutsch" />
+          <ComboBoxItem Content="Italiano" />
+        </ComboBox>
+        <Ellipse Grid.Column="6" Width="8" Height="8" Fill="#45A23D" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+    </Grid>
   </Grid>
 </Window>

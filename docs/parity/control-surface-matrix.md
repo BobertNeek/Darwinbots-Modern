@@ -1,8 +1,10 @@
 # Darwinbots Modern Control Surface Matrix
 
-All 109 current interactive surfaces are mapped to DB2/VB6 command intent and exercised by the rendered Avalonia audit. `source-parity` means the modern command preserves the original user-facing intent; `intentional-difference` records an approved modern-only surface such as GPU selection, turbo rendering suspension, autosave recovery, or integrated navigation.
+This matrix records the original 109-control Avalonia audit baseline. The later historical-menu restoration adds 74 DB2 menu leaf commands across File, Edit, View, Robot, Objects, E-Grid, Internet, Recording, and Help; those commands are catalogued and validated directly by `LegacyMenuCatalog` and `RuntimeControlSurfaceTests` rather than duplicated into this older row-oriented inventory.
 
-Last verified: 2026-07-18. This is an inventory of the current modern UI, not a claim that every historical DB2 surface exists in the modern application. Generated screenshot paths remain in the matrix for reproducibility even though the PNG files are ignored by Git.
+`source-parity` means the modern command preserves the original user-facing intent; `intentional-difference` records an approved modern-only surface such as GPU selection, turbo rendering suspension, autosave recovery, or integrated navigation. See `docs/parity/historic-menu-parity-report.md` for the current menu-specific acceptance record.
+
+Baseline verified: 2026-07-18. Historical menu layer verified: 2026-07-23. Generated screenshot paths remain in the matrix for reproducibility even though the PNG files are ignored by Git.
 
 | ID | Surface | Label | Type | Handler / binding | State affected | DB2 / VB6 intent | Status | Test result | Evidence |
 |---|---|---|---|---|---|---|---|---|---|
