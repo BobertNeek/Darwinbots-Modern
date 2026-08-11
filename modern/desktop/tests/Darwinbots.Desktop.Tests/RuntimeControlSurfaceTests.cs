@@ -856,6 +856,112 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task MainWindowSelectsNonFirstTiedMemberHighlightsGroupAndSavesIt()
+    {
+        var first = RecordingEngineClient.Organism with { Position = [80f, 100f] };
+        var second = RecordingEngineClient.Organism with
+        {
+            Slot = 4,
+            Generation = 7,
+            Position = [260f, 180f],
+        };
+        var firstKey = new OrganismKey(first.Slot, first.Generation);
+        var secondKey = new OrganismKey(second.Slot, second.Generation);
+        var snapshot = RecordingEngineClient.CreateSnapshot() with
+        {
+            Tick = 42,
+            Population = 2,
+            WorldSize = [400f, 300f],
+            Organisms = [first, second],
+            Ties = [new TieSnapshot(firstKey, secondKey, 42.5f)],
+        };
+        var engine = new RecordingEngineClient(snapshot);
+        engine.Tick(42);
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+        var storage = new AuditStorageService();
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow(
+                [],
+                new WorldSetupOptions { WorldWidth = 400, WorldHeight = 300 },
+                new AuditEngineClientFactory(),
+                storage)
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+            SimulationSession? windowSession = null;
+            try
+            {
+                window.Show();
+                await WaitFor(() => typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .GetValue(window) is SimulationSession);
+                windowSession = Field<SimulationSession>(window, "_session");
+                SetField(window, "_session", simulation);
+
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                viewModel.Update(snapshot);
+                viewport.SetSnapshot(snapshot);
+                viewModel.Select(secondKey);
+                viewport.SelectKey(secondKey);
+                Invoke(window, "RefreshLegacyMenuStates");
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+
+                using var beforeFrame = window.CaptureRenderedFrame();
+                using var beforeStream = new MemoryStream();
+                beforeFrame.Save(beforeStream, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var beforePng = beforeStream.ToArray();
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSelectEntireOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status == "ORGANISM SELECTED · 2 BOT(S)");
+
+                Assert.Equal(
+                    new[] { firstKey, secondKey },
+                    Field<HashSet<OrganismKey>>(viewport, "_selectedKeys")
+                        .OrderBy(value => value.Slot)
+                        .ToArray());
+
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var afterFrame = window.CaptureRenderedFrame();
+                using var afterStream = new MemoryStream();
+                afterFrame.Save(afterStream, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var afterPng = afterStream.ToArray();
+                var pngSignature = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+                Assert.True(beforePng.Length >= 1024, $"Rendered frame was only {beforePng.Length} bytes.");
+                Assert.True(afterPng.Length >= 1024, $"Rendered frame was only {afterPng.Length} bytes.");
+                Assert.True(afterPng.AsSpan(0, pngSignature.Length).SequenceEqual(pngSignature), "Rendered frame is not a PNG.");
+                Assert.False(afterPng.AsSpan().SequenceEqual(beforePng), "Selecting the tied group did not change the rendered frame.");
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveEntireOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => storage.SavedOrganism is not null);
+                var saved = Db2OrganismFile.Decode(storage.SavedOrganism!);
+                Assert.Equal(2, saved.Members.Count);
+                Assert.Equal([(3U, 2U), (4U, 7U)], saved.Members
+                    .Select(member => (member.Slot, member.Generation))
+                    .ToArray());
+                var tie = Assert.Single(saved.Ties);
+                Assert.Equal((3U, 2U), (tie.First.Slot, tie.First.Generation));
+                Assert.Equal((4U, 7U), (tie.Second.Slot, tie.Second.Generation));
+                Assert.Equal([(3U, 2U), (4U, 7U)], engine.DnaExports.ToArray());
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                if (windowSession is not null) await windowSession.DisposeAsync();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task TeleporterPlacementDispatchesTheDb2SourceDestinationWorkflow()
     {
         var engine = new RecordingEngineClient();
