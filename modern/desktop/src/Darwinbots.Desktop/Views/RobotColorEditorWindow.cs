@@ -46,7 +46,7 @@ public sealed class RobotColorEditorWindow : Window
             Name = "ColorPreview",
             Width = 150,
             Height = 150,
-            Background = new SolidColorBrush(Color.FromRgb(_state.Red, _state.Green, _state.Blue)),
+            Background = new SolidColorBrush(Avalonia.Media.Color.FromRgb(_state.Red, _state.Green, _state.Blue)),
             BorderBrush = Brush.Parse("#202725"),
             BorderThickness = new Thickness(2),
             CornerRadius = new CornerRadius(4),
@@ -197,7 +197,7 @@ public sealed class RobotColorEditorWindow : Window
         _redValue.Text = _state.Red.ToString();
         _greenValue.Text = _state.Green.ToString();
         _blueValue.Text = _state.Blue.ToString();
-        _colorPreview.Background = new SolidColorBrush(Color.FromRgb(_state.Red, _state.Green, _state.Blue));
+        _colorPreview.Background = new SolidColorBrush(Avalonia.Media.Color.FromRgb(_state.Red, _state.Green, _state.Blue));
     }
 
     private async Task CommitAsync(bool writeToDna)
