@@ -90,6 +90,77 @@ public sealed class AccessibilityRouteRenderedTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public async Task RobotMenuFindBestDispatchesThroughRenderedSurfaceAndWritesReceipt()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService())
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var robotMenu = menu.TopLevelItems.Single(item => Equals(item.Header, "Robot"));
+                var findBest = menu.FindCommandItem(LegacyCommandId.RobotFindBest)!;
+                Assert.True(robotMenu.IsVisible);
+                Assert.Equal("Find Best", AutomationProperties.GetName(findBest));
+                Assert.True(findBest.IsEnabled);
+
+                window.KeyPress(Key.B, RawInputModifiers.Control, PhysicalKey.B, null);
+                window.KeyRelease(Key.B, RawInputModifiers.Control, PhysicalKey.B, null);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+
+                string? status = null;
+                for (var attempt = 0; attempt < 50 && status is null; attempt++)
+                {
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    status = window.GetVisualDescendants()
+                        .OfType<TextBlock>()
+                        .Select(block => block.Text)
+                        .FirstOrDefault(text => text is not null &&
+                            (text.Contains("BEST ENERGY", StringComparison.Ordinal) ||
+                             text.Contains("NO LIVING ROBOTS", StringComparison.Ordinal)));
+                    if (status is null) await Task.Delay(10);
+                }
+
+                Assert.NotNull(status);
+
+                using var frame = Assert.IsAssignableFrom<Bitmap>(window.CaptureRenderedFrame());
+                Assert.True(frame.PixelSize.Width >= 1_000);
+                Assert.True(frame.PixelSize.Height >= 700);
+                var directory = Environment.GetEnvironmentVariable("DARWINBOTS_GUI_AUDIT_DIR");
+                Assert.False(string.IsNullOrWhiteSpace(directory), "DARWINBOTS_GUI_AUDIT_DIR is required.");
+                Directory.CreateDirectory(directory!);
+                var output = Path.Combine(directory!, "menu-05-robot-find-best.png");
+                using (var stream = new FileStream(
+                    output,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.Read,
+                    4096,
+                    FileOptions.WriteThrough))
+                {
+                    frame.Save(stream, new PngBitmapEncoderOptions());
+                    stream.Flush(true);
+                }
+                Assert.True(File.Exists(output), $"Rendered receipt was not written: {output}");
+            }
+            finally
+            {
+                if (window.IsVisible) window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     private static void Press(Window window, Key key, PhysicalKey physicalKey)
     {
         window.KeyPress(key, RawInputModifiers.None, physicalKey, null);
