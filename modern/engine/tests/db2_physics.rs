@@ -286,6 +286,53 @@ fn static_friction_blocks_impulses_below_the_breakaway_threshold() {
 }
 
 #[test]
+fn static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impulse() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        gravity: [0.0, 0.0],
+        brownian_motion: 0.0,
+        drag: 0.0,
+        physics: PhysicsSettings {
+            max_velocity: 200.0,
+            movement_efficiency: 1.0,
+            surface_gravity: 100.0,
+            static_friction: 0.6,
+            kinetic_friction: 0.0,
+            density: 0.0,
+            elasticity: 0.25,
+            ..PhysicsSettings::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    engine
+        .spawn_batch([
+            (
+                LegacyDna::parse("start\n100 .dx store\nstop").unwrap(),
+                [500.0, 500.0],
+            ),
+            (
+                LegacyDna::parse("start\n100 .sx store\nstop").unwrap(),
+                [700.0, 500.0],
+            ),
+        ])
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    let velocities: Vec<_> = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .map(|organism| organism.velocity)
+        .collect();
+    assert!(
+        velocities.iter().all(|velocity| *velocity == [0.0, 0.0]),
+        "post-collision static friction must cancel the residual contact impulse; actual velocities: {velocities:?}"
+    );
+}
+
+#[test]
 fn maximum_velocity_caps_total_velocity_after_environment_impulses() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

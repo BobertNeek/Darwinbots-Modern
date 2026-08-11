@@ -92,17 +92,10 @@ pub(crate) fn mutual_gravity_impulses(
 
 pub(crate) fn apply_angular_damping(
     angular_momentum: &mut f32,
-    mass: f32,
+    solid_impulse: f32,
     settings: &PhysicsSettings,
 ) {
-    if settings.surface_gravity > 0.0 {
-        let impulse = mass * settings.surface_gravity * settings.kinetic_friction;
-        if impulse < 48.0 {
-            *angular_momentum *= (48.0 - impulse) / 48.0;
-        } else {
-            *angular_momentum = 0.0;
-        }
-    }
+    apply_solid_angular_friction(angular_momentum, solid_impulse);
     if settings.density > 0.0 {
         if settings.density < 0.000001 {
             *angular_momentum *= 1.0 - settings.density as f32 * 1_000_000.0;
@@ -113,6 +106,27 @@ pub(crate) fn apply_angular_damping(
     if angular_momentum.abs() < VELOCITY_EPSILON {
         *angular_momentum = 0.0;
     }
+}
+
+pub(crate) fn apply_static_friction(
+    velocity: &mut [f32; 2],
+    angular_momentum: &mut f32,
+    mass: f32,
+    settings: &PhysicsSettings,
+) {
+    if settings.surface_gravity <= 0.0 {
+        return;
+    }
+    let speed = velocity[0].hypot(velocity[1]);
+    if speed <= VELOCITY_EPSILON {
+        return;
+    }
+    let static_limit = mass * settings.surface_gravity * settings.static_friction;
+    if speed > static_limit {
+        return;
+    }
+    *velocity = [0.0; 2];
+    apply_solid_angular_friction(angular_momentum, speed);
 }
 
 pub(crate) fn apply_linear_drag(velocity: &mut [f32; 2], drag: f32) {
@@ -126,23 +140,23 @@ pub(crate) fn apply_surface_friction(
     velocity: &mut [f32; 2],
     mass: f32,
     settings: &PhysicsSettings,
-) {
+) -> f32 {
     if settings.surface_gravity <= 0.0 {
-        return;
+        return 0.0;
     }
     let speed = velocity[0].hypot(velocity[1]);
     if speed <= f32::EPSILON {
-        return;
+        return 0.0;
     }
     let static_limit = mass * settings.surface_gravity * settings.static_friction;
     if speed <= static_limit {
-        *velocity = [0.0; 2];
-        return;
+        return 0.0;
     }
     let impulse = (mass * settings.surface_gravity * settings.kinetic_friction).min(speed);
     velocity[0] -= velocity[0] / speed * impulse;
     velocity[1] -= velocity[1] / speed * impulse;
     suppress_underflow(velocity);
+    impulse
 }
 
 pub(crate) fn apply_fluid_drag(velocity: &mut [f32; 2], radius: f32, settings: &PhysicsSettings) {
@@ -170,8 +184,8 @@ pub(crate) fn apply_resistance(
     radius: f32,
     linear_drag: f32,
     settings: &PhysicsSettings,
-) {
-    apply_surface_friction(velocity, mass, settings);
+) -> f32 {
+    let solid_impulse = apply_surface_friction(velocity, mass, settings);
     apply_fluid_drag(velocity, radius, settings);
     apply_linear_drag(velocity, linear_drag);
     let speed = velocity[0].hypot(velocity[1]);
@@ -179,6 +193,18 @@ pub(crate) fn apply_resistance(
     if speed > maximum && speed > f32::EPSILON {
         velocity[0] = velocity[0] / speed * maximum;
         velocity[1] = velocity[1] / speed * maximum;
+    }
+    solid_impulse
+}
+
+fn apply_solid_angular_friction(angular_momentum: &mut f32, impulse: f32) {
+    if impulse <= 0.0 {
+        return;
+    }
+    if impulse < 48.0 {
+        *angular_momentum *= (48.0 - impulse) / 48.0;
+    } else {
+        *angular_momentum = 0.0;
     }
 }
 

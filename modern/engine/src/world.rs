@@ -39,7 +39,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use crate::physics::{
-    MovementInput, MovementState, apply_angular_damping, apply_resistance,
+    MovementInput, MovementState, apply_angular_damping, apply_resistance, apply_static_friction,
     apply_voluntary_impulse, brownian_rotation, derived_mass, environment_impulse,
     fluid_added_mass, mutual_gravity_impulses, voluntary_cost_magnitude,
 };
@@ -5589,16 +5589,16 @@ impl Engine {
                     robot.kinematics.velocity[1] += planet_impulses[slot][1] * force_scale;
                     robot.kinematics.angular_momentum +=
                         brownian_rotation(brownian, seed, tick, slot);
-                    apply_angular_damping(
-                        &mut robot.kinematics.angular_momentum,
-                        mass,
-                        settings,
-                    );
-                    apply_resistance(
+                    let solid_impulse = apply_resistance(
                         &mut robot.kinematics.velocity,
                         mass,
                         robot.materials.radius,
                         drag,
+                        settings,
+                    );
+                    apply_angular_damping(
+                        &mut robot.kinematics.angular_momentum,
+                        solid_impulse,
                         settings,
                     );
                     robot.kinematics.pending_velocity = [0.0; 2];
@@ -8584,6 +8584,17 @@ impl Engine {
             &pairs,
             self.config.physics.elasticity,
         );
+        let settings = &self.config.physics;
+        for (slot, (velocity, mass)) in velocities.iter_mut().zip(&masses).enumerate() {
+            if let Some(robot) = self.slots[slot].organism.as_mut() {
+                apply_static_friction(
+                    velocity,
+                    &mut robot.kinematics.angular_momentum,
+                    *mass,
+                    settings,
+                );
+            }
+        }
         for (first, second, first_position, second_position) in touch_events {
             if let Some(first_robot) = self.slots[first].organism.as_mut() {
                 write_robot_touch(first_robot, first_position, second_position);

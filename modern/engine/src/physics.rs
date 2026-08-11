@@ -9,7 +9,8 @@ mod movement;
 
 pub(crate) use collision::{resolve_collisions, segment_aabb_fraction, segment_circle_fraction};
 pub(crate) use environment::{
-    apply_angular_damping, apply_resistance, brownian_rotation, environment_impulse,
+    apply_angular_damping, apply_resistance, apply_static_friction, brownian_rotation,
+    environment_impulse,
     fluid_added_mass, integrate_body, mutual_gravity_impulses,
 };
 pub(crate) use movement::{
