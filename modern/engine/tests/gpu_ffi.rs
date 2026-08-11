@@ -843,3 +843,87 @@ fn ffi_environment_updates_preserve_optional_db2_settings() {
     assert_eq!(db_buffer_free(&mut save), DbStatus::Ok);
     assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
 }
+#[test]
+fn ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once() {
+    fn zeroed_buffer() -> DbBuffer {
+        unsafe { std::mem::zeroed() }
+    }
+
+    let read_buffer = |buffer: &mut DbBuffer| {
+        let bytes = unsafe { std::slice::from_raw_parts(buffer.data, buffer.len) }.to_vec();
+        db_buffer_free(buffer);
+        bytes
+    };
+
+    let snapshot = |engine| {
+        let mut buffer = zeroed_buffer();
+        assert_eq!(db_engine_snapshot_json(engine, &mut buffer), DbStatus::Ok);
+        read_buffer(&mut buffer)
+    };
+
+    let last_error = || {
+        let mut buffer = zeroed_buffer();
+        assert_eq!(db_last_error_json(&mut buffer), DbStatus::Ok);
+        let value: serde_json::Value = serde_json::from_slice(&read_buffer(&mut buffer)).unwrap();
+        let object = value.as_object().expect("last error must be a JSON object");
+        assert!(!object.is_empty(), "last error must retain typed fields");
+        assert!(
+            object.values().any(|field| match field.as_str() {
+                Some(text) => !text.is_empty(),
+                None => false,
+            }),
+            "last error must contain a non-empty typed value"
+        );
+        value
+    };
+
+    let mut engine = std::ptr::null_mut();
+    assert_eq!(
+        db_engine_create(std::ptr::null(), 0, &mut engine),
+        DbStatus::Ok
+    );
+
+    let failures: [(&str, &[u8], DbStatus); 4] = [
+        ("future version", br#"{"version":99,"commands":[]}"#, DbStatus::InvalidCommand),
+        ("malformed envelope", br#"{not-json"#, DbStatus::InvalidCommand),
+        (
+            "unknown command",
+            br#"{"version":1,"commands":[{"type":"unknown_command"}]}"#,
+            DbStatus::InvalidCommand,
+        ),
+        (
+            "late invalid operation",
+            br#"{"version":1,"commands":[{"type":"import_dna","dna":"start\nstop","position":[10.0,10.0]},{"type":"move_organism","slot":999,"generation":0,"position":[40.0,50.0]}]}"#,
+            DbStatus::EngineError,
+        ),
+    ];
+
+    for (name, batch, expected_status) in failures {
+        let before = snapshot(engine);
+        let mut output = zeroed_buffer();
+        assert_eq!(
+            db_engine_command_batch(engine, batch.as_ptr(), batch.len(), &mut output),
+            expected_status,
+            "{name} must be rejected by the typed command boundary"
+        );
+        db_buffer_free(&mut output);
+        assert_eq!(before, snapshot(engine), "{name} must be byte-atomic");
+        let _ = last_error();
+    }
+
+    let valid = br#"{"version":1,"commands":[{"type":"import_dna","dna":"start\nstop","position":[10.0,10.0]},{"type":"move_organism","slot":0,"generation":0,"position":[40.0,50.0]}]}"#;
+    let before = snapshot(engine);
+    let mut output = zeroed_buffer();
+    assert_eq!(
+        db_engine_command_batch(engine, valid.as_ptr(), valid.len(), &mut output),
+        DbStatus::Ok
+    );
+    let result: serde_json::Value = serde_json::from_slice(&read_buffer(&mut output)).unwrap();
+    assert_eq!(result["results"].as_array().map(|results| results.len()), Some(2));
+    assert_eq!(result["population"].as_u64(), Some(1));
+    let committed = snapshot(engine);
+    assert_ne!(before, committed);
+    assert_eq!(committed, snapshot(engine), "the valid batch commits once");
+
+    db_engine_destroy(engine);
+}

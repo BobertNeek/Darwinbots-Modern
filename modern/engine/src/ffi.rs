@@ -471,6 +471,16 @@ fn db_engine_command_batch_impl(
         );
     }
     let mut command_results = Vec::with_capacity(batch.commands.len());
+    let committed_engine = engine;
+    let mut candidate = match SaveFile::encode(committed_engine) {
+        Ok(bytes) => match SaveFile::decode(&bytes) {
+            Ok(candidate) => candidate,
+            Err(error) => return fail(DbStatus::EngineError, error.to_string()),
+        },
+        Err(error) => return fail(DbStatus::EngineError, error.to_string()),
+    };
+    let engine = &mut candidate;
+
     for command in batch.commands {
         let result = match command {
             EngineCommand::Tick { count } => {
@@ -817,10 +827,15 @@ fn db_engine_command_batch_impl(
         "backend": format!("{:?}", engine.backend()),
         "results": command_results,
     });
-    match serde_json::to_vec(&result) {
-        Ok(bytes) => write_buffer(out_buffer, bytes),
-        Err(error) => fail(DbStatus::EngineError, error),
+    let bytes = match serde_json::to_vec(&result) {
+        Ok(bytes) => bytes,
+        Err(error) => return fail(DbStatus::EngineError, error),
+    };
+    let status = write_buffer(out_buffer, bytes);
+    if status == DbStatus::Ok {
+        *committed_engine = candidate;
     }
+    status
 }
 
 // ABI v1 keeps this C entry point safe while retaining its pointer contract.
