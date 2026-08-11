@@ -698,6 +698,164 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task RenderedWholeOrganismRoundTripPreservesSelectedLiveNativeMember()
+    {
+        var fixture = new Db2OrganismFile(
+            1,
+            42,
+            [
+                new Db2OrganismMember(
+                    1,
+                    0,
+                    "start\nstop",
+                    0,
+                    false,
+                    false,
+                    false,
+                    [100f, 200f],
+                    [1.5f, -0.5f],
+                    875,
+                    19,
+                    7,
+                    321),
+                new Db2OrganismMember(
+                    2,
+                    0,
+                    "start\nstop",
+                    0,
+                    false,
+                    false,
+                    false,
+                    [138f, 226f],
+                    [-0.5f, 1f],
+                    650,
+                    23,
+                    9,
+                    222),
+            ],
+            [new Db2OrganismTie(
+                new Db2OrganismKey(1, 0),
+                new Db2OrganismKey(2, 0),
+                42.5f)]).Encode();
+        var (storage, storageState) = OrganismRouteStorage.Create(fixture);
+        var setup = new WorldSetupOptions
+        {
+            CorpseDecay = new Db2CorpseDecayOptions(Mode: Db2CorpseDecayMode.None),
+        };
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, storage)
+            {
+                WindowState = WindowState.Normal,
+                Width = 1280,
+                Height = 900,
+            };
+            try
+            {
+                window.Show();
+                await WaitFor(() => typeof(MainWindow)
+                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .GetValue(window) is SimulationSession);
+                var session = Field<SimulationSession>(window, "_session");
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Organisms.Count == 2);
+
+                var group = session.LatestSnapshot.Organisms
+                    .Where(organism => organism.Position.SequenceEqual([100f, 200f])
+                        || organism.Position.SequenceEqual([138f, 226f]))
+                    .ToArray();
+                Assert.Equal(2, group.Length);
+                var originalOrganismKeys = group
+                    .Select(organism => new OrganismKey(organism.Slot, organism.Generation))
+                    .ToHashSet();
+                var selected = group[^1];
+                var selectedKey = new OrganismKey(selected.Slot, selected.Generation);
+                viewModel.Select(selectedKey);
+                window.FindControl<WorldViewport>("Viewport")!.SelectKey(selectedKey);
+                Invoke(window, "RefreshLegacyMenuStates");
+                Assert.Equal($"{selected.Slot}:{selected.Generation}", viewModel.SelectedId);
+                Assert.Equal(selected.Energy, viewModel.SelectedEnergy);
+                Assert.Equal(selected.Body, viewModel.SelectedBody);
+
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveEntireOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => storageState.SavedOrganism is not null);
+                var exported = Db2OrganismFile.Decode(storageState.SavedOrganism!);
+                Assert.Equal(2, exported.Members.Count);
+                Assert.Equal(42.5f, Assert.Single(exported.Ties).RestLength);
+                Assert.Equal(
+                    new Db2OrganismKey(selected.Slot, selected.Generation),
+                    exported.SelectedMember);
+
+                var expectedState = group
+                    .Select(organism => (
+                        X: organism.Position[0],
+                        Y: organism.Position[1],
+                        Energy: organism.Energy,
+                        Age: organism.Age,
+                        BirthCycle: organism.BirthCycle,
+                        Body: organism.Body))
+                    .OrderBy(value => value.X)
+                    .ToArray();
+                Assert.Equal(expectedState, exported.Members
+                    .Select(member => (
+                        X: member.Position[0],
+                        Y: member.Position[1],
+                        Energy: member.Energy,
+                        Age: member.Age,
+                        BirthCycle: member.BirthCycle,
+                        Body: member.Body))
+                    .OrderBy(value => value.X)
+                    .ToArray());
+
+                storageState.SetFixture(storageState.SavedOrganism);
+                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!
+                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Organisms.Count == 4);
+                await WaitFor(() => viewModel.Status == "IMPORTED ORGANISM · 2 BOT(S)");
+
+                var roundTripped = session.LatestSnapshot.Organisms
+                    .Where(organism => !originalOrganismKeys.Contains(
+                            new OrganismKey(organism.Slot, organism.Generation))
+                        && (organism.Position.SequenceEqual([100f, 200f])
+                        || organism.Position.SequenceEqual([138f, 226f]))
+                    )
+                    .Select(organism => (
+                        X: organism.Position[0],
+                        Y: organism.Position[1],
+                        Energy: organism.Energy,
+                        Age: organism.Age,
+                        BirthCycle: organism.BirthCycle,
+                        Body: organism.Body))
+                    .OrderBy(value => value.X)
+                    .ToArray();
+                Assert.Equal(expectedState, roundTripped);
+                Assert.Equal($"{selected.Slot}:{selected.Generation}", viewModel.SelectedId);
+                Assert.Equal(selected.Energy, viewModel.SelectedEnergy);
+                Assert.Equal(selected.Body, viewModel.SelectedBody);
+
+                using var frame = window.CaptureRenderedFrame();
+                using var stream = new MemoryStream();
+                frame.Save(stream, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                var renderedPng = stream.ToArray();
+                var pngSignature = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+                Assert.True(renderedPng.Length >= 1024, $"Rendered frame was only {renderedPng.Length} bytes.");
+                Assert.True(renderedPng.AsSpan(0, pngSignature.Length).SequenceEqual(pngSignature), "Rendered frame is not a PNG.");
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task TeleporterPlacementDispatchesTheDb2SourceDestinationWorkflow()
     {
         var engine = new RecordingEngineClient();
@@ -970,6 +1128,8 @@ public sealed class RuntimeControlSurfaceTests
             state._fixture = fixture;
             return (storage, state);
         }
+
+        public void SetFixture(byte[] fixture) => _fixture = fixture;
 
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
