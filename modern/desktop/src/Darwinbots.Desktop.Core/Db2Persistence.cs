@@ -240,7 +240,7 @@ public static class Db2GenomeRecordFile
             record.DnaLength.ToString(CultureInfo.InvariantCulture),
             record.Offspring.ToString(CultureInfo.InvariantCulture),
             record.Kills.ToString(CultureInfo.InvariantCulture),
-            "0",
+            Math.Max(0, record.Energy).ToString(CultureInfo.InvariantCulture),
             record.Energy.ToString(CultureInfo.InvariantCulture),
             record.Chloroplasts.ToString(CultureInfo.InvariantCulture),
         }));

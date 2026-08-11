@@ -72,7 +72,7 @@ public sealed class Db2PersistenceTests
             includeHeader: true);
 
         Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", text);
-        Assert.Contains("99,0,Fixture,0,0,9,0,0,1,0,0,0,82,0\r\nstop\r\n", text);
+        Assert.Contains("99,0,Fixture,0,0,9,0,0,1,0,0,82,82,0\r\nstop\r\n", text);
         Assert.DoesNotContain("100,", text);
     }
 
@@ -98,7 +98,49 @@ public sealed class Db2PersistenceTests
             new Dictionary<OrganismKey, string> { [new OrganismKey(7, 3)] = "start\nstop" });
 
         Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", text);
-        Assert.Contains("7003,0,Fixture,3,0,19,4,1,2,5,0,0,885,12\r\nstart\nstop\r\n", text);
+        Assert.Contains("7003,0,Fixture,3,0,19,4,1,2,5,0,885,885,12\r\nstart\nstop\r\n", text);
+    }
+
+    [Fact]
+    public void GenomeRecordRoundTripPreservesFitnessMutationSidecarsAndDeadRetentionWithoutDecay()
+    {
+        var settings = new DesktopSettings
+        {
+            CorpseDecay = new Db2CorpseDecayOptions(false, 0, Db2CorpseDecayMode.None, 0, 0),
+        };
+        var restoredSettings = Db2SettingsCodec.Decode(Db2SettingsCodec.Encode(settings));
+
+        var organism = new OrganismSnapshot(7, 3, [12.5f, 34.5f], [1f, -2f], 7, 19, Body: 12)
+        {
+            UniqueId = 7003,
+            DnaLength = 2,
+            NewMutations = 3,
+            TotalMutations = 12,
+        };
+        var snapshot = new EngineSnapshot(91, 1, "CPU", [organism])
+        {
+            Species = [new SpeciesSnapshot("Fixture", false, 0xff239ac0, 0, false)],
+        };
+        var living = Db2GenomeRecordFile.EncodeLiving(
+            snapshot,
+            new Dictionary<OrganismKey, string> { [new OrganismKey(7, 3)] = "start\nstop" });
+
+        var retainedDead = new CorpseSnapshot([2f, 3f], [0f, 0f], 0, 12, 4)
+        {
+            Dna = "stop",
+            UniqueId = 99,
+            NewMutations = 2,
+            TotalMutations = 11,
+            DnaLength = 1,
+        };
+        var dead = Db2GenomeRecordFile.EncodeDead(
+            [retainedDead],
+            snapshot.Species,
+            includeHeader: true);
+
+        Assert.False(restoredSettings.CorpseDecay.Enabled);
+        Assert.Contains("7003,0,Fixture,3,0,19,12,3,2,0,0,127,127,0\r\nstart\nstop\r\n", living);
+        Assert.Contains("99,0,Fixture,0,0,4,11,2,1,0,0,120,120,0\r\nstop\r\n", dead);
     }
 
     [Fact]
