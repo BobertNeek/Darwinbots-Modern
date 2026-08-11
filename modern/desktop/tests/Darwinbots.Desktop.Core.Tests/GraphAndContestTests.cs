@@ -234,6 +234,27 @@ public sealed class GraphAndContestTests
     }
 
     [Fact]
+    public void LegacyGraphExportWritesJoinCompatibleNineHundredNinetyNineRowSegments()
+    {
+        var graph = new GraphSeriesViewModel(
+            "population",
+            GraphMetric.Population,
+            "Population",
+            Enumerable.Range(0, 1_000)
+                .Select(index => new GraphSample((ulong)index, index))
+                .ToArray());
+
+        var files = LegacyGraphJoin.Serialize([graph], "population");
+
+        Assert.Equal(2, files.Count);
+        var segments = LegacyGraphJoin.Parse(files);
+        Assert.Equal("population", segments[0].Title);
+        Assert.Equal(999, segments[0].Robots[0].Values.Count);
+        Assert.Equal(998d, segments[0].Robots[0].Values[^1]);
+        Assert.Equal(999d, segments[1].Robots[0].Values[0]);
+    }
+
+    [Fact]
     public void ContestResultsViewModelRecordsManualAndInstantWinsThroughLocalContract()
     {
         var adjudications = new List<ContestAdjudication>();

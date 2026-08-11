@@ -130,17 +130,20 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
         GraphMetric metric,
         string title,
         IReadOnlyList<GraphSample> samples,
-        string? customExpression = null)
+        string? customExpression = null,
+        uint color = 0xff62a844u)
     {
         Id = id;
         Metric = metric;
         _title = title;
         _customExpression = customExpression;
         _samples = samples;
+        Color = color;
     }
 
     public string Id { get; }
     public GraphMetric Metric { get; }
+    public uint Color { get; }
     public string Title { get => _title; private set => Set(ref _title, value); }
     public string? CustomExpression { get => _customExpression; private set => Set(ref _customExpression, value); }
     public IReadOnlyList<GraphSample> Samples { get => _samples; private set => Set(ref _samples, value); }

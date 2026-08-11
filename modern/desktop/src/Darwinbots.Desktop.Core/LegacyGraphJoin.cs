@@ -62,7 +62,50 @@ public static class LegacyGraphJoin
                 GraphMetric.CustomizableGraph1,
                 $"{segment.Title} · {robot.Name}",
                 robot.Values.Select((value, sampleIndex) => new GraphSample(
-                    (ulong)(segmentIndex * SegmentTickWidth + sampleIndex), value)).ToArray()))).ToArray();
+                    (ulong)(segmentIndex * SegmentTickWidth + sampleIndex), value)).ToArray(),
+                color: robot.Color))).ToArray();
+    }
+
+    public static IReadOnlyList<string> Serialize(
+        IEnumerable<GraphSeriesViewModel> graphs,
+        string title)
+    {
+        ArgumentNullException.ThrowIfNull(graphs);
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Legacy graph saves require a title.", nameof(title));
+
+        var series = graphs.ToArray();
+        if (series.Length == 0) return [];
+
+        var segmentCount = (series.Max(graph => graph.Samples.Count) + SamplesPerSegment - 1)
+            / SamplesPerSegment;
+        var files = new List<string>(segmentCount);
+        for (var segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++)
+        {
+            var builder = new StringBuilder()
+                .AppendLine(title.Trim())
+                .AppendLine(string.Join(',', series.Select(graph =>
+                    $"{unchecked((int)graph.Color)}:{LegacyName(graph.Title)}")));
+
+            for (var row = 0; row < SamplesPerSegment; row++)
+            {
+                var sampleIndex = segmentIndex * SamplesPerSegment + row;
+                for (var seriesIndex = 0; seriesIndex < series.Length; seriesIndex++)
+                {
+                    if (seriesIndex > 0) builder.Append('\t');
+                    var samples = series[seriesIndex].Samples;
+                    var value = samples.Count == 0
+                        ? 0d
+                        : samples[Math.Min(sampleIndex, samples.Count - 1)].Value;
+                    builder.Append(value.ToString("R", CultureInfo.InvariantCulture));
+                }
+                builder.AppendLine();
+            }
+
+            files.Add(builder.ToString());
+        }
+
+        return files;
     }
 
     private static IReadOnlyList<LegacyGraphRobot> ParseRobots(string line)
@@ -87,6 +130,11 @@ public static class LegacyGraphJoin
             && double.IsFinite(value)) return value;
         throw new InvalidDataException($"Legacy graph value at row {row}, series {column} is invalid.");
     }
+
+    private static string LegacyName(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? "Series"
+            : value.Replace(',', ' ').Replace(':', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim();
 }
 
 public static class DatabaseExport
