@@ -190,6 +190,49 @@ fn gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_av
 }
 
 #[test]
+fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
+    let gpu = GpuPhysicsBackend::new().unwrap_or_else(|error| {
+        panic!("AUT-02 physical GPU gate unavailable: {error}");
+    });
+    let receipt = gpu.adapter_receipt();
+    assert!(!receipt.name.trim().is_empty());
+    assert!(!receipt.backend.trim().is_empty());
+    assert!(!receipt.device_type.trim().is_empty());
+    println!(
+        "AUT-02 physical gpu adapter={} backend={} device_type={}",
+        receipt.name, receipt.backend, receipt.device_type
+    );
+
+    let (targets, integrated, instances) = gpu
+        .sense_integrate_render_gpu_grid(
+            &[[5.0, 5.0], [20.0, 5.0], [190.0, 190.0], [175.0, 190.0]],
+            &[[2.0, 3.0], [-20.0, 1.0], [15.0, 20.0], [-10.0, -3.0]],
+            &[400, 100, 4_000, 0],
+            &[true, true, true, true],
+            [200.0, 200.0],
+            32.0,
+            80.0,
+        )
+        .unwrap();
+
+    assert_eq!(targets, vec![Some(1), Some(0), Some(3), Some(2)]);
+    assert_eq!(integrated, vec![[7.0, 8.0], [0.0, 6.0], [200.0, 200.0], [165.0, 187.0]]);
+    assert_eq!(instances.len(), 4);
+    assert_eq!(instances[0].slot, 0);
+    assert_eq!(instances[0].position, [7.0, 8.0]);
+    assert!((instances[0].radius - 9.0).abs() < 0.001);
+    assert_eq!(instances[1].slot, 1);
+    assert_eq!(instances[1].position, [0.0, 6.0]);
+    assert!((instances[1].radius - 4.5).abs() < 0.001);
+    assert_eq!(instances[2].slot, 2);
+    assert_eq!(instances[2].position, [200.0, 200.0]);
+    assert!((instances[2].radius - 24.0).abs() < 0.001);
+    assert_eq!(instances[3].slot, 3);
+    assert_eq!(instances[3].position, [165.0, 187.0]);
+    assert!((instances[3].radius - 2.0).abs() < 0.001);
+}
+
+#[test]
 fn cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance() {
     if GpuPhysicsBackend::new().is_err() {
         return;
