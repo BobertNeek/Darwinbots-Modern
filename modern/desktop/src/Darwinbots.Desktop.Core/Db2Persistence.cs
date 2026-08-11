@@ -77,6 +77,11 @@ public static class Db2SettingsCodec
             WorldWidth = ParseFloat(lines[globalStart + 3], "world width"),
             WorldHeight = ParseFloat(lines[globalStart + 4], "world height"),
             OrganismCapacity = ParseInt(lines[globalStart + 5], "maximum population"),
+            Gravity =
+            [
+                OptionalFloat(lines, globalStart + 18, 0f, "horizontal gravity"),
+                OptionalFloat(lines, globalStart + 19, 0f, "vertical gravity"),
+            ],
         };
         return settings with { CorpseDecay = DecodeLegacyCorpseDecay(lines, globalStart) };
     }
@@ -92,6 +97,9 @@ public static class Db2SettingsCodec
         int.TryParse(value.Trim().Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : throw new InvalidDataException($"DB2 settings {label} is invalid.");
+
+    private static float OptionalFloat(string[] lines, int index, float fallback, string label) =>
+        HasValue(lines, index) ? ParseFloat(lines[index], label) : fallback;
 
     private static Db2CorpseDecayOptions DecodeLegacyCorpseDecay(string[] lines, int globalStart)
     {

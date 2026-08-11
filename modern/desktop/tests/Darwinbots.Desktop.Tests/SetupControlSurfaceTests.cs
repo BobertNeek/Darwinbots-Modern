@@ -209,6 +209,25 @@ public sealed class SetupControlSurfaceTests
         Assert.Equal(expected.ToJson(), SetupStorageService.DecodeSettings("darwinbots.json", modernBytes).ToJson());
     }
 
+    [Fact]
+    public void StandaloneLegacySetImportRoundTripsLegacyPhysicsThroughThePublicSettingsWorkflow()
+    {
+        var fixture = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..", "..", "..", "..", "..", "..", "..",
+            "Installer", "sets", "Ledge Island.set"));
+
+        var imported = SetupStorageService.DecodeSettings(fixture, File.ReadAllBytes(fixture));
+        var roundTripped = SetupStorageService.DecodeSettings(
+            "roundtrip.set",
+            SetupStorageService.EncodeSettings("roundtrip.set", imported));
+
+        Assert.Equal(new[] { 2f, 0f }, imported.Gravity);
+        Assert.Equal(0.5f, imported.BrownianMotion);
+        Assert.Equal(0.66f, imported.Physics.MovementEfficiency);
+        Assert.Equal(imported.ToJson(), roundTripped.ToJson());
+    }
+
     private static void Select(SetupWindow window, RadioButton radio, string modeName)
     {
         radio.IsChecked = true;
