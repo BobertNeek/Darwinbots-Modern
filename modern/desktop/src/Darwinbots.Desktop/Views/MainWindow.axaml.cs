@@ -1340,15 +1340,27 @@ public sealed partial class MainWindow : Window
     private async Task<LegacyCommandResult> ChangeSelectedSpeciesColorAsync()
     {
         var organism = _viewModel.SelectedOrganism!;
-        var species = _session!.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
-        var dialog = new LegacyValueWindow("Change Color", "Species color", $"#{(species?.Color ?? organism.Phenotype.Color) & 0x00ffffff:X6}", "Enter a six-digit RGB hexadecimal color, for example #239AC0.");
+        var session = _session!;
+        var species = session.LatestSnapshot.Species.ElementAtOrDefault((int)organism.Species);
+        var dialog = new RobotColorEditorWindow(
+            species?.Color ?? organism.Phenotype.Color,
+            async edit =>
+            {
+                if (edit.WriteToDna)
+                {
+                    var dna = await session.ExportDnaAsync(organism.Slot, organism.Generation);
+                    await session.ReplaceDnaAsync(
+                        organism.Slot,
+                        organism.Generation,
+                        RobotColorDna.Apply(dna, edit.Color));
+                }
+
+                await session.SetSpeciesColorAsync(organism.Species, edit.Color);
+            });
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
-        var text = dialog.Value.TrimStart('#');
-        if (!uint.TryParse(text, System.Globalization.NumberStyles.HexNumber, null, out var rgb) || text.Length != 6)
-            return LegacyCommandResult.Failure("COLOR MUST BE SIX HEX DIGITS");
-        await _session.SetSpeciesColorAsync(organism.Species, 0xff000000 | rgb);
-        return LegacyCommandResult.Success($"SPECIES COLOR · #{rgb:X6}");
+        var status = dialog.WriteToDna ? "SPECIES COLOR + DNA METADATA" : "SPECIES COLOR";
+        return LegacyCommandResult.Success($"{status} · {dialog.PreviewHex}");
     }
 
     private async Task<LegacyCommandResult> ShowSelectedRobotConsoleAsync()

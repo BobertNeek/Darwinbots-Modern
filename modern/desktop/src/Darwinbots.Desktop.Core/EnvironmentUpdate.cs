@@ -163,6 +163,9 @@ public static class NativeCommandSerializer
     public static string SerializeMutationSettings(MutationSettingsUpdate update) =>
         JsonSerializer.Serialize(CreateMutationSettingsBatch(update));
 
+    public static string SerializeSpeciesColor(uint species, uint color) =>
+        JsonSerializer.Serialize(CreateSpeciesColorBatch(species, color));
+
     public static string SerializeOrganismMutationProfile(
         OrganismKey organism,
         MutationProfileUpdate profile) =>
@@ -226,6 +229,15 @@ public static class NativeCommandSerializer
                 type = "remove_many",
                 organisms = organisms.Select(value => new { slot = value.Slot, generation = value.Generation }).ToArray(),
             },
+        },
+    };
+
+    internal static object CreateSpeciesColorBatch(uint species, uint color) => new
+    {
+        version = 1,
+        commands = new[]
+        {
+            new { type = "set_species_color", species, color },
         },
     };
 

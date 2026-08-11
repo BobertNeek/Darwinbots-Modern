@@ -476,7 +476,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         "update tie policy");
 
     public void SetSpeciesColor(uint species, uint color) => ExecuteBatch(
-        new { version = 1, commands = new[] { new { type = "set_species_color", species, color } } },
+        NativeCommandSerializer.CreateSpeciesColorBatch(species, color),
         "change species color");
 
     public void MakeNewSpecies(uint slot, uint generation, string name, uint color)
