@@ -13,9 +13,9 @@
         <Grid ColumnDefinitions="*,180"><TextBlock Text="Center Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="CenterY" Minimum="0" Maximum="1000000" Increment="1" /></Grid>
         <Grid ColumnDefinitions="*,180"><TextBlock Text="Radius" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="Radius" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
         <TextBlock Text="INBOUND PATH" FontWeight="Bold" Margin="0,8,0,0" />
-        <TextBox x:Name="InboundPath" PlaceholderText="Optional local folder or file path" />
+        <TextBox x:Name="InboundPath" PlaceholderText="Optional existing local directory" />
         <TextBlock Text="OUTBOUND PATH" FontWeight="Bold" />
-        <TextBox x:Name="OutboundPath" PlaceholderText="Optional local folder or file path" />
+        <TextBox x:Name="OutboundPath" PlaceholderText="Optional existing local directory" />
         <Grid ColumnDefinitions="*,180"><TextBlock Text="Poll interval" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="PollInterval" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
         <Grid ColumnDefinitions="*,180"><TextBlock Text="Capacity per poll" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="Capacity" Minimum="1" Maximum="1000000" Increment="1" /></Grid>
         <CheckBox x:Name="TeleportVegetables" Content="Transfer vegetables" />

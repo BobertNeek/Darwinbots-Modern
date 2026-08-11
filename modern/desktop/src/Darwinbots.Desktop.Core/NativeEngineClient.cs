@@ -393,7 +393,7 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void AddFileTeleporter(FileTeleporterSnapshot teleporter)
     {
-        ValidateFileTeleporter(teleporter);
+        teleporter = ValidateFileTeleporter(teleporter);
         ExecuteBatch(new
         {
             version = 1,
@@ -403,7 +403,7 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void UpdateFileTeleporter(FileTeleporterSnapshot teleporter)
     {
-        ValidateFileTeleporter(teleporter);
+        teleporter = ValidateFileTeleporter(teleporter);
         ExecuteBatch(new
         {
             version = 1,
@@ -434,7 +434,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         received = teleporter.Received,
     };
 
-    private void ValidateFileTeleporter(FileTeleporterSnapshot teleporter)
+    private static FileTeleporterSnapshot ValidateFileTeleporter(FileTeleporterSnapshot teleporter)
     {
         ArgumentNullException.ThrowIfNull(teleporter);
         ValidatePosition(teleporter.Center);
@@ -444,6 +444,13 @@ public sealed partial class NativeEngineClient : IEngineClient
             throw new ArgumentException("A file teleporter needs an inbound or outbound path.", nameof(teleporter));
         if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(teleporter));
+        var paths = FileTeleporterPaths.Create(teleporter.InboundPath, teleporter.OutboundPath);
+        paths.ValidateExistingDirectories();
+        return teleporter with
+        {
+            InboundPath = paths.InboundDirectory,
+            OutboundPath = paths.OutboundDirectory,
+        };
     }
 
     public void SetBrownianMotion(float value)

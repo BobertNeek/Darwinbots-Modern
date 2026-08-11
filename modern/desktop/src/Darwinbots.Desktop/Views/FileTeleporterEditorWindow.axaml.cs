@@ -43,12 +43,28 @@ public sealed partial class FileTeleporterEditorWindow : Window
             Statistics.Text = "Enter an inbound or outbound local path.";
             return;
         }
+        FileTeleporterPaths paths;
+        try
+        {
+            paths = FileTeleporterPaths.Create(inbound, outbound);
+            paths.ValidateExistingDirectories();
+        }
+        catch (ArgumentException error)
+        {
+            Statistics.Text = error.Message;
+            return;
+        }
+        catch (DirectoryNotFoundException error)
+        {
+            Statistics.Text = error.Message;
+            return;
+        }
         Result = _original with
         {
             Center = [(float)(CenterX.Value ?? 0m), (float)(CenterY.Value ?? 0m)],
             Radius = (float)(Radius.Value ?? 1m),
-            InboundPath = inbound,
-            OutboundPath = outbound,
+            InboundPath = paths.InboundDirectory,
+            OutboundPath = paths.OutboundDirectory,
             PollInterval = (uint)(PollInterval.Value ?? 1m),
             Capacity = (int)(Capacity.Value ?? 1m),
             Filters = new TeleporterFilterSnapshot(
