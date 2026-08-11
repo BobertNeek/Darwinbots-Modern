@@ -63,6 +63,13 @@ public sealed class WorldViewport : Control
     public bool ShowMovementVectors { get => _showMovementVectors; set { _showMovementVectors = value; InvalidateVisual(); } }
     public bool ShowShotImpacts { get => _showShotImpacts; set { _showShotImpacts = value; InvalidateVisual(); } }
     public bool ShowResourceGauges { get => _showResourceGauges; set { _showResourceGauges = value; InvalidateVisual(); } }
+    public bool HasBackgroundImage => _backgroundImage is not null;
+    public WorldOverlayProjection OverlayProjection => WorldOverlayProjection.Create(
+        _snapshot.Organisms,
+        _showMovementVectors,
+        _showShotImpacts,
+        _showResourceGauges,
+        HasBackgroundImage);
     public bool HighlightTeleporters { get => _highlightTeleporters; set { _highlightTeleporters = value; InvalidateVisual(); } }
     public bool EnergyGridEnabled { get => _energyGridEnabled; set { _energyGridEnabled = value; InvalidateVisual(); } }
     public EnergyGridSize EnergyGridSize { get => _energyGridSize; set { _energyGridSize = value; InvalidateVisual(); } }
@@ -191,13 +198,14 @@ public sealed class WorldViewport : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
+        var overlay = OverlayProjection;
         context.FillRectangle(new SolidColorBrush(Color.Parse("#F9F8F2")), Bounds);
-        if (_backgroundImage is not null) context.DrawImage(_backgroundImage, Bounds);
+        if (overlay.HasBackgroundImage && _backgroundImage is not null) context.DrawImage(_backgroundImage, Bounds);
         DrawGrid(context);
         if (FlickerMode && (_flickerFrame = !_flickerFrame)) return;
         DrawEnergyGrid(context);
         DrawToroidalEdges(context);
-        DrawWorldFeatures(context);
+        DrawWorldFeatures(context, overlay);
         if (_snapshot.Organisms.Count == 0)
         {
             var message = new FormattedText(
@@ -217,15 +225,15 @@ public sealed class WorldViewport : Control
         {
             DrawOrganisms(context, scaleX, scaleY);
             DrawSelectedVision(context, scaleX, scaleY);
-            DrawMovementVectors(context, scaleX, scaleY);
-            DrawResourceGauges(context, scaleX, scaleY);
+            DrawMovementVectors(context, scaleX, scaleY, overlay);
+            DrawResourceGauges(context, scaleX, scaleY, overlay);
             return;
         }
 
         DrawFallbackOrganisms(context, scaleX, scaleY);
         DrawSelectedVision(context, scaleX, scaleY);
-        DrawMovementVectors(context, scaleX, scaleY);
-        DrawResourceGauges(context, scaleX, scaleY);
+        DrawMovementVectors(context, scaleX, scaleY, overlay);
+        DrawResourceGauges(context, scaleX, scaleY, overlay);
     }
 
     private void DrawOrganisms(DrawingContext context, double scaleX, double scaleY)
@@ -630,7 +638,7 @@ public sealed class WorldViewport : Control
             context.DrawLine(_gridPen, new Point(0, y), new Point(Bounds.Width, y));
     }
 
-    private void DrawWorldFeatures(DrawingContext context)
+    private void DrawWorldFeatures(DrawingContext context, WorldOverlayProjection overlay)
     {
         var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]) * _zoom;
         var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]) * _zoom;
@@ -651,7 +659,7 @@ public sealed class WorldViewport : Control
         foreach (var shot in _snapshot.Shots)
         {
             if (!RenderWaste && shot.Kind == -4) continue;
-            if (!ShowShotImpacts && shot.ImpactFlash) continue;
+            if (!overlay.ShowShotImpacts && shot.ImpactFlash) continue;
             var color = shot.Kind switch
             {
                 -1 => "#FFFFFF",
@@ -735,9 +743,13 @@ public sealed class WorldViewport : Control
         InvalidateVisual();
     }
 
-    private void DrawMovementVectors(DrawingContext context, double scaleX, double scaleY)
+    private void DrawMovementVectors(
+        DrawingContext context,
+        double scaleX,
+        double scaleY,
+        WorldOverlayProjection overlay)
     {
-        if (!ShowMovementVectors) return;
+        if (!overlay.ShowMovementVectors) return;
         var stride = _snapshot.Organisms.Count > 20_000 ? 8 : _snapshot.Organisms.Count > 5_000 ? 3 : 1;
         var pen = new Pen(new SolidColorBrush(Color.Parse("#A5239AC0")), 0.9);
         for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
@@ -751,19 +763,42 @@ public sealed class WorldViewport : Control
         }
     }
 
-    private void DrawResourceGauges(DrawingContext context, double scaleX, double scaleY)
+    private void DrawResourceGauges(
+        DrawingContext context,
+        double scaleX,
+        double scaleY,
+        WorldOverlayProjection overlay)
     {
-        if (!ShowResourceGauges) return;
+        if (!overlay.ShowResourceGauges) return;
         var stride = _snapshot.Organisms.Count > 10_000 ? 6 : _snapshot.Organisms.Count > 3_000 ? 2 : 1;
         for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
         {
             var organism = _snapshot.Organisms[index];
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
-            var width = 18.0;
-            var ratio = Math.Clamp(organism.Energy / 20_000.0, 0.0, 1.0);
-            var origin = new Point(center.X - width / 2, center.Y - 12);
-            context.FillRectangle(new SolidColorBrush(Color.Parse("#A0D0CEC5")), new Rect(origin, new Size(width, 2.5)));
-            context.FillRectangle(new SolidColorBrush(Color.Parse("#D045A23D")), new Rect(origin, new Size(width * ratio, 2.5)));
+            var width = 26.0;
+            var origin = new Point(center.X - width / 2, center.Y - 17);
+            var gaugeStart = index * 3;
+            var gaugeEnd = Math.Min(gaugeStart + 3, overlay.Gauges.Count);
+            for (var gaugeIndex = gaugeStart; gaugeIndex < gaugeEnd; gaugeIndex++)
+            {
+                var gauge = overlay.Gauges[gaugeIndex];
+                var row = gaugeIndex - gaugeStart;
+                var rowOrigin = new Point(origin.X, origin.Y + row * 6);
+                context.FillRectangle(
+                    new SolidColorBrush(Color.Parse("#A0D0CEC5")),
+                    new Rect(rowOrigin, new Size(width, 3.5)));
+                context.FillRectangle(
+                    new SolidColorBrush(Color.Parse(gauge.Color)),
+                    new Rect(rowOrigin, new Size(width * gauge.Ratio, 3.5)));
+                var text = new FormattedText(
+                    gauge.Text,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight,
+                    new Typeface("Bahnschrift"),
+                    7,
+                    new SolidColorBrush(Color.Parse(gauge.Color)));
+                context.DrawText(text, new Point(origin.X + width + 4, rowOrigin.Y - 2));
+            }
         }
     }
 
