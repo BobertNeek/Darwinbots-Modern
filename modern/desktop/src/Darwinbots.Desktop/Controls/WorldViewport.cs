@@ -669,14 +669,14 @@ public sealed class WorldViewport : Control
             if (!overlay.ShowShotImpacts && shot.ImpactFlash) continue;
             var color = shot.Kind switch
             {
-                -1 => "#FFFFFF",
-                -2 => "#45A23D",
-                -3 => "#239AC0",
-                -4 => "#8A6748",
-                -5 => "#D9AA24",
-                _ => "#D8483E",
+                -1 => Color.Parse("#FFFFFF"),
+                -2 => Color.Parse("#45A23D"),
+                -3 => Color.Parse("#239AC0"),
+                -4 => Color.Parse("#8A6748"),
+                -5 => Color.Parse("#D9AA24"),
+                _ => ShotOwnerColor(shot.Owner),
             };
-            var pen = new Pen(new SolidColorBrush(Color.Parse(color)), shot.ImpactFlash ? 1.2 : 1.0);
+            var pen = new Pen(new SolidColorBrush(color), shot.ImpactFlash ? 1.2 : 1.0);
             var end = new Point(shot.End[0] * scaleX + _pan.X, shot.End[1] * scaleY + _pan.Y);
             if (shot.ImpactFlash)
             {
@@ -741,6 +741,18 @@ public sealed class WorldViewport : Control
                 radius,
                 radius);
         }
+    }
+
+    private Color ShotOwnerColor(OrganismKey owner)
+    {
+        var organism = _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == owner);
+        if (organism is not null && _rgbMemoryMonitor is { } monitor)
+            return Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb());
+        if (_snapshot.RenderInstances.FirstOrDefault(value => KeyOf(value) == owner) is { } instance)
+            return Color.FromUInt32(instance.Color);
+        if (organism is not null)
+            return Color.FromUInt32(organism.Phenotype.Color);
+        return Color.Parse("#D8483E");
     }
 
     public void SetBackgroundImage(Bitmap? image)
