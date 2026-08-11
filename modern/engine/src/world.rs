@@ -11078,6 +11078,93 @@ const fn default_snapshot_schema_version() -> u32 {
 mod tests {
     use super::*;
 
+    #[test]
+    fn eco03_photosynthesis_pond_sun_conversion_population_and_bounds_contract() {
+        let config = EngineConfig::testing();
+        let vegetation = VegetationSettings::default();
+        let input = |pond_mode, light_intensity, depth| PlantLightInput {
+            daytime: true,
+            sunlit: true,
+            chloroplasts: vegetation.start_chloroplasts,
+            age: 0,
+            total_robot_area: 0.0,
+            usable_world_area: 1.0,
+            max_energy_per_tick: vegetation.max_energy_per_tick,
+            pond_mode,
+            light_intensity,
+            depth,
+            gradient: vegetation.gradient,
+        };
+
+        let light_cases = [
+            ("sun-full", false, config.sunlight_energy as f32, 1.0),
+            ("sun-half", false, config.sunlight_energy as f32 / 2.0, 1.0),
+            ("pond-surface", true, vegetation.light_intensity, 1.0),
+            ("pond-depth", true, vegetation.light_intensity, 2.0),
+            ("zero-clamped", true, -1.0, 0.0),
+        ];
+        let deltas: Vec<_> = light_cases
+            .iter()
+            .map(|(name, pond_mode, intensity, depth)| {
+                (*name, VegetationRuntime::default().feed(input(*pond_mode, *intensity, *depth)).delta)
+            })
+            .collect();
+        assert!(deltas[0].1 > deltas[1].1, "sun intensity must scale yield");
+        assert!(deltas[2].1 > deltas[3].1, "pond depth must attenuate light");
+        assert_eq!(deltas[4].1, 0.0, "negative light and zero depth must clamp");
+
+        for (x, sun_position, sun_range, expected) in [
+            (100.0, 0.1, 0.0, true),
+            (500.0, 0.1, 0.0, false),
+            (900.0, 0.9, 0.0, true),
+        ] {
+            assert_eq!(is_in_sun_band(x, config.world_width, sun_position, sun_range), expected);
+        }
+
+        for (feeding_to_body, expected) in [
+            (0.0, (100, 0)),
+            (vegetation.feeding_to_body, (25, 7)),
+            (1.0, (0, 10)),
+            (-1.0, (100, 0)),
+            (2.0, (0, 10)),
+        ] {
+            let mut biology = BiologyState::default();
+            assert_eq!(biology.apply_plant_delta(100.0, feeding_to_body), expected);
+        }
+
+        let cap = config.vegetable_population_cap;
+        for (vegetable, equivalents, seed, tick, slot, expected) in [
+            (false, cap + 1, 1, 0, 0, true),
+            (true, cap + 1, 1, 0, 0, false),
+            (true, cap * 9 / 10, 1, 0, 0, true),
+            (true, cap, 1, 9, 0, true),
+            (true, cap, 1, 9, 1, false),
+        ] {
+            assert_eq!(
+                vegetable_reproduction_passes_population_throttle(
+                    vegetable, false, equivalents, cap, seed, tick, slot,
+                ),
+                expected,
+            );
+        }
+
+        let zero = VegetationRuntime::default().feed(PlantLightInput {
+            daytime: true,
+            sunlit: true,
+            chloroplasts: 0,
+            age: 0,
+            total_robot_area: -1.0,
+            usable_world_area: 0.0,
+            max_energy_per_tick: -1,
+            pond_mode: false,
+            light_intensity: -1.0,
+            depth: 0.0,
+            gradient: -1.0,
+        });
+        assert_eq!(zero.availability, 0.0);
+        assert_eq!(zero.delta, 0.0);
+    }
+
     fn fail_next_gpu_sensing_after_submit(engine: &Engine) {
         let RuntimePhysics::Gpu(backend) = &engine.physics else {
             panic!("the physical GPU is required for this test");
