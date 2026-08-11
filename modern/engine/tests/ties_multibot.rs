@@ -1074,6 +1074,159 @@ fn hardened_tie_group_follows_teleporter_relocation() {
     );
 }
 
+#[test]
+fn tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage() {
+    let (mut engine, source, target) = spawn_soft_tie();
+
+    assert_eq!(engine.snapshot().tick, 1);
+    assert_eq!(engine.snapshot().ties[0].last, -20);
+    assert!(!engine.snapshot().ties[0].hardened);
+    assert_eq!(engine.memory(source, "numties").unwrap(), 1);
+    assert_eq!(engine.memory(source, "myties").unwrap(), 1);
+    assert_eq!(engine.memory(source, "multi").unwrap(), 0);
+
+    engine.tick_many(18).unwrap();
+    assert_eq!(engine.snapshot().tick, 19);
+    assert_eq!(engine.snapshot().ties[0].last, -2);
+    assert!(!engine.snapshot().ties[0].hardened);
+
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().tick, 20);
+    assert_eq!(engine.snapshot().ties[0].last, -1);
+    assert!(engine.snapshot().ties[0].hardened);
+    assert_tie_float(&engine, "b", 0.1);
+    assert_tie_float(&engine, "k", 0.05);
+    assert_eq!(engine.memory(source, "multi").unwrap(), 1);
+
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse(
+                "start\n41 .tienum store\n50 .tieloc store\n1234 .tieval store\n0 .fixang store\nstop",
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    let mut batch = engine.physics_batch();
+    let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+    let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+    batch.batch.positions[source_index] = [400.0, 1_000.0];
+    batch.batch.positions[target_index] = [400.0, 1_300.0];
+    batch.batch.velocities[source_index] = [0.0; 2];
+    batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(batch).unwrap();
+
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(target, 50).unwrap(), 1_234);
+    assert_eq!(engine.memory(source, "tiepres").unwrap(), 41);
+    assert_eq!(engine.memory(source, "tielen").unwrap(), 72);
+    assert_eq!(
+        engine.memory(source, "trefxpos").unwrap(),
+        engine.organism(target).unwrap().position[0].round() as i32
+    );
+    assert_eq!(
+        engine.memory(source, "trefypos").unwrap(),
+        engine.organism(target).unwrap().position[1].round() as i32
+    );
+
+    engine.tick().unwrap();
+    let source_angular = engine
+        .robot_state(source)
+        .unwrap()
+        .kinematics
+        .angular_momentum;
+    let target_angular = engine
+        .robot_state(target)
+        .unwrap()
+        .kinematics
+        .angular_momentum;
+    assert_ne!(engine.organism(source).unwrap().aim, 0);
+    assert_ne!(engine.organism(target).unwrap().aim, 0);
+    assert!(source_angular * target_angular < 0.0);
+
+    let source_endpoint = engine.robot_state(source).unwrap().ties[0].unwrap();
+    let target_endpoint = engine.robot_state(target).unwrap().ties[0].unwrap();
+    assert_eq!(source_endpoint.other, Some(target));
+    assert_eq!(target_endpoint.other, Some(source));
+    assert_eq!((source_endpoint.port, target_endpoint.port), (41, 1));
+    assert_eq!(
+        (source_endpoint.reciprocal_index, target_endpoint.reciprocal_index),
+        (1, 1)
+    );
+
+    let mut baseline = Engine::new(tie_test_config()).unwrap();
+    baseline
+        .spawn_at(
+            LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
+            [400.0, 1_000.0],
+        )
+        .unwrap();
+    baseline.tick().unwrap();
+    let baseline_shot = baseline.snapshot().shots[0].clone();
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    let tied_shot = engine.snapshot().shots.last().unwrap().clone();
+    assert_eq!(tied_shot.value, baseline_shot.value * 2);
+    assert!(tied_shot.range > baseline_shot.range);
+
+    let source_radius = engine
+        .snapshot()
+        .render_instances
+        .iter()
+        .find(|instance| instance.slot == source.slot())
+        .unwrap()
+        .radius;
+    let target_radius = engine
+        .snapshot()
+        .render_instances
+        .iter()
+        .find(|instance| instance.slot == target.slot())
+        .unwrap()
+        .radius;
+    let mut break_batch = engine.physics_batch();
+    let source_index = break_batch.ids.iter().position(|id| *id == source).unwrap();
+    let target_index = break_batch.ids.iter().position(|id| *id == target).unwrap();
+    break_batch.batch.positions[source_index] = [400.0, 1_000.0];
+    break_batch.batch.positions[target_index] =
+        [400.0 + source_radius + target_radius + 1_000.5, 1_000.0];
+    break_batch.batch.velocities[source_index] = [0.0; 2];
+    break_batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(break_batch).unwrap();
+    engine.tick().unwrap();
+
+    assert!(engine.snapshot().ties.is_empty());
+    assert_eq!(
+        (
+            engine
+                .robot_state(source)
+                .unwrap()
+                .ties
+                .iter()
+                .flatten()
+                .count(),
+            engine
+                .robot_state(target)
+                .unwrap()
+                .ties
+                .iter()
+                .flatten()
+                .count(),
+        ),
+        (0, 0)
+    );
+    assert_eq!(engine.memory(source, "numties").unwrap(), 0);
+    assert_eq!(engine.memory(source, "myties").unwrap(), 0);
+    assert_eq!(engine.memory(source, "multi").unwrap(), 0);
+    assert_eq!(engine.memory(source, "tiepres").unwrap(), 0);
+    assert_eq!(engine.memory(source, "trefxpos").unwrap(), 0);
+    assert_eq!(engine.memory(source, "trefypos").unwrap(), 0);
+}
+
 fn soft_tie_response(stretch: f32) -> ([f32; 2], [f32; 2], [f32; 2], [f32; 2]) {
     let (mut engine, source, target) = spawn_soft_tie();
     let rest_length = engine.snapshot().ties[0].rest_length;
