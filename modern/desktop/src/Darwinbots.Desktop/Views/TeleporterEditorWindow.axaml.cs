@@ -53,29 +53,28 @@ public sealed partial class TeleporterEditorWindow : Window
             Statistics.Text = "Internet teleporters are disabled in offline mode.";
             return;
         }
-        Result = _original with
-        {
-            Mode = Mode.SelectedIndex switch
+        Result = ObjectEditorPolicy.BuildTeleporterPayload(
+            _original,
+            Mode.SelectedIndex switch
             {
                 1 => "inbound",
                 2 => "outbound",
                 _ => "intrasim",
             },
-            Center = [(float)(CenterX.Value ?? 0m), (float)(CenterY.Value ?? 0m)],
-            Destination = [(float)(DestinationX.Value ?? 0m), (float)(DestinationY.Value ?? 0m)],
-            Radius = (float)(Radius.Value ?? 1m),
-            PollInterval = (uint)(PollInterval.Value ?? 1m),
-            Capacity = (int)(Capacity.Value ?? 1m),
-            BackflowLimit = (uint)(BackflowLimit.Value ?? 0m),
-            TeleportVegetables = TeleportVegetables.IsChecked == true,
-            TeleportCorpses = TeleportCorpses.IsChecked == true,
-            TeleportHeterotrophs = TeleportHeterotrophs.IsChecked == true,
-            FixedPosition = FixedPosition.IsChecked == true,
-            RespectShapes = RespectShapes.IsChecked == true,
-            Path = Path.Text?.Trim() ?? string.Empty,
-            InboundPath = InboundPath.Text?.Trim() ?? string.Empty,
-            OutboundPath = OutboundPath.Text?.Trim() ?? string.Empty,
-        };
+            [(float)(CenterX.Value ?? 0m), (float)(CenterY.Value ?? 0m)],
+            (float)(Radius.Value ?? 1m),
+            [(float)(DestinationX.Value ?? 0m), (float)(DestinationY.Value ?? 0m)],
+            (uint)(PollInterval.Value ?? 1m),
+            (int)(Capacity.Value ?? 1m),
+            (uint)(BackflowLimit.Value ?? 0m),
+            TeleportVegetables.IsChecked == true,
+            TeleportCorpses.IsChecked == true,
+            TeleportHeterotrophs.IsChecked == true,
+            FixedPosition.IsChecked == true,
+            RespectShapes.IsChecked == true,
+            Path.Text?.Trim() ?? string.Empty,
+            InboundPath.Text?.Trim() ?? string.Empty,
+            OutboundPath.Text?.Trim() ?? string.Empty);
         Close();
     }
 

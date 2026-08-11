@@ -643,7 +643,7 @@ public sealed partial class MainWindow : Window
             _ => Task.FromResult(RemoveBackground()));
         handlers[LegacyCommandId.ObjectsNewTeleporter] = Handler(
             () => LegacyCommandState.Available,
-            _ => Task.FromResult(BeginEnvironmentPlacement(EnvironmentPlacement.Teleporter)));
+            _ => Task.FromResult(BeginObjectPlacementCommand(LegacyCommandId.ObjectsNewTeleporter)));
         handlers[LegacyCommandId.ObjectsDeleteTeleporter] = Handler(
             () => FeatureState(WorldFeatureKind.Teleporter),
             async _ => await RemoveSelectedFeatureCommandAsync());
@@ -665,7 +665,7 @@ public sealed partial class MainWindow : Window
             async _ => await ToggleTiesAsync());
         handlers[LegacyCommandId.ObjectsNewShape] = Handler(
             () => LegacyCommandState.Available,
-            _ => Task.FromResult(BeginEnvironmentPlacement(EnvironmentPlacement.Obstacle)));
+            _ => Task.FromResult(BeginObjectPlacementCommand(LegacyCommandId.ObjectsNewShape)));
         handlers[LegacyCommandId.ObjectsDeleteShape] = Handler(
             () => FeatureState(WorldFeatureKind.Obstacle),
             async _ => await RemoveSelectedFeatureCommandAsync());
@@ -764,10 +764,28 @@ public sealed partial class MainWindow : Window
         ? new LegacyCommandState(false, false, "Select a robot first.")
         : LegacyCommandState.Available;
 
-    private LegacyCommandState FeatureState(WorldFeatureKind kind) =>
-        _selectedFeature is { Kind: var selectedKind } && selectedKind == kind
+    private LegacyCommandState FeatureState(WorldFeatureKind kind)
+    {
+        if (_session is null)
+            return EngineState();
+
+        var route = ObjectEditorPolicy.RouteDelete(ToObjectEditorKind(kind), SelectedObject());
+        return route.Allowed
             ? LegacyCommandState.Available
-            : new LegacyCommandState(false, false, $"Select a {kind.ToString().ToLowerInvariant()} first.");
+            : new LegacyCommandState(false, false, route.DisabledReason);
+    }
+
+    private ObjectEditorSelection? SelectedObject() =>
+        _selectedFeature is { } feature
+            ? new(ToObjectEditorKind(feature.Kind), feature.Id)
+            : null;
+
+    private static ObjectEditorKind ToObjectEditorKind(WorldFeatureKind kind) => kind switch
+    {
+        WorldFeatureKind.Obstacle => ObjectEditorKind.Shape,
+        WorldFeatureKind.Teleporter => ObjectEditorKind.Teleporter,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown world feature."),
+    };
 
     private static DelegateLegacyCommandHandler Handler(
         Func<LegacyCommandState> state,
@@ -863,6 +881,16 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success(placement == EnvironmentPlacement.Obstacle
             ? "OBSTACLE · CLICK FIRST CORNER"
             : "TELEPORTER · CLICK SOURCE");
+    }
+
+    private LegacyCommandResult BeginObjectPlacementCommand(LegacyCommandId command)
+    {
+        var route = ObjectEditorPolicy.Route(command, null);
+        if (!route.Allowed)
+            return LegacyCommandResult.Failure(route.DisabledReason ?? "OBJECT COMMAND IS UNAVAILABLE");
+        return BeginEnvironmentPlacement(route.Kind == ObjectEditorKind.Shape
+            ? EnvironmentPlacement.Obstacle
+            : EnvironmentPlacement.Teleporter);
     }
 
     private async Task<LegacyCommandResult> KillSelectedAsync()
@@ -1526,6 +1554,9 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null || _selectedFeature is not { } feature)
             return LegacyCommandResult.Failure("SELECT A WORLD OBJECT FIRST");
+        var route = ObjectEditorPolicy.RouteDelete(ToObjectEditorKind(feature.Kind), SelectedObject());
+        if (!route.Allowed)
+            return LegacyCommandResult.Failure(route.DisabledReason ?? "SELECT A WORLD OBJECT FIRST");
         if (feature.Kind == WorldFeatureKind.Obstacle)
         {
             if (!await ConfirmObstacleDeletionAsync(1))
@@ -2051,7 +2082,8 @@ public sealed partial class MainWindow : Window
 
     private async void EditShape_Click(object? sender, RoutedEventArgs e)
     {
-        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Obstacle } feature) return;
+        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Obstacle } feature
+            || !ObjectEditorPolicy.CanEdit(ObjectEditorKind.Shape, SelectedObject())) return;
         var obstacle = _session.LatestSnapshot.Obstacles.FirstOrDefault(value => value.Id == feature.Id);
         if (obstacle is null) return;
         var dialog = new ShapeEditorWindow(obstacle);
@@ -2063,7 +2095,8 @@ public sealed partial class MainWindow : Window
 
     private async void EditTeleporter_Click(object? sender, RoutedEventArgs e)
     {
-        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature) return;
+        if (_session is null || _selectedFeature is not { Kind: WorldFeatureKind.Teleporter } feature
+            || !ObjectEditorPolicy.CanEdit(ObjectEditorKind.Teleporter, SelectedObject())) return;
         var localTeleporter = _session.LatestSnapshot.Teleporters.FirstOrDefault(value => value.Id == feature.Id);
         if (localTeleporter is not null)
         {
@@ -2090,6 +2123,8 @@ public sealed partial class MainWindow : Window
     private async void RemoveFeature_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null || _selectedFeature is not { } feature) return;
+        var route = ObjectEditorPolicy.RouteDelete(ToObjectEditorKind(feature.Kind), SelectedObject());
+        if (!route.Allowed) return;
         if (feature.Kind == WorldFeatureKind.Obstacle)
         {
             if (!await ConfirmObstacleDeletionAsync(1))
@@ -2109,8 +2144,11 @@ public sealed partial class MainWindow : Window
 
     private void RefreshFeatureEditorButtons()
     {
-        var selectedObstacle = _selectedFeature is { Kind: WorldFeatureKind.Obstacle };
+        var selectedObstacle = _selectedFeature is { Kind: WorldFeatureKind.Obstacle } obstacle
+            && ObjectEditorPolicy.CanEdit(ObjectEditorKind.Shape, SelectedObject())
+            && _session?.LatestSnapshot.Obstacles.Any(value => value.Id == obstacle.Id) == true;
         var selectedTeleporter = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature
+            && ObjectEditorPolicy.CanEdit(ObjectEditorKind.Teleporter, SelectedObject())
             && (_session?.LatestSnapshot.Teleporters.Any(value => value.Id == feature.Id) == true
                 || _session?.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id) == true);
         EditShapeButton.IsEnabled = selectedObstacle;

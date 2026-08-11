@@ -36,7 +36,7 @@ public sealed partial class ShapeEditorWindow : Window
         var rawColor = (ColorText.Text ?? string.Empty).Trim().TrimStart('#');
         if (!uint.TryParse(rawColor, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var color))
             return;
-        Result = ObstacleEditorPolicy.BuildPayload(
+        Result = ObjectEditorPolicy.BuildObstaclePayload(
             _original,
             [(float)(MinimumX.Value ?? 0m), (float)(MinimumY.Value ?? 0m)],
             [(float)(MaximumX.Value ?? 0m), (float)(MaximumY.Value ?? 0m)],
