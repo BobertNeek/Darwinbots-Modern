@@ -183,6 +183,52 @@ fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
 }
 
 #[test]
+fn negative_alzheimer_threshold_disables_memory_mutation() {
+    let mut base = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        waste: WasteSettings {
+            alzheimer_threshold: -1,
+            defecation_threshold: i32::MAX,
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let owner = base
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
+
+    let make_engine = |waste| {
+        let encoded = SaveFile::encode(&base).unwrap();
+        let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+        payload["slots"][owner.slot() as usize]["organism"]["materials"]["waste"] =
+            serde_json::json!(waste);
+        let payload = serde_json::to_vec(&payload).unwrap();
+        let mut save = Vec::with_capacity(10 + payload.len());
+        save.extend_from_slice(&encoded[..6]);
+        save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        save.extend_from_slice(&payload);
+        SaveFile::decode(&save).unwrap()
+    };
+    let mut high_waste = make_engine(4_000);
+    let mut low_waste = make_engine(0);
+    high_waste.tick().unwrap();
+    low_waste.tick().unwrap();
+
+    assert_eq!(
+        high_waste.memory_at(owner, 500).unwrap(),
+        low_waste.memory_at(owner, 500).unwrap()
+    );
+    let encoded = SaveFile::encode(&high_waste).unwrap();
+    let high_payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    let encoded = SaveFile::encode(&low_waste).unwrap();
+    let low_payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    assert_eq!(
+        high_payload["slots"][owner.slot() as usize]["organism"]["program"]["rng_state"],
+        low_payload["slots"][owner.slot() as usize]["organism"]["program"]["rng_state"]
+    );
+}
+
+#[test]
 fn automatic_overflow_defecation_subtracts_the_emitted_waste_packet() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,

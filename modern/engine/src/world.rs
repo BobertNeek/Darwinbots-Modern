@@ -5478,8 +5478,16 @@ impl Engine {
                 .materials
                 .waste
                 .saturating_add(robot.materials.permanent_waste);
-            let alzheimer_writes =
-                total_waste.saturating_sub(settings.alzheimer_threshold.max(0)) / 4;
+            let alzheimer_threshold = if settings.alzheimer_threshold == 0 {
+                400
+            } else {
+                settings.alzheimer_threshold
+            };
+            let alzheimer_writes = if alzheimer_threshold > 0 {
+                total_waste.saturating_sub(alzheimer_threshold) / 4
+            } else {
+                0
+            };
             if alzheimer_writes > 0 {
                 let mut random = robot.program.rng_state;
                 for _ in 0..alzheimer_writes {
