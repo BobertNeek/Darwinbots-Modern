@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -77,6 +79,102 @@ public sealed class RuntimeControlSurfaceTests
             finally
             {
                 foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task RestrictionOptionsRouteRendersEveryOptionAndAppliesOnlyAfterApply()
+    {
+        var initial = new RestrictionOptions(
+            new RestrictionColumn(KillMultibot: true, DisableChloroplasts: true, DisableDna: true, VirusImmune: true, DisableMovement: true),
+            new RestrictionColumn(KillDisqualified: true, FixedInPlace: true, DisableReproduction: true, DisableMutations: true));
+        var applied = new RestrictionOptions(
+            new RestrictionColumn(KillDisqualified: true, FixedInPlace: true, DisableVision: true, DisableReproduction: true, DisableMutations: true),
+            new RestrictionColumn(KillMultibot: true, DisableChloroplasts: true, DisableDna: true, VirusImmune: true, DisableMovement: true));
+        var engine = new RecordingEngineClient(RecordingEngineClient.CreateSnapshot() with { RestrictionOptions = initial });
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            window.Show();
+            SetField(window, "_session", simulation);
+            Field<MainWindowViewModel>(window, "_viewModel").Update(simulation.LatestSnapshot);
+            Invoke(window, "RefreshLegacyMenuStates");
+            try
+            {
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var command = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditRestrictionOverwrites)!;
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RestrictionOptionsWindow>().Any());
+                var cancelDialog = Assert.Single(window.OwnedWindows.OfType<RestrictionOptionsWindow>());
+                cancelDialog.Width = 760;
+                cancelDialog.Height = 560;
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var checks = cancelDialog.GetVisualDescendants().OfType<CheckBox>().ToArray();
+                Assert.Equal(20, checks.Length);
+                Assert.Equal(
+                    [
+                        "kill multibot", "kill disqualified", "disable chloroplasts", "fixed in place", "disable vision",
+                        "disable DNA", "disable reproduction", "virus immune", "disable mutations", "disable movement",
+                        "kill multibot", "kill disqualified", "disable chloroplasts", "fixed in place", "disable vision",
+                        "disable DNA", "disable reproduction", "virus immune", "disable mutations", "disable movement",
+                    ],
+                    checks.Select(check => check.Content?.ToString()).ToArray());
+                Assert.Equal(
+                    [true, false, true, false, false, true, false, true, false, true, false, true, false, true, false, false, true, false, true, false],
+                    checks.Select(check => check.IsChecked == true).ToArray());
+                Assert.Equal(initial, cancelDialog.Options);
+                Assert.Equal(["LOAD", "SAVE", "CANCEL", "APPLY"],
+                    cancelDialog.GetVisualDescendants().OfType<Button>().Select(button => button.Content?.ToString()).ToArray());
+                using (var frame = cancelDialog.CaptureRenderedFrame())
+                {
+                    Assert.True(frame.PixelSize.Width >= 640);
+                    Assert.True(frame.PixelSize.Height >= 460);
+                    var pixelRect = new PixelRect(0, 0, frame.PixelSize.Width, frame.PixelSize.Height);
+                    var stride = pixelRect.Width * 4;
+                    var pixelBytes = new byte[stride * pixelRect.Height];
+                    var pixelBuffer = Marshal.AllocHGlobal(pixelBytes.Length);
+                    try
+                    {
+                        frame.CopyPixels(pixelRect, pixelBuffer, pixelBytes.Length, stride);
+                        Marshal.Copy(pixelBuffer, pixelBytes, 0, pixelBytes.Length);
+                    }
+                    finally { Marshal.FreeHGlobal(pixelBuffer); }
+                    Assert.True(ContainsApproximateColor(pixelBytes, 0xF4, 0xF0, 0xE6));
+                    Assert.True(ContainsApproximateColor(pixelBytes, 0x41, 0x6E, 0x35));
+                }
+
+                checks[0].IsChecked = false;
+                checks[19].IsChecked = true;
+                var cancel = cancelDialog.GetVisualDescendants().OfType<Button>().Single(button => button.Content?.ToString() == "CANCEL");
+                cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => !cancelDialog.IsVisible);
+                Assert.False(cancelDialog.Accepted);
+                Assert.Equal(initial, simulation.LatestSnapshot.RestrictionOptions);
+                Assert.Null(engine.RestrictionOptionsUpdate);
+
+                command.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => window.OwnedWindows.OfType<RestrictionOptionsWindow>().Any());
+                var applyDialog = Assert.Single(window.OwnedWindows.OfType<RestrictionOptionsWindow>());
+                var applyChecks = applyDialog.GetVisualDescendants().OfType<CheckBox>().ToArray();
+                var appliedValues = new[] { false, true, false, true, true, false, true, false, true, false, true, false, true, false, false, true, false, true, false, true };
+                for (var index = 0; index < applyChecks.Length; index++) applyChecks[index].IsChecked = appliedValues[index];
+                Assert.Equal(applied, applyDialog.Options);
+                var apply = applyDialog.GetVisualDescendants().OfType<Button>().Single(button => button.Content?.ToString() == "APPLY");
+                apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => engine.RestrictionOptionsUpdate is not null);
+                Assert.True(applyDialog.Accepted);
+                Assert.Equal(applied, engine.RestrictionOptionsUpdate);
+                Assert.Equal(applied, simulation.LatestSnapshot.RestrictionOptions);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                SetField(window, "_session", null);
                 window.Close();
             }
         }, CancellationToken.None);
@@ -1199,6 +1297,24 @@ public sealed class RuntimeControlSurfaceTests
         Assert.True(condition(), $"Timed out waiting for the serialized UI command batch. Calls: {details?.Invoke()}");
     }
 
+    private static bool ContainsApproximateColor(byte[] pixels, byte red, byte green, byte blue)
+    {
+        for (var index = 0; index + 3 < pixels.Length; index += 4)
+        {
+            var bgra = Close(pixels[index], blue)
+                && Close(pixels[index + 1], green)
+                && Close(pixels[index + 2], red);
+            var rgba = Close(pixels[index], red)
+                && Close(pixels[index + 1], green)
+                && Close(pixels[index + 2], blue);
+            if (bgra || rgba) return true;
+        }
+
+        return false;
+
+        static bool Close(byte left, byte right) => Math.Abs(left - right) <= 24;
+    }
+
     private static byte[] SyntheticVb6Organism()
     {
         using var stream = new MemoryStream();
@@ -1438,7 +1554,12 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) => Calls.Enqueue($"PlayerBotKey:{slot}:{generation}:{keyCode}:{pressed}");
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
-    public void UpdateRestrictionOptions(RestrictionOptions options) => Calls.Enqueue("RestrictionOptions");
+    public RestrictionOptions? RestrictionOptionsUpdate { get; private set; }
+    public void UpdateRestrictionOptions(RestrictionOptions options)
+    {
+        RestrictionOptionsUpdate = options;
+        Calls.Enqueue("RestrictionOptions");
+    }
     public void ConfigureLocalMode(LocalModeConfig config)
     {
         LocalModeConfigs.Enqueue(config);
@@ -1453,7 +1574,12 @@ internal sealed class RecordingEngineClient : IEngineClient
     public void Load(byte[] save) => _tick = BitConverter.ToUInt64(save);
     public EngineSnapshot Snapshot()
     {
-        return _snapshot with { Tick = _tick, Backend = Backend };
+        return _snapshot with
+        {
+            Tick = _tick,
+            Backend = Backend,
+            RestrictionOptions = RestrictionOptionsUpdate ?? _snapshot.RestrictionOptions,
+        };
     }
     public void Dispose() { }
 }
