@@ -71,7 +71,10 @@ public sealed class ModeSettingsRenderedTests
             {
                 setup.Close();
             }
+        }, CancellationToken.None);
 
+        var receipt = await DesktopTestApplication.Session.Dispatch(() =>
+        {
             var factory = new AuditEngineClientFactory();
             var main = new MainWindow(
                 [],
@@ -83,7 +86,7 @@ public sealed class ModeSettingsRenderedTests
                 factory,
                 new AuditStorageService());
             ShowForInteraction(main, 1500, 1000);
-            byte[] receipt = [];
+            byte[] renderedFrame = [];
             try
             {
                 var league = Named<Expander>(main, "LeagueExpander");
@@ -127,15 +130,16 @@ public sealed class ModeSettingsRenderedTests
                 Assert.Equal("ADJUDICATE", Named<Button>(main, "AdjudicateModeButton").Content?.ToString());
                 Assert.Contains("LEAGUE TAB", main.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text), StringComparer.Ordinal);
 
-                receipt = CaptureFrame(main);
+                renderedFrame = CaptureFrame(main);
             }
             finally
             {
                 foreach (var ownedWindow in main.OwnedWindows.ToArray()) ownedWindow.Close();
                 main.Close();
             }
-            WriteReceipt(receipt);
+            return renderedFrame;
         }, CancellationToken.None);
+        WriteReceipt(receipt);
     }
 
     private static void ShowForInteraction(Window window, double width, double height)
@@ -166,10 +170,11 @@ public sealed class ModeSettingsRenderedTests
 
     private static async Task WaitFor(Func<bool> condition)
     {
-        for (var attempt = 0; attempt < 100; attempt++)
+        for (var attempt = 0; attempt < 500; attempt++)
         {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             if (condition()) return;
-            await Task.Delay(10);
+            await Task.Delay(20);
         }
 
         Assert.True(condition(), "Timed out waiting for the rendered route.");
@@ -189,8 +194,18 @@ public sealed class ModeSettingsRenderedTests
 
     private static void WriteReceipt(byte[] bytes)
     {
-        Assert.NotEmpty(bytes);
-        var output = Path.Combine(Path.GetTempPath(), "db24832-modes-setup.png");
+        Assert.True(bytes.Length > 24, $"Rendered PNG was too small: {bytes.Length} bytes.");
+        Assert.Equal(
+            new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A },
+            bytes[..8]);
+
+        var output = Path.Combine(
+            FindRepositoryRoot(),
+            "docs",
+            "parity",
+            "receipts",
+            "db24832-mode04-extinction-restart.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
         using (var stream = new FileStream(output, FileMode.Create, FileAccess.Write, FileShare.Read, 64 * 1024, FileOptions.WriteThrough))
         {
             stream.Write(bytes);
