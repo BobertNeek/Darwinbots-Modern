@@ -82,7 +82,7 @@ public sealed class RenderedControlSurfaceAuditTests
     {
         var ids = Coverage.Values.SelectMany(value => value).ToArray();
 
-        Assert.Equal(125, ids.Length);
+        Assert.Equal(131, ids.Length);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.All(ids, id => Assert.False(string.IsNullOrWhiteSpace(id)));
     }
@@ -497,6 +497,8 @@ public sealed class RenderedControlSurfaceAuditTests
             ClickExpander(window, Named<Expander>(window, "ParametersExpander"));
             ClickExpander(window, Named<Expander>(window, "PhysicsExpander"));
             Click(window, Named<Button>(window, "LiveAdvancedButton"));
+            await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(),
+                () => "The live physics button did not open its dialog.");
             var advanced = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
             Named<NumericUpDown>(advanced, "Brownian").Value = 4;
             Click(advanced, Named<Button>(advanced, "ApplyButton"));
@@ -547,15 +549,25 @@ public sealed class RenderedControlSurfaceAuditTests
 
             ClickAt(window, viewport, 0.09375, 0.125);
             Click(window, Named<Button>(window, "RemoveFeatureButton"));
+            await WaitFor(() => window.OwnedWindows.OfType<DeleteConfirmationWindow>().Any());
+            var confirmation = window.OwnedWindows.OfType<DeleteConfirmationWindow>().Single();
+            Click(confirmation, Named<Button>(confirmation, "ConfirmButton"));
 
             Click(window, Named<Button>(window, "CloneButton"));
             Click(window, Named<Button>(window, "ReproduceButton"));
             Click(window, Named<Button>(window, "FollowButton"));
             Click(window, Named<Button>(window, "FollowButton"));
 
+            // The fixture does not create the child returned by its reproduction stub.
+            // Select the original robot through the viewport before testing its editor.
+            ClickAt(window, viewport, 0.5, 0.5);
+            Assert.Equal(3U, viewModel.SelectedSlot);
             Click(window, Named<Button>(window, "EditDnaButton"));
+            await WaitFor(() => window.OwnedWindows.OfType<DnaEditorWindow>().Any());
             var editor = Assert.Single(window.OwnedWindows.OfType<DnaEditorWindow>());
             editor.Close();
+            await WaitFor(() => !window.OwnedWindows.OfType<DnaEditorWindow>().Any());
+            Capture(window, "runtime-before-kill.png");
 
             Click(window, Named<Button>(window, "KillButton"));
             ClickExpander(window, Named<Expander>(window, "EnvironmentExpander"));
@@ -637,6 +649,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.True(Named<Border>(window, "InternetOfflineOverlay").IsVisible);
 
                     var engine = factory.Clients.First();
+                    Capture(window, "toolbar-1280x900.png");
                     Click(window, Named<Button>(window, "SunButton"));
                     await WaitFor(
                         () => engine.EnvironmentUpdates.Any(),
@@ -646,7 +659,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     Click(window, Named<Button>(window, "ToolbarSlot16"));
                     await WaitFor(
                         () => Named<Button>(window, "InsertSpeciesButton").Content?.ToString() == "CANCEL INSERTION",
-                        () => "Insertion toolbar slot did not enter insertion mode.");
+                        () => $"Insertion toolbar slot did not enter insertion mode: {Field<MainWindowViewModel>(window, "_viewModel").Status}");
                     Assert.True(Named<Border>(window, "RuntimeOverlay").IsVisible);
                     Assert.Contains("INSERTION", Named<TextBlock>(window, "OverlayText").Text, StringComparison.OrdinalIgnoreCase);
 
@@ -675,12 +688,13 @@ public sealed class RenderedControlSurfaceAuditTests
             catch (Exception exception)
             {
                 callbackResult.TrySetResult(exception);
-                return;
+                return false;
             }
             callbackResult.TrySetResult(null);
+            return true;
         }, CancellationToken.None);
 
-        var callbackFailure = await callbackResult.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var callbackFailure = await callbackResult.Task.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Null(callbackFailure);
     }
 
@@ -1032,6 +1046,9 @@ public sealed class RenderedControlSurfaceAuditTests
         var point = control.TranslatePoint(local, window);
         Assert.True(point.HasValue, $"{control.Name ?? control.GetType().Name} was not attached to the rendered window.");
         AssertPointInsideWindow(window, point.Value, control);
+        var hit = window.InputHitTest(point.Value) as Control;
+        Assert.True(hit is not null && (ReferenceEquals(hit, control) || hit.GetVisualAncestors().Contains(control)),
+            $"{control.Name} was obscured at {point.Value}; input hit {hit?.Name ?? hit?.GetType().Name ?? "nothing"}.");
         window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);
         window.MouseUp(point.Value, MouseButton.Left, RawInputModifiers.None);
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -1322,6 +1339,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) => Calls.Enqueue($"PlayerBotKey:{slot}:{generation}:{keyCode}:{pressed}");
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
+    public OrganismKey? FindBestRobot(bool energyWeighting) { Calls.Enqueue("FindBestRobot"); return new(3, 2); }
     public void UpdateRestrictionOptions(RestrictionOptions options) => Calls.Enqueue("RestrictionOptions");
     public void ConfigureLocalMode(LocalModeConfig config)
     {

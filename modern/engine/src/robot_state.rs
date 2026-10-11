@@ -158,6 +158,8 @@ pub struct RobotProgramState {
     pub mutation_profile: StandardMutationProfile,
     #[serde(default)]
     pub point_mutation_schedule: Option<PointMutationSchedule>,
+    #[serde(default)]
+    pub point2_mutation_schedule: Option<PointMutationSchedule>,
     pub mutation_metadata: RobotMutationMetadata,
     pub fractional_cost_remainder: f64,
     pub debug_text: String,
@@ -183,6 +185,7 @@ impl RobotProgramState {
             rng_state: rng_state.max(1),
             mutation_profile: StandardMutationProfile::default(),
             point_mutation_schedule: None,
+            point2_mutation_schedule: None,
             mutation_metadata: RobotMutationMetadata::default(),
             fractional_cost_remainder: 0.0,
             debug_text: String::new(),
@@ -368,7 +371,11 @@ impl RobotState {
 
     pub(crate) fn publish_occurrence_readbacks(&mut self) {
         const OWN_READBACK_BASE: i32 = 721;
-        let has_persisted_counts = self.senses.occurrence_counts.iter().any(|value| *value != 0);
+        let has_persisted_counts = self
+            .senses
+            .occurrence_counts
+            .iter()
+            .any(|value| *value != 0);
         if has_persisted_counts || self.senses.vision_reference_occurrences.is_empty() {
             self.senses.vision_reference_occurrences = self
                 .senses
@@ -870,6 +877,8 @@ impl From<&LegacyBiologyState> for BiologyState {
             plant_body_carry_micros: state.plant_body_carry_micros,
             chloroplast_decay_carry_micros: 0,
             waste_metabolism_carry_micros: 0,
+            slime_decay_fraction: 0.0,
+            poison_decay_fraction: 0.0,
         }
     }
 }

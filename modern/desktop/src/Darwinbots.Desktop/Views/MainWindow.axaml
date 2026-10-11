@@ -10,7 +10,7 @@
          KeyDown="MainWindow_KeyDown" SizeChanged="MainWindow_SizeChanged">
   <Grid RowDefinitions="34,*" Background="{DynamicResource WindowBrush}">
     <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
-  <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,34,*,170,62,40" ColumnDefinitions="250,*,280">
+  <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,Auto,*,170,62,40" ColumnDefinitions="250,*,280">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
@@ -45,8 +45,8 @@
     </Border>
 
     <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
-      <ScrollViewer x:Name="LegacyToolbarScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
-      <UniformGrid x:Name="LegacyToolbar" Rows="1" Columns="24" Width="1440" HorizontalAlignment="Left">
+      <ScrollViewer x:Name="LegacyToolbarScroller" Height="48" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
+      <UniformGrid x:Name="LegacyToolbar" Rows="1" Columns="24" Width="1440" Height="30" HorizontalAlignment="Left">
         <Button x:Name="ToolbarSlot01" Content="NEW" ToolTip.Tip="Create a new simulation" AutomationProperties.Name="NEW SIMULATION" AutomationProperties.HelpText="Open the new simulation setup." KeyboardNavigation.TabIndex="0" Click="ToolbarNew_Click" />
         <Button x:Name="ToolbarSlot02" Content="LOAD" ToolTip.Tip="Load a simulation" AutomationProperties.Name="LOAD SIMULATION" AutomationProperties.HelpText="Load an offline simulation file." KeyboardNavigation.TabIndex="1" Click="Load_Click" />
         <Button x:Name="ToolbarSlot03" Content="SAVE" ToolTip.Tip="Save the simulation" AutomationProperties.Name="SAVE SIMULATION" AutomationProperties.HelpText="Save the current offline simulation." KeyboardNavigation.TabIndex="2" Click="Save_Click" />
@@ -68,7 +68,7 @@
             <DataTemplate x:CompileBindings="False"><TextBlock Text="{Binding Name}" /></DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
-        <Button x:Name="ToolbarSlot18" Content="BEST" ToolTip.Tip="Find the most successful robot" AutomationProperties.Name="FIND BEST ROBOT" AutomationProperties.HelpText="Select the living robot with the highest energy." KeyboardNavigation.TabIndex="14" Click="ToolbarFindBest_Click" />
+        <Button x:Name="ToolbarSlot18" Content="BEST" ToolTip.Tip="Find the most successful robot family" AutomationProperties.Name="FIND BEST ROBOT" AutomationProperties.HelpText="Select the living animal with the strongest family, using the configured energy weighting." KeyboardNavigation.TabIndex="14" Click="ToolbarFindBest_Click" />
         <Button x:Name="ToolbarSlot19" Content="GRAPH" ToolTip.Tip="Open graph suite" AutomationProperties.Name="OPEN GRAPHS" AutomationProperties.HelpText="Open the nonmodal local graph suite." KeyboardNavigation.TabIndex="15" Click="Graphs_Click" />
         <Border x:Name="ToolbarSlot20" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 4" AutomationProperties.HelpText="Toolbar separator" />
         <Button x:Name="ToolbarSlot21" Content="SNAPSHOT" ToolTip.Tip="Capture all living robots" AutomationProperties.Name="LIVING SNAPSHOT" AutomationProperties.HelpText="Save a snapshot of all living robots." KeyboardNavigation.TabIndex="16" Click="ToolbarSnapshot_Click" />
@@ -220,6 +220,9 @@
           <Button x:Name="ZoomOutButton" Content="ZOOM −" ToolTip.Tip="Zoom out" AutomationProperties.Name="Zoom out" Click="ZoomOut_Click" />
           <Button x:Name="ZoomLockButton" Content="LOCK OFF" ToolTip.Tip="Keep the camera inside the world" AutomationProperties.Name="Lock camera" Click="ZoomLock_Click" />
         </StackPanel>
+        <Border x:Name="BuoyancyWarning" IsVisible="False" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Background="#FFF3E7" BorderBrush="#B46A27" BorderThickness="1" Padding="8" MaxWidth="420">
+          <TextBlock Text="Buoyancy requires vertical gravity, pond mode, and an unwrapped bottom edge." TextWrapping="Wrap" Foreground="#794A1D" FontSize="11"/>
+        </Border>
         <Border x:Name="RecoveryPanel" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,92,0,0" Background="#FFF3E7" BorderBrush="#B46A27" BorderThickness="1" Padding="10" Width="310">
           <StackPanel Spacing="5">
             <TextBlock x:Name="RecoveryTitle" Text="SAFE MODE RECOVERY" FontWeight="Bold" Foreground="#794A1D" />

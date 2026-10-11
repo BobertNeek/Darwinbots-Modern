@@ -1,6 +1,6 @@
 use darwinbots_engine::{
-    AdvancedMutationSettings, Delta2Settings, DnaCosts, EpigeneticPolicyAction, EpigeneticSettings,
-    Engine, EngineConfig, GenomeMutator, LegacyDna, MutationOscillationMode,
+    AdvancedMutationSettings, Delta2Settings, DnaCosts, Engine, EngineConfig,
+    EpigeneticPolicyAction, EpigeneticSettings, GenomeMutator, LegacyDna, MutationOscillationMode,
     MutationOscillationSettings, MutationPolicyInput, MutationPolicyReport, SimulationCostAction,
     SimulationCostInput, StandardMutationProfile, apply_advanced_mutation_policies,
 };

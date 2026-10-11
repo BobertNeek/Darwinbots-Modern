@@ -193,7 +193,8 @@ impl DnaCosts {
         if !self.dynamic_allow_negative {
             multiplier = multiplier.max(0.0);
         }
-        if self.dynamic_upper_zero_threshold > 0.0 && -distance >= self.dynamic_upper_zero_threshold {
+        if self.dynamic_upper_zero_threshold > 0.0 && -distance >= self.dynamic_upper_zero_threshold
+        {
             multiplier = 0.0;
         }
         multiplier

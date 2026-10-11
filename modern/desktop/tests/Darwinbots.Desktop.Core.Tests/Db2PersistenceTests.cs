@@ -16,6 +16,7 @@ public sealed class Db2PersistenceTests
             OrganismCapacity = 44_000,
             WorldWidth = 91_000,
             WorldHeight = 82_000,
+            Species = [new SpeciesImport("Modern.txt", "start stop", false, 0xff123456, 5, 1000, 0, false, 0) { DnaPath = "Robots/Modern.txt" }],
         };
 
         var bytes = Db2SettingsCodec.Encode(expected);
@@ -25,7 +26,7 @@ public sealed class Db2PersistenceTests
         Assert.Equal("\"Robots\"", lines[7]);
         Assert.Equal("91000", lines[45]);
         Assert.Equal("82000", lines[46]);
-        Assert.Equal("44000", lines[47]);
+        Assert.Equal("500", lines[47]); // Native MaxPopulation is the vegetable cap.
 
         var actual = Db2SettingsCodec.Decode(bytes);
 

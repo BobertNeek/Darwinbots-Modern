@@ -64,6 +64,7 @@ public sealed partial class MainWindow : Window
     private readonly WorldSetupOptions _setup;
     private readonly ObservableCollection<SpeciesImport> _insertionSpecies = [];
     private GlobalSettings _globalSettings;
+    private ulong? _lastGraphRefreshTick;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
@@ -131,6 +132,8 @@ public sealed partial class MainWindow : Window
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _zerobotProgression = null;
         InitializeComponent();
+        Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
+        Viewport.OldColors = _globalSettings.Main.OldColors;
         UiPreferencesController.Register(this);
         var numericCultureAppliedAfterExpansion = false;
         EnergyExpander.LayoutUpdated += (_, _) =>
@@ -487,9 +490,9 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetName(ToolbarSlot14, _turbo ? "WORLD GRAPHICS OFF" : "WORLD GRAPHICS ON");
     }
 
-    private void ToolbarFindBest_Click(object? sender, RoutedEventArgs e)
+    private async void ToolbarFindBest_Click(object? sender, RoutedEventArgs e)
     {
-        _viewModel.Status = FindBestRobot().Status;
+        _viewModel.Status = (await FindBestRobotAsync()).Status;
     }
 
     private async void ToolbarSnapshot_Click(object? sender, RoutedEventArgs e)
@@ -554,7 +557,7 @@ public sealed partial class MainWindow : Window
             async _ => await LoadSimulationCommandAsync());
         handlers[LegacyCommandId.FileSaveSimulation] = Handler(
             EngineState,
-            async _ => await SaveLegacySimulationCommandAsync());
+            async _ => await SaveSimulationCommandAsync());
         handlers[LegacyCommandId.FileSaveWithoutMutations] = Handler(
             EngineState,
             async _ => await SaveSimulationCommandAsync("SAVED WITHOUT MUTATION SETTINGS", withoutMutations: true));
@@ -719,7 +722,7 @@ public sealed partial class MainWindow : Window
             async _ => await SaveEntireOrganismAsync());
         handlers[LegacyCommandId.RobotFindBest] = Handler(
             EngineState,
-            _ => Task.FromResult(FindBestRobot()));
+            _ => FindBestRobotAsync());
         handlers[LegacyCommandId.RecordingSafemodeBackup] = Handler(
             () => new LegacyCommandState(true, _safemodeBackup),
             _ => Task.FromResult(ToggleSafemodeBackup()));
@@ -946,11 +949,11 @@ public sealed partial class MainWindow : Window
             : LegacyCommandResult.Cancel();
     }
 
-    private async Task<LegacyCommandResult> SaveLegacySimulationCommandAsync()
+    private async Task<LegacyCommandResult> SaveSimulationCommandAsync()
     {
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var bytes = await _session.SaveLegacyAsync();
-        return await _storage.SaveLegacySimulationAsync(this, bytes)
+        var bytes = await _session.SaveAsync();
+        return await _storage.SaveSimulationAsync(this, bytes)
             ? LegacyCommandResult.Success("SAVED")
             : LegacyCommandResult.Cancel();
     }
@@ -1336,6 +1339,9 @@ public sealed partial class MainWindow : Window
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
         _globalSettings = dialog.Settings;
+        Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
+        Viewport.OldColors = _globalSettings.Main.OldColors;
+        if (_session is not null) await _session.UpdateMainRulesAsync(_globalSettings.Main);
         if (_trayIcon is not null)
             _trayIcon.IsVisible = !_globalSettings.Main.HideTray;
         _viewModel.Status = "GLOBAL SETTINGS SAVED FOR NEXT WORLD";
@@ -1550,13 +1556,13 @@ public sealed partial class MainWindow : Window
             : LegacyCommandResult.Cancel();
     }
 
-    private LegacyCommandResult FindBestRobot()
+    private async Task<LegacyCommandResult> FindBestRobotAsync()
     {
-        if (_session?.LatestSnapshot.Organisms.MaxBy(organism => organism.Energy) is not { } organism)
+        if (_session is null || await _session.FindBestRobotAsync(_globalSettings.Main.FindBestEnergyWeighting) is not { } key)
             return LegacyCommandResult.Failure("NO LIVING ROBOTS");
-        _viewModel.Select(new OrganismKey(organism.Slot, organism.Generation));
-        Viewport.SelectKey(new OrganismKey(organism.Slot, organism.Generation));
-        return LegacyCommandResult.Success($"BEST ENERGY · {organism.Slot}:{organism.Generation} · {organism.Energy:0}");
+        _viewModel.Select(key);
+        Viewport.SelectKey(key);
+        return LegacyCommandResult.Success($"BEST FAMILY · {key.Slot}:{key.Generation}");
     }
 
     private async Task<LegacyCommandResult> RemoveSelectedFeatureCommandAsync()
@@ -1783,9 +1789,19 @@ public sealed partial class MainWindow : Window
                 _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
                 Viewport.SetSnapshot(snapshot);
                 Viewport.SelectKey(_viewModel.SelectedKey);
-                PopulationChart.SetSnapshot(snapshot);
-                EnergyChart.SetSnapshot(snapshot);
-                _toolWindows.PublishSnapshot(snapshot);
+                var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
+                var updateGraphs = _lastGraphRefreshTick is not { } lastTick
+                    || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
+                if (updateGraphs)
+                {
+                    PopulationChart.SetSnapshot(snapshot);
+                    EnergyChart.SetSnapshot(snapshot);
+                    _lastGraphRefreshTick = snapshot.Tick;
+                }
+                _toolWindows.PublishSnapshot(snapshot, updateGraphs);
+                BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
+                    && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
+                    && snapshot.Organisms.Any(robot => robot.Memory.Any(cell => cell.Address == 315 && cell.Value > 0));
                 await RecordDeadSnapshotAsync(snapshot);
                 RefreshLegacyMenuStates();
                 if (_zerobotProgression is not null && !_progressionInFlight

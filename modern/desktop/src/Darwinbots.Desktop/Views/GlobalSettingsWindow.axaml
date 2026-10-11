@@ -17,8 +17,8 @@
       <TabItem x:Name="MainTab" Header="MAIN">
         <ScrollViewer><StackPanel Margin="20,0,8,24" Spacing="14">
           <Border Classes="card"><StackPanel Spacing="11"><TextBlock Classes="section" Text="DISPLAY + WORKFLOW"/>
-            <CheckBox x:Name="FixedRatio" Content="Fixed ratio display"/><CheckBox x:Name="OldColors" Content="Use legacy organism colors"/><CheckBox x:Name="SuppressBuoyancy" Content="Suppress buoyancy controls"/><CheckBox x:Name="VideoOff" Content="Disable video capture"/><CheckBox x:Name="HideTray" Content="Hide system tray icon"/>
-            <Grid ColumnDefinitions="*,150"><TextBlock Text="Graph updates per tick"/><NumericUpDown Grid.Column="1" x:Name="GraphUpdates" Minimum="1" Maximum="1000"/></Grid>
+            <CheckBox x:Name="FixedRatio" Content="Fixed ratio display"/><CheckBox x:Name="OldColors" Content="Use legacy simulation colors"/><CheckBox x:Name="SuppressBuoyancy" Content="Suppress buoyancy warning"/><CheckBox x:Name="VideoOff" Content="Disable video capture"/><CheckBox x:Name="HideTray" Content="Hide system tray icon"/>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Cycles between graph refreshes"/><NumericUpDown Grid.Column="1" x:Name="GraphUpdates" Minimum="1" Maximum="1000"/></Grid>
             <Grid ColumnDefinitions="*,150"><TextBlock Text="Body cutoff"/><NumericUpDown Grid.Column="1" x:Name="BodyCutoff" Minimum="0" Maximum="32000"/></Grid>
           </StackPanel></Border>
           <Border Classes="card"><StackPanel Spacing="11"><TextBlock Classes="section" Text="STARTUP + COMPATIBILITY"/>

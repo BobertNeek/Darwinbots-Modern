@@ -4,7 +4,10 @@ use darwinbots_engine::{CorpseDecayMode, EngineConfig, LocalModeConfig};
 fn clean_start_defaults_match_db24832() {
     let config = EngineConfig::default();
 
-    assert_eq!([config.world_width, config.world_height], [16_000.0, 12_000.0]);
+    assert_eq!(
+        [config.world_width, config.world_height],
+        [16_000.0, 12_000.0]
+    );
     assert_eq!(config.physics.max_velocity, 60.0);
     assert_eq!(config.physics.movement_efficiency, 0.66);
     assert_eq!(config.physics.surface_gravity, 0.0);

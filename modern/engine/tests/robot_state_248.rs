@@ -21,6 +21,7 @@ fn robot_state_contains_every_phase1_field() {
         heredity,
         ties,
         phenotype,
+        ..
     } = engine.robot_state(id).unwrap();
 
     assert_eq!(identity.species, SpeciesId::default());

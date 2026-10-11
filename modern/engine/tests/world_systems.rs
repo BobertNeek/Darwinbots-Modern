@@ -217,7 +217,10 @@ fn reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descend
     assert_eq!(engine.snapshot().stats.deaths, 0);
     assert_eq!(engine.memory(parent, "repro").unwrap(), 25);
     assert_eq!(engine.memory_at(parent, 500).unwrap(), 88);
-    assert_eq!(engine.robot_state(parent).unwrap().identity, before.identity);
+    assert_eq!(
+        engine.robot_state(parent).unwrap().identity,
+        before.identity
+    );
     assert_eq!(engine.robot_state(parent).unwrap().counters.offspring, 0);
 
     engine.update_legacy_restrictions(true, true);
@@ -244,7 +247,10 @@ fn reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descend
     assert_eq!(parent_snapshot.descendants, 1);
     assert_eq!(child_snapshot.descendants, 0);
     assert_eq!(child_state.identity.parents, [Some(parent), None]);
-    assert_ne!(child_state.identity.absolute_id, parent_state.identity.absolute_id);
+    assert_ne!(
+        child_state.identity.absolute_id,
+        parent_state.identity.absolute_id
+    );
     assert_eq!(
         child_state.counters.generation,
         parent_state.counters.generation + 1
@@ -257,10 +263,15 @@ fn reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descend
     assert_eq!(child_snapshot.position[1], parent_snapshot.position[1]);
 
     engine
-        .replace_dna(child, LegacyDna::parse("start\n2 .repro store\nstop").unwrap())
+        .replace_dna(
+            child,
+            LegacyDna::parse("start\n2 .repro store\nstop").unwrap(),
+        )
         .unwrap();
     engine.set_organism_memory(child, 500, 144).unwrap();
-    engine.replace_dna(parent, LegacyDna::parse("start\nstop").unwrap()).unwrap();
+    engine
+        .replace_dna(parent, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
     engine.update_legacy_restrictions(true, false);
     engine.tick().unwrap();
 

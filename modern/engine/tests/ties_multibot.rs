@@ -1060,7 +1060,7 @@ fn legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clam
             initial_angle: 0.0,
             fixang: 628,
             stifftie: -1,
-            expected_angular_momentum: -0.7853982,
+            expected_angular_momentum: -std::f32::consts::FRAC_PI_4,
             expected_b: 0.005,
             expected_k: 0.0025,
         },
@@ -1069,7 +1069,7 @@ fn legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clam
             initial_angle: 0.0,
             fixang: 629,
             stifftie: 200,
-            expected_angular_momentum: 0.7853982,
+            expected_angular_momentum: std::f32::consts::FRAC_PI_4,
             expected_b: 0.5,
             expected_k: 0.25,
         },
@@ -1173,7 +1173,12 @@ fn hardened_tie_group_follows_teleporter_relocation() {
             radius: 50.0,
             destination: [source_before[0] + 800.0, source_before[1]],
             capacity: 1,
-            ..Teleporter::new(1, source_before, 50.0, [source_before[0] + 800.0, source_before[1]])
+            ..Teleporter::new(
+                1,
+                source_before,
+                50.0,
+                [source_before[0] + 800.0, source_before[1]],
+            )
         })
         .unwrap();
 
@@ -1265,7 +1270,10 @@ fn tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage
     assert_eq!(target_endpoint.other, Some(source));
     assert_eq!((source_endpoint.port, target_endpoint.port), (41, 1));
     assert_eq!(
-        (source_endpoint.reciprocal_index, target_endpoint.reciprocal_index),
+        (
+            source_endpoint.reciprocal_index,
+            target_endpoint.reciprocal_index
+        ),
         (1, 1)
     );
 
@@ -1421,8 +1429,7 @@ fn sharing_requires_hardening() {
     assert_eq!(engine.organism(source).unwrap().shell, 50);
     assert_eq!(engine.organism(target).unwrap().shell, 50);
 
-    let share_chloroplasts =
-        LegacyDna::parse("start\n50 .sharechlr store\nstop").unwrap();
+    let share_chloroplasts = LegacyDna::parse("start\n50 .sharechlr store\nstop").unwrap();
     engine.replace_dna(source, share_chloroplasts).unwrap();
     let encoded = SaveFile::encode(&engine).unwrap();
     let mut payload: Value = serde_json::from_slice(&encoded[10..]).unwrap();
@@ -1443,13 +1450,19 @@ fn sharing_requires_hardening() {
     let mut engine = SaveFile::decode(&save).unwrap();
 
     engine.tick().unwrap();
-    assert_eq!(engine.robot_state(source).unwrap().materials.chloroplasts, 1_000);
-    assert_eq!(engine.robot_state(target).unwrap().materials.chloroplasts, 3_000);
+    assert_eq!(
+        engine.robot_state(source).unwrap().materials.chloroplasts,
+        1_000
+    );
+    assert_eq!(
+        engine.robot_state(target).unwrap().materials.chloroplasts,
+        3_000
+    );
 
     let encoded = SaveFile::encode(&engine).unwrap();
     let mut payload: Value = serde_json::from_slice(&encoded[10..]).unwrap();
-    payload["slots"][source.slot() as usize]["organism"]["flags"]
-        ["can_use_chloroplasts"] = json!(true);
+    payload["slots"][source.slot() as usize]["organism"]["flags"]["can_use_chloroplasts"] =
+        json!(true);
     let payload = serde_json::to_vec(&payload).unwrap();
     let mut save = Vec::with_capacity(10 + payload.len());
     save.extend_from_slice(&encoded[..6]);
@@ -1458,8 +1471,14 @@ fn sharing_requires_hardening() {
     let mut engine = SaveFile::decode(&save).unwrap();
 
     engine.tick().unwrap();
-    assert_eq!(engine.robot_state(source).unwrap().materials.chloroplasts, 1_000);
-    assert_eq!(engine.robot_state(target).unwrap().materials.chloroplasts, 3_000);
+    assert_eq!(
+        engine.robot_state(source).unwrap().materials.chloroplasts,
+        1_000
+    );
+    assert_eq!(
+        engine.robot_state(target).unwrap().materials.chloroplasts,
+        3_000
+    );
     assert_eq!(
         engine
             .robot_state(source)
@@ -1502,11 +1521,15 @@ fn hardened_shell_share_marks_only_the_forward_tie_endpoint() {
     assert_eq!(engine.organism(target).unwrap().shell, 50);
     assert_eq!(engine.memory(source, "shareshell").unwrap(), 0);
     assert_eq!(
-        engine.robot_state(source).unwrap().ties[0].unwrap().sharing_marker,
+        engine.robot_state(source).unwrap().ties[0]
+            .unwrap()
+            .sharing_marker,
         1
     );
     assert_eq!(
-        engine.robot_state(target).unwrap().ties[0].unwrap().sharing_marker,
+        engine.robot_state(target).unwrap().ties[0]
+            .unwrap()
+            .sharing_marker,
         0
     );
 
@@ -1524,11 +1547,15 @@ fn hardened_shell_share_marks_only_the_forward_tie_endpoint() {
     assert_eq!(engine.organism(target).unwrap().shell, 25);
     assert_eq!(engine.memory(target, "shareshell").unwrap(), 0);
     assert_eq!(
-        engine.robot_state(source).unwrap().ties[0].unwrap().sharing_marker,
+        engine.robot_state(source).unwrap().ties[0]
+            .unwrap()
+            .sharing_marker,
         0
     );
     assert_eq!(
-        engine.robot_state(target).unwrap().ties[0].unwrap().sharing_marker,
+        engine.robot_state(target).unwrap().ties[0]
+            .unwrap()
+            .sharing_marker,
         1
     );
 }

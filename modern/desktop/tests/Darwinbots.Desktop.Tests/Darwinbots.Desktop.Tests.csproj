@@ -18,8 +18,15 @@
     <ProjectReference Include="..\..\src\Darwinbots.Desktop\Darwinbots.Desktop.csproj" />
   </ItemGroup>
   <Target Name="CopyNativeEngineForRenderedTests" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <NativeEngineName Condition="$([MSBuild]::IsOSPlatform('Windows'))">darwinbots_engine.dll</NativeEngineName>
+      <NativeEngineName Condition="$([MSBuild]::IsOSPlatform('Linux'))">libdarwinbots_engine.so</NativeEngineName>
+      <NativeEngineName Condition="$([MSBuild]::IsOSPlatform('OSX'))">libdarwinbots_engine.dylib</NativeEngineName>
+      <NativeCargoProfile Condition="'$(Configuration)' == 'Release'">release</NativeCargoProfile>
+      <NativeCargoProfile Condition="'$(NativeCargoProfile)' == ''">debug</NativeCargoProfile>
+    </PropertyGroup>
     <Copy
-      SourceFiles="$(MSBuildProjectDirectory)\..\..\..\..\target\debug\darwinbots_engine.dll"
+      SourceFiles="$(MSBuildProjectDirectory)/../../../../target/$(NativeCargoProfile)/$(NativeEngineName)"
       DestinationFolder="$(OutDir)"
       SkipUnchangedFiles="true" />
   </Target>

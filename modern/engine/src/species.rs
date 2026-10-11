@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{RestrictionColumn, SkinPoint, default_skin};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct SpeciesId(pub u32);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -14,6 +16,8 @@ pub struct SpeciesDefinition {
     pub reseed: bool,
     #[serde(default)]
     pub mutation_rate: f32,
+    #[serde(default)]
+    pub mutation_profile: Option<crate::StandardMutationProfile>,
     #[serde(default = "default_skin")]
     pub skin: [SkinPoint; 4],
     #[serde(default)]
@@ -33,6 +37,7 @@ impl Default for SpeciesDefinition {
             minimum_population: 0,
             reseed: false,
             mutation_rate: 0.0,
+            mutation_profile: None,
             skin: default_skin(),
             lineage_id: 0,
             restrictions: None,

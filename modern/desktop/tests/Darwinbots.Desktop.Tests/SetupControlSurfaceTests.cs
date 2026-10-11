@@ -297,7 +297,7 @@ public sealed class SetupControlSurfaceTests
             "roundtrip.set",
             SetupStorageService.EncodeSettings("roundtrip.set", imported));
 
-        Assert.Equal(new[] { 2f, 0f }, imported.Gravity);
+        Assert.Equal(new[] { 0f, 2f }, imported.Gravity);
         Assert.Equal(0.5f, imported.BrownianMotion);
         Assert.Equal(0.66f, imported.Physics.MovementEfficiency);
         Assert.Equal(imported.ToJson(), roundTripped.ToJson());

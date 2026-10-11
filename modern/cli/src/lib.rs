@@ -39,7 +39,7 @@ enum Command {
     Bench {
         #[arg(long)]
         bot: PathBuf,
-        #[arg(long, default_value_t = 100_000)]
+        #[arg(long, default_value_t = 32_000)]
         population: usize,
         #[arg(long, default_value_t = 300)]
         ticks: u64,

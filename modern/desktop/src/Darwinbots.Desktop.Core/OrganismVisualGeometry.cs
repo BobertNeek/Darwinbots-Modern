@@ -24,7 +24,7 @@ public static class OrganismVisualGeometry
         {
             var point = skin[index];
             var angle = aimRadians + point.Angle / AimUnitsPerRadian;
-            var distance = radius * Math.Clamp(point.Radius, 0.15f, 0.82f);
+            var distance = radius * Math.Clamp(point.Radius, 0f, 1f);
             points[index] = new VisualPoint(
                 MathF.Sin(angle) * distance,
                 MathF.Cos(angle) * distance);

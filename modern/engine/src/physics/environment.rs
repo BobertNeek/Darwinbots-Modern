@@ -6,8 +6,7 @@ pub(crate) fn fluid_added_mass(radius: f32, density: f64) -> f32 {
     if radius <= 0.0 || density <= 0.0 {
         return 0.0;
     }
-    (0.5 * density * (4.0_f64 / 3.0) * std::f64::consts::PI * f64::from(radius).powi(3))
-        as f32
+    (0.5 * density * (4.0_f64 / 3.0) * std::f64::consts::PI * f64::from(radius).powi(3)) as f32
 }
 
 pub(crate) fn environment_impulse(
@@ -66,21 +65,12 @@ pub(crate) fn mutual_gravity_impulses(
             }
             let distance = distance_squared.sqrt();
             let force = gravitational_constant
-                * masses
-                    .get(first)
-                    .copied()
-                    .unwrap_or(1.0)
-                    .min(192.0)
-                * masses
-                    .get(second)
-                    .copied()
-                    .unwrap_or(1.0)
-                    .min(192.0)
+                * masses.get(first).copied().unwrap_or(1.0).min(192.0)
+                * masses.get(second).copied().unwrap_or(1.0).min(192.0)
                 / distance_squared;
             let unit = [delta[0] / distance, delta[1] / distance];
             let first_acceleration = force / masses.get(first).copied().unwrap_or(1.0).max(1.0);
-            let second_acceleration =
-                force / masses.get(second).copied().unwrap_or(1.0).max(1.0);
+            let second_acceleration = force / masses.get(second).copied().unwrap_or(1.0).max(1.0);
             impulses[first][0] += unit[0] * first_acceleration;
             impulses[first][1] += unit[1] * first_acceleration;
             impulses[second][0] -= unit[0] * second_acceleration;

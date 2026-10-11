@@ -4,6 +4,10 @@ use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SaveFile};
 fn bounded_historical_records_are_sampled_and_preserved_by_saves() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        recording: darwinbots_engine::RecordingSettings {
+            sampling_interval: 100,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();

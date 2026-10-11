@@ -52,6 +52,10 @@ pub struct RobotMaterials {
     pub(crate) chloroplast_decay_carry_micros: i64,
     #[serde(default)]
     pub(crate) waste_metabolism_carry_micros: i64,
+    #[serde(default)]
+    pub(crate) slime_decay_fraction: f64,
+    #[serde(default)]
+    pub(crate) poison_decay_fraction: f64,
 }
 
 pub type BiologyState = RobotMaterials;
@@ -94,6 +98,8 @@ impl Default for RobotMaterials {
             plant_body_carry_micros: 0,
             chloroplast_decay_carry_micros: 0,
             waste_metabolism_carry_micros: 0,
+            slime_decay_fraction: 0.0,
+            poison_decay_fraction: 0.0,
         }
     }
 }
@@ -142,6 +148,8 @@ impl RobotMaterials {
             plant_body_carry_micros: 0,
             chloroplast_decay_carry_micros: 0,
             waste_metabolism_carry_micros: 0,
+            slime_decay_fraction: 0.0,
+            poison_decay_fraction: 0.0,
         }
     }
 
@@ -157,8 +165,8 @@ impl RobotMaterials {
     }
 
     pub(crate) fn decay_slime_and_poison(&mut self) {
-        self.slime = decay_store(self.slime);
-        self.poison = decay_store(self.poison);
+        self.slime = decay_store(self.slime, &mut self.slime_decay_fraction);
+        self.poison = decay_store(self.poison, &mut self.poison_decay_fraction);
     }
 
     pub(crate) fn apply_plant_delta(&mut self, delta: f32, feeding_to_body: f32) -> (i32, i32) {
@@ -390,9 +398,16 @@ fn spend_store(
     0
 }
 
-fn decay_store(value: i32) -> i32 {
-    let decayed = (f64::from(value.max(0)) * 0.98).floor() as i32;
-    if decayed < 1 { 0 } else { decayed }
+fn decay_store(value: i32, fraction: &mut f64) -> i32 {
+    // Keep the original Single store between cycles; CInt is a readback boundary.
+    let exact = ((f64::from(value) + *fraction).max(0.0) * 0.98) as f32;
+    if exact < 0.5 {
+        *fraction = 0.0;
+        return 0;
+    }
+    let rounded = f64::from(exact).round_ties_even().min(f64::from(i32::MAX)) as i32;
+    *fraction = f64::from(exact) - f64::from(rounded);
+    rounded
 }
 
 fn normalize_aim(value: i32) -> i32 {

@@ -1,4 +1,4 @@
-use darwinbots_engine::{sysvar_address, Engine, EngineConfig, LegacyDna};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna, sysvar_address};
 
 fn vision_engine() -> Engine {
     Engine::new(EngineConfig {
@@ -88,7 +88,9 @@ fn focus_eye_publishes_and_resets_references_across_wrapped_targets() {
         .unwrap();
 
     let memloc = sysvar_address("memloc").unwrap() as u16;
-    engine.set_organism_memory(wrapped_target, 950, 111).unwrap();
+    engine
+        .set_organism_memory(wrapped_target, 950, 111)
+        .unwrap();
     engine.set_organism_memory(observer, memloc, 0).unwrap();
     assert_eq!(engine.memory(observer, "refxpos").unwrap(), 0);
 
@@ -103,17 +105,28 @@ fn focus_eye_publishes_and_resets_references_across_wrapped_targets() {
         engine.memory(observer, "refypos").unwrap()
     );
     let wrapped_position = engine.organism(wrapped_target).unwrap().position;
-    assert_eq!(engine.memory(observer, "refxpos").unwrap(), wrapped_position[0].round() as i32);
-    assert_eq!(engine.memory(observer, "refypos").unwrap(), wrapped_position[1].round() as i32);
+    assert_eq!(
+        engine.memory(observer, "refxpos").unwrap(),
+        wrapped_position[0].round() as i32
+    );
+    assert_eq!(
+        engine.memory(observer, "refypos").unwrap(),
+        wrapped_position[1].round() as i32
+    );
     assert_eq!(engine.memory(observer, "refmemval").unwrap(), 0);
 
     engine.set_organism_memory(observer, memloc, 1001).unwrap();
     engine.tick().unwrap();
     let wrapped_position = engine.organism(wrapped_target).unwrap().position;
-    assert_eq!(engine.memory(observer, "refxpos").unwrap(), wrapped_position[0].round() as i32);
+    assert_eq!(
+        engine.memory(observer, "refxpos").unwrap(),
+        wrapped_position[0].round() as i32
+    );
     assert_eq!(engine.memory(observer, "refmemval").unwrap(), 0);
 
-    engine.move_organism(wrapped_target, [500.0, 500.0]).unwrap();
+    engine
+        .move_organism(wrapped_target, [500.0, 500.0])
+        .unwrap();
     engine.tick().unwrap();
     assert_eq!(engine.memory(observer, "refxpos").unwrap(), 0);
     assert_eq!(engine.memory(observer, "refypos").unwrap(), 0);

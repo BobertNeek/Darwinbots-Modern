@@ -14,6 +14,8 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public NativeEngineClient(WorldSetupOptions options)
     {
+        if (options.GlobalSettings.Main.NewSeed)
+            options = options with { Seed = BitConverter.ToUInt64(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8)) };
         _worldWidth = options.WorldWidth;
         _worldHeight = options.WorldHeight;
         _spawnPlacement = new SeededSpawnPlacement(options.Seed);
@@ -24,11 +26,19 @@ public sealed partial class NativeEngineClient : IEngineClient
         {
             throw new InvalidOperationException("Native engine creation returned a null handle.");
         }
+        try
+        {
+            UpdateMutationSettings(options.MutationSettings);
+            SetTiesEnabled(options.TiesEnabled);
+            UpdateLegacyRestrictions(options.RobotFixingAllowed, options.AsexualReproductionAllowed);
+            foreach (var obstacle in options.Obstacles) { AddObstacle(obstacle); UpdateObstacle(obstacle); }
+        }
+        catch { Dispose(); throw; }
     }
 
     public NativeEngineClient(
         string backend = "Auto",
-        int capacity = 100_000,
+        int capacity = 32_000,
         ulong seed = 1,
         float worldWidth = 16_000f,
         float worldHeight = 12_000f,
@@ -131,6 +141,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                     minimum_population = species.MinimumPopulation,
                     reseed = species.Reseed,
                     mutation_rate = species.MutationRate,
+                    mutation_profile = species.MutationProfile is null ? null : NativeCommandSerializer.MutationProfile(species.MutationProfile),
                     initial_energy = species.InitialEnergy,
                     placement = new
                     {
@@ -169,6 +180,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                     minimum_population = species.MinimumPopulation,
                     reseed = species.Reseed,
                     mutation_rate = species.MutationRate,
+                    mutation_profile = species.MutationProfile is null ? null : NativeCommandSerializer.MutationProfile(species.MutationProfile),
                     initial_energy = species.InitialEnergy,
                     placement = new
                     {
@@ -466,6 +478,24 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (!float.IsFinite(value) || value < 0) throw new ArgumentOutOfRangeException(nameof(value));
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_brownian_motion", value } } }, "set Brownian motion");
     }
+
+    public ushort ResolveMemoryAddress(string name)
+    {
+        var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "resolve_memory_address", name } } }, "resolve memory address");
+        return result.GetProperty("results")[0].GetProperty("address").GetUInt16();
+    }
+
+    public void ExecuteRobots() => ExecuteBatch(new { version = 1, commands = new[] { new { type = "execute_robots" } } }, "execute robots");
+    public OrganismKey? FindBestRobot(bool energyWeighting)
+    {
+        var value = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "find_best_robot", energy_weighting = energyWeighting } } }, "find best robot")
+            .GetProperty("results")[0];
+        return value.ValueKind == JsonValueKind.Null ? null : ReadKey(value);
+    }
+    public void UpdateMainRules(GlobalMainSettings settings) => ExecuteBatch(new { version = 1, commands = new[]
+    {
+        new { type = "update_main_rules", body_cutoff = settings.BodyCutoff, greedy_reproduction = settings.GreedyEnforcement },
+    } }, "update global main rules");
 
     public void UpdateMutationSettings(MutationSettingsUpdate update)
     {

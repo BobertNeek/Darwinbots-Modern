@@ -47,11 +47,11 @@ public sealed class PersistentToolWindowRegistry
         return window;
     }
 
-    public void PublishSnapshot(EngineSnapshot snapshot)
+    public void PublishSnapshot(EngineSnapshot snapshot, bool updateGraphs = true)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         foreach (var window in _windows.Values.OfType<IPersistentSnapshotToolWindow>().ToArray())
-            window.SetSnapshot(snapshot);
+            if (updateGraphs || window is not GraphSuiteWindow) window.SetSnapshot(snapshot);
     }
 
     public bool Close(string key)

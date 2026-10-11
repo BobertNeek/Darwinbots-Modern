@@ -730,7 +730,7 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("activation_history")] NativeActivationFrame[]? ActivationHistory,
         [property: JsonPropertyName("debug_text")] string? DebugText,
         [property: JsonPropertyName("memory")] NativeMemoryCell[]? Memory,
-        [property: JsonPropertyName("mass")] int Mass,
+        [property: JsonPropertyName("mass")] float Mass,
         [property: JsonPropertyName("radius")] float Radius,
         [property: JsonPropertyName("permanent_waste")] int PermanentWaste,
         [property: JsonPropertyName("offspring")] ulong Offspring,

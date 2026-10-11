@@ -102,7 +102,9 @@ impl LocalModeConfig {
         if self.minimum_rounds == 0 {
             return Err("minimum rounds must be greater than zero".to_owned());
         }
-        if self.maximum_rounds == 0 {
+        if self.maximum_rounds == 0
+            && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest)
+        {
             return Err("maximum rounds must be greater than zero".to_owned());
         }
         if self.maximum_cycles == 0 {

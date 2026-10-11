@@ -54,7 +54,7 @@ public sealed record OrganismSnapshot(
     public IReadOnlyList<ActivationFrameSnapshot> ActivationHistory { get; init; } = [];
     public string DebugText { get; init; } = string.Empty;
     public IReadOnlyList<MemoryCellSnapshot> Memory { get; init; } = [];
-    public int Mass { get; init; }
+    public float Mass { get; init; }
     public float Radius { get; init; }
     public int Touch { get; init; }
     public int Taste { get; init; }

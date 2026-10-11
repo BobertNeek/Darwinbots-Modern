@@ -1,14 +1,14 @@
 use std::slice;
 
 use darwinbots_engine::ffi::{
-    db_buffer_free, db_engine_command_batch, db_engine_create, db_engine_destroy, db_engine_save,
-    DbBuffer, DbStatus,
+    DbBuffer, DbStatus, db_buffer_free, db_engine_command_batch, db_engine_create,
+    db_engine_destroy, db_engine_save,
 };
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, LocalModeConfig, LocalModeKind, RestrictionOptions,
-    SaveFile, ShotSnapshot, Teleporter,
+    Engine, EngineConfig, LegacyDna, LocalModeConfig, LocalModeKind, RestrictionOptions, SaveFile,
+    ShotSnapshot, Teleporter,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn save_payload(engine: &Engine) -> Value {
     let bytes = SaveFile::encode(engine).expect("save should encode");
@@ -27,14 +27,15 @@ fn core_policy_state_round_trips_through_native_save() {
         "autosave_interval": 200
     });
 
-    let mut engine = Engine::new(
-        serde_json::from_value(config).expect("config should deserialize"),
-    )
-    .expect("engine should create");
+    let mut engine =
+        Engine::new(serde_json::from_value(config).expect("config should deserialize"))
+            .expect("engine should create");
 
-    let mut mode = LocalModeConfig::default();
-    mode.kind = LocalModeKind::EcoSurvival;
-    mode.maximum_cycles = 321;
+    let mode = LocalModeConfig {
+        kind: LocalModeKind::EcoSurvival,
+        maximum_cycles: 321,
+        ..Default::default()
+    };
     engine
         .configure_local_mode(mode)
         .expect("mode should configure");
@@ -47,16 +48,17 @@ fn core_policy_state_round_trips_through_native_save() {
 
     let payload = save_payload(&engine);
     assert_eq!(payload["config"]["dna_costs"]["dna_copy"], json!(4.25));
-    assert_eq!(payload["config"]["vegetation"]["sun_on_random"], json!(true));
+    assert_eq!(
+        payload["config"]["vegetation"]["sun_on_random"],
+        json!(true)
+    );
     assert_eq!(
         payload["config"]["recording"]["dead_snapshot_enabled"],
         json!(true)
     );
 
-    let restored = SaveFile::decode(
-        &SaveFile::encode(&engine).expect("save should encode"),
-    )
-    .expect("save should decode");
+    let restored = SaveFile::decode(&SaveFile::encode(&engine).expect("save should encode"))
+        .expect("save should decode");
     let restored_mode = restored
         .snapshot()
         .local_mode
@@ -133,11 +135,8 @@ fn native_ffi_updates_cost_and_recording_authority() {
         payload["config"]["recording"]["autosave_interval"],
         json!(90)
     );
-    assert_eq!(payload["snapshot"]["teleporters"][0]["outbound"], json!(true));
-    assert_eq!(
-        payload["snapshot"]["teleporters"][0]["outbound_path"],
-        json!("out.db")
-    );
+    assert_eq!(payload["teleporters"][0]["outbound"], json!(true));
+    assert_eq!(payload["teleporters"][0]["outbound_path"], json!("out.db"));
 }
 
 #[test]
@@ -225,7 +224,10 @@ fn robot_limit_rejects_configurations_above_db2_maximum() {
 fn per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically() {
     let mut engine = Engine::new(EngineConfig::testing()).expect("engine should create");
     engine
-        .spawn_at(LegacyDna::parse("stop").expect("test DNA should parse"), [12.5, 34.5])
+        .spawn_at(
+            LegacyDna::parse("stop").expect("test DNA should parse"),
+            [12.5, 34.5],
+        )
         .expect("living organism should spawn");
 
     let mut payload = save_payload(&engine);
@@ -274,13 +276,15 @@ fn per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically() {
     assert_eq!(restored.snapshot().organisms[0].waste, 13);
     assert_eq!(restored.snapshot().organisms[0].age, 9);
     assert_ne!(restored.snapshot().organisms[0].unique_id, 9001);
-    assert_eq!(serde_json::to_value(&restored.snapshot().corpses[0]).unwrap(), dead);
+    assert_eq!(
+        serde_json::to_value(&restored.snapshot().corpses[0]).unwrap(),
+        dead
+    );
 
     let stable = SaveFile::encode(&restored).expect("restored save should encode");
-    let stable_again = SaveFile::encode(
-        &SaveFile::decode(&stable).expect("re-encoded save should load"),
-    )
-    .expect("reloaded save should re-encode");
+    let stable_again =
+        SaveFile::encode(&SaveFile::decode(&stable).expect("re-encoded save should load"))
+            .expect("reloaded save should re-encode");
     assert_eq!(stable, stable_again);
 
     let before_invalid = serde_json::to_value(restored.snapshot()).unwrap();
@@ -292,5 +296,8 @@ fn per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically() {
     invalid_frame.extend_from_slice(&(invalid_payload.len() as u32).to_le_bytes());
     invalid_frame.extend_from_slice(&invalid_payload);
     assert!(SaveFile::decode(&invalid_frame).is_err());
-    assert_eq!(serde_json::to_value(restored.snapshot()).unwrap(), before_invalid);
+    assert_eq!(
+        serde_json::to_value(restored.snapshot()).unwrap(),
+        before_invalid
+    );
 }

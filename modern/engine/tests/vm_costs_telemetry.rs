@@ -302,19 +302,166 @@ fn engine_tick_dna06_cost_table_covers_tokens_store_copy_and_consumption() {
     }
 
     let cases = [
-        Case { name: "number", source: "start 5 stop", costs: DnaCosts { number: 3.0, ..DnaCosts::default() }, expected_vm_cost: 3.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "dereference", source: "start *1 stop", costs: DnaCosts { dereference: 4.0, ..DnaCosts::default() }, expected_vm_cost: 4.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "basic", source: "start add stop", costs: DnaCosts { basic: 5.0, ..DnaCosts::default() }, expected_vm_cost: 5.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "advanced", source: "start sqr stop", costs: DnaCosts { advanced: 6.0, ..DnaCosts::default() }, expected_vm_cost: 6.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "bitwise", source: "start ~ stop", costs: DnaCosts { bitwise: 7.0, ..DnaCosts::default() }, expected_vm_cost: 7.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "comparison", source: "cond < start stop", costs: DnaCosts { condition: 8.0, ..DnaCosts::default() }, expected_vm_cost: 8.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "logic", source: "cond and start stop", costs: DnaCosts { logic: 9.0, ..DnaCosts::default() }, expected_vm_cost: 9.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "flow", source: "start stop", costs: DnaCosts { flow: 11.0, ..DnaCosts::default() }, expected_vm_cost: 22.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "store_and_up_consumption", source: "start 5 .up store stop", costs: DnaCosts { store: 10.0, ..DnaCosts::default() }, expected_vm_cost: 10.0, copy_gene: false, consumed_command: Some("up"), expected_memory: Some(("up", 0)) },
-        Case { name: "zero_destination_clamp", source: "start 123 0 store stop", costs: DnaCosts { store: 280.0, ..DnaCosts::default() }, expected_vm_cost: 0.0, copy_gene: false, consumed_command: None, expected_memory: Some(("thisgene", 1)) },
-        Case { name: "custom_multiplier", source: "start add stop", costs: DnaCosts { basic: 5.0, global_multiplier: 2.0, ..DnaCosts::default() }, expected_vm_cost: 10.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "zero_multiplier", source: "start add stop", costs: DnaCosts { basic: 5.0, global_multiplier: 0.0, ..DnaCosts::default() }, expected_vm_cost: 0.0, copy_gene: false, consumed_command: None, expected_memory: None },
-        Case { name: "store_and_dna_copy", source: "start\n1 .mkvirus store\nstop\nend", costs: DnaCosts { store: 10.0, dna_copy: 2.0, global_multiplier: 2.0, ..DnaCosts::default() }, expected_vm_cost: 20.0, copy_gene: true, consumed_command: Some("mkvirus"), expected_memory: Some(("mkvirus", 0)) },
+        Case {
+            name: "number",
+            source: "start 5 stop",
+            costs: DnaCosts {
+                number: 3.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 3.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "dereference",
+            source: "start *1 stop",
+            costs: DnaCosts {
+                dereference: 4.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 4.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "basic",
+            source: "start add stop",
+            costs: DnaCosts {
+                basic: 5.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 5.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "advanced",
+            source: "start sqr stop",
+            costs: DnaCosts {
+                advanced: 6.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 6.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "bitwise",
+            source: "start ~ stop",
+            costs: DnaCosts {
+                bitwise: 7.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 7.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "comparison",
+            source: "cond < start stop",
+            costs: DnaCosts {
+                condition: 8.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 8.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "logic",
+            source: "cond and start stop",
+            costs: DnaCosts {
+                logic: 9.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 9.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "flow",
+            source: "start stop",
+            costs: DnaCosts {
+                flow: 11.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 22.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "store_and_up_consumption",
+            source: "start 5 .up store stop",
+            costs: DnaCosts {
+                store: 10.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 10.0,
+            copy_gene: false,
+            consumed_command: Some("up"),
+            expected_memory: Some(("up", 0)),
+        },
+        Case {
+            name: "zero_destination_clamp",
+            source: "start 123 0 store stop",
+            costs: DnaCosts {
+                store: 280.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 0.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: Some(("thisgene", 1)),
+        },
+        Case {
+            name: "custom_multiplier",
+            source: "start add stop",
+            costs: DnaCosts {
+                basic: 5.0,
+                global_multiplier: 2.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 10.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "zero_multiplier",
+            source: "start add stop",
+            costs: DnaCosts {
+                basic: 5.0,
+                global_multiplier: 0.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 0.0,
+            copy_gene: false,
+            consumed_command: None,
+            expected_memory: None,
+        },
+        Case {
+            name: "store_and_dna_copy",
+            source: "start\n1 .mkvirus store\nstop\nend",
+            costs: DnaCosts {
+                store: 10.0,
+                dna_copy: 2.0,
+                global_multiplier: 2.0,
+                ..DnaCosts::default()
+            },
+            expected_vm_cost: 20.0,
+            copy_gene: true,
+            consumed_command: Some("mkvirus"),
+            expected_memory: Some(("mkvirus", 0)),
+        },
     ];
 
     for case in cases {
@@ -329,24 +476,38 @@ fn engine_tick_dna06_cost_table_covers_tokens_store_copy_and_consumption() {
         engine.tick().unwrap();
 
         let state = engine.robot_state(id).unwrap();
-        let copy_cost = state
-            .effects
-            .stored_virus
-            .as_ref()
-            .map_or(0.0, |virus| {
-                virus.dna.blocks().len() as f64
-                    * case.costs.dna_copy
-                    * case.costs.global_multiplier
-            });
+        let copy_cost = state.effects.stored_virus.as_ref().map_or(0.0, |virus| {
+            virus.dna.blocks().len() as f64 * case.costs.dna_copy * case.costs.global_multiplier
+        });
         let after = &state.materials;
         let expected_loss = (case.expected_vm_cost + copy_cost) as i32;
-        assert_eq!(before.energy - after.energy, expected_loss, "{} energy", case.name);
-        assert_eq!(after.waste - before.waste, expected_loss / 20, "{} waste", case.name);
+        assert_eq!(
+            before.energy - after.energy,
+            expected_loss,
+            "{} energy",
+            case.name
+        );
+        assert_eq!(
+            after.waste - before.waste,
+            expected_loss / 20,
+            "{} waste",
+            case.name
+        );
         if let Some(command) = case.consumed_command {
-            assert_eq!(engine.memory(id, command).unwrap(), case.expected_memory.unwrap().1, "{} command", case.name);
+            assert_eq!(
+                engine.memory(id, command).unwrap(),
+                case.expected_memory.unwrap().1,
+                "{} command",
+                case.name
+            );
         }
         if let Some((name, expected)) = case.expected_memory {
-            assert_eq!(engine.memory(id, name).unwrap(), expected, "{} memory", case.name);
+            assert_eq!(
+                engine.memory(id, name).unwrap(),
+                expected,
+                "{} memory",
+                case.name
+            );
         }
         if case.copy_gene {
             assert!(state.effects.stored_virus.is_some(), "{} copy", case.name);

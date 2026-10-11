@@ -6,7 +6,7 @@ use darwinbots_engine::{
 #[test]
 fn eco05_seeded_repopulation_caps_vegetables_and_survives_save_load() {
     let mut config = EngineConfig::testing();
-    config.seed = 0xEC05_92;
+    config.seed = 0x00EC_0592;
     config.organism_capacity = 8;
     config.vegetable_population_cap = 2;
     config.vegetation.start_chloroplasts = 0;
@@ -87,12 +87,15 @@ fn eco05_seeded_repopulation_caps_vegetables_and_survives_save_load() {
     assert_eq!(engine.vegetable_population(), 2);
     assert_eq!(loaded.snapshot().organisms, engine.snapshot().organisms);
     assert_eq!(loaded.snapshot().stats, engine.snapshot().stats);
-    assert!(loaded
-        .snapshot()
-        .organisms
-        .iter()
-        .all(|organism| organism.position[0] >= 0.0 && organism.position[0] <= 1_000.0
-            && organism.position[1] >= 0.0
-            && organism.position[1] <= 1_000.0));
+    assert!(
+        loaded
+            .snapshot()
+            .organisms
+            .iter()
+            .all(|organism| organism.position[0] >= 0.0
+                && organism.position[0] <= 1_000.0
+                && organism.position[1] >= 0.0
+                && organism.position[1] <= 1_000.0)
+    );
     assert!(engine.vegetable_population() <= 2);
 }

@@ -37,10 +37,12 @@ fn extinct_species_phase_removes_empty_non_reseeding_species_after_commit() {
         phase_index(&trace, CyclePhase::CommitBirthsDeaths)
             < phase_index(&trace, CyclePhase::ExtinctSpecies)
     );
-    assert!(engine
-        .snapshot()
-        .species
-        .iter()
-        .all(|species| species.name != "Extinct lineage"));
+    assert!(
+        engine
+            .snapshot()
+            .species
+            .iter()
+            .all(|species| species.name != "Extinct lineage")
+    );
     assert_eq!(engine.snapshot().species.len(), 1);
 }

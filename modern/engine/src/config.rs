@@ -245,6 +245,8 @@ pub struct EngineConfig {
     pub low_memory_detail_limit: usize,
     #[serde(default)]
     pub greedy_reproduction: bool,
+    #[serde(default)]
+    pub body_cutoff: i32,
     #[serde(skip)]
     pub force_gpu_unavailable_for_tests: bool,
 }
@@ -281,6 +283,7 @@ impl Default for EngineConfig {
             low_memory_dna_limit: default_low_memory_dna_limit(),
             low_memory_detail_limit: default_low_memory_detail_limit(),
             greedy_reproduction: false,
+            body_cutoff: 0,
             force_gpu_unavailable_for_tests: false,
         }
     }
@@ -315,8 +318,7 @@ fn default_low_memory_detail_limit() -> usize {
 
 impl EngineConfig {
     pub fn axis_topology(&self) -> [bool; 2] {
-        self.axis_topology
-            .unwrap_or([self.toroidal_world; 2])
+        self.axis_topology.unwrap_or([self.toroidal_world; 2])
     }
 
     pub fn testing() -> Self {

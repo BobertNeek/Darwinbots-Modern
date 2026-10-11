@@ -216,7 +216,10 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
         .unwrap();
 
     assert_eq!(targets, vec![Some(1), Some(0), Some(3), Some(2)]);
-    assert_eq!(integrated, vec![[7.0, 8.0], [0.0, 6.0], [200.0, 200.0], [165.0, 187.0]]);
+    assert_eq!(
+        integrated,
+        vec![[7.0, 8.0], [0.0, 6.0], [200.0, 200.0], [165.0, 187.0]]
+    );
     assert_eq!(instances.len(), 4);
     assert_eq!(instances[0].slot, 0);
     assert_eq!(instances[0].position, [7.0, 8.0]);
@@ -962,7 +965,10 @@ fn ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once() {
         DbStatus::Ok
     );
     let result: serde_json::Value = serde_json::from_slice(&read_buffer(&mut output)).unwrap();
-    assert_eq!(result["results"].as_array().map(|results| results.len()), Some(2));
+    assert_eq!(
+        result["results"].as_array().map(|results| results.len()),
+        Some(2)
+    );
     assert_eq!(result["population"].as_u64(), Some(1));
     let committed = snapshot(engine);
     assert_ne!(before, committed);

@@ -130,7 +130,7 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public void StatusInstrumentMapsThirteenPanelsToPublishedSnapshotAndSettings()
+    public void StatusInstrumentMapsPublishedSnapshotAndSettings()
     {
         var vegetable = new OrganismSnapshot(
             2,
@@ -175,6 +175,9 @@ public sealed class MainWindowViewModelTests
                 "Nrg 900",
                 "Delta 0",
                 "CostX 1.75",
+                "Feed 0",
+                "Move 0",
+                "Events 0",
             ],
             viewModel.StatusPanels.Select(panel => panel.Display));
 

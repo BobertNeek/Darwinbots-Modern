@@ -53,7 +53,7 @@ public sealed partial class MutationRatesWindow : Window
         _loading = true;
         var index = Math.Clamp(ClassSelector.SelectedIndex, 0, ClassNames.Length - 1);
         var rate = Rate(index);
-        Enabled.IsChecked = rate.OneIn < 1e300;
+        Enabled.IsChecked = rate.OneIn > 0 && rate.OneIn < 1e300;
         OneIn.Value = (decimal)Math.Min(rate.OneIn, 1e18);
         Mean.Value = (decimal)rate.Mean;
         StdDev.Value = (decimal)rate.StdDev;
@@ -94,7 +94,7 @@ public sealed partial class MutationRatesWindow : Window
     {
         if (_loading) return;
         var index = Math.Clamp(ClassSelector.SelectedIndex, 0, ClassNames.Length - 1);
-        var oneIn = Enabled.IsChecked == true ? Math.Max((double)(OneIn.Value ?? 1m), 1) : 1e300;
+        var oneIn = Enabled.IsChecked == true ? Math.Max((double)(OneIn.Value ?? 1m), 1) : 0;
         var rate = new MutationRateUpdate(oneIn, (double)(Mean.Value ?? 0m), Math.Max((double)(StdDev.Value ?? 0m), 0));
         _profile = SetRate(index, rate);
         var preference = (byte)Math.Clamp(Preference.Value, 0, 100);

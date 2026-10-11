@@ -238,8 +238,11 @@ public static class NativeCommandSerializer
             auto_speciation = options.AutoSpeciation,
             speciation_genetic_distance_percent = options.SpeciationGeneticDistancePercent,
             toroidal_world = options.ToroidalWorld,
+            fixed_bot_radii = options.FixedBotRadii,
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
+            body_cutoff = options.GlobalSettings.Main.BodyCutoff,
+            greedy_reproduction = options.GlobalSettings.Main.GreedyEnforcement,
             axis_topology = AxisTopology(options.ToroidalWorld, options.WrapX, options.WrapY),
         });
 
@@ -281,7 +284,7 @@ public static class NativeCommandSerializer
         },
     };
 
-    private static object MutationProfile(MutationProfileUpdate value) => new
+    internal static object MutationProfile(MutationProfileUpdate value) => new
     {
         point = MutationRate(value.Point),
         point2 = MutationRate(value.Point2),
@@ -365,7 +368,12 @@ public static class NativeCommandSerializer
     {
         enabled = value?.Enabled ?? false,
         death_energy_threshold = value?.DeathEnergyThreshold ?? 0,
-        mode = (value?.Mode ?? Db2CorpseDecayMode.None).ToString().ToLowerInvariant(),
+        mode = (value?.Mode ?? Db2CorpseDecayMode.None) switch
+        {
+            Db2CorpseDecayMode.WasteShot => "waste_shot",
+            Db2CorpseDecayMode.EnergyShot => "energy_shot",
+            _ => "none",
+        },
         packet_size = value?.PacketSize ?? 0,
         period = value?.Period ?? 0,
     };

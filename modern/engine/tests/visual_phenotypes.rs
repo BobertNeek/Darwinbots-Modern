@@ -147,5 +147,15 @@ fn phenotype_round_trips_through_version_three_save() {
     assert_eq!(&bytes[..6], &[b'D', b'B', b'3', b'S', 3, 0]);
     let restored = SaveFile::decode(&bytes).unwrap();
 
-    assert_eq!(restored.snapshot().organisms, engine.snapshot().organisms);
+    // Inspector readbacks are rebuilt after loading; this test qualifies the
+    // persisted phenotype of every parent and child.
+    let phenotypes = |engine: &Engine| {
+        engine
+            .snapshot()
+            .organisms
+            .iter()
+            .map(|organism| (organism.id, organism.phenotype.clone()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(phenotypes(&restored), phenotypes(&engine));
 }

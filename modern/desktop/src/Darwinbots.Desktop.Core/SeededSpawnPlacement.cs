@@ -32,7 +32,7 @@ public sealed class SeededSpawnPlacement(ulong seed)
         species.Validate();
         return species.Placement.Mode switch
         {
-            SpeciesPlacementMode.Random => Next(species.InitialCount, worldWidth, worldHeight),
+            SpeciesPlacementMode.Random => NextInBounds(species, worldWidth, worldHeight),
             SpeciesPlacementMode.Center => Enumerable.Range(0, species.InitialCount)
                 .Select(_ => new[] { worldWidth / 2f, worldHeight / 2f })
                 .ToArray(),
@@ -41,6 +41,18 @@ public sealed class SeededSpawnPlacement(ulong seed)
                 .ToArray(),
             _ => throw new ArgumentOutOfRangeException(nameof(species.Placement)),
         };
+    }
+
+    private float[][] NextInBounds(SpeciesImport species, float worldWidth, float worldHeight)
+    {
+        var placement = species.Placement;
+        if (placement.Left == 0 && placement.Right == 1 && placement.Top == 0 && placement.Bottom == 1)
+            return Next(species.InitialCount, worldWidth, worldHeight);
+        return Enumerable.Range(0, species.InitialCount).Select(_ => new[]
+        {
+            worldWidth * (placement.Left + NextUnit() * (placement.Right - placement.Left)),
+            worldHeight * (placement.Top + NextUnit() * (placement.Bottom - placement.Top)),
+        }).ToArray();
     }
 
     public (float[] Minimum, float[] Maximum)[] NextObstacles(int count, float worldWidth, float worldHeight)

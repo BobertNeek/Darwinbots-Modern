@@ -64,6 +64,10 @@ enum EngineCommand {
     UpdateCostSettings {
         costs: crate::DnaCosts,
     },
+    UpdateMainRules {
+        body_cutoff: i32,
+        greedy_reproduction: bool,
+    },
     UpdateRecordingSettings {
         settings: crate::RecordingSettings,
     },
@@ -96,11 +100,13 @@ enum EngineCommand {
         reseed: bool,
         #[serde(default)]
         mutation_rate: f32,
+        #[serde(default)]
+        mutation_profile: Option<crate::StandardMutationProfile>,
         initial_energy: i32,
-        #[serde(default)]
-        initial_count: usize,
-        #[serde(default)]
-        placement: Option<serde_json::Value>,
+        #[serde(default, rename = "initial_count")]
+        _initial_count: usize,
+        #[serde(default, rename = "placement")]
+        _placement: Option<serde_json::Value>,
         #[serde(default)]
         skin: Option<[crate::SkinPoint; 4]>,
         #[serde(default)]
@@ -223,6 +229,14 @@ enum EngineCommand {
         generation: u32,
         address: u16,
         value: i32,
+    },
+    ResolveMemoryAddress {
+        name: String,
+    },
+    ExecuteRobots,
+    FindBestRobot {
+        #[serde(default)]
+        energy_weighting: bool,
     },
     SetOrganismEnergy {
         slot: u32,
@@ -495,6 +509,12 @@ fn db_engine_command_batch_impl(
             EngineCommand::UpdateCostSettings { costs } => engine
                 .update_cost_settings(costs)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateMainRules {
+                body_cutoff,
+                greedy_reproduction,
+            } => engine
+                .update_main_rules(body_cutoff, greedy_reproduction)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateRecordingSettings { settings } => engine
                 .update_recording_settings(settings)
                 .map(|_| serde_json::Value::Null),
@@ -543,13 +563,17 @@ fn db_engine_command_batch_impl(
                 minimum_population,
                 reseed,
                 mutation_rate,
+                mutation_profile,
                 initial_energy,
-                initial_count: _,
-                placement: _,
+                _initial_count: _,
+                _placement: _,
                 skin,
                 restrictions,
                 positions,
             } => LegacyDna::parse(&dna).and_then(|dna| {
+                if let Some(profile) = &mutation_profile {
+                    profile.validate()?;
+                }
                 let compatibility_warnings = dna.compatibility_warnings().to_vec();
                 let mut definition = SpeciesDefinition {
                     name,
@@ -558,6 +582,7 @@ fn db_engine_command_batch_impl(
                     minimum_population,
                     reseed,
                     mutation_rate,
+                    mutation_profile,
                     ..SpeciesDefinition::default()
                 };
                 if let Some(skin) = skin {
@@ -755,6 +780,28 @@ fn db_engine_command_batch_impl(
             } => engine
                 .set_organism_memory(OrganismId::new(slot, generation), address, value)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::ResolveMemoryAddress { name } => {
+                let address = name
+                    .parse::<u16>()
+                    .ok()
+                    .map(i32::from)
+                    .or_else(|| crate::sysvar_address(name.trim_start_matches('.')));
+                match address.filter(|address| (1..=1000).contains(address)) {
+                    Some(address) => Ok(serde_json::json!({ "address": address })),
+                    None => Err(crate::EngineError::Invariant(format!(
+                        "unknown memory address {name}"
+                    ))),
+                }
+            }
+            EngineCommand::ExecuteRobots => {
+                engine.execute_robots().map(|_| serde_json::Value::Null)
+            }
+            EngineCommand::FindBestRobot { energy_weighting } => {
+                Ok(engine.find_best_robot(energy_weighting).map_or(
+                    serde_json::Value::Null,
+                    |id| serde_json::json!({ "slot": id.slot(), "generation": id.generation() }),
+                ))
+            }
             EngineCommand::SetOrganismEnergy {
                 slot,
                 generation,
@@ -798,7 +845,16 @@ fn db_engine_command_batch_impl(
                     drag,
                     brownian_motion,
                 )
-                .and_then(|_| engine.update_db2_settings(physics, shots, vegetation, corpse_decay, waste, recording))
+                .and_then(|_| {
+                    engine.update_db2_settings(
+                        physics,
+                        shots,
+                        vegetation,
+                        corpse_decay,
+                        waste,
+                        recording,
+                    )
+                })
                 .and_then(|_| {
                     engine.update_speciation_settings(
                         auto_speciation,

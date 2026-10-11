@@ -148,7 +148,6 @@ fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
         waste: WasteSettings {
             alzheimer_threshold: 0,
             defecation_threshold: 10,
-            ..WasteSettings::default()
         },
         ..EngineConfig::testing()
     })
@@ -1967,12 +1966,7 @@ fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
         };
         let target = if case.corpse {
             engine
-                .spawn_species_batch(
-                    target_dna,
-                    target_species,
-                    [target_position],
-                    1,
-                )
+                .spawn_species_batch(target_dna, target_species, [target_position], 1)
                 .unwrap()[0]
         } else {
             engine
@@ -1980,9 +1974,7 @@ fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
                 .unwrap()
         };
         engine.tick().unwrap();
-        let corpse_before = case
-            .corpse
-            .then(|| engine.snapshot().corpses[0].clone());
+        let corpse_before = case.corpse.then(|| engine.snapshot().corpses[0].clone());
         engine
             .replace_dna(
                 source,
@@ -2041,7 +2033,10 @@ fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
         assert_eq!(observed, case.expected, "{}", case.name);
         if let Some(expected_paralyzed) = case.followup_paralyzed {
             engine.tick().unwrap();
-            assert_eq!(engine.organism(target).unwrap().paralyzed, expected_paralyzed);
+            assert_eq!(
+                engine.organism(target).unwrap().paralyzed,
+                expected_paralyzed
+            );
             assert_eq!(engine.memory_at(target, 500).unwrap(), case.toxin_value);
         }
     }

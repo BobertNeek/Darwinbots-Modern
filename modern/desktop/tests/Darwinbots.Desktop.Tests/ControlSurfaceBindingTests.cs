@@ -19,10 +19,10 @@ public sealed class ControlSurfaceBindingTests
     {
         var surfaces = new[]
         {
-            new Surface("MainWindow.axaml", typeof(MainWindow), 35),
-            new Surface("SetupWindow.axaml", typeof(SetupWindow), 12),
-            new Surface("AdvancedSettingsWindow.axaml", typeof(AdvancedSettingsWindow), 2),
-            new Surface("GlobalSettingsWindow.axaml", typeof(GlobalSettingsWindow), 2),
+            new Surface("MainWindow.axaml", typeof(MainWindow), 59),
+            new Surface("SetupWindow.axaml", typeof(SetupWindow), 20),
+            new Surface("AdvancedSettingsWindow.axaml", typeof(AdvancedSettingsWindow), 3),
+            new Surface("GlobalSettingsWindow.axaml", typeof(GlobalSettingsWindow), 3),
             new Surface("DnaEditorWindow.axaml", typeof(DnaEditorWindow), 3),
         };
 
@@ -45,7 +45,15 @@ public sealed class ControlSurfaceBindingTests
             }
 
             foreach (Match control in Regex.Matches(xaml, "<(?:Button|RadioButton)\\b(?<attributes>[^>]*)>"))
-                Assert.Contains("Click=\"", control.Groups["attributes"].Value, StringComparison.Ordinal);
+            {
+                var attributes = control.Groups["attributes"].Value;
+                if (attributes.Contains("x:Name=\"InternetButton\"", StringComparison.Ordinal))
+                {
+                    Assert.Contains("IsEnabled=\"False\"", attributes, StringComparison.Ordinal);
+                    Assert.Contains("disabled and inert", attributes, StringComparison.Ordinal);
+                }
+                else Assert.Contains("Click=\"", attributes, StringComparison.Ordinal);
+            }
             foreach (Match item in Regex.Matches(xaml, "<MenuItem\\b(?<attributes>[^>]*)/>"))
                 Assert.Contains("Click=\"", item.Groups["attributes"].Value, StringComparison.Ordinal);
         }

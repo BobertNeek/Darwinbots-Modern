@@ -9,6 +9,9 @@ public sealed record DesktopSettings
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public string Backend { get; init; } = "Auto";
+    public ulong? Seed { get; init; }
+    public IReadOnlyList<string>? LegacySettingsFields { get; init; }
+    public MutationSettingsUpdate MutationSettings { get; init; } = MutationSettingsUpdate.Default;
     public uint TicksPerUpdate { get; init; } = 1;
     public uint SnapshotEveryTicks { get; init; } = 1;
     public int OrganismCapacity { get; init; } = 25_000;
@@ -33,6 +36,11 @@ public sealed record DesktopSettings
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
+    public bool FixedBotRadii { get; init; }
+    public bool TiesEnabled { get; init; } = true;
+    public bool RobotFixingAllowed { get; init; } = true;
+    public bool AsexualReproductionAllowed { get; init; } = true;
+    public IReadOnlyList<ObstacleSnapshot> Obstacles { get; init; } = [];
     public bool WrapX { get; init; } = true;
     public bool WrapY { get; init; } = true;
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
@@ -41,6 +49,9 @@ public sealed record DesktopSettings
     public static DesktopSettings FromWorldSetup(WorldSetupOptions setup) => new()
     {
         Backend = setup.Backend,
+        Seed = setup.Seed,
+        LegacySettingsFields = setup.LegacySettingsFields,
+        MutationSettings = setup.MutationSettings,
         TicksPerUpdate = setup.TicksPerUpdate,
         SnapshotEveryTicks = 1,
         OrganismCapacity = setup.PopulationCapacity,
@@ -65,6 +76,9 @@ public sealed record DesktopSettings
         AutoSpeciation = setup.AutoSpeciation,
         SpeciationGeneticDistancePercent = setup.SpeciationGeneticDistancePercent,
         ToroidalWorld = setup.ToroidalWorld,
+        FixedBotRadii = setup.FixedBotRadii, TiesEnabled = setup.TiesEnabled,
+        RobotFixingAllowed = setup.RobotFixingAllowed, AsexualReproductionAllowed = setup.AsexualReproductionAllowed,
+        Obstacles = setup.Obstacles.ToArray(),
         WrapX = setup.WrapX,
         WrapY = setup.WrapY,
         Species = setup.Species.ToArray(),
@@ -80,7 +94,9 @@ public sealed record DesktopSettings
             ZerobotSustenance = ZerobotSustenance,
             AutomaticZerobotProgression = AutomaticZerobotProgression,
             Backend = Backend,
-            Seed = fallback.Seed,
+            Seed = Seed ?? fallback.Seed,
+            LegacySettingsFields = LegacySettingsFields,
+            MutationSettings = MutationSettings,
             PopulationCapacity = OrganismCapacity,
             VegetablePopulationCap = VegetablePopulationCap,
             WorldWidth = WorldWidth,
@@ -100,6 +116,9 @@ public sealed record DesktopSettings
             AutoSpeciation = AutoSpeciation,
             SpeciationGeneticDistancePercent = SpeciationGeneticDistancePercent,
             ToroidalWorld = ToroidalWorld,
+            FixedBotRadii = FixedBotRadii, TiesEnabled = TiesEnabled,
+            RobotFixingAllowed = RobotFixingAllowed, AsexualReproductionAllowed = AsexualReproductionAllowed,
+            Obstacles = Obstacles.ToArray(),
             WrapX = WrapX,
             WrapY = WrapY,
             TicksPerUpdate = TicksPerUpdate,

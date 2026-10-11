@@ -630,33 +630,70 @@ fn bundled_dna_metadata_hash_and_detokenization_contract_is_table_driven() {
             fixture.name
         );
         assert_eq!(
-            blocks.iter().filter(|block| block.class == TokenClass::End).count(),
+            blocks
+                .iter()
+                .filter(|block| block.class == TokenClass::End)
+                .count(),
             1,
             "{} must contain one gene terminator",
             fixture.name
         );
-        assert_eq!(flow_count(1), fixture.genes, "{} cond boundaries", fixture.name);
-        assert_eq!(flow_count(2), fixture.genes, "{} start boundaries", fixture.name);
-        assert_eq!(flow_count(4), fixture.genes, "{} stop boundaries", fixture.name);
+        assert_eq!(
+            flow_count(1),
+            fixture.genes,
+            "{} cond boundaries",
+            fixture.name
+        );
+        assert_eq!(
+            flow_count(2),
+            fixture.genes,
+            "{} start boundaries",
+            fixture.name
+        );
+        assert_eq!(
+            flow_count(4),
+            fixture.genes,
+            "{} stop boundaries",
+            fixture.name
+        );
 
         assert_eq!(dna.metadata().tag, fixture.tag);
         for &(alias, value) in fixture.aliases {
-            assert_eq!(dna.user_variable(alias), Some(value), "{} alias {alias}", fixture.name);
+            assert_eq!(
+                dna.user_variable(alias),
+                Some(value),
+                "{} alias {alias}",
+                fixture.name
+            );
         }
 
         let canonical = dna.to_source();
         assert!(canonical.contains("'#hash: "));
         assert!(!canonical.contains(fixture.comment_marker));
 
-        let reparsed = LegacyDna::parse(&canonical)
-            .unwrap_or_else(|error| panic!("{} canonical source must reparse: {error}", fixture.name));
-        assert_eq!(reparsed.blocks(), blocks, "{} token round trip", fixture.name);
+        let reparsed = LegacyDna::parse(&canonical).unwrap_or_else(|error| {
+            panic!("{} canonical source must reparse: {error}", fixture.name)
+        });
+        assert_eq!(
+            reparsed.blocks(),
+            blocks,
+            "{} token round trip",
+            fixture.name
+        );
         assert_eq!(reparsed.metadata().generation, dna.metadata().generation);
         assert_eq!(reparsed.metadata().mutations, dna.metadata().mutations);
         assert_eq!(reparsed.metadata().tag, fixture.tag);
         assert!(reparsed.metadata().hash_valid, "{} hash", fixture.name);
-        assert_eq!(reparsed.metadata().legacy_hash.as_deref().map(str::len), Some(20));
-        assert_eq!(reparsed.to_source(), canonical, "{} canonical stability", fixture.name);
+        assert_eq!(
+            reparsed.metadata().legacy_hash.as_deref().map(str::len),
+            Some(20)
+        );
+        assert_eq!(
+            reparsed.to_source(),
+            canonical,
+            "{} canonical stability",
+            fixture.name
+        );
     }
 
     for (name, invalid_source) in [

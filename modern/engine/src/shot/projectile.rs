@@ -64,69 +64,6 @@ pub(crate) struct ProjectilePool {
     free_slots: Vec<u32>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent() {
-        let mut pool = ProjectilePool::default();
-        let request = ProjectileSpawn {
-            owner: OrganismId::new(1, 0),
-            owner_position: [0.0, 0.0],
-            owner_actual_velocity: [0.0, 0.0],
-            owner_radius: 1.0,
-            owner_virtual_body: 1.0,
-            range_multiplier: 1.0,
-            angle: 0.0,
-            kind: 1,
-            value: 1,
-            payload: None,
-            source_species_name: None,
-            toxin_memory_location: 0,
-            toxin_memory_value: 0,
-            color: 0,
-            source_vegetable: false,
-            stored: false,
-            gene_number: 0,
-            dna_length: 0,
-        };
-        let settings = ShotSettings::default();
-
-        for _ in 0..101 {
-            pool.spawn(request.clone(), &settings);
-        }
-        assert_eq!(pool.capacity(), 110);
-        assert_eq!(pool.len(), 101);
-
-        for slot in 0..80 {
-            pool.deactivate(slot);
-        }
-        pool.compact_if_sparse();
-        assert_eq!(pool.len(), 21);
-        assert_eq!(pool.capacity(), 100);
-        assert_eq!(pool.live_slots(), (0..21).collect::<Vec<_>>());
-    }
-
-    #[test]
-    fn db24832_impact_decay_uses_age_before_the_current_tick_increment() {
-        let mut pool = ProjectilePool::default();
-        let settings = ShotSettings::default();
-        pool.spawn_energy_packet(
-            OrganismId::new(1, 0),
-            [100.0, 100.0],
-            [0.0, 0.0],
-            1,
-            1,
-        );
-
-        pool.advance(&settings, [1_000.0, 1_000.0], [false, false]);
-        pool.mark_impact(0, 0.0, &settings);
-
-        assert_eq!(pool.energies[0], 40.0);
-    }
-}
-
 impl ProjectilePool {
     pub(crate) fn normalized_kind(kind: i32) -> i32 {
         normalize_kind(kind)
@@ -227,12 +164,18 @@ impl ProjectilePool {
             .filter_map(|(slot, alive)| (*alive).then_some(slot))
             .collect();
         self.owners = live_slots.iter().map(|&slot| self.owners[slot]).collect();
-        self.positions = live_slots.iter().map(|&slot| self.positions[slot]).collect();
+        self.positions = live_slots
+            .iter()
+            .map(|&slot| self.positions[slot])
+            .collect();
         self.previous_positions = live_slots
             .iter()
             .map(|&slot| self.previous_positions[slot])
             .collect();
-        self.velocities = live_slots.iter().map(|&slot| self.velocities[slot]).collect();
+        self.velocities = live_slots
+            .iter()
+            .map(|&slot| self.velocities[slot])
+            .collect();
         self.ages = live_slots.iter().map(|&slot| self.ages[slot]).collect();
         self.ranges = live_slots.iter().map(|&slot| self.ranges[slot]).collect();
         self.energies = live_slots.iter().map(|&slot| self.energies[slot]).collect();
@@ -265,12 +208,21 @@ impl ProjectilePool {
             .map(|&slot| self.source_vegetables[slot])
             .collect();
         self.stored = live_slots.iter().map(|&slot| self.stored[slot]).collect();
-        self.gene_numbers = live_slots.iter().map(|&slot| self.gene_numbers[slot]).collect();
-        self.dna_lengths = live_slots.iter().map(|&slot| self.dna_lengths[slot]).collect();
+        self.gene_numbers = live_slots
+            .iter()
+            .map(|&slot| self.gene_numbers[slot])
+            .collect();
+        self.dna_lengths = live_slots
+            .iter()
+            .map(|&slot| self.dna_lengths[slot])
+            .collect();
         self.pool_capacity = if live_count < 90 {
             INITIAL_POOL_CAPACITY
         } else {
-            live_count.saturating_mul(12).div_ceil(10).max(INITIAL_POOL_CAPACITY)
+            live_count
+                .saturating_mul(12)
+                .div_ceil(10)
+                .max(INITIAL_POOL_CAPACITY)
         };
         self.free_slots.clear();
     }
@@ -287,8 +239,7 @@ impl ProjectilePool {
             request.owner_actual_velocity[1] + direction[1] * settings.speed,
         ];
         let range_multiplier = (request.range_multiplier * settings.range_multiplier).max(1.0);
-        let raw_energy =
-            request.owner_virtual_body.abs().max(1.0).ln() * 60.0 * range_multiplier;
+        let raw_energy = request.owner_virtual_body.abs().max(1.0).ln() * 60.0 * range_multiplier;
         let range = if request.owner_virtual_body > 10.0 {
             ((raw_energy + 41.0) / 40.0).floor().max(1.0) as u32
         } else {
@@ -391,6 +342,7 @@ impl ProjectilePool {
         self.spawn_fixed_packet(owner, position, velocity, 1, 40.0, -4, value)
     }
 
+    #[allow(clippy::too_many_arguments)] // Fixed wire packet fields are kept explicit at call sites.
     fn spawn_fixed_packet(
         &mut self,
         owner: OrganismId,
@@ -700,4 +652,61 @@ fn normalize_kind(kind: i32) -> i32 {
     }
     let normalized = -(kind.saturating_abs() % 8);
     if normalized == 0 { -8 } else { normalized }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent() {
+        let mut pool = ProjectilePool::default();
+        let request = ProjectileSpawn {
+            owner: OrganismId::new(1, 0),
+            owner_position: [0.0, 0.0],
+            owner_actual_velocity: [0.0, 0.0],
+            owner_radius: 1.0,
+            owner_virtual_body: 1.0,
+            range_multiplier: 1.0,
+            angle: 0.0,
+            kind: 1,
+            value: 1,
+            payload: None,
+            source_species_name: None,
+            toxin_memory_location: 0,
+            toxin_memory_value: 0,
+            color: 0,
+            source_vegetable: false,
+            stored: false,
+            gene_number: 0,
+            dna_length: 0,
+        };
+        let settings = ShotSettings::default();
+
+        for _ in 0..101 {
+            pool.spawn(request.clone(), &settings);
+        }
+        assert_eq!(pool.capacity(), 110);
+        assert_eq!(pool.len(), 101);
+
+        for slot in 0..80 {
+            pool.deactivate(slot);
+        }
+        pool.compact_if_sparse();
+        assert_eq!(pool.len(), 21);
+        assert_eq!(pool.capacity(), 100);
+        assert_eq!(pool.live_slots(), (0..21).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn db24832_impact_decay_uses_age_before_the_current_tick_increment() {
+        let mut pool = ProjectilePool::default();
+        let settings = ShotSettings::default();
+        pool.spawn_energy_packet(OrganismId::new(1, 0), [100.0, 100.0], [0.0, 0.0], 1, 1);
+
+        pool.advance(&settings, [1_000.0, 1_000.0], [false, false]);
+        pool.mark_impact(0, 0.0, &settings);
+
+        assert_eq!(pool.energies[0], 40.0);
+    }
 }

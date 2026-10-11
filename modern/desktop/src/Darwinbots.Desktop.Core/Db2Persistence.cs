@@ -13,32 +13,7 @@ public static class Db2SettingsCodec
     public static byte[] Encode(DesktopSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var lines = new List<string> { "-1", "0" };
-        var speciesStart = lines.Count;
-        for (var index = 0; index < 40; index++) lines.Add("0");
-        lines[speciesStart + 5] = "\"Robots\"";
-        lines[speciesStart + 6] = "0";
-        lines[speciesStart + 7] = "\"Modern\"";
-        lines[speciesStart + 8] = "#FALSE#";
-        lines[speciesStart + 9] = "#FALSE#";
-        lines[speciesStart + 10] = "0";
-        lines[speciesStart + 12] = "1000";
-
-        var globalStart = lines.Count;
-        lines.Add("\"\"");
-        lines.Add("1");
-        lines.Add("0");
-        lines.Add(Float(settings.WorldWidth));
-        lines.Add(Float(settings.WorldHeight));
-        lines.Add(settings.OrganismCapacity.ToString(CultureInfo.InvariantCulture));
-        lines.Add("#FALSE#");
-        lines.Add("#FALSE#");
-        lines.Add("0");
-        lines.Add("#TRUE#");
-        lines.Add("500000");
-        lines.Add("0");
-        while (lines.Count < globalStart + 37) lines.Add("0");
-        lines.Add("0");
+        var lines = LegacySettingsAdapter.Encode(settings);
 
         var modern = Convert.ToBase64String(Encoding.UTF8.GetBytes(settings.ToJson()));
         lines.Add(ModernExtensionMarker);
@@ -67,23 +42,13 @@ public static class Db2SettingsCodec
         if (lines.Length < 12 || !int.TryParse(lines[0].Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
             throw new InvalidDataException("DB2 settings header is invalid.");
         if (!int.TryParse(lines[1].Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var speciesMinusOne)
-            || speciesMinusOne < 0)
+            || speciesMinusOne < -1 || speciesMinusOne > 999)
             throw new InvalidDataException("DB2 settings species count is invalid.");
         var globalStart = 2 + (speciesMinusOne + 1) * 40;
         if (lines.Length <= globalStart + 9)
             throw new InvalidDataException("DB2 settings global record is truncated.");
-        var settings = new DesktopSettings
-        {
-            WorldWidth = ParseFloat(lines[globalStart + 3], "world width"),
-            WorldHeight = ParseFloat(lines[globalStart + 4], "world height"),
-            OrganismCapacity = ParseInt(lines[globalStart + 5], "maximum population"),
-            Gravity =
-            [
-                OptionalFloat(lines, globalStart + 18, 0f, "horizontal gravity"),
-                OptionalFloat(lines, globalStart + 19, 0f, "vertical gravity"),
-            ],
-        };
-        return settings with { CorpseDecay = DecodeLegacyCorpseDecay(lines, globalStart) };
+        return LegacySettingsAdapter.Decode(lines, speciesMinusOne + 1, globalStart)
+            with { CorpseDecay = DecodeLegacyCorpseDecay(lines, globalStart) };
     }
 
     private static string Float(float value) => value.ToString("R", CultureInfo.InvariantCulture);

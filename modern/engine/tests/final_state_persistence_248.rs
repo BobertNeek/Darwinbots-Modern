@@ -63,8 +63,8 @@ fn core_02_persists_remaining_robot_flags_counters_private_diagnostics_and_occur
     robot["program"]["private_variable_count"] = serde_json::json!(3);
     robot["program"]["used_variables"] = serde_json::json!([12, 340, 721]);
     robot["senses"]["occurrence_counts"] = serde_json::json!([
-        0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584,
-        4181, 6765, 10946
+        0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765,
+        10946
     ]);
 
     let restored = SaveFile::decode(&frame_payload(3, payload)).expect("v3 state loads");
@@ -76,12 +76,15 @@ fn core_02_persists_remaining_robot_flags_counters_private_diagnostics_and_occur
     assert_eq!(robot["counters"]["simulation_age"], 17);
     assert_eq!(robot["counters"]["old_mutations"], 23);
     assert_eq!(robot["program"]["private_variable_count"], 3);
-    assert_eq!(robot["program"]["used_variables"], serde_json::json!([12, 340, 721]));
+    assert_eq!(
+        robot["program"]["used_variables"],
+        serde_json::json!([12, 340, 721])
+    );
     assert_eq!(
         robot["senses"]["occurrence_counts"],
         serde_json::json!([
-            0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584,
-            4181, 6765, 10946
+            0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765,
+            10946
         ])
     );
 }
@@ -104,6 +107,14 @@ fn mut_02_point_and_delta_mutations_run_through_an_ordinary_cycle() {
     point_engine
         .set_mutation_profile(point_id, point_profile)
         .expect("point profile");
+    // DB2 samples a geometric age clock; a rate of one is not an immediate mutation.
+    // Restore a due clock to exercise the ordinary cycle deterministically.
+    let saved = SaveFile::encode(&point_engine).unwrap();
+    let mut payload = framed_payload(&saved);
+    let robot = &mut payload["slots"][point_id.slot() as usize]["organism"];
+    robot["counters"]["age"] = serde_json::json!(1);
+    robot["program"]["point_mutation_schedule"] = serde_json::json!({"location":1,"cycle":1});
+    point_engine = SaveFile::decode(&frame_payload(3, payload)).unwrap();
     let point_before = point_engine.dna(point_id).unwrap().clone();
     point_engine.tick().expect("point cycle");
     let point_robot = point_engine.robot_state(point_id).unwrap();
@@ -125,7 +136,7 @@ fn mut_02_point_and_delta_mutations_run_through_an_ordinary_cycle() {
         .expect("delta robot");
     let mut delta_profile = delta_engine.mutation_profile(delta_id).unwrap().clone();
     delta_profile.point.one_in = f64::MAX;
-    delta_profile.delta.one_in = 1.0;
+    delta_profile.delta.one_in = 0.01; // Delta is sampled at 1 / (100 * rate).
     delta_engine
         .set_mutation_profile(delta_id, delta_profile.clone())
         .expect("delta profile");
@@ -136,8 +147,7 @@ fn mut_02_point_and_delta_mutations_run_through_an_ordinary_cycle() {
         Some(StandardMutationKind::Delta)
     );
     assert_ne!(
-        &delta_robot.program.mutation_profile,
-        &delta_profile,
+        &delta_robot.program.mutation_profile, &delta_profile,
         "Delta must update a live mutation rate"
     );
 }
@@ -164,15 +174,16 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
     let mut engine = Engine::new(EngineConfig::testing()).expect("engine");
     let source = engine
         .spawn_at(
-            LegacyDna::parse(
-                "start\n1 .tie store\n-1 .shoot store\n40 .shootval store\nstop",
-            )
-            .expect("source DNA"),
+            LegacyDna::parse("start\n1 .tie store\n-1 .shoot store\n40 .shootval store\nstop")
+                .expect("source DNA"),
             [100.0, 100.0],
         )
         .expect("source robot");
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").expect("target DNA"), [500.0, 100.0])
+        .spawn_at(
+            LegacyDna::parse("start\nstop").expect("target DNA"),
+            [500.0, 100.0],
+        )
         .expect("target robot");
     engine.tick().expect("shot and tie cycle");
     assert_eq!(engine.snapshot().shots.len(), 1);
@@ -274,8 +285,14 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
     projectiles.insert("kinds".to_owned(), serde_json::json!([-3]));
     projectiles.insert("values".to_owned(), serde_json::json!([321]));
     projectiles.insert("impact_flash".to_owned(), serde_json::json!([false]));
-    projectiles.insert("source_species_names".to_owned(), serde_json::json!(["mutated-species"]));
-    projectiles.insert("toxin_memory_locations".to_owned(), serde_json::json!([835]));
+    projectiles.insert(
+        "source_species_names".to_owned(),
+        serde_json::json!(["mutated-species"]),
+    );
+    projectiles.insert(
+        "toxin_memory_locations".to_owned(),
+        serde_json::json!([835]),
+    );
     projectiles.insert("toxin_memory_values".to_owned(), serde_json::json!([1234]));
     projectiles.insert("colors".to_owned(), serde_json::json!([0x5566_7788_u32]));
     projectiles.insert("source_vegetables".to_owned(), serde_json::json!([true]));
@@ -313,11 +330,14 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
     for key in ["projectiles", "ties", "obstacles", "teleporters"] {
         assert_eq!(round_trip[key], payload[key], "authoritative {key} changed");
     }
-    let reloaded = SaveFile::decode(&SaveFile::encode(&restored).expect("stable save"))
-        .expect("stable load");
+    let reloaded =
+        SaveFile::decode(&SaveFile::encode(&restored).expect("stable save")).expect("stable load");
     let stable = framed_payload(&SaveFile::encode(&reloaded).expect("stable re-save"));
     for key in ["projectiles", "ties", "obstacles", "teleporters"] {
-        assert_eq!(stable[key], round_trip[key], "authoritative {key} is not stable");
+        assert_eq!(
+            stable[key], round_trip[key],
+            "authoritative {key} is not stable"
+        );
     }
 
     let before_invalid = restored.snapshot().obstacles[0].clone();

@@ -1,9 +1,9 @@
+use crate::environment::{
+    TeleporterBackflow, blocks_backflow, inside_teleporter, teleporter_blocked_by_obstacles,
+};
 use crate::modes::{
     LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeResult, LocalModeState,
     LocalModeStatus,
-};
-use crate::environment::{
-    blocks_backflow, inside_teleporter, teleporter_blocked_by_obstacles, TeleporterBackflow,
 };
 use crate::robot_state::{
     RobotArena, RobotCounters, RobotFlags, RobotPhysicsBatch, RobotSlot, RobotState,
@@ -18,17 +18,16 @@ use crate::{
     BiologyState, CommandOutcome, CoreReadbacks, CorpseDecaySettings, CorpseSnapshot,
     CpuPhysicsBackend, CyclePhase, DnaCosts, DnaMetadata, DnaVm, EngineConfig, EngineError,
     EyeSnapshot, FileTeleporter, GenomeMutator, GpuAdapterReceipt, GpuPhysicsBackend,
-    HistorySample, LegacyDna,
-    LegacyOrganism, LegacyOrganismFile, LegacySimulationFile, MutationContext, MutationPolicyInput,
-    Obstacle, OrganismId, PhaseCommands, PhaseReadbacks, PhaseTimings, PhysicsBackend,
-    PhysicsBatch, PhysicsSettings, PlantLightInput, PointMutationSchedule, ProjectileEffect,
-    ProjectileImpact, ProjectilePool, ProjectileSpawn, ProjectileTarget, QueueChangeKind,
-    RenderInstance, ShapeShotPolicy, ShapeVisionPolicy, ShotSettings, ShotSnapshot,
-    SimulationCostAction, SimulationStats, SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId,
-    StandardMutationKind, StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime,
-    Teleporter, TieCommands, TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime,
-    VegetationSettings, VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
-    MAX_ROBOTS, RecordingSettings,
+    HistorySample, LegacyDna, LegacyOrganism, LegacyOrganismFile, LegacySimulationFile, MAX_ROBOTS,
+    MutationContext, MutationPolicyInput, Obstacle, OrganismId, PhaseCommands, PhaseReadbacks,
+    PhaseTimings, PhysicsBackend, PhysicsBatch, PhysicsSettings, PlantLightInput,
+    PointMutationSchedule, ProjectileEffect, ProjectileImpact, ProjectilePool, ProjectileSpawn,
+    ProjectileTarget, QueueChangeKind, RecordingSettings, RenderInstance, ShapeShotPolicy,
+    ShapeVisionPolicy, ShotSettings, ShotSnapshot, SimulationCostAction, SimulationStats,
+    SkinPoint, SpatialIndex, SpeciesDefinition, SpeciesId, StandardMutationKind,
+    StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands,
+    TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime, VegetationSettings,
+    VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
     apply_advanced_mutation_policies, eye_value, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
@@ -404,7 +403,7 @@ pub struct LineageEntry {
     pub depth: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Snapshot {
     #[serde(default = "default_snapshot_schema_version")]
     pub schema_version: u32,
@@ -479,6 +478,12 @@ impl PartialEq for Snapshot {
 struct SpeciesTemplate {
     dna: LegacyDna,
     initial_energy: i32,
+    #[serde(default = "default_initial_population")]
+    initial_population: usize,
+}
+
+fn default_initial_population() -> usize {
+    1
 }
 
 #[derive(Deserialize)]
@@ -851,12 +856,13 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
     fn from(value: Db3sV2EngineConfig) -> Self {
         Self {
             greedy_reproduction: false,
+            body_cutoff: 0,
             seed: value.seed,
             organism_capacity: value.organism_capacity.min(MAX_ROBOTS),
             vegetable_population_cap: value.vegetable_population_cap,
             world_width: value.world_width,
             world_height: value.world_height,
-toroidal_world: value.toroidal_world,
+            toroidal_world: value.toroidal_world,
             fixed_bot_radii: false,
             axis_topology: None,
             backend: value.backend.into(),
@@ -1168,6 +1174,7 @@ impl From<Db3sV2SpeciesTemplate> for SpeciesTemplate {
         Self {
             dna: value.dna.into(),
             initial_energy: value.initial_energy,
+            initial_population: 1,
         }
     }
 }
@@ -1226,6 +1233,7 @@ impl From<Db3sV2SpeciesDefinition> for SpeciesDefinition {
             minimum_population: value.minimum_population,
             reseed: value.reseed,
             mutation_rate: value.mutation_rate,
+            mutation_profile: None,
             skin: value.skin.map(Into::into),
             lineage_id: value.lineage_id,
             restrictions: value.restrictions,
@@ -2056,6 +2064,8 @@ impl From<&Db3sV2Biology> for BiologyState {
             plant_body_carry_micros: state.plant_body_carry_micros,
             chloroplast_decay_carry_micros: 0,
             waste_metabolism_carry_micros: 0,
+            slime_decay_fraction: 0.0,
+            poison_decay_fraction: 0.0,
         }
     }
 }
@@ -2106,6 +2116,7 @@ pub struct Engine {
     #[serde(flatten)]
     slots: RobotArena,
     tick: u64,
+    #[serde(skip, default)]
     snapshot: Snapshot,
     stats: SimulationStats,
     #[serde(skip, default = "default_capabilities")]
@@ -2296,7 +2307,8 @@ impl Engine {
                 state.counters.simulation_age = organism.counters.simulation_age;
                 state.counters.old_mutations = organism.counters.old_mutations;
                 state.counters.mutation_test_counter = organism.counters.mutation_test_counter;
-                state.counters.epigenetic_reset_counter = organism.counters.epigenetic_reset_counter;
+                state.counters.epigenetic_reset_counter =
+                    organism.counters.epigenetic_reset_counter;
                 state.counters.decay_timer = organism.counters.decay_timer;
                 state.counters.reproduction_timer = organism.counters.reproduction_timer;
                 state.counters.multibot_time = organism.counters.multibot_time;
@@ -2465,9 +2477,9 @@ impl Engine {
 
     pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
         if config.organism_capacity > MAX_ROBOTS {
-            return Err(EngineError::Invariant(format!(
-                "organism capacity cannot exceed 32,000 robots"
-            )));
+            return Err(EngineError::Invariant(
+                "organism capacity cannot exceed 32,000 robots".to_string(),
+            ));
         }
         let (capabilities, physics) = select_backend(&config)?;
         let world_size = [config.world_width, config.world_height];
@@ -2513,7 +2525,7 @@ impl Engine {
             mutations_enabled: true,
             global_mutation_multiplier: 1.0,
             default_mutation_profile: StandardMutationProfile::default(),
-            subspecies_counters: Vec::new(),
+            subspecies_counters: vec![0; default_species().len()],
             ties_enabled: true,
             robot_fixing_allowed: true,
             asexual_reproduction_allowed: true,
@@ -2570,6 +2582,7 @@ impl Engine {
         let id = SpeciesId(self.species.len() as u32);
         self.species.push(species);
         self.species_templates.push(None);
+        self.subspecies_counters.resize(self.species.len(), 0);
         self.publish_snapshot();
         id
     }
@@ -2789,6 +2802,9 @@ impl Engine {
                 species.0
             )));
         }
+        if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
+            self.apply_league_preset(config.preset);
+        }
         self.apply_mode_restrictions(&config);
         self.local_mode = LocalModeState::configured(config);
         self.publish_snapshot();
@@ -2858,6 +2874,94 @@ impl Engine {
             ));
         }
         self.finish_local_mode_round(winner, reason, false)
+    }
+
+    fn apply_league_preset(&mut self, preset: crate::LeaguePreset) {
+        // OptionsForm.btnSetF1/F2/SB: change the actual world and its costs.
+        let short = preset == crate::LeaguePreset::ShortBot;
+        self.config.world_width = if short { 16000.0 } else { 9237.0 };
+        self.config.world_height = if short { 12000.0 } else { 6928.0 };
+        self.config.toroidal_world = true;
+        self.config.axis_topology = Some([true, true]);
+        self.config.fixed_bot_radii = false;
+        self.config.brownian_motion = 0.0;
+        self.config.gravity = [0.0, 0.0];
+        self.config.physics.surface_gravity = 2.0;
+        self.config.physics.static_friction = 0.6;
+        self.config.physics.kinetic_friction = 0.4;
+        self.config.physics.max_velocity = 180.0;
+        self.config.physics.elasticity = 0.0;
+        self.config.physics.viscosity = 0.0;
+        self.config.physics.density = 0.0;
+        self.config.corpse_decay.enabled = false;
+        self.config.shots.energy_shots_do_not_decay = false;
+        self.config.shots.waste_shots_do_not_decay = false;
+        self.config.waste.alzheimer_threshold = 10000;
+        self.config.vegetable_population_cap = 25;
+        let energy = if matches!(
+            preset,
+            crate::LeaguePreset::F2 | crate::LeaguePreset::F3 | crate::LeaguePreset::Multibot
+        ) {
+            30
+        } else {
+            40
+        };
+        self.config.vegetation.max_energy_per_tick = energy;
+        self.config.sunlight_energy = energy;
+        self.config.vegetation.minimum_chloroplast_equivalents = 10;
+        self.config.vegetation.repopulation_amount = 10;
+        self.config.vegetation.repopulation_cooldown = 25;
+        self.config.vegetation.feeding_to_body = 0.5;
+        self.config.vegetation.pond_mode = false;
+        self.config.vegetation.day_night_enabled = false;
+        self.config.vegetation.daytime = true;
+        self.config.vegetation.sun_up_enabled = false;
+        self.config.vegetation.sun_down_enabled = false;
+        self.config.vegetation.sun_on_random = true;
+        let number_cost = self.config.dna_costs.number;
+        self.config.dna_costs = DnaCosts {
+            number: number_cost,
+            shot_formation: 2.0,
+            store: 0.04,
+            condition: 0.004,
+            movement: 0.05,
+            tie_formation: 2.0,
+            venom: 0.01,
+            poison: 0.01,
+            slime: 0.1,
+            shell: 0.1,
+            body_upkeep: 0.00001,
+            age_base: 0.01,
+            chloroplast_construction: 0.2,
+            ..DnaCosts::default()
+        };
+        self.mutations_enabled = false;
+        self.ties_enabled = true;
+        for definition in &mut self.species {
+            let restrictions = definition.restrictions.get_or_insert_with(Default::default);
+            restrictions.fixed_in_place = false;
+            restrictions.disable_mutations = true;
+            restrictions.disable_vision = false;
+            restrictions.disable_dna = false;
+            restrictions.disable_movement = false;
+            restrictions.disable_reproduction = false;
+            restrictions.virus_immune = false;
+        }
+        for template in self.species_templates.iter_mut().flatten() {
+            template.initial_population = 5;
+        }
+        for slot in &mut self.slots {
+            if let Some(robot) = slot.organism.as_mut() {
+                robot.flags.fixed = false;
+                robot.flags.can_mutate = false;
+                robot.flags.can_see = true;
+                robot.flags.can_execute_dna = true;
+                robot.flags.can_move = true;
+                robot.flags.can_reproduce = true;
+                robot.flags.virus_immune = false;
+                robot.flags.can_receive_viruses = true;
+            }
+        }
     }
 
     fn apply_mode_restrictions(&mut self, config: &LocalModeConfig) {
@@ -3005,10 +3109,7 @@ impl Engine {
                 if rank >= 320_000 {
                     return None;
                 }
-                Some((
-                    OrganismId::new(slot as u32, entry.generation),
-                    rank,
-                ))
+                Some((OrganismId::new(slot as u32, entry.generation), rank))
             })
             .collect();
         candidates.sort_by_key(|(id, score)| (*score, id.slot(), id.generation()));
@@ -3075,34 +3176,34 @@ impl Engine {
         }
 
         for slot in &mut self.slots {
-            if let Some(organism) = slot.organism.as_mut() {
-                if let Some(Some(species)) = remap.get(organism.identity.species.0 as usize) {
-                    organism.identity.species = *species;
-                }
+            if let Some(organism) = slot.organism.as_mut()
+                && let Some(Some(species)) = remap.get(organism.identity.species.0 as usize)
+            {
+                organism.identity.species = *species;
             }
         }
         if let Some(config) = self.local_mode.config.as_mut() {
-            config.source_species = config.source_species.and_then(|species| {
-                remap.get(species.0 as usize).and_then(|value| *value)
-            });
+            config.source_species = config
+                .source_species
+                .and_then(|species| remap.get(species.0 as usize).and_then(|value| *value));
         }
         for result in &mut self.local_mode.results {
-            result.winner = result.winner.and_then(|species| {
-                remap.get(species.0 as usize).and_then(|value| *value)
-            });
+            result.winner = result
+                .winner
+                .and_then(|species| remap.get(species.0 as usize).and_then(|value| *value));
         }
         if let Some(adjudication) = self.local_mode.adjudication.as_mut() {
-            adjudication.winner = adjudication.winner.and_then(|species| {
-                remap.get(species.0 as usize).and_then(|value| *value)
-            });
+            adjudication.winner = adjudication
+                .winner
+                .and_then(|species| remap.get(species.0 as usize).and_then(|value| *value));
         }
         let checkpoint_species = self
             .zerobot_checkpoint
             .as_ref()
             .map(|checkpoint| checkpoint.identity.species);
-        match checkpoint_species.and_then(|species| {
-            remap.get(species.0 as usize).and_then(|value| *value)
-        }) {
+        match checkpoint_species
+            .and_then(|species| remap.get(species.0 as usize).and_then(|value| *value))
+        {
             Some(species) => {
                 if let Some(checkpoint) = self.zerobot_checkpoint.as_mut() {
                     checkpoint.identity.species = species;
@@ -3186,7 +3287,22 @@ impl Engine {
                 "local mode is not configured".to_owned(),
             ));
         };
-        let winner = winner.or_else(|| self.best_mode_species());
+        let contest = matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest);
+        if let Some(species) = winner
+            && self
+                .species
+                .get(species.0 as usize)
+                .is_none_or(|definition| definition.vegetable)
+        {
+            return Err(EngineError::Invariant(
+                "contest winner must be a registered animal species".to_owned(),
+            ));
+        }
+        let winner = if contest {
+            winner
+        } else {
+            winner.or_else(|| self.best_mode_species())
+        };
         let (winning_population, winning_energy) = winner
             .map(|species| self.mode_species_score(species))
             .unwrap_or_default();
@@ -3229,9 +3345,23 @@ impl Engine {
             reason: result_reason,
             automatic,
         });
-        if self.local_mode.current_round >= config.maximum_rounds
-            && self.local_mode.current_round >= config.minimum_rounds
-        {
+        let complete = if contest {
+            let rounds = self.local_mode.results.len() as f64;
+            let mut wins = BTreeMap::<SpeciesId, u32>::new();
+            for result in &self.local_mode.results {
+                if let Some(winner) = result.winner {
+                    *wins.entry(winner).or_default() += 1;
+                }
+            }
+            wins.values().any(|wins| {
+                (config.maximum_rounds > 0 && *wins >= config.maximum_rounds)
+                    || (rounds >= f64::from(config.minimum_rounds)
+                        && f64::from(*wins) > rounds.sqrt() + rounds / 2.0)
+            })
+        } else {
+            self.local_mode.current_round >= config.maximum_rounds.max(config.minimum_rounds)
+        };
+        if complete {
             if zerobot && rollback {
                 self.local_mode.status = LocalModeStatus::RoundComplete;
                 let keep_species = restart_seed.as_ref().map(|seed| seed.identity.species);
@@ -3270,6 +3400,23 @@ impl Engine {
         let Some(config) = self.local_mode.config.clone() else {
             return Ok(());
         };
+        if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
+            let entrants: std::collections::BTreeSet<_> = self
+                .slots
+                .iter()
+                .filter_map(|slot| slot.organism.as_ref())
+                .filter(|robot| !robot.flags.vegetable && !robot.flags.corpse && !robot.flags.dead)
+                .map(|robot| robot.identity.species)
+                .collect();
+            if entrants.len() == 1 {
+                self.finish_local_mode_round(
+                    entrants.first().copied(),
+                    "last surviving species".to_owned(),
+                    true,
+                )?;
+                return Ok(());
+            }
+        }
         if config.restart_on_extinction && self.mode_heterotroph_population() == 0 {
             if self.local_mode.current_round < config.maximum_rounds {
                 self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
@@ -3278,7 +3425,26 @@ impl Engine {
             return Ok(());
         }
         if self.local_mode.cycle_in_round >= config.maximum_cycles {
-            self.finish_local_mode_round(None, "cycle limit".to_owned(), true)?;
+            let winner = if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
+                let mut population = BTreeMap::<SpeciesId, usize>::new();
+                for robot in self
+                    .slots
+                    .iter()
+                    .filter_map(|slot| slot.organism.as_ref())
+                    .filter(|robot| !robot.flags.vegetable)
+                {
+                    *population.entry(robot.identity.species).or_default() += 1;
+                }
+                let mut ranked: Vec<_> = population.into_iter().collect();
+                ranked.sort_by_key(|(_, population)| std::cmp::Reverse(*population));
+                ranked
+                    .first()
+                    .filter(|(_, count)| ranked.get(1).is_none_or(|(_, other)| count > other))
+                    .map(|(species, _)| *species)
+            } else {
+                None
+            };
+            self.finish_local_mode_round(winner, "cycle limit".to_owned(), true)?;
         }
         Ok(())
     }
@@ -3334,7 +3500,7 @@ impl Engine {
                 let is_winner_seed_species =
                     winner_seed.is_some() && keep_species == Some(species_id);
                 keep_species.is_none_or(|keep| keep == species_id)
-                    && !species.vegetable
+                    && (!species.vegetable || keep_species.is_none())
                     && (is_winner_seed_species
                         || self
                             .species_templates
@@ -3342,7 +3508,17 @@ impl Engine {
                             .and_then(Option::as_ref)
                             .is_some())
             })
-            .map(|(index, species)| (SpeciesId(index as u32), species.minimum_population.max(1)))
+            .map(|(index, species)| {
+                (
+                    SpeciesId(index as u32),
+                    self.species_templates
+                        .get(index)
+                        .and_then(Option::as_ref)
+                        .map_or(species.minimum_population.max(1), |template| {
+                            template.initial_population
+                        }),
+                )
+            })
             .collect();
         let mut spawned = 0usize;
         for (species, requested) in species_to_spawn {
@@ -3419,10 +3595,7 @@ impl Engine {
                         .map_or(1, |template| template.initial_energy);
                     organism.materials.energy = initial_energy;
                     organism.materials.synchronize_energy();
-                    organism
-                        .program
-                        .memory
-                        .write(MEM_NRG, initial_energy);
+                    organism.program.memory.write(MEM_NRG, initial_energy);
                 }
                 spawned += 1;
             }
@@ -3521,9 +3694,9 @@ impl Engine {
         value: i32,
     ) -> Result<(), EngineError> {
         self.valid_slot(id)?;
-        if !(1..=999).contains(&address) {
+        if !(1..=1000).contains(&address) {
             return Err(EngineError::Invariant(
-                "organism memory addresses must be between 1 and 999".to_owned(),
+                "organism memory addresses must be between 1 and 1000".to_owned(),
             ));
         }
         if !(-32_000..=32_000).contains(&value) {
@@ -3622,6 +3795,7 @@ impl Engine {
         self.species_templates[species.0 as usize] = Some(SpeciesTemplate {
             dna: dna.clone(),
             initial_energy: energy,
+            initial_population: positions.len(),
         });
         let mut ids = Vec::with_capacity(positions.len());
         for position in positions {
@@ -3710,7 +3884,10 @@ impl Engine {
             initial_biology,
             phenotype,
         );
-        state.program.mutation_profile = self.default_mutation_profile.clone();
+        state.program.mutation_profile = self.species[species.0 as usize]
+            .mutation_profile
+            .clone()
+            .unwrap_or_else(|| self.default_mutation_profile.clone());
         apply_restriction_column(&mut state, &restriction_column);
         Ok(self.slots.spawn(state))
     }
@@ -3767,8 +3944,24 @@ impl Engine {
         self.config.axis_topology()
     }
 
-    pub(crate) fn organism_capacity(&self) -> usize {
-        self.config.organism_capacity
+    pub(crate) fn configuration(&self) -> &EngineConfig {
+        &self.config
+    }
+
+    pub fn update_main_rules(
+        &mut self,
+        body_cutoff: i32,
+        greedy_reproduction: bool,
+    ) -> Result<(), EngineError> {
+        if body_cutoff < 0 {
+            return Err(EngineError::Invariant(
+                "body cutoff must be nonnegative".to_owned(),
+            ));
+        }
+        self.config.body_cutoff = body_cutoff;
+        self.config.greedy_reproduction = greedy_reproduction;
+        self.publish_snapshot();
+        Ok(())
     }
 
     pub fn organism(&self, id: OrganismId) -> Result<OrganismSnapshot, EngineError> {
@@ -3778,6 +3971,66 @@ impl Engine {
             &self.species,
             self.config.fixed_bot_radii,
         ))
+    }
+
+    /// DB2 main.fittest: living animal families, up to ten descendant levels.
+    pub fn find_best_robot(&self, energy_weighting: bool) -> Option<OrganismId> {
+        let mut children: HashMap<OrganismId, Vec<OrganismId>> = HashMap::new();
+        for (slot, entry) in self.slots.iter().enumerate() {
+            if let Some(robot) = &entry.organism
+                && let Some(parent) = robot.identity.parents[0]
+            {
+                children
+                    .entry(parent)
+                    .or_default()
+                    .push(OrganismId::new(slot as u32, entry.generation));
+            }
+        }
+        let mut best = None;
+        let mut best_score = -1.0;
+        for (slot, entry) in self.slots.iter().enumerate() {
+            let Some(robot) = &entry.organism else {
+                continue;
+            };
+            if robot.flags.corpse
+                || robot.flags.dead
+                || self.species[robot.identity.species.0 as usize].vegetable
+            {
+                continue;
+            }
+            let id = OrganismId::new(slot as u32, entry.generation);
+            let mut family_count = 0_u64;
+            let mut family_energy = 0_i64;
+            let mut queue = VecDeque::from([(id, 0)]);
+            let mut visited = HashSet::new();
+            while let Some((member, depth)) = queue.pop_front() {
+                if !visited.insert(member) {
+                    continue;
+                }
+                let Ok(state) = self.slots.get(member) else {
+                    continue;
+                };
+                family_count += 1;
+                family_energy +=
+                    i64::from(state.materials.energy) + i64::from(state.materials.body) * 10;
+                if depth < 10
+                    && let Some(descendants) = children.get(&member)
+                {
+                    queue.extend(descendants.iter().map(|child| (*child, depth + 1)));
+                }
+            }
+            let score = family_count as f64
+                * if energy_weighting {
+                    family_energy.max(0) as f64
+                } else {
+                    1.0
+                };
+            if score >= best_score {
+                best_score = score;
+                best = Some(id);
+            }
+        }
+        best
     }
 
     pub fn lineage(
@@ -3806,10 +4059,7 @@ impl Engine {
             if !visited.insert(current) {
                 continue;
             }
-            entries.push(LineageEntry {
-                id: current,
-                depth,
-            });
+            entries.push(LineageEntry { id: current, depth });
             if depth == max_depth {
                 continue;
             }
@@ -4042,7 +4292,8 @@ impl Engine {
                 || first_organism.materials.body != expected_body)
         {
             return Err(EngineError::Invariant(
-                "manual reproduction parent energy/body changed before command execution".to_owned(),
+                "manual reproduction parent energy/body changed before command execution"
+                    .to_owned(),
             ));
         }
         let dna = if let Some(second) = second {
@@ -4270,7 +4521,10 @@ impl Engine {
         trace.phase(CyclePhase::ModeLogic);
         trace.phase(CyclePhase::Bookkeeping);
         self.apply_survival_handicap();
-        if self.tick.is_multiple_of(100) {
+        if self
+            .tick
+            .is_multiple_of(self.config.recording.sampling_interval.max(1))
+        {
             self.record_history();
         }
 
@@ -4346,6 +4600,27 @@ impl Engine {
         self.trace_robot_phase(&mut trace, CyclePhase::StoreClamps);
         self.store_clamps_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::BigBertha);
+        if self.config.body_cutoff > 0 {
+            let deaths = self
+                .slots
+                .iter()
+                .enumerate()
+                .filter_map(|(slot, entry)| {
+                    let robot = entry.organism.as_ref()?;
+                    (robot.materials.body > self.config.body_cutoff
+                        && (robot.materials.chloroplasts < robot.materials.body / 2
+                            || robot.counters.kills > 5))
+                        .then_some(slot)
+                })
+                .collect();
+            self.commit_lifecycle_queues(
+                LifecycleQueues {
+                    deaths,
+                    ..Default::default()
+                },
+                &mut trace,
+            )?;
+        }
 
         self.trace_robot_phase(&mut trace, CyclePhase::TieReadback);
         let started = Instant::now();
@@ -4593,10 +4868,7 @@ impl Engine {
             .iter()
             .position(|value| value.id == teleporter.id)
             .ok_or_else(|| {
-                EngineError::Invariant(format!(
-                    "teleporter {} does not exist",
-                    teleporter.id
-                ))
+                EngineError::Invariant(format!("teleporter {} does not exist", teleporter.id))
             })?;
         teleporter.poll_interval = teleporter.poll_interval.max(1);
         teleporter.capacity = teleporter.capacity.max(1);
@@ -4855,14 +5127,9 @@ impl Engine {
         Self::active_dna_costs_from(&self.config.dna_costs, &self.dynamic_cost_state)
     }
 
-    fn active_dna_costs_from(
-        configured: &DnaCosts,
-        state: &DynamicCostRuntimeState,
-    ) -> DnaCosts {
+    fn active_dna_costs_from(configured: &DnaCosts, state: &DynamicCostRuntimeState) -> DnaCosts {
         let mut costs = configured.clone();
-        costs.global_multiplier = state
-            .active_multiplier
-            .unwrap_or(costs.global_multiplier);
+        costs.global_multiplier = state.active_multiplier.unwrap_or(costs.global_multiplier);
         costs
     }
 
@@ -4950,6 +5217,7 @@ impl Engine {
         let organism = self.slots.get_mut(id)?;
         organism.program.mutation_profile = profile;
         organism.program.point_mutation_schedule = None;
+        organism.program.point2_mutation_schedule = None;
         self.publish_snapshot();
         Ok(())
     }
@@ -5022,6 +5290,13 @@ impl Engine {
                     organism.program.memory.read(484 + index as i32) != prior_tie_lengths[index];
             }
         }
+        Ok(())
+    }
+
+    pub fn execute_robots(&mut self) -> Result<(), EngineError> {
+        let mut trace = CycleRecorder::disabled(self.tick);
+        self.execute_dna_phase(&mut trace)?;
+        self.publish_snapshot();
         Ok(())
     }
 
@@ -5247,9 +5522,8 @@ impl Engine {
             if commands.make != 0 && robot.effects.stored_virus.is_none() {
                 let requested_gene = commands.make.max(1);
                 if let Some(gene) = robot.program.dna.gene(requested_gene) {
-                    let copy_cost = gene.blocks().len() as f64
-                        * costs.dna_copy
-                        * costs.global_multiplier;
+                    let copy_cost =
+                        gene.blocks().len() as f64 * costs.dna_copy * costs.global_multiplier;
                     let whole_copy_cost = robot.program.settle_dna_energy_cost(copy_cost);
                     robot.materials.energy = robot
                         .materials
@@ -5266,33 +5540,34 @@ impl Engine {
                     make_outcome = CommandOutcome::Consumed;
                 }
             }
-            if commands.shoot != 0 && robot.effects.virus_build_timer == 1 {
-                if let Some(stored) = robot.effects.stored_virus.take() {
-                    let random = advance_random(
-                        self.config.seed
-                            ^ self.tick.rotate_left(19)
-                            ^ (slot_index as u64).rotate_left(37),
-                    );
-                    virus_requests.push((
-                        PendingProjectileRequest {
-                            owner_slot: slot_index,
-                            kind: -7,
-                            value: commands.shoot.abs().max(1),
-                            range_multiplier: 1.0,
-                            angle: (random % 6_283) as f32 / 1_000.0,
-                        },
-                        stored.dna,
-                    ));
-                    robot.effects.virus_build_timer = 0;
-                    shoot_outcome = CommandOutcome::Consumed;
-                }
+            if commands.shoot != 0
+                && robot.effects.virus_build_timer == 1
+                && let Some(stored) = robot.effects.stored_virus.take()
+            {
+                let random = advance_random(
+                    self.config.seed
+                        ^ self.tick.rotate_left(19)
+                        ^ (slot_index as u64).rotate_left(37),
+                );
+                virus_requests.push((
+                    PendingProjectileRequest {
+                        owner_slot: slot_index,
+                        kind: -7,
+                        value: commands.shoot.abs().max(1),
+                        range_multiplier: 1.0,
+                        angle: (random % 6_283) as f32 / 1_000.0,
+                    },
+                    stored.dna,
+                ));
+                robot.effects.virus_build_timer = 0;
+                shoot_outcome = CommandOutcome::Consumed;
             }
-            if commands.delete_gene > 0 {
-                if let Some(dna) = robot.program.dna.delete_gene(commands.delete_gene) {
-                    robot.program.dna = dna;
-                    robot.refresh_occurrence_census();
-                    delete_outcome = CommandOutcome::Consumed;
-                }
+            if commands.delete_gene > 0
+                && let Some(dna) = robot.program.dna.delete_gene(commands.delete_gene)
+            {
+                robot.program.dna = dna;
+                robot.refresh_occurrence_census();
+                delete_outcome = CommandOutcome::Consumed;
             }
             runtime.finish_command(335, make_outcome, &mut robot.program.memory);
             runtime.finish_command(338, shoot_outcome, &mut robot.program.memory);
@@ -5454,9 +5729,7 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
-            if robot.materials.chloroplasts > 0
-                && robot.counters.chloroplast_share_delay > 0
-            {
+            if robot.materials.chloroplasts > 0 && robot.counters.chloroplast_share_delay > 0 {
                 robot.counters.chloroplast_share_delay -= 1;
             }
             robot.materials.decay_chloroplasts();
@@ -5790,6 +6063,12 @@ impl Engine {
                     robot.kinematics.velocity[1] += impulse[1] * force_scale;
                     robot.kinematics.velocity[0] += planet_impulses[slot][0] * force_scale;
                     robot.kinematics.velocity[1] += planet_impulses[slot][1] * force_scale;
+                    let speed = robot.kinematics.velocity[0].hypot(robot.kinematics.velocity[1]);
+                    if speed > settings.max_velocity && speed > f32::EPSILON {
+                        for component in &mut robot.kinematics.velocity {
+                            *component *= settings.max_velocity.max(0.0) / speed;
+                        }
+                    }
                     robot.kinematics.angular_momentum +=
                         brownian_rotation(brownian, seed, tick, slot);
                     apply_angular_damping(
@@ -5951,7 +6230,10 @@ impl Engine {
                 for &x_offset in x_offsets {
                     for &y_offset in y_offsets {
                         target_slots.extend(self.sensing_spatial.neighbors(
-                            [observer_position[0] + x_offset, observer_position[1] + y_offset],
+                            [
+                                observer_position[0] + x_offset,
+                                observer_position[1] + y_offset,
+                            ],
                             sensing_radius,
                         ));
                     }
@@ -6129,7 +6411,7 @@ impl Engine {
                     (MEM_REF_AIM as u16, target_aim),
                     (
                         MEM_REF_TIE as u16,
-                        i32::from(target_occurrences.get(8).copied().unwrap_or(0)),
+                        target_occurrences.get(8).copied().unwrap_or(0),
                     ),
                     (MEM_REF_POISON as u16, target_poison),
                     (MEM_REF_VENOM as u16, target_venom),
@@ -6143,7 +6425,7 @@ impl Engine {
                 values.extend((0..7).map(|index| {
                     (
                         (MEM_REF_OCCURRENCE_BASE + index) as u16,
-                        i32::from(target_occurrences.get(index as usize).copied().unwrap_or(0)),
+                        target_occurrences.get(index as usize).copied().unwrap_or(0),
                     )
                 }));
                 values.extend((0..10).map(|index| {
@@ -6829,8 +7111,7 @@ impl Engine {
                 tie.requested_angle + first_aim + std::f32::consts::PI - second_aim,
             );
             let surface_length = (current_length - first_radius - second_radius)
-                .max(0.0)
-                .min(32_000.0)
+                .clamp(0.0, 32_000.0)
                 .round_ties_even() as i32;
             let spring_velocity = if current_length > f32::EPSILON {
                 let unit = [delta[0] / current_length, delta[1] / current_length];
@@ -6954,14 +7235,12 @@ impl Engine {
                     for index in 0..8 {
                         values.push((
                             MEM_TREF_UP as u16 + index as u16,
-                            i32::from(
-                                target
-                                    .senses
-                                    .occurrence_counts
-                                    .get(index)
-                                    .copied()
-                                    .unwrap_or(0),
-                            ),
+                            target
+                                .senses
+                                .occurrence_counts
+                                .get(index)
+                                .copied()
+                                .unwrap_or(0),
                         ));
                     }
                     values.extend([
@@ -7034,11 +7313,14 @@ impl Engine {
     }
 
     fn eligible_tie_target(&self, attacker_slot: usize, position: [f32; 2]) -> Option<usize> {
-        let attacker = OrganismId::new(
-            attacker_slot as u32,
-            self.slots[attacker_slot].generation,
-        );
-        if self.ties.iter().filter(|tie| tie.contains(attacker)).count() >= MAX_TIES_PER_ROBOT {
+        let attacker = OrganismId::new(attacker_slot as u32, self.slots[attacker_slot].generation);
+        if self
+            .ties
+            .iter()
+            .filter(|tie| tie.contains(attacker))
+            .count()
+            >= MAX_TIES_PER_ROBOT
+        {
             return None;
         }
 
@@ -7121,11 +7403,11 @@ impl Engine {
                 second.materials.publish(&mut second.program.memory);
                 continue;
             }
-            if let Some(second) = self.slots[second_slot].organism.as_mut() {
-                if second.materials.slime > 0 {
-                    second.materials.slime = second.materials.slime.saturating_sub(20).max(0);
-                    second.materials.publish(&mut second.program.memory);
-                }
+            if let Some(second) = self.slots[second_slot].organism.as_mut()
+                && second.materials.slime > 0
+            {
+                second.materials.slime = second.materials.slime.saturating_sub(20).max(0);
+                second.materials.publish(&mut second.program.memory);
             }
             let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
             let second = OrganismId::new(second_slot as u32, self.slots[second_slot].generation);
@@ -7271,9 +7553,7 @@ impl Engine {
             let normalized_kind = ProjectilePool::normalized_kind(commands.kind);
             let tie_multiplier = hardened_ties.saturating_add(1) as i32;
             let (power_multiplier, range_multiplier) = match normalized_kind {
-                -1 | -6 if commands.value > 4 => {
-                    (((commands.value as f32) / 2.0).log2(), 1.0)
-                }
+                -1 | -6 if commands.value > 4 => (((commands.value as f32) / 2.0).log2(), 1.0),
                 -1 | -6 if commands.value < -4 => {
                     (1.0, (commands.value.saturating_abs() as f32 / 2.0).log2())
                 }
@@ -7393,8 +7673,8 @@ impl Engine {
             })
             .collect();
         for (index, contacts) in edge_contacts.iter().enumerate() {
-            for axis in 0..2 {
-                if contacts[axis] {
+            for (axis, contact) in contacts.iter().enumerate() {
+                if *contact {
                     keyed_batch.batch.velocities[index][axis] *= 0.95;
                 }
             }
@@ -7602,11 +7882,8 @@ impl Engine {
             }
 
             for (corpse, state) in self.corpses.iter().enumerate() {
-                let radius = crate::physics::organism_radius(
-                    state.body,
-                    0,
-                    self.config.fixed_bot_radii,
-                );
+                let radius =
+                    crate::physics::organism_radius(state.body, 0, self.config.fixed_bot_radii);
                 let Some(fraction) =
                     crate::physics::segment_circle_fraction(start, end, state.position, radius)
                 else {
@@ -8277,8 +8554,8 @@ impl Engine {
     fn move_obstacles(&mut self) {
         let world_size = [self.config.world_width, self.config.world_height];
         for obstacle in &mut self.obstacles {
-            for axis in 0..2 {
-                let extent = world_size[axis].max(1.0);
+            for (axis, extent) in world_size.iter().enumerate() {
+                let extent = extent.max(1.0);
                 let delta = obstacle.drift[axis];
                 let width = obstacle.maximum[axis] - obstacle.minimum[axis];
                 let minimum =
@@ -8645,7 +8922,11 @@ impl Engine {
         let prior_backflow: Vec<_> = self
             .slots
             .iter()
-            .map(|slot| slot.organism.as_ref().and_then(|robot| robot.teleporter_backflow))
+            .map(|slot| {
+                slot.organism
+                    .as_ref()
+                    .and_then(|robot| robot.teleporter_backflow)
+            })
             .collect();
         let mut next_backflow: Vec<_> = prior_backflow
             .iter()
@@ -8672,18 +8953,13 @@ impl Engine {
                 if !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
                     || !inside_teleporter(teleporter, positions[seed])
-                    || !teleporter
-                        .filters
-                        .accepts(robot.flags.vegetable, false)
+                    || !teleporter.filters.accepts(robot.flags.vegetable, false)
                     || teleporter_blocked_by_obstacles(teleporter, &self.obstacles)
                     || blocks_backflow(teleporter, prior_backflow[seed])
                     || connected.iter().any(|member| {
-                        self.slots[*member]
-                            .organism
-                            .as_ref()
-                            .is_none_or(|member| {
-                                !teleporter.filters.accepts(member.flags.vegetable, false)
-                            })
+                        self.slots[*member].organism.as_ref().is_none_or(|member| {
+                            !teleporter.filters.accepts(member.flags.vegetable, false)
+                        })
                     })
                     || connected.iter().any(|member| handled[*member])
                 {
@@ -8954,12 +9230,11 @@ impl Engine {
                 second.kinematics.position[1] - first.kinematics.position[1],
             ];
             let distance = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
-            let first_radius =
-                crate::physics::organism_radius(
-                    first.materials.body,
-                    first.materials.chloroplasts,
-                    fixed_bot_radii,
-                );
+            let first_radius = crate::physics::organism_radius(
+                first.materials.body,
+                first.materials.chloroplasts,
+                fixed_bot_radii,
+            );
             let second_radius = crate::physics::organism_radius(
                 second.materials.body,
                 second.materials.chloroplasts,
@@ -8997,8 +9272,8 @@ impl Engine {
                     first.kinematics.independent_impulse[1] += torque_vector[1];
                     second.kinematics.independent_impulse[0] -= torque_vector[0];
                     second.kinematics.independent_impulse[1] -= torque_vector[1];
-                    let angular_correction = correction
-                        .clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
+                    let angular_correction =
+                        correction.clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
                     first.kinematics.angular_momentum = (first.kinematics.angular_momentum
                         + angular_correction)
                         .clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
@@ -9428,11 +9703,8 @@ impl Engine {
                     .get(species as usize)
                     .is_some_and(|value| value.reseed);
                 if self.config.corpse_decay.enabled {
-                    self.corpses.push(CorpseSnapshot::from_robot(
-                        &organism,
-                        species,
-                        repopulating,
-                    ));
+                    self.corpses
+                        .push(CorpseSnapshot::from_robot(&organism, species, repopulating));
                 }
                 self.stats.deaths = self.stats.deaths.saturating_add(1);
                 trace.queue_change(
@@ -9510,12 +9782,11 @@ impl Engine {
             child_materials.aim = (parent_state.materials.aim + 628).rem_euclid(1_257);
             child_materials.mass = child_materials.body.max(0) as f32 / 1_000.0
                 + child_materials.shell.max(0) as f32 / 200.0;
-            child_materials.radius =
-                crate::physics::organism_radius(
-                    child_materials.body,
-                    child_materials.chloroplasts,
-                    self.config.fixed_bot_radii,
-                );
+            child_materials.radius = crate::physics::organism_radius(
+                child_materials.body,
+                child_materials.chloroplasts,
+                self.config.fixed_bot_radii,
+            );
             child_materials.synchronize_energy();
             {
                 let child_organism = self.slots.get_mut(child)?;
@@ -9544,8 +9815,8 @@ impl Engine {
                 child_organism.program.rng_state = next_rng;
                 child_organism.program.mutation_profile =
                     parent_state.program.mutation_profile.clone();
-                child_organism.program.point_mutation_schedule =
-                    parent_state.program.point_mutation_schedule;
+                child_organism.program.point_mutation_schedule = None;
+                child_organism.program.point2_mutation_schedule = None;
                 child_organism.program.mutation_metadata =
                     parent_state.program.mutation_metadata.clone();
                 child_organism.phenotype = parent_state.phenotype.clone();
@@ -9766,11 +10037,12 @@ impl Engine {
         }
         let settings = self.config.advanced_mutation.clone();
         let base_multiplier = f64::from(self.global_mutation_multiplier);
-        let mut ids = match context {
+        let ids = match context {
             MutationContext::Reproduction { .. } => std::mem::take(&mut self.pending_mutations),
             MutationContext::Lifelong => Vec::new(),
         };
         if matches!(context, MutationContext::Lifelong) {
+            let mut events = Vec::new();
             for (slot, entry) in self.slots.iter_mut().enumerate() {
                 let Some(organism) = entry.organism.as_mut() else {
                     continue;
@@ -9778,40 +10050,90 @@ impl Engine {
                 if !organism.flags.can_mutate {
                     continue;
                 }
-                if organism.program.point_mutation_schedule.is_none() {
-                    let coding_len = organism.program.dna.blocks().len().saturating_sub(1);
-                    if coding_len == 0 {
+                let age = organism.counters.age;
+                let dna_len = organism.program.dna.blocks().len();
+                let policy = apply_advanced_mutation_policies(
+                    &mut organism.program.mutation_profile,
+                    &settings,
+                    MutationPolicyInput {
+                        cycle: age,
+                        dna_len,
+                        mutation_count: organism.program.mutation_metadata.total_mutations,
+                        base_multiplier,
+                    },
+                    &mut organism.heredity.epigenetic_staging,
+                );
+                if policy.delta2_applied {
+                    organism.program.point_mutation_schedule = None;
+                    organism.program.point2_mutation_schedule = None;
+                }
+                let id = OrganismId::new(slot as u32, entry.generation);
+                for kind in [StandardMutationKind::Point, StandardMutationKind::Point2] {
+                    if kind == StandardMutationKind::Point2 && !settings.point2_enabled {
                         continue;
                     }
-                    let random = advance_random(organism.program.rng_state);
-                    organism.program.rng_state = random;
-                    let rate = organism
-                        .program
-                        .mutation_profile
-                        .point
-                        .one_in
-                        .min(organism.program.mutation_profile.delta.one_in)
-                        .max(1.0)
-                        .min(u64::MAX as f64) as u64;
-                    let maximum_result = rate.saturating_mul(coding_len as u64).max(1);
-                    organism.program.point_mutation_schedule =
-                        PointMutationSchedule::from_geometric(
-                            organism.counters.age,
-                            organism.program.dna.blocks().len(),
-                            random % maximum_result,
+                    let one_in = organism.program.mutation_profile.rate(kind).one_in;
+                    if one_in <= 0.0 {
+                        continue;
+                    }
+                    let clock = if kind == StandardMutationKind::Point {
+                        &mut organism.program.point_mutation_schedule
+                    } else {
+                        &mut organism.program.point2_mutation_schedule
+                    };
+                    if clock.is_none_or(|schedule| schedule.cycle < age) {
+                        *clock = sample_age_mutation_clock(
+                            age,
+                            dna_len,
+                            kind,
+                            &organism.program.mutation_profile,
+                            policy.effective_multiplier,
+                            &mut organism.program.rng_state,
                         );
+                    }
+                    while age > 0 && clock.is_some_and(|schedule| schedule.cycle == age) {
+                        let location = if kind == StandardMutationKind::Point2 {
+                            organism.program.rng_state = advance_random(organism.program.rng_state);
+                            organism.program.rng_state as usize % dna_len.saturating_sub(1).max(1)
+                                + 1
+                        } else {
+                            clock.expect("due mutation clock").location
+                        };
+                        events.push((id, kind, location, policy));
+                        *clock = sample_age_mutation_clock(
+                            age,
+                            dna_len,
+                            kind,
+                            &organism.program.mutation_profile,
+                            policy.effective_multiplier,
+                            &mut organism.program.rng_state,
+                        );
+                    }
                 }
-                if organism
-                    .program
-                    .point_mutation_schedule
-                    .is_some_and(|schedule| schedule.cycle <= self.tick)
+                // DB2 samples Delta every age cycle, independently of Point/Point2.
+                if !settings.delta2.enabled && organism.program.mutation_profile.delta.one_in > 0.0
                 {
-                    ids.push(OrganismId::new(slot as u32, entry.generation));
+                    organism.program.rng_state = advance_random(organism.program.rng_state);
+                    let probability = policy.effective_multiplier
+                        / (100.0 * organism.program.mutation_profile.delta.one_in);
+                    let uniform = organism.program.rng_state as f64 / u64::MAX as f64;
+                    if uniform > 1.0 - probability.min(1.0) {
+                        events.push((id, StandardMutationKind::Delta, 1, policy));
+                    }
                 }
+            }
+            for (id, kind, location, policy) in events {
+                self.apply_mutation_to_organism(
+                    id,
+                    &settings,
+                    base_multiplier,
+                    context,
+                    Some((kind, location, policy)),
+                );
             }
         }
         for id in ids {
-            self.apply_mutation_to_organism(id, &settings, base_multiplier, context);
+            self.apply_mutation_to_organism(id, &settings, base_multiplier, context, None);
         }
     }
 
@@ -9821,6 +10143,7 @@ impl Engine {
         settings: &AdvancedMutationSettings,
         base_multiplier: f64,
         context: MutationContext,
+        scheduled: Option<(StandardMutationKind, usize, crate::MutationPolicyReport)>,
     ) {
         let species = self
             .slots
@@ -9842,25 +10165,22 @@ impl Engine {
             if !organism.flags.can_mutate {
                 return;
             }
-            let mut policy = apply_advanced_mutation_policies(
-                &mut organism.program.mutation_profile,
-                settings,
-                MutationPolicyInput {
-                    cycle: self.tick,
-                    dna_len: organism.program.dna.blocks().len(),
-                    mutation_count: organism.program.mutation_metadata.total_mutations,
-                    base_multiplier,
+            let mut policy = scheduled.map_or_else(
+                || {
+                    apply_advanced_mutation_policies(
+                        &mut organism.program.mutation_profile,
+                        settings,
+                        MutationPolicyInput {
+                            cycle: self.tick,
+                            dna_len: organism.program.dna.blocks().len(),
+                            mutation_count: organism.program.mutation_metadata.total_mutations,
+                            base_multiplier,
+                        },
+                        &mut organism.heredity.epigenetic_staging,
+                    )
                 },
-                &mut organism.heredity.epigenetic_staging,
+                |(_, _, policy)| policy,
             );
-            if matches!(context, MutationContext::Lifelong) {
-                policy.effective_one_in = policy
-                    .effective_one_in
-                    .min(organism.program.mutation_profile.effective_one_in(
-                        StandardMutationKind::Delta,
-                        policy.effective_multiplier,
-                    ));
-            }
             if matches!(context, MutationContext::Reproduction { forced: false })
                 && configured_reproductive_rate > 0.0
             {
@@ -9880,18 +10200,24 @@ impl Engine {
                 );
             }
             let mut mutator = GenomeMutator::new(organism.program.rng_state);
-            let report = mutator.mutate_with_advanced_policy_mut(
-                &mut organism.program.dna,
-                &mut organism.program.mutation_profile,
-                policy,
-                settings,
-                context,
-            );
+            let report = if let Some((kind, location, _)) = scheduled {
+                mutator.apply_scheduled_kind(
+                    &mut organism.program.dna,
+                    &mut organism.program.mutation_profile,
+                    kind,
+                    location,
+                )
+            } else {
+                mutator.mutate_with_advanced_policy_mut(
+                    &mut organism.program.dna,
+                    &mut organism.program.mutation_profile,
+                    policy,
+                    settings,
+                    context,
+                )
+            };
             organism.program.rng_state = mutator.random_state();
             organism.refresh_occurrence_census();
-            if matches!(context, MutationContext::Lifelong) {
-                organism.program.point_mutation_schedule = None;
-            }
             if report.changes > 0 {
                 organism.phenotype.apply_color_mutation(
                     report.changes,
@@ -10414,24 +10740,22 @@ fn apply_tie_resource(
             source.materials.chloroplasts,
         )
         .clamp(1.0, 32_000.0);
-        source.materials.radius =
-            crate::physics::organism_radius(
-                source.materials.body,
-                source.materials.chloroplasts,
-                fixed_bot_radii,
-            );
+        source.materials.radius = crate::physics::organism_radius(
+            source.materials.body,
+            source.materials.chloroplasts,
+            fixed_bot_radii,
+        );
         target.materials.mass = derived_mass(
             target.materials.body,
             target.materials.shell,
             target.materials.chloroplasts,
         )
         .clamp(1.0, 32_000.0);
-        target.materials.radius =
-            crate::physics::organism_radius(
-                target.materials.body,
-                target.materials.chloroplasts,
-                fixed_bot_radii,
-            );
+        target.materials.radius = crate::physics::organism_radius(
+            target.materials.body,
+            target.materials.chloroplasts,
+            fixed_bot_radii,
+        );
     }
     result
 }
@@ -10899,6 +11223,29 @@ fn shortest_wrapped_delta(
     delta
 }
 
+fn sample_age_mutation_clock(
+    age: u64,
+    dna_len: usize,
+    kind: StandardMutationKind,
+    profile: &StandardMutationProfile,
+    multiplier: f64,
+    random: &mut u64,
+) -> Option<PointMutationSchedule> {
+    let mut rate = profile.rate(kind).one_in;
+    if kind == StandardMutationKind::Point2 {
+        *random = advance_random(*random);
+        let unit = (*random as f64 / u64::MAX as f64).max(f64::MIN_POSITIVE);
+        *random = advance_random(*random);
+        let angle = (*random as f64 / u64::MAX as f64) * std::f64::consts::TAU;
+        let length = (profile.point.mean
+            + profile.point.std_dev * (-2.0 * unit.ln()).sqrt() * angle.cos())
+        .max(1.0);
+        rate = rate / length * 1.33;
+    }
+    *random = advance_random(*random);
+    PointMutationSchedule::sample(age, dna_len, rate, multiplier, *random, 0)
+}
+
 fn unit_coordinate(random: u64, extent: f32) -> f32 {
     let margin = 60.0_f32.min(extent.max(0.0) * 0.5);
     let usable = (extent - margin * 2.0).max(0.0);
@@ -10996,9 +11343,7 @@ fn vegetable_reproduction_passes_population_throttle(
         return true;
     }
 
-    let random = advance_random(
-        seed ^ tick.rotate_left(19) ^ (slot_index as u64).rotate_left(37),
-    );
+    let random = advance_random(seed ^ tick.rotate_left(19) ^ (slot_index as u64).rotate_left(37));
     random % if sexual { 10 } else { 11 } == 5
 }
 
@@ -11106,7 +11451,12 @@ mod tests {
         let deltas: Vec<_> = light_cases
             .iter()
             .map(|(name, pond_mode, intensity, depth)| {
-                (*name, VegetationRuntime::default().feed(input(*pond_mode, *intensity, *depth)).delta)
+                (
+                    *name,
+                    VegetationRuntime::default()
+                        .feed(input(*pond_mode, *intensity, *depth))
+                        .delta,
+                )
             })
             .collect();
         assert!(deltas[0].1 > deltas[1].1, "sun intensity must scale yield");
@@ -11118,7 +11468,10 @@ mod tests {
             (500.0, 0.1, 0.0, false),
             (900.0, 0.9, 0.0, true),
         ] {
-            assert_eq!(is_in_sun_band(x, config.world_width, sun_position, sun_range), expected);
+            assert_eq!(
+                is_in_sun_band(x, config.world_width, sun_position, sun_range),
+                expected
+            );
         }
 
         for (feeding_to_body, expected) in [
@@ -11142,7 +11495,13 @@ mod tests {
         ] {
             assert_eq!(
                 vegetable_reproduction_passes_population_throttle(
-                    vegetable, false, equivalents, cap, seed, tick, slot,
+                    vegetable,
+                    false,
+                    equivalents,
+                    cap,
+                    seed,
+                    tick,
+                    slot,
                 ),
                 expected,
             );

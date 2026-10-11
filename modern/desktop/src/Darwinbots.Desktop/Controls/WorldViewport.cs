@@ -38,6 +38,8 @@ public sealed class WorldViewport : Control
     private EnergyGridSize _energyGridSize = EnergyGridSize.Large;
     private bool _flickerMode;
     private bool _renderSkins = true;
+    private bool _fixedRatio;
+    private bool _oldColors;
     private bool _showDeathPoffs = true;
     private bool _flickerFrame;
     private RgbMemoryMonitorSettings? _rgbMemoryMonitor;
@@ -52,6 +54,12 @@ public sealed class WorldViewport : Control
     public event Action<OrganismKey, float[]>? OrganismKeyDragCompleted;
 
     public bool RenderWaste { get => _renderWaste; set { _renderWaste = value; InvalidateVisual(); } }
+    public bool FixedRatio { get => _fixedRatio; set { _fixedRatio = value; InvalidateVisual(); } }
+    public bool OldColors { get => _oldColors; set { _oldColors = value; InvalidateVisual(); } }
+    private double ScaleX => FixedRatio ? Math.Min(RawScaleX, RawScaleY) : RawScaleX;
+    private double ScaleY => FixedRatio ? Math.Min(RawScaleX, RawScaleY) : RawScaleY;
+    private double RawScaleX => Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
+    private double RawScaleY => Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
     public bool ShowSelectedVision { get => _showSelectedVision; set { _showSelectedVision = value; InvalidateVisual(); } }
     public bool ToroidalWorld
     {
@@ -158,8 +166,8 @@ public sealed class WorldViewport : Control
         _selectedKeys.RemoveWhere(key => !Contains(snapshot, key));
         if (_followKey is { } followed && snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
         {
-            var scaleX = Bounds.Width / Math.Max(1.0, snapshot.WorldSize[0]);
-            var scaleY = Bounds.Height / Math.Max(1.0, snapshot.WorldSize[1]);
+            var scaleX = ScaleX;
+            var scaleY = ScaleY;
             _pan = new Vector(Bounds.Width / 2 - organism.Position[0] * scaleX * _zoom,
                 Bounds.Height / 2 - organism.Position[1] * scaleY * _zoom);
         }
@@ -186,8 +194,8 @@ public sealed class WorldViewport : Control
         _followKey = key;
         if (key is { } followed && _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == followed) is { } organism)
         {
-            var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
-            var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+            var scaleX = ScaleX;
+            var scaleY = ScaleY;
             _pan = new Vector(Bounds.Width / 2 - organism.Position[0] * scaleX * _zoom,
                 Bounds.Height / 2 - organism.Position[1] * scaleY * _zoom);
             _pan = ClampPan(_pan);
@@ -199,7 +207,7 @@ public sealed class WorldViewport : Control
     {
         base.Render(context);
         var overlay = OverlayProjection;
-        context.FillRectangle(new SolidColorBrush(Color.Parse("#F9F8F2")), Bounds);
+        context.FillRectangle(new SolidColorBrush(Color.Parse(OldColors ? "#000040" : "#F9F8F2")), Bounds);
         if (overlay.HasBackgroundImage && _backgroundImage is not null) context.DrawImage(_backgroundImage, Bounds);
         DrawGrid(context);
         if (FlickerMode && (_flickerFrame = !_flickerFrame)) return;
@@ -219,8 +227,8 @@ public sealed class WorldViewport : Control
             return;
         }
 
-        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
-        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+        var scaleX = ScaleX;
+        var scaleY = ScaleY;
         if (_snapshot.RenderInstances.Count > 0)
         {
             DrawOrganisms(context, scaleX, scaleY);
@@ -458,8 +466,8 @@ public sealed class WorldViewport : Control
                 e.Handled = true;
                 return;
             }
-            var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
-            var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+            var scaleX = ScaleX;
+            var scaleY = ScaleY;
             WorldClicked?.Invoke([
                 (float)Math.Clamp((point.Position.X - _pan.X) / (scaleX * _zoom), 0, _snapshot.WorldSize[0]),
                 (float)Math.Clamp((point.Position.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
@@ -554,8 +562,8 @@ public sealed class WorldViewport : Control
 
     private OrganismKey? FindNearest(Point pointer)
     {
-        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
-        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+        var scaleX = ScaleX;
+        var scaleY = ScaleY;
         OrganismKey? best = null;
         var bestDistance = InputHitRadius * InputHitRadius;
         foreach (var organism in _snapshot.Organisms)
@@ -572,8 +580,8 @@ public sealed class WorldViewport : Control
 
     private float[] WorldPoint(Point point)
     {
-        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
-        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+        var scaleX = ScaleX;
+        var scaleY = ScaleY;
         return [
             (float)Math.Clamp((point.X - _pan.X) / (scaleX * _zoom), 0, _snapshot.WorldSize[0]),
             (float)Math.Clamp((point.Y - _pan.Y) / (scaleY * _zoom), 0, _snapshot.WorldSize[1]),
@@ -606,8 +614,8 @@ public sealed class WorldViewport : Control
 
     private WorldFeatureSelection? FindFeature(Point pointer)
     {
-        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]) * _zoom;
-        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]) * _zoom;
+        var scaleX = ScaleX * _zoom;
+        var scaleY = ScaleY * _zoom;
         foreach (var obstacle in _snapshot.Obstacles.AsEnumerable().Reverse())
         {
             var bounds = new Rect(
@@ -647,8 +655,8 @@ public sealed class WorldViewport : Control
 
     private void DrawWorldFeatures(DrawingContext context, WorldOverlayProjection overlay)
     {
-        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]) * _zoom;
-        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]) * _zoom;
+        var scaleX = ScaleX * _zoom;
+        var scaleY = ScaleY * _zoom;
         if (_snapshot.Ties.Count > 0)
         {
             var positions = _snapshot.Organisms.ToDictionary(
@@ -830,8 +838,8 @@ public sealed class WorldViewport : Control
             EnergyGridSize.Medium => 80.0,
             _ => 48.0,
         };
-        var scaleX = Bounds.Width / Math.Max(1.0, _snapshot.WorldSize[0]);
-        var scaleY = Bounds.Height / Math.Max(1.0, _snapshot.WorldSize[1]);
+        var scaleX = ScaleX;
+        var scaleY = ScaleY;
         var cells = new Dictionary<(int X, int Y), (int Count, double Energy)>();
         foreach (var organism in _snapshot.Organisms)
         {

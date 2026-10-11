@@ -30,7 +30,7 @@ public sealed class HistoryChart : Control
         }
         if (_samples.Count < 2)
         {
-            var message = new FormattedText("Collecting every 100 ticks", System.Globalization.CultureInfo.InvariantCulture,
+            var message = new FormattedText("Waiting for history samples", System.Globalization.CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, new Typeface("Bahnschrift"), 10, new SolidColorBrush(Color.Parse("#69716D")));
             context.DrawText(message, new Point(4, Math.Max(2, (area.Height - message.Height) / 2)));
             return;

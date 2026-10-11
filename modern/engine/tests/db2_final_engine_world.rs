@@ -107,25 +107,16 @@ fn phy_08_resolves_every_cluster_pair_and_substitutes_fixed_body_mass() {
     let mut cluster = Engine::new(config.clone()).unwrap();
     cluster
         .spawn_batch([
-            (
-                LegacyDna::parse("start\nstop").unwrap(),
-                [400.0, 500.0],
-            ),
-            (
-                LegacyDna::parse("start\nstop").unwrap(),
-                [550.0, 500.0],
-            ),
-            (
-                LegacyDna::parse("start\nstop").unwrap(),
-                [700.0, 500.0],
-            ),
+            (LegacyDna::parse("start\nstop").unwrap(), [400.0, 500.0]),
+            (LegacyDna::parse("start\nstop").unwrap(), [550.0, 500.0]),
+            (LegacyDna::parse("start\nstop").unwrap(), [700.0, 500.0]),
         ])
         .unwrap();
     cluster.tick().unwrap();
     let cluster_snapshot = cluster.snapshot();
     let radius = cluster_snapshot.render_instances[0].radius;
-    let middle_to_right = cluster_snapshot.organisms[2].position[0]
-        - cluster_snapshot.organisms[1].position[0];
+    let middle_to_right =
+        cluster_snapshot.organisms[2].position[0] - cluster_snapshot.organisms[1].position[0];
     assert!(
         middle_to_right >= radius * 2.0 - 0.01,
         "cluster pair remained overlapped: {middle_to_right} < {}",
@@ -203,12 +194,8 @@ fn sen_01_opaque_shapes_occlude_and_disabled_vision_clears_nine_eyes() {
 
 #[test]
 fn sen_01_projects_each_of_nine_eyes_in_bounded_and_toroidal_geometry() {
-    let projections = (0..9).map(|index| {
-        (
-            index,
-            (4.0 - index as f32) * std::f32::consts::PI / 18.0,
-        )
-    });
+    let projections =
+        (0..9).map(|index| (index, (4.0 - index as f32) * std::f32::consts::PI / 18.0));
 
     for toroidal_world in [false, true] {
         for (eye_index, expected_angle) in projections.clone() {
@@ -224,10 +211,7 @@ fn sen_01_projects_each_of_nine_eyes_in_bounded_and_toroidal_geometry() {
                 [1_000.0, 1_000.0]
             };
             let observer = engine
-                .spawn_at(
-                    LegacyDna::parse("start\nstop").unwrap(),
-                    observer_position,
-                )
+                .spawn_at(LegacyDna::parse("start\nstop").unwrap(), observer_position)
                 .unwrap();
             let mut target_position = [
                 observer_position[0] + 300.0 * expected_angle.sin(),

@@ -44,6 +44,11 @@ public interface IEngineClient : IDisposable
     void ConfigurePlayerBot(PlayerBotConfig config);
     void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed);
     void SetOrganismMemory(uint slot, uint generation, ushort address, int value);
+    ushort ResolveMemoryAddress(string name) => ushort.TryParse(name, out var address) && address is >= 1 and <= 1000
+        ? address : throw new FormatException($"Unknown memory address '{name}'.");
+    void ExecuteRobots() => throw new NotSupportedException("DNA-only execution is unavailable.");
+    OrganismKey? FindBestRobot(bool energyWeighting) => null;
+    void UpdateMainRules(GlobalMainSettings settings) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);
     void UpdateRestrictionOptions(RestrictionOptions options);
     void ConfigureLocalMode(LocalModeConfig config);

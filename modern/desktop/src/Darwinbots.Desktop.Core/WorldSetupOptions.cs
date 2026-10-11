@@ -23,6 +23,8 @@ public sealed record WorldSetupOptions
     public bool AutomaticZerobotProgression { get; init; } = true;
     public string Backend { get; init; } = "Auto";
     public ulong Seed { get; init; } = 1;
+    public IReadOnlyList<string>? LegacySettingsFields { get; init; }
+    public MutationSettingsUpdate MutationSettings { get; init; } = MutationSettingsUpdate.Default;
     public int PopulationCapacity { get; init; } = 25_000;
     public int VegetablePopulationCap { get; init; } = 500;
     public float WorldWidth { get; init; } = 16_000f;
@@ -42,6 +44,11 @@ public sealed record WorldSetupOptions
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
+    public bool FixedBotRadii { get; init; }
+    public bool TiesEnabled { get; init; } = true;
+    public bool RobotFixingAllowed { get; init; } = true;
+    public bool AsexualReproductionAllowed { get; init; } = true;
+    public IReadOnlyList<ObstacleSnapshot> Obstacles { get; init; } = [];
     public bool WrapX { get; init; } = true;
     public bool WrapY { get; init; } = true;
     public uint TicksPerUpdate { get; init; } = 1;

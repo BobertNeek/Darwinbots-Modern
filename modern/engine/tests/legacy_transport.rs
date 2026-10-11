@@ -149,7 +149,12 @@ fn assert_legacy_settings_semantics(
     expected: &LegacySettingsFile,
     actual: &LegacySettingsFile,
 ) {
-    assert_eq!(actual.version, expected.version, "{}: version changed", path.display());
+    assert_eq!(
+        actual.version,
+        expected.version,
+        "{}: version changed",
+        path.display()
+    );
     assert_eq!(
         actual.simulation_name,
         expected.simulation_name,
@@ -210,7 +215,12 @@ fn assert_legacy_settings_semantics(
         "{}: minimum vegetables changed",
         path.display()
     );
-    assert_eq!(actual.gravity, expected.gravity, "{}: gravity changed", path.display());
+    assert_eq!(
+        actual.gravity,
+        expected.gravity,
+        "{}: gravity changed",
+        path.display()
+    );
     assert_eq!(
         actual.sunlight_energy,
         expected.sunlight_energy,
@@ -475,9 +485,11 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
     fs::create_dir_all(&outbound).expect("outbound directory");
 
     let mut engine = Engine::new(EngineConfig::testing()).expect("fixture engine");
-    let mut vegetable = SpeciesDefinition::default();
-    vegetable.name = "Fixture vegetable".to_owned();
-    vegetable.vegetable = true;
+    let vegetable = SpeciesDefinition {
+        name: "Fixture vegetable".to_owned(),
+        vegetable: true,
+        ..Default::default()
+    };
     let vegetable_species = engine.register_species(vegetable);
 
     engine

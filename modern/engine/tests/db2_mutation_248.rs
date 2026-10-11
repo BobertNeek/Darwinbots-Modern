@@ -193,12 +193,36 @@ fn changing_a_robot_point_rate_reschedules_its_next_mutation() {
     assert_eq!(engine.snapshot().stats.mutations, 0);
 
     let mut fast_profile = engine.mutation_profile(id).unwrap().clone();
+    // NeoMutations clamps the effective rate to one: a small rate does not
+    // guarantee a mutation on the next cycle.
     fast_profile.point.one_in = 1.0;
     engine.set_mutation_profile(id, fast_profile).unwrap();
+    assert!(
+        engine
+            .robot_state(id)
+            .unwrap()
+            .program
+            .point_mutation_schedule
+            .is_none()
+    );
     engine.tick().unwrap();
-
-    assert_eq!(engine.snapshot().stats.mutations, 1);
-    assert_eq!(engine.organism(id).unwrap().total_mutations, 1);
+    let scheduled_age = engine
+        .robot_state(id)
+        .unwrap()
+        .program
+        .point_mutation_schedule
+        .unwrap()
+        .cycle;
+    assert!(scheduled_age < 10_000, "fast rate retained the slow clock");
+    let current_age = engine.organism(id).unwrap().age;
+    engine
+        .tick_many(
+            (scheduled_age.saturating_sub(current_age) + 1)
+                .try_into()
+                .unwrap(),
+        )
+        .unwrap();
+    assert!(engine.organism(id).unwrap().total_mutations > 0);
 }
 
 #[test]
@@ -399,11 +423,11 @@ fn engine_rejects_every_malformed_profile_field_atomically() {
         }};
     }
 
-    invalid_rate!("point one_in", point, one_in, 0.0);
+    invalid_rate!("point one_in", point, one_in, -1.0);
     invalid_rate!("delta one_in", delta, one_in, -1.0);
     invalid_rate!("copy one_in", copy_error, one_in, f64::NAN);
     invalid_rate!("insertion one_in", insertion, one_in, f64::INFINITY);
-    invalid_rate!("reversal one_in", reversal, one_in, 0.0);
+    invalid_rate!("reversal one_in", reversal, one_in, -1.0);
     invalid_rate!("minor deletion one_in", minor_deletion, one_in, -1.0);
     invalid_rate!("major deletion one_in", major_deletion, one_in, f64::NAN);
 

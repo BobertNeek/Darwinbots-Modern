@@ -38,8 +38,8 @@ pub use backend::{BackendCapabilities, BackendKind, BackendPreference};
 pub use biology::BiologyState;
 pub use biology::RobotMaterials;
 pub use config::{
-    CorpseDecayMode, CorpseDecaySettings, EngineConfig, PhysicsSettings, RecordingSettings,
-    ShotSettings, VegetationSettings, WasteSettings, MAX_ROBOTS,
+    CorpseDecayMode, CorpseDecaySettings, EngineConfig, MAX_ROBOTS, PhysicsSettings,
+    RecordingSettings, ShotSettings, VegetationSettings, WasteSettings,
 };
 pub use corpse::CorpseSnapshot;
 pub use dna::{DnaMetadata, LegacyDna};

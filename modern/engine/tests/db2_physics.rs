@@ -115,6 +115,7 @@ fn voluntary_acceleration_is_clamped_before_efficiency_multiplier() {
         metabolism_cost: 0,
         drag: 0.0,
         physics: PhysicsSettings {
+            max_velocity: DEFAULT_MAX_VELOCITY,
             surface_gravity: 0.0,
             density: 0.0,
             ..PhysicsSettings::default()
@@ -150,6 +151,7 @@ fn voluntary_motion_cost_uses_the_clipped_acceleration_magnitude() {
     config.gravity = [0.0, 0.0];
     config.drag = 0.0;
     config.physics.movement_efficiency = 1.0;
+    config.physics.max_velocity = 180.0;
     config.physics.surface_gravity = 0.0;
     config.physics.static_friction = 0.0;
     config.physics.kinetic_friction = 0.0;
@@ -577,24 +579,132 @@ fn non_toroidal_border_collision_writes_edge_sense() {
 #[test]
 fn edge_sense_matches_vb6_boundary_distance_calibration() {
     let cases = [
-        ("left exact wall contact", [60.0, 100.0], [false, false], 1, [60.0, 100.0]),
-        ("left one-unit interior", [61.0, 100.0], [false, false], 0, [61.0, 100.0]),
-        ("left center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
-        ("left beyond-world clamp", [-1.0, 100.0], [false, false], 1, [60.0, 100.0]),
-        ("right exact wall contact", [140.0, 100.0], [false, false], 1, [140.0, 100.0]),
-        ("right one-unit interior", [139.0, 100.0], [false, false], 0, [139.0, 100.0]),
-        ("right center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
-        ("right beyond-world clamp", [201.0, 100.0], [false, false], 1, [140.0, 100.0]),
-        ("top exact wall contact", [100.0, 60.0], [false, false], 1, [100.0, 60.0]),
-        ("top one-unit interior", [100.0, 61.0], [false, false], 0, [100.0, 61.0]),
-        ("top center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
-        ("top beyond-world clamp", [100.0, -1.0], [false, false], 1, [100.0, 60.0]),
-        ("bottom exact wall contact", [100.0, 140.0], [false, false], 1, [100.0, 140.0]),
-        ("bottom one-unit interior", [100.0, 139.0], [false, false], 0, [100.0, 139.0]),
-        ("bottom center", [100.0, 100.0], [false, false], 0, [100.0, 100.0]),
-        ("bottom beyond-world clamp", [100.0, 201.0], [false, false], 1, [100.0, 140.0]),
-        ("wrapped x suppresses its wall sense", [60.0, 100.0], [true, false], 0, [110.0, 100.0]),
-        ("solid y reports its wall sense", [100.0, 60.0], [true, false], 1, [100.0, 60.0]),
+        (
+            "left exact wall contact",
+            [60.0, 100.0],
+            [false, false],
+            1,
+            [60.0, 100.0],
+        ),
+        (
+            "left one-unit interior",
+            [61.0, 100.0],
+            [false, false],
+            0,
+            [61.0, 100.0],
+        ),
+        (
+            "left center",
+            [100.0, 100.0],
+            [false, false],
+            0,
+            [100.0, 100.0],
+        ),
+        (
+            "left beyond-world clamp",
+            [-1.0, 100.0],
+            [false, false],
+            1,
+            [60.0, 100.0],
+        ),
+        (
+            "right exact wall contact",
+            [140.0, 100.0],
+            [false, false],
+            1,
+            [140.0, 100.0],
+        ),
+        (
+            "right one-unit interior",
+            [139.0, 100.0],
+            [false, false],
+            0,
+            [139.0, 100.0],
+        ),
+        (
+            "right center",
+            [100.0, 100.0],
+            [false, false],
+            0,
+            [100.0, 100.0],
+        ),
+        (
+            "right beyond-world clamp",
+            [201.0, 100.0],
+            [false, false],
+            1,
+            [140.0, 100.0],
+        ),
+        (
+            "top exact wall contact",
+            [100.0, 60.0],
+            [false, false],
+            1,
+            [100.0, 60.0],
+        ),
+        (
+            "top one-unit interior",
+            [100.0, 61.0],
+            [false, false],
+            0,
+            [100.0, 61.0],
+        ),
+        (
+            "top center",
+            [100.0, 100.0],
+            [false, false],
+            0,
+            [100.0, 100.0],
+        ),
+        (
+            "top beyond-world clamp",
+            [100.0, -1.0],
+            [false, false],
+            1,
+            [100.0, 60.0],
+        ),
+        (
+            "bottom exact wall contact",
+            [100.0, 140.0],
+            [false, false],
+            1,
+            [100.0, 140.0],
+        ),
+        (
+            "bottom one-unit interior",
+            [100.0, 139.0],
+            [false, false],
+            0,
+            [100.0, 139.0],
+        ),
+        (
+            "bottom center",
+            [100.0, 100.0],
+            [false, false],
+            0,
+            [100.0, 100.0],
+        ),
+        (
+            "bottom beyond-world clamp",
+            [100.0, 201.0],
+            [false, false],
+            1,
+            [100.0, 140.0],
+        ),
+        (
+            "wrapped x suppresses its wall sense",
+            [60.0, 100.0],
+            [true, false],
+            0,
+            [110.0, 100.0],
+        ),
+        (
+            "solid y reports its wall sense",
+            [100.0, 60.0],
+            [true, false],
+            1,
+            [100.0, 60.0],
+        ),
     ];
 
     for (name, position, wrapped_axes, expected_edge, expected_position) in cases {
@@ -705,23 +815,20 @@ fn phy04_cpu_engine_physics_contract() {
             viscosity: 0.0,
             ..PhysicsSettings::default()
         };
-    let config = |
-        world_size: [f32; 2],
-        topology: [bool; 2],
-        physics: PhysicsSettings,
-    | EngineConfig {
-        world_width: world_size[0],
-        world_height: world_size[1],
-        toroidal_world: false,
-        axis_topology: Some(topology),
-        fixed_bot_radii: true,
-        metabolism_cost: 0,
-        gravity: [0.0, 0.0],
-        drag: 0.0,
-        brownian_motion: 0.0,
-        physics,
-        ..EngineConfig::testing()
-    };
+    let config =
+        |world_size: [f32; 2], topology: [bool; 2], physics: PhysicsSettings| EngineConfig {
+            world_width: world_size[0],
+            world_height: world_size[1],
+            toroidal_world: false,
+            axis_topology: Some(topology),
+            fixed_bot_radii: true,
+            metabolism_cost: 0,
+            gravity: [0.0, 0.0],
+            drag: 0.0,
+            brownian_motion: 0.0,
+            physics,
+            ..EngineConfig::testing()
+        };
     let center = [500.0, 500.0];
     let cases = [
         Case {
@@ -819,11 +926,7 @@ fn phy04_cpu_engine_physics_contract() {
             name: "toroidal axes",
             command: "dx",
             input: 100,
-            config: config(
-                [200.0, 200.0],
-                [true, true],
-                settings(100.0, 0.0, 0.0, 0.0),
-            ),
+            config: config([200.0, 200.0], [true, true], settings(100.0, 0.0, 0.0, 0.0)),
             position: [100.0, 100.0],
             expected_position: [110.0, 110.0],
             expected_velocity: [100.0, 0.0],

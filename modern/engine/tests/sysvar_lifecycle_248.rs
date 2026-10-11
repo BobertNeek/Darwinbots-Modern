@@ -102,9 +102,7 @@ fn body_transfer_sysvars_apply_once_with_exact_next_cycle_cost() {
         config.sunlight_energy = 0;
         let mut engine = Engine::new(config).unwrap();
         let robot = engine
-            .spawn(
-                LegacyDna::parse(&format!("start\n20 .{name} store\nend")).unwrap(),
-            )
+            .spawn(LegacyDna::parse(&format!("start\n20 .{name} store\nend")).unwrap())
             .unwrap();
         let before = engine.organism(robot).unwrap();
         let (before_body, before_energy) = (before.body, before.energy);
@@ -112,7 +110,11 @@ fn body_transfer_sysvars_apply_once_with_exact_next_cycle_cost() {
         engine.tick().unwrap();
 
         let after = engine.organism(robot).unwrap();
-        assert_eq!(after.body, before_body + body_delta, "body delta for .{name}");
+        assert_eq!(
+            after.body,
+            before_body + body_delta,
+            "body delta for .{name}"
+        );
         assert_eq!(
             after.energy,
             before_energy + energy_delta,
@@ -125,7 +127,10 @@ fn body_transfer_sysvars_apply_once_with_exact_next_cycle_cost() {
             .unwrap();
         engine.tick().unwrap();
         let next = engine.organism(robot).unwrap();
-        assert_eq!(next.body, after.body, "body repeated on next cycle for .{name}");
+        assert_eq!(
+            next.body, after.body,
+            "body repeated on next cycle for .{name}"
+        );
         assert_eq!(
             next.energy, after.energy,
             "energy repeated on next cycle for .{name}"
@@ -389,9 +394,7 @@ fn engine_tick_preserves_unfinished_virus_commands() {
 fn engine_tick_keeps_aimshoot_when_shoot_kind_has_no_handler() {
     let mut engine = testing_engine();
     let robot = engine
-        .spawn(
-            LegacyDna::parse("start\n-5 .shoot store\n456 .aimshoot store\nstop").unwrap(),
-        )
+        .spawn(LegacyDna::parse("start\n-5 .shoot store\n456 .aimshoot store\nstop").unwrap())
         .unwrap();
 
     engine.tick().unwrap();
@@ -406,10 +409,8 @@ fn engine_tick_executes_delgene_in_the_authoritative_virus_phase() {
     let mut engine = testing_engine();
     let robot = engine
         .spawn(
-            LegacyDna::parse(
-                "start\n1 .delgene store\nstop\nstart\n99 .up store\nstop\nend",
-            )
-            .unwrap(),
+            LegacyDna::parse("start\n1 .delgene store\nstop\nstart\n99 .up store\nstop\nend")
+                .unwrap(),
         )
         .unwrap();
     let before = engine.dna(robot).unwrap().blocks().len();

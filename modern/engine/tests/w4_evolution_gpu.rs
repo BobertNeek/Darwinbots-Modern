@@ -11,9 +11,7 @@ fn test_engine() -> Engine {
 fn real_reproduction_propagates_descendants_and_writes_legacy_snapshot_headers() {
     let mut engine = test_engine();
     let reproducing_dna = LegacyDna::parse("start\nstop").unwrap();
-    let parent = engine
-        .spawn_at(reproducing_dna, [500.0, 500.0])
-        .unwrap();
+    let parent = engine.spawn_at(reproducing_dna, [500.0, 500.0]).unwrap();
 
     let child = engine
         .manual_reproduce(parent, None, [1_000.0, 500.0])
@@ -78,10 +76,7 @@ fn reproduction_scan_applies_configured_structural_mutation_distribution() {
         let mut engine = test_engine();
         let parent = engine
             .spawn_at(
-                LegacyDna::parse(
-                    "start\n1 2 3 4 5 6 7 8 9 10\n50 .mrepro store\nstop",
-                )
-                .unwrap(),
+                LegacyDna::parse("start\n1 2 3 4 5 6 7 8 9 10\n50 .mrepro store\nstop").unwrap(),
                 [500.0, 500.0],
             )
             .unwrap();
@@ -190,13 +185,22 @@ fn physical_gpu_phase2_ecological_differential_has_adapter_receipt() {
     cpu.tick().unwrap();
     gpu.tick().unwrap();
 
-    assert_eq!(cpu.snapshot().organisms.len(), gpu.snapshot().organisms.len());
+    assert_eq!(
+        cpu.snapshot().organisms.len(),
+        gpu.snapshot().organisms.len()
+    );
     let cpu_parent_snapshot = cpu.organism(cpu_parent).unwrap();
     let gpu_parent_snapshot = gpu.organism(gpu_parent).unwrap();
     assert_eq!(cpu_parent_snapshot.venom, gpu_parent_snapshot.venom);
     assert_eq!(cpu_parent_snapshot.offspring, gpu_parent_snapshot.offspring);
-    assert_eq!(cpu_parent_snapshot.descendants, gpu_parent_snapshot.descendants);
-    assert_eq!(cpu_parent_snapshot.last_mutation_kind, gpu_parent_snapshot.last_mutation_kind);
+    assert_eq!(
+        cpu_parent_snapshot.descendants,
+        gpu_parent_snapshot.descendants
+    );
+    assert_eq!(
+        cpu_parent_snapshot.last_mutation_kind,
+        gpu_parent_snapshot.last_mutation_kind
+    );
 
     let cpu_child = cpu
         .snapshot()
@@ -210,8 +214,14 @@ fn physical_gpu_phase2_ecological_differential_has_adapter_receipt() {
         .iter()
         .find(|organism| organism.id != gpu_parent && organism.parents.contains(&Some(gpu_parent)))
         .expect("GPU reproduction scan should publish a child");
-    assert_eq!(cpu_child.last_mutation_kind, Some(StandardMutationKind::Insertion));
-    assert_eq!(gpu_child.last_mutation_kind, Some(StandardMutationKind::Insertion));
+    assert_eq!(
+        cpu_child.last_mutation_kind,
+        Some(StandardMutationKind::Insertion)
+    );
+    assert_eq!(
+        gpu_child.last_mutation_kind,
+        Some(StandardMutationKind::Insertion)
+    );
     assert_eq!(cpu_child.dna_length, gpu_child.dna_length);
     assert_eq!(cpu_child.total_mutations, gpu_child.total_mutations);
     assert_eq!(cpu_child.generation, gpu_child.generation);

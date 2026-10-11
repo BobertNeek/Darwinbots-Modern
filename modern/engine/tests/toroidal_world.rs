@@ -97,17 +97,17 @@ fn wrapped_axis_applies_border_smudge_before_integration() {
     })
     .unwrap();
     let organism = engine
-        .spawn_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            [1.0, 500.0],
-        )
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1.0, 500.0])
         .unwrap();
     engine.tick().unwrap();
 
     let state = engine.organism(organism).unwrap();
     let expected = (state.radius + 50.0).min(1_000.0 - state.radius);
     let position = state.position;
-    assert!((position[0] - expected).abs() < 0.01, "expected smudge respawn, got {position:?}");
+    assert!(
+        (position[0] - expected).abs() < 0.01,
+        "expected smudge respawn, got {position:?}"
+    );
     assert_eq!(engine.memory_at(organism, 214).unwrap(), 0);
 }
 

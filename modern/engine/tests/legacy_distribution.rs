@@ -15,12 +15,13 @@ fn every_shipped_robot_dna_round_trips_through_text_export() {
     let mut failures = Vec::new();
     for path in files {
         let result = (|| -> Result<(), String> {
-            let source = fs::read_to_string(&path).map_err(|error| format!("read failed: {error}"))?;
+            let source =
+                fs::read_to_string(&path).map_err(|error| format!("read failed: {error}"))?;
             let original =
                 LegacyDna::parse(&source).map_err(|error| format!("parse failed: {error}"))?;
             let exported = original.to_source();
-            let reparsed = LegacyDna::parse(&exported)
-                .map_err(|error| format!("reparse failed: {error}"))?;
+            let reparsed =
+                LegacyDna::parse(&exported).map_err(|error| format!("reparse failed: {error}"))?;
 
             if original.blocks() != reparsed.blocks() {
                 return Err("executable blocks changed after export".to_owned());

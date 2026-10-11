@@ -156,9 +156,9 @@ impl StandardMutationProfile {
             ("Amplification", &self.amplification),
             ("Translocation", &self.translocation),
         ] {
-            if !rate.one_in.is_finite() || rate.one_in <= 0.0 {
+            if !rate.one_in.is_finite() || rate.one_in < 0.0 {
                 return Err(EngineError::Invariant(format!(
-                    "{name} mutation one-in rate must be finite and positive"
+                    "{name} mutation one-in rate must be finite and nonnegative (zero disables it)"
                 )));
             }
             if !rate.mean.is_finite() {
@@ -190,6 +190,9 @@ impl StandardMutationProfile {
 
     pub fn effective_one_in(&self, kind: StandardMutationKind, multiplier: f64) -> f64 {
         let one_in = self.rate(kind).one_in;
+        if one_in == 0.0 {
+            return f64::INFINITY;
+        }
         if multiplier.is_finite() && multiplier > 0.0 {
             (one_in / multiplier).max(1.0)
         } else {
@@ -220,7 +223,7 @@ impl StandardMutationProfile {
         }
     }
 
-    fn rate(&self, kind: StandardMutationKind) -> &MutationRate {
+    pub(crate) fn rate(&self, kind: StandardMutationKind) -> &MutationRate {
         match kind {
             StandardMutationKind::Point => &self.point,
             StandardMutationKind::Point2 => &self.point2,
@@ -512,6 +515,39 @@ pub struct PointMutationSchedule {
 }
 
 impl PointMutationSchedule {
+    pub fn sample(
+        age: u64,
+        dna_len: usize,
+        one_in: f64,
+        multiplier: f64,
+        random: u64,
+        offset: u64,
+    ) -> Option<Self> {
+        if one_in <= 0.0 || multiplier <= 0.0 {
+            return None;
+        }
+        let mutation_rate = (one_in / multiplier).max(1.0);
+        let probability = (1.0 / (1000.0 * mutation_rate)).max(f64::MIN_POSITIVE);
+        let uniform = ((random >> 40) as f32 / (1_u32 << 24) as f32) as f64;
+        let waiting = if probability >= 1.0 {
+            0.0
+        } else {
+            (-uniform).ln_1p() / (-probability).ln_1p()
+        };
+        // VB6 stores the logarithmic result as Single, wraps large values, then
+        // rounds to Long for Mod and the scheduled age (banker's rounding).
+        let result = (waiting as f32) % 1_800_000_000.0;
+        let coding_len = dna_len.checked_sub(1)?;
+        if coding_len == 0 || !result.is_finite() {
+            return None;
+        }
+        Some(Self {
+            location: ((result.round_ties_even() as u64).saturating_add(offset) % coding_len as u64)
+                as usize
+                + 1,
+            cycle: age.saturating_add((result / coding_len as f32).round_ties_even() as u64),
+        })
+    }
     pub fn from_geometric(age: u64, dna_len: usize, result: u64) -> Option<Self> {
         let coding_len = dna_len.checked_sub(1)?;
         if coding_len == 0 {
@@ -1082,6 +1118,135 @@ impl GenomeMutator {
         candidates.last().copied()
     }
 
+    pub(crate) fn apply_scheduled_kind(
+        &mut self,
+        dna: &mut LegacyDna,
+        profile: &mut StandardMutationProfile,
+        kind: StandardMutationKind,
+        location: usize,
+    ) -> MutationReport {
+        if matches!(
+            kind,
+            StandardMutationKind::Point | StandardMutationKind::Point2
+        ) {
+            let coding_len = dna.blocks().len().saturating_sub(1);
+            if coding_len == 0 {
+                return MutationReport::default();
+            }
+            let location = location.clamp(1, coding_len);
+            let replacements = if kind == StandardMutationKind::Point2 {
+                self.sysvar_biased_replacements(dna, location, profile.category_distribution(kind))
+            } else {
+                let length =
+                    (self.sample_value(profile.point).floor() as i32 % 32000).max(0) as usize;
+                let length = length.min(coding_len - location + 1);
+                (0..length)
+                    .map(|index| {
+                        let old = dna.blocks()[location - 1 + index];
+                        if self.next() % 100 < u64::from(profile.point_value_change_percent) {
+                            self.change_point_value(old)
+                        } else {
+                            let mut block = self.random_block_with_distribution(
+                                profile.category_distribution(kind),
+                            );
+                            if block.class == old.class {
+                                block.class = if old.class == TokenClass::Number {
+                                    TokenClass::Dereference
+                                } else {
+                                    TokenClass::Number
+                                };
+                            }
+                            block.value = if matches!(
+                                block.class,
+                                TokenClass::Number | TokenClass::Dereference
+                            ) {
+                                old.value
+                            } else {
+                                (old.value.unsigned_abs().saturating_sub(1)
+                                    % Self::maximum_command_value(block.class) as u32)
+                                    as i32
+                                    + 1
+                            };
+                            block
+                        }
+                    })
+                    .collect()
+            };
+            let event = if kind == StandardMutationKind::Point {
+                StandardMutationEvent::Point {
+                    location,
+                    replacements,
+                }
+            } else {
+                StandardMutationEvent::Point2 {
+                    location,
+                    replacements,
+                }
+            };
+            let Ok(report) = apply_standard_mutation(dna, profile, event) else {
+                return MutationReport::default();
+            };
+            return MutationReport {
+                changes: report.changes,
+                kind: Some(MutationKind::Point),
+                standard_kind: Some(kind),
+            };
+        }
+        self.apply_advanced_kind(dna, profile, kind)
+    }
+
+    fn maximum_command_value(class: TokenClass) -> i32 {
+        (1..=64)
+            .take_while(|value| {
+                crate::dna_tokens::block_token(DnaBlock {
+                    class,
+                    value: *value,
+                })
+                .is_some()
+            })
+            .last()
+            .unwrap_or(1)
+    }
+
+    fn change_point_value(&mut self, old: DnaBlock) -> DnaBlock {
+        let value = if matches!(old.class, TokenClass::Number | TokenClass::Dereference) {
+            let deviation = if old.value.unsigned_abs() <= 1000 {
+                if self.next().is_multiple_of(2) {
+                    94.0
+                } else {
+                    7.0
+                }
+            } else {
+                f64::from(old.value).abs() / 10.0
+            };
+            let sampled = self
+                .sample_value(MutationRate::new(1.0, f64::from(old.value), deviation))
+                .round_ties_even()
+                .clamp(-32000.0, 32000.0) as i32;
+            if sampled == old.value {
+                if sampled == 32000 {
+                    sampled - 1
+                } else {
+                    sampled + 1
+                }
+            } else {
+                sampled
+            }
+        } else {
+            let maximum = Self::maximum_command_value(old.class);
+            let sampled = (self.next() % maximum as u64) as i32 + 1;
+            if sampled == old.value {
+                sampled % maximum + 1
+            } else {
+                sampled
+            }
+        };
+        DnaBlock {
+            class: old.class,
+            value,
+        }
+    }
+
     fn apply_advanced_kind(
         &mut self,
         dna: &mut LegacyDna,
@@ -1092,169 +1257,181 @@ impl GenomeMutator {
         if coding_len == 0 {
             return MutationReport::default();
         }
-        let standard_report =
-            match kind {
-                StandardMutationKind::Point => {
-                    let mut point = PointMutator::new(self.next());
-                    let report = point.mutate(dna);
-                    self.random_state = point.random_state();
-                    return report;
-                }
-                StandardMutationKind::Point2 | StandardMutationKind::CopyError2 => {
-                    let location = if coding_len > 1 {
-                        (self.next() as usize) % (coding_len - 1) + 1
-                    } else {
-                        1
-                    };
-                    let replacements = self.sysvar_biased_replacements(
-                        dna,
+        let standard_report = match kind {
+            StandardMutationKind::Point => {
+                let mut point = PointMutator::new(self.next());
+                let report = point.mutate(dna);
+                self.random_state = point.random_state();
+                return report;
+            }
+            StandardMutationKind::Point2 | StandardMutationKind::CopyError2 => {
+                let location = if coding_len > 1 {
+                    (self.next() as usize) % (coding_len - 1) + 1
+                } else {
+                    1
+                };
+                let replacements = self.sysvar_biased_replacements(
+                    dna,
+                    location,
+                    profile.category_distribution(kind),
+                );
+                let event = if kind == StandardMutationKind::Point2 {
+                    StandardMutationEvent::Point2 {
                         location,
-                        profile.category_distribution(kind),
-                    );
-                    let event = if kind == StandardMutationKind::Point2 {
-                        StandardMutationEvent::Point2 {
-                            location,
-                            replacements,
-                        }
-                    } else {
-                        StandardMutationEvent::CopyError2 {
-                            location,
-                            replacements,
-                        }
-                    };
-                    apply_standard_mutation(dna, profile, event)
-                }
-                StandardMutationKind::CopyError => {
-                    let length = self.sample_length(profile.copy_error, coding_len);
-                    let location = (self.next() as usize)
-                        % (coding_len.saturating_sub(length) + 1)
-                        + 1;
-                    let distribution = profile.category_distribution(kind);
-                    let replacements = (0..length)
-                        .map(|_| self.random_block_with_distribution(distribution))
-                        .collect();
-                    apply_standard_mutation(
-                        dna,
-                        profile,
-                        StandardMutationEvent::CopyError {
-                            location,
-                            replacements,
-                        },
-                    )
-                }
-                StandardMutationKind::Insertion => {
-                    let capacity = MAX_DNA_BLOCKS.saturating_sub(dna.blocks().len());
-                    if capacity == 0 {
-                        return MutationReport::default();
+                        replacements,
                     }
-                    let after_location = (self.next() as usize) % coding_len + 1;
-                    let length = self.sample_length(profile.insertion, capacity);
-                    let blocks = (0..length).map(|_| self.random_block()).collect();
-                    apply_standard_mutation(
-                        dna,
-                        profile,
-                        StandardMutationEvent::Insertion {
-                            after_location,
-                            blocks,
-                        },
-                    )
-                }
-                StandardMutationKind::Reversal => {
-                    if coding_len < 3 {
-                        return MutationReport::default();
+                } else {
+                    StandardMutationEvent::CopyError2 {
+                        location,
+                        replacements,
                     }
-                    let center = (self.next() as usize) % coding_len + 1;
-                    let sampled_length = self.sample_length(profile.reversal, coding_len).max(3);
-                    apply_standard_mutation(
-                        dna,
-                        profile,
-                        StandardMutationEvent::Reversal {
-                            center,
-                            sampled_length,
-                        },
-                    )
+                };
+                apply_standard_mutation(dna, profile, event)
+            }
+            StandardMutationKind::CopyError => {
+                let length = self.sample_length(profile.copy_error, coding_len);
+                let location = (self.next() as usize) % (coding_len.saturating_sub(length) + 1) + 1;
+                let distribution = profile.category_distribution(kind);
+                let replacements = (0..length)
+                    .map(|_| self.random_block_with_distribution(distribution))
+                    .collect();
+                apply_standard_mutation(
+                    dna,
+                    profile,
+                    StandardMutationEvent::CopyError {
+                        location,
+                        replacements,
+                    },
+                )
+            }
+            StandardMutationKind::Insertion => {
+                let capacity = MAX_DNA_BLOCKS.saturating_sub(dna.blocks().len());
+                if capacity == 0 {
+                    return MutationReport::default();
                 }
-                StandardMutationKind::MinorDeletion | StandardMutationKind::MajorDeletion => {
-                    let location = (self.next() as usize) % coding_len + 1;
-                    let rate = if kind == StandardMutationKind::MinorDeletion {
-                        profile.minor_deletion
-                    } else {
-                        profile.major_deletion
-                    };
-                    let length = self.sample_length(rate, coding_len).max(1);
-                    let event = if kind == StandardMutationKind::MinorDeletion {
-                        StandardMutationEvent::MinorDeletion { location, length }
-                    } else {
-                        StandardMutationEvent::MajorDeletion { location, length }
-                    };
-                    apply_standard_mutation(dna, profile, event)
+                let after_location = (self.next() as usize) % coding_len + 1;
+                let length = self.sample_length(profile.insertion, capacity);
+                let blocks = (0..length).map(|_| self.random_block()).collect();
+                apply_standard_mutation(
+                    dna,
+                    profile,
+                    StandardMutationEvent::Insertion {
+                        after_location,
+                        blocks,
+                    },
+                )
+            }
+            StandardMutationKind::Reversal => {
+                if coding_len < 3 {
+                    return MutationReport::default();
                 }
-                StandardMutationKind::Amplification => {
-                    let capacity = MAX_DNA_BLOCKS.saturating_sub(dna.blocks().len());
-                    if capacity == 0 {
-                        return MutationReport::default();
-                    }
-                    let length = self
-                        .sample_length(profile.amplification, coding_len)
-                        .min(capacity)
-                        .max(1);
-                    let source_start = (self.next() as usize) % (coding_len - length + 1) + 1;
-                    let after_location = (self.next() as usize) % coding_len + 1;
-                    apply_standard_mutation(
-                        dna,
-                        profile,
-                        StandardMutationEvent::Amplification {
-                            source_start,
-                            length,
-                            after_location,
-                        },
-                    )
+                let center = (self.next() as usize) % coding_len + 1;
+                let sampled_length = self.sample_length(profile.reversal, coding_len).max(3);
+                apply_standard_mutation(
+                    dna,
+                    profile,
+                    StandardMutationEvent::Reversal {
+                        center,
+                        sampled_length,
+                    },
+                )
+            }
+            StandardMutationKind::MinorDeletion | StandardMutationKind::MajorDeletion => {
+                let location = (self.next() as usize) % coding_len + 1;
+                let rate = if kind == StandardMutationKind::MinorDeletion {
+                    profile.minor_deletion
+                } else {
+                    profile.major_deletion
+                };
+                let length = self.sample_length(rate, coding_len).max(1);
+                let event = if kind == StandardMutationKind::MinorDeletion {
+                    StandardMutationEvent::MinorDeletion { location, length }
+                } else {
+                    StandardMutationEvent::MajorDeletion { location, length }
+                };
+                apply_standard_mutation(dna, profile, event)
+            }
+            StandardMutationKind::Amplification => {
+                let capacity = MAX_DNA_BLOCKS.saturating_sub(dna.blocks().len());
+                if capacity == 0 {
+                    return MutationReport::default();
                 }
-                StandardMutationKind::Translocation => {
-                    if coding_len < 2 {
-                        return MutationReport::default();
-                    }
-                    let length = self
-                        .sample_length(profile.translocation, coding_len - 1)
-                        .min(coding_len - 1)
-                        .max(1);
-                    let source_start = (self.next() as usize) % (coding_len - length + 1) + 1;
-                    let remaining = coding_len - length;
-                    let after_location = (self.next() as usize) % remaining + 1;
-                    apply_standard_mutation(
-                        dna,
-                        profile,
-                        StandardMutationEvent::Translocation {
-                            source_start,
-                            length,
-                            after_location,
-                        },
-                    )
+                let length = self
+                    .sample_length(profile.amplification, coding_len)
+                    .min(capacity)
+                    .max(1);
+                let source_start = (self.next() as usize) % (coding_len - length + 1) + 1;
+                let after_location = (self.next() as usize) % coding_len + 1;
+                apply_standard_mutation(
+                    dna,
+                    profile,
+                    StandardMutationEvent::Amplification {
+                        source_start,
+                        length,
+                        after_location,
+                    },
+                )
+            }
+            StandardMutationKind::Translocation => {
+                if coding_len < 2 {
+                    return MutationReport::default();
                 }
-                StandardMutationKind::Delta => {
-                    let targets = [
-                        StandardMutationKind::Point,
-                        StandardMutationKind::Point2,
-                        StandardMutationKind::CopyError,
-                        StandardMutationKind::CopyError2,
-                        StandardMutationKind::Insertion,
-                        StandardMutationKind::Reversal,
-                        StandardMutationKind::MinorDeletion,
-                        StandardMutationKind::MajorDeletion,
-                        StandardMutationKind::Amplification,
-                        StandardMutationKind::Translocation,
-                    ];
-                    let target = targets[(self.next() as usize) % targets.len()];
-                    apply_standard_mutation(
-                        dna,
-                        profile,
-                        StandardMutationEvent::Delta {
-                            target,
-                            new_one_in: self.sample_value(profile.delta).max(1.0),
-                        },
-                    )
+                let length = self
+                    .sample_length(profile.translocation, coding_len - 1)
+                    .min(coding_len - 1)
+                    .max(1);
+                let source_start = (self.next() as usize) % (coding_len - length + 1) + 1;
+                let remaining = coding_len - length;
+                let after_location = (self.next() as usize) % remaining + 1;
+                apply_standard_mutation(
+                    dna,
+                    profile,
+                    StandardMutationEvent::Translocation {
+                        source_start,
+                        length,
+                        after_location,
+                    },
+                )
+            }
+            StandardMutationKind::Delta => {
+                let targets: Vec<_> = [
+                    StandardMutationKind::Point,
+                    StandardMutationKind::Point2,
+                    StandardMutationKind::CopyError,
+                    StandardMutationKind::CopyError2,
+                    StandardMutationKind::Insertion,
+                    StandardMutationKind::Reversal,
+                    StandardMutationKind::MinorDeletion,
+                    StandardMutationKind::MajorDeletion,
+                    StandardMutationKind::Amplification,
+                    StandardMutationKind::Translocation,
+                    StandardMutationKind::Delta,
+                ]
+                .into_iter()
+                .filter(|kind| profile.rate(*kind).one_in > 0.0)
+                .collect();
+                if targets.is_empty() {
+                    return MutationReport::default();
                 }
-            };
+                let target = targets[(self.next() as usize) % targets.len()];
+                let mean = profile.rate(target).one_in;
+                let deviation = if profile.delta.mean == 0.0 {
+                    25.0
+                } else if profile.delta.std_dev == 0.0 {
+                    50.0
+                } else {
+                    profile.delta.mean
+                };
+                let new_one_in = self
+                    .sample_value(MutationRate::new(1.0, mean, deviation))
+                    .max(1.0);
+                apply_standard_mutation(
+                    dna,
+                    profile,
+                    StandardMutationEvent::Delta { target, new_one_in },
+                )
+            }
+        };
         let Ok(standard_report) = standard_report else {
             return MutationReport::default();
         };
@@ -1321,10 +1498,11 @@ impl GenomeMutator {
                 value,
             }];
         }
-        if distribution != MutationCategoryDistribution::default() && self.next() % 2 == 0 {
+        if distribution != MutationCategoryDistribution::default() && self.next().is_multiple_of(2)
+        {
             return vec![self.random_block_with_distribution(distribution)];
         }
-        if self.next() % 3 == 0 {
+        if self.next().is_multiple_of(3) {
             let output_value = OUTPUT_SYSVARS[(self.next() as usize) % OUTPUT_SYSVARS.len()];
             return vec![
                 DnaBlock {
@@ -1337,7 +1515,7 @@ impl GenomeMutator {
                 },
             ];
         }
-        if self.next() % 5 == 0 {
+        if self.next().is_multiple_of(5) {
             let output_value = OUTPUT_SYSVARS[(self.next() as usize) % OUTPUT_SYSVARS.len()];
             return vec![DnaBlock {
                 class: TokenClass::Number,
@@ -1505,7 +1683,7 @@ impl GenomeMutator {
         boundary += distribution.dereference;
         if roll < boundary {
             return DnaBlock {
-                class: TokenClass::Number,
+                class: TokenClass::Dereference,
                 value: ADDRESSES[(self.next() as usize) % ADDRESSES.len()],
             };
         }

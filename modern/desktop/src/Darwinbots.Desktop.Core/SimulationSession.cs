@@ -30,6 +30,15 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Tick(count), cancellationToken);
 
+    public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
+    {
+        OrganismKey? result = null;
+        await Enqueue(engine => result = engine.FindBestRobot(energyWeighting), cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+    public Task UpdateMainRulesAsync(GlobalMainSettings settings, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateMainRules(settings), cancellationToken);
+
     public async Task<DnaImportReport> ImportDnaAsync(
         string dna,
         float[]? position = null,
@@ -213,6 +222,15 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public Task SetOrganismMemoryAsync(uint slot, uint generation, ushort address, int value, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetOrganismMemory(slot, generation, address, value), cancellationToken);
+
+    public async Task<ushort> ResolveMemoryAddressAsync(string name, CancellationToken cancellationToken = default)
+    {
+        ushort address = 0;
+        await Enqueue(engine => address = engine.ResolveMemoryAddress(name), cancellationToken).ConfigureAwait(false);
+        return address;
+    }
+
+    public Task ExecuteRobotsAsync(CancellationToken cancellationToken = default) => Enqueue(engine => engine.ExecuteRobots(), cancellationToken);
 
     public Task SetOrganismEnergyAsync(uint slot, uint generation, int energy, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetOrganismEnergy(slot, generation, energy), cancellationToken);

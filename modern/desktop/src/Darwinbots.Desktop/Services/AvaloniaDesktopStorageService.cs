@@ -61,7 +61,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await using var stream = await file.OpenReadAsync();
         using var memory = new MemoryStream();
         await stream.CopyToAsync(memory);
-        return SetupStorageService.DecodeSettings(file.Name, memory.ToArray());
+        return SetupStorageService.DecodeSettings(LocalPath(file) ?? file.Name, memory.ToArray());
     }
 
     public async Task<string?> PickSimulationPathAsync(TopLevel owner)
@@ -122,9 +122,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             FileTypeChoices = [SettingsFileType()],
         });
         if (file is null) return false;
+        var bytes = SetupStorageService.EncodeSettings(LocalPath(file) ?? file.Name, settings);
         await using var stream = await file.OpenWriteAsync();
         stream.SetLength(0);
-        var bytes = SetupStorageService.EncodeSettings(file.Name, settings);
         await stream.WriteAsync(bytes);
         return true;
     }

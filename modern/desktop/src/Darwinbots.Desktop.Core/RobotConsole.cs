@@ -35,7 +35,7 @@ public sealed class RobotConsoleController
         switch (command.Name)
         {
             case "help":
-                return "help | printmem [address] | set address value | energy value | cycle [count] | step | printeye | printtouch | printtaste | debug | showdna | play | pause";
+                return "help | printmem [address or .sysvar] | set address-or-.sysvar value | energy value | cycle [count] | step | execrob | printeye | printtouch | printtaste | debug | showdna | play | pause";
             case "cycle":
             case "step":
                 var count = command.Name == "step" ? 1u : ParseCount(command.Arguments, 1);
@@ -51,7 +51,7 @@ public sealed class RobotConsoleController
                 return "pause";
             case "set":
                 RequireArguments(command, 2);
-                var address = ParseAddress(command.Arguments[0]);
+                var address = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
                 var value = ParseInt(command.Arguments[1], "value");
                 await _session.SetOrganismMemoryAsync(_focus.Slot, _focus.Generation, address, value, cancellationToken)
                     .ConfigureAwait(false);
@@ -64,7 +64,12 @@ public sealed class RobotConsoleController
                 return $"energy = {energy}";
             case "printmem":
             case "?":
-                return PrintMemory(command.Arguments);
+                if (command.Arguments.Count == 0) return PrintMemory(command.Arguments);
+                var resolved = await _session.ResolveMemoryAddressAsync(command.Arguments[0], cancellationToken).ConfigureAwait(false);
+                return PrintMemory([resolved.ToString()]);
+            case "execrob":
+                await _session.ExecuteRobotsAsync(cancellationToken).ConfigureAwait(false);
+                return $"DNA executed at cycle {_session.LatestSnapshot.Tick}";
             case "printeye":
             case "eyes":
                 return PrintEyes();
@@ -129,7 +134,7 @@ public sealed class RobotConsoleController
     private static ushort ParseAddress(string value)
     {
         var address = ParseInt(value, "memory address");
-        if (address is < 1 or > 999) throw new ArgumentOutOfRangeException(nameof(value));
+        if (address is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(value));
         return (ushort)address;
     }
 

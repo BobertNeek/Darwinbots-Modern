@@ -108,7 +108,7 @@ fn energy_feeding_request_extracts_target_resources_and_returns_energy_packet() 
     let after = engine.robot_state(target).unwrap().materials.clone();
     assert_eq!(after.energy, before.energy - 90);
     assert_eq!(after.body, before.body - 1);
-    assert!(after.waste >= before.waste + 1);
+    assert!(after.waste > before.waste);
     assert!(
         engine
             .snapshot()
@@ -362,20 +362,24 @@ fn delgene_information_shot_is_inert_without_defensive_poison_return() {
     engine.tick().unwrap();
 
     assert_eq!(engine.memory_at(target, 340).unwrap(), 0);
-    assert!(!engine
-        .snapshot()
-        .shots
-        .iter()
-        .any(|shot| shot.kind == -5 && shot.owner == target && !shot.impact_flash));
+    assert!(
+        !engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| shot.kind == -5 && shot.owner == target && !shot.impact_flash)
+    );
 }
 
 #[test]
 fn moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants() {
-    let mut config = darwinbots_engine::EngineConfig::default();
-    config.backend = darwinbots_engine::BackendPreference::Cpu;
-    config.world_width = 512.0;
-    config.world_height = 256.0;
-    config.fixed_bot_radii = true;
+    let config = darwinbots_engine::EngineConfig {
+        backend: darwinbots_engine::BackendPreference::Cpu,
+        world_width: 512.0,
+        world_height: 256.0,
+        fixed_bot_radii: true,
+        ..Default::default()
+    };
 
     let mut engine = darwinbots_engine::Engine::new(config).unwrap();
 
@@ -707,8 +711,7 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
         .unwrap();
         engine
             .spawn_at(
-                LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop")
-                    .unwrap(),
+                LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
                 [100.0, 100.0],
             )
             .unwrap();
@@ -760,7 +763,11 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
             .expect("range calibration shot must spawn");
         assert_eq!(shot.range, expected_range, "shootval={shootval}");
         assert_eq!(shot.age, 0, "shootval={shootval}");
-        assert_eq!(shot.energy, expected_range as f32 * 40.0, "shootval={shootval}");
+        assert_eq!(
+            shot.energy,
+            expected_range as f32 * 40.0,
+            "shootval={shootval}"
+        );
         engine
             .replace_dna(shooter, LegacyDna::parse("start\nstop").unwrap())
             .unwrap();
@@ -776,7 +783,11 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
         );
         engine.tick().unwrap();
         assert!(
-            engine.snapshot().shots.iter().all(|shot| shot.owner != shooter),
+            engine
+                .snapshot()
+                .shots
+                .iter()
+                .all(|shot| shot.owner != shooter),
             "shot must expire after age > range for shootval={shootval}"
         );
     }

@@ -114,14 +114,10 @@ pub(crate) fn resolve_collisions(
         let total_inverse_mass = first_inverse_mass + second_inverse_mass;
         let overlap = minimum_distance - distance;
         if total_inverse_mass > f32::EPSILON {
-            positions[first][0] -=
-                normal[0] * overlap * first_inverse_mass / total_inverse_mass;
-            positions[first][1] -=
-                normal[1] * overlap * first_inverse_mass / total_inverse_mass;
-            positions[second][0] +=
-                normal[0] * overlap * second_inverse_mass / total_inverse_mass;
-            positions[second][1] +=
-                normal[1] * overlap * second_inverse_mass / total_inverse_mass;
+            positions[first][0] -= normal[0] * overlap * first_inverse_mass / total_inverse_mass;
+            positions[first][1] -= normal[1] * overlap * first_inverse_mass / total_inverse_mass;
+            positions[second][0] += normal[0] * overlap * second_inverse_mass / total_inverse_mass;
+            positions[second][1] += normal[1] * overlap * second_inverse_mass / total_inverse_mass;
         }
 
         let relative_speed = (velocities[second][0] - velocities[first][0]) * normal[0]

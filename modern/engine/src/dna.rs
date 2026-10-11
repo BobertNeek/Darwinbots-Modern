@@ -410,30 +410,79 @@ impl LegacyDna {
         self.with_blocks(blocks)
     }
 
-    pub(crate) fn genetic_distance(&self, other: &Self) -> f32 {
-        let left = self
-            .blocks
-            .iter()
-            .filter(|block| block.class != TokenClass::End)
-            .map(|block| (block.class as i64) << 32 | i64::from(block.value as u32))
-            .collect::<Vec<_>>();
-        let right = other
-            .blocks
-            .iter()
-            .filter(|block| block.class != TokenClass::End)
-            .map(|block| (block.class as i64) << 32 | i64::from(block.value as u32))
-            .collect::<Vec<_>>();
-        let compared = left.len().max(right.len());
-        if compared == 0 {
+    /// DB2 `DNAtoInt` and `simplematch`: align insertions before counting unmatched bases.
+    pub fn genetic_distance(&self, other: &Self) -> f32 {
+        if self.blocks == other.blocks {
             return 0.0;
         }
-        let mismatches = left
+        // The original arrays contain a dummy number at zero and the master end.
+        let encoded = |dna: &Self| {
+            std::iter::once(-16646)
+                .chain(dna.blocks.iter().copied().map(legacy_nucleotide))
+                .collect::<Vec<_>>()
+        };
+        let left = encoded(self);
+        let right = encoded(other);
+        let mut left_matched = vec![false; left.len()];
+        let mut right_matched = vec![false; right.len()];
+        let (left_end, right_end) = (left.len() as isize - 1, right.len() as isize - 1);
+        let (mut i, mut j) = (0_isize, 0_isize);
+        let (mut left_start, mut right_start) = (0_isize, 0_isize);
+        let (mut left_list, mut right_list) = (Vec::new(), Vec::new());
+        let mut work = 0_u64;
+        loop {
+            i = i.min(left_end);
+            j = j.min(right_end);
+            left_list.push(left[i as usize]);
+            right_list.push(right[j as usize]);
+            let mut found = None;
+            for index in 0..left_list.len() {
+                work += 1;
+                if right[j as usize] == left_list[index] {
+                    found = Some((true, index));
+                    break;
+                }
+                if left[i as usize] == right_list[index] {
+                    found = Some((false, index));
+                    break;
+                }
+            }
+            if let Some((match_right, index)) = found {
+                if match_right {
+                    i = left_start + index as isize;
+                } else {
+                    j = right_start + index as isize;
+                }
+                while i <= left_end && j <= right_end {
+                    if left[i as usize] != right[j as usize] {
+                        left_start = i;
+                        right_start = j;
+                        i -= 1;
+                        j -= 1;
+                        break;
+                    }
+                    left_matched[i as usize] = true;
+                    right_matched[j as usize] = true;
+                    i += 1;
+                    j += 1;
+                    work += 1;
+                }
+                left_list.clear();
+                right_list.clear();
+            }
+            i += 1;
+            j += 1;
+            work += 1;
+            if (i > left_end && j > right_end) || work > 16000_u64.pow(2) {
+                break;
+            }
+        }
+        let unmatched = left_matched
             .iter()
-            .zip(right.iter())
-            .filter(|(left, right)| left != right)
-            .count()
-            .saturating_add(left.len().abs_diff(right.len()));
-        mismatches as f32 / compared as f32
+            .chain(&right_matched)
+            .filter(|matched| !**matched)
+            .count();
+        unmatched as f32 / (left.len() + right.len()) as f32
     }
 
     fn gene_ranges(&self) -> Vec<(usize, usize)> {
@@ -980,6 +1029,41 @@ fn validate_name(name: &str, line: usize) -> Result<&str, EngineError> {
     } else {
         Err(parse_error(line, format!("invalid system variable {name}")))
     }
+}
+
+fn legacy_nucleotide(block: DnaBlock) -> i32 {
+    let mut value = block.value.clamp(-32000, 32000);
+    if matches!(block.class, TokenClass::Number | TokenClass::Dereference) {
+        if value.abs() > 999 {
+            value = (512.0 * f64::from(value.signum()) + f64::from(value) / 2.05).round_ties_even()
+                as i32;
+        }
+        return -16646
+            + value
+            + if block.class == TokenClass::Dereference {
+                32729
+            } else {
+                0
+            };
+    }
+    // calc_dnamatrix enumerates valid commands by type, then by value.
+    let offset = match block.class {
+        TokenClass::Basic => 0,
+        TokenClass::Advanced => 14,
+        TokenClass::Bitwise => 28,
+        TokenClass::Condition => 37,
+        TokenClass::Logic => 47,
+        TokenClass::Store => 58,
+        TokenClass::Flow => 72,
+        TokenClass::End => 76,
+        _ => 0,
+    };
+    32691
+        + if block_token(block).is_some() {
+            offset + value - 1
+        } else {
+            0
+        }
 }
 
 fn parse_error(line: usize, message: impl Into<String>) -> EngineError {

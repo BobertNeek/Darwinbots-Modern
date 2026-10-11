@@ -155,11 +155,11 @@ impl VegetationRuntime {
         let mut random = weather_random(seed);
         let mut position_mode = self.sun_change % 10;
         let mut range_mode = self.sun_change / 10;
-        if random % 2_000 == 0 {
+        if random.is_multiple_of(2_000) {
             range_mode = if range_mode == 0 { 1 } else { 0 };
         }
         random = weather_random(random);
-        if random % 2_000 == 0 {
+        if random.is_multiple_of(2_000) {
             position_mode = (random % 3) as u8;
         }
 

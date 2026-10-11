@@ -57,15 +57,21 @@ impl LegacySettingsFile {
             simulation_name: String::new(),
             field_size: 0,
             world_size: snapshot.world_size,
-            max_population: engine.organism_capacity() as i32,
+            max_population: engine.configuration().vegetable_population_cap as i32,
             blocked_vegetables: false,
             disable_ties: false,
             population_limit_method: 0,
             toroidal_world: engine.toroidal_world(),
-            max_energy: 500_000,
-            min_vegetables: 0,
-            gravity: [0.0, 0.0],
-            sunlight_energy: 0,
+            max_energy: engine.configuration().vegetation.max_energy_per_tick,
+            min_vegetables: engine
+                .configuration()
+                .vegetation
+                .minimum_chloroplast_equivalents as i32,
+            gravity: [
+                engine.configuration().gravity[1],
+                engine.configuration().physics.surface_gravity,
+            ],
+            sunlight_energy: engine.configuration().sunlight_energy,
             species: snapshot
                 .species
                 .iter()

@@ -263,9 +263,15 @@ fn engine_advanced_mutations_cover_all_four_sunline_operators_deterministically(
     assert_eq!(point2.0, point2_repeat.0);
     assert_eq!(point2.1.mutation_log, point2_repeat.1.mutation_log);
     assert_eq!(point2.1.total_mutations, point2_repeat.1.total_mutations);
-    assert_eq!(point2.1.last_mutation_kind, Some(StandardMutationKind::Point2));
     assert_eq!(
-        point2.1.mutation_class_counts.get(&StandardMutationKind::Point2),
+        point2.1.last_mutation_kind,
+        Some(StandardMutationKind::Point2)
+    );
+    assert_eq!(
+        point2
+            .1
+            .mutation_class_counts
+            .get(&StandardMutationKind::Point2),
         Some(&point2.1.total_mutations)
     );
     assert_ne!(point2.0, point2.2);
@@ -292,10 +298,7 @@ fn engine_advanced_mutations_cover_all_four_sunline_operators_deterministically(
                 assert_eq!(observed.0.blocks().len(), observed.2.blocks().len());
             }
             StandardMutationKind::Amplification => {
-                assert_eq!(
-                    observed.0.blocks().len(),
-                    observed.2.blocks().len() + 1
-                );
+                assert_eq!(observed.0.blocks().len(), observed.2.blocks().len() + 1);
             }
             StandardMutationKind::Translocation => {
                 assert_eq!(observed.0.blocks().len(), observed.2.blocks().len());
@@ -308,8 +311,10 @@ fn engine_advanced_mutations_cover_all_four_sunline_operators_deterministically(
 #[test]
 fn mrepro_uses_reproductive_mutation_context() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let mut settings = AdvancedMutationSettings::default();
-    settings.copy_error2_enabled = true;
+    let settings = AdvancedMutationSettings {
+        copy_error2_enabled: true,
+        ..Default::default()
+    };
     engine.update_advanced_mutation_settings(settings).unwrap();
     let parent = engine
         .spawn_at(
@@ -462,8 +467,10 @@ fn zerobot_mode_mutates_selects_and_rolls_back_unstable_rounds() {
 #[test]
 fn mrepro_auto_forked_zerobot_checkpoint_preserves_mutation_lineage_on_rollback() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let mut settings = AdvancedMutationSettings::default();
-    settings.copy_error2_enabled = true;
+    let settings = AdvancedMutationSettings {
+        copy_error2_enabled: true,
+        ..Default::default()
+    };
     engine.update_advanced_mutation_settings(settings).unwrap();
     let source = engine.register_species(SpeciesDefinition {
         name: "Animal Minimalis".to_owned(),

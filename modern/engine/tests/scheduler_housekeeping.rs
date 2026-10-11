@@ -3,10 +3,7 @@ use darwinbots_engine::{
     QueueChangeKind, SaveFile, SpeciesDefinition,
 };
 
-fn restore_with_bodies(
-    engine: &Engine,
-    values: &[(darwinbots_engine::OrganismId, i32)],
-) -> Engine {
+fn restore_with_bodies(engine: &Engine, values: &[(darwinbots_engine::OrganismId, i32)]) -> Engine {
     let encoded = SaveFile::encode(engine).unwrap();
     let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
     for (id, body) in values {
@@ -76,7 +73,7 @@ fn low_memory_housekeeping_removes_the_lowest_energy_genome_over_the_limit() {
 
 #[test]
 fn low_memory_housekeeping_preserves_inclusive_budget_composite_rank_threshold_candidate_safety_and_accounting()
-{
+ {
     assert_eq!(Engine::low_memory_deletion_budget(1, 637_500), 2);
     assert_eq!(Engine::low_memory_deletion_budget(1, 425_000), 3);
     assert_eq!(Engine::low_memory_deletion_budget(1, 255_000), 3);

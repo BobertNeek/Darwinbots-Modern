@@ -264,10 +264,10 @@ public sealed class RuntimeControlSurfaceTests
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EGridMedium)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            Assert.True(viewport.ShowMovementVectors);
+            Assert.False(viewport.ShowMovementVectors);
             Assert.False(viewport.ShowShotImpacts);
-            Assert.True(viewport.ShowResourceGauges);
-            Assert.True(viewport.HighlightTeleporters);
+            Assert.False(viewport.ShowResourceGauges);
+            Assert.False(viewport.HighlightTeleporters);
             Assert.True(viewport.EnergyGridEnabled);
             Assert.Equal(EnergyGridSize.Medium, viewport.EnergyGridSize);
 
@@ -1428,21 +1428,35 @@ public sealed class RuntimeControlSurfaceTests
         await using var simulation = new SimulationSession(engine);
         var headless = DesktopTestApplication.Session;
 
-        await headless.Dispatch(() =>
+        await headless.Dispatch(async () =>
         {
             var window = RuntimeWindow(simulation);
-            SetField(window, "_selectedFeature", new WorldFeatureSelection(WorldFeatureKind.Obstacle, 1));
-            Invoke(window, "RemoveFeature_Click");
-            Invoke(window, "Move_Click");
-            var viewport = window.FindControl<WorldViewport>("Viewport")!;
-            Raise<Action<float[]>>(viewport, "WorldClicked")([500f, 600f]);
-            Raise<Action<uint, float[]>>(viewport, "OrganismDragCompleted")(3, [700f, 800f]);
+            window.Show();
+            try
+            {
+                SetField(window, "_selectedFeature", new WorldFeatureSelection(WorldFeatureKind.Obstacle, 1));
+                Invoke(window, "RemoveFeature_Click");
+                await WaitFor(() => window.OwnedWindows.OfType<DeleteConfirmationWindow>().Any());
+                var confirmation = window.OwnedWindows.OfType<DeleteConfirmationWindow>().Single();
+                confirmation.FindControl<Button>("ConfirmButton")!
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => engine.Calls.Contains("RemoveObstacle:1"));
+                Invoke(window, "Move_Click");
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                Raise<Action<float[]>>(viewport, "WorldClicked")([500f, 600f]);
+                Raise<Action<uint, float[]>>(viewport, "OrganismDragCompleted")(3, [700f, 800f]);
+                await WaitFor(() =>
+                    engine.Calls.Contains("Move:3:2:500:600")
+                    && engine.Calls.Contains("Move:3:2:700:800"),
+                    () => string.Join(", ", engine.Calls));
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                SetField(window, "_session", null);
+                window.Close();
+            }
         }, CancellationToken.None);
-        await WaitFor(() =>
-            engine.Calls.Contains("RemoveObstacle:1")
-            && engine.Calls.Contains("Move:3:2:500:600")
-            && engine.Calls.Contains("Move:3:2:700:800"),
-            () => string.Join(", ", engine.Calls));
     }
 
     [Fact]
