@@ -1,0 +1,49 @@
+{
+  "source_page": "http://wiki.darwinbots.com/w/Main_FTP",
+  "download_url": "http://ftp.darwinbots.com/Darwin2.48.32.exe",
+  "path": "C:\\Users\\PC\\Downloads\\Darwinbots-Reference-2.48.32\\Darwin2.48.32.exe",
+  "size": 4759552,
+  "sha256": "7f580d9ce8f1095a01fd162e9bcac03fe437599e080786fd670b676671c31990",
+  "embedded_file_version": "2.48.0032",
+  "embedded_product_version": "2.48.0032",
+  "runtime_installer_url": "http://ftp.darwinbots.com/Darwinbots-2-48-29-Setup.exe",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "oracle_behavior_verified": false,
+  "launch_note": "The official 2.48.32 program visibly runs through the documented native Sky route. The user created a new game and saved test.sim. The production Rust loader rejected that genuine save with missing DB3S header. Original-versus-port behavioral equality remains unproven. The separate automatic evolution attempt was not qualified: the audit configuration first overflowed a 16-bit field; after correcting it, the incomplete local fixture produced Error 53, file not found.",
+  "native_start_verified": true,
+  "native_route": "mcp__node_repl__js + documented @oai/sky",
+  "original_run_observation": {
+    "version_title": "DarwinBots 2.48.32",
+    "normal_run_cycles": 956,
+    "normal_run_bots": 770,
+    "normal_run_shots": 354,
+    "evolution_run_observed_cycles": 380,
+    "screenshot": "original-24832-running.png"
+  },
+  "native_file_obtained": true,
+  "native_file": {
+    "date": "2026-10-11",
+    "producer": "Official Darwinbots 2.48.32 executable, user created a new game and saved it",
+    "original_path": "C:\\Users\\PC\\Downloads\\Darwinbots-Reference-2.48.32\\oracle-run\\Saves\\test.sim",
+    "fixture": "original-24832-test-sim.zip",
+    "fixture_entry": "test.sim",
+    "size": 2091837,
+    "sha256": "09b77b6eaf0a1a8ffc09c601a8869fe37c4fc4e21860ebf379519fdbfce8a55e",
+    "first_16_bytes_hex": "c400000000000000137c2e46e8a6f745",
+    "native_robot_count_i16": 196,
+    "port_code_revision": "801a18f6a90c63794c7d379055944138e8015129",
+    "port_dll_sha256": "b709748ff9d96d0b3f520b4d8037225ffe2e383bc404609c8cca573d0482b2b3",
+    "entry_point": "db_engine_load (same entry point used by desktop NativeEngineClient.Load)",
+    "create_status": 0,
+    "load_status": 4,
+    "error": {
+      "message": "save data is invalid: missing DB3S header",
+      "version": 1
+    },
+    "conclusion": "The production port loader rejects this genuine native .sim. Native simulation interchange is not implemented.",
+    "limits": [
+      "No original re-load or deterministic original-versus-port trace comparison performed.",
+      "This is one genuine reference save; no full .dbo interchange corpus is established."
+    ]
+  }
+}

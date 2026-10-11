@@ -1,0 +1,1047 @@
+{
+  "date": "2026-10-11",
+  "code_revision": "801a18f6a90c63794c7d379055944138e8015129",
+  "baseline_revision": "cc16cb49a848704bc3e223adfaba123a98433510",
+  "rust_command": "cargo test --release --workspace --no-fail-fast -- --skip starter_world_sustains_moving_predators_finite_shots_and_bounded_plants --skip starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce",
+  "rust_broad_run": {
+    "log": "completion-checks/parity-release-bounded-workspace.log",
+    "targets": [
+      {
+        "target": "src\\lib.rs",
+        "failures": [],
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "src\\main.rs",
+        "failures": [],
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "commands",
+        "failures": [],
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db245_probes",
+        "failures": [
+          "every_db245_bot_completes_the_standard_probe"
+        ],
+        "result": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "src\\lib.rs",
+        "failures": [],
+        "result": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "advanced_mutation_costs",
+        "failures": [],
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "canonical_cycle_248",
+        "failures": [
+          "asexual_birth_side_effects_execute_in_commit_phase"
+        ],
+        "result": "FAILED",
+        "passed": 13,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "contracts",
+        "failures": [],
+        "result": "ok",
+        "passed": 33,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "core_state_contracts",
+        "failures": [],
+        "result": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "corpses_collisions",
+        "failures": [
+          "feeding_shots_harvest_energy_from_nearby_corpses",
+          "energy_below_configured_corpse_threshold_becomes_corpse_after_age_zero",
+          "configured_corpse_decay_changes_authoritative_lifecycle_state_after_tick",
+          "body_feeding_shots_multiply_corpse_damage_and_return_a_packet",
+          "energy_death_leaves_a_decayable_corpse_in_world_state"
+        ],
+        "result": "FAILED",
+        "passed": 1,
+        "failed": 5,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db24832_clean_defaults",
+        "failures": [],
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db24832_starter_movement",
+        "failures": [],
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db2_final_engine_world",
+        "failures": [
+          "eco_03_pond_depth_moving_sun_band_and_tide_reduce_authoritative_feed"
+        ],
+        "result": "FAILED",
+        "passed": 3,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db2_mutation_248",
+        "failures": [
+          "changing_a_robot_point_rate_reschedules_its_next_mutation"
+        ],
+        "result": "FAILED",
+        "passed": 17,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db2_physics",
+        "failures": [],
+        "result": "ok",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db2_projectiles",
+        "failures": [
+          "energy_packet_applies_db24832_transfer_without_a_live_packet_owner",
+          "energy_feeding_request_extracts_target_resources_and_returns_energy_packet",
+          "obstacle_intercepts_projectile_before_target",
+          "sperm_shot_forces_target_reproduction",
+          "reproductive_projectiles_use_staged_virus_and_sperm_gates",
+          "virus_shot_transfers_the_firers_dna",
+          "swept_collision_hits_a_bot_between_projectile_endpoints"
+        ],
+        "result": "FAILED",
+        "passed": 12,
+        "failed": 7,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db2_starter_ecology",
+        "failures": [],
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1
+      },
+      {
+        "target": "db2_vegetation",
+        "failures": [
+          "weather_sun_band_controls_light_memory_for_wrapped_positions"
+        ],
+        "result": "FAILED",
+        "passed": 18,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "db2_vision",
+        "failures": [
+          "focus_eye_selects_reference_target"
+        ],
+        "result": "FAILED",
+        "passed": 3,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "dna_runtime_248",
+        "failures": [],
+        "result": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "eco05_repopulation",
+        "failures": [],
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "environment_world",
+        "failures": [
+          "gravity_and_drag_affect_motion",
+          "complete_environment_settings_can_change_while_running",
+          "intrasim_teleporter_blocks_immediate_paired_backflow",
+          "outbound_only_teleporter_does_not_relocate_intrasim_organisms",
+          "opaque_obstacle_blocks_vision_of_a_target_behind_it",
+          "intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer"
+        ],
+        "result": "FAILED",
+        "passed": 7,
+        "failed": 6,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "extinct_species",
+        "failures": [],
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "final_state_persistence_248",
+        "failures": [],
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "gpu_ffi",
+        "failures": [
+          "cpu_and_gpu_match_toxin_state_memory_and_position"
+        ],
+        "result": "FAILED",
+        "passed": 23,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "history_records",
+        "failures": [
+          "bounded_historical_records_are_sampled_and_preserved_by_saves"
+        ],
+        "result": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "legacy_distribution",
+        "failures": [],
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "legacy_transport",
+        "failures": [
+          "file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures"
+        ],
+        "result": "FAILED",
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "live_legacy_menu_settings",
+        "failures": [],
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "local_modes",
+        "failures": [],
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "manual_tools",
+        "failures": [
+          "manual_one_parent_reproduction_splits_energy_and_body_fifty_fifty"
+        ],
+        "result": "FAILED",
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "mutation_advanced_248",
+        "failures": [
+          "zerobot_mode_mutates_selects_and_rolls_back_unstable_rounds",
+          "engine_advanced_mutations_cover_all_four_sunline_operators_deterministically"
+        ],
+        "result": "FAILED",
+        "passed": 5,
+        "failed": 2,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "mutation_lifecycle",
+        "failures": [],
+        "result": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "occurrence_census_248",
+        "failures": [],
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "parity_completion",
+        "failures": [],
+        "result": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "reproduction_heredity_248",
+        "failures": [
+          "blocked_birth_charges_no_five_block_dna_copy_cost",
+          "competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged",
+          "occupied_forward_placement_is_atomic_and_keeps_repro_pending",
+          "repro_with_zero_effective_percentage_does_not_birth_or_consume_request",
+          "toroidal_birth_uses_unwrapped_candidate_and_obstacle_segment"
+        ],
+        "result": "FAILED",
+        "passed": 20,
+        "failed": 5,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "robot_state_248",
+        "failures": [],
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "robot_tools",
+        "failures": [],
+        "result": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "scheduler_housekeeping",
+        "failures": [],
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "scheduler_shock",
+        "failures": [],
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "sensing_compatibility",
+        "failures": [],
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "shot_state",
+        "failures": [
+          "fired_shots_publish_visible_persisted_world_state"
+        ],
+        "result": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "spawn_placement",
+        "failures": [
+          "reproduction_places_children_at_seeded_random_offsets"
+        ],
+        "result": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "species_ecology",
+        "failures": [
+          "attenuated_venom_below_one_has_no_effect",
+          "body_feeding_shots_use_body_coefficients_and_return_energy_from_target",
+          "body_feeding_shots_consume_shell_before_body",
+          "corpses_ignore_venom_impacts",
+          "conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect",
+          "dna_controls_body_defenses_chloroplasts_waste_and_aim",
+          "conspecific_defensive_poison_adds_to_store_without_forced_effect",
+          "eye_strength_uses_db2_edge_to_edge_distance",
+          "defensive_poison_uses_db2_information_and_feeding_equality_rules",
+          "feeding_shots_without_shootval_use_legacy_body_based_strength",
+          "in_flight_venom_keeps_payload_after_owner_removal",
+          "heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five",
+          "feeding_energy_shots_ignore_shell",
+          "heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression",
+          "heterospecific_venom_consumes_shell_before_starting_an_effect",
+          "minus_two_shots_donate_energy_to_zerobots",
+          "later_venom_hit_adds_duration_and_replaces_payload",
+          "negative_shots_feed_the_attacker_from_the_target",
+          "non_integral_venom_power_keeps_fractional_countdown_through_expiry",
+          "release_energy_defense_applies_vb_cint_after_target_velocity_formula",
+          "toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory",
+          "toxin_location_340_is_a_no_op_and_random_location_is_safe",
+          "information_defense_applies_vb_cint_to_reversed_velocity",
+          "reproduction_wave_stops_cleanly_at_population_capacity"
+        ],
+        "result": "FAILED",
+        "passed": 17,
+        "failed": 24,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "starter_ecology",
+        "failures": [],
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1
+      },
+      {
+        "target": "sysvar_lifecycle_248",
+        "failures": [
+          "engine_tick_preserves_tied_references_only_for_a_valid_selected_port"
+        ],
+        "result": "FAILED",
+        "passed": 23,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "ties_multibot",
+        "failures": [
+          "slime_is_consumed_to_resist_new_ties",
+          "negative_tieloc_resource_exchange_runs_in_engine_tick"
+        ],
+        "result": "FAILED",
+        "passed": 19,
+        "failed": 2,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "toroidal_world",
+        "failures": [],
+        "result": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "touch_taste_248",
+        "failures": [
+          "corpse_and_obstacle_impacts_do_not_taste_a_live_robot",
+          "confirmed_organism_hit_tastes_even_when_effect_returns_false"
+        ],
+        "result": "FAILED",
+        "passed": 6,
+        "failed": 2,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "visual_phenotypes",
+        "failures": [
+          "phenotype_round_trips_through_version_three_save"
+        ],
+        "result": "FAILED",
+        "passed": 6,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "vm",
+        "failures": [],
+        "result": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "vm_costs_telemetry",
+        "failures": [
+          "fractional_cost_remainders_settle_positive_and_negative_energy"
+        ],
+        "result": "FAILED",
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "vm_implicit_conditions",
+        "failures": [],
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "w4_evolution_gpu",
+        "failures": [],
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "world_systems",
+        "failures": [
+          "negative_shot_damages_nearest_target_and_records_event",
+          "sensing_writes_nearest_organism_reference_sysvars",
+          "tie_commands_create_multibot_link_and_share_energy",
+          "tie_readback_publishes_the_selected_partner_reference_state"
+        ],
+        "result": "FAILED",
+        "passed": 8,
+        "failed": 4,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "zerobot_progression",
+        "failures": [
+          "progression_counters_distinguish_evolved_behavior_from_forced_assistance"
+        ],
+        "result": "FAILED",
+        "passed": 0,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "darwinbots_cli",
+        "failures": [],
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "darwinbots_engine",
+        "failures": [],
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      }
+    ],
+    "passed": 378,
+    "failed": 73,
+    "filtered": 2
+  },
+  "focused_followup": {
+    "log": "completion-checks/parity-final-fixtures.log",
+    "targets": [
+      {
+        "target": "db2_mutation_248",
+        "failures": [],
+        "result": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "history_records",
+        "failures": [],
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      },
+      {
+        "target": "visual_phenotypes",
+        "failures": [],
+        "result": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0
+      }
+    ],
+    "passed": 26,
+    "failed": 0,
+    "filtered": 0
+  },
+  "unresolved_targets": [
+    {
+      "target": "db245_probes",
+      "failures": [
+        "every_db245_bot_completes_the_standard_probe"
+      ],
+      "result": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "canonical_cycle_248",
+      "failures": [
+        "asexual_birth_side_effects_execute_in_commit_phase"
+      ],
+      "result": "FAILED",
+      "passed": 13,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "corpses_collisions",
+      "failures": [
+        "feeding_shots_harvest_energy_from_nearby_corpses",
+        "energy_below_configured_corpse_threshold_becomes_corpse_after_age_zero",
+        "configured_corpse_decay_changes_authoritative_lifecycle_state_after_tick",
+        "body_feeding_shots_multiply_corpse_damage_and_return_a_packet",
+        "energy_death_leaves_a_decayable_corpse_in_world_state"
+      ],
+      "result": "FAILED",
+      "passed": 1,
+      "failed": 5,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "db2_final_engine_world",
+      "failures": [
+        "eco_03_pond_depth_moving_sun_band_and_tide_reduce_authoritative_feed"
+      ],
+      "result": "FAILED",
+      "passed": 3,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "db2_projectiles",
+      "failures": [
+        "energy_packet_applies_db24832_transfer_without_a_live_packet_owner",
+        "energy_feeding_request_extracts_target_resources_and_returns_energy_packet",
+        "obstacle_intercepts_projectile_before_target",
+        "sperm_shot_forces_target_reproduction",
+        "reproductive_projectiles_use_staged_virus_and_sperm_gates",
+        "virus_shot_transfers_the_firers_dna",
+        "swept_collision_hits_a_bot_between_projectile_endpoints"
+      ],
+      "result": "FAILED",
+      "passed": 12,
+      "failed": 7,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "db2_vegetation",
+      "failures": [
+        "weather_sun_band_controls_light_memory_for_wrapped_positions"
+      ],
+      "result": "FAILED",
+      "passed": 18,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "db2_vision",
+      "failures": [
+        "focus_eye_selects_reference_target"
+      ],
+      "result": "FAILED",
+      "passed": 3,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "environment_world",
+      "failures": [
+        "gravity_and_drag_affect_motion",
+        "complete_environment_settings_can_change_while_running",
+        "intrasim_teleporter_blocks_immediate_paired_backflow",
+        "outbound_only_teleporter_does_not_relocate_intrasim_organisms",
+        "opaque_obstacle_blocks_vision_of_a_target_behind_it",
+        "intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer"
+      ],
+      "result": "FAILED",
+      "passed": 7,
+      "failed": 6,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "gpu_ffi",
+      "failures": [
+        "cpu_and_gpu_match_toxin_state_memory_and_position"
+      ],
+      "result": "FAILED",
+      "passed": 23,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "legacy_transport",
+      "failures": [
+        "file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures"
+      ],
+      "result": "FAILED",
+      "passed": 5,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "manual_tools",
+      "failures": [
+        "manual_one_parent_reproduction_splits_energy_and_body_fifty_fifty"
+      ],
+      "result": "FAILED",
+      "passed": 5,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "mutation_advanced_248",
+      "failures": [
+        "zerobot_mode_mutates_selects_and_rolls_back_unstable_rounds",
+        "engine_advanced_mutations_cover_all_four_sunline_operators_deterministically"
+      ],
+      "result": "FAILED",
+      "passed": 5,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "reproduction_heredity_248",
+      "failures": [
+        "blocked_birth_charges_no_five_block_dna_copy_cost",
+        "competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged",
+        "occupied_forward_placement_is_atomic_and_keeps_repro_pending",
+        "repro_with_zero_effective_percentage_does_not_birth_or_consume_request",
+        "toroidal_birth_uses_unwrapped_candidate_and_obstacle_segment"
+      ],
+      "result": "FAILED",
+      "passed": 20,
+      "failed": 5,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "shot_state",
+      "failures": [
+        "fired_shots_publish_visible_persisted_world_state"
+      ],
+      "result": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "spawn_placement",
+      "failures": [
+        "reproduction_places_children_at_seeded_random_offsets"
+      ],
+      "result": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "species_ecology",
+      "failures": [
+        "attenuated_venom_below_one_has_no_effect",
+        "body_feeding_shots_use_body_coefficients_and_return_energy_from_target",
+        "body_feeding_shots_consume_shell_before_body",
+        "corpses_ignore_venom_impacts",
+        "conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect",
+        "dna_controls_body_defenses_chloroplasts_waste_and_aim",
+        "conspecific_defensive_poison_adds_to_store_without_forced_effect",
+        "eye_strength_uses_db2_edge_to_edge_distance",
+        "defensive_poison_uses_db2_information_and_feeding_equality_rules",
+        "feeding_shots_without_shootval_use_legacy_body_based_strength",
+        "in_flight_venom_keeps_payload_after_owner_removal",
+        "heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five",
+        "feeding_energy_shots_ignore_shell",
+        "heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression",
+        "heterospecific_venom_consumes_shell_before_starting_an_effect",
+        "minus_two_shots_donate_energy_to_zerobots",
+        "later_venom_hit_adds_duration_and_replaces_payload",
+        "negative_shots_feed_the_attacker_from_the_target",
+        "non_integral_venom_power_keeps_fractional_countdown_through_expiry",
+        "release_energy_defense_applies_vb_cint_after_target_velocity_formula",
+        "toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory",
+        "toxin_location_340_is_a_no_op_and_random_location_is_safe",
+        "information_defense_applies_vb_cint_to_reversed_velocity",
+        "reproduction_wave_stops_cleanly_at_population_capacity"
+      ],
+      "result": "FAILED",
+      "passed": 17,
+      "failed": 24,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "sysvar_lifecycle_248",
+      "failures": [
+        "engine_tick_preserves_tied_references_only_for_a_valid_selected_port"
+      ],
+      "result": "FAILED",
+      "passed": 23,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "ties_multibot",
+      "failures": [
+        "slime_is_consumed_to_resist_new_ties",
+        "negative_tieloc_resource_exchange_runs_in_engine_tick"
+      ],
+      "result": "FAILED",
+      "passed": 19,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "touch_taste_248",
+      "failures": [
+        "corpse_and_obstacle_impacts_do_not_taste_a_live_robot",
+        "confirmed_organism_hit_tastes_even_when_effect_returns_false"
+      ],
+      "result": "FAILED",
+      "passed": 6,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "vm_costs_telemetry",
+      "failures": [
+        "fractional_cost_remainders_settle_positive_and_negative_energy"
+      ],
+      "result": "FAILED",
+      "passed": 5,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "world_systems",
+      "failures": [
+        "negative_shot_damages_nearest_target_and_records_event",
+        "sensing_writes_nearest_organism_reference_sysvars",
+        "tie_commands_create_multibot_link_and_share_energy",
+        "tie_readback_publishes_the_selected_partner_reference_state"
+      ],
+      "result": "FAILED",
+      "passed": 8,
+      "failed": 4,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "zerobot_progression",
+      "failures": [
+        "progression_counters_distinguish_evolved_behavior_from_forced_assistance"
+      ],
+      "result": "FAILED",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    }
+  ],
+  "desktop_core": {
+    "passed": 126,
+    "failed": 0,
+    "log": "completion-checks/parity-core-final.log"
+  },
+  "desktop_full": {
+    "passed": 95,
+    "failed": 0,
+    "log": "completion-checks/parity-desktop-green.log"
+  },
+  "rendered_and_native_settings_subset": {
+    "passed": 20,
+    "failed": 0,
+    "overlaps_full_desktop": true,
+    "log": "completion-checks/parity-desktop-final.log"
+  },
+  "lint": {
+    "command": "cargo clippy --workspace --all-targets -- -D warnings",
+    "result": "passed",
+    "log": "completion-checks/parity-clippy-complete.log"
+  },
+  "reference_hashes": {
+    "result": "6/6",
+    "command": "docs/reference/db24832/verify.ps1"
+  },
+  "benchmark": {
+    "backend": "Cpu",
+    "elapsed_seconds": 4.8912683999999995,
+    "layout": "uniform-grid",
+    "phase_ms": {
+      "cycle": 4890.827,
+      "dna": 129.9513,
+      "intent": 17.1367,
+      "interactions": 259.2667,
+      "lifecycle": 6.4956,
+      "mutation": 11.452,
+      "physics": 15.2556,
+      "projectiles": 11.5848,
+      "sensing": 3425.3003,
+      "snapshot": 151.92929999999998,
+      "spatial": 290.6422,
+      "vegetation": 46.3879
+    },
+    "population": 32000,
+    "ticks": 1,
+    "ticks_per_second": 0.20444594698585752,
+    "warmup_ticks": 0
+  },
+  "long_ecology": {
+    "result": "aborted without completion",
+    "cpu_cycles_requested": 20000,
+    "reason": "long-running attempt used a binary built before the final mutation-clock changes; not credited as latest-state qualification",
+    "log": "completion-checks/parity-release-soak.log"
+  },
+  "limits": [
+    "No complete passing Rust gate",
+    "Two long ecology cases excluded from the bounded broad run",
+    "Desktop render/native subset overlaps the full desktop run",
+    "Single un-warmed CPU benchmark cycle is not a GPU or sustained performance result",
+    "Original behavior equality not established"
+  ],
+  "native_sim_probe": {
+    "date": "2026-10-11",
+    "producer": "Official Darwinbots 2.48.32 executable, user created a new game and saved it",
+    "original_path": "C:\\Users\\PC\\Downloads\\Darwinbots-Reference-2.48.32\\oracle-run\\Saves\\test.sim",
+    "fixture": "original-24832-test-sim.zip",
+    "fixture_entry": "test.sim",
+    "size": 2091837,
+    "sha256": "09b77b6eaf0a1a8ffc09c601a8869fe37c4fc4e21860ebf379519fdbfce8a55e",
+    "first_16_bytes_hex": "c400000000000000137c2e46e8a6f745",
+    "native_robot_count_i16": 196,
+    "port_code_revision": "801a18f6a90c63794c7d379055944138e8015129",
+    "port_dll_sha256": "b709748ff9d96d0b3f520b4d8037225ffe2e383bc404609c8cca573d0482b2b3",
+    "entry_point": "db_engine_load (same entry point used by desktop NativeEngineClient.Load)",
+    "create_status": 0,
+    "load_status": 4,
+    "error": {
+      "message": "save data is invalid: missing DB3S header",
+      "version": 1
+    },
+    "conclusion": "The production port loader rejects this genuine native .sim. Native simulation interchange is not implemented.",
+    "limits": [
+      "No original re-load or deterministic original-versus-port trace comparison performed.",
+      "This is one genuine reference save; no full .dbo interchange corpus is established."
+    ]
+  }
+}
