@@ -1,0 +1,11 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 17.70s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 3 tests
+test world::native_export::tests::native_organism_export_contains_live_memory_resource_bits_dna_and_restrictions ... ok
+test world::native_export::tests::genuine_robot_group_export_remaps_forward_and_back_ties_into_the_new_file ... ok
+test world::native_export::tests::native_export_retains_unrepresented_tie_metadata_and_type ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 36 filtered out; finished in 0.60s
+

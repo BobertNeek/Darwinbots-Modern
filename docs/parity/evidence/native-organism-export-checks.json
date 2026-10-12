@@ -1,0 +1,18 @@
+{
+  "code_revision": "46eac42bb18a9409719135cae73a92ce9478593f",
+  "rust_export_cases_passed": 3,
+  "strict_engine_lib_and_tests_clippy": true,
+  "proven": [
+    "Live robot resources and heading preserve Single bits",
+    "All 1000 VM cells and DNA blocks are encoded",
+    "Private variables, Windows-1252 owner text and restrictions are encoded",
+    "A 196-robot genuine group exports with reciprocal forward/back tie remapping",
+    "Unrepresented original tie status, memory and type remain in the native file"
+  ],
+  "limits": [
+    "Engine API is implemented; desktop export is not wired yet",
+    "Native production organism import still uses the old lossy adapter",
+    "No original executable reload credited",
+    "Full simulation export and complete corpse state still need implementation"
+  ]
+}
