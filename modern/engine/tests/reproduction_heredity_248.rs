@@ -115,6 +115,8 @@ fn configured_parent(
         payload["species"][0]["mutation_rate"] = json!(0.0);
         let robot = robot_value_mut(payload, parent);
         set_transfer_materials(robot);
+        // Keep this birth fixture independent of the end-of-cycle feeding pass.
+        robot["flags"]["can_use_chloroplasts"] = json!(false);
         set_hereditary_memory(robot);
         set_memory(&mut robot["program"]["memory"], 300, reproduction);
         robot["counters"]["generation"] = json!(generation);
@@ -138,16 +140,16 @@ fn child_of(engine: &Engine, parent: OrganismId) -> OrganismId {
 }
 
 fn assert_transfer(parent: &RobotState, child: &RobotState, parent_energy: i32) {
-    assert_eq!(parent.materials.energy, parent_energy);
-    assert_eq!(parent.materials.body, 300);
-    assert_eq!(parent.materials.waste, 30);
-    assert_eq!(parent.materials.permanent_waste, 15);
-    assert_eq!(parent.materials.chloroplasts, 150);
-    assert_eq!(child.materials.energy, 999);
-    assert_eq!(child.materials.body, 100);
-    assert_eq!(child.materials.waste, 10);
-    assert_eq!(child.materials.permanent_waste, 5);
-    assert_eq!(child.materials.chloroplasts, 50);
+    assert_eq!(parent.materials.energy, parent_energy as f32);
+    assert_eq!(parent.materials.body, 300.0);
+    assert_eq!(parent.materials.waste, 30.0);
+    assert_eq!(parent.materials.permanent_waste, 15.0);
+    assert_eq!(parent.materials.chloroplasts, 149.645_98);
+    assert_eq!(child.materials.energy, 999.0);
+    assert_eq!(child.materials.body, 100.0);
+    assert_eq!(child.materials.waste, 10.0);
+    assert_eq!(child.materials.permanent_waste, 5.0);
+    assert_eq!(child.materials.chloroplasts, 49.881_992);
 }
 
 fn control_without_birth_request(engine: &Engine, parent: OrganismId) -> RobotState {
@@ -201,14 +203,14 @@ fn repro_125_transfers_twenty_five_percent_of_db2_resources() {
     );
     let parent_state = engine.robot_state(parent).unwrap();
     let child_state = engine.robot_state(child).unwrap();
-    assert_eq!(parent_state.materials.shell, 70);
-    assert_eq!(parent_state.materials.slime, 78);
-    assert_eq!(parent_state.materials.venom, 90);
-    assert_eq!(parent_state.materials.poison, 98);
-    assert_eq!(child_state.materials.shell, 0);
-    assert_eq!(child_state.materials.slime, 0);
-    assert_eq!(child_state.materials.venom, 0);
-    assert_eq!(child_state.materials.poison, 0);
+    assert_eq!(parent_state.materials.shell, 70.0);
+    assert_eq!(parent_state.materials.slime, 78.4);
+    assert_eq!(parent_state.materials.venom, 90.0);
+    assert_eq!(parent_state.materials.poison, 98.0);
+    assert_eq!(child_state.materials.shell, 0.0);
+    assert_eq!(child_state.materials.slime, 0.0);
+    assert_eq!(child_state.materials.venom, 0.0);
+    assert_eq!(child_state.materials.poison, 0.0);
     assert_eq!(engine.memory(parent, "repro").unwrap(), 0);
 }
 
@@ -753,7 +755,7 @@ fn positive_energy_below_201_remains_eligible_for_reproduction() {
             .unwrap()
             .materials
             .energy,
-        0
+        0.24975
     );
 }
 
@@ -851,11 +853,11 @@ fn body_split_uses_vb6_cint_round_to_even_without_minimums() {
         let child = child_of(&engine, parent);
         assert_eq!(
             engine.robot_state(parent).unwrap().materials.body,
-            expected_parent
+            expected_parent as f32
         );
         assert_eq!(
             engine.robot_state(child).unwrap().materials.body,
-            expected_child
+            expected_child as f32
         );
     }
 }
@@ -875,14 +877,14 @@ fn post_birth_mass_and_previous_energy_match_source_bookkeeping() {
     assert!((engine.robot_state(parent).unwrap().materials.mass - 198.75).abs() < 0.000_001);
     let parent_radius = engine.robot_state(parent).unwrap().materials.radius;
     assert!(
-        (parent_radius - 73.916_03).abs() < 0.000_1,
-        "parent radius was {parent_radius}, expected approximately 73.91603"
+        (parent_radius - 73.910_965).abs() < 0.000_1,
+        "parent radius was {parent_radius}, expected approximately 73.910965"
     );
     assert!((engine.robot_state(child).unwrap().materials.mass - 0.1).abs() < 0.000_001);
     let payload = engine_payload(&engine);
     assert_eq!(
         payload["slots"][parent.slot() as usize]["organism"]["materials"]["previous_energy"],
-        json!(2_999)
+        json!(2_999.0)
     );
 }
 

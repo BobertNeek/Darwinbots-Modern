@@ -197,13 +197,6 @@ impl RobotProgramState {
             tie_length_overwrites: [false; 4],
         }
     }
-
-    pub(crate) fn settle_dna_energy_cost(&mut self, energy_cost: f64) -> i32 {
-        let total = self.fractional_cost_remainder + energy_cost;
-        let whole = total.trunc().clamp(i32::MIN as f64, i32::MAX as f64) as i32;
-        self.fractional_cost_remainder = total - f64::from(whole);
-        whole
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -622,41 +615,41 @@ struct LegacyKinematicsSoa {
 
 #[derive(Default, Serialize, Deserialize)]
 struct LegacyLifecycleSoa {
-    energies: Vec<i32>,
+    energies: Vec<f32>,
     ages: Vec<u64>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
 struct LegacyBiologyState {
     #[serde(default = "default_legacy_energy")]
-    energy: i32,
-    body: i32,
+    energy: f32,
+    body: f32,
     #[serde(default = "default_legacy_dimension")]
     mass: f32,
     #[serde(default = "default_legacy_dimension")]
     radius: f32,
-    waste: i32,
+    waste: f32,
     #[serde(default)]
-    permanent_waste: i32,
-    shell: i32,
-    slime: i32,
-    venom: i32,
-    poison: i32,
-    chloroplasts: i32,
+    permanent_waste: f32,
+    shell: f32,
+    slime: f32,
+    venom: f32,
+    poison: f32,
+    chloroplasts: f32,
     aim: i32,
     pain: i32,
     pleasure: i32,
     paralyzed: i32,
     poisoned: i32,
-    previous_energy: i32,
+    previous_energy: f32,
     #[serde(default)]
     plant_energy_carry_micros: i64,
     #[serde(default)]
     plant_body_carry_micros: i64,
 }
 
-const fn default_legacy_energy() -> i32 {
-    1_000
+const fn default_legacy_energy() -> f32 {
+    1_000.0
 }
 
 const fn default_legacy_dimension() -> f32 {
@@ -721,7 +714,7 @@ impl Serialize for RobotArena {
                 kinematics.actual_velocities.push([0.0; 2]);
                 kinematics.pending_velocities.push([0.0; 2]);
                 kinematics.alive.push(false);
-                lifecycle.energies.push(0);
+                lifecycle.energies.push(0.0);
                 lifecycle.ages.push(0);
                 biology.push(LegacyBiologyState::default());
                 forced_reproductions.push(false);
@@ -768,7 +761,7 @@ impl<'de> Deserialize<'de> for RobotArena {
                     .energies
                     .get(index)
                     .copied()
-                    .unwrap_or(1_000);
+                    .unwrap_or(1_000.0);
                 let mut state = RobotState::new(
                     organism.dna,
                     organism.memory,

@@ -167,8 +167,8 @@ fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
     engine.tick().unwrap();
 
     let after = engine.robot_state(target).unwrap();
-    assert!(after.materials.waste < 32_000);
-    assert!(after.materials.permanent_waste > 0);
+    assert!(after.materials.waste < 32_000.0);
+    assert!(after.materials.permanent_waste > 0.0);
     assert_ne!(engine.memory_at(target, 500).unwrap(), before_memory);
     assert!(
         engine
@@ -253,8 +253,8 @@ fn automatic_overflow_defecation_subtracts_the_emitted_waste_packet() {
     engine.tick().unwrap();
 
     let after = engine.robot_state(owner).unwrap();
-    assert_eq!(after.materials.waste, 31_000);
-    assert_eq!(after.materials.permanent_waste, 12);
+    assert_eq!(after.materials.waste, 31_000.0);
+    assert_eq!(after.materials.permanent_waste, 12.0);
     assert_eq!(engine.snapshot().tick, 1);
     let packet = engine
         .snapshot()

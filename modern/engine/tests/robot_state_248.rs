@@ -59,7 +59,7 @@ fn robot_state_contains_every_phase1_field() {
         kinematics.aim_vector,
         kinematics.angular_momentum,
     );
-    assert_eq!(materials.energy, 1_000);
+    assert_eq!(materials.energy, 1_000.0);
     let _ = (
         materials.body,
         materials.mass,
@@ -179,11 +179,20 @@ fn one_robot_has_one_writable_owner_for_energy_age_position_and_memory() {
 
     let state = engine.robot_state(id).unwrap();
     let snapshot = engine.organism(id).unwrap();
-    assert_eq!(state.materials.energy, snapshot.energy);
+    assert_eq!(
+        state.materials.energy.round_ties_even() as i32,
+        snapshot.energy
+    );
     assert_eq!(state.counters.age, snapshot.age);
     assert_eq!(state.kinematics.position, snapshot.position);
-    assert_eq!(state.program.memory.read(310), state.materials.energy);
-    assert_eq!(engine.memory_at(id, 310).unwrap(), state.materials.energy);
+    assert_eq!(
+        state.program.memory.read(310),
+        state.materials.energy.round_ties_even() as i32
+    );
+    assert_eq!(
+        engine.memory_at(id, 310).unwrap(),
+        state.materials.energy.round_ties_even() as i32
+    );
     assert_eq!(
         state.program.memory.read(219),
         state.kinematics.position[0].round() as i32

@@ -35,8 +35,8 @@ mod world;
 pub mod ffi;
 
 pub use backend::{BackendCapabilities, BackendKind, BackendPreference};
-pub use biology::BiologyState;
 pub use biology::RobotMaterials;
+pub use biology::{BiologyState, MaterialAmounts};
 pub use config::{
     CorpseDecayMode, CorpseDecaySettings, EngineConfig, MAX_ROBOTS, PhysicsSettings,
     RecordingSettings, ShotSettings, VegetationSettings, WasteSettings,

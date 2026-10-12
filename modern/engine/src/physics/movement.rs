@@ -15,10 +15,10 @@ pub(crate) struct MovementState {
     pub velocity: [f32; 2],
 }
 
-pub(crate) fn derived_mass(body: i32, shell: i32, chloroplasts: i32) -> f32 {
-    (body.max(0) as f32 / 1_000.0)
-        + (shell.max(0) as f32 / 200.0)
-        + (chloroplasts.clamp(0, 32_000) as f32 / 32_000.0) * 31_680.0
+pub(crate) fn derived_mass(body: f32, shell: f32, chloroplasts: f32) -> f32 {
+    (body.max(0.0) / 1_000.0)
+        + (shell.max(0.0) / 200.0)
+        + (chloroplasts.clamp(0.0, 32_000.0) / 32_000.0) * 31_680.0
 }
 
 pub(crate) fn voluntary_impulse(

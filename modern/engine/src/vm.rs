@@ -130,7 +130,17 @@ impl DnaVm {
         memory: &mut VmMemory,
         context: VmContext<'_>,
     ) -> Result<VmReport, EngineError> {
-        Ok(self.execute_blocks(program.blocks(), memory, context))
+        Ok(self.execute_blocks(program.blocks(), memory, context, None))
+    }
+
+    pub(crate) fn execute_with_energy(
+        &mut self,
+        program: &LegacyDna,
+        memory: &mut VmMemory,
+        context: VmContext<'_>,
+        energy: &mut f32,
+    ) -> Result<VmReport, EngineError> {
+        Ok(self.execute_blocks(program.blocks(), memory, context, Some(energy)))
     }
 
     fn execute_blocks(
@@ -138,6 +148,7 @@ impl DnaVm {
         blocks: &[DnaBlock],
         memory: &mut VmMemory,
         context: VmContext<'_>,
+        mut energy: Option<&mut f32>,
     ) -> VmReport {
         let mut integers = IntegerStack::new();
         let mut booleans = BooleanStack::new();
@@ -158,6 +169,17 @@ impl DnaVm {
             termination: VmTermination::ProgramEnd,
         };
 
+        if let Some(store) = energy.as_deref_mut() {
+            *store = (f64::from(*store) - report.energy_cost) as f32;
+        }
+        let mut charge = |report: &mut VmReport, category_cost: f64, costs: &DnaCosts| {
+            let cost = category_cost * costs.global_multiplier;
+            report.energy_cost += cost;
+            if let Some(store) = energy.as_deref_mut() {
+                // DNA.bas assigns back to nrg As Single after each instruction.
+                *store = (f64::from(*store) - cost) as f32;
+            }
+        };
         for (index, block) in blocks.iter().copied().enumerate() {
             if report.blocks_executed as usize >= MAX_DNA_BLOCKS {
                 report.termination = VmTermination::BlockLimit;
@@ -802,10 +824,6 @@ fn next_random(state: &mut u64) -> u64 {
     value ^= value << 17;
     *state = value.max(1);
     value
-}
-
-fn charge(report: &mut VmReport, category_cost: f64, costs: &DnaCosts) {
-    report.energy_cost += category_cost * costs.global_multiplier;
 }
 
 fn ensure_activation_slot(report: &mut VmReport, record: bool) {

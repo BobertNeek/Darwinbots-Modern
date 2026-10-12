@@ -13,7 +13,7 @@ pub(crate) struct ProjectileSpawn {
     pub range_multiplier: f32,
     pub angle: f32,
     pub kind: i32,
-    pub value: i32,
+    pub value: f32,
     pub payload: Option<LegacyDna>,
     pub source_species_name: Option<String>,
     pub toxin_memory_location: i32,
@@ -246,7 +246,7 @@ impl ProjectilePool {
             range_multiplier as u32
         };
         let energy = if request.kind == -2 {
-            request.value as f32
+            request.value
         } else {
             range as f32 * 40.0
         };
@@ -260,7 +260,8 @@ impl ProjectilePool {
             self.ranges.push(range);
             self.energies.push(energy);
             self.kinds.push(Self::normalized_kind(request.kind));
-            self.values.push(request.value.clamp(-32_000, 32_000));
+            self.values
+                .push(request.value.round_ties_even().clamp(-32_000.0, 32_000.0) as i32);
             self.alive.push(true);
             self.impact_flash.push(false);
             self.payloads.push(request.payload);
@@ -282,7 +283,7 @@ impl ProjectilePool {
             self.ranges[slot] = range;
             self.energies[slot] = energy;
             self.kinds[slot] = Self::normalized_kind(request.kind);
-            self.values[slot] = request.value.clamp(-32_000, 32_000);
+            self.values[slot] = request.value.round_ties_even().clamp(-32_000.0, 32_000.0) as i32;
             self.alive[slot] = true;
             self.impact_flash[slot] = false;
             self.payloads[slot] = request.payload;
@@ -303,14 +304,14 @@ impl ProjectilePool {
         position: [f32; 2],
         velocity: [f32; 2],
         kind: i32,
-        value: i32,
+        value: f32,
     ) -> u32 {
         self.spawn_fixed_packet(
             OrganismId::new(u32::MAX, u32::MAX),
             position,
             velocity,
             1,
-            if kind == -2 { value as f32 } else { 40.0 },
+            if kind == -2 { value } else { 40.0 },
             kind,
             value,
         )
@@ -322,10 +323,10 @@ impl ProjectilePool {
         position: [f32; 2],
         velocity: [f32; 2],
         range: u32,
-        value: i32,
+        value: f32,
     ) -> u32 {
         let range = range.max(1);
-        self.spawn_fixed_packet(owner, position, velocity, range, value as f32, -2, value)
+        self.spawn_fixed_packet(owner, position, velocity, range, value, -2, value)
     }
 
     pub(crate) fn spawn_waste_packet(
@@ -333,7 +334,7 @@ impl ProjectilePool {
         owner: OrganismId,
         position: [f32; 2],
         velocity: [f32; 2],
-        value: i32,
+        value: f32,
     ) -> u32 {
         self.spawn_fixed_packet(owner, position, velocity, 1, 40.0, -4, value)
     }
@@ -347,14 +348,14 @@ impl ProjectilePool {
         range: u32,
         energy: f32,
         kind: i32,
-        value: i32,
+        value: f32,
     ) -> u32 {
         let slot = self
             .free_slots
             .pop()
             .map_or(self.owners.len(), |slot| slot as usize);
         let kind = Self::normalized_kind(kind);
-        let value = value.clamp(-32_000, 32_000);
+        let value = value.round_ties_even().clamp(-32_000.0, 32_000.0) as i32;
         if slot == self.owners.len() {
             self.owners.push(owner);
             self.positions.push(position);
@@ -409,7 +410,7 @@ impl ProjectilePool {
         incoming_velocity: [f32; 2],
         target_actual_velocity: [f32; 2],
         incoming_range: u32,
-        value: i32,
+        value: f32,
         route: DefensivePoisonRoute,
         source_species_name: Option<String>,
         toxin_memory_location: i32,
@@ -445,7 +446,8 @@ impl ProjectilePool {
             self.ranges.push(range);
             self.energies.push(energy);
             self.kinds.push(-5);
-            self.values.push(value.clamp(0, 32_000));
+            self.values
+                .push(value.round_ties_even().clamp(0.0, 32_000.0) as i32);
             self.alive.push(true);
             self.impact_flash.push(false);
             self.payloads.push(None);
@@ -466,7 +468,7 @@ impl ProjectilePool {
             self.ranges[slot] = range;
             self.energies[slot] = energy;
             self.kinds[slot] = -5;
-            self.values[slot] = value.clamp(0, 32_000);
+            self.values[slot] = value.round_ties_even().clamp(0.0, 32_000.0) as i32;
             self.alive[slot] = true;
             self.impact_flash[slot] = false;
             self.payloads[slot] = None;
@@ -577,16 +579,16 @@ impl ProjectilePool {
         self.impact_flash[slot] = true;
     }
 
-    pub(crate) fn impact_power(&self, slot: u32, settings: &ShotSettings) -> i32 {
+    pub(crate) fn impact_power(&self, slot: u32, settings: &ShotSettings) -> f32 {
         let slot = slot as usize;
         if matches!(self.kinds[slot], -1 | -6) && !settings.feeding_proportional {
-            return settings.feeding_fixed_power.max(0);
+            return settings.feeding_fixed_power.max(0) as f32;
         }
         if self.ranges[slot] == 0 {
-            return 0;
+            return 0.0;
         }
         if self.kinds[slot] == -2 {
-            return self.energies[slot].round_ties_even().max(0.0) as i32;
+            return self.energies[slot].max(0.0);
         }
         let denominator = self.ranges[slot].max(1) as f32 * 40.0;
         let proportion = if matches!(self.kinds[slot], -1 | -6) {
@@ -594,10 +596,8 @@ impl ProjectilePool {
         } else {
             1.0
         };
-        ((self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator
-            * proportion)
-            .round_ties_even() as i32)
-            .max(0)
+        (self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator * proportion)
+            .max(0.0)
     }
 
     pub(crate) fn toxin_impact_power(&self, slot: u32) -> f32 {
@@ -677,7 +677,7 @@ mod tests {
         pool.ranges.push(10);
         pool.kinds.push(-1);
         let settings = ShotSettings::default();
-        assert_eq!(pool.impact_power(0, &settings), 50);
+        assert_eq!(pool.impact_power(0, &settings), 50.0);
         assert_eq!(
             pool.impact_power(
                 0,
@@ -686,24 +686,24 @@ mod tests {
                     ..settings.clone()
                 }
             ),
-            25
+            25.0
         );
         let fixed = ShotSettings {
             feeding_proportional: false,
             feeding_fixed_power: 20,
             ..settings.clone()
         };
-        assert_eq!(pool.impact_power(0, &fixed), 20);
+        assert_eq!(pool.impact_power(0, &fixed), 20.0);
         pool.kinds[0] = -6;
-        assert_eq!(pool.impact_power(0, &fixed), 20);
+        assert_eq!(pool.impact_power(0, &fixed), 20.0);
         pool.ranges[0] = 0;
-        assert_eq!(pool.impact_power(0, &fixed), 20);
+        assert_eq!(pool.impact_power(0, &fixed), 20.0);
         pool.ranges[0] = 10;
         pool.kinds[0] = -3;
-        assert_eq!(pool.impact_power(0, &fixed), 50);
+        assert_eq!(pool.impact_power(0, &fixed), 50.0);
         assert_eq!(pool.toxin_impact_power(0), 50.0);
         pool.ranges[0] = 0;
-        assert_eq!(pool.impact_power(0, &settings), 0);
+        assert_eq!(pool.impact_power(0, &settings), 0.0);
     }
 
     #[test]
@@ -718,7 +718,7 @@ mod tests {
             range_multiplier: 1.0,
             angle: 0.0,
             kind: 1,
-            value: 1,
+            value: 1.0,
             payload: None,
             source_species_name: None,
             toxin_memory_location: 0,
@@ -750,7 +750,7 @@ mod tests {
     fn db24832_impact_decay_uses_age_before_the_current_tick_increment() {
         let mut pool = ProjectilePool::default();
         let settings = ShotSettings::default();
-        pool.spawn_energy_packet(OrganismId::new(1, 0), [100.0, 100.0], [0.0, 0.0], 1, 1);
+        pool.spawn_energy_packet(OrganismId::new(1, 0), [100.0, 100.0], [0.0, 0.0], 1, 1.0);
 
         pool.advance(&settings, [1_000.0, 1_000.0], [false, false]);
         pool.mark_impact(0, 0.0, &settings);

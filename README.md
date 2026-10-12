@@ -22,7 +22,7 @@ The modern application combines a Rust simulation engine, portable `wgpu` comput
 
 Plain-text Darwinbots robot DNA is the supported legacy interchange format. The modern engine resolves all 255 active DB2 2.48 sysvar names to their VB6 addresses and imports the bot corpus shipped in `Installer/bots`.
 
-Modern saves use the versioned `DB3S` format. Legacy `.sim`, `.set`, `.gset`, `.dbo`, and `.stats` files are not supported. Online leagues and the original ActiveX/VB6 runtime infrastructure are outside the current product scope.
+Modern saves use `DB3S` version 4, preserving native single-precision resource stores. Versions 2 and 3 still load; pending fractional carries are migrated into the stores once. Snapshot and C ABI version numbers remain unchanged. Native `.set` and `.gset` settings interchange is supported. Full native `.sim` and `.dbo` compatibility remains incomplete. Online leagues and the original ActiveX/VB6 runtime infrastructure are outside the current product scope.
 
 The VB6 source under `Darwinbots2/` is the behavioral authority when the modern engine and DarwinbotsC disagree. Compatibility means comparable user-facing behavior, not identical random sequences or cycle-for-cycle reproduction of DB2.
 

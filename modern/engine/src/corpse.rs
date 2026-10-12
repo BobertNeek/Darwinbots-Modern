@@ -46,7 +46,8 @@ pub struct CorpseSnapshot {
 
 impl CorpseSnapshot {
     pub(crate) fn from_robot(robot: &RobotState, species: u32, repopulating: bool) -> Self {
-        let body = robot.materials.body.max(1);
+        let exact_body = robot.materials.body.max(0.0);
+        let body = exact_body.round_ties_even() as i32;
         Self {
             position: robot.kinematics.position,
             velocity: robot.kinematics.velocity,
@@ -66,7 +67,7 @@ impl CorpseSnapshot {
             dna_length: robot.program.dna.blocks().len() as u32,
             unique_id: robot.identity.absolute_id,
             chloroplasts: 0,
-            body_fraction: 0.0,
+            body_fraction: exact_body - body as f32,
             decay_timer: 0,
             teleporter_backflow: None,
         }

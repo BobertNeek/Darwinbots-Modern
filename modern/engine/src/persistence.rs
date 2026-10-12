@@ -4,7 +4,7 @@ pub struct SaveFile;
 
 impl SaveFile {
     const MAGIC: &'static [u8; 4] = b"DB3S";
-    const VERSION: u16 = 3;
+    const VERSION: u16 = 4;
 
     pub fn encode(engine: &Engine) -> Result<Vec<u8>, EngineError> {
         let payload = serde_json::to_vec(&engine.db3s_v3_payload()?)?;
@@ -86,7 +86,9 @@ impl SaveFile {
         }
         let engine = match version {
             2 => Engine::from_db3s_v2_payload(serde_json::from_slice(&bytes[10..])?)?,
-            Self::VERSION => Engine::from_db3s_v3_payload(serde_json::from_slice(&bytes[10..])?)?,
+            3 | Self::VERSION => {
+                Engine::from_db3s_v3_payload(serde_json::from_slice(&bytes[10..])?)?
+            }
             _ => {
                 return Err(EngineError::InvalidSave(format!(
                     "unsupported version {version}"

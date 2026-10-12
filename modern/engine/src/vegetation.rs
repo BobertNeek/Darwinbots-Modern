@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct PlantLightInput {
     pub daytime: bool,
     pub sunlit: bool,
-    pub chloroplasts: i32,
+    pub chloroplasts: f32,
     pub age: u64,
     pub total_robot_area: f32,
     pub usable_world_area: f32,
@@ -212,10 +212,10 @@ impl VegetationRuntime {
 }
 
 pub(crate) fn photosynthesis_delta(input: PlantLightInput) -> f32 {
-    if !input.daytime || input.chloroplasts <= 0 {
+    if !input.daytime || input.chloroplasts <= 0.0 {
         return 0.0;
     }
-    let age_loss = input.age as f32 * input.chloroplasts as f32 / 1_000_000_000.0;
+    let age_loss = input.age as f32 * input.chloroplasts / 1_000_000_000.0;
     if !input.sunlit {
         return -age_loss;
     }
@@ -228,9 +228,9 @@ pub(crate) fn photosynthesis_delta(input: PlantLightInput) -> f32 {
         token = input.light_intensity / input.depth.max(1.0).powf(input.gradient);
     }
     token = token.max(0.0) / 3.5;
-    let chloroplast_correction = input.chloroplasts as f32 / 16_000.0;
+    let chloroplast_correction = input.chloroplasts / 16_000.0;
     let add_rate = area_correction * chloroplast_correction * 1.25;
-    let subtract_rate = (input.chloroplasts as f32 / 32_000.0).powi(2);
+    let subtract_rate = (input.chloroplasts / 32_000.0).powi(2);
     (add_rate - subtract_rate) * token - age_loss
 }
 

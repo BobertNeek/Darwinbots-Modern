@@ -132,7 +132,7 @@ fn console_memory_and_energy_mutations_are_engine_authoritative() {
     engine.set_organism_energy(id, 4_321).unwrap();
 
     assert_eq!(engine.memory_at(id, 50).unwrap(), 123);
-    assert_eq!(engine.robot_state(id).unwrap().materials.energy, 4_321);
+    assert_eq!(engine.robot_state(id).unwrap().materials.energy, 4_321.0);
     assert_eq!(engine.memory_at(id, 310).unwrap(), 4_321);
 }
 

@@ -111,9 +111,9 @@ fn energy_feeding_request_extracts_target_resources_and_returns_energy_packet() 
     engine.tick().unwrap();
 
     let after = engine.robot_state(target).unwrap().materials.clone();
-    assert_eq!(after.energy, before.energy - 90);
-    assert_eq!(after.body, before.body - 1);
-    assert!(after.waste > before.waste);
+    assert_eq!(after.energy, before.energy - 90.0);
+    assert_eq!(after.body, before.body - 1.0);
+    assert_eq!(after.waste, before.waste);
     assert!(
         engine
             .snapshot()
@@ -152,9 +152,9 @@ fn energy_packet_applies_db24832_transfer_without_a_live_packet_owner() {
     engine.tick().unwrap();
 
     let after = engine.robot_state(target).unwrap().materials.clone();
-    assert_eq!(after.energy, before.energy + 950);
-    assert_eq!(after.body, before.body + 4);
-    assert_eq!(after.waste, before.waste + 10);
+    assert_eq!(after.energy, before.energy + 950.0);
+    assert_eq!(after.body, before.body + 4.0);
+    assert_eq!(after.waste, before.waste + 10.0);
 }
 
 #[test]

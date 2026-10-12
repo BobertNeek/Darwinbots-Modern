@@ -636,7 +636,7 @@ fn db3s_v3_round_trip_preserves_nondefault_standard_mutation_profile() {
 
     let save = SaveFile::encode(&engine).unwrap();
     assert_eq!(&save[..4], b"DB3S");
-    assert_eq!(u16::from_le_bytes([save[4], save[5]]), 3);
+    assert_eq!(u16::from_le_bytes([save[4], save[5]]), 4);
     assert_eq!(engine.snapshot().schema_version, 2);
     let restored = SaveFile::decode(&save).unwrap();
 
@@ -694,7 +694,7 @@ fn db3s_v3_round_trip_preserves_asexual_birth_state() {
 
     let bytes = SaveFile::encode(&engine).unwrap();
     assert_eq!(&bytes[..4], b"DB3S");
-    assert_eq!(u16::from_le_bytes([bytes[4], bytes[5]]), 3);
+    assert_eq!(u16::from_le_bytes([bytes[4], bytes[5]]), 4);
     assert_eq!(engine.snapshot().schema_version, 2);
     let current_payload: serde_json::Value = serde_json::from_slice(&bytes[10..]).unwrap();
     assert_eq!(current_payload["next_absolute_id"], 43);
@@ -748,7 +748,7 @@ fn db3s_v3_older_save_defaults_asexual_heredity_and_identity_fields() {
     );
     let migrated = SaveFile::encode(&restored).unwrap();
     assert_eq!(&migrated[..4], b"DB3S");
-    assert_eq!(u16::from_le_bytes([migrated[4], migrated[5]]), 3);
+    assert_eq!(u16::from_le_bytes([migrated[4], migrated[5]]), 4);
     let migrated: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();
     assert_eq!(migrated["config"]["dna_costs"]["dna_copy"], 0.0);
     assert_eq!(migrated["next_absolute_id"], 1);
@@ -1030,17 +1030,17 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     assert_eq!(after.kinematics.velocity, [1.5, -2.5]);
     assert_eq!(after.kinematics.actual_velocity, [1.25, -2.25]);
     assert_eq!(after.kinematics.pending_velocity, [3.5, -4.5]);
-    assert_eq!(after.materials.energy, 1234);
-    assert_eq!(after.materials.body, 876);
+    assert_eq!(after.materials.energy, 1_234.000_1);
+    assert_eq!(after.materials.body, 876.000_24);
     assert_eq!(after.materials.mass, 9.5);
     assert_eq!(after.materials.radius, 8.5);
-    assert_eq!(after.materials.waste, 76);
-    assert_eq!(after.materials.permanent_waste, 65);
-    assert_eq!(after.materials.shell, 54);
-    assert_eq!(after.materials.slime, 43);
-    assert_eq!(after.materials.venom, 32);
-    assert_eq!(after.materials.poison, 21);
-    assert_eq!(after.materials.chloroplasts, 12345);
+    assert_eq!(after.materials.waste, 76.0);
+    assert_eq!(after.materials.permanent_waste, 65.0);
+    assert_eq!(after.materials.shell, 54.0);
+    assert_eq!(after.materials.slime, 43.0);
+    assert_eq!(after.materials.venom, 32.0);
+    assert_eq!(after.materials.poison, 21.0);
+    assert_eq!(after.materials.chloroplasts, 12345.0);
     assert_eq!(after.materials.aim, 678);
     assert_eq!(after.materials.pain, 17);
     assert_eq!(after.materials.pleasure, 18);
@@ -1119,15 +1119,15 @@ fn db3s_v2_migrates_every_existing_robot_field() {
     assert_eq!(payload["slots"][1]["generation"], 9);
     assert_eq!(
         payload["slots"][0]["organism"]["materials"]["previous_energy"],
-        1222
+        1222.0
     );
     assert_eq!(
         payload["slots"][0]["organism"]["materials"]["plant_energy_carry_micros"],
-        111
+        0
     );
     assert_eq!(
         payload["slots"][0]["organism"]["materials"]["plant_body_carry_micros"],
-        222
+        0
     );
     assert_eq!(payload["free_slots"], serde_json::json!([1]));
     assert_eq!(
@@ -1441,7 +1441,7 @@ fn db3s_v2_accepts_parent_defaulted_field_omissions() {
     let robot = nested.robot_state(id).unwrap();
     assert_eq!(robot.materials.mass, 1.0);
     assert_eq!(robot.materials.radius, 1.0);
-    assert_eq!(robot.materials.permanent_waste, 0);
+    assert_eq!(robot.materials.permanent_waste, 0.0);
     assert_eq!(nested.snapshot().stats.projectile_effects, 0);
     assert_eq!(nested.snapshot().corpses[0].species, 0);
     assert!(!nested.snapshot().corpses[0].repopulating);
@@ -1486,7 +1486,7 @@ fn db3s_v3_round_trip_preserves_complete_phase1_state() {
     let before = engine.robot_state(id).unwrap().clone();
 
     let bytes = SaveFile::encode(&engine).unwrap();
-    assert_eq!(u16::from_le_bytes([bytes[4], bytes[5]]), 3);
+    assert_eq!(u16::from_le_bytes([bytes[4], bytes[5]]), 4);
     assert!(!String::from_utf8_lossy(&bytes).contains("activation_bitmap"));
     assert!(!String::from_utf8_lossy(&bytes).contains("debug_text"));
 

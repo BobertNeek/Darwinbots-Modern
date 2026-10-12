@@ -267,8 +267,11 @@ fn zero_destination_store_has_zero_store_cost() {
 }
 
 #[test]
-fn fractional_cost_remainders_settle_positive_and_negative_energy() {
-    for (dna_upkeep, expected_energy, expected_remainder) in [(0.3, 999, 0.2), (-0.3, 1001, -0.2)] {
+fn fractional_costs_settle_directly_into_positive_and_negative_energy() {
+    for (dna_upkeep, expected_energy, expected_remainder) in [
+        (0.3, 1_000.0_f32 - 0.6_f32 - 0.6_f32, 0.0),
+        (-0.3, 1_000.0_f32 + 0.6_f32 + 0.6_f32, 0.0),
+    ] {
         let mut config = EngineConfig::testing();
         config.dna_costs = DnaCosts {
             dna_upkeep,
@@ -531,19 +534,14 @@ fn engine_tick_dna06_cost_table_covers_tokens_store_copy_and_consumption() {
             virus.dna.blocks().len() as f64 * case.costs.dna_copy * case.costs.global_multiplier
         });
         let after = &state.materials;
-        let expected_loss = (case.expected_vm_cost + copy_cost) as i32;
+        let expected_loss = (case.expected_vm_cost + copy_cost) as f32;
         assert_eq!(
             before.energy - after.energy,
             expected_loss,
             "{} energy",
             case.name
         );
-        assert_eq!(
-            after.waste - before.waste,
-            expected_loss / 20,
-            "{} waste",
-            case.name
-        );
+        assert_eq!(after.waste - before.waste, 0.0, "{} waste", case.name);
         if let Some(command) = case.consumed_command {
             assert_eq!(
                 engine.memory(id, command).unwrap(),

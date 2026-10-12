@@ -227,7 +227,7 @@ pub trait PhysicsBackend {
     fn step(&mut self, batch: &mut PhysicsBatch) -> Result<(), EngineError>;
 }
 
-pub(crate) fn organism_radius(body: i32, chloroplasts: i32, fixed_bot_radii: bool) -> f32 {
+pub(crate) fn organism_radius(body: f32, chloroplasts: f32, fixed_bot_radii: bool) -> f32 {
     if fixed_bot_radii {
         return 60.0;
     }
@@ -235,13 +235,13 @@ pub(crate) fn organism_radius(body: i32, chloroplasts: i32, fixed_bot_radii: boo
     const CUBIC_TWIPS_PER_BODY: f32 = 905.0;
     const FULL_CHLOROPLAST_RADIUS: f32 = 415.0;
 
-    let body_points = body.max(1) as f32;
+    let body_points = body.max(1.0);
     let body_radius = (body_points.ln() * body_points * CUBIC_TWIPS_PER_BODY * 3.0 * 0.25
         / std::f32::consts::PI)
         .max(0.0)
         .cbrt()
         .max(1.0);
-    let chloroplast_fraction = chloroplasts.clamp(0, 32_000) as f32 / 32_000.0;
+    let chloroplast_fraction = chloroplasts.clamp(0.0, 32_000.0) / 32_000.0;
     (body_radius + (FULL_CHLOROPLAST_RADIUS - body_radius) * chloroplast_fraction).max(1.0)
 }
 

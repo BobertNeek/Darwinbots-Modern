@@ -278,7 +278,12 @@ fn per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically() {
     assert_ne!(restored.snapshot().organisms[0].unique_id, 9001);
     assert_eq!(
         serde_json::to_value(&restored.snapshot().corpses[0]).unwrap(),
-        dead
+        {
+            let mut expected = dead.clone();
+            expected["body_fraction"] = json!(0.0);
+            expected["decay_timer"] = json!(0);
+            expected
+        }
     );
 
     let stable = SaveFile::encode(&restored).expect("restored save should encode");
