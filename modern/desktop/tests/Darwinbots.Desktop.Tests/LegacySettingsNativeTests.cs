@@ -14,7 +14,7 @@ public sealed class LegacySettingsNativeTests
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, relative))) directory = directory.Parent;
         Assert.NotNull(directory);
         var native = File.ReadAllBytes(Path.Combine(directory.FullName, relative));
-        using var engine = new NativeEngineClient(backend: "Cpu");
+        using var engine = new NativeEngineClient(backend: "Cpu", worldWidth: 1000, worldHeight: 1000);
         engine.Load(native);
         var snapshot = engine.Snapshot();
         Assert.Equal(281ul, snapshot.Tick);
@@ -29,6 +29,13 @@ public sealed class LegacySettingsNativeTests
         engine.Load(modern);
         engine.Tick();
         Assert.Equal(282ul, engine.Snapshot().Tick);
+        engine.ImportSpecies(new SpeciesImport("Post-load center", "start stop", false,
+            0xff886644, 1, 1000, 0, false, 0)
+        {
+            Placement = new SpeciesPlacement(SpeciesPlacementMode.Center),
+        });
+        var inserted = Assert.Single(engine.Snapshot().Organisms, robot => robot.Species == 2);
+        Assert.Equal(new float[] { 8000, 6000 }, inserted.Position);
     }
 
     [Theory]

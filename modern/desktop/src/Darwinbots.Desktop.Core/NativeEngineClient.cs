@@ -8,8 +8,8 @@ public sealed partial class NativeEngineClient : IEngineClient
 {
     private const string LibraryName = "darwinbots_engine";
     private IntPtr _engine;
-    private readonly float _worldWidth;
-    private readonly float _worldHeight;
+    private float _worldWidth;
+    private float _worldHeight;
     private readonly SeededSpawnPlacement _spawnPlacement;
 
     public NativeEngineClient(WorldSetupOptions options)
@@ -782,6 +782,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         ArgumentNullException.ThrowIfNull(save);
         if (save.Length == 0) throw new InvalidDataException("Save data is empty.");
         ThrowIfFailed(NativeMethods.EngineLoad(_engine, save, (nuint)save.Length), "load simulation");
+        var loaded = Snapshot();
+        _worldWidth = loaded.WorldSize[0];
+        _worldHeight = loaded.WorldSize[1];
     }
 
     public EngineSnapshot Snapshot()
