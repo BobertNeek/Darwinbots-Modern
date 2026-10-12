@@ -1,5 +1,6 @@
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Services;
+using Darwinbots.Desktop.ViewModels;
 using Xunit;
 
 namespace Darwinbots.Desktop.Tests;
@@ -20,6 +21,9 @@ public sealed class LegacySettingsNativeTests
         Assert.Equal(281ul, snapshot.Tick);
         Assert.Equal(196, snapshot.Population);
         Assert.Equal(2, snapshot.Species.Count);
+        var viewModel = new MainWindowViewModel();
+        viewModel.Update(snapshot);
+        Assert.Equal(2, viewModel.SpeciesCount);
         Assert.Equal(37, snapshot.Organisms.Count(robot => robot.Vegetable));
         Assert.Equal(new float[] { 16_000, 12_000 }, snapshot.WorldSize);
         Assert.Equal(587, snapshot.Organisms[0].Energy);

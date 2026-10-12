@@ -280,7 +280,8 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
     );
     projectiles.insert("velocities".to_owned(), serde_json::json!([[7.0, -8.0]]));
     projectiles.insert("ages".to_owned(), serde_json::json!([17]));
-    projectiles.insert("ranges".to_owned(), serde_json::json!([23]));
+    // Native Range is Single; exercise a fractional value, with rounded UI projection.
+    projectiles.insert("ranges".to_owned(), serde_json::json!([23.25]));
     projectiles.insert("energies".to_owned(), serde_json::json!([345.5]));
     projectiles.insert("kinds".to_owned(), serde_json::json!([-3]));
     projectiles.insert("values".to_owned(), serde_json::json!([321]));

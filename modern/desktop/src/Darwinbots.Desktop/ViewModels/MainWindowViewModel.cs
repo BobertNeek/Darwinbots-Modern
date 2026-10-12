@@ -164,7 +164,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _selectedKey = null;
             _selectionWasLost = true;
         }
-        SpeciesCount = Math.Max(0, snapshot.Species.Count - 1);
+        // Modern worlds have an empty Unassigned sentinel; native DB2 starts with a real species at zero.
+        var emptySentinel = snapshot.Species.FirstOrDefault()?.Name == "Unassigned"
+            && snapshot.Organisms.All(robot => robot.Species != 0);
+        SpeciesCount = Math.Max(0, snapshot.Species.Count - (emptySentinel ? 1 : 0));
         ApplySelection();
         Births = snapshot.Stats.Births;
         Deaths = snapshot.Stats.Deaths;
