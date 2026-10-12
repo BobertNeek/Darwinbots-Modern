@@ -36,6 +36,10 @@ pub struct CorpseSnapshot {
     pub unique_id: u64,
     #[serde(default)]
     pub chloroplasts: i32,
+    #[serde(default)]
+    pub(crate) body_fraction: f32,
+    #[serde(default)]
+    pub(crate) decay_timer: u64,
     #[serde(skip)]
     pub(crate) teleporter_backflow: Option<TeleporterBackflow>,
 }
@@ -46,7 +50,7 @@ impl CorpseSnapshot {
         Self {
             position: robot.kinematics.position,
             velocity: robot.kinematics.velocity,
-            energy: body.saturating_add(robot.materials.waste.max(0)),
+            energy: 0,
             body,
             age: robot.counters.age,
             species,
@@ -61,7 +65,9 @@ impl CorpseSnapshot {
             total_mutations: robot.program.mutation_metadata.total_mutations,
             dna_length: robot.program.dna.blocks().len() as u32,
             unique_id: robot.identity.absolute_id,
-            chloroplasts: robot.materials.chloroplasts,
+            chloroplasts: 0,
+            body_fraction: 0.0,
+            decay_timer: 0,
             teleporter_backflow: None,
         }
     }
@@ -84,17 +90,21 @@ impl CorpseSnapshot {
             CorpseDecayMode::WasteShot => Some(-4),
             CorpseDecayMode::EnergyShot => Some(-2),
         };
-        let period = settings.period.max(1);
-        if !self.age.is_multiple_of(period) {
+        self.decay_timer = self.decay_timer.saturating_add(1);
+        if self.decay_timer < settings.period {
             return None;
         }
-        let amount = settings.packet_size.max(1).min(self.body.max(0));
-        if amount == 0 {
-            return None;
-        }
-        self.energy = self.energy.saturating_sub(amount);
-        self.body = self.body.min(self.energy).max(0);
-        kind.map(|kind| (kind, amount))
+        self.decay_timer = 0;
+        // Shots.Decay removes one body unit per ten configured packet units.
+        // "None" suppresses the projectile, but still dissipates the body.
+        let body = (self.body as f32 + self.body_fraction).max(0.0);
+        let packet = settings.packet_size.max(0) as f32;
+        let value = if body > packet / 10.0 { packet } else { body };
+        let remaining_body = (body - packet / 10.0).max(0.0);
+        self.body = remaining_body.round_ties_even() as i32;
+        self.body_fraction = remaining_body - self.body as f32;
+        let value = value.round_ties_even() as i32;
+        kind.filter(|_| value > 0).map(|kind| (kind, value))
     }
 }
 
@@ -103,7 +113,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn energy_decay_packet_uses_body_cap_and_rejects_empty_body() {
+    fn energy_decay_packet_uses_original_body_conversion_and_rejects_empty_body() {
         let settings = CorpseDecaySettings {
             mode: CorpseDecayMode::EnergyShot,
             packet_size: 10,
@@ -117,8 +127,9 @@ mod tests {
         };
         assert_eq!(
             corpse.advance([0.0, 0.0], 0.0, [100.0, 100.0], &settings),
-            Some((-2, 3))
+            Some((-2, 10))
         );
+        assert_eq!(corpse.body, 2);
 
         let mut empty_body = CorpseSnapshot {
             energy: 100,
@@ -129,5 +140,28 @@ mod tests {
             empty_body.advance([0.0, 0.0], 0.0, [100.0, 100.0], &settings),
             None
         );
+    }
+
+    #[test]
+    fn no_shot_decay_dissipates_body_and_fractional_period_survives_resume() {
+        let settings = CorpseDecaySettings {
+            mode: CorpseDecayMode::None,
+            packet_size: 3,
+            period: 2,
+            ..Default::default()
+        };
+        let mut corpse = CorpseSnapshot {
+            energy: 10,
+            body: 10,
+            age: 99,
+            ..Default::default()
+        };
+        assert_eq!(corpse.advance([0.0; 2], 0.0, [100.0; 2], &settings), None);
+        assert_eq!(corpse.body, 10);
+        let mut corpse: CorpseSnapshot =
+            serde_json::from_slice(&serde_json::to_vec(&corpse).unwrap()).unwrap();
+        assert_eq!(corpse.advance([0.0; 2], 0.0, [100.0; 2], &settings), None);
+        assert!((corpse.body as f32 + corpse.body_fraction - 9.7).abs() < 0.00001);
+        assert_eq!(corpse.decay_timer, 0);
     }
 }

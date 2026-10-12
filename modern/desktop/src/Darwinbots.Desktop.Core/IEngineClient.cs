@@ -48,6 +48,7 @@ public interface IEngineClient : IDisposable
         ? address : throw new FormatException($"Unknown memory address '{name}'.");
     void ExecuteRobots() => throw new NotSupportedException("DNA-only execution is unavailable.");
     OrganismKey? FindBestRobot(bool energyWeighting) => null;
+    OrganismKey? FindBestRobot(int weightPercent) => FindBestRobot(weightPercent > 0);
     void UpdateMainRules(GlobalMainSettings settings) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);
     void UpdateRestrictionOptions(RestrictionOptions options);

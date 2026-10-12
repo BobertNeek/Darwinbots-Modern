@@ -237,6 +237,8 @@ enum EngineCommand {
     FindBestRobot {
         #[serde(default)]
         energy_weighting: bool,
+        #[serde(default)]
+        weight_percent: Option<u16>,
     },
     SetOrganismEnergy {
         slot: u32,
@@ -796,8 +798,18 @@ fn db_engine_command_batch_impl(
             EngineCommand::ExecuteRobots => {
                 engine.execute_robots().map(|_| serde_json::Value::Null)
             }
-            EngineCommand::FindBestRobot { energy_weighting } => {
-                Ok(engine.find_best_robot(energy_weighting).map_or(
+            EngineCommand::FindBestRobot {
+                energy_weighting,
+                weight_percent,
+            } => {
+                let weight = weight_percent.unwrap_or(if energy_weighting { 100 } else { 0 });
+                if weight > 200 {
+                    return fail(
+                        DbStatus::InvalidCommand,
+                        "Find Best weighting must be 0..200",
+                    );
+                }
+                Ok(engine.find_best_robot_weighted(weight).map_or(
                     serde_json::Value::Null,
                     |id| serde_json::json!({ "slot": id.slot(), "generation": id.generation() }),
                 ))
@@ -1081,6 +1093,28 @@ fn ffi_guard(operation: &str, action: impl FnOnce() -> DbStatus) -> DbStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn invalid_find_best_weight_preserves_the_entire_command_batch() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let id = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let command = serde_json::to_vec(&serde_json::json!({
+            "version": 1,
+            "commands": [
+                { "type": "set_organism_energy", "slot": id.slot(), "generation": id.generation(), "energy": 42 },
+                { "type": "find_best_robot", "weight_percent": 201 }
+            ]
+        })).unwrap();
+        let mut buffer = DbBuffer::default();
+        assert_eq!(
+            db_engine_command_batch(&mut engine, command.as_ptr(), command.len(), &mut buffer),
+            DbStatus::InvalidCommand
+        );
+        assert_eq!(engine.organism(id).unwrap().energy, 1000);
+        assert!(buffer.data.is_null());
+    }
 
     #[test]
     fn legacy_save_emits_db2s_payload_for_file_command() {

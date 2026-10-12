@@ -29,6 +29,9 @@ public sealed class LegacySettingsImportTests
         Assert.Equal(cap, settings.VegetablePopulationCap);
         Assert.Equal((float)Number(global + 18), settings.Gravity[1]);
         Assert.Equal((float)Number(global + 19), settings.Physics.SurfaceGravity);
+        Assert.Equal(lines[global + 17].Contains("TRUE", StringComparison.OrdinalIgnoreCase) || lines[global + 17] == "1", settings.Shots.FeedingProportional);
+        Assert.Equal((int)Number(global + 16), settings.Shots.FeedingFixedPower);
+        Assert.Equal((float)Number(global + 15), settings.Shots.FeedingProportion);
         Assert.Equal((float)Number(extra + 2), settings.Physics.StaticFriction);
         Assert.Equal((float)Number(tail + 6), settings.Physics.MaxVelocity);
         Assert.Equal((int)Number(tail + 2), settings.Recording.SamplingInterval);
@@ -49,6 +52,7 @@ public sealed class LegacySettingsImportTests
             Seed = 12345, VegetablePopulationCap = 25, Gravity = [0, 3.77f],
             Physics = Db2PhysicsOptions.Default with { MaxVelocity = 180, SurfaceGravity = 2, StaticFriction = 0.6f },
             Recording = new(SamplingInterval: 17),
+            Shots = Db2ShotOptions.Default with { FeedingProportional = false, FeedingFixedPower = 37, FeedingProportion = 0.25f },
             Species = [new("Hunter.txt", "start stop", false, 0xff123456, 5, 900, 0, false, 0)
             {
                 DnaPath = "Robots/Hunter.txt", MutationProfile = MutationProfileUpdate.Default with { Point = new(0, 3, 1), Delta = new(25, 500, 150) },
@@ -58,6 +62,7 @@ public sealed class LegacySettingsImportTests
         var actual = Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(native));
         Assert.Equal(expected.Seed, actual.Seed);
         Assert.Equal(expected.Physics, actual.Physics);
+        Assert.Equal(expected.Shots, actual.Shots);
         Assert.Equal(25, actual.VegetablePopulationCap);
         Assert.Equal(17, actual.Recording.SamplingInterval);
         Assert.Equal(5, Assert.Single(actual.Species).InitialCount);

@@ -1558,7 +1558,7 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> FindBestRobotAsync()
     {
-        if (_session is null || await _session.FindBestRobotAsync(_globalSettings.Main.FindBestEnergyWeighting) is not { } key)
+        if (_session is null || await _session.FindBestRobotAsync(_globalSettings.Main.EffectiveFindBestWeight) is not { } key)
             return LegacyCommandResult.Failure("NO LIVING ROBOTS");
         _viewModel.Select(key);
         Viewport.SelectKey(key);

@@ -1,16 +1,47 @@
 use darwinbots_engine::{
-    CorpseDecayMode, CorpseDecaySettings, Engine, EngineConfig, LegacyDna, SpeciesId,
+    CorpseDecayMode, CorpseDecaySettings, Engine, EngineConfig, LegacyDna, SaveFile, ShotSettings,
+    SpeciesId, VegetationSettings, WasteSettings,
 };
+
+fn corpse_settings() -> CorpseDecaySettings {
+    CorpseDecaySettings {
+        enabled: true,
+        death_energy_threshold: 15,
+        ..Default::default()
+    }
+}
+
+fn body_amount(engine: &Engine) -> f32 {
+    let save = SaveFile::encode(engine).unwrap();
+    let payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    let corpse = &payload["corpses"][0];
+    (corpse["body"].as_f64().unwrap() + corpse["body_fraction"].as_f64().unwrap()) as f32
+}
 
 #[test]
 fn energy_death_leaves_a_decayable_corpse_in_world_state() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 1,
+        waste: WasteSettings {
+            alzheimer_threshold: -1,
+            defecation_threshold: i32::MAX,
+        },
+        corpse_decay: CorpseDecaySettings {
+            mode: CorpseDecayMode::EnergyShot,
+            packet_size: 100,
+            period: 50,
+            ..corpse_settings()
+        },
+        vegetation: VegetationSettings {
+            minimum_chloroplast_equivalents: 0,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();
     engine.spawn_batch([(dna, [400.0, 500.0])]).unwrap();
+    engine.update_mutation_settings(false, 0.0, &[]).unwrap();
 
     engine.tick_many(1_001).unwrap();
 
@@ -18,7 +49,8 @@ fn energy_death_leaves_a_decayable_corpse_in_world_state() {
     assert_eq!(engine.snapshot().corpses.len(), 1);
     let corpse = &engine.snapshot().corpses[0];
     assert_eq!(corpse.position, [400.0, 500.0]);
-    assert!(corpse.energy > 0);
+    assert_eq!(corpse.energy, 0);
+    assert!(corpse.body > 0);
     assert!(corpse.age > 0);
 
     engine.tick_many(20_000).unwrap();
@@ -33,7 +65,11 @@ fn configured_corpse_decay_changes_authoritative_lifecycle_state_after_tick() {
             mode: CorpseDecayMode::EnergyShot,
             packet_size: 3,
             period: 1,
-            ..CorpseDecaySettings::default()
+            ..corpse_settings()
+        },
+        vegetation: VegetationSettings {
+            minimum_chloroplast_equivalents: 0,
+            ..Default::default()
         },
         ..EngineConfig::testing()
     })
@@ -47,12 +83,13 @@ fn configured_corpse_decay_changes_authoritative_lifecycle_state_after_tick() {
         )
         .unwrap();
     engine.tick().unwrap();
-    let corpse_energy_before = engine.snapshot().corpses[0].energy;
+    let corpse_body_before = body_amount(&engine);
 
     engine.tick().unwrap();
 
     let corpse = &engine.snapshot().corpses[0];
-    assert_eq!(corpse.energy, corpse_energy_before - 3);
+    assert_eq!(corpse.energy, 0);
+    assert!((body_amount(&engine) - (corpse_body_before - 0.3)).abs() < 0.0001);
     assert!(
         engine
             .snapshot()
@@ -67,7 +104,11 @@ fn energy_below_configured_corpse_threshold_becomes_corpse_after_age_zero() {
     let mut engine = Engine::new(EngineConfig {
         corpse_decay: CorpseDecaySettings {
             death_energy_threshold: 15,
-            ..CorpseDecaySettings::default()
+            ..corpse_settings()
+        },
+        vegetation: VegetationSettings {
+            minimum_chloroplast_equivalents: 0,
+            ..Default::default()
         },
         ..EngineConfig::testing()
     })
@@ -108,16 +149,21 @@ fn overlapping_organisms_are_separated_without_non_finite_motion() {
 }
 
 #[test]
-fn feeding_shots_harvest_energy_from_nearby_corpses() {
+fn energy_feeding_cannot_extract_energy_from_ordinary_corpses() {
     let mut engine = Engine::new(EngineConfig {
-        metabolism_cost: 1,
+        metabolism_cost: 0,
+        corpse_decay: corpse_settings(),
+        vegetation: VegetationSettings {
+            minimum_chloroplast_equivalents: 0,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let predator = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let predator = engine.spawn_at(idle.clone(), [250.0, 500.0]).unwrap();
     engine
-        .spawn_species_batch(idle, SpeciesId::default(), [[350.0, 100.0]], 1)
+        .spawn_species_batch(idle, SpeciesId::default(), [[500.0, 500.0]], 1)
         .unwrap();
     engine.tick().unwrap();
     let corpse_energy = engine.snapshot().corpses[0].energy;
@@ -132,22 +178,32 @@ fn feeding_shots_harvest_energy_from_nearby_corpses() {
     engine.tick().unwrap();
     engine.tick().unwrap();
 
-    assert!(engine.snapshot().corpses[0].energy < corpse_energy);
-    assert!(engine.organism(predator).unwrap().energy > predator_energy);
-    assert!(engine.snapshot().stats.energy_harvested > 0);
+    assert_eq!(engine.snapshot().corpses[0].energy, corpse_energy);
+    assert_eq!(engine.organism(predator).unwrap().energy, predator_energy);
+    assert_eq!(engine.snapshot().stats.energy_harvested, 0);
 }
 
 #[test]
 fn body_feeding_shots_multiply_corpse_damage_and_return_a_packet() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        corpse_decay: corpse_settings(),
+        shots: ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 100,
+            ..Default::default()
+        },
+        vegetation: VegetationSettings {
+            minimum_chloroplast_equivalents: 0,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let attacker = engine.spawn_at(idle.clone(), [250.0, 500.0]).unwrap();
     engine
-        .spawn_species_batch(idle, SpeciesId::default(), [[350.0, 100.0]], 1)
+        .spawn_species_batch(idle, SpeciesId::default(), [[500.0, 500.0]], 1)
         .unwrap();
     engine.tick().unwrap();
     let corpse_before = engine.snapshot().corpses[0].clone();

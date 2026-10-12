@@ -63,6 +63,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 "advanced.density", "advanced.viscosity", "advanced.elasticity", "advanced.drag",
                 "advanced.brownian", "advanced.shotspeed", "advanced.shotrangemultiplier",
                 "advanced.shotdecay", "advanced.energyshotsnodecay", "advanced.wasteshotsnodecay",
+                "advanced.feedingproportional", "advanced.feedingfixedpower", "advanced.feedingproportion",
                 "advanced.startchloroplasts", "advanced.maxplantenergy",
                 "advanced.minimumchloroplastequivalents", "advanced.repopulationamount",
                 "advanced.repopulationcooldown", "advanced.feedingtobody", "advanced.daytime",
@@ -82,7 +83,7 @@ public sealed class RenderedControlSurfaceAuditTests
     {
         var ids = Coverage.Values.SelectMany(value => value).ToArray();
 
-        Assert.Equal(131, ids.Length);
+        Assert.Equal(134, ids.Length);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.All(ids, id => Assert.False(string.IsNullOrWhiteSpace(id)));
     }
@@ -288,7 +289,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.True(panel.IsVisible);
                     Assert.Equal("SAFE MODE RECOVERY READY", title.Text);
                     Assert.Contains("FAULT WINDOW", faultWindow.Text, StringComparison.Ordinal);
-                    Assert.Equal($"RECOVERY ARTIFACT · {Path.GetFileName(artifactPath)}", artifact.Text);
+                    Assert.Equal($"RECOVERY ARTIFACT Â· {Path.GetFileName(artifactPath)}", artifact.Text);
                     Assert.True(recover.IsVisible);
                     Assert.True(ignore.IsVisible);
                     Assert.Contains("RECOVERY READY", viewModel.Status, StringComparison.Ordinal);
@@ -305,9 +306,9 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes.Take(8));
 
                     Click(window, recover);
-                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED ·", StringComparison.Ordinal));
+                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED Â·", StringComparison.Ordinal));
                     Assert.False(panel.IsVisible);
-                    Assert.Equal($"RECOVERED · {Path.GetFileName(artifactPath)}", viewModel.Status);
+                    Assert.Equal($"RECOVERED Â· {Path.GetFileName(artifactPath)}", viewModel.Status);
                 }
                 finally
                 {
@@ -343,7 +344,7 @@ public sealed class RenderedControlSurfaceAuditTests
             [
                 (0, ["GlobalMutationRate"], ["MutationsEnabled"]),
                 (1, ["Metabolism", "VegetableEnergy", "Sunlight", "StartChloroplasts", "MaxPlantEnergy", "MinimumChloroplastEquivalents", "RepopulationAmount", "RepopulationCooldown", "FeedingToBody", "CycleLength"], ["Daytime", "DayNightEnabled"]),
-                (2, ["MaxVelocity", "MovementEfficiency", "GravityX", "GravityY", "SurfaceGravity", "StaticFriction", "KineticFriction", "Density", "Viscosity", "Elasticity", "Drag", "Brownian", "ShotSpeed", "ShotRangeMultiplier", "ShotDecay"], ["EnergyShotsNoDecay", "WasteShotsNoDecay"]),
+                (2, ["MaxVelocity", "MovementEfficiency", "GravityX", "GravityY", "SurfaceGravity", "StaticFriction", "KineticFriction", "Density", "Viscosity", "Elasticity", "Drag", "Brownian", "ShotSpeed", "ShotRangeMultiplier", "ShotDecay", "FeedingFixedPower", "FeedingProportion"], ["EnergyShotsNoDecay", "WasteShotsNoDecay", "FeedingProportional"]),
                 (3, ["SpeciationDistance"], ["AutoSpeciation", "ToroidalWorld"]),
             ];
             foreach (var group in groups)
@@ -358,9 +359,13 @@ public sealed class RenderedControlSurfaceAuditTests
                     Click(window, check);
                     Assert.True(before != check.IsChecked, $"{name} did not toggle from {before}.");
                 }
+                if (group.Tab == 2) Capture(window, "feeding-settings-controls.png");
             }
 
             var update = window.Update;
+            Assert.False(update.Shots.FeedingProportional);
+            Assert.Equal((int)Named<NumericUpDown>(window, "FeedingFixedPower").Value!, update.Shots.FeedingFixedPower);
+            Assert.Equal((float)Named<NumericUpDown>(window, "FeedingProportion").Value!, update.Shots.FeedingProportion);
             Assert.NotEqual(EnvironmentUpdate.Default, update);
             Assert.NotEqual(MutationSettingsUpdate.Default, window.MutationUpdate);
             Assert.Equal(2, window.MutationUpdate.SpeciesRates.Count);
@@ -398,6 +403,14 @@ public sealed class RenderedControlSurfaceAuditTests
             Assert.NotNull(window.FindControl<CheckBox>("Delta2Enabled"));
             Assert.NotNull(window.FindControl<CheckBox>("LeagueOfflineOwned"));
             Assert.NotNull(window.FindControl<ComboBox>("EvolutionMode"));
+            var weight = Named<NumericUpDown>(window, "FindBestWeight");
+            Assert.Equal(0m, weight.Minimum);
+            Assert.Equal(200m, weight.Maximum);
+            weight.Value = 150m;
+            Capture(window, "global-settings-find-best-weight.png");
+            Click(window, Named<Button>(window, "ApplyButton"));
+            Assert.True(window.Accepted);
+            Assert.Equal(150, window.Settings.Main.EffectiveFindBestWeight);
             window.Close();
         }, CancellationToken.None);
     }

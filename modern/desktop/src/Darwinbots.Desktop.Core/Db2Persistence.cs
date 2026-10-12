@@ -80,7 +80,8 @@ public static class Db2SettingsCodec
             _ => throw new InvalidDataException($"DB2 settings corpse decay mode '{modeValue}' is invalid."),
         };
 
-        return new Db2CorpseDecayOptions(enabled, 0, mode, packetSize, period);
+        // ManageDeath uses a fixed 15-energy threshold when corpse mode is enabled.
+        return new Db2CorpseDecayOptions(enabled, enabled ? 15 : 0, mode, packetSize, period);
     }
 
     private static bool OptionalBool(string[] lines, int index, bool fallback, string label) =>

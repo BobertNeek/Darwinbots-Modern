@@ -31,9 +31,12 @@ public sealed class SimulationSession : IAsyncDisposable
         Enqueue(engine => engine.Tick(count), cancellationToken);
 
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
+        => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
+
+    public async Task<OrganismKey?> FindBestRobotAsync(int weightPercent, CancellationToken cancellationToken = default)
     {
         OrganismKey? result = null;
-        await Enqueue(engine => result = engine.FindBestRobot(energyWeighting), cancellationToken).ConfigureAwait(false);
+        await Enqueue(engine => result = engine.FindBestRobot(weightPercent), cancellationToken).ConfigureAwait(false);
         return result;
     }
     public Task UpdateMainRulesAsync(GlobalMainSettings settings, CancellationToken cancellationToken = default) =>

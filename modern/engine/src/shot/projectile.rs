@@ -581,12 +581,24 @@ impl ProjectilePool {
         self.impact_flash[slot] = true;
     }
 
-    pub(crate) fn impact_power(&self, slot: u32) -> i32 {
+    pub(crate) fn impact_power(&self, slot: u32, settings: &ShotSettings) -> i32 {
         let slot = slot as usize;
+        if matches!(self.kinds[slot], -1 | -6) && !settings.feeding_proportional {
+            return settings.feeding_fixed_power.max(0);
+        }
+        if self.ranges[slot] == 0 {
+            return 0;
+        }
         let denominator = self.ranges[slot].max(1) as f32 * 40.0;
-        ((self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator).round()
-            as i32)
-            .max(1)
+        let proportion = if matches!(self.kinds[slot], -1 | -6) {
+            settings.feeding_proportion
+        } else {
+            1.0
+        };
+        ((self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator
+            * proportion)
+            .round_ties_even() as i32)
+            .max(0)
     }
 
     pub(crate) fn toxin_impact_power(&self, slot: u32) -> f32 {
@@ -657,6 +669,40 @@ fn normalize_kind(kind: i32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn feeding_power_uses_fixed_or_proportional_original_settings_without_changing_toxins() {
+        let mut pool = ProjectilePool::default();
+        pool.values.push(100);
+        pool.energies.push(200.0);
+        pool.ranges.push(10);
+        pool.kinds.push(-1);
+        let settings = ShotSettings::default();
+        assert_eq!(pool.impact_power(0, &settings), 50);
+        assert_eq!(
+            pool.impact_power(
+                0,
+                &ShotSettings {
+                    feeding_proportion: 0.5,
+                    ..settings.clone()
+                }
+            ),
+            25
+        );
+        let fixed = ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 20,
+            ..settings.clone()
+        };
+        assert_eq!(pool.impact_power(0, &fixed), 20);
+        pool.kinds[0] = -6;
+        assert_eq!(pool.impact_power(0, &fixed), 20);
+        pool.kinds[0] = -3;
+        assert_eq!(pool.impact_power(0, &fixed), 50);
+        assert_eq!(pool.toxin_impact_power(0), 50.0);
+        pool.ranges[0] = 0;
+        assert_eq!(pool.impact_power(0, &settings), 0);
+    }
 
     #[test]
     fn db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent() {

@@ -53,7 +53,7 @@ public sealed class Db2PersistenceTests
 
         var actual = Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(string.Join("\r\n", lines)));
 
-        Assert.Equal(new Db2CorpseDecayOptions(true, 0, Db2CorpseDecayMode.WasteShot, 75, 3), actual.CorpseDecay);
+        Assert.Equal(new Db2CorpseDecayOptions(true, 15, Db2CorpseDecayMode.WasteShot, 75, 3), actual.CorpseDecay);
     }
 
     [Fact]

@@ -91,7 +91,10 @@ public sealed record Db2ShotOptions(
     float RangeMultiplier,
     float Decay,
     bool EnergyShotsDoNotDecay,
-    bool WasteShotsDoNotDecay)
+    bool WasteShotsDoNotDecay,
+    bool FeedingProportional = true,
+    int FeedingFixedPower = 200,
+    float FeedingProportion = 1f)
 {
     public static Db2ShotOptions Default { get; } = new(40f, 1f, 40f, false, false);
 }
@@ -433,6 +436,9 @@ public static class NativeCommandSerializer
         decay = value.Decay,
         energy_shots_do_not_decay = value.EnergyShotsDoNotDecay,
         waste_shots_do_not_decay = value.WasteShotsDoNotDecay,
+        feeding_proportional = value.FeedingProportional,
+        feeding_fixed_power = value.FeedingFixedPower,
+        feeding_proportion = value.FeedingProportion,
     };
 
     internal static object Vegetation(Db2VegetationOptions value) => new

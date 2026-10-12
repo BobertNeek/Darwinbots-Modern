@@ -22,7 +22,7 @@
             <Grid ColumnDefinitions="*,150"><TextBlock Text="Body cutoff"/><NumericUpDown Grid.Column="1" x:Name="BodyCutoff" Minimum="0" Maximum="32000"/></Grid>
           </StackPanel></Border>
           <Border Classes="card"><StackPanel Spacing="11"><TextBlock Classes="section" Text="STARTUP + COMPATIBILITY"/>
-            <CheckBox x:Name="GreedyEnforcement" Content="Enforce greedy behavior rules"/><CheckBox x:Name="NewSeed" Content="Generate a new seed when starting"/><CheckBox x:Name="SafeMode" Content="Safe-mode startup"/><CheckBox x:Name="FindBestEnergyWeighting" Content="Weight Find Best by energy"/>
+            <CheckBox x:Name="GreedyEnforcement" Content="Enforce greedy behavior rules"/><CheckBox x:Name="NewSeed" Content="Generate a new seed when starting"/><CheckBox x:Name="SafeMode" Content="Safe-mode startup"/><TextBlock Text="Find Best weighting (0: population, 100: both, 200: energy)"/><NumericUpDown x:Name="FindBestWeight" Minimum="0" Maximum="200" Increment="5"/>
             <Grid ColumnDefinitions="*,*"><TextBlock VerticalAlignment="Center" Text="Main directory"/><TextBox Grid.Column="1" x:Name="MainDirectory" PlaceholderText="Optional directory"/></Grid>
             <TextBlock Classes="muted" Text="Internet picture controls remain local-only in offline mode." TextWrapping="Wrap"/>
           </StackPanel></Border>

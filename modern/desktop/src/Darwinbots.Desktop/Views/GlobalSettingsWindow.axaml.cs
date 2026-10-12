@@ -31,7 +31,7 @@ public sealed partial class GlobalSettingsWindow : Window
         GreedyEnforcement.IsChecked = main.GreedyEnforcement;
         NewSeed.IsChecked = main.NewSeed;
         SafeMode.IsChecked = main.SafeMode;
-        FindBestEnergyWeighting.IsChecked = main.FindBestEnergyWeighting;
+        FindBestWeight.Value = main.EffectiveFindBestWeight;
         MainDirectory.Text = main.MainDirectory;
 
         var mutation = settings.AdvancedMutation;
@@ -124,7 +124,8 @@ public sealed partial class GlobalSettingsWindow : Window
             NewSeed = NewSeed.IsChecked == true,
             MainDirectory = MainDirectory.Text ?? string.Empty,
             SafeMode = SafeMode.IsChecked == true,
-            FindBestEnergyWeighting = FindBestEnergyWeighting.IsChecked == true,
+            FindBestEnergyWeighting = (FindBestWeight.Value ?? 0) > 0,
+            FindBestWeight = (int)(FindBestWeight.Value ?? 0),
         },
         AdvancedMutation = new GlobalAdvancedMutationSettings
         {

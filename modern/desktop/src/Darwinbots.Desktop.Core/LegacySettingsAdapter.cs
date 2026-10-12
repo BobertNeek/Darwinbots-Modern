@@ -80,7 +80,9 @@ internal static class LegacySettingsAdapter
         var cost = settings.GlobalSettings.Costs;
         Number(global + 10, vegetation.MaxEnergyPerTick); Number(global + 11, vegetation.MinimumChloroplastEquivalents);
         Number(global + 13, cost.DnaStore); Number(global + 14, cost.ShotFormation);
-        Number(global + 15, 1); Number(global + 17, 1);
+        Number(global + 15, settings.Shots.FeedingProportion);
+        Number(global + 16, settings.Shots.FeedingFixedPower);
+        Flag(global + 17, settings.Shots.FeedingProportional);
         Number(global + 18, settings.Gravity[1]); Number(global + 19, physics.SurfaceGravity);
         Number(global + 20, settings.BrownianMotion); Number(global + 21, physics.MovementEfficiency);
         Text(global + 23, "null"); Text(global + 25, "null"); Text(global + 31, "null");
@@ -292,7 +294,8 @@ internal static class LegacySettingsAdapter
             },
             Waste = new(Integer(tail + 1, 400), 32000),
             Recording = new(DeadSnapshotEnabled: Flag(global + 32), ExcludeRepopulatingRobots: Flag(global + 33), SamplingInterval: Math.Max(1, Integer(tail + 2, 200))),
-            Shots = Db2ShotOptions.Default with { EnergyShotsDoNotDecay = Flag(tail + 7), WasteShotsDoNotDecay = Flag(tail + 17 + 5 * count) },
+            Shots = Db2ShotOptions.Default with { EnergyShotsDoNotDecay = Flag(tail + 7), WasteShotsDoNotDecay = Flag(tail + 17 + 5 * count),
+                FeedingProportional = Flag(global + 17, true), FeedingFixedPower = Integer(global + 16, 200), FeedingProportion = Float(15, 1) },
             GlobalSettings = new() { Costs = costSettings },
         };
     }

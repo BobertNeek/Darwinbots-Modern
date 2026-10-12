@@ -74,4 +74,25 @@ public sealed class GlobalSettingsTests
         Assert.Contains("\"rate_step\":1", createConfig);
         Assert.Contains("\"save_as_temporary_gene\":true", createConfig);
     }
+    [Theory]
+    [InlineData(0)]
+    [InlineData(50)]
+    [InlineData(100)]
+    [InlineData(150)]
+    [InlineData(200)]
+    public void FindBestWeightingPreservesOriginalRange(int weight)
+    {
+        var settings = new GlobalSettings { Main = new GlobalMainSettings { FindBestWeight = weight } };
+        Assert.Equal(weight, GlobalSettings.FromJson(settings.ToJson()).Main.EffectiveFindBestWeight);
+    }
+
+    [Fact]
+    public void FindBestLegacyBooleanMigratesAndInvalidWeightsAreRejected()
+    {
+        Assert.Equal(100, new GlobalMainSettings { FindBestEnergyWeighting = true }.EffectiveFindBestWeight);
+        Assert.Equal(0, new GlobalMainSettings().EffectiveFindBestWeight);
+        var invalid = new GlobalSettings { Main = new GlobalMainSettings { FindBestWeight = 201 } };
+        Assert.Throws<InvalidDataException>(() => GlobalSettings.FromJson(invalid.ToJson()));
+    }
+
 }

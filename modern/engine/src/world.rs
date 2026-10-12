@@ -711,6 +711,7 @@ impl From<Db3sV2ShotSettings> for ShotSettings {
             decay: value.decay,
             energy_shots_do_not_decay: value.energy_shots_do_not_decay,
             waste_shots_do_not_decay: value.waste_shots_do_not_decay,
+            ..Self::default()
         }
     }
 }
@@ -2476,6 +2477,7 @@ impl Engine {
     }
 
     pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
+        config.shots.validate().map_err(EngineError::Invariant)?;
         if config.organism_capacity > MAX_ROBOTS {
             return Err(EngineError::Invariant(
                 "organism capacity cannot exceed 32,000 robots".to_string(),
@@ -3975,6 +3977,16 @@ impl Engine {
 
     /// DB2 main.fittest: living animal families, up to ten descendant levels.
     pub fn find_best_robot(&self, energy_weighting: bool) -> Option<OrganismId> {
+        self.find_best_robot_weighted(if energy_weighting { 100 } else { 0 })
+    }
+
+    pub fn find_best_robot_weighted(&self, weight_percent: u16) -> Option<OrganismId> {
+        let weight = weight_percent.min(200);
+        let energy_exponent = f64::from(weight.min(100)) / 100.0;
+        let population_exponent = f64::from((200 - weight).min(100)) / 100.0;
+        let zerobot = self
+            .local_mode_config()
+            .is_some_and(|config| config.kind == LocalModeKind::Zerobot);
         let mut children: HashMap<OrganismId, Vec<OrganismId>> = HashMap::new();
         for (slot, entry) in self.slots.iter().enumerate() {
             if let Some(robot) = &entry.organism
@@ -4001,6 +4013,7 @@ impl Engine {
             let id = OrganismId::new(slot as u32, entry.generation);
             let mut family_count = 0_u64;
             let mut family_energy = 0_i64;
+            let mut cancer = false;
             let mut queue = VecDeque::from([(id, 0)]);
             let mut visited = HashSet::new();
             while let Some((member, depth)) = queue.pop_front() {
@@ -4011,20 +4024,23 @@ impl Engine {
                     continue;
                 };
                 family_count += 1;
-                family_energy +=
+                let invested =
                     i64::from(state.materials.energy) + i64::from(state.materials.body) * 10;
+                family_energy += invested;
+                // The original checks descendants, not the candidate itself.
+                cancer |= depth > 0 && invested < 1000;
                 if depth < 10
                     && let Some(descendants) = children.get(&member)
                 {
                     queue.extend(descendants.iter().map(|child| (*child, depth + 1)));
                 }
             }
-            let score = family_count as f64
-                * if energy_weighting {
-                    family_energy.max(0) as f64
-                } else {
-                    1.0
-                };
+            let score = if zerobot && cancer {
+                0.0
+            } else {
+                (family_count as f64).powf(population_exponent)
+                    * (family_energy.max(0) as f64).powf(energy_exponent)
+            };
             if score >= best_score {
                 best_score = score;
                 best = Some(id);
@@ -5029,6 +5045,9 @@ impl Engine {
         waste: Option<crate::WasteSettings>,
         recording: Option<crate::RecordingSettings>,
     ) -> Result<(), EngineError> {
+        if let Some(shots) = &shots {
+            shots.validate().map_err(EngineError::Invariant)?;
+        }
         if let Some(physics) = physics {
             self.config.physics = physics;
         }
@@ -5134,6 +5153,10 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        self.config
+            .shots
+            .validate()
+            .map_err(EngineError::Invariant)?;
         let slot_count = self.slots.len();
         let mut free = std::collections::HashSet::with_capacity(self.slots.free_slots.len());
         for slot in &self.slots.free_slots {
@@ -7951,7 +7974,9 @@ impl Engine {
             let projectile_velocity = self.projectiles.velocities[shot];
             let projectile_range = self.projectiles.ranges[shot];
             let projectile_energy = self.projectiles.energies[shot];
-            let power = self.projectiles.impact_power(impact.projectile_slot);
+            let power = self
+                .projectiles
+                .impact_power(impact.projectile_slot, &self.config.shots);
             let toxin_power = self.projectiles.toxin_impact_power(impact.projectile_slot);
             self.stats.projectile_impacts = self.stats.projectile_impacts.saturating_add(1);
             let traced_target = match impact.target {
@@ -8002,10 +8027,6 @@ impl Engine {
         projectile_range: u32,
         projectile_energy: f32,
     ) -> bool {
-        let owner_slot = owner.slot() as usize;
-        let owner_is_live = self.slots[..]
-            .get(owner_slot)
-            .is_some_and(|slot| slot.generation == owner.generation() && slot.organism.is_some());
         match target {
             ProjectileTarget::Obstacle => false,
             ProjectileTarget::Corpse(corpse) => {
@@ -8014,7 +8035,9 @@ impl Engine {
                         let Some(corpse_state) = self.corpses.get_mut(corpse) else {
                             return false;
                         };
-                        let body = corpse_state.body.max(0) as f64;
+                        let body = f64::from(
+                            (corpse_state.body as f32 + corpse_state.body_fraction).max(0.0),
+                        );
                         if body <= 0.0 {
                             return false;
                         }
@@ -8024,11 +8047,9 @@ impl Engine {
                             return false;
                         }
                         body_power = (body_power * 4.0).min(body * 10.0);
-                        corpse_state.body = (body - body_power / 10.0)
-                            .max(0.0)
-                            .round()
-                            .clamp(0.0, 32_000.0)
-                            as i32;
+                        let remaining = (body - body_power / 10.0).clamp(0.0, 32_000.0) as f32;
+                        corpse_state.body = remaining.round_ties_even() as i32;
+                        corpse_state.body_fraction = remaining - corpse_state.body as f32;
                         (body_power.round() as i32, corpse_state.velocity)
                     };
                     self.projectiles.spawn_energy_packet(
@@ -8046,24 +8067,53 @@ impl Engine {
                 let Some(corpse_state) = self.corpses.get_mut(corpse) else {
                     return false;
                 };
+                if matches!(effect, ProjectileEffect::DonateEnergy) {
+                    let added = scale_tie_amount(power.max(0), 0.95);
+                    corpse_state.energy = corpse_state.energy.saturating_add(added).min(32000);
+                    let body = corpse_state.body as f32
+                        + corpse_state.body_fraction
+                        + power.max(0) as f32 * 0.004;
+                    corpse_state.body = body.round_ties_even() as i32;
+                    corpse_state.body_fraction = body - corpse_state.body as f32;
+                    self.stats.energy_donated =
+                        self.stats.energy_donated.saturating_add(added as u64);
+                    self.stats.energy_harvested =
+                        self.stats.energy_harvested.saturating_add(added as u64);
+                    if added > 0 {
+                        self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
+                    }
+                    return added > 0;
+                }
                 if !matches!(effect, ProjectileEffect::ReleaseEnergy) {
                     return false;
                 }
-                let applied = power.min(corpse_state.energy.max(0));
-                corpse_state.energy = corpse_state.energy.saturating_sub(applied);
-                corpse_state.body = corpse_state.body.min(corpse_state.energy).max(0);
-                if owner_is_live {
-                    let harvested = applied.saturating_mul(3) / 4;
-                    let owner_robot = self.slots.get_mut(owner).unwrap();
-                    owner_robot.materials.energy =
-                        owner_robot.materials.energy.saturating_add(harvested);
-                    self.stats.energy_harvested =
-                        self.stats.energy_harvested.saturating_add(harvested as u64);
-                    if harvested > 0 {
-                        self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
-                    }
+                if corpse_state.energy <= 0 {
+                    return false;
                 }
-                applied > 0
+                let mut packet = scale_tie_amount(power.max(0), 0.5);
+                let mut loss = scale_tie_amount(packet, 0.9);
+                if loss > corpse_state.energy {
+                    packet = corpse_state.energy;
+                    loss = corpse_state.energy;
+                }
+                corpse_state.energy -= loss;
+                let body = (corpse_state.body as f32 + corpse_state.body_fraction
+                    - packet as f32 * 0.01)
+                    .max(0.0);
+                corpse_state.body = body.round_ties_even() as i32;
+                corpse_state.body_fraction = body - corpse_state.body as f32;
+                let velocity = [
+                    corpse_state.velocity[0] * 1.5 - projectile_velocity[0],
+                    corpse_state.velocity[1] * 1.5 - projectile_velocity[1],
+                ];
+                self.projectiles.spawn_energy_packet(
+                    OrganismId::new(u32::MAX, u32::MAX),
+                    projectile_position,
+                    velocity,
+                    projectile_range.saturating_mul(2),
+                    packet,
+                );
+                packet > 0
             }
             ProjectileTarget::Organism(target) => {
                 if self.slots[..]
@@ -9545,8 +9595,7 @@ impl Engine {
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
         self.corpses.retain(|corpse| {
-            corpse.body > 0
-                && corpse.energy > 0
+            corpse.body as f32 + corpse.body_fraction >= 0.5
                 && corpse.position.iter().all(|value| value.is_finite())
         });
     }
@@ -9673,6 +9722,7 @@ impl Engine {
                 continue;
             };
             let should_die = robot.flags.dead
+                || robot.materials.body < 1
                 || if self.config.corpse_decay.enabled {
                     robot.counters.age > 0
                         && robot.materials.energy < self.config.corpse_decay.death_energy_threshold
@@ -9702,7 +9752,7 @@ impl Engine {
                     .species
                     .get(species as usize)
                     .is_some_and(|value| value.reseed);
-                if self.config.corpse_decay.enabled {
+                if self.config.corpse_decay.enabled && organism.materials.body > 0 {
                     self.corpses
                         .push(CorpseSnapshot::from_robot(&organism, species, repopulating));
                 }

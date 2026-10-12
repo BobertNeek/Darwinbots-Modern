@@ -48,6 +48,9 @@ pub struct ShotSettings {
     pub decay: f32,
     pub energy_shots_do_not_decay: bool,
     pub waste_shots_do_not_decay: bool,
+    pub feeding_proportional: bool,
+    pub feeding_fixed_power: i32,
+    pub feeding_proportion: f32,
 }
 
 impl Default for ShotSettings {
@@ -58,7 +61,25 @@ impl Default for ShotSettings {
             decay: 40.0,
             energy_shots_do_not_decay: false,
             waste_shots_do_not_decay: false,
+            feeding_proportional: true,
+            feeding_fixed_power: 200,
+            feeding_proportion: 1.0,
         }
+    }
+}
+
+impl ShotSettings {
+    pub(crate) fn validate(&self) -> Result<(), String> {
+        if !self.feeding_proportion.is_finite()
+            || self.feeding_proportion < 0.0
+            || !(0..=32000).contains(&self.feeding_fixed_power)
+        {
+            return Err(
+                "feeding shot power must be finite and nonnegative; fixed power must be 0..32000"
+                    .to_owned(),
+            );
+        }
+        Ok(())
     }
 }
 

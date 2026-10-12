@@ -120,6 +120,9 @@
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Range multiplier"/><NumericUpDown Grid.Column="1" x:Name="ShotRangeMultiplier" Minimum="0.01" Maximum="100" Increment="0.1"/></Grid>
           <Grid ColumnDefinitions="*,150"><TextBlock Text="Decay"/><NumericUpDown Grid.Column="1" x:Name="ShotDecay" Minimum="0" Maximum="10000"/></Grid>
           <CheckBox x:Name="EnergyShotsNoDecay" Content="Energy shots do not decay"/><CheckBox x:Name="WasteShotsNoDecay" Content="Waste shots do not decay"/>
+          <CheckBox x:Name="FeedingProportional" Content="Scale feeding power with remaining shot energy"/>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Fixed feeding power"/><NumericUpDown Grid.Column="1" x:Name="FeedingFixedPower" Minimum="0" Maximum="32000" Value="200"/></Grid>
+          <Grid ColumnDefinitions="*,150"><TextBlock Text="Proportional feeding strength"/><NumericUpDown Grid.Column="1" x:Name="FeedingProportion" Minimum="0" Maximum="320" Increment="0.1" Value="1"/></Grid>
         </StackPanel></Border>
        </StackPanel></ScrollViewer></TabItem>
       <TabItem Header="WORLD"><ScrollViewer><StackPanel Margin="18,0,4,20" Spacing="14">

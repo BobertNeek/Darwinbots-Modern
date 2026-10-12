@@ -487,8 +487,12 @@ public sealed partial class NativeEngineClient : IEngineClient
 
     public void ExecuteRobots() => ExecuteBatch(new { version = 1, commands = new[] { new { type = "execute_robots" } } }, "execute robots");
     public OrganismKey? FindBestRobot(bool energyWeighting)
+        => FindBestRobot(energyWeighting ? 100 : 0);
+
+    public OrganismKey? FindBestRobot(int weightPercent)
     {
-        var value = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "find_best_robot", energy_weighting = energyWeighting } } }, "find best robot")
+        if (weightPercent is < 0 or > 200) throw new ArgumentOutOfRangeException(nameof(weightPercent));
+        var value = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "find_best_robot", weight_percent = weightPercent } } }, "find best robot")
             .GetProperty("results")[0];
         return value.ValueKind == JsonValueKind.Null ? null : ReadKey(value);
     }

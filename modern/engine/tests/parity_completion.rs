@@ -182,6 +182,49 @@ fn find_best_excludes_plants_and_scores_the_living_family() {
 }
 
 #[test]
+fn find_best_original_weighting_separates_population_energy_and_intermediate_scores() {
+    let mut engine = quiet_engine();
+    let dna = LegacyDna::parse("start stop").unwrap();
+    let parent = engine.spawn_at(dna.clone(), [400.0, 400.0]).unwrap();
+    let child = engine.spawn_at(dna.clone(), [600.0, 400.0]).unwrap();
+    let rich = engine.spawn_at(dna, [800.0, 800.0]).unwrap();
+    engine.set_organism_energy(rich, 32000).unwrap();
+    let engine = edit_save(&engine, |value| {
+        value["slots"][child.slot() as usize]["organism"]["identity"]["parents"] =
+            serde_json::json!([parent, null]);
+    });
+    assert_eq!(engine.find_best_robot_weighted(0), Some(parent));
+    assert_eq!(engine.find_best_robot_weighted(50), Some(parent));
+    assert_eq!(engine.find_best_robot_weighted(100), Some(parent));
+    assert_eq!(engine.find_best_robot_weighted(150), Some(rich));
+    assert_eq!(engine.find_best_robot_weighted(200), Some(rich));
+}
+
+#[test]
+fn zerobot_find_best_rejects_cancer_families() {
+    let mut engine = quiet_engine();
+    engine
+        .configure_local_mode(darwinbots_engine::LocalModeConfig {
+            kind: darwinbots_engine::LocalModeKind::Zerobot,
+            ..Default::default()
+        })
+        .unwrap();
+    let dna = LegacyDna::parse("start stop").unwrap();
+    let parent = engine.spawn_at(dna.clone(), [400.0, 400.0]).unwrap();
+    let child = engine.spawn_at(dna.clone(), [600.0, 400.0]).unwrap();
+    let healthy = engine.spawn_at(dna, [800.0, 800.0]).unwrap();
+    let engine = edit_save(&engine, |value| {
+        value["slots"][child.slot() as usize]["organism"]["identity"]["parents"] =
+            serde_json::json!([parent, null]);
+        value["slots"][child.slot() as usize]["organism"]["materials"]["body"] =
+            serde_json::json!(1);
+        value["slots"][child.slot() as usize]["organism"]["materials"]["energy"] =
+            serde_json::json!(1);
+    });
+    assert_eq!(engine.find_best_robot_weighted(0), Some(healthy));
+}
+
+#[test]
 fn console_dna_execution_and_memory_1000_do_not_advance_physics() {
     let mut engine = quiet_engine();
     let id = engine

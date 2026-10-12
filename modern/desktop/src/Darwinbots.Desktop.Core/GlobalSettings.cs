@@ -39,6 +39,9 @@ public sealed record GlobalMainSettings
     public string MainDirectory { get; init; } = string.Empty;
     public bool SafeMode { get; init; }
     public bool FindBestEnergyWeighting { get; init; }
+    public int? FindBestWeight { get; init; }
+    [JsonIgnore]
+    public int EffectiveFindBestWeight => FindBestWeight ?? (FindBestEnergyWeighting ? 100 : 0);
     public bool EpigeneticReset { get; init; }
     public double EpigeneticAmplification { get; init; } = 1.0;
     public bool TemporaryGeneData { get; init; }
@@ -149,6 +152,8 @@ public sealed record GlobalSettings
 
     private void Validate()
     {
+        if (Main.EffectiveFindBestWeight is < 0 or > 200)
+            throw new InvalidDataException("Find Best weighting must be between 0 and 200.");
         if (AdvancedMutation.NormalizationEnabled && AdvancedMutation.NormalizationDnaLength <= 0)
             throw new InvalidDataException("Mutation normalization DNA length must be positive.");
         if (AdvancedMutation.Delta2Enabled && AdvancedMutation.Delta2Interval == 0)
