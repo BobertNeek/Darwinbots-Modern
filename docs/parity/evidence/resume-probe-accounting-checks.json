@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-11",
+  "code_revision": "a4f662e3d7d416f67717c417ee652162eec5e1da",
+  "defect": "Candidate tracking used species array indices that shift when extinct species are removed. Unrelated plants could become candidate births.",
+  "repair": "Use stable organism identities and first-parent ancestry between snapshots.",
+  "unit_regressions": 2,
+  "command_tests": 3,
+  "strict_clippy": "passed",
+  "probe": {
+    "backend": "Cpu",
+    "births": 25,
+    "candidate_births": 0,
+    "candidate_deaths": 5,
+    "candidate_final_population": 0,
+    "candidate_starting_population": 5,
+    "compatibility_warnings": [],
+    "deaths": 10,
+    "elapsed_seconds": 12.191311,
+    "energy_donated": 0,
+    "energy_harvested": 0,
+    "feeding_events": 0,
+    "final_population": 40,
+    "intentional_movement_events": 839,
+    "loaded": true,
+    "population": 40,
+    "projectile_impacts": 0,
+    "shots_fired": 0,
+    "starting_population": 25,
+    "tick": 1000,
+    "ticks": 1000,
+    "total_energy": 622038,
+    "vegetable_final_population": 40,
+    "vegetable_starting_population": 20
+  },
+  "previous_wrong_candidate_births": 40,
+  "corrected_candidate_births": 0,
+  "limits": [
+    "The complete 23-bot corpus has not been rerun on this change.",
+    "The simulation state in the reproduced Alga case is unchanged; these are corrected report classifications."
+  ]
+}

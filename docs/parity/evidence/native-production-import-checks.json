@@ -1,0 +1,44 @@
+{
+  "code_revision": "6bb2e5c",
+  "reference_sha256": "09b77b6eaf0a1a8ffc09c601a8869fe37c4fc4e21860ebf379519fdbfce8a55e",
+  "reference_version": "2.48.32",
+  "gates": {
+    "rust_focused": {
+      "passed": 139,
+      "failed": 0,
+      "targets": [
+        "lib",
+        "db2_projectiles",
+        "gpu_ffi",
+        "native_resource_precision",
+        "reproduction_heredity_248",
+        "ties_multibot"
+      ]
+    },
+    "strict_engine_clippy": {
+      "passed": true,
+      "all_targets": true
+    },
+    "production_desktop_native": {
+      "passed": 8,
+      "failed": 0
+    }
+  },
+  "proven": [
+    "Genuine 196-robot save loads through Engine, C API and C# NativeEngineClient",
+    "Native cycle 281, 16000x12000 world, two species and 37 plants retained",
+    "146 shot slots decoded and applied",
+    "Raw Single resource bits and native heading preserved",
+    "Entire original record stream and metadata retained through DB3S v4",
+    "Next-cycle state matches after modern save and resume",
+    "Rejected truncated loads leave current engine unchanged",
+    "Desktop Load picker includes native .sim"
+  ],
+  "still_unproven": [
+    "Native live-world export and original executable reload",
+    "Complete corpse state and behavior",
+    "Full graph and local mode metadata application",
+    "Remaining broad-suite failures and long ecology gates",
+    "All original-versus-port trajectory differentials"
+  ]
+}

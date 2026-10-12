@@ -1,0 +1,19 @@
+   Compiling darwinbots-cli v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.35s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_cli-347704e93a2d77df.exe)
+
+running 2 tests
+test probe::tests::extinction_compaction_does_not_turn_unrelated_plants_into_candidates ... ok
+test probe::tests::surviving_candidate_and_its_child_remain_tracked_when_species_indices_shift ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\commands.rs (target\debug\deps\commands-69d4816dc214203e.exe)
+
+running 3 tests
+test run_imports_legacy_bot_advances_ticks_and_emits_json ... ok
+test stress_command_checks_invariants_and_emits_reproducible_hash ... ok
+test benchmark_populates_requested_number_of_organisms ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+

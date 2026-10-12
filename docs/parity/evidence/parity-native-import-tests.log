@@ -1,0 +1,11 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 37.43s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 3 tests
+test world::native_io::tests::native_runtime_rejects_nonfinite_stores_and_truncated_tails ... ok
+test world::native_io::tests::genuine_native_save_becomes_a_live_world_with_exact_resources_and_shots ... ok
+test world::native_io::tests::native_origin_and_live_state_survive_modern_save_and_resume ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 32 filtered out; finished in 6.90s
+
