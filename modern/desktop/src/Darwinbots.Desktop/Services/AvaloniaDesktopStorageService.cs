@@ -246,7 +246,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     {
         Title = title,
         AllowMultiple = false,
-        FileTypeFilter = [SimulationFileType()],
+        FileTypeFilter = [SimulationFileType(), LegacySimulationFileType()],
     };
 
     private static FilePickerFileType RobotFileType() =>

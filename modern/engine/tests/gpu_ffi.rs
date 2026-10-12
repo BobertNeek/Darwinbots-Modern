@@ -13,6 +13,36 @@ const TOXIN_SOURCE_POSITION: [f32; 2] = [250.0, 500.0];
 const TOXIN_TARGET_POSITION: [f32; 2] = [500.0, 500.0];
 const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
 
+#[test]
+fn ffi_loads_genuine_native_sim_and_preserves_the_world_after_rejected_load() {
+    let config = serde_json::to_vec(&EngineConfig::testing()).unwrap();
+    let mut engine = std::ptr::null_mut();
+    assert_eq!(
+        db_engine_create(config.as_ptr(), config.len(), &mut engine),
+        DbStatus::Ok
+    );
+    let native = include_bytes!("fixtures/db24832-original-user.sim");
+    assert_eq!(
+        db_engine_load(engine, native.as_ptr(), native.len()),
+        DbStatus::Ok
+    );
+    let loaded = unsafe { &*engine };
+    assert_eq!(loaded.snapshot().tick, 281);
+    assert_eq!(loaded.snapshot().organisms.len(), 196);
+    let before = darwinbots_engine::SaveFile::encode(loaded).unwrap();
+    assert_eq!(
+        db_engine_load(engine, native.as_ptr(), native.len() - 1),
+        DbStatus::EngineError
+    );
+    assert_eq!(
+        darwinbots_engine::SaveFile::encode(unsafe { &*engine }).unwrap(),
+        before
+    );
+    assert_eq!(db_engine_tick(engine), DbStatus::Ok);
+    assert_eq!(unsafe { &*engine }.snapshot().tick, 282);
+    db_engine_destroy(engine);
+}
+
 fn remove_wall_clock_timings(value: &mut serde_json::Value) {
     match value {
         serde_json::Value::Object(object) => {

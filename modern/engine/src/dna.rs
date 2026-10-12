@@ -157,6 +157,17 @@ impl LegacyDna {
         }
     }
 
+    pub(crate) fn set_native_context(
+        &mut self,
+        user_variables: BTreeMap<String, i32>,
+        new_move: bool,
+        metadata: DnaMetadata,
+    ) {
+        self.user_variables = user_variables;
+        self.new_move = new_move;
+        self.metadata = metadata;
+    }
+
     pub(crate) fn from_legacy_wire_parts(
         instructions: Vec<Instruction>,
         user_variables: BTreeMap<String, i32>,

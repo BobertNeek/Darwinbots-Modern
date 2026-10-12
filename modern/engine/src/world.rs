@@ -44,6 +44,9 @@ use crate::physics::{
     fluid_added_mass, mutual_gravity_impulses, voluntary_cost_magnitude,
 };
 
+#[path = "world/native_io.rs"]
+mod native_io;
+
 const MEM_ROBAGE: i32 = 9;
 const MEM_HIT: i32 = 201;
 const MEM_SHOT_FLAVOR: i32 = 202;
@@ -245,11 +248,7 @@ fn write_directional_sensor(
 
 fn write_robot_touch(robot: &mut RobotState, robot_position: [f32; 2], event_point: [f32; 2]) {
     let event_point = event_point.map(f32::round_ties_even);
-    let relative_angle = legacy_relative_angle(
-        robot_position,
-        robot.materials.aim as f32 / 200.0,
-        event_point,
-    );
+    let relative_angle = legacy_relative_angle(robot_position, robot.heading(), event_point);
     write_directional_sensor(
         &mut robot.program.memory,
         classify_legacy_direction(relative_angle),
@@ -260,11 +259,8 @@ fn write_robot_touch(robot: &mut RobotState, robot_position: [f32; 2], event_poi
 }
 
 fn write_shot_taste(robot: &mut RobotState, event_point: [f32; 2], kind: i32) {
-    let relative_angle = legacy_relative_angle(
-        robot.kinematics.position,
-        robot.materials.aim as f32 / 200.0,
-        event_point,
-    );
+    let relative_angle =
+        legacy_relative_angle(robot.kinematics.position, robot.heading(), event_point);
     write_directional_sensor(
         &mut robot.program.memory,
         classify_legacy_direction(relative_angle),
@@ -2113,6 +2109,8 @@ struct EngineCycleCheckpoint {
 pub struct Engine {
     #[serde(default)]
     dynamic_cost_state: DynamicCostRuntimeState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_origin: Option<crate::native_binary::NativeRecordFile>,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2383,6 +2381,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_origin: None,
         })
     }
 
@@ -2552,6 +2551,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_origin: None,
         })
     }
 
@@ -5460,7 +5460,7 @@ impl Engine {
                 down: commands.down,
                 left: commands.left,
                 right: commands.right,
-                aim_radians: robot.materials.aim as f32 / 200.0,
+                aim_radians: robot.heading(),
                 new_move: robot.program.dna.uses_new_move(),
             };
             let mass = derived_mass(
@@ -5533,7 +5533,7 @@ impl Engine {
                 robot.kinematics.angular_momentum = turn;
             }
             let aim_radians = robot.materials.aim as f32 / 200.0;
-            robot.kinematics.aim_vector = [aim_radians.cos(), aim_radians.sin()];
+            robot.set_heading(aim_radians);
             robot.materials.publish(&mut robot.program.memory);
         }
     }
@@ -5890,10 +5890,7 @@ impl Engine {
                 velocity_dx,
                 velocity_dn,
                 velocity_up,
-            ] = velocity_readbacks(
-                robot.kinematics.velocity,
-                robot.materials.aim as f32 / 200.0,
-            );
+            ] = velocity_readbacks(robot.kinematics.velocity, robot.heading());
             runtime.publish(
                 PhaseReadbacks::Core(CoreReadbacks {
                     values: vec![
@@ -6430,7 +6427,7 @@ impl Engine {
                 target_outgoing,
             )) = sense.2
             {
-                let observer_angle = observer.materials.aim as f32 / 200.0;
+                let observer_angle = observer.heading();
                 let [
                     _,
                     target_velocity_sx,
@@ -7002,7 +6999,7 @@ impl Engine {
                 .slots
                 .get(source_id)
                 .ok()
-                .map(|source| source.materials.aim as f32 / 200.0)
+                .map(|source| source.heading())
                 .unwrap_or(0.0);
             for (tie_index, tie) in self.ties.iter_mut().enumerate() {
                 let (other_id, source_is_first, source_endpoint_index) = if tie.first == source_id {
@@ -7038,7 +7035,7 @@ impl Engine {
                     .slots
                     .get(other_id)
                     .ok()
-                    .map(|other| other.materials.aim as f32 / 200.0)
+                    .map(|other| other.heading())
                     .unwrap_or(first_aim);
                 if selected && commands.fix_angle != 32_000 {
                     if commands.fix_angle >= 0 {
@@ -7146,8 +7143,8 @@ impl Engine {
             let current_length = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
             let first_angle = delta[1].atan2(delta[0]);
             let second_angle = (-delta[1]).atan2(-delta[0]);
-            let first_aim = first_robot.materials.aim as f32 / 200.0;
-            let second_aim = second_robot.materials.aim as f32 / 200.0;
+            let first_aim = first_robot.heading();
+            let second_aim = second_robot.heading();
             let first_relative_angle = normalize_tie_angle(first_angle - first_aim);
             let second_relative_angle = normalize_tie_angle(second_angle - second_aim);
             let requested_second_angle = normalize_tie_angle(
@@ -7224,8 +7221,8 @@ impl Engine {
                 .and_then(|index| endpoints[slot][index].and_then(|endpoint| endpoint.other))
                 .and_then(|other| {
                     let target = self.slots.get(other).ok()?;
-                    let source_aim = source.materials.aim as f32 / 200.0;
-                    let target_aim = target.materials.aim as f32 / 200.0;
+                    let source_aim = source.heading();
+                    let target_aim = target.heading();
                     let target_velocity_for_source =
                         velocity_readbacks(target.kinematics.velocity, source_aim);
                     let source_velocity =
@@ -7677,13 +7674,12 @@ impl Engine {
             settle_simulation_cost(attacker, shot_cost.min(available_energy));
             attacker.materials.energy = attacker.materials.energy.max(0.0);
             attacker.materials.publish(&mut attacker.program.memory);
-            let mut angle = attacker.materials.aim as f32 / 200.0;
+            let mut angle = attacker.heading();
             if commands.backshot != 0 {
                 angle -= std::f32::consts::PI;
             }
             if commands.aim != 0 {
-                angle =
-                    attacker.materials.aim as f32 / 200.0 - (commands.aim % 1_256) as f32 / 200.0;
+                angle = attacker.heading() - (commands.aim % 1_256) as f32 / 200.0;
             }
             let random = advance_random(
                 self.config.seed
@@ -8128,7 +8124,7 @@ impl Engine {
         toxin_memory_value: i32,
         projectile_position: [f32; 2],
         projectile_velocity: [f32; 2],
-        projectile_range: u32,
+        projectile_range: f32,
         projectile_energy: f32,
     ) -> bool {
         match target {
@@ -8164,7 +8160,7 @@ impl Engine {
                             target_velocity[0] * 1.5 - projectile_velocity[0],
                             target_velocity[1] * 1.5 - projectile_velocity[1],
                         ],
-                        projectile_range.saturating_mul(2),
+                        projectile_range * 2.0,
                         packet_value,
                     );
                     return true;
@@ -8197,7 +8193,7 @@ impl Engine {
                     OrganismId::new(u32::MAX, u32::MAX),
                     projectile_position,
                     velocity,
-                    projectile_range.saturating_mul(2),
+                    projectile_range * 2.0,
                     packet,
                 );
                 packet > 0.0
@@ -8267,7 +8263,7 @@ impl Engine {
                             target_id,
                             projectile_position,
                             return_velocity,
-                            projectile_range.saturating_mul(2),
+                            projectile_range * 2.0,
                             packet_value,
                         );
                         true
@@ -8502,7 +8498,7 @@ impl Engine {
                             target_id,
                             projectile_position,
                             return_velocity,
-                            projectile_range.saturating_mul(2),
+                            projectile_range * 2.0,
                             packet_value,
                         );
                         true
@@ -8576,7 +8572,7 @@ impl Engine {
         route: DefensivePoisonRoute,
         position: [f32; 2],
         incoming_velocity: [f32; 2],
-        incoming_range: u32,
+        incoming_range: f32,
     ) -> bool {
         let power = power.max(0.0);
         let target_id = OrganismId::new(target as u32, self.slots[target].generation);
@@ -9346,9 +9342,8 @@ impl Engine {
                 return false;
             }
             if tie.hardened && !tie.angle_initialized {
-                tie.requested_angle = normalize_tie_angle(
-                    delta[1].atan2(delta[0]) - first.materials.aim as f32 / 200.0,
-                );
+                tie.requested_angle =
+                    normalize_tie_angle(delta[1].atan2(delta[0]) - first.heading());
                 tie.angle_initialized = true;
                 tie.angle_fixed = true;
             }
@@ -9357,7 +9352,7 @@ impl Engine {
             }
             if tie.angle_fixed {
                 let actual_angle = delta[1].atan2(delta[0]);
-                let requested_angle = first.materials.aim as f32 / 200.0 + tie.requested_angle;
+                let requested_angle = first.heading() + tie.requested_angle;
                 let mismatch = tie_angle_difference(actual_angle, requested_angle);
                 if mismatch.abs() > TIE_ANGLE_SLACK {
                     let correction = mismatch.signum() * (mismatch.abs() - TIE_ANGLE_SLACK);
@@ -9837,7 +9832,7 @@ impl Engine {
                 child_materials.chloroplasts,
                 self.config.fixed_bot_radii,
             );
-            let parent_angle = parent_state.materials.aim as f32 / 200.0;
+            let parent_angle = parent_state.heading();
             let position = [
                 parent_state.kinematics.position[0] + parent_angle.cos() * separation,
                 parent_state.kinematics.position[1] + parent_angle.sin() * separation,
@@ -10740,9 +10735,6 @@ impl Engine {
                 {
                     organism.phenotype =
                         VisualPhenotype::new(species.lineage_id, species.color, species.skin);
-                }
-                if let Some(species) = engine.species.get(organism.identity.species.0 as usize) {
-                    organism.flags.vegetable = species.vegetable;
                 }
                 next_lineage_id =
                     next_lineage_id.max(organism.phenotype.lineage_id.saturating_add(1));
@@ -12052,7 +12044,7 @@ mod tests {
                 0,
                 [0.0; 2],
                 [0.0; 2],
-                10,
+                10.0,
                 100.0,
             );
             let living = live_target_slot.map(|slot| {

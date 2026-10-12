@@ -74,6 +74,9 @@ impl SaveFile {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Engine, EngineError> {
+        if bytes.len() >= 9_323 && !bytes.starts_with(Self::MAGIC) {
+            return Engine::from_native_sim(bytes);
+        }
         if bytes.len() < 10 || &bytes[..4] != Self::MAGIC {
             return Err(EngineError::InvalidSave("missing DB3S header".to_owned()));
         }

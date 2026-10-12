@@ -6,6 +6,31 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class LegacySettingsNativeTests
 {
+    [Fact]
+    public void Genuine24832SimulationLoadsThroughTheDesktopClientAndResumes()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, relative))) directory = directory.Parent;
+        Assert.NotNull(directory);
+        var native = File.ReadAllBytes(Path.Combine(directory.FullName, relative));
+        using var engine = new NativeEngineClient(backend: "Cpu");
+        engine.Load(native);
+        var snapshot = engine.Snapshot();
+        Assert.Equal(281ul, snapshot.Tick);
+        Assert.Equal(196, snapshot.Population);
+        Assert.Equal(2, snapshot.Species.Count);
+        Assert.Equal(37, snapshot.Organisms.Count(robot => robot.Vegetable));
+        Assert.Equal(new float[] { 16_000, 12_000 }, snapshot.WorldSize);
+        Assert.Equal(587, snapshot.Organisms[0].Energy);
+        var modern = engine.Save();
+        Assert.ThrowsAny<Exception>(() => engine.Load(native[..^1]));
+        Assert.Equal(modern, engine.Save());
+        engine.Load(modern);
+        engine.Tick();
+        Assert.Equal(282ul, engine.Snapshot().Tick);
+    }
+
     [Theory]
     [InlineData("Chloroplast Ecosystem.set")]
     [InlineData("Complex Simulation.set")]

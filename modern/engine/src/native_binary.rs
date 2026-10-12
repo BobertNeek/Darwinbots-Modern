@@ -314,6 +314,43 @@ pub struct NativeSimulationTail {
 }
 
 impl NativeSimulationTail {
+    pub fn integer(&self, name: &str) -> Result<i32, EngineError> {
+        match self.value(name)? {
+            NativeValue::Word(value) => Ok(i32::from(*value)),
+            NativeValue::Long(value) => Ok(*value),
+            NativeValue::Byte(value) => Ok(i32::from(*value)),
+            _ => Err(invalid(&format!(
+                "simulation field {name} is not an integer"
+            ))),
+        }
+    }
+
+    pub fn number(&self, name: &str) -> Result<f64, EngineError> {
+        let value = match self.value(name)? {
+            NativeValue::Single(bits) => f64::from(f32::from_bits(*bits)),
+            NativeValue::Double(bits) => f64::from_bits(*bits),
+            NativeValue::Word(value) => f64::from(*value),
+            NativeValue::Long(value) => f64::from(*value),
+            NativeValue::Byte(value) => f64::from(*value),
+            NativeValue::Bytes(_) => {
+                return Err(invalid(&format!("simulation field {name} is not numeric")));
+            }
+        };
+        if !value.is_finite() {
+            return Err(invalid(&format!("simulation field {name} is not finite")));
+        }
+        Ok(value)
+    }
+
+    pub fn bytes(&self, name: &str) -> Result<&[u8], EngineError> {
+        match self.value(name)? {
+            NativeValue::Bytes(value) => Ok(value),
+            _ => Err(invalid(&format!(
+                "simulation field {name} is not a byte block"
+            ))),
+        }
+    }
+
     pub fn fields(&self) -> &[NativeField] {
         &self.fields
     }

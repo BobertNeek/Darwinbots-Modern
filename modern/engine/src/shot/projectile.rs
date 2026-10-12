@@ -36,7 +36,7 @@ pub(crate) struct ProjectilePool {
     pub(crate) previous_positions: Vec<[f32; 2]>,
     pub(crate) velocities: Vec<[f32; 2]>,
     pub(crate) ages: Vec<u32>,
-    pub(crate) ranges: Vec<u32>,
+    pub(crate) ranges: Vec<f32>,
     pub(crate) energies: Vec<f32>,
     pub(crate) kinds: Vec<i32>,
     pub(crate) values: Vec<i32>,
@@ -92,7 +92,7 @@ impl ProjectilePool {
             previous_positions,
             velocities,
             ages,
-            ranges,
+            ranges: ranges.into_iter().map(|value| value as f32).collect(),
             energies,
             kinds,
             values,
@@ -241,14 +241,14 @@ impl ProjectilePool {
         let range_multiplier = (request.range_multiplier * settings.range_multiplier).max(1.0);
         let raw_energy = request.owner_virtual_body.abs().max(1.0).ln() * 60.0 * range_multiplier;
         let range = if request.owner_virtual_body > 10.0 {
-            ((raw_energy + 41.0) / 40.0).floor().max(1.0) as u32
+            ((raw_energy + 41.0) / 40.0).floor().max(1.0)
         } else {
-            range_multiplier as u32
+            range_multiplier.floor()
         };
         let energy = if request.kind == -2 {
             request.value
         } else {
-            range as f32 * 40.0
+            range * 40.0
         };
 
         if slot == self.owners.len() {
@@ -310,7 +310,7 @@ impl ProjectilePool {
             OrganismId::new(u32::MAX, u32::MAX),
             position,
             velocity,
-            1,
+            1.0,
             if kind == -2 { value } else { 40.0 },
             kind,
             value,
@@ -322,10 +322,10 @@ impl ProjectilePool {
         owner: OrganismId,
         position: [f32; 2],
         velocity: [f32; 2],
-        range: u32,
+        range: f32,
         value: f32,
     ) -> u32 {
-        let range = range.max(1);
+        let range = range.max(1.0);
         self.spawn_fixed_packet(owner, position, velocity, range, value, -2, value)
     }
 
@@ -336,7 +336,7 @@ impl ProjectilePool {
         velocity: [f32; 2],
         value: f32,
     ) -> u32 {
-        self.spawn_fixed_packet(owner, position, velocity, 1, 40.0, -4, value)
+        self.spawn_fixed_packet(owner, position, velocity, 1.0, 40.0, -4, value)
     }
 
     #[allow(clippy::too_many_arguments)] // Fixed wire packet fields are kept explicit at call sites.
@@ -345,7 +345,7 @@ impl ProjectilePool {
         owner: OrganismId,
         position: [f32; 2],
         velocity: [f32; 2],
-        range: u32,
+        range: f32,
         energy: f32,
         kind: i32,
         value: f32,
@@ -409,7 +409,7 @@ impl ProjectilePool {
         position: [f32; 2],
         incoming_velocity: [f32; 2],
         target_actual_velocity: [f32; 2],
-        incoming_range: u32,
+        incoming_range: f32,
         value: f32,
         route: DefensivePoisonRoute,
         source_species_name: Option<String>,
@@ -433,9 +433,9 @@ impl ProjectilePool {
             ),
         };
         let velocity = [vb_cint(velocity[0]), vb_cint(velocity[1])];
-        let raw_range = incoming_range.saturating_mul(range_multiplier);
-        let energy = raw_range.saturating_add(41) as f32;
-        let range = (raw_range.saturating_add(41) / 40).max(1);
+        let raw_range = incoming_range * range_multiplier as f32;
+        let energy = raw_range + 41.0;
+        let range = ((raw_range + 41.0) / 40.0).floor().max(1.0);
 
         if slot == self.owners.len() {
             self.owners.push(owner);
@@ -517,7 +517,7 @@ impl ProjectilePool {
             if !no_decay {
                 self.ages[slot] = self.ages[slot].saturating_add(1);
             }
-            if self.ages[slot] > self.ranges[slot]
+            if self.ages[slot] as f32 > self.ranges[slot]
                 || (0..2).any(|axis| {
                     !wrapped_axes[axis]
                         && (self.positions[slot][axis] < 0.0
@@ -569,7 +569,7 @@ impl ProjectilePool {
         let no_decay = (self.kinds[slot] == -2 && settings.energy_shots_do_not_decay)
             || (self.kinds[slot] == -4 && settings.waste_shots_do_not_decay);
         if !no_decay {
-            let range = self.ranges[slot].max(1) as f32;
+            let range = self.ranges[slot].max(1.0);
             let age_before_advance = self.ages[slot].saturating_sub(1);
             let progress = age_before_advance as f32 / range;
             let decay = settings.decay.max(f32::EPSILON);
@@ -584,13 +584,13 @@ impl ProjectilePool {
         if matches!(self.kinds[slot], -1 | -6) && !settings.feeding_proportional {
             return settings.feeding_fixed_power.max(0) as f32;
         }
-        if self.ranges[slot] == 0 {
+        if self.ranges[slot] == 0.0 {
             return 0.0;
         }
         if self.kinds[slot] == -2 {
             return self.energies[slot].max(0.0);
         }
-        let denominator = self.ranges[slot].max(1) as f32 * 40.0;
+        let denominator = self.ranges[slot].max(1.0) * 40.0;
         let proportion = if matches!(self.kinds[slot], -1 | -6) {
             settings.feeding_proportion
         } else {
@@ -602,7 +602,7 @@ impl ProjectilePool {
 
     pub(crate) fn toxin_impact_power(&self, slot: u32) -> f32 {
         let slot = slot as usize;
-        let denominator = self.ranges[slot].max(1) as f32 * 40.0;
+        let denominator = self.ranges[slot].max(1.0) * 40.0;
         self.values[slot].saturating_abs() as f32 * self.energies[slot] / denominator
     }
 
@@ -616,7 +616,7 @@ impl ProjectilePool {
                     end: self.positions[slot],
                     velocity: self.velocities[slot],
                     age: self.ages[slot],
-                    range: self.ranges[slot],
+                    range: self.ranges[slot].round_ties_even().max(0.0) as u32,
                     energy: self.energies[slot],
                     kind: self.kinds[slot],
                     value: self.values[slot],
@@ -674,7 +674,7 @@ mod tests {
         let mut pool = ProjectilePool::default();
         pool.values.push(100);
         pool.energies.push(200.0);
-        pool.ranges.push(10);
+        pool.ranges.push(10.0);
         pool.kinds.push(-1);
         let settings = ShotSettings::default();
         assert_eq!(pool.impact_power(0, &settings), 50.0);
@@ -696,13 +696,13 @@ mod tests {
         assert_eq!(pool.impact_power(0, &fixed), 20.0);
         pool.kinds[0] = -6;
         assert_eq!(pool.impact_power(0, &fixed), 20.0);
-        pool.ranges[0] = 0;
+        pool.ranges[0] = 0.0;
         assert_eq!(pool.impact_power(0, &fixed), 20.0);
-        pool.ranges[0] = 10;
+        pool.ranges[0] = 10.0;
         pool.kinds[0] = -3;
         assert_eq!(pool.impact_power(0, &fixed), 50.0);
         assert_eq!(pool.toxin_impact_power(0), 50.0);
-        pool.ranges[0] = 0;
+        pool.ranges[0] = 0.0;
         assert_eq!(pool.impact_power(0, &settings), 0.0);
     }
 
@@ -750,7 +750,7 @@ mod tests {
     fn db24832_impact_decay_uses_age_before_the_current_tick_increment() {
         let mut pool = ProjectilePool::default();
         let settings = ShotSettings::default();
-        pool.spawn_energy_packet(OrganismId::new(1, 0), [100.0, 100.0], [0.0, 0.0], 1, 1.0);
+        pool.spawn_energy_packet(OrganismId::new(1, 0), [100.0, 100.0], [0.0, 0.0], 1.0, 1.0);
 
         pool.advance(&settings, [1_000.0, 1_000.0], [false, false]);
         pool.mark_impact(0, 0.0, &settings);

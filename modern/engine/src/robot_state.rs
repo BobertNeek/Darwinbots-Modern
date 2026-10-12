@@ -85,6 +85,11 @@ pub struct RobotKinematics {
     pub resistive_impulse: [f32; 2],
     pub aim_vector: [f32; 2],
     pub angular_momentum: f32,
+    #[serde(default)]
+    pub angular_torque: f32,
+    /// Native Single heading; the integer aim remains the VM and UI projection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aim_radians: Option<f32>,
 }
 
 impl RobotKinematics {
@@ -347,6 +352,21 @@ impl RobotState {
         };
         state.refresh_occurrence_census();
         state
+    }
+
+    pub(crate) fn heading(&self) -> f32 {
+        self.kinematics
+            .aim_radians
+            .filter(|heading| {
+                crate::biology::resource_readback(*heading * 200.0) == self.materials.aim
+            })
+            .unwrap_or(self.materials.aim as f32 / 200.0)
+    }
+
+    pub(crate) fn set_heading(&mut self, heading: f32) {
+        self.kinematics.aim_radians = Some(heading);
+        self.materials.aim = crate::biology::resource_readback(heading * 200.0);
+        self.kinematics.aim_vector = [heading.cos(), heading.sin()];
     }
 
     pub(crate) fn refresh_occurrence_census(&mut self) {
