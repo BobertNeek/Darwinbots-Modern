@@ -534,11 +534,11 @@ fn shot_effect_occurs_after_dna_and_before_robot_passes() {
     engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\n1 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
 

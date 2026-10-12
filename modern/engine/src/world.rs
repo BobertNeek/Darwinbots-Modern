@@ -5241,6 +5241,9 @@ impl Engine {
     }
 
     fn execute_dna_phase(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
+        let mut execution_costs = self.active_dna_costs();
+        // World upkeep is a separate pass, including robots whose DNA is disabled.
+        execution_costs.dna_upkeep = 0.0;
         for slot_index in 0..self.slots.len() {
             let generation = self.slots[slot_index].generation;
             let Some(organism) = &mut self.slots[slot_index].organism else {
@@ -5274,10 +5277,7 @@ impl Engine {
                         f64::from(organism.kinematics.position[0]),
                         f64::from(organism.kinematics.position[1]),
                     ],
-                    costs: &Self::active_dna_costs_from(
-                        &self.config.dna_costs,
-                        &self.dynamic_cost_state,
-                    ),
+                    costs: &execution_costs,
                     record_activations: true,
                 },
             )?;

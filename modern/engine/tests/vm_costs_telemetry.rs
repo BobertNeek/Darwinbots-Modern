@@ -1,5 +1,6 @@
 use darwinbots_engine::{
-    DnaCosts, DnaVm, Engine, EngineConfig, LegacyDna, VmContext, VmMemory, VmTermination,
+    DnaCosts, DnaVm, Engine, EngineConfig, LegacyDna, RestrictionColumn, RestrictionOptions,
+    VmContext, VmMemory, VmTermination,
 };
 
 fn run_report(
@@ -284,9 +285,59 @@ fn fractional_cost_remainders_settle_positive_and_negative_energy() {
         let robot = engine.robot_state(id).unwrap();
         assert_eq!(robot.materials.energy, expected_energy);
         assert!((robot.program.fractional_cost_remainder - expected_remainder).abs() < 1e-12);
-        assert!(robot.program.activation_bitmap.is_empty());
+        assert_eq!(robot.program.activation_bitmap, [false, true]);
+        assert_eq!(robot.program.activation_history.len(), 2);
         assert!(robot.program.debug_text.is_empty());
     }
+}
+
+#[test]
+fn world_upkeep_is_charged_once_and_still_applies_when_dna_is_disabled() {
+    for (disable_dna, expected_energy) in [(false, 988), (true, 990)] {
+        let mut engine = Engine::new(EngineConfig {
+            dna_costs: DnaCosts {
+                dna_upkeep: 5.0,
+                flow: 1.0,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = engine
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let column = RestrictionColumn {
+            disable_dna,
+            ..Default::default()
+        };
+        engine
+            .update_restriction_options(RestrictionOptions {
+                non_repopulating: column.clone(),
+                repopulating: column,
+            })
+            .unwrap();
+        engine.tick().unwrap();
+        assert_eq!(engine.organism(id).unwrap().energy, expected_energy);
+    }
+}
+
+#[test]
+fn console_dna_execution_does_not_also_run_world_upkeep() {
+    let mut engine = Engine::new(EngineConfig {
+        dna_costs: DnaCosts {
+            dna_upkeep: 5.0,
+            flow: 1.0,
+            ..Default::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let id = engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    engine.execute_robots().unwrap();
+    assert_eq!(engine.snapshot().tick, 0);
+    assert_eq!(engine.organism(id).unwrap().energy, 998);
 }
 
 #[test]
