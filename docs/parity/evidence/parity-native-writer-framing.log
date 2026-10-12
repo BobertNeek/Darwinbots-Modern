@@ -1,0 +1,13 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 18.83s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 5 tests
+test native_binary::tests::native_bad_counts_truncation_and_terminators_are_rejected ... ok
+test native_binary::tests::editing_one_native_single_preserves_all_other_bytes ... ok
+test native_binary::tests::genuine_native_record_stream_round_trips_every_byte ... ok
+test native_binary::tests::genuine_simulation_tail_round_trips_all_options_species_and_shots ... ok
+test native_binary::tests::native_records_keep_bits_and_opaque_bytes_through_json ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 31 filtered out; finished in 0.99s
+

@@ -1,0 +1,34 @@
+{
+  "engine_code_revision": "6bb2e5c",
+  "desktop_code_revision": "1237291",
+  "reference_input_sha256": "09b77b6eaf0a1a8ffc09c601a8869fe37c4fc4e21860ebf379519fdbfce8a55e",
+  "native_automation": "documented @oai/sky window2 API",
+  "steps": [
+    "Launch built Darwinbots.Desktop.exe",
+    "Setup File > Open Save selected genuine native fixture",
+    "Observe tick 281 and 196 organisms",
+    "Click STEP and observe tick 282 and 197 organisms",
+    "Click SAVE and create fresh step282.db3s",
+    "Click LOAD and reload the newly saved artifact",
+    "Observe tick 282, population 197 and LOADED status"
+  ],
+  "saved_artifact": {
+    "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\artifacts\\native-import-menu\\step282.db3s",
+    "sha256": "add485934a95e0f71551eada28b29ff792cff5fa5cecf6bf313a140a2102e7fd",
+    "bytes": 7089927,
+    "header": "DB3S",
+    "version": 4,
+    "native_origin_retained": true
+  },
+  "observed_remaining_ui_gaps": [
+    "Species counter subtracts native species zero (fixed in subsequent source, validation pending)",
+    "Insertion species list is empty after loading a foreign save",
+    "Displayed world controls still reflect startup setup rather than all loaded runtime options"
+  ],
+  "limits": [
+    "No original-versus-port trajectory equality claimed",
+    "No native export or original reload credited",
+    "Original reference app was no longer open during this live check",
+    "The temporary port test window was closed after saving evidence"
+  ]
+}

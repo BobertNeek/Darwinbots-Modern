@@ -1,0 +1,16 @@
+{
+  "code_revision": "bc23533de1ba40f516bbcb8bb3b14590eb075f97",
+  "existing_native_codec_cases_passed": 5,
+  "new_record_and_layout_case_passed": 1,
+  "strict_engine_lib_and_tests_clippy": true,
+  "proven": [
+    "Create a correctly framed robot record without user fixture data",
+    "Build arbitrary bounded species, shot, teleporter and obstacle groups",
+    "Reject wrong native value types",
+    "Handle one-byte and long mutation details with the native long-length sentinel"
+  ],
+  "limits": [
+    "Not yet a live-world exporter",
+    "No original executable reload credited"
+  ]
+}
