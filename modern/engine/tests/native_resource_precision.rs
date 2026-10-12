@@ -212,3 +212,37 @@ fn dna_costs_round_the_native_store_after_each_instruction() {
     assert_ne!(actual.to_bits(), (1000.0_f32 - 0.3).to_bits());
     assert_eq!(engine.memory_at(id, 310).unwrap(), 1000);
 }
+
+#[test]
+fn birth_uses_native_double_percentage_expression_before_single_assignment() {
+    let (engine, parent) = idle_engine();
+    let mut engine = restore_fields(&engine, 4, |payload| {
+        let materials = &mut payload["slots"][parent.slot() as usize]["organism"]["materials"];
+        materials["energy"] = json!(f32::from_bits(0x4412c0fd));
+        materials["body"] = json!(f32::from_bits(0x4319f238));
+        materials["waste"] = json!(f32::from_bits(0x41bf9b42));
+    });
+    engine
+        .replace_dna(
+            parent,
+            LegacyDna::parse("start 15 .repro store stop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    let child = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|robot| robot.parents[0] == Some(parent))
+        .unwrap()
+        .id;
+    let parent_stores = &engine.robot_state(parent).unwrap().materials;
+    let child_stores = &engine.robot_state(child).unwrap().materials;
+    // Reproduce divides by 100# (Double), then assigns each result to Single.
+    assert_eq!(parent_stores.energy.to_bits(), 0x43f97002);
+    assert_eq!(child_stores.energy.to_bits(), 0x42afedb4);
+    assert_eq!(parent_stores.body.to_bits(), 0x4302f238);
+    assert_eq!(child_stores.body.to_bits(), 0x41b80000);
+    assert_eq!(parent_stores.waste.to_bits(), 0x41a2dd92);
+    assert_eq!(child_stores.waste.to_bits(), 0x4065ed82);
+}

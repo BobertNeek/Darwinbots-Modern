@@ -133,21 +133,23 @@ impl RobotMaterials {
     }
 
     pub(crate) fn split_for_offspring(&mut self, percentage: i32) -> Self {
-        let fraction = percentage.clamp(1, 99) as f32 / 100.0;
-        let transferred_energy = self.energy.max(0.0) * fraction;
+        let percentage = percentage.clamp(1, 99);
+        let transferred_energy =
+            (f64::from(self.energy.max(0.0)) / 100.0 * f64::from(percentage)) as f32;
         self.energy =
             (f64::from(self.energy) - f64::from(transferred_energy) * 1.001).max(0.0) as f32;
         // Reproduce declares nbody As Integer; other transferred stores are Single.
-        let child_body = (self.body.max(0.0) * fraction).round_ties_even();
+        let child_body = (f64::from(self.body.max(0.0)) / 100.0 * f64::from(percentage))
+            .round_ties_even() as f32;
         self.body -= child_body;
         let mut child = Self {
             energy: (f64::from(transferred_energy) * 0.999) as f32,
             body: child_body,
             mass: self.mass,
             radius: self.radius,
-            waste: split_resource(&mut self.waste, fraction),
-            permanent_waste: split_resource(&mut self.permanent_waste, fraction),
-            chloroplasts: split_resource(&mut self.chloroplasts, fraction),
+            waste: split_resource(&mut self.waste, percentage),
+            permanent_waste: split_resource(&mut self.permanent_waste, percentage),
+            chloroplasts: split_resource(&mut self.chloroplasts, percentage),
             aim: self.aim,
             previous_body: child_body,
             ..Self::default()
@@ -367,8 +369,8 @@ pub(crate) fn resource_readback(value: f32) -> i32 {
     }
 }
 
-fn split_resource(resource: &mut f32, fraction: f32) -> f32 {
-    let amount = resource.max(0.0) * fraction;
+fn split_resource(resource: &mut f32, percentage: i32) -> f32 {
+    let amount = (f64::from(resource.max(0.0)) / 100.0 * f64::from(percentage)) as f32;
     *resource -= amount;
     amount
 }
