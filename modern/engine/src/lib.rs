@@ -12,6 +12,7 @@ mod id;
 mod legacy;
 mod modes;
 mod mutation;
+pub mod native_binary;
 mod persistence;
 mod physics;
 mod robot_state;
