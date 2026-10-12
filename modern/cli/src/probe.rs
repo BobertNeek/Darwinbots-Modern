@@ -179,7 +179,6 @@ fn advance(
 }
 
 struct CandidateTracker {
-    species: HashSet<SpeciesId>,
     live: HashSet<OrganismId>,
     births: u64,
     deaths: u64,
@@ -190,7 +189,6 @@ impl CandidateTracker {
         let species = species.iter().copied().collect();
         let live = candidate_ids(snapshot, &species);
         Self {
-            species,
             live,
             births: 0,
             deaths: 0,
@@ -198,7 +196,17 @@ impl CandidateTracker {
     }
 
     fn observe(&mut self, snapshot: &Snapshot) {
-        let current = candidate_ids(snapshot, &self.species);
+        // Species indices are compacted after extinction. Follow stable bot
+        // identities and the first (maternal) parent instead of reusing indices.
+        let current = snapshot
+            .organisms
+            .iter()
+            .filter(|robot| {
+                self.live.contains(&robot.id)
+                    || robot.parents[0].is_some_and(|parent| self.live.contains(&parent))
+            })
+            .map(|robot| robot.id)
+            .collect::<HashSet<_>>();
         self.births = self
             .births
             .saturating_add(current.difference(&self.live).count() as u64);
@@ -220,4 +228,93 @@ fn candidate_ids(snapshot: &Snapshot, species: &HashSet<SpeciesId>) -> HashSet<O
         .filter(|organism| species.contains(&organism.species))
         .map(|organism| organism.id)
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extinction_compaction_does_not_turn_unrelated_plants_into_candidates() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let candidate_species = engine.register_species(SpeciesDefinition {
+            name: "candidate".into(),
+            ..Default::default()
+        });
+        let vegetable_species = engine.register_species(SpeciesDefinition {
+            name: "plant".into(),
+            vegetable: true,
+            ..Default::default()
+        });
+        let candidate = engine
+            .spawn_species_at(
+                LegacyDna::parse("start stop").unwrap(),
+                candidate_species,
+                [500.0, 500.0],
+            )
+            .unwrap();
+        let plant = engine
+            .spawn_species_at(
+                LegacyDna::parse("start stop").unwrap(),
+                vegetable_species,
+                [800.0, 500.0],
+            )
+            .unwrap();
+        let mut tracker = CandidateTracker::new(engine.snapshot(), &[candidate_species]);
+        engine.remove(candidate).unwrap();
+        engine.tick().unwrap();
+        assert_eq!(engine.organism(plant).unwrap().species, candidate_species);
+        tracker.observe(engine.snapshot());
+        assert_eq!(
+            (tracker.population(), tracker.births, tracker.deaths),
+            (0, 0, 1)
+        );
+    }
+
+    #[test]
+    fn surviving_candidate_and_its_child_remain_tracked_when_species_indices_shift() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let earlier_species = engine.register_species(SpeciesDefinition {
+            name: "earlier".into(),
+            ..Default::default()
+        });
+        let candidate_species = engine.register_species(SpeciesDefinition {
+            name: "candidate".into(),
+            ..Default::default()
+        });
+        let earlier = engine
+            .spawn_species_at(
+                LegacyDna::parse("start stop").unwrap(),
+                earlier_species,
+                [500.0, 500.0],
+            )
+            .unwrap();
+        let candidate = engine
+            .spawn_species_at(
+                LegacyDna::parse("start stop").unwrap(),
+                candidate_species,
+                [800.0, 500.0],
+            )
+            .unwrap();
+        let mut tracker = CandidateTracker::new(engine.snapshot(), &[candidate_species]);
+        engine.remove(earlier).unwrap();
+        engine.tick().unwrap();
+        assert_ne!(
+            engine.organism(candidate).unwrap().species,
+            candidate_species
+        );
+        tracker.observe(engine.snapshot());
+        assert_eq!(
+            (tracker.population(), tracker.births, tracker.deaths),
+            (1, 0, 0)
+        );
+        let child = engine.clone_organism(candidate, [800.0, 800.0]).unwrap();
+        tracker.observe(engine.snapshot());
+        assert!(tracker.live.contains(&child));
+        assert_eq!(
+            (tracker.population(), tracker.births, tracker.deaths),
+            (2, 1, 0)
+        );
+        assert_eq!(tracker.births, engine.snapshot().stats.births);
+    }
 }
