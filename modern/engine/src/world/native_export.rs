@@ -110,8 +110,25 @@ fn mutation_arrays(
 impl Engine {
     /// Export a specified robot group as a genuine native `.dbo` record stream.
     pub fn export_native_organisms(&self, members: &[OrganismId]) -> Result<Vec<u8>, EngineError> {
-        if members.is_empty() || members.len() > MAX_ROBOTS {
-            return Err(invalid("organism group must contain 1..32000 members"));
+        // HDRoutines.SaveOrganism/LoadOrganism use clist(50), including a sentinel.
+        if members.is_empty() || members.len() > 50 {
+            return Err(invalid(
+                "2.48.32 organism groups must contain 1..50 members",
+            ));
+        }
+        NativeRecordFile {
+            robots: self.native_robot_records(members)?,
+            tail: vec![],
+        }
+        .encode()
+    }
+
+    fn native_robot_records(
+        &self,
+        members: &[OrganismId],
+    ) -> Result<Vec<NativeRobotRecord>, EngineError> {
+        if members.len() > MAX_ROBOTS {
+            return Err(invalid("simulation exceeds 32000 robot records"));
         }
         let mut remap = HashMap::new();
         for (i, &id) in members.iter().enumerate() {
@@ -128,11 +145,7 @@ impl Engine {
             word(record, "old_slot", i as i64 + 1)?;
             self.write_native_ties(id, record, &remap)?;
         }
-        NativeRecordFile {
-            robots: records,
-            tail: vec![],
-        }
-        .encode()
+        Ok(records)
     }
 
     fn native_robot_record(&self, id: OrganismId) -> Result<NativeRobotRecord, EngineError> {
@@ -544,8 +557,11 @@ mod tests {
         ))
         .unwrap();
         let ids = engine.slots.ids_in_slot_order();
-        let file =
-            NativeRecordFile::decode(&engine.export_native_organisms(&ids).unwrap()).unwrap();
+        assert!(engine.export_native_organisms(&ids).is_err());
+        let file = NativeRecordFile {
+            robots: engine.native_robot_records(&ids).unwrap(),
+            tail: vec![],
+        };
         assert_eq!(file.robots.len(), 196);
         let mut forward = 0;
         let mut backward = 0;
@@ -613,12 +629,12 @@ mod tests {
             }
         }
         let engine = Engine::from_native_sim(&origin.encode().unwrap()).unwrap();
-        let file = NativeRecordFile::decode(
-            &engine
-                .export_native_organisms(&engine.slots.ids_in_slot_order())
+        let file = NativeRecordFile {
+            robots: engine
+                .native_robot_records(&engine.slots.ids_in_slot_order())
                 .unwrap(),
-        )
-        .unwrap();
+            tail: vec![],
+        };
         let r = &file.robots[selected.unwrap()];
         let core = r.bytes("ties_core").unwrap();
         let extension = r.bytes("ties_extension").unwrap();
