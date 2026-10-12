@@ -7487,23 +7487,6 @@ impl Engine {
         self.refresh_tie_projections();
     }
 
-    fn hardened_tie_count(&self, id: OrganismId) -> usize {
-        self.ties
-            .iter()
-            .filter(|tie| {
-                if !tie.hardened || !tie.contains(id) {
-                    return false;
-                }
-                let other = if tie.first == id {
-                    tie.second
-                } else {
-                    tie.first
-                };
-                self.slots.get(other).is_ok()
-            })
-            .count()
-    }
-
     fn virtual_body_for(&self, id: OrganismId) -> f32 {
         let Ok(owner) = self.slots.get(id) else {
             return 0.0;
@@ -7538,7 +7521,11 @@ impl Engine {
         for attacker_slot in 0..self.slots.len() {
             let attacker_id =
                 OrganismId::new(attacker_slot as u32, self.slots[attacker_slot].generation);
-            let hardened_ties = self.hardened_tie_count(attacker_id);
+            let tie_count = self
+                .ties
+                .iter()
+                .filter(|tie| tie.contains(attacker_id))
+                .count();
             let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
                 continue;
             };
@@ -7563,7 +7550,9 @@ impl Engine {
                     continue;
                 }
             }
-            if commands.kind == 0 || ProjectilePool::normalized_kind(commands.kind) == -5 {
+            if attacker.materials.energy <= 0
+                || (commands.kind <= 0 && !matches!(commands.kind, -1 | -2 | -3 | -4 | -6 | -8))
+            {
                 continue;
             }
             for address in [900, 901] {
@@ -7573,47 +7562,103 @@ impl Engine {
                     &mut attacker.program.memory,
                 );
             }
-            let normalized_kind = ProjectilePool::normalized_kind(commands.kind);
-            let tie_multiplier = hardened_ties.saturating_add(1) as i32;
-            let (power_multiplier, range_multiplier) = match normalized_kind {
+            // ManageShoot uses the raw command kind. newshot normalizes it only afterwards.
+            let kind = if commands.kind > 0 {
+                commands.kind % 1_000
+            } else {
+                commands.kind
+            };
+            let tie_multiplier = tie_count.saturating_add(1) as f64;
+            let flat_cost =
+                costs.action_cost_for(SimulationCostAction::ShotFormation, 1.0, population);
+            let tied_cost = flat_cost / tie_multiplier;
+            let feeding = matches!(kind, -1 | -6);
+            let mut shot_cost = if feeding && commands.value.saturating_abs() > 4 {
+                flat_cost * f64::from(commands.value.saturating_abs())
+            } else if matches!(kind, -1 | -2 | -3 | -4 | -6) {
+                tied_cost
+            } else {
+                flat_cost
+            };
+            let (mut power_multiplier, mut range_multiplier) = match kind {
                 -1 | -6 if commands.value > 4 => (((commands.value as f32) / 2.0).log2(), 1.0),
                 -1 | -6 if commands.value < -4 => {
                     (1.0, (commands.value.saturating_abs() as f32 / 2.0).log2())
                 }
                 _ => (1.0, 1.0),
             };
-            let value = if normalized_kind == -1 {
-                20_i32
-                    .saturating_add(attacker.materials.body.max(0) / 5)
-                    .saturating_mul(tie_multiplier)
-            } else if normalized_kind == -6 {
-                10_i32
-                    .saturating_add(attacker.materials.body.max(0) / 2)
-                    .saturating_mul(tie_multiplier)
-            } else if commands.kind == -3 {
-                let requested = commands.value.saturating_abs();
-                let amount = if requested == 0 {
-                    attacker.materials.venom.max(0) / 20
+            let available_energy = f64::from(attacker.materials.energy);
+            if feeding && shot_cost > available_energy && shot_cost > 2.0 && available_energy > 2.0
+            {
+                let multiplier = (available_energy / flat_cost).log2() as f32;
+                if commands.value > 0 {
+                    power_multiplier = multiplier;
                 } else {
-                    requested.min(attacker.materials.venom.max(0))
-                };
-                attacker.materials.venom = attacker.materials.venom.saturating_sub(amount);
-                attacker.program.memory.write(825, attacker.materials.venom);
-                amount
+                    range_multiplier = multiplier;
+                }
+                shot_cost = available_energy;
+            }
+            let body_multiplier = if attacker.counters.multibot {
+                tie_multiplier as f32
             } else {
-                commands.value.abs().max(1)
+                1.0
             };
-            let value = ((value as f32) * power_multiplier)
-                .trunc()
-                .clamp(1.0, 32_000.0) as i32;
-            settle_simulation_cost(
-                attacker,
-                costs.action_cost_for(
-                    SimulationCostAction::ShotFormation,
-                    f64::from(value),
-                    population,
-                ),
-            );
+            let value = match kind {
+                -1 => {
+                    (20.0 + attacker.materials.body as f32 / 5.0 * body_multiplier)
+                        * power_multiplier
+                }
+                -6 => {
+                    (10.0 + attacker.materials.body.saturating_abs() as f32 / 2.0 * body_multiplier)
+                        * power_multiplier
+                }
+                -2 => {
+                    let requested = commands
+                        .value
+                        .saturating_abs()
+                        .min(attacker.materials.energy) as f32;
+                    let amount = if requested == 0.0 {
+                        attacker.materials.energy as f32 / 100.0
+                    } else {
+                        requested
+                    };
+                    shot_cost += f64::from(amount);
+                    amount
+                }
+                -3 => {
+                    let requested = commands
+                        .value
+                        .saturating_abs()
+                        .min(attacker.materials.venom.max(0))
+                        as f32;
+                    let amount = if requested == 0.0 {
+                        attacker.materials.venom.max(0) as f32 / 20.0
+                    } else {
+                        requested
+                    };
+                    attacker.materials.venom =
+                        (attacker.materials.venom as f32 - amount).round_ties_even() as i32;
+                    amount
+                }
+                -4 => {
+                    let requested = if commands.value == 0 {
+                        attacker.materials.waste.max(0) as f32 / 20.0
+                    } else {
+                        commands.value.saturating_abs() as f32
+                    };
+                    let amount = requested.min(attacker.materials.waste.max(0) as f32);
+                    attacker.materials.waste =
+                        (attacker.materials.waste as f32 - amount * 0.99).round_ties_even() as i32;
+                    attacker.materials.permanent_waste =
+                        (attacker.materials.permanent_waste as f32 + amount / 100.0)
+                            .round_ties_even() as i32;
+                    amount
+                }
+                _ => commands.value as f32,
+            };
+            let value = value.round_ties_even().clamp(-32_000.0, 32_000.0) as i32;
+            settle_simulation_cost(attacker, shot_cost.min(available_energy));
+            attacker.materials.energy = attacker.materials.energy.max(0);
             attacker.materials.publish(&mut attacker.program.memory);
             let mut angle = attacker.materials.aim as f32 / 200.0;
             if commands.backshot != 0 {
@@ -7632,7 +7677,7 @@ impl Engine {
             self.pending_projectile_requests
                 .push(PendingProjectileRequest {
                     owner_slot: attacker_slot,
-                    kind: commands.kind,
+                    kind,
                     value,
                     range_multiplier,
                     angle,
@@ -8067,23 +8112,6 @@ impl Engine {
                 let Some(corpse_state) = self.corpses.get_mut(corpse) else {
                     return false;
                 };
-                if matches!(effect, ProjectileEffect::DonateEnergy) {
-                    let added = scale_tie_amount(power.max(0), 0.95);
-                    corpse_state.energy = corpse_state.energy.saturating_add(added).min(32000);
-                    let body = corpse_state.body as f32
-                        + corpse_state.body_fraction
-                        + power.max(0) as f32 * 0.004;
-                    corpse_state.body = body.round_ties_even() as i32;
-                    corpse_state.body_fraction = body - corpse_state.body as f32;
-                    self.stats.energy_donated =
-                        self.stats.energy_donated.saturating_add(added as u64);
-                    self.stats.energy_harvested =
-                        self.stats.energy_harvested.saturating_add(added as u64);
-                    if added > 0 {
-                        self.stats.feeding_events = self.stats.feeding_events.saturating_add(1);
-                    }
-                    return added > 0;
-                }
                 if !matches!(effect, ProjectileEffect::ReleaseEnergy) {
                     return false;
                 }
@@ -8486,22 +8514,6 @@ impl Engine {
                             .program
                             .memory
                             .write(address, value);
-                        true
-                    }
-                    ProjectileEffect::ForceReproduction { percentage } => {
-                        self.slots[target]
-                            .organism
-                            .as_mut()
-                            .unwrap()
-                            .program
-                            .memory
-                            .write(MEM_REPRO, percentage);
-                        self.slots[target]
-                            .organism
-                            .as_mut()
-                            .unwrap()
-                            .effects
-                            .forced_reproduction = true;
                         true
                     }
                 }
@@ -9639,7 +9651,6 @@ impl Engine {
             let sexual = sexual_reproduction > 0;
             let reproduction = sexual_reproduction.max(asexual_reproduction);
             let percentage = reproduction % 100;
-            let assisted_reproduction = organism.effects.forced_reproduction;
             let species_repopulates = self
                 .species
                 .get(organism.identity.species.0 as usize)
@@ -9652,20 +9663,16 @@ impl Engine {
                 && organism.materials.energy > 0
                 && organism.materials.body >= 5
                 && organism.flags.can_reproduce
-                && (sexual
-                    || self.asexual_reproduction_allowed
-                    || assisted_reproduction
-                    || species_repopulates)
-                && (assisted_reproduction
-                    || vegetable_reproduction_passes_population_throttle(
-                        vegetable,
-                        sexual,
-                        chloroplast_equivalents,
-                        self.config.vegetable_population_cap,
-                        self.config.seed,
-                        self.tick,
-                        slot_index,
-                    ))
+                && (sexual || self.asexual_reproduction_allowed || species_repopulates)
+                && vegetable_reproduction_passes_population_throttle(
+                    vegetable,
+                    sexual,
+                    chloroplast_equivalents,
+                    self.config.vegetable_population_cap,
+                    self.config.seed,
+                    self.tick,
+                    slot_index,
+                )
             {
                 if self.config.greedy_reproduction && percentage < 3 {
                     organism.flags.dead = true;
@@ -9681,7 +9688,7 @@ impl Engine {
                     parent,
                     percentage,
                     mutation_reproduction: !sexual && reproduction_commands.mutated > 0,
-                    assisted: !sexual && assisted_reproduction,
+                    assisted: false,
                     sexual,
                     sperm_source: sexual
                         .then(|| {

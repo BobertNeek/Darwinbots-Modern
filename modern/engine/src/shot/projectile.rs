@@ -245,7 +245,11 @@ impl ProjectilePool {
         } else {
             range_multiplier as u32
         };
-        let energy = range as f32 * 40.0;
+        let energy = if request.kind == -2 {
+            request.value as f32
+        } else {
+            range as f32 * 40.0
+        };
 
         if slot == self.owners.len() {
             self.owners.push(request.owner);
@@ -306,7 +310,7 @@ impl ProjectilePool {
             position,
             velocity,
             1,
-            40.0,
+            if kind == -2 { value as f32 } else { 40.0 },
             kind,
             value,
         )
@@ -321,15 +325,7 @@ impl ProjectilePool {
         value: i32,
     ) -> u32 {
         let range = range.max(1);
-        self.spawn_fixed_packet(
-            owner,
-            position,
-            velocity,
-            range,
-            range as f32 * 40.0,
-            -2,
-            value,
-        )
+        self.spawn_fixed_packet(owner, position, velocity, range, value as f32, -2, value)
     }
 
     pub(crate) fn spawn_waste_packet(
@@ -583,11 +579,14 @@ impl ProjectilePool {
 
     pub(crate) fn impact_power(&self, slot: u32, settings: &ShotSettings) -> i32 {
         let slot = slot as usize;
+        if self.ranges[slot] == 0 {
+            return 0;
+        }
         if matches!(self.kinds[slot], -1 | -6) && !settings.feeding_proportional {
             return settings.feeding_fixed_power.max(0);
         }
-        if self.ranges[slot] == 0 {
-            return 0;
+        if self.kinds[slot] == -2 {
+            return self.energies[slot].round_ties_even().max(0.0) as i32;
         }
         let denominator = self.ranges[slot].max(1) as f32 * 40.0;
         let proportion = if matches!(self.kinds[slot], -1 | -6) {
@@ -697,6 +696,9 @@ mod tests {
         assert_eq!(pool.impact_power(0, &fixed), 20);
         pool.kinds[0] = -6;
         assert_eq!(pool.impact_power(0, &fixed), 20);
+        pool.ranges[0] = 0;
+        assert_eq!(pool.impact_power(0, &fixed), 0);
+        pool.ranges[0] = 10;
         pool.kinds[0] = -3;
         assert_eq!(pool.impact_power(0, &fixed), 50);
         assert_eq!(pool.toxin_impact_power(0), 50.0);
@@ -753,6 +755,6 @@ mod tests {
         pool.advance(&settings, [1_000.0, 1_000.0], [false, false]);
         pool.mark_impact(0, 0.0, &settings);
 
-        assert_eq!(pool.energies[0], 40.0);
+        assert_eq!(pool.energies[0], 1.0);
     }
 }

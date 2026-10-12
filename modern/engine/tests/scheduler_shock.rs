@@ -23,7 +23,7 @@ fn shock_overload_queues_death_after_the_final_robot_pass() {
     })
     .unwrap();
     let id = engine
-        .spawn(LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap())
+        .spawn(LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap())
         .unwrap();
 
     let encoded = SaveFile::encode(&engine).unwrap();

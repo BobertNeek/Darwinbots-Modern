@@ -1,8 +1,8 @@
 mod support;
 
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, ShapeShotPolicy, ShotSettings,
-    SpeciesDefinition,
+    DnaCosts, Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, ShapeShotPolicy,
+    ShotSettings, SpeciesDefinition,
 };
 use support::db2_fixtures::SHOT_SPEED;
 
@@ -45,7 +45,7 @@ fn db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn() {
         .find(|shot| shot.owner == range_shooter)
         .unwrap();
 
-    assert_eq!(power_shot.value, 290);
+    assert_eq!(power_shot.value, 291);
     assert_eq!(power_shot.range, 11);
     assert_eq!(range_shot.value, 220);
     assert_eq!(range_shot.range, 21);
@@ -84,12 +84,17 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
 fn energy_feeding_request_extracts_target_resources_and_returns_energy_packet() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        shots: ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 100,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
+    let attacker = engine.spawn_at(idle.clone(), [250.0, 500.0]).unwrap();
+    let target = engine.spawn_at(idle, [500.0, 500.0]).unwrap();
     engine.tick().unwrap();
     let before = engine.robot_state(target).unwrap().materials.clone();
 
@@ -133,12 +138,12 @@ fn energy_packet_applies_db24832_transfer_without_a_live_packet_owner() {
         .spawn_species_batch(
             LegacyDna::parse("start\n-2 .shoot store\n1000 .shootval store\nstop").unwrap(),
             darwinbots_engine::SpeciesId::default(),
-            [[100.0, 100.0]],
-            1,
+            [[250.0, 500.0]],
+            1_000,
         )
         .unwrap()[0];
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
     let before = engine.robot_state(target).unwrap().materials.clone();
 
@@ -215,6 +220,11 @@ fn projectile_moves_once_per_tick_and_expires_after_range() {
 fn swept_collision_hits_a_bot_between_projectile_endpoints() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        shots: ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 100,
+            ..Default::default()
+        },
         physics: PhysicsSettings {
             density: 0.0,
             ..PhysicsSettings::default()
@@ -473,16 +483,16 @@ fn obstacle_intercepts_projectile_before_target() {
     })
     .unwrap();
     engine
-        .add_obstacle(Obstacle::new(1, [220.0, 100.0], [230.0, 120.0]))
+        .add_obstacle(Obstacle::new(1, [400.0, 450.0], [430.0, 550.0]))
         .unwrap();
     engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 500.0])
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
 
@@ -524,7 +534,7 @@ fn pass_through_shape_allows_a_projectile_to_reach_the_target() {
 }
 
 #[test]
-fn poff_projectile_is_ornamental_and_does_not_release_target_energy() {
+fn direct_poff_command_does_not_create_a_projectile() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         physics: PhysicsSettings {
@@ -549,11 +559,12 @@ fn poff_projectile_is_ornamental_and_does_not_release_target_energy() {
     engine.tick().unwrap();
 
     assert_eq!(engine.organism(target).unwrap().energy, before);
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 0);
+    assert_eq!(engine.snapshot().stats.shots_fired, 0);
 }
 
 #[test]
-fn virus_shot_transfers_the_firers_dna() {
+fn direct_minus_seven_command_does_not_emit_a_virus() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         physics: PhysicsSettings {
@@ -572,11 +583,16 @@ fn virus_shot_transfers_the_firers_dna() {
     engine.tick().unwrap();
     engine.tick().unwrap();
 
-    assert_eq!(engine.dna(target).unwrap(), engine.dna(owner).unwrap());
+    assert_eq!(
+        engine.dna(target).unwrap(),
+        &LegacyDna::parse("start\nstop").unwrap()
+    );
+    assert_eq!(engine.dna(owner).unwrap(), &virus);
+    assert_eq!(engine.snapshot().stats.shots_fired, 0);
 }
 
 #[test]
-fn sperm_shot_forces_target_reproduction() {
+fn sperm_shot_fertilizes_without_forcing_reproduction() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         physics: PhysicsSettings {
@@ -592,15 +608,31 @@ fn sperm_shot_forces_target_reproduction() {
             [100.0, 100.0],
         )
         .unwrap();
-    engine
+    let mother = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
         .unwrap();
 
     engine.tick().unwrap();
     engine.tick().unwrap();
 
-    assert_eq!(engine.population(), 3);
-    assert_eq!(engine.snapshot().stats.births, 1);
+    assert_eq!(engine.population(), 2);
+    assert_eq!(engine.snapshot().stats.births, 0);
+    assert_eq!(
+        engine
+            .robot_state(mother)
+            .unwrap()
+            .effects
+            .fertilization_timer,
+        10
+    );
+    assert!(
+        engine
+            .robot_state(mother)
+            .unwrap()
+            .effects
+            .stored_sperm
+            .is_some()
+    );
 }
 
 #[test]
@@ -621,25 +653,25 @@ fn reproductive_projectiles_use_staged_virus_and_sperm_gates() {
                 "start\n1 .mkvirus store\n-7 .shoot store\n77 .shootval store\nstop\nend",
             )
             .unwrap(),
-            [100.0, 100.0],
+            [250.0, 300.0],
         )
         .unwrap();
     let virus_target = engine
         .spawn_at(
             LegacyDna::parse("start\n99 .shootval store\nstop\nend").unwrap(),
-            [350.0, 100.0],
+            [500.0, 300.0],
         )
         .unwrap();
     let sperm_owner = engine
         .spawn_at(
             LegacyDna::parse("start\n-8 .shoot store\nstop\nend").unwrap(),
-            [100.0, 300.0],
+            [250.0, 700.0],
         )
         .unwrap();
     let mother = engine
         .spawn_at(
             LegacyDna::parse("start\n0 .sexrepro store\nstop\nend").unwrap(),
-            [350.0, 300.0],
+            [500.0, 700.0],
         )
         .unwrap();
 
@@ -653,7 +685,14 @@ fn reproductive_projectiles_use_staged_virus_and_sperm_gates() {
 
     let infected = engine.dna(virus_target).unwrap();
     assert!(infected.blocks().iter().any(|block| block.value == 99));
-    assert!(infected.blocks().iter().any(|block| block.value == 77));
+    assert!(!infected.blocks().iter().any(|block| block.value == 77));
+    assert!(
+        !engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| shot.kind == -7 && !shot.stored)
+    );
     assert_ne!(infected, engine.dna(virus_owner).unwrap());
 
     let sperm_state = engine.robot_state(mother).unwrap();
@@ -669,11 +708,9 @@ fn reproductive_projectiles_use_staged_virus_and_sperm_gates() {
     assert_eq!(engine.population(), 4);
 
     engine
-        .replace_dna(
-            mother,
-            LegacyDna::parse("start\n50 .sexrepro store\nstop\nend").unwrap(),
-        )
+        .replace_dna(mother, engine.dna(sperm_owner).unwrap().clone())
         .unwrap();
+    engine.set_organism_memory(mother, 302, 50).unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.population(), 5);
@@ -791,6 +828,124 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
             "shot must expire after age > range for shootval={shootval}"
         );
     }
+}
+
+#[test]
+fn shot_formation_spends_the_original_flat_boost_and_ammunition_costs() {
+    for (kind, requested, expected_energy, expected_value) in [
+        (500, -37, 998, -37),
+        (500, 0, 998, 0),
+        (-1, 5, 990, 291),
+        (-1, -8, 984, 220),
+        (-2, 100, 898, 100),
+        (-2, 0, 988, 10),
+        (-3, 0, 998, 0),
+        (-4, 0, 998, 0),
+        (-8, 37, 998, 37),
+    ] {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 0,
+            dna_costs: DnaCosts {
+                shot_formation: 2.0,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = engine
+            .spawn_at(
+                LegacyDna::parse(&format!(
+                    "start {kind} .shoot store {requested} .shootval store stop"
+                ))
+                .unwrap(),
+                [250.0, 500.0],
+            )
+            .unwrap();
+        engine.tick().unwrap();
+        assert_eq!(
+            engine.organism(id).unwrap().energy,
+            expected_energy,
+            "kind {kind}, request {requested}"
+        );
+        assert_eq!(
+            engine.snapshot().shots[0].value,
+            expected_value,
+            "kind {kind}, request {requested}"
+        );
+        if kind == -2 {
+            assert_eq!(engine.snapshot().shots[0].energy, expected_value as f32);
+        }
+    }
+}
+
+#[test]
+fn energy_ammunition_is_capped_to_the_senders_available_energy() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let source = engine
+        .spawn_at(
+            LegacyDna::parse("start -2 .shoot store 1000 .shootval store stop").unwrap(),
+            [250.0, 500.0],
+        )
+        .unwrap();
+    engine.set_organism_energy(source, 50).unwrap();
+    engine.tick().unwrap();
+    assert!(engine.organism(source).is_err());
+    assert_eq!(engine.snapshot().shots[0].value, 50);
+    assert_eq!(engine.snapshot().shots[0].energy, 50.0);
+}
+
+#[test]
+fn negative_and_zero_information_values_reach_the_requested_memory_address() {
+    for value in [-37, 0] {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        engine
+            .spawn_at(
+                LegacyDna::parse(&format!(
+                    "start 500 .shoot store {value} .shootval store stop"
+                ))
+                .unwrap(),
+                [250.0, 500.0],
+            )
+            .unwrap();
+        let target = engine
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        engine.set_organism_memory(target, 500, 123).unwrap();
+        engine.tick_many(2).unwrap();
+        assert_eq!(engine.memory_at(target, 500).unwrap(), value);
+    }
+}
+
+#[test]
+fn information_shots_cannot_bypass_sexual_reproduction_requirements() {
+    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .spawn_at(
+            LegacyDna::parse("start 302 .shoot store 50 .shootval store stop").unwrap(),
+            [250.0, 500.0],
+        )
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0, 500.0])
+        .unwrap();
+    engine.tick_many(2).unwrap();
+    assert_eq!(engine.population(), 2);
+    assert_eq!(engine.snapshot().stats.births, 0);
+    assert!(
+        engine
+            .robot_state(target)
+            .unwrap()
+            .effects
+            .stored_sperm
+            .is_none()
+    );
+    assert!(
+        !engine
+            .robot_state(target)
+            .unwrap()
+            .effects
+            .forced_reproduction
+    );
 }
 
 fn segment_length(start: [f32; 2], end: [f32; 2]) -> f32 {

@@ -230,3 +230,42 @@ fn body_feeding_shots_multiply_corpse_damage_and_return_a_packet() {
             .any(|shot| { shot.kind == -2 && shot.owner.slot() == u32::MAX && shot.value == 400 })
     );
 }
+
+#[test]
+fn energy_donation_does_not_revive_or_feed_a_corpse() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        corpse_decay: CorpseDecaySettings {
+            packet_size: 0,
+            ..corpse_settings()
+        },
+        vegetation: VegetationSettings {
+            minimum_chloroplast_equivalents: 0,
+            ..Default::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let idle = LegacyDna::parse("start\nstop").unwrap();
+    let source = engine.spawn_at(idle.clone(), [250.0, 500.0]).unwrap();
+    engine
+        .spawn_species_batch(idle, SpeciesId::default(), [[500.0, 500.0]], 1)
+        .unwrap();
+    engine.tick().unwrap();
+    let body = body_amount(&engine);
+    engine
+        .replace_dna(
+            source,
+            LegacyDna::parse("start\n-2 .shoot store\n100 .shootval store\nstop").unwrap(),
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    engine
+        .replace_dna(source, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().corpses[0].energy, 0);
+    assert_eq!(body_amount(&engine), body);
+    assert_eq!(engine.snapshot().stats.energy_donated, 0);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+}

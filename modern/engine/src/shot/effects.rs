@@ -10,7 +10,6 @@ pub(crate) enum ProjectileEffect {
     AddGene,
     Sperm,
     WriteMemory { address: i32, value: i32 },
-    ForceReproduction { percentage: i32 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,9 +29,6 @@ pub(crate) struct ProjectileImpact {
 
 pub(crate) fn projectile_effect(kind: i32, value: i32) -> ProjectileEffect {
     match kind {
-        302 => ProjectileEffect::ForceReproduction {
-            percentage: value.clamp(1, 99),
-        },
         -1 => ProjectileEffect::ReleaseEnergy,
         -2 => ProjectileEffect::DonateEnergy,
         -3 => ProjectileEffect::Venom,
