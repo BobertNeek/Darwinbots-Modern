@@ -8,6 +8,55 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LegacySettingsNativeTests
 {
     [Fact]
+    public void OriginalExecutableContinuationOfThePortExportLoadsAndSteps()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        const string relative = "docs/parity/evidence/native-sim-original-roundtrip.zip";
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, relative))) directory = directory.Parent;
+        Assert.NotNull(directory);
+        using var archive = System.IO.Compression.ZipFile.OpenRead(Path.Combine(directory.FullName, relative));
+        var entry = archive.GetEntry("original-after-port654.sim");
+        Assert.NotNull(entry);
+        using var stream = entry.Open();
+        using var bytes = new MemoryStream();
+        stream.CopyTo(bytes);
+        using var engine = new NativeEngineClient(backend: "Cpu");
+        engine.Load(bytes.ToArray());
+        Assert.Equal(654ul, engine.Snapshot().Tick);
+        Assert.Equal(543, engine.Snapshot().Population);
+        engine.Tick();
+        Assert.Equal(655ul, engine.Snapshot().Tick);
+        Assert.Equal(544, engine.Snapshot().Population);
+    }
+
+    [Fact]
+    public void NativeSimulationExportThroughDesktopClientReflectsTheAdvancedWorld()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, relative))) directory = directory.Parent;
+        Assert.NotNull(directory);
+        using var engine = new NativeEngineClient(backend: "Cpu");
+        engine.Load(File.ReadAllBytes(Path.Combine(directory.FullName, relative)));
+        engine.Tick();
+        var before = engine.Snapshot();
+        var first = before.Organisms[0];
+        engine.SetOrganismMemory(first.Slot, first.Generation, 1000, -712);
+        var bytes = engine.SaveLegacy();
+        Assert.Equal(before.Population, BitConverter.ToInt16(bytes, 0));
+        using var imported = new NativeEngineClient(backend: "Cpu");
+        imported.Load(bytes);
+        var after = imported.Snapshot();
+        Assert.Equal(282ul, after.Tick);
+        Assert.Equal(before.Population, after.Population);
+        Assert.Equal(before.Species, after.Species);
+        Assert.Equal(before.Organisms.Select(bot => bot.Energy), after.Organisms.Select(bot => bot.Energy));
+        Assert.Equal(before.Organisms.Select(bot => bot.Body), after.Organisms.Select(bot => bot.Body));
+        imported.Tick();
+        Assert.Equal(283ul, imported.Snapshot().Tick);
+    }
+
+    [Fact]
     public void Genuine24832SimulationLoadsThroughTheDesktopClientAndResumes()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

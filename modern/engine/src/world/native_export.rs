@@ -7,7 +7,7 @@ fn invalid(message: impl Into<String>) -> EngineError {
     EngineError::InvalidSave(format!("native DB2 export {}", message.into()))
 }
 
-fn ansi(value: &str) -> Result<Vec<u8>, EngineError> {
+pub(super) fn ansi(value: &str) -> Result<Vec<u8>, EngineError> {
     const C1: [char; 32] = [
         '€', '\u{81}', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', '\u{8d}', 'Ž',
         '\u{8f}', '\u{90}', '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', '\u{9d}',
@@ -57,7 +57,7 @@ fn text(
     record.set_value(name, NativeValue::Bytes(bytes))
 }
 
-fn native_dna(dna: &LegacyDna) -> Result<Vec<u8>, EngineError> {
+pub(super) fn native_dna(dna: &LegacyDna) -> Result<Vec<u8>, EngineError> {
     let mut bytes = Vec::with_capacity(dna.blocks().len() * 4);
     for block in dna.blocks() {
         bytes.extend_from_slice(&i16::from(block.class as u8).to_le_bytes());
@@ -70,7 +70,7 @@ fn native_dna(dna: &LegacyDna) -> Result<Vec<u8>, EngineError> {
     Ok(bytes)
 }
 
-fn mutation_arrays(
+pub(super) fn mutation_arrays(
     profile: &StandardMutationProfile,
     rates: &mut [u8],
     shapes: &mut [u8],
@@ -123,7 +123,7 @@ impl Engine {
         .encode()
     }
 
-    fn native_robot_records(
+    pub(super) fn native_robot_records(
         &self,
         members: &[OrganismId],
     ) -> Result<Vec<NativeRobotRecord>, EngineError> {

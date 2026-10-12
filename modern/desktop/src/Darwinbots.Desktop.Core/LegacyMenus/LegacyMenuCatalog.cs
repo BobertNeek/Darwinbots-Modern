@@ -21,6 +21,7 @@ public static class LegacyMenuCatalog
             L("New Simulation", LegacyCommandId.FileNewSimulation, "new", "F1"),
             L("Load Simulation", LegacyCommandId.FileLoadSimulation, "open", "F2"),
             L("Save Simulation", LegacyCommandId.FileSaveSimulation, "save", "F3"),
+            L("Export Darwinbots 2 Simulation...", LegacyCommandId.FileSaveNativeSimulation, "save"),
             L("Save Sim Without Mutations", LegacyCommandId.FileSaveWithoutMutations, "save-clean", "Ctrl+F3"),
             L("Pause Sim (F12)", LegacyCommandId.FilePauseSimulation, "pause", "F12"),
             L("Ignore errors", LegacyCommandId.FileIgnoreErrors, "ignore-errors", check: LegacyMenuCheckKind.Check),

@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-12",
+  "source_baseline": "8ed5690f873acf863606696292ae5fac9bd97097",
+  "native_executable_sha256": "7f580d9ce8f1095a01fd162e9bcac03fe437599e080786fd670b676671c31990",
+  "route": "Original user save -> port Open Save -> Step -> File Export Darwinbots 2 Simulation -> original F2 load -> original run/pause/F3 save -> port Load -> Step",
+  "export": {
+    "cycle": 282,
+    "records": 197
+  },
+  "original_continuation": {
+    "loaded": true,
+    "rendered_cycle": 655,
+    "saved_cycle": 654,
+    "saved_robot_records": 543,
+    "note": "The original rendered cycle 655 after an additional step; its saved total_cycles field is 654."
+  },
+  "returned_port": {
+    "loaded": true,
+    "cycle": 654,
+    "population": 543,
+    "step_observed": true,
+    "population_after_step": 544,
+    "cycle_after_step": 655
+  },
+  "files": [
+    {
+      "name": "port-step282.sim",
+      "bytes": 2105842,
+      "sha256": "89ce603a08e798c8a4655ceab4f173dc8ddfe23b2b3bcc11604c145ea524ff51"
+    },
+    {
+      "name": "original-after-port654.sim",
+      "bytes": 5914388,
+      "sha256": "f00975b9c463ebdadfca8abe39926aad8ceb0ac34767b51974b97b0c3b2413d9"
+    }
+  ],
+  "limits": [
+    "This verifies file interoperability and continuation, not numerical equivalence of the two engines.",
+    "The current exporter rejects archived corpses and mixed per-obstacle policies.",
+    "Native organism desktop integration and full simulation parity remain open."
+  ],
+  "checks": {
+    "rust_native_subset": {
+      "passed": 18,
+      "failed": 0
+    },
+    "desktop_native": {
+      "passed": 9,
+      "failed": 0
+    },
+    "menu_catalog_router": {
+      "passed": 11,
+      "failed": 0
+    },
+    "strict_engine_lib_tests_clippy": "passed"
+  },
+  "screenshots": [
+    "port-native-sim-export.png",
+    "original-loaded-port-native-sim.png",
+    "port-original-return-loaded.png"
+  ]
+}

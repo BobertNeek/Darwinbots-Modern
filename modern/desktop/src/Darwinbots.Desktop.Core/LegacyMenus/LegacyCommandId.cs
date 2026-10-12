@@ -5,6 +5,7 @@ public enum LegacyCommandId
     FileNewSimulation,
     FileLoadSimulation,
     FileSaveSimulation,
+    FileSaveNativeSimulation,
     FileSaveWithoutMutations,
     FilePauseSimulation,
     FileIgnoreErrors,

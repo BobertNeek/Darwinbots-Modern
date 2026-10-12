@@ -1,0 +1,43 @@
+Window: "DarwinBots 2.48.32 C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\artifacts\native-export-menu\port-step282.sim", App: Darwin2.48.32.exe.
+	0 window DarwinBots 2.48.32 C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\artifacts\native-export-menu\port-step282.sim Secondary Actions: Raise
+		8 pane Workspace ID: 3244
+			162 window Form1 Secondary Actions: Raise ID: 32768
+			297 scroll bar (settable, float) Vertical Value: 0 ID: NonClientVerticalScrollBar
+				298 button Line up ID: UpButton
+				299 thumb Position ID: ScrollbarThumb
+				300 button Page down ID: DownPageButton
+				301 button Line down ID: DownButton
+			302 scroll bar (settable, float) Horizontal Value: 0 ID: NonClientHorizontalScrollBar
+				303 button Column left ID: UpButton
+				304 thumb Position ID: ScrollbarThumb
+				305 button Page right ID: DownPageButton
+				306 button Column right ID: DownButton
+			307 thumb (disabled)
+		9 pane
+			10 button ID: 2
+			11 button ID: 3
+			12 button ID: 4
+			14 combo box (settable, string) ID: 6
+				15 text
+				16 button Open ID: DropDown
+			17 button ID: 7
+			18 button ID: 8
+			19 pane
+		20 pane
+		21 title bar (settable, string) Value: DarwinBots 2.48.32 C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\artifacts\native-export-menu\port-step282.sim
+			22 menu bar System ID: MenuBar
+				308 menu item System
+			24 button Minimize
+			25 button Maximize
+			26 button Close
+		27 menu bar Application ID: MenuBar
+			309 menu item File
+			310 menu item Edit
+			311 menu item View
+			312 menu item Robot
+			313 menu item Objects
+			314 menu item Internet
+			315 menu item Recording
+			316 menu item Help
+
+The focused UI element is 0 window DarwinBots 2.48.32 C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\artifacts\native-export-menu\port-step282.sim Secondary Actions: Raise.

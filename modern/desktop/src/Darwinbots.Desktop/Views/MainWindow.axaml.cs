@@ -558,6 +558,9 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.FileSaveSimulation] = Handler(
             EngineState,
             async _ => await SaveSimulationCommandAsync());
+        handlers[LegacyCommandId.FileSaveNativeSimulation] = Handler(
+            EngineState,
+            async _ => await SaveNativeSimulationCommandAsync());
         handlers[LegacyCommandId.FileSaveWithoutMutations] = Handler(
             EngineState,
             async _ => await SaveSimulationCommandAsync("SAVED WITHOUT MUTATION SETTINGS", withoutMutations: true));
@@ -955,6 +958,15 @@ public sealed partial class MainWindow : Window
         var bytes = await _session.SaveAsync();
         return await _storage.SaveSimulationAsync(this, bytes)
             ? LegacyCommandResult.Success("SAVED")
+            : LegacyCommandResult.Cancel();
+    }
+
+    private async Task<LegacyCommandResult> SaveNativeSimulationCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var bytes = await _session.SaveLegacyAsync();
+        return await _storage.SaveLegacySimulationAsync(this, bytes)
+            ? LegacyCommandResult.Success("DARWINBOTS 2 SIMULATION EXPORTED")
             : LegacyCommandResult.Cancel();
     }
 
