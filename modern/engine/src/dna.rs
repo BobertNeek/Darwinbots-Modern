@@ -309,6 +309,10 @@ impl LegacyDna {
         self.user_variables.get(&name.to_ascii_lowercase()).copied()
     }
 
+    pub(crate) fn native_user_variables(&self) -> &BTreeMap<String, i32> {
+        &self.user_variables
+    }
+
     pub fn compatibility_warnings(&self) -> &[String] {
         &self.compatibility_warnings
     }

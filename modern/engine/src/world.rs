@@ -47,6 +47,9 @@ use crate::physics::{
 #[path = "world/native_io.rs"]
 mod native_io;
 
+#[path = "world/native_export.rs"]
+mod native_export;
+
 const MEM_ROBAGE: i32 = 9;
 const MEM_HIT: i32 = 201;
 const MEM_SHOT_FLAVOR: i32 = 202;
