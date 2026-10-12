@@ -70,6 +70,50 @@ impl NativeRecordFile {
 }
 
 impl NativeRobotRecord {
+    /// An empty, correctly framed record for exporting a newly created robot.
+    pub fn empty() -> Result<Self, EngineError> {
+        let mut bytes = vec![0; MIN_RECORD_BYTES];
+        bytes[MIN_RECORD_BYTES - 3..].copy_from_slice(&RECORD_END);
+        let mut reader = Reader::new(&bytes);
+        let record = Self::read(&mut reader)?;
+        if reader.remaining() != 0 {
+            return Err(invalid("empty robot record length is invalid"));
+        }
+        Ok(record)
+    }
+
+    pub fn set_value(&mut self, name: &str, value: NativeValue) -> Result<(), EngineError> {
+        replace_field(&mut self.fields, name, value)
+    }
+
+    pub fn set_mutation_details(&mut self, bytes: Vec<u8>) -> Result<(), EngineError> {
+        if bytes.len() > MAX_TEXT_BYTES {
+            return Err(invalid("mutation detail text exceeds format limit"));
+        }
+        self.fields
+            .retain(|field| field.name != "mutation_details_long_length");
+        let long_length = bytes.len() == 1 || bytes.len() > i16::MAX as usize;
+        self.set_value(
+            "mutation_details_length",
+            NativeValue::Word(if long_length { 1 } else { bytes.len() as i16 }),
+        )?;
+        if long_length {
+            let index = self
+                .fields
+                .iter()
+                .position(|field| field.name == "mutation_details_length")
+                .unwrap();
+            self.fields.insert(
+                index + 1,
+                NativeField {
+                    name: "mutation_details_long_length".into(),
+                    value: NativeValue::Long(bytes.len() as i32),
+                },
+            );
+        }
+        self.set_value("mutation_details", NativeValue::Bytes(bytes))
+    }
+
     pub fn fields(&self) -> &[NativeField] {
         &self.fields
     }
@@ -314,6 +358,30 @@ pub struct NativeSimulationTail {
 }
 
 impl NativeSimulationTail {
+    /// Build framing without borrowing options, paths or DNA from a user's save.
+    /// Counts determine the species, shot, teleporter and obstacle groups.
+    pub fn empty(
+        species: usize,
+        shots: usize,
+        teleporters: usize,
+        obstacles: usize,
+    ) -> Result<Self, EngineError> {
+        if species > 1000 || shots > 1_000_000 || teleporters > 10 || obstacles > 1000 {
+            return Err(invalid(
+                "empty simulation group count exceeds format limits",
+            ));
+        }
+        let length = 2048 + species * 512 + shots * 63 + teleporters * 128 + obstacles * 64;
+        Self::read(
+            &vec![0; length],
+            Some([species, shots, teleporters, obstacles]),
+        )
+    }
+
+    pub fn set_value(&mut self, name: &str, value: NativeValue) -> Result<(), EngineError> {
+        replace_field(&mut self.fields, name, value)
+    }
+
     pub fn integer(&self, name: &str) -> Result<i32, EngineError> {
         match self.value(name)? {
             NativeValue::Word(value) => Ok(i32::from(*value)),
@@ -362,9 +430,14 @@ impl NativeSimulationTail {
             .ok_or_else(|| invalid(&format!("missing simulation field {name}")))
     }
     pub fn decode(bytes: &[u8]) -> Result<Self, EngineError> {
+        Self::read(bytes, None)
+    }
+
+    fn read(bytes: &[u8], layout: Option<[usize; 4]>) -> Result<Self, EngineError> {
         let mut r = NamedReader {
             reader: Reader::new(bytes),
             fields: Vec::new(),
+            layout,
         };
         for i in 0..2 {
             r.text(&format!("obsolete{i}"), 'i')?;
@@ -469,7 +542,7 @@ impl NativeSimulationTail {
             )?;
         }
         r.seq("no_waste_decay:h energy_difference:d energy_average:d handicap:d mode_cycles:i hide_pred_offset:h hide_pred:h energy_difference2:d energy_average2:d handicap2:d sun_random:h disable_fixing:h sun_position:d sun_range:d sun_change:B tides:h tides_offset:h mutation_sine:h stagnant:h", "")?;
-        if r.reader.remaining() != 0 {
+        if layout.is_none() && r.reader.remaining() != 0 {
             return Err(invalid("unrecognized simulation tail bytes"));
         }
         Ok(Self { fields: r.fields })
@@ -496,6 +569,7 @@ impl NativeSimulationTail {
 struct NamedReader<'a> {
     reader: Reader<'a>,
     fields: Vec<NativeField>,
+    layout: Option<[usize; 4]>,
 }
 impl NamedReader<'_> {
     fn atom(&mut self, name: &str, kind: char) -> Result<NativeValue, EngineError> {
@@ -525,11 +599,28 @@ impl NamedReader<'_> {
         Ok(())
     }
     fn count(&mut self, name: &str, kind: char, maximum: usize) -> Result<usize, EngineError> {
-        let count = match self.atom(name, kind)? {
+        let mut count = match self.atom(name, kind)? {
             NativeValue::Word(value) => i64::from(value),
             NativeValue::Long(value) => i64::from(value),
             _ => return Err(invalid("count is not Integer or Long")),
         };
+        if let Some(layout) = self.layout {
+            let override_count = match name {
+                "species_count" | "repeated_species_count" => Some(layout[0]),
+                "shot_count" => Some(layout[1]),
+                "teleporters" => Some(layout[2]),
+                "obstacles" => Some(layout[3]),
+                _ => None,
+            };
+            if let Some(value) = override_count {
+                count = value as i64;
+                self.fields.last_mut().unwrap().value = if kind == 'h' {
+                    NativeValue::Word(value as i16)
+                } else {
+                    NativeValue::Long(value as i32)
+                };
+            }
+        }
         if count < 0 || count as u64 > maximum as u64 {
             return Err(invalid(&format!("{name} is invalid")));
         }
@@ -548,15 +639,33 @@ impl NamedReader<'_> {
     }
     fn end(&mut self, name: &str) -> Result<(), EngineError> {
         let marker = self.reader.take(3)?;
-        if marker != RECORD_END {
+        if self.layout.is_none() && marker != RECORD_END {
             return Err(invalid("object or shot terminator is invalid"));
         }
         self.fields.push(NativeField {
             name: name.into(),
-            value: NativeValue::Bytes(marker.to_vec()),
+            value: NativeValue::Bytes(RECORD_END.to_vec()),
         });
         Ok(())
     }
+}
+
+fn replace_field(
+    fields: &mut [NativeField],
+    name: &str,
+    value: NativeValue,
+) -> Result<(), EngineError> {
+    let field = fields
+        .iter_mut()
+        .find(|field| field.name == name)
+        .ok_or_else(|| invalid(&format!("missing editable field {name}")))?;
+    if std::mem::discriminant(&field.value) != std::mem::discriminant(&value) {
+        return Err(invalid(&format!(
+            "edited field {name} has the wrong native type"
+        )));
+    }
+    field.value = value;
+    Ok(())
 }
 
 fn checked_dna_length(value: i16) -> Result<usize, EngineError> {
@@ -688,5 +797,36 @@ mod tests {
         bytes.extend_from_slice(&first);
         *bytes.last_mut().unwrap() = 0;
         assert!(NativeRecordFile::decode(&bytes).is_err());
+    }
+    #[test]
+    fn new_native_records_and_simulation_groups_have_independent_valid_framing() {
+        let mut robot = NativeRobotRecord::empty().unwrap();
+        assert_eq!(robot.encode().unwrap().len(), MIN_RECORD_BYTES);
+        assert!(robot.set_value("energy", NativeValue::Long(1)).is_err());
+        for details in [vec![b'x'], vec![b'y'; 40_000], Vec::new()] {
+            robot.set_mutation_details(details.clone()).unwrap();
+            let encoded = NativeRecordFile {
+                robots: vec![robot.clone()],
+                tail: vec![],
+            }
+            .encode()
+            .unwrap();
+            let restored = NativeRecordFile::decode(&encoded).unwrap();
+            assert_eq!(
+                restored.robots[0].bytes("mutation_details").unwrap(),
+                details
+            );
+        }
+        let mut tail = NativeSimulationTail::empty(2, 3, 1, 1).unwrap();
+        tail.set_value("species[0].name.length", NativeValue::Long(4))
+            .unwrap();
+        tail.set_value("species[0].name", NativeValue::Bytes(b"Test".to_vec()))
+            .unwrap();
+        let bytes = tail.encode().unwrap();
+        assert_eq!(NativeSimulationTail::decode(&bytes).unwrap(), tail);
+        assert_eq!(tail.integer("shot_count").unwrap(), 3);
+        assert_eq!(tail.integer("teleporters").unwrap(), 1);
+        assert_eq!(tail.integer("obstacles").unwrap(), 1);
+        assert!(NativeSimulationTail::empty(1_001, 0, 0, 0).is_err());
     }
 }
