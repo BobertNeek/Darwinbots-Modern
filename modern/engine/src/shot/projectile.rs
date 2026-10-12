@@ -579,11 +579,11 @@ impl ProjectilePool {
 
     pub(crate) fn impact_power(&self, slot: u32, settings: &ShotSettings) -> i32 {
         let slot = slot as usize;
-        if self.ranges[slot] == 0 {
-            return 0;
-        }
         if matches!(self.kinds[slot], -1 | -6) && !settings.feeding_proportional {
             return settings.feeding_fixed_power.max(0);
+        }
+        if self.ranges[slot] == 0 {
+            return 0;
         }
         if self.kinds[slot] == -2 {
             return self.energies[slot].round_ties_even().max(0.0) as i32;
@@ -697,7 +697,7 @@ mod tests {
         pool.kinds[0] = -6;
         assert_eq!(pool.impact_power(0, &fixed), 20);
         pool.ranges[0] = 0;
-        assert_eq!(pool.impact_power(0, &fixed), 0);
+        assert_eq!(pool.impact_power(0, &fixed), 20);
         pool.ranges[0] = 10;
         pool.kinds[0] = -3;
         assert_eq!(pool.impact_power(0, &fixed), 50);

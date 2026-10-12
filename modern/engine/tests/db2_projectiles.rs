@@ -20,7 +20,7 @@ fn db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn() {
     let power_shooter = engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\n5 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let range_shooter = engine
@@ -64,11 +64,11 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
     let attacker = engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [650.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -77,7 +77,7 @@ fn firing_creates_a_moving_projectile_instead_of_an_instant_hit_line() {
     let shot = &engine.snapshot().shots[0];
     assert_eq!(shot.owner, attacker);
     assert!((segment_length(shot.start, shot.end) - SHOT_SPEED).abs() < 0.01);
-    assert_ne!(shot.end, [500.0, 100.0]);
+    assert_ne!(shot.end, [650.0, 500.0]);
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn shot_velocity_inherits_the_firers_actual_velocity() {
     let attacker = engine
         .spawn_at(
             LegacyDna::parse("start\n10 .dx store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
 
@@ -202,7 +202,7 @@ fn projectile_moves_once_per_tick_and_expires_after_range() {
     engine
         .spawn_at(
             LegacyDna::parse("cond\n*.robage 1 <\nstart\n-1 .shoot store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
 
@@ -235,11 +235,11 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
     engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
 
@@ -255,6 +255,7 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
 fn lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        fixed_bot_radii: true,
         physics: PhysicsSettings {
             density: 0.0,
             ..PhysicsSettings::default()
@@ -271,14 +272,14 @@ fn lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis() {
     engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
         .spawn_species_batch(
             LegacyDna::parse("start\nstop").unwrap(),
             vegetables,
-            [[350.0, 100.0]],
+            [[400.0, 500.0]],
             1,
         )
         .unwrap()[0];
@@ -304,11 +305,11 @@ fn newborn_is_immune_to_parent_stream_for_one_tick() {
     let parent = engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let newborn = engine
-        .manual_reproduce(parent, None, [350.0, 100.0])
+        .manual_reproduce(parent, None, [500.0, 500.0])
         .unwrap();
     let initial_energy = engine.organism(newborn).unwrap().energy;
 
@@ -331,11 +332,11 @@ fn positive_memory_shot_writes_the_target_address() {
     engine
         .spawn_at(
             LegacyDna::parse("start\n500 .shoot store\n37 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -358,13 +359,13 @@ fn delgene_information_shot_is_inert_without_defensive_poison_return() {
     engine
         .spawn_at(
             LegacyDna::parse("start\n340 .shoot store\n37 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
         .spawn_at(
             LegacyDna::parse("start\n1000 .strpoison store\nstop").unwrap(),
-            [350.0, 100.0],
+            [500.0, 500.0],
         )
         .unwrap();
 
@@ -514,21 +515,20 @@ fn pass_through_shape_allows_a_projectile_to_reach_the_target() {
         ..EngineConfig::testing()
     })
     .unwrap();
-    let mut obstacle = Obstacle::new(1, [220.0, 100.0], [230.0, 120.0]);
+    let mut obstacle = Obstacle::new(1, [400.0, 450.0], [430.0, 550.0]);
     obstacle.shot_policy = ShapeShotPolicy::PassThrough;
     engine.add_obstacle(obstacle).unwrap();
     engine
         .spawn_at(
             LegacyDna::parse("start\n500 .shoot store\n37 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 500.0])
         .unwrap();
 
-    engine.tick().unwrap();
-    engine.tick().unwrap();
+    engine.tick_many(7).unwrap();
 
     assert_eq!(engine.memory_at(target, 500).unwrap(), 37);
 }
@@ -547,11 +547,11 @@ fn direct_poff_command_does_not_create_a_projectile() {
     engine
         .spawn_at(
             LegacyDna::parse("start\n-100 .shoot store\n100 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
     let before = engine.organism(target).unwrap().energy;
 
@@ -575,9 +575,9 @@ fn direct_minus_seven_command_does_not_emit_a_virus() {
     })
     .unwrap();
     let virus = LegacyDna::parse("start\n-7 .shoot store\nstop").unwrap();
-    let owner = engine.spawn_at(virus.clone(), [100.0, 100.0]).unwrap();
+    let owner = engine.spawn_at(virus.clone(), [250.0, 500.0]).unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -605,11 +605,11 @@ fn sperm_shot_fertilizes_without_forcing_reproduction() {
     engine
         .spawn_at(
             LegacyDna::parse("start\n-8 .shoot store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 500.0],
         )
         .unwrap();
     let mother = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -728,12 +728,12 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
     for case in [
         MovingTargetCase {
             name: "crossing hit",
-            position: [260.0, 100.0],
+            position: [600.0, 500.0],
             expected_impacts: 1,
         },
         MovingTargetCase {
             name: "near miss",
-            position: [260.0, 500.0],
+            position: [600.0, 800.0],
             expected_impacts: 0,
         },
     ] {
@@ -749,7 +749,7 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
         engine
             .spawn_at(
                 LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
-                [100.0, 100.0],
+                [250.0, 500.0],
             )
             .unwrap();
         let target = engine
@@ -786,7 +786,7 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
                     "start\n-1 .shoot store\n{shootval} .shootval store\nstop"
                 ))
                 .unwrap(),
-                [100.0, 100.0],
+                [250.0, 500.0],
             )
             .unwrap();
 

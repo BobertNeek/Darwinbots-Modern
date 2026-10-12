@@ -196,7 +196,7 @@ fn fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost() {
         )
         .unwrap();
     let corpse = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1_000.0, 500.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [800.0, 500.0])
         .unwrap();
     let encoded = SaveFile::encode(&engine).unwrap();
     let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
@@ -217,7 +217,7 @@ fn fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost() {
     assert_eq!(engine.organism(fixed).unwrap().energy, 1_000);
     assert_eq!(engine.organism(fixed).unwrap().position, [500.0, 500.0]);
     assert_eq!(engine.organism(corpse).unwrap().energy, 1_000);
-    assert_eq!(engine.organism(corpse).unwrap().position, [1_000.0, 500.0]);
+    assert_eq!(engine.organism(corpse).unwrap().position, [800.0, 500.0]);
 }
 
 #[test]
@@ -692,18 +692,18 @@ fn edge_sense_matches_vb6_boundary_distance_calibration() {
             [100.0, 140.0],
         ),
         (
-            "wrapped x suppresses its wall sense",
+            "wrapped x also checks solid y smudge once a border is contacted",
             [60.0, 100.0],
             [true, false],
-            0,
-            [110.0, 100.0],
+            1,
+            [89.0, 100.0],
         ),
         (
             "solid y reports its wall sense",
             [100.0, 60.0],
             [true, false],
             1,
-            [100.0, 60.0],
+            [109.0, 60.0],
         ),
     ];
 
@@ -733,11 +733,7 @@ fn edge_sense_matches_vb6_boundary_distance_calibration() {
 
         assert_eq!(engine.memory_at(id, 214).unwrap(), expected_edge, "{name}");
         let actual_position = engine.organism(id).unwrap().position;
-        if wrapped_axes == [false, false] {
-            assert_eq!(actual_position, expected_position, "{name}");
-        } else {
-            assert_eq!(actual_position[1], expected_position[1], "{name}");
-        }
+        assert_eq!(actual_position, expected_position, "{name}");
     }
 }
 
@@ -919,8 +915,8 @@ fn phy04_cpu_engine_physics_contract() {
                 settings(100.0, 0.0, 0.0, 0.0),
             ),
             position: [100.0, 100.0],
-            expected_position: [140.0, 100.0],
-            expected_velocity: [95.0, 0.0],
+            expected_position: [200.0, 100.0],
+            expected_velocity: [100.0, 0.0],
         },
         Case {
             name: "toroidal axes",
@@ -928,7 +924,7 @@ fn phy04_cpu_engine_physics_contract() {
             input: 100,
             config: config([200.0, 200.0], [true, true], settings(100.0, 0.0, 0.0, 0.0)),
             position: [100.0, 100.0],
-            expected_position: [110.0, 110.0],
+            expected_position: [200.0, 100.0],
             expected_velocity: [100.0, 0.0],
         },
     ];

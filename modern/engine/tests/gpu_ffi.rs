@@ -9,8 +9,8 @@ use darwinbots_engine::{
     },
 };
 
-const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
-const TOXIN_TARGET_POSITION: [f32; 2] = [350.0, 100.0];
+const TOXIN_SOURCE_POSITION: [f32; 2] = [250.0, 500.0];
+const TOXIN_TARGET_POSITION: [f32; 2] = [500.0, 500.0];
 const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
 
 fn remove_wall_clock_timings(value: &mut serde_json::Value) {
@@ -44,6 +44,7 @@ fn cpu_physics_integrates_and_clamps_world_bounds() {
         velocities: vec![[2.0, -3.0], [5.0, -5.0]],
         world_size: [100.0, 100.0],
         wrapped_axes: [false, false],
+        apply_world_bounds: true,
     };
 
     CpuPhysicsBackend.step(&mut batch).unwrap();
@@ -65,16 +66,62 @@ fn gpu_physics_matches_cpu_when_an_adapter_is_available() {
             .collect(),
         world_size: [256.0, 256.0],
         wrapped_axes: [false, false],
+        apply_world_bounds: true,
     };
-    let mut expected = source.clone();
-    let mut actual = source;
+    for apply_world_bounds in [true, false] {
+        let mut expected = source.clone();
+        expected.apply_world_bounds = apply_world_bounds;
+        let mut actual = expected.clone();
+        CpuPhysicsBackend.step(&mut expected).unwrap();
+        gpu.step(&mut actual).unwrap();
+        for (cpu, gpu) in expected.positions.iter().zip(actual.positions.iter()) {
+            assert!((cpu[0] - gpu[0]).abs() <= 0.0001);
+            assert!((cpu[1] - gpu[1]).abs() <= 0.0001);
+        }
+    }
+}
 
-    CpuPhysicsBackend.step(&mut expected).unwrap();
-    gpu.step(&mut actual).unwrap();
-
-    for (cpu, gpu) in expected.positions.iter().zip(actual.positions.iter()) {
-        assert!((cpu[0] - gpu[0]).abs() <= 0.0001);
-        assert!((cpu[1] - gpu[1]).abs() <= 0.0001);
+#[test]
+fn cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn() {
+    let Ok(adapter) = GpuPhysicsBackend::new() else {
+        return;
+    };
+    println!("Native border GPU: {:?}", adapter.adapter_receipt());
+    let config = EngineConfig {
+        fixed_bot_radii: true,
+        toroidal_world: true,
+        physics: darwinbots_engine::PhysicsSettings {
+            max_velocity: 200.0,
+            movement_efficiency: 1.0,
+            density: 0.0,
+            ..Default::default()
+        },
+        ..EngineConfig::testing()
+    };
+    let mut cpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Cpu,
+        ..config.clone()
+    })
+    .unwrap();
+    let mut gpu = Engine::new(EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        ..config
+    })
+    .unwrap();
+    let dna = LegacyDna::parse("cond *.robage 1 < start 200 .dx store stop").unwrap();
+    let cpu_id = cpu.spawn_at(dna.clone(), [930.0, 500.0]).unwrap();
+    let gpu_id = gpu.spawn_at(dna, [930.0, 500.0]).unwrap();
+    for expected in [[1_130.0, 500.0], [311.0, 500.0]] {
+        cpu.tick().unwrap();
+        gpu.tick().unwrap();
+        assert_eq!(gpu.backend(), BackendKind::Gpu);
+        assert_eq!(cpu.organism(cpu_id).unwrap().position, expected);
+        assert_eq!(gpu.organism(gpu_id).unwrap().position, expected);
+        assert_eq!(
+            gpu.robot_state(gpu_id).unwrap().kinematics.actual_velocity,
+            [200.0, 0.0]
+        );
     }
 }
 
@@ -486,7 +533,7 @@ fn cpu_and_gpu_match_toxin_state_memory_and_position() {
 
     let left = cpu.organism(cpu_target).unwrap();
     let right = gpu.organism(gpu_target).unwrap();
-    assert_eq!(left.paralyzed, 5);
+    assert_eq!(left.paralyzed, 6);
     assert_eq!(right.paralyzed, left.paralyzed);
     assert_eq!(gpu.memory_at(gpu_target, 500).unwrap(), 77);
     assert_eq!(

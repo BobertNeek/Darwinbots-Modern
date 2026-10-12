@@ -4577,6 +4577,7 @@ impl Engine {
         self.trace_robot_phase(&mut trace, CyclePhase::Mass);
         self.trace_robot_phase(&mut trace, CyclePhase::ObstaclesBorders);
         self.apply_environment_features(true, false);
+        self.border_collision_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::TieSpring);
         self.apply_tie_constraints();
 
@@ -5175,13 +5176,7 @@ impl Engine {
                     ))
                 })?;
                 let position = robot.kinematics.position;
-                if !position[0].is_finite()
-                    || !position[1].is_finite()
-                    || position[0] < 0.0
-                    || position[1] < 0.0
-                    || position[0] > self.config.world_width
-                    || position[1] > self.config.world_height
-                {
+                if !position[0].is_finite() || !position[1].is_finite() {
                     return Err(EngineError::Invariant(format!(
                         "slot {index} has invalid position {position:?}"
                     )));
@@ -7686,51 +7681,124 @@ impl Engine {
         }
     }
 
+    fn border_collision_phase(&mut self) {
+        let world_size = [self.config.world_width, self.config.world_height];
+        let wrapped_axes = self.config.axis_topology();
+        for id in self.slots.ids_in_slot_order() {
+            let Ok(robot) = self.slots.get(id) else {
+                continue;
+            };
+            let position = robot.kinematics.position;
+            let radius = crate::physics::organism_radius(
+                robot.materials.body,
+                robot.materials.chloroplasts,
+                self.config.fixed_bot_radii,
+            );
+            if (0..2)
+                .all(|axis| position[axis] > radius && position[axis] < world_size[axis] - radius)
+            {
+                continue;
+            }
+            let smudge = radius + BIRTH_BORDER_SMUDGE;
+            // VB6 VectorMin(VectorMax(...)) deliberately uses both axes once either touches a border.
+            let distance: [f32; 2] = std::array::from_fn(|axis| {
+                position[axis].max(smudge).min(world_size[axis] - smudge) - position[axis]
+            });
+            for axis in 0..2 {
+                if distance[axis] == 0.0 {
+                    continue;
+                }
+                if wrapped_axes[axis] {
+                    let mut target = self.slots.get(id).unwrap().kinematics.position;
+                    target[axis] = if distance[axis] < 0.0 {
+                        smudge
+                    } else {
+                        world_size[axis] - smudge
+                    };
+                    self.respawn_border_group(id, target);
+                } else {
+                    let robot = self.slots.get_mut(id).unwrap();
+                    if robot.kinematics.position[axis] - radius < 0.0 {
+                        robot.kinematics.position[axis] = radius;
+                    }
+                    if robot.kinematics.position[axis] + radius > world_size[axis] {
+                        robot.kinematics.position[axis] = world_size[axis] - radius;
+                    }
+                    robot.kinematics.velocity[axis] *= 0.95;
+                    robot.program.memory.write(MEM_EDGE, 1);
+                }
+            }
+        }
+    }
+
+    fn respawn_border_group(&mut self, origin: OrganismId, target: [f32; 2]) {
+        let mut members = vec![origin];
+        let mut cursor = 0;
+        while cursor < members.len() {
+            let current = members[cursor];
+            if self
+                .slots
+                .get(current)
+                .is_ok_and(|robot| robot.counters.multibot)
+            {
+                for tie in self.ties.iter().filter(|tie| tie.contains(current)) {
+                    let other = if tie.first == current {
+                        tie.second
+                    } else {
+                        tie.first
+                    };
+                    if members.len() < 50
+                        && self.slots.get(other).is_ok()
+                        && !members.contains(&other)
+                    {
+                        members.push(other);
+                    }
+                }
+            }
+            cursor += 1;
+        }
+        let radius_for = |id| {
+            let robot = self.slots.get(id).unwrap();
+            crate::physics::organism_radius(
+                robot.materials.body,
+                robot.materials.chloroplasts,
+                self.config.fixed_bot_radii,
+            )
+        };
+        let (nearest, _) = members
+            .iter()
+            .copied()
+            .fold((origin, f32::INFINITY), |best, id| {
+                let position = self.slots.get(id).unwrap().kinematics.position;
+                let distance =
+                    (position[0] - target[0]).powi(2) + (position[1] - target[1]).powi(2);
+                if distance <= best.1 {
+                    (id, distance)
+                } else {
+                    best
+                }
+            });
+        let radii_difference = radius_for(origin) - radius_for(nearest);
+        let nearest_position = self.slots.get(nearest).unwrap().kinematics.position;
+        let displacement: [f32; 2] = std::array::from_fn(|axis| {
+            let delta = target[axis] - nearest_position[axis];
+            if delta == 0.0 {
+                0.0
+            } else {
+                delta + delta.signum() * (radii_difference - 1.0)
+            }
+        });
+        for member in members {
+            let robot = self.slots.get_mut(member).unwrap();
+            for (axis, delta) in displacement.into_iter().enumerate() {
+                robot.kinematics.position[axis] += delta;
+            }
+            robot.kinematics.previous_position = robot.kinematics.position;
+        }
+    }
+
     fn physics_phase(&mut self) -> Result<(), EngineError> {
         let mut keyed_batch = self.physics_batch();
-        let wrapped_axes = keyed_batch.batch.wrapped_axes;
-        let radii: Vec<f32> = keyed_batch
-            .ids
-            .iter()
-            .map(|id| {
-                self.slots.get(*id).map_or(1.0, |organism| {
-                    crate::physics::organism_radius(
-                        organism.materials.body,
-                        organism.materials.chloroplasts,
-                        self.config.fixed_bot_radii,
-                    )
-                })
-            })
-            .collect();
-        let edge_contacts: Vec<[bool; 2]> = keyed_batch
-            .batch
-            .positions
-            .iter()
-            .zip(&keyed_batch.batch.velocities)
-            .zip(&radii)
-            .map(|((position, velocity), radius)| {
-                std::array::from_fn(|axis| {
-                    if wrapped_axes[axis] {
-                        return false;
-                    }
-                    let extent = keyed_batch.batch.world_size[axis].max(1.0);
-                    let min_center = radius.min(extent * 0.5);
-                    let max_center = (extent - radius).max(min_center);
-                    let next = position[axis] + velocity[axis];
-                    position[axis] <= min_center
-                        || position[axis] >= max_center
-                        || next < min_center
-                        || next > max_center
-                })
-            })
-            .collect();
-        let predicted_positions: Vec<[f32; 2]> = keyed_batch
-            .batch
-            .positions
-            .iter()
-            .zip(&keyed_batch.batch.velocities)
-            .map(|(position, velocity)| [position[0] + velocity[0], position[1] + velocity[1]])
-            .collect();
         let fixed: Vec<_> = keyed_batch
             .ids
             .iter()
@@ -7740,13 +7808,6 @@ impl Engine {
                 })
             })
             .collect();
-        for (index, contacts) in edge_contacts.iter().enumerate() {
-            for (axis, contact) in contacts.iter().enumerate() {
-                if *contact {
-                    keyed_batch.batch.velocities[index][axis] *= 0.95;
-                }
-            }
-        }
         if let Err(error) = self.physics.step(&mut keyed_batch.batch) {
             if self.config.allow_cpu_fallback && matches!(self.physics, RuntimePhysics::Gpu(_)) {
                 self.activate_cpu_fallback(error);
@@ -7755,46 +7816,11 @@ impl Engine {
                 return Err(error);
             }
         }
-        for index in 0..keyed_batch.batch.positions.len() {
-            let radius = radii[index];
-            for axis in 0..2 {
-                let extent = keyed_batch.batch.world_size[axis].max(1.0);
-                let min_center = radius.min(extent * 0.5);
-                let max_center = (extent - radius).max(min_center);
-                if wrapped_axes[axis] {
-                    let predicted = predicted_positions[index][axis];
-                    let position = keyed_batch.batch.positions[index][axis];
-                    let smudge_min = (radius + BIRTH_BORDER_SMUDGE).min(max_center);
-                    let smudge_max = (extent - radius - BIRTH_BORDER_SMUDGE).max(min_center);
-                    if predicted < 0.0 {
-                        keyed_batch.batch.positions[index][axis] =
-                            (radius + BIRTH_BORDER_SMUDGE).min(max_center);
-                    } else if predicted > extent {
-                        keyed_batch.batch.positions[index][axis] =
-                            (extent - radius - BIRTH_BORDER_SMUDGE).max(min_center);
-                    } else if position < smudge_min {
-                        keyed_batch.batch.positions[index][axis] = smudge_min;
-                    } else if position > smudge_max {
-                        keyed_batch.batch.positions[index][axis] = smudge_max;
-                    }
-                } else {
-                    keyed_batch.batch.positions[index][axis] =
-                        keyed_batch.batch.positions[index][axis].clamp(min_center, max_center);
-                }
-            }
-        }
         for (index, fixed) in fixed.into_iter().enumerate() {
             if fixed {
                 let state = self.slots.get(keyed_batch.ids[index])?;
                 keyed_batch.batch.positions[index] = state.kinematics.position;
                 keyed_batch.batch.velocities[index] = [0.0; 2];
-            }
-            if edge_contacts[index].into_iter().any(|contact| contact) && !fixed {
-                self.slots
-                    .get_mut(keyed_batch.ids[index])?
-                    .program
-                    .memory
-                    .write(MEM_EDGE, 1);
             }
         }
         self.slots.apply_physics_batch(keyed_batch)?;
@@ -7895,7 +7921,7 @@ impl Engine {
             .map(|entry| entry.organism.is_some())
             .collect();
         self.spatial.rebuild_from_soa(&positions, &alive, 64.0);
-        let max_organism_radius = self
+        let max_organism_reach = self
             .slots
             .iter()
             .filter_map(|entry| entry.organism.as_ref())
@@ -7904,7 +7930,9 @@ impl Engine {
                     robot.materials.body,
                     robot.materials.chloroplasts,
                     self.config.fixed_bot_radii,
-                )
+                ) + (robot.kinematics.actual_velocity[0] - robot.kinematics.velocity[0])
+                    .hypot(robot.kinematics.actual_velocity[1] - robot.kinematics.velocity[1])
+                    + robot.kinematics.actual_velocity[0].hypot(robot.kinematics.actual_velocity[1])
             })
             .fold(1.0_f32, f32::max);
         let mut impacts = Vec::new();
@@ -7917,7 +7945,7 @@ impl Engine {
 
             for target in self
                 .spatial
-                .segment_candidates(start, end, max_organism_radius)
+                .segment_candidates(start, end, max_organism_reach)
             {
                 let Some(target_robot) = self.slots[target].organism.as_ref() else {
                     continue;
@@ -7936,10 +7964,16 @@ impl Engine {
                     target_robot.materials.chloroplasts,
                     self.config.fixed_bot_radii,
                 );
-                let Some(fraction) = crate::physics::segment_circle_fraction(
+                let actual_velocity = target_robot.kinematics.actual_velocity;
+                let center = std::array::from_fn(|axis| {
+                    target_robot.kinematics.position[axis] - target_robot.kinematics.velocity[axis]
+                        + actual_velocity[axis]
+                });
+                let Some(fraction) = crate::physics::moving_circle_fraction(
                     start,
                     end,
-                    target_robot.kinematics.position,
+                    center,
+                    actual_velocity,
                     radius,
                 ) else {
                     continue;
@@ -8166,18 +8200,14 @@ impl Engine {
                         }
                         let target_id =
                             OrganismId::new(target as u32, self.slots[target].generation);
-                        let (packet_value, target_velocity) = {
+                        let (packet_value, target_velocity, lethal) = {
                             let target_robot = self.slots[target].organism.as_mut().unwrap();
                             let available = target_robot.materials.energy.max(0);
                             if available == 0 {
                                 return false;
                             }
-                            let mut packet_value = power.max(1);
-                            let mut energy_loss = scale_tie_amount(packet_value, 0.90);
-                            if energy_loss > available {
-                                packet_value = (f64::from(available) / 0.90).floor() as i32;
-                                energy_loss = scale_tie_amount(packet_value, 0.90).min(available);
-                            }
+                            let packet_value = power.max(0);
+                            let energy_loss = scale_tie_amount(packet_value, 0.90).min(available);
                             if packet_value <= 0 || energy_loss <= 0 {
                                 return false;
                             }
@@ -8185,12 +8215,26 @@ impl Engine {
                                 target_robot.materials.energy.saturating_sub(energy_loss);
                             let body_loss = scale_tie_amount(packet_value, 0.01);
                             target_robot.materials.body =
-                                target_robot.materials.body.saturating_sub(body_loss);
+                                target_robot.materials.body.saturating_sub(body_loss).max(0);
+                            let lethal = target_robot.materials.energy <= 0
+                                || target_robot.materials.body <= 0;
+                            target_robot.flags.dead |= lethal;
                             target_robot
                                 .materials
                                 .publish(&mut target_robot.program.memory);
-                            (packet_value, target_robot.kinematics.actual_velocity)
+                            (
+                                packet_value,
+                                target_robot.kinematics.actual_velocity,
+                                lethal,
+                            )
                         };
+                        if lethal && let Ok(attacker) = self.slots.get_mut(owner) {
+                            attacker.counters.kills = attacker.counters.kills.saturating_add(1);
+                            attacker
+                                .program
+                                .memory
+                                .write(220, attacker.counters.kills.min(32_000) as i32);
+                        }
                         let return_velocity = [
                             target_velocity[0] * 1.5 - projectile_velocity[0],
                             target_velocity[1] * 1.5 - projectile_velocity[1],
@@ -8591,25 +8635,15 @@ impl Engine {
     }
 
     fn record_actual_velocities(&mut self) {
-        let world_size = [self.config.world_width, self.config.world_height];
         for robot in self
             .slots
             .iter_mut()
             .filter_map(|slot| slot.organism.as_mut())
         {
-            let mut displacement = [
+            robot.kinematics.actual_velocity = [
                 robot.kinematics.position[0] - robot.kinematics.previous_position[0],
                 robot.kinematics.position[1] - robot.kinematics.previous_position[1],
             ];
-            for axis in 0..2 {
-                if self.config.axis_topology()[axis] {
-                    let extent = world_size[axis].max(1.0);
-                    let half_extent = extent * 0.5;
-                    displacement[axis] =
-                        (displacement[axis] + half_extent).rem_euclid(extent) - half_extent;
-                }
-            }
-            robot.kinematics.actual_velocity = displacement;
         }
     }
 
@@ -11479,6 +11513,39 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_border_respawn_moves_the_whole_multibot_from_its_nearest_cell() {
+        let mut engine = Engine::new(EngineConfig {
+            fixed_bot_radii: true,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = engine.spawn_at(dna.clone(), [10.0, 500.0]).unwrap();
+        let second = engine.spawn_at(dna, [150.0, 500.0]).unwrap();
+        engine.slots.get_mut(first).unwrap().counters.multibot = true;
+        engine.slots.get_mut(second).unwrap().counters.multibot = true;
+        engine
+            .ties
+            .push(TieState::legacy(first, second, 140.0, 1, 1));
+        engine.respawn_border_group(first, [890.0, 500.0]);
+        assert_eq!(
+            engine.slots.get(first).unwrap().kinematics.position,
+            [749.0, 500.0]
+        );
+        assert_eq!(
+            engine.slots.get(second).unwrap().kinematics.position,
+            [889.0, 500.0]
+        );
+        engine.record_actual_velocities();
+        for id in [first, second] {
+            assert_eq!(
+                engine.slots.get(id).unwrap().kinematics.actual_velocity,
+                [0.0, 0.0]
+            );
+        }
+    }
 
     #[test]
     fn eco03_photosynthesis_pond_sun_conversion_population_and_bounds_contract() {

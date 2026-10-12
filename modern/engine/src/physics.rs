@@ -7,7 +7,9 @@ mod collision;
 mod environment;
 mod movement;
 
-pub(crate) use collision::{resolve_collisions, segment_aabb_fraction, segment_circle_fraction};
+pub(crate) use collision::{
+    moving_circle_fraction, resolve_collisions, segment_aabb_fraction, segment_circle_fraction,
+};
 pub(crate) use environment::{
     apply_angular_damping, apply_resistance, apply_static_friction, brownian_rotation,
     environment_impulse, fluid_added_mass, integrate_body, mutual_gravity_impulses,
@@ -217,6 +219,8 @@ pub struct PhysicsBatch {
     pub velocities: Vec<[f32; 2]>,
     pub world_size: [f32; 2],
     pub wrapped_axes: [bool; 2],
+    /// DB2 worlds resolve borders before integration and allow a one-cycle overshoot.
+    pub apply_world_bounds: bool,
 }
 
 pub trait PhysicsBackend {
@@ -248,7 +252,12 @@ impl PhysicsBackend for CpuPhysicsBackend {
     fn step(&mut self, batch: &mut PhysicsBatch) -> Result<(), EngineError> {
         validate_batch(batch)?;
         for (position, velocity) in batch.positions.iter_mut().zip(&batch.velocities) {
-            integrate_body(position, *velocity, batch.world_size, batch.wrapped_axes);
+            if batch.apply_world_bounds {
+                integrate_body(position, *velocity, batch.world_size, batch.wrapped_axes);
+            } else {
+                position[0] += velocity[0];
+                position[1] += velocity[1];
+            }
         }
         Ok(())
     }
@@ -856,7 +865,8 @@ impl PhysicsBackend for GpuPhysicsBackend {
             world_size: batch.world_size,
             count: particles.len() as u32,
             topology_mask: u32::from(batch.wrapped_axes[0])
-                | (u32::from(batch.wrapped_axes[1]) << 1),
+                | (u32::from(batch.wrapped_axes[1]) << 1)
+                | (u32::from(!batch.apply_world_bounds) << 2),
         };
         let particle_buffer = self
             .device
@@ -983,6 +993,10 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
     let next = particles[id.x].position + particles[id.x].velocity;
+    if ((params.topology_mask & 4u) != 0u) {
+        particles[id.x].position = next;
+        return;
+    }
     var integrated = next;
     if ((params.topology_mask & 1u) != 0u) {
         integrated.x = ((next.x % params.world_size.x) + params.world_size.x) % params.world_size.x;

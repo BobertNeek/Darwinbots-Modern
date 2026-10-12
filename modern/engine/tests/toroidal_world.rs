@@ -1,4 +1,4 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings, SaveFile};
 
 fn toroidal_test_config() -> EngineConfig {
     EngineConfig {
@@ -16,11 +16,14 @@ fn toroidal_test_config() -> EngineConfig {
 
 #[test]
 fn organism_motion_wraps_across_the_world_edge() {
-    let mut engine = Engine::new(toroidal_test_config()).unwrap();
+    let mut config = toroidal_test_config();
+    config.world_width = 1_000.0;
+    config.world_height = 1_000.0;
+    let mut engine = Engine::new(config).unwrap();
     let organism = engine
         .spawn_at(
             LegacyDna::parse("start\n100 .up store\nstop").unwrap(),
-            [50.0, 99.0],
+            [500.0, 999.0],
         )
         .unwrap();
 
@@ -33,8 +36,8 @@ fn organism_motion_wraps_across_the_world_edge() {
         .find(|snapshot| snapshot.id == organism)
         .unwrap()
         .position;
-    assert!((0.0..100.0).contains(&position[1]));
-    assert!(position[1] < 99.0, "expected y wrap, got {position:?}");
+    assert!((0.0..1_000.0).contains(&position[1]));
+    assert!(position[1] < 999.0, "expected y wrap, got {position:?}");
 }
 
 #[test]
@@ -74,7 +77,11 @@ fn topology_wraps_x_but_bounds_y_inside_robot_radius_and_smudge() {
     let bounded_state = engine.organism(bounded).unwrap();
     assert!(wrapped_state.position[0] > wrapped_state.radius);
     assert_eq!(engine.memory_at(wrapped, 214).unwrap(), 0);
-    assert!(bounded_state.position[1] <= 1_000.0 - bounded_state.radius + 0.01);
+    assert!(
+        (bounded_state.position[1] - (1_000.0 - bounded_state.radius + bounded_state.velocity[1]))
+            .abs()
+            < 0.01
+    );
     assert_eq!(engine.memory_at(bounded, 214).unwrap(), 1);
 }
 
@@ -102,7 +109,7 @@ fn wrapped_axis_applies_border_smudge_before_integration() {
     engine.tick().unwrap();
 
     let state = engine.organism(organism).unwrap();
-    let expected = (state.radius + 50.0).min(1_000.0 - state.radius);
+    let expected = 1_000.0 - state.radius - 50.0 - 1.0;
     let position = state.position;
     assert!(
         (position[0] - expected).abs() < 0.01,
@@ -152,4 +159,52 @@ fn shot_inherits_shortest_toroidal_firer_displacement() {
         shot.velocity[0] < 100.0,
         "wrapped firer inherited a world-sized jump: {shot:?}"
     );
+}
+
+#[test]
+fn an_interior_robot_is_not_moved_into_the_border_smudge_band() {
+    let mut engine = Engine::new(EngineConfig {
+        world_width: 1_000.0,
+        world_height: 1_000.0,
+        ..toroidal_test_config()
+    })
+    .unwrap();
+    let id = engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [850.0, 500.0])
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.organism(id).unwrap().position, [850.0, 500.0]);
+}
+
+#[test]
+fn wrapped_motion_overshoots_then_respawns_on_the_next_cycle_after_save_restore() {
+    let mut engine = Engine::new(EngineConfig {
+        world_width: 1_000.0,
+        world_height: 1_000.0,
+        fixed_bot_radii: true,
+        physics: PhysicsSettings {
+            max_velocity: 200.0,
+            movement_efficiency: 1.0,
+            density: 0.0,
+            ..Default::default()
+        },
+        ..toroidal_test_config()
+    })
+    .unwrap();
+    let id = engine
+        .spawn_at(
+            LegacyDna::parse("cond *.robage 1 < start 200 .dx store stop").unwrap(),
+            [930.0, 500.0],
+        )
+        .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.organism(id).unwrap().position, [1_130.0, 500.0]);
+    let mut restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    restored.tick().unwrap();
+    assert_eq!(restored.organism(id).unwrap().position, [311.0, 500.0]);
+    assert_eq!(
+        restored.robot_state(id).unwrap().kinematics.actual_velocity,
+        [200.0, 0.0]
+    );
+    restored.validate_invariants().unwrap();
 }

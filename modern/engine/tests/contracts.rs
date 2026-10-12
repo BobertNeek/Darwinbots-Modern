@@ -3,8 +3,8 @@ use darwinbots_engine::{
     SaveFile, SpeciesDefinition, StandardMutationProfile, TokenClass,
 };
 
-const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
-const TOXIN_TARGET_POSITION: [f32; 2] = [350.0, 100.0];
+const TOXIN_SOURCE_POSITION: [f32; 2] = [250.0, 500.0];
+const TOXIN_TARGET_POSITION: [f32; 2] = [500.0, 500.0];
 const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
 
 fn frame_save(version: u16, payload: &serde_json::Value) -> Vec<u8> {

@@ -514,6 +514,7 @@ impl RobotArena {
                 velocities,
                 world_size,
                 wrapped_axes,
+                apply_world_bounds: false,
             },
         }
     }

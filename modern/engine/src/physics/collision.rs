@@ -27,6 +27,37 @@ pub(crate) fn segment_circle_fraction(
         .find(|root| (0.0..=1.0).contains(root))
 }
 
+pub(crate) fn moving_circle_fraction(
+    start: [f32; 2],
+    end: [f32; 2],
+    center: [f32; 2],
+    center_velocity: [f32; 2],
+    radius: f32,
+) -> Option<f32> {
+    let relative_end = [end[0] - center_velocity[0], end[1] - center_velocity[1]];
+    let delta = [relative_end[0] - start[0], relative_end[1] - start[1]];
+    let offset = [start[0] - center[0], start[1] - center[1]];
+    let c = offset[0] * offset[0] + offset[1] * offset[1] - radius * radius;
+    if c < 0.0 {
+        return Some(0.0);
+    }
+    let a = delta[0] * delta[0] + delta[1] * delta[1];
+    if a == 0.0 {
+        return None;
+    }
+    let dot = delta[0] * offset[0] + delta[1] * offset[1];
+    let discriminant = dot * dot - a * c;
+    if discriminant < 0.0 {
+        return None;
+    }
+    [
+        (-dot - discriminant.sqrt()) / a,
+        (-dot + discriminant.sqrt()) / a,
+    ]
+    .into_iter()
+    .find(|root| *root > 0.0 && *root < 1.0)
+}
+
 pub(crate) fn segment_aabb_fraction(
     start: [f32; 2],
     end: [f32; 2],
@@ -130,5 +161,30 @@ pub(crate) fn resolve_collisions(
         velocities[first][1] -= normal[1] * impulse * first_inverse_mass;
         velocities[second][0] += normal[0] * impulse * second_inverse_mass;
         velocities[second][1] += normal[1] * impulse * second_inverse_mass;
+    }
+}
+
+#[cfg(test)]
+mod projectile_motion_tests {
+    use super::moving_circle_fraction;
+
+    #[test]
+    fn original_shot_collision_accounts_for_motion_and_excludes_cycle_endpoints() {
+        assert_eq!(
+            moving_circle_fraction([0.0, 0.0], [10.0, 0.0], [15.0, 0.0], [0.0, 0.0], 1.0),
+            None
+        );
+        assert_eq!(
+            moving_circle_fraction([0.0, 0.0], [10.0, 0.0], [15.0, 0.0], [-10.0, 0.0], 1.0),
+            Some(0.7)
+        );
+        assert_eq!(
+            moving_circle_fraction([0.0, 0.0], [10.0, 0.0], [11.0, 0.0], [0.0, 0.0], 1.0),
+            None
+        );
+        assert_eq!(
+            moving_circle_fraction([0.0, 0.0], [10.0, 0.0], [0.0, 0.0], [0.0, 0.0], 1.0),
+            Some(0.0)
+        );
     }
 }

@@ -150,19 +150,22 @@ fn assert_transfer(parent: &RobotState, child: &RobotState, parent_energy: i32) 
     assert_eq!(child.materials.chloroplasts, 50);
 }
 
-fn assert_reproduction_owned_materials_unchanged(before: &RobotState, after: &RobotState) {
-    let mut before = serde_json::to_value(&before.materials).unwrap();
-    let mut after = serde_json::to_value(&after.materials).unwrap();
-    for key in [
-        "mass",
-        "radius",
-        "plant_energy_carry_micros",
-        "plant_body_carry_micros",
-    ] {
-        before.as_object_mut().unwrap().remove(key);
-        after.as_object_mut().unwrap().remove(key);
-    }
-    assert_eq!(after, before);
+fn control_without_birth_request(engine: &Engine, parent: OrganismId) -> RobotState {
+    let mut control = edit_engine(engine, |payload| {
+        for address in [300, 301, 302] {
+            set_memory(
+                &mut robot_value_mut(payload, parent)["program"]["memory"],
+                address,
+                0,
+            );
+        }
+    });
+    control.tick().unwrap();
+    control.robot_state(parent).unwrap().clone()
+}
+
+fn assert_reproduction_owned_materials_unchanged(control: &RobotState, after: &RobotState) {
+    assert_eq!(after.materials, control.materials);
 }
 
 fn make_blocker_small(engine: &Engine, blocker: OrganismId) -> Engine {
@@ -213,13 +216,14 @@ fn repro_125_transfers_twenty_five_percent_of_db2_resources() {
 fn repro_with_zero_effective_percentage_does_not_birth_or_consume_request() {
     let (mut engine, parent, _) =
         configured_parent(LegacyDna::parse("start\nstop").unwrap(), 100, 7);
-    let before = engine.robot_state(parent).unwrap().clone();
+
+    let control = control_without_birth_request(&engine, parent);
 
     engine.tick().unwrap();
 
     assert_eq!(engine.population(), 1);
     let after = engine.robot_state(parent).unwrap();
-    assert_reproduction_owned_materials_unchanged(&before, after);
+    assert_reproduction_owned_materials_unchanged(&control, after);
     assert_eq!(engine.memory(parent, "repro").unwrap(), 100);
 }
 
@@ -490,6 +494,8 @@ fn occupied_forward_placement_is_atomic_and_keeps_repro_pending() {
     let mut engine = make_blocker_small(&engine, blocker);
     let before = engine.robot_state(parent).unwrap().clone();
 
+    let control = control_without_birth_request(&engine, parent);
+
     engine.tick().unwrap();
 
     let after = engine.robot_state(parent).unwrap();
@@ -501,7 +507,7 @@ fn occupied_forward_placement_is_atomic_and_keeps_repro_pending() {
             .iter()
             .all(|organism| organism.parents != [Some(parent), None])
     );
-    assert_reproduction_owned_materials_unchanged(&before, after);
+    assert_reproduction_owned_materials_unchanged(&control, after);
     assert_eq!(
         after.program.mutation_profile,
         before.program.mutation_profile
@@ -540,6 +546,8 @@ fn competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged() {
     });
     let loser_before = engine.robot_state(second).unwrap().clone();
 
+    let control = control_without_birth_request(&engine, second);
+
     engine.tick().unwrap();
 
     assert_eq!(engine.population(), 3);
@@ -557,7 +565,7 @@ fn competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged() {
     );
     assert_eq!(engine.memory(first, "repro").unwrap(), 0);
     let loser_after = engine.robot_state(second).unwrap();
-    assert_reproduction_owned_materials_unchanged(&loser_before, loser_after);
+    assert_reproduction_owned_materials_unchanged(&control, loser_after);
     assert_eq!(
         loser_after.program.mutation_profile,
         loser_before.program.mutation_profile
@@ -607,10 +615,12 @@ fn blocked_birth_charges_no_five_block_dna_copy_cost() {
     });
     let before = engine.robot_state(parent).unwrap().clone();
 
+    let control = control_without_birth_request(&engine, parent);
+
     engine.tick().unwrap();
 
     let after = engine.robot_state(parent).unwrap();
-    assert_reproduction_owned_materials_unchanged(&before, after);
+    assert_reproduction_owned_materials_unchanged(&control, after);
     assert_eq!(
         after.program.mutation_profile,
         before.program.mutation_profile
