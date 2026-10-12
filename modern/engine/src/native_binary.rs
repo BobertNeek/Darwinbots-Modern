@@ -15,6 +15,7 @@ pub enum NativeValue {
     Word(i16),
     Long(i32),
     Single(u32),
+    Double(u64),
     Bytes(Vec<u8>),
 }
 
@@ -133,6 +134,7 @@ impl NativeRobotRecord {
                 NativeValue::Word(value) => bytes.extend_from_slice(&value.to_le_bytes()),
                 NativeValue::Long(value) => bytes.extend_from_slice(&value.to_le_bytes()),
                 NativeValue::Single(bits) => bytes.extend_from_slice(&bits.to_le_bytes()),
+                NativeValue::Double(bits) => bytes.extend_from_slice(&bits.to_le_bytes()),
                 NativeValue::Bytes(value) => bytes.extend_from_slice(value),
             }
         }
@@ -304,6 +306,222 @@ impl NativeRobotRecord {
     }
 }
 
+/// Full 2.48.32 simulation tail, including inactive shot slots and graph state.
+/// Values are framed losslessly; applying them to an Engine is a separate step.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NativeSimulationTail {
+    fields: Vec<NativeField>,
+}
+
+impl NativeSimulationTail {
+    pub fn fields(&self) -> &[NativeField] {
+        &self.fields
+    }
+    pub fn value(&self, name: &str) -> Result<&NativeValue, EngineError> {
+        self.fields
+            .iter()
+            .find(|field| field.name == name)
+            .map(|field| &field.value)
+            .ok_or_else(|| invalid(&format!("missing simulation field {name}")))
+    }
+    pub fn decode(bytes: &[u8]) -> Result<Self, EngineError> {
+        let mut r = NamedReader {
+            reader: Reader::new(bytes),
+            fields: Vec::new(),
+        };
+        for i in 0..2 {
+            r.text(&format!("obsolete{i}"), 'i')?;
+            r.seq("count:h", &format!("obsolete{i}."))?;
+        }
+        r.seq(
+            "blocked:h shot_cost:f exec_cost:f store_cost:f dead_snapshot:h exclude_plants:h",
+            "",
+        )?;
+        r.text("obsolete2", 'i')?;
+        r.seq("obsolete_false:h disable_ties:h feeding_type:h feeding_fixed:h feeding_proportion:f field_height:i field_size:h field_width:i kill_distance:h max_energy:i max_population:h minimum_plants:h mutation_multiplier:f mutation_max:i mutation_min:i mutation_oscillate:h brownian:f y_gravity:f z_gravity:f movement:f swimming:f population_method:h", "")?;
+        r.text("sim_name", 'i')?;
+        let species = r.count("species_count", 'h', 1000)?;
+        r.seq("toroidal:h total_born:i total_cycles:i runtime:i pond:h obsolete_kinetic:h light:h corpses:h decay:f gradient:f day_night:h cycle_length:h decay_delay:h decay_type:h movement_cost:f f1:h restart:h wrap_x:h wrap_y:h repop_amount:h repop_cooldown:h zero_momentum:h seed:i obsolete_seed_bool:h", "")?;
+        if r.count("repeated_species_count", 'h', 1000)? != species {
+            return Err(invalid("species counts disagree"));
+        }
+        for i in 0..species {
+            let p = format!("species[{i}].");
+            r.seq("color_index:h color:i fixed:h", &p)?;
+            r.raw(&(p.clone() + "mutation_rates"), 84)?;
+            r.seq("mutations_enabled:h", &p)?;
+            r.text(&(p.clone() + "name"), 'i')?;
+            r.seq("obsolete_omni:h", &p)?;
+            r.text(&(p.clone() + "path"), 'i')?;
+            r.raw(&(p.clone() + "obsolete_placement"), 16)?;
+            r.seq("quantity:h", &p)?;
+            r.raw(&(p.clone() + "skin"), 28)?;
+            r.seq("start_energy:h vegetable:h", &p)?;
+        }
+        r.seq("obsolete_diffuse:h feeding_to_body:f static_friction:f kinetic_friction:f planet:h planet_gravity:f viscosity:d density:d", "")?;
+        for i in 0..species {
+            let p = format!("species[{i}].");
+            r.seq("copy_error_policy:h point_policy:h", &p)?;
+            r.raw(&(p + "mutation_shapes"), 168)?;
+        }
+        r.raw("costs", 71 * 4)?;
+        for i in 0..species {
+            r.raw(&format!("species[{i}].placement"), 16)?;
+        }
+        r.seq("bad_waste:h chart_interval:h elasticity:f fluid_mode:h cost_radio:h max_velocity:f no_shot_decay:h sun_up_threshold:i sun_up:h sun_down_threshold:i sun_down:h obsolete_false3:h obsolete_false4:h fixed_radii:h daylight_counter:i daytime:h sun_threshold_mode:h", "")?;
+        let teleporters = r.count("teleporters", 'h', 10)?;
+        for i in 0..teleporters {
+            let p = format!("teleporter[{i}].");
+            r.seq("x:f y:f width:f height:f color:i vx:f vy:f", &p)?;
+            r.text(&(p.clone() + "path"), 'h')?;
+            r.seq("inbound:h outbound:h local:h horizontal:h vertical:h highlight:h vegetables:h corpses:h respect_shapes:h teleported:i heterotrophs:h poll_cycles:h bots_per_poll:h poll_countdown:h internet:h", &p)?;
+            r.end(&(p + "end"))?;
+        }
+        let obstacles = r.count("obstacles", 'h', 1000)?;
+        for i in 0..obstacles {
+            let p = format!("obstacle[{i}].");
+            r.seq("exists:h x:f y:f width:f height:f color:i vx:f vy:f", &p)?;
+            r.end(&(p + "end"))?;
+        }
+        r.seq("obsolete_false5:h", "")?;
+        for i in 0..species {
+            r.seq(
+                "cant_see:h disable_dna:h disable_movement:h",
+                &format!("species[{i}]."),
+            )?;
+        }
+        r.seq("shapes_visible:h shapes_vertical:h shapes_horizontal:h shapes_see_through:h shapes_absorb:h shape_drift:h shapes_transparent:h shapes_black:h", "")?;
+        for i in 0..species {
+            r.seq("cant_reproduce:h", &format!("species[{i}]."))?;
+        }
+        let shots = r.count("shot_count", 'i', 1_000_000)?;
+        if shots > r.reader.remaining() / 63 {
+            return Err(invalid("shot count exceeds stream length"));
+        }
+        for i in 0..shots {
+            let p = format!("shot[{i}].");
+            r.seq("exists:h x:f y:f old_x:f old_y:f vx:f vy:f parent:h age:h energy:f range:f value:h color:i kind:h vegetable:h", &p)?;
+            r.text(&(p.clone() + "species"), 'h')?;
+            r.seq("memory_location:h memory_value:h", &p)?;
+            let length = r.count(&(p.clone() + "dna_length"), 'h', 32_000)?;
+            r.raw(&(p.clone() + "dna"), length * 4)?;
+            r.seq("gene_number:h stored:h", &p)?;
+            r.end(&(p + "end"))?;
+        }
+        r.seq("max_absolute_id:i", "")?;
+        for i in 0..species {
+            r.seq("virus_immune:h", &format!("species[{i}]."))?;
+        }
+        for i in 0..species {
+            r.seq(
+                "population:h subspecies_counter:h",
+                &format!("species[{i}]."),
+            )?;
+        }
+        for i in 0..species {
+            r.seq("native:h", &format!("species[{i}]."))?;
+        }
+        r.seq("grid_width:h grid_enabled:h old_cost:f disable_mutations:h sim_guid:i speciation_generation:h speciation_distance:h speciation_enabled:h speciation_min_population:h speciation_interval:i disable_asexual:h", "")?;
+        for name in ["graph_query1", "graph_query2", "graph_query3", "sim_start"] {
+            r.text(name, 'i')?;
+        }
+        for i in 0..18 {
+            r.seq(
+                "counter:i visible:h left:i top:i save:h",
+                &format!("graph[{i}]."),
+            )?;
+        }
+        r.seq("no_waste_decay:h energy_difference:d energy_average:d handicap:d mode_cycles:i hide_pred_offset:h hide_pred:h energy_difference2:d energy_average2:d handicap2:d sun_random:h disable_fixing:h sun_position:d sun_range:d sun_change:B tides:h tides_offset:h mutation_sine:h stagnant:h", "")?;
+        if r.reader.remaining() != 0 {
+            return Err(invalid("unrecognized simulation tail bytes"));
+        }
+        Ok(Self { fields: r.fields })
+    }
+    pub fn encode(&self) -> Result<Vec<u8>, EngineError> {
+        let mut bytes = Vec::new();
+        for field in &self.fields {
+            match &field.value {
+                NativeValue::Byte(value) => bytes.push(*value),
+                NativeValue::Word(value) => bytes.extend_from_slice(&value.to_le_bytes()),
+                NativeValue::Long(value) => bytes.extend_from_slice(&value.to_le_bytes()),
+                NativeValue::Single(value) => bytes.extend_from_slice(&value.to_le_bytes()),
+                NativeValue::Double(value) => bytes.extend_from_slice(&value.to_le_bytes()),
+                NativeValue::Bytes(value) => bytes.extend_from_slice(value),
+            }
+        }
+        if Self::decode(&bytes)? != *self {
+            return Err(invalid("simulation field framing is invalid"));
+        }
+        Ok(bytes)
+    }
+}
+
+struct NamedReader<'a> {
+    reader: Reader<'a>,
+    fields: Vec<NativeField>,
+}
+impl NamedReader<'_> {
+    fn atom(&mut self, name: &str, kind: char) -> Result<NativeValue, EngineError> {
+        let value = match kind {
+            'h' => NativeValue::Word(self.reader.word()?),
+            'i' => NativeValue::Long(self.reader.long()?),
+            'f' => NativeValue::Single(self.reader.bits()?),
+            'd' => {
+                NativeValue::Double(u64::from_le_bytes(self.reader.take(8)?.try_into().unwrap()))
+            }
+            'B' => NativeValue::Byte(self.reader.take(1)?[0]),
+            _ => return Err(invalid("unknown native field type")),
+        };
+        self.fields.push(NativeField {
+            name: name.into(),
+            value: value.clone(),
+        });
+        Ok(value)
+    }
+    fn seq(&mut self, spec: &str, prefix: &str) -> Result<(), EngineError> {
+        for token in spec.split_whitespace() {
+            let (name, kind) = token
+                .split_once(':')
+                .ok_or_else(|| invalid("bad field descriptor"))?;
+            self.atom(&(prefix.to_owned() + name), kind.chars().next().unwrap())?;
+        }
+        Ok(())
+    }
+    fn count(&mut self, name: &str, kind: char, maximum: usize) -> Result<usize, EngineError> {
+        let count = match self.atom(name, kind)? {
+            NativeValue::Word(value) => i64::from(value),
+            NativeValue::Long(value) => i64::from(value),
+            _ => return Err(invalid("count is not Integer or Long")),
+        };
+        if count < 0 || count as u64 > maximum as u64 {
+            return Err(invalid(&format!("{name} is invalid")));
+        }
+        Ok(count as usize)
+    }
+    fn text(&mut self, name: &str, kind: char) -> Result<(), EngineError> {
+        let length = self.count(&(name.to_owned() + ".length"), kind, MAX_TEXT_BYTES)?;
+        self.raw(name, length)
+    }
+    fn raw(&mut self, name: &str, length: usize) -> Result<(), EngineError> {
+        self.fields.push(NativeField {
+            name: name.into(),
+            value: NativeValue::Bytes(self.reader.take(length)?.to_vec()),
+        });
+        Ok(())
+    }
+    fn end(&mut self, name: &str) -> Result<(), EngineError> {
+        let marker = self.reader.take(3)?;
+        if marker != RECORD_END {
+            return Err(invalid("object or shot terminator is invalid"));
+        }
+        self.fields.push(NativeField {
+            name: name.into(),
+            value: NativeValue::Bytes(marker.to_vec()),
+        });
+        Ok(())
+    }
+}
+
 fn checked_dna_length(value: i16) -> Result<usize, EngineError> {
     if !(0..=32_000).contains(&value) {
         return Err(invalid("DNA length is invalid"));
@@ -397,6 +615,28 @@ mod tests {
             &587.125_f32.to_le_bytes()
         );
         assert_eq!(&bytes[energy_offset + 4..], &GENUINE[energy_offset + 4..]);
+    }
+
+    #[test]
+    fn genuine_simulation_tail_round_trips_all_options_species_and_shots() {
+        let file = NativeRecordFile::decode(GENUINE).unwrap();
+        let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        assert_eq!(
+            tail.value("field_width").unwrap(),
+            &NativeValue::Long(16000)
+        );
+        assert_eq!(
+            tail.value("field_height").unwrap(),
+            &NativeValue::Long(12000)
+        );
+        assert_eq!(tail.value("total_cycles").unwrap(), &NativeValue::Long(281));
+        assert_eq!(tail.value("species_count").unwrap(), &NativeValue::Word(2));
+        assert_eq!(tail.value("shot_count").unwrap(), &NativeValue::Long(146));
+        assert_eq!(tail.encode().unwrap(), file.tail);
+        let json = serde_json::to_vec(&tail).unwrap();
+        let restored: NativeSimulationTail = serde_json::from_slice(&json).unwrap();
+        assert_eq!(restored.encode().unwrap(), file.tail);
+        assert!(NativeSimulationTail::decode(&file.tail[..file.tail.len() - 1]).is_err());
     }
 
     #[test]
