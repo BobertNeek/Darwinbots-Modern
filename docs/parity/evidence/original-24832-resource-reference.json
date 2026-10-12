@@ -1,0 +1,42 @@
+{
+  "reference_sha256": "09b77b6eaf0a1a8ffc09c601a8869fe37c4fc4e21860ebf379519fdbfce8a55e",
+  "robot_count": 196,
+  "robot_records_end_offset": 2078323,
+  "tail_bytes": 13514,
+  "first_robot": {
+    "energy": 587.0154418945312,
+    "body": 153.9461669921875,
+    "waste": 23.950809478759766,
+    "permanent_waste": 0.0,
+    "shell": 200.0,
+    "slime": 0.0,
+    "venom": 10.0,
+    "poison": 0.0,
+    "chloroplasts": 0.0,
+    "aim_radians": 2.1465110778808594,
+    "position": [
+      11167.0185546875,
+      7924.86328125
+    ],
+    "old_number": 1,
+    "absolute_id": 224,
+    "corpse": false,
+    "species": "The One (1G)(Shen)-23.04.05.txt",
+    "dna_length": 378
+  },
+  "fractional_resource_counts": {
+    "energy": 196,
+    "body": 127,
+    "waste": 159,
+    "permanent_waste": 0,
+    "shell": 0,
+    "slime": 35,
+    "venom": 0,
+    "poison": 0,
+    "chloroplasts": 37
+  },
+  "species_counts": {
+    "Alga_Minimalis_Chloroplastus.txt": 37,
+    "The One (1G)(Shen)-23.04.05.txt": 159
+  }
+}
