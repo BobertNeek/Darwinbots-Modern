@@ -7633,10 +7633,7 @@ impl Engine {
                 1.0
             };
             let value = match kind {
-                -1 => {
-                    (20.0 + attacker.materials.body / 5.0 * body_multiplier)
-                        * power_multiplier
-                }
+                -1 => (20.0 + attacker.materials.body / 5.0 * body_multiplier) * power_multiplier,
                 -6 => {
                     (10.0 + attacker.materials.body.abs() / 2.0 * body_multiplier)
                         * power_multiplier
@@ -8188,8 +8185,7 @@ impl Engine {
                     loss = corpse_state.energy as f32;
                 }
                 corpse_state.energy -= resource_readback(loss);
-                let body = (corpse_state.body as f32 + corpse_state.body_fraction
-                    - packet * 0.01)
+                let body = (corpse_state.body as f32 + corpse_state.body_fraction - packet * 0.01)
                     .max(0.0);
                 corpse_state.body = body.round_ties_even() as i32;
                 corpse_state.body_fraction = body - corpse_state.body as f32;
@@ -9876,8 +9872,8 @@ impl Engine {
             }
 
             child_materials.aim = (parent_state.materials.aim + 628).rem_euclid(1_257);
-            child_materials.mass = child_materials.body.max(0.0) / 1_000.0
-                + child_materials.shell.max(0.0) / 200.0;
+            child_materials.mass =
+                child_materials.body.max(0.0) / 1_000.0 + child_materials.shell.max(0.0) / 200.0;
             child_materials.radius = crate::physics::organism_radius(
                 child_materials.body,
                 child_materials.chloroplasts,

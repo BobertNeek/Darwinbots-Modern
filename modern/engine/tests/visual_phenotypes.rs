@@ -138,13 +138,13 @@ fn crossing_speciation_threshold_changes_skin_once() {
 }
 
 #[test]
-fn phenotype_round_trips_through_version_three_save() {
+fn phenotype_round_trips_through_version_four_save() {
     let mut engine = phenotype_engine(true, 1.0);
     spawn_mutating_parent(&mut engine, true);
     engine.tick().unwrap();
 
     let bytes = SaveFile::encode(&engine).unwrap();
-    assert_eq!(&bytes[..6], &[b'D', b'B', b'3', b'S', 3, 0]);
+    assert_eq!(&bytes[..6], &[b'D', b'B', b'3', b'S', 4, 0]);
     let restored = SaveFile::decode(&bytes).unwrap();
 
     // Inspector readbacks are rebuilt after loading; this test qualifies the

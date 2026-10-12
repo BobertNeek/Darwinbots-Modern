@@ -1,0 +1,17 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.50s
+     Running tests\native_resource_precision.rs (target\debug\deps\native_resource_precision-9110688f77e9583c.exe)
+
+running 9 tests
+test dna_costs_round_the_native_store_after_each_instruction ... ok
+test birth_preserves_fractional_energy_then_applies_the_native_half_unit_death_threshold ... ok
+test unmaking_fractional_shell_spends_the_native_conversion_cost ... ok
+test fractional_material_transaction_cost_is_energy_and_waste ... ok
+test fractional_upkeep_changes_the_store_before_an_integer_readback_changes ... ok
+test default_energy_ammunition_keeps_a_fraction_below_its_integer_value ... ok
+test birth_uses_native_double_percentage_expression_before_single_assignment ... ok
+test genuine_reference_single_values_survive_modern_save_restore_exactly ... ok
+test v3_carried_fractions_are_absorbed_once_when_the_old_save_is_loaded ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
