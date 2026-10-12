@@ -13,7 +13,29 @@ const MAX_INTEGER: i64 = 2_000_000_000;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VmMemory {
+    #[serde(deserialize_with = "deserialize_memory_cells")]
     cells: Vec<(u16, i32)>,
+}
+
+fn deserialize_memory_cells<'de, D>(deserializer: D) -> Result<Vec<(u16, i32)>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mut cells = Vec::<(u16, i32)>::deserialize(deserializer)?;
+    if cells.len() > MAX_MEMORY as usize {
+        return Err(serde::de::Error::custom("memory has more than 1000 cells"));
+    }
+    cells.sort_unstable_by_key(|cell| cell.0);
+    if cells.iter().any(|cell| !(1..=1000).contains(&cell.0)) {
+        return Err(serde::de::Error::custom("memory address must be 1..1000"));
+    }
+    if cells.windows(2).any(|pair| pair[0].0 == pair[1].0) {
+        return Err(serde::de::Error::custom(
+            "memory contains duplicate addresses",
+        ));
+    }
+    cells.retain(|cell| cell.1 != 0);
+    Ok(cells)
 }
 
 impl VmMemory {
@@ -798,5 +820,34 @@ fn mark_activation(report: &mut VmReport, record: bool) {
     if record {
         ensure_activation_slot(report, true);
         report.activations[usize::from(report.current_gene)] = true;
+    }
+}
+
+#[cfg(test)]
+mod memory_persistence_tests {
+    use super::VmMemory;
+
+    #[test]
+    fn addressed_memory_restores_independently_of_serialized_order() {
+        let mut memory: VmMemory =
+            serde_json::from_str(r#"{"cells":[[1000,7],[300,25],[1,9],[500,0]]}"#).unwrap();
+        assert_eq!(memory.read(300), 25);
+        assert_eq!(memory.read(1000), 7);
+        memory.write(301, 42);
+        assert_eq!(
+            memory.entries().collect::<Vec<_>>(),
+            vec![(1, 9), (300, 25), (301, 42), (1000, 7)]
+        );
+    }
+
+    #[test]
+    fn ambiguous_or_invalid_saved_memory_is_rejected() {
+        for payload in [
+            r#"{"cells":[[300,1],[300,2]]}"#,
+            r#"{"cells":[[0,1]]}"#,
+            r#"{"cells":[[1001,1]]}"#,
+        ] {
+            assert!(serde_json::from_str::<VmMemory>(payload).is_err());
+        }
     }
 }
