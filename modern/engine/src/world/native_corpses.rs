@@ -292,12 +292,24 @@ mod tests {
             .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
             .unwrap();
         let parent_absolute = world.slots.get(parent).unwrap().identity.absolute_id;
+        assert_ne!(
+            parent_absolute, 0,
+            "fresh parents require a native identity"
+        );
         let child = world.clone_organism(parent, [700.0; 2]).unwrap();
+        assert_eq!(parent_absolute, 1);
+        assert_eq!(world.slots.get(child).unwrap().identity.absolute_id, 2);
         world.remove(parent).unwrap();
-        world
+        let replacement = world
             .spawn_at(LegacyDna::parse("stop").unwrap(), [1000.0; 2])
             .unwrap();
+        assert_eq!(replacement.slot(), parent.slot());
+        assert_eq!(
+            world.slots.get(replacement).unwrap().identity.absolute_id,
+            3
+        );
         let resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(resumed.next_absolute_id, 4);
         let file =
             NativeRecordFile::decode(&resumed.export_native_organisms(&[child]).unwrap()).unwrap();
         assert_eq!(

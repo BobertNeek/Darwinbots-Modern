@@ -3639,9 +3639,6 @@ impl Engine {
                     unit_coordinate(advance_random(random), self.config.world_height),
                 ];
                 let id = self.spawn_species_at_unpublished(dna.clone(), species, position)?;
-                let absolute_id = winner_seed
-                    .as_ref()
-                    .map(|_| self.allocate_absolute_identity());
                 let organism = self.slots.get_mut(id)?;
                 if let Some(seed) = winner_seed.as_ref() {
                     organism.program = seed.program.clone();
@@ -3653,7 +3650,6 @@ impl Engine {
                     organism.phenotype = seed.phenotype.clone();
                     organism.identity.species = species;
                     organism.identity.parents = [None, None];
-                    organism.identity.absolute_id = absolute_id.unwrap_or_default();
                     organism.flags.exists = true;
                     organism.flags.corpse = false;
                     organism.flags.dead = false;
@@ -3978,6 +3974,7 @@ impl Engine {
             .clone()
             .unwrap_or_else(|| self.default_mutation_profile.clone());
         apply_restriction_column(&mut state, &restriction_column);
+        state.identity.absolute_id = self.allocate_absolute_identity();
         Ok(self.slots.spawn(state))
     }
 
@@ -4411,9 +4408,9 @@ impl Engine {
             }
             first_organism.program.dna.clone()
         };
-        let absolute_id = self.allocate_absolute_identity();
         let child =
             self.spawn_species_at_unpublished(dna, first_organism.identity.species, position)?;
+        let absolute_id = self.slots.get(child)?.identity.absolute_id;
         {
             let child_organism = self.slots.get_mut(child)?;
             child_organism.identity = first_organism.identity.clone();
@@ -9771,7 +9768,7 @@ impl Engine {
                 parent_state.program.dna.clone()
             };
             let child = self.spawn_species_at_unpublished(child_dna, species, position)?;
-            let absolute_id = self.allocate_absolute_identity();
+            let absolute_id = self.slots.get(child)?.identity.absolute_id;
             available_births -= 1;
             if vegetable_birth {
                 vegetable_population += 1;
