@@ -721,7 +721,8 @@ impl Engine {
                                 dna,
                                 source: Some(owner),
                             });
-                    robot.effects.virus_build_timer = robot.program.memory.read(MEM_VIRUS_TIMER);
+                    // HDRoutines.LoadRobot initializes Vtimer to zero, independently of mem(337).
+                    robot.effects.virus_build_timer = 0;
                 }
             }
         }

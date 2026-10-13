@@ -2,6 +2,56 @@
 use super::*;
 
 impl Engine {
+    pub(super) fn infect_from_virus(&mut self, target: usize, dna: LegacyDna, power: f32) -> bool {
+        let Some(robot) = self.slots[target].organism.as_mut() else {
+            return false;
+        };
+        if robot.flags.corpse || robot.flags.virus_immune || !robot.flags.can_receive_viruses {
+            return false;
+        }
+        // Shots.addgene consumes slime even when it blocks the virus. Equality infects.
+        let effectiveness = 1.0_f32 / 20.0;
+        let blocked = power < robot.materials.slime * effectiveness;
+        robot.materials.slime -= power / effectiveness;
+        if blocked {
+            return false;
+        }
+        if robot.materials.slime < 0.5 {
+            robot.materials.slime = 0.0;
+        }
+        let gene = dna.gene(1).unwrap_or(dna);
+        let target_dna = robot.program.dna.clone();
+        let boundaries = target_dna.gene_count().max(0) as usize;
+        robot.program.rng_state = advance_random(robot.program.rng_state);
+        let boundary = robot.program.rng_state as usize % boundaries.saturating_add(1);
+        robot.program.dna = target_dna.insert_gene(&gene, boundary);
+        robot.refresh_occurrence_census();
+        let metadata = &mut robot.program.mutation_metadata;
+        metadata.total_mutations = metadata.total_mutations.saturating_add(1);
+        metadata.last_mutation_cycle = Some(self.tick);
+        metadata.detailed_log.insert(
+            0,
+            format!(
+                "virus:cycle={}:length={}:boundary={boundary}",
+                self.tick,
+                gene.blocks().len().saturating_sub(1),
+            ),
+        );
+        metadata.detailed_log.truncate(128);
+        let species = robot.identity.species;
+        publish_reproductive_readbacks(robot);
+        let subspecies = self.next_subspecies(species);
+        self.slots[target]
+            .organism
+            .as_mut()
+            .unwrap()
+            .program
+            .mutation_metadata
+            .subspecies = subspecies;
+        self.stats.mutations = self.stats.mutations.saturating_add(1);
+        true
+    }
+
     pub(super) fn virus_commands_phase(&mut self) {
         let costs = self.active_dna_costs();
         let multiplier = costs.dynamic_multiplier(self.cost_population());
@@ -208,6 +258,85 @@ mod tests {
             .memory
             .write(335, 1);
         (engine, id)
+    }
+
+    #[test]
+    fn virus_power_consumes_slime_and_equality_infects_after_save_resume() {
+        let (mut engine, id) = maker();
+        let gene = LegacyDna::parse("start 99 600 store stop end").unwrap();
+        let original = engine.slots.get(id).unwrap().program.dna.clone();
+        engine.slots.get_mut(id).unwrap().materials.slime = 20.0;
+        assert!(!engine.infect_from_virus(id.slot() as usize, gene.clone(), 0.5));
+        let robot = engine.slots.get(id).unwrap();
+        assert_eq!(robot.materials.slime, 10.0);
+        assert_eq!(robot.program.dna, original);
+        assert_eq!(engine.stats.mutations, 0);
+        let mut engine = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        assert!(engine.infect_from_virus(id.slot() as usize, gene, 0.5));
+        let robot = engine.slots.get(id).unwrap();
+        assert_eq!(robot.materials.slime, 0.0);
+        assert_eq!(robot.program.dna.gene_count(), 2);
+        assert_eq!(robot.program.memory.read(MEM_GENES), 2);
+        assert_eq!(robot.program.mutation_metadata.total_mutations, 1);
+        assert_eq!(robot.program.mutation_metadata.subspecies, 1);
+        assert!(robot.program.mutation_metadata.detailed_log[0].starts_with("virus:"));
+        assert_eq!(engine.stats.mutations, 1);
+    }
+
+    #[test]
+    fn virus_immunity_preserves_slime_but_disabled_dna_and_mutation_do_not_block_infection() {
+        let (mut engine, id) = maker();
+        let gene = LegacyDna::parse("start 99 600 store stop end").unwrap();
+        let robot = engine.slots.get_mut(id).unwrap();
+        robot.materials.slime = 20.0;
+        robot.flags.virus_immune = true;
+        assert!(!engine.infect_from_virus(id.slot() as usize, gene.clone(), 1.0));
+        assert_eq!(engine.slots.get(id).unwrap().materials.slime, 20.0);
+        let robot = engine.slots.get_mut(id).unwrap();
+        robot.flags.virus_immune = false;
+        robot.flags.can_execute_dna = false;
+        robot.flags.can_mutate = false;
+        assert!(engine.infect_from_virus(id.slot() as usize, gene, 1.0));
+        assert_eq!(engine.slots.get(id).unwrap().program.dna.gene_count(), 2);
+    }
+
+    #[test]
+    fn native_save_retains_exact_copied_gene_and_native_loading_resets_the_timer() {
+        let (mut engine, id) = maker();
+        engine.virus_commands_phase();
+        engine.virus_commands_phase();
+        assert_eq!(
+            engine
+                .slots
+                .get(id)
+                .unwrap()
+                .program
+                .memory
+                .read(MEM_VIRUS_TIMER),
+            9
+        );
+        let bytes = engine.export_native_sim().unwrap();
+        let restored = Engine::from_native_sim(&bytes).unwrap();
+        assert_eq!(restored.projectiles.dna_lengths[0], 5);
+        assert_eq!(restored.projectiles.values[0], 1);
+        assert!(restored.projectiles.stored[0]);
+        let robot = restored
+            .slots
+            .iter()
+            .find_map(|slot| slot.organism.as_ref())
+            .unwrap();
+        assert_eq!(robot.effects.virus_build_timer, 0);
+        assert_eq!(robot.program.memory.read(MEM_VIRUS_TIMER), 9);
+        assert_eq!(
+            robot
+                .effects
+                .stored_virus
+                .as_ref()
+                .unwrap()
+                .dna
+                .gene_count(),
+            1
+        );
     }
 
     #[test]

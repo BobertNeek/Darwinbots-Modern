@@ -8433,25 +8433,7 @@ impl Engine {
                     }
                     ProjectileEffect::AddGene => {
                         let Some(dna) = payload else { return false };
-                        let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        if !target_robot.flags.can_receive_viruses
-                            || target_robot.materials.slime > 0.0
-                        {
-                            return false;
-                        }
-                        let gene = dna.gene(1).unwrap_or(dna);
-                        let target_dna = target_robot.program.dna.clone();
-                        let boundary_count = target_dna.gene_count().max(0) as usize;
-                        let random = advance_random(
-                            self.config.seed
-                                ^ self.tick.rotate_left(11)
-                                ^ (target as u64).rotate_left(29),
-                        );
-                        let boundary = random as usize % boundary_count.saturating_add(1);
-                        target_robot.program.dna = target_dna.insert_gene(&gene, boundary);
-                        target_robot.refresh_occurrence_census();
-                        publish_reproductive_readbacks(target_robot);
-                        true
+                        self.infect_from_virus(target, dna, power)
                     }
                     ProjectileEffect::Sperm => {
                         let Some(dna) = payload else { return false };
