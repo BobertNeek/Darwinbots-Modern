@@ -8,7 +8,13 @@ public sealed record WorldConfiguration(
     double GlobalCostMultiplier,
     int PopulationCapacity,
     int VegetablePopulationCap,
-    IReadOnlyList<SpeciesImport> Species);
+    IReadOnlyList<SpeciesImport> Species)
+{
+    public GlobalSimulationCostSettings Costs { get; init; } = new();
+    public GlobalAdvancedMutationSettings AdvancedMutation { get; init; } = new();
+    public int BodyCutoff { get; init; }
+    public bool GreedyReproduction { get; init; }
+}
 
 internal static class NativeConfigurationParser
 {
@@ -30,6 +36,39 @@ internal static class NativeConfigurationParser
         var wrapX = topology.ValueKind == JsonValueKind.Array ? topology[0].GetBoolean() : toroidal;
         var wrapY = topology.ValueKind == JsonValueKind.Array ? topology[1].GetBoolean() : toroidal;
         var recording = config.GetProperty("recording");
+        var costJson = config.GetProperty("dna_costs");
+        var costs = Read<GlobalSimulationCostSettings>("dna_costs") with
+        {
+            DnaNumber = costJson.GetProperty("number").GetDouble(),
+            DnaDereference = costJson.GetProperty("dereference").GetDouble(),
+            DnaBasic = costJson.GetProperty("basic").GetDouble(),
+            DnaAdvanced = costJson.GetProperty("advanced").GetDouble(),
+            DnaBitwise = costJson.GetProperty("bitwise").GetDouble(),
+            DnaCondition = costJson.GetProperty("condition").GetDouble(),
+            DnaLogic = costJson.GetProperty("logic").GetDouble(),
+            DnaStore = costJson.GetProperty("store").GetDouble(),
+            DnaFlow = costJson.GetProperty("flow").GetDouble(),
+            DynamicMultiplier = costJson.GetProperty("dynamic_cost_multiplier").GetDouble(),
+        };
+        var advancedJson = config.GetProperty("advanced_mutation");
+        var delta = advancedJson.GetProperty("delta2");
+        var oscillation = advancedJson.GetProperty("oscillation");
+        var epigenetic = advancedJson.GetProperty("epigenetic");
+        var advanced = Read<GlobalAdvancedMutationSettings>("advanced_mutation") with
+        {
+            Delta2Enabled = delta.GetProperty("enabled").GetBoolean(),
+            Delta2Interval = delta.GetProperty("interval").GetUInt64(),
+            Delta2RateStep = delta.GetProperty("rate_step").GetDouble(),
+            Delta2DistributionStep = delta.GetProperty("distribution_step").GetDouble(),
+            Delta2PreferenceStepPercent = delta.GetProperty("preference_step_percent").GetInt32(),
+            OscillationMode = oscillation.GetProperty("mode").Deserialize<GlobalMutationOscillationMode>(Options),
+            OscillationPeriod = oscillation.GetProperty("period").GetUInt64(),
+            OscillationAmplitude = oscillation.GetProperty("amplitude").GetDouble(),
+            EpigeneticReset = epigenetic.GetProperty("reset_enabled").GetBoolean(),
+            EpigeneticAmplification = epigenetic.GetProperty("amplification").GetDouble(),
+            EpigeneticOverloadThreshold = epigenetic.GetProperty("overload_threshold").GetUInt64(),
+            SaveAsTemporaryGene = epigenetic.GetProperty("save_as_temporary_gene").GetBoolean(),
+        };
         var environment = new EnvironmentUpdate(
             Read<int>("metabolism_cost"), Read<int>("vegetable_energy_per_tick"), Read<int>("sunlight_energy"),
             Read<float[]>("gravity"), Read<float>("drag"), Read<float>("brownian_motion"),
@@ -53,6 +92,12 @@ internal static class NativeConfigurationParser
             .ToArray();
         return new WorldConfiguration(environment,
             config.GetProperty("dna_costs").GetProperty("global_multiplier").GetDouble(),
-            Read<int>("organism_capacity"), Read<int>("vegetable_population_cap"), species);
+            Read<int>("organism_capacity"), Read<int>("vegetable_population_cap"), species)
+        {
+            Costs = costs,
+            AdvancedMutation = advanced,
+            BodyCutoff = Read<int>("body_cutoff"),
+            GreedyReproduction = Read<bool>("greedy_reproduction"),
+        };
     }
 }

@@ -1851,6 +1851,21 @@ public sealed partial class MainWindow : Window
         {
             _liveEnvironment = configuration.Environment;
             _activeCostMultiplier = configuration.GlobalCostMultiplier;
+            _globalSettings = _globalSettings with
+            {
+                Costs = configuration.Costs,
+                AdvancedMutation = configuration.AdvancedMutation,
+                Main = _globalSettings.Main with
+                {
+                    BodyCutoff = configuration.BodyCutoff,
+                    GreedyEnforcement = configuration.GreedyReproduction,
+                    // The engine persists the effective epigenetic policy.
+                    // Keep its factor in AdvancedMutation so saving cannot square it.
+                    EpigeneticReset = false,
+                    EpigeneticAmplification = 1.0,
+                    TemporaryGeneData = false,
+                },
+            };
             ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
             LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
             LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;

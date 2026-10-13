@@ -638,6 +638,11 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.All(species, value => Assert.False(string.IsNullOrWhiteSpace(value.Dna)));
                 var before = await session.ReadConfigurationAsync();
                 Assert.NotNull(before);
+                var globals = Field<GlobalSettings>(window, "_globalSettings");
+                Assert.Equal(before.Costs, globals.Costs);
+                Assert.Equal(before.AdvancedMutation, globals.AdvancedMutation);
+                Assert.Equal(before.BodyCutoff, globals.Main.BodyCutoff);
+                Assert.Equal(before.GreedyReproduction, globals.Main.GreedyEnforcement);
                 window.FindControl<CheckBox>("ToroidalWorldToggle")!.IsChecked = true;
                 await WaitFor(() => Field<EnvironmentUpdate>(window, "_liveEnvironment").ToroidalWorld);
                 var after = await session.ReadConfigurationAsync();

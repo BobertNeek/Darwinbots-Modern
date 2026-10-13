@@ -8,6 +8,51 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LegacySettingsNativeTests
 {
     [Fact]
+    public void ConfigurationRestoresNonDefaultCostMutationAndMainRuleEditorsWithoutTicking()
+    {
+        var costs = new GlobalSimulationCostSettings
+        {
+            DnaNumber = 0.11, DnaDereference = 0.12, DnaBasic = 0.13,
+            DnaAdvanced = 0.14, DnaBitwise = 0.15, DnaCondition = 0.16,
+            DnaLogic = 0.17, DnaStore = 0.18, DnaFlow = 0.19,
+            DnaUpkeep = 0.21, DnaCopy = 0.22, BodyUpkeep = 0.23,
+            ChloroplastConstruction = 0.24, GlobalMultiplier = 1.5,
+            DynamicMultiplier = 0.5, DynamicAllRobots = false,
+            DynamicTargetPopulation = 20, DynamicPopulationRange = 10,
+            AgeBase = 2, AgeStart = 2.5, AgeLinear = 0.25, AgeLogarithmic = 1,
+        };
+        var advanced = new GlobalAdvancedMutationSettings
+        {
+            Point2Enabled = true, CopyError2Enabled = true,
+            AmplificationEnabled = true, TranslocationEnabled = true,
+            Delta2Enabled = true, Delta2Interval = 7, Delta2RateStep = 1.25,
+            Delta2DistributionStep = 0.5, Delta2PreferenceStepPercent = 3,
+            NormalizationEnabled = true, NormalizationDnaLength = 128,
+            OscillationMode = GlobalMutationOscillationMode.Sine,
+            OscillationPeriod = 21, OscillationAmplitude = 2,
+            EpigeneticReset = true, EpigeneticAmplification = 1.25,
+            EpigeneticOverloadThreshold = 12, SaveAsTemporaryGene = true,
+        };
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            GlobalSettings = new GlobalSettings
+            {
+                Costs = costs, AdvancedMutation = advanced,
+                Main = new GlobalMainSettings { BodyCutoff = 12345, GreedyEnforcement = true },
+            },
+        });
+        var before = engine.Save();
+        var configuration = engine.ReadConfiguration();
+        Assert.Equal(costs, configuration.Costs);
+        Assert.Equal(advanced, configuration.AdvancedMutation);
+        Assert.Equal(12345, configuration.BodyCutoff);
+        Assert.True(configuration.GreedyReproduction);
+        Assert.Equal(before, engine.Save());
+        Assert.Equal(0ul, engine.Snapshot().Tick);
+    }
+
+    [Fact]
     public void OriginalExecutableRetainsExportedAnimalCellsAndTheirNativeTie()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
