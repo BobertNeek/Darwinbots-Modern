@@ -1,4 +1,4 @@
-use crate::{CorpseSnapshot, DnaBlock, Engine, EngineError, OrganismId, TokenClass};
+use crate::{DnaBlock, Engine, EngineError, OrganismId, TokenClass};
 use serde::{Deserialize, Serialize};
 
 const SIMULATION_MAGIC: &[u8; 4] = b"DB2S";
@@ -996,69 +996,6 @@ impl LegacySimulationFile {
                 .collect(),
             organisms,
         })
-    }
-
-    pub(crate) fn from_organism(engine: &Engine, id: OrganismId) -> Result<Self, EngineError> {
-        let snapshot = engine.snapshot();
-        let organism = engine.organism(id)?;
-        Ok(Self {
-            tick: snapshot.tick,
-            world_size: snapshot.world_size,
-            toroidal_world: engine.toroidal_world(),
-            species: snapshot
-                .species
-                .iter()
-                .map(|species| LegacySpeciesStartup {
-                    name: species.name.clone(),
-                    robot_path: String::new(),
-                    robot_count: 0,
-                    dna_name: species.name.clone(),
-                    vegetable: species.vegetable,
-                    fixed: false,
-                    color: species.color,
-                    initial_energy: 1_000,
-                    skin: [0; 13],
-                })
-                .collect(),
-            organisms: vec![organism_from_snapshot(engine, &organism)?],
-        })
-    }
-
-    pub(crate) fn from_corpse(engine: &Engine, corpse: &CorpseSnapshot) -> Self {
-        let snapshot = engine.snapshot();
-        Self {
-            tick: snapshot.tick,
-            world_size: snapshot.world_size,
-            toroidal_world: engine.toroidal_world(),
-            species: snapshot
-                .species
-                .iter()
-                .map(|species| LegacySpeciesStartup {
-                    name: species.name.clone(),
-                    robot_path: String::new(),
-                    robot_count: 0,
-                    dna_name: species.name.clone(),
-                    vegetable: species.vegetable,
-                    fixed: false,
-                    color: species.color,
-                    initial_energy: 1_000,
-                    skin: [0; 13],
-                })
-                .collect(),
-            organisms: vec![LegacyOrganism {
-                dna: corpse.dna.clone(),
-                species: corpse.species,
-                vegetable: false,
-                corpse: true,
-                repopulating: corpse.repopulating,
-                position: corpse.position,
-                velocity: corpse.velocity,
-                energy: corpse.energy,
-                age: corpse.age,
-                birth_cycle: corpse.birth_cycle,
-                body: corpse.body,
-            }],
-        }
     }
 
     pub fn encode(&self) -> Result<Vec<u8>, EngineError> {

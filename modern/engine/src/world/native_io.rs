@@ -437,6 +437,7 @@ impl Engine {
             .trim_end_matches(['\0', ' '])
             .to_owned();
         robot.identity.absolute_id = r.long("absolute_id")? as u32 as u64;
+        robot.identity.parent_absolute_id = r.long("parent")? as u32 as u64;
         robot.identity.simulation_id = r.long("simulation_id")? as u32 as u64;
         robot.set_heading(r.single("aim")?);
         robot.kinematics.velocity = [r.single("velocity_x")?, r.single("velocity_y")?];
@@ -759,14 +760,12 @@ impl Engine {
             let n = |name: &str| t.number(&(p.clone() + name)).map(|v| v as f32);
             let w = |name: &str| t.integer(&(p.clone() + name));
             let position = [n("x")?, n("y")?];
-            let mut tele = Teleporter::new(
-                i as u32,
-                position,
-                n("width")?.min(n("height")?) / 2.0,
-                position,
-            );
-            tele.width = n("width")?;
-            tele.height = n("height")?;
+            let width = n("width")?;
+            let height = n("height")?;
+            let center = [position[0] + width / 2.0, position[1] + height / 2.0];
+            let mut tele = Teleporter::new(i as u32, center, width / 2.0, center);
+            tele.width = width;
+            tele.height = height;
             tele.color = color(w("color")?);
             tele.velocity = [n("vx")?, n("vy")?];
             tele.path = text(t.bytes(&(p.clone() + "path"))?).into();

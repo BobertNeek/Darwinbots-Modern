@@ -10,6 +10,23 @@ fn invalid(message: impl Into<String>) -> EngineError {
 }
 
 impl Engine {
+    /// HDRoutines.InsertOrganism chooses integer coordinates from the inclusive
+    /// 60..FieldSize-60 interval, then translates the entire incoming group.
+    pub fn insert_native_organisms(&mut self, bytes: &[u8]) -> Result<usize, EngineError> {
+        let first = advance_random(
+            self.config.seed
+                ^ self.native_insertion_sequence.rotate_left(29)
+                ^ self.tick.rotate_left(17),
+        );
+        let position = [
+            insertion_coordinate(first, self.config.world_width),
+            insertion_coordinate(advance_random(first), self.config.world_height),
+        ];
+        let count = self.import_native_organisms(bytes, Some(position))?;
+        self.native_insertion_sequence = self.native_insertion_sequence.saturating_add(1);
+        Ok(count)
+    }
+
     /// Import a native `.dbo`, translating every cell by the first cell's
     /// displacement when a destination is supplied (HDRoutines.PlaceOrganism).
     pub fn import_native_organisms(
@@ -131,9 +148,64 @@ impl Engine {
     }
 }
 
+fn insertion_coordinate(random: u64, extent: f32) -> f32 {
+    let high = (f64::from(extent) - 60.0).floor();
+    if high < 60.0 {
+        return (extent / 2.0).round_ties_even();
+    }
+    // Source Random uses Int((hi-low+1)*rndy+low), yielding whole twips.
+    (60.0 + ((high - 59.0) * (random >> 40) as f64 / (1_u64 << 24) as f64).floor()) as f32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_menu_insertion_uses_whole_twips_translates_all_cells_and_continues_after_save() {
+        let file = tied_file();
+        let bytes = file.encode().unwrap();
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        world.insert_native_organisms(&bytes).unwrap();
+        let ids = world.slots.ids_in_slot_order();
+        let anchor = world.slots.get(ids[0]).unwrap().kinematics.position;
+        for (axis, extent) in [world.config.world_width, world.config.world_height]
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(anchor[axis].fract(), 0.0);
+            assert!((60.0..=extent - 60.0).contains(&anchor[axis]));
+        }
+        let delta = [
+            anchor[0] - file.robots[0].single("position_x").unwrap(),
+            anchor[1] - file.robots[0].single("position_y").unwrap(),
+        ];
+        assert_eq!(
+            world.slots.get(ids[1]).unwrap().kinematics.position,
+            [
+                file.robots[1].single("position_x").unwrap() + delta[0],
+                file.robots[1].single("position_y").unwrap() + delta[1]
+            ]
+        );
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        world.insert_native_organisms(&bytes).unwrap();
+        resumed.insert_native_organisms(&bytes).unwrap();
+        assert_eq!(
+            SaveFile::encode(&world).unwrap(),
+            SaveFile::encode(&resumed).unwrap()
+        );
+        let before = SaveFile::encode(&resumed).unwrap();
+        assert!(
+            resumed
+                .insert_native_organisms(&bytes[..bytes.len() - 1])
+                .is_err()
+        );
+        assert_eq!(
+            before,
+            SaveFile::encode(&resumed).unwrap(),
+            "failure preserves placement sequence too"
+        );
+    }
 
     fn tied_file() -> NativeRecordFile {
         let mut source = Engine::from_native_sim(include_bytes!(

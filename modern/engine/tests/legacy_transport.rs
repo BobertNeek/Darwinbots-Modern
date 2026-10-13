@@ -617,6 +617,10 @@ fn file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures() {
     fs::create_dir_all(&corpse_outbound).expect("corpse outbound directory");
     let mut corpse_engine = Engine::new(EngineConfig {
         metabolism_cost: 2_000,
+        corpse_decay: darwinbots_engine::CorpseDecaySettings {
+            enabled: true,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .expect("corpse engine");

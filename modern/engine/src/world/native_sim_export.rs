@@ -50,10 +50,49 @@ fn bgr(color: u32) -> f64 {
 impl Engine {
     /// Export the running world in the original 2.48.32 `.sim` format.
     pub fn export_native_sim(&self) -> Result<Vec<u8>, EngineError> {
-        // Archived corpses currently lack the full native Robot body. Refuse
-        // export until that state can be represented, rather than omit them.
+        if !self.file_teleporters.is_empty() {
+            let mut world = crate::SaveFile::decode(&crate::SaveFile::encode(self)?)?;
+            let gateways = std::mem::take(&mut world.file_teleporters);
+            let mut next_id = world
+                .teleporters
+                .iter()
+                .map(|t| t.id)
+                .max()
+                .unwrap_or(0)
+                .saturating_add(1);
+            for gateway in gateways {
+                let inbound = &gateway.inbound_path;
+                let outbound = &gateway.outbound_path;
+                let same_path = inbound == outbound;
+                for (path, is_inbound, is_outbound) in if same_path {
+                    vec![(inbound, true, true)]
+                } else {
+                    vec![(inbound, true, false), (outbound, false, true)]
+                } {
+                    if path.as_os_str().is_empty() {
+                        continue;
+                    }
+                    let mut tele =
+                        Teleporter::new(next_id, gateway.center, gateway.radius, gateway.center);
+                    next_id = next_id.saturating_add(1);
+                    tele.local = false;
+                    tele.inbound = is_inbound;
+                    tele.outbound = is_outbound;
+                    tele.path = path.clone();
+                    tele.filters = gateway.filters.clone();
+                    tele.poll_interval = gateway.poll_interval;
+                    tele.poll_countdown = gateway.poll_countdown;
+                    tele.capacity = gateway.capacity;
+                    tele.sent = gateway.sent;
+                    tele.received = gateway.received;
+                    world.teleporters.push(tele);
+                }
+            }
+            return world.export_native_sim();
+        }
         if !self.corpses.is_empty() {
-            return Err(invalid("archived corpse state cannot yet be represented"));
+            let (world, _) = self.native_world_with_corpses()?;
+            return world.export_native_sim();
         }
         let members: Vec<_> = self
             .slots
@@ -469,8 +508,8 @@ impl Engine {
         for (i, tele) in self.teleporters.iter().enumerate() {
             let p = format!("teleporter[{i}].");
             for (name, value) in [
-                ("x", tele.center[0] as f64),
-                ("y", tele.center[1] as f64),
+                ("x", (tele.center[0] - tele.width / 2.0) as f64),
+                ("y", (tele.center[1] - tele.height / 2.0) as f64),
                 ("width", tele.width as f64),
                 ("height", tele.height as f64),
                 ("color", bgr(tele.color)),

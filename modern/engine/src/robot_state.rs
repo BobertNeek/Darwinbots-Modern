@@ -19,6 +19,8 @@ pub struct RobotIdentity {
     pub simulation_id: u64,
     #[serde(default)]
     pub absolute_id: u64,
+    #[serde(default)]
+    pub parent_absolute_id: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

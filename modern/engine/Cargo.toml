@@ -19,6 +19,4 @@ pollster = "0.4"
 rayon = "1"
 smallvec = { version = "1", features = ["const_generics"] }
 wgpu = "29"
-
-[dev-dependencies]
 tempfile = "3"

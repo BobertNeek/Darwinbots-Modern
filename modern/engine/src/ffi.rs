@@ -574,9 +574,12 @@ fn db_engine_command_batch_impl(
                             .map(|count| serde_json::json!({ "count": count }))
                     })
                 } else {
-                    engine
-                        .import_native_organisms(&payload, position)
-                        .map(|count| serde_json::json!({ "count": count }))
+                    let result = if position.is_some() {
+                        engine.import_native_organisms(&payload, position)
+                    } else {
+                        engine.insert_native_organisms(&payload)
+                    };
+                    result.map(|count| serde_json::json!({ "count": count }))
                 }
             }
             EngineCommand::Remove { slot, generation } => engine

@@ -56,6 +56,12 @@ mod native_sim_export;
 #[path = "world/native_organism_io.rs"]
 mod native_organism_io;
 
+#[path = "world/file_teleporters.rs"]
+mod file_teleporters;
+
+#[path = "world/native_corpses.rs"]
+mod native_corpses;
+
 const MEM_ROBAGE: i32 = 9;
 const MEM_HIT: i32 = 201;
 const MEM_SHOT_FLAVOR: i32 = 202;
@@ -2168,6 +2174,8 @@ pub struct Engine {
     #[serde(default)]
     next_absolute_id: u64,
     #[serde(default)]
+    native_insertion_sequence: u64,
+    #[serde(default)]
     zerobot_checkpoint: Option<RobotState>,
     #[serde(default)]
     zerobot_checkpoint_score: i64,
@@ -2223,6 +2231,7 @@ struct CycleCheckpoint {
     next_lineage_id: u64,
     speciation_fork_interval: u64,
     next_absolute_id: u64,
+    native_insertion_sequence: u64,
     zerobot_checkpoint: Option<RobotState>,
     zerobot_checkpoint_score: i64,
     obstacles: Vec<Obstacle>,
@@ -2375,6 +2384,7 @@ impl Engine {
             next_lineage_id: legacy.next_lineage_id,
             speciation_fork_interval: default_speciation_fork_interval(),
             next_absolute_id: legacy.next_absolute_id,
+            native_insertion_sequence: 0,
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: legacy.obstacles.into_iter().map(Into::into).collect(),
@@ -2545,6 +2555,7 @@ impl Engine {
             next_lineage_id: 2,
             speciation_fork_interval: default_speciation_fork_interval(),
             next_absolute_id: 1,
+            native_insertion_sequence: 0,
             zerobot_checkpoint: None,
             zerobot_checkpoint_score: 0,
             obstacles: Vec::new(),
@@ -3183,7 +3194,7 @@ impl Engine {
                 .get(species as usize)
                 .is_some_and(|value| value.reseed);
             self.corpses
-                .push(CorpseSnapshot::from_robot(&robot, species, repopulating));
+                .push(self.archive_corpse(id, &robot, species, repopulating));
             self.stats.deaths = self.stats.deaths.saturating_add(1);
             removed.push(id);
             trace.queue_change(CyclePhase::Restart, id, QueueChangeKind::DeathCommitted);
@@ -4284,6 +4295,7 @@ impl Engine {
         }
         let mut cloned_organism = self.slots.get(id)?.clone();
         cloned_organism.identity.parents = [Some(id), None];
+        cloned_organism.identity.parent_absolute_id = cloned_organism.identity.absolute_id;
         cloned_organism.identity.absolute_id = self.allocate_absolute_identity();
         cloned_organism.counters.generation = cloned_organism
             .counters
@@ -4400,6 +4412,7 @@ impl Engine {
             let child_organism = self.slots.get_mut(child)?;
             child_organism.identity = first_organism.identity.clone();
             child_organism.identity.parents = [Some(first), second];
+            child_organism.identity.parent_absolute_id = first_organism.identity.absolute_id;
             child_organism.identity.absolute_id = absolute_id;
             child_organism.counters.generation = first_organism
                 .counters
@@ -4511,6 +4524,7 @@ impl Engine {
                 next_lineage_id: self.next_lineage_id,
                 speciation_fork_interval: self.speciation_fork_interval,
                 next_absolute_id: self.next_absolute_id,
+                native_insertion_sequence: self.native_insertion_sequence,
                 zerobot_checkpoint: self.zerobot_checkpoint.clone(),
                 zerobot_checkpoint_score: self.zerobot_checkpoint_score,
                 obstacles: self.obstacles.clone(),
@@ -4558,6 +4572,7 @@ impl Engine {
         self.next_lineage_id = checkpoint.next_lineage_id;
         self.speciation_fork_interval = checkpoint.speciation_fork_interval;
         self.next_absolute_id = checkpoint.next_absolute_id;
+        self.native_insertion_sequence = checkpoint.native_insertion_sequence;
         self.zerobot_checkpoint = checkpoint.zerobot_checkpoint;
         self.zerobot_checkpoint_score = checkpoint.zerobot_checkpoint_score;
         self.obstacles = checkpoint.obstacles;
@@ -5547,6 +5562,9 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse || !robot.flags.can_execute_dna {
+                continue;
+            }
             let Some(PhaseCommands::Aim(commands)) =
                 runtime.consume(CyclePhase::Aim, &mut robot.program.memory)
             else {
@@ -5614,6 +5632,9 @@ impl Engine {
             let Some(robot) = self.slots[slot_index].organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse || !robot.flags.can_execute_dna {
+                continue;
+            }
             let Some(PhaseCommands::Virus(commands)) =
                 runtime.consume(CyclePhase::Virus, &mut robot.program.memory)
             else {
@@ -5739,6 +5760,9 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse || !robot.flags.can_execute_dna {
+                continue;
+            }
             let Some(PhaseCommands::Material(commands)) =
                 runtime.consume(CyclePhase::Material, &mut robot.program.memory)
             else {
@@ -5827,6 +5851,9 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse || !robot.flags.can_execute_dna || robot.flags.no_chloroplasts {
+                continue;
+            }
             if robot.materials.chloroplasts > 0.0 && robot.counters.chloroplast_share_delay > 0 {
                 robot.counters.chloroplast_share_delay -= 1;
             }
@@ -5842,6 +5869,9 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse || !robot.flags.can_execute_dna {
+                continue;
+            }
             robot.materials.waste = robot.materials.waste.max(0.0);
             robot.materials.permanent_waste = robot.materials.permanent_waste.max(0.0);
 
@@ -5908,6 +5938,9 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse {
+                continue;
+            }
             robot.counters.age = robot.counters.age.saturating_add(1);
             robot.counters.simulation_age = robot.counters.simulation_age.saturating_add(1);
             robot.materials.publish(&mut robot.program.memory);
@@ -7604,6 +7637,9 @@ impl Engine {
             let Some(attacker) = self.slots[attacker_slot].organism.as_mut() else {
                 continue;
             };
+            if attacker.flags.corpse || !attacker.flags.can_execute_dna {
+                continue;
+            }
             let Some(PhaseCommands::Shot(commands)) =
                 runtime.consume(CyclePhase::Shot, &mut attacker.program.memory)
             else {
@@ -8707,163 +8743,6 @@ impl Engine {
         }
     }
 
-    fn apply_file_teleporters(&mut self) -> Result<(), EngineError> {
-        for index in 0..self.file_teleporters.len() {
-            let settings = self.file_teleporters[index].clone();
-            let previous_guard = settings.backflow_guard.clone();
-            let mut sent = 0_u64;
-            let mut emitted_paths = Vec::new();
-
-            if !settings.outbound_path.as_os_str().is_empty() {
-                for id in self.slots.ids_in_slot_order() {
-                    if sent >= settings.capacity as u64 {
-                        break;
-                    }
-                    let Ok(organism) = self.organism(id) else {
-                        continue;
-                    };
-                    if !inside_file_teleporter(&settings, organism.position)
-                        || !settings.accepts(organism.vegetable, false)
-                    {
-                        continue;
-                    }
-                    let Ok(transfer) = LegacySimulationFile::from_organism(self, id) else {
-                        continue;
-                    };
-                    let filename = format!(
-                        "db2-{tick:016x}-{slot:08x}-{generation:08x}.dbo",
-                        tick = self.tick,
-                        slot = id.slot(),
-                        generation = id.generation(),
-                    );
-                    let path = settings.outbound_path.join(filename);
-                    let Ok(bytes) = transfer.encode() else {
-                        continue;
-                    };
-                    if write_transfer_atomically(&path, &bytes).is_err() {
-                        continue;
-                    }
-                    if self.remove(id).is_ok() {
-                        sent = sent.saturating_add(1);
-                        emitted_paths.push(path);
-                    } else {
-                        let _ = fs::remove_file(path);
-                    }
-                }
-
-                let mut corpse_index = 0;
-                while corpse_index < self.corpses.len() && sent < settings.capacity as u64 {
-                    let corpse = self.corpses[corpse_index].clone();
-                    if !inside_file_teleporter(&settings, corpse.position)
-                        || !settings.accepts(false, true)
-                    {
-                        corpse_index += 1;
-                        continue;
-                    }
-                    let transfer = LegacySimulationFile::from_corpse(self, &corpse);
-                    let path = settings.outbound_path.join(format!(
-                        "db2-{tick:016x}-corpse-{index:08x}.dbo",
-                        tick = self.tick,
-                        index = corpse_index,
-                    ));
-                    let Ok(bytes) = transfer.encode() else {
-                        corpse_index += 1;
-                        continue;
-                    };
-                    if write_transfer_atomically(&path, &bytes).is_err() {
-                        corpse_index += 1;
-                        continue;
-                    }
-                    self.corpses.remove(corpse_index);
-                    sent = sent.saturating_add(1);
-                    emitted_paths.push(path);
-                }
-            }
-
-            let poll_due = if settings.inbound_path.as_os_str().is_empty() {
-                false
-            } else {
-                let teleporter = &mut self.file_teleporters[index];
-                if teleporter.poll_countdown > 0 {
-                    teleporter.poll_countdown -= 1;
-                    teleporter.poll_countdown == 0
-                } else {
-                    teleporter.poll_countdown = teleporter.poll_interval;
-                    true
-                }
-            };
-            let mut received = 0_u64;
-            if poll_due {
-                let mut paths = fs::read_dir(&settings.inbound_path)
-                    .ok()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Result::ok)
-                    .map(|entry| entry.path())
-                    .filter(|path| {
-                        path.is_file()
-                            && path
-                                .extension()
-                                .and_then(|extension| extension.to_str())
-                                .is_some_and(|extension| extension.eq_ignore_ascii_case("dbo"))
-                    })
-                    .collect::<Vec<_>>();
-                paths.sort_by(|left, right| left.to_string_lossy().cmp(&right.to_string_lossy()));
-
-                for path in paths {
-                    if received >= settings.capacity as u64 {
-                        break;
-                    }
-                    if previous_guard.as_ref().is_some_and(|guard| guard == &path)
-                        || emitted_paths.iter().any(|emitted| emitted == &path)
-                    {
-                        continue;
-                    }
-                    let Ok(bytes) = fs::read(&path) else {
-                        continue;
-                    };
-                    let Ok(transfer) = LegacySimulationFile::decode(&bytes) else {
-                        continue;
-                    };
-                    if transfer.organisms.is_empty()
-                        || transfer.organisms.len() > settings.capacity - received as usize
-                        || transfer
-                            .organisms
-                            .iter()
-                            .any(|organism| !settings.accepts(organism.vegetable, organism.corpse))
-                    {
-                        continue;
-                    }
-                    let mut imported = 0_u64;
-                    let mut failed = false;
-                    for organism in &transfer.organisms {
-                        match self.import_legacy_organism(organism) {
-                            Ok(_) => imported = imported.saturating_add(1),
-                            Err(_) => {
-                                failed = true;
-                                break;
-                            }
-                        }
-                    }
-                    if !failed && imported > 0 && fs::remove_file(&path).is_ok() {
-                        received = received.saturating_add(imported);
-                    }
-                }
-            }
-
-            let teleporter = &mut self.file_teleporters[index];
-            teleporter.sent = teleporter.sent.saturating_add(sent);
-            teleporter.received = teleporter.received.saturating_add(received);
-            if poll_due {
-                teleporter.backflow_guard = None;
-            }
-            if settings.inbound_path == settings.outbound_path {
-                teleporter.backflow_guard = emitted_paths.last().cloned();
-            }
-        }
-        Ok(())
-    }
-
     pub fn import_legacy_organism_file(
         &mut self,
         file: &LegacyOrganismFile,
@@ -9669,6 +9548,43 @@ impl Engine {
 
     fn decay_corpses_phase(&mut self) {
         let mut packets = Vec::new();
+        for slot in self.slots.iter_mut() {
+            let Some(robot) = slot.organism.as_mut().filter(|robot| robot.flags.corpse) else {
+                continue;
+            };
+            robot.counters.decay_timer = robot.counters.decay_timer.saturating_add(1);
+            if u64::from(robot.counters.decay_timer) < self.config.corpse_decay.period {
+                continue;
+            }
+            robot.counters.decay_timer = 0;
+            robot.program.rng_state = advance_random(robot.program.rng_state);
+            robot.set_heading(
+                (robot.program.rng_state >> 40) as f32 / (1_u32 << 24) as f32
+                    * std::f32::consts::TAU,
+            );
+            let body = robot.materials.body.max(0.0);
+            let packet = self.config.corpse_decay.packet_size.max(0) as f32;
+            let value = if body > packet / 10.0 { packet } else { body };
+            let kind = match self.config.corpse_decay.mode {
+                crate::CorpseDecayMode::None => None,
+                crate::CorpseDecayMode::WasteShot => Some(-4),
+                crate::CorpseDecayMode::EnergyShot => Some(-2),
+            };
+            if let Some(kind) = kind.filter(|_| value > 0.0) {
+                packets.push((
+                    robot.kinematics.position,
+                    robot.kinematics.velocity,
+                    kind,
+                    value,
+                ));
+            }
+            robot.materials.body = (body - packet / 10.0).max(0.0);
+            robot.materials.radius = crate::physics::organism_radius(
+                robot.materials.body,
+                robot.materials.chloroplasts,
+                self.config.fixed_bot_radii,
+            );
+        }
         for corpse in &mut self.corpses {
             if let Some((kind, value)) = corpse.advance(
                 self.config.gravity,
@@ -9676,12 +9592,12 @@ impl Engine {
                 [self.config.world_width, self.config.world_height],
                 &self.config.corpse_decay,
             ) {
-                packets.push((corpse.position, corpse.velocity, kind, value));
+                packets.push((corpse.position, corpse.velocity, kind, value as f32));
             }
         }
         for (position, velocity, kind, value) in packets {
             self.projectiles
-                .spawn_corpse_packet(position, velocity, kind, value as f32);
+                .spawn_corpse_packet(position, velocity, kind, value);
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
         self.corpses.retain(|corpse| {
@@ -9809,7 +9725,8 @@ impl Engine {
             let should_die = robot.flags.dead
                 || robot.materials.body < 0.5
                 || if self.config.corpse_decay.enabled {
-                    robot.counters.age > 0
+                    !robot.flags.corpse
+                        && robot.counters.age > 0
                         && robot.materials.energy
                             < self.config.corpse_decay.death_energy_threshold as f32
                 } else {
@@ -9838,9 +9755,12 @@ impl Engine {
                     .species
                     .get(species as usize)
                     .is_some_and(|value| value.reseed);
-                if self.config.corpse_decay.enabled && organism.materials.body > 0.0 {
+                if self.config.corpse_decay.enabled
+                    && !organism.flags.corpse
+                    && organism.materials.body > 0.0
+                {
                     self.corpses
-                        .push(CorpseSnapshot::from_robot(&organism, species, repopulating));
+                        .push(self.archive_corpse(id, &organism, species, repopulating));
                 }
                 self.stats.deaths = self.stats.deaths.saturating_add(1);
                 trace.queue_change(
@@ -9932,6 +9852,7 @@ impl Engine {
                     birth.sexual.then_some(birth.sperm_source).flatten(),
                 ];
                 child_organism.identity.absolute_id = absolute_id;
+                child_organism.identity.parent_absolute_id = parent_state.identity.absolute_id;
                 child_organism.flags = parent_state.flags.clone();
                 child_organism.flags.exists = true;
                 child_organism.flags.corpse = false;
@@ -10179,7 +10100,10 @@ impl Engine {
                 let Some(organism) = entry.organism.as_mut() else {
                     continue;
                 };
-                if !organism.flags.can_mutate {
+                if !organism.flags.can_mutate
+                    || organism.flags.corpse
+                    || !organism.flags.can_execute_dna
+                {
                     continue;
                 }
                 let age = organism.counters.age;
@@ -10697,7 +10621,7 @@ impl Engine {
             tick: self.tick,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
-            corpses: self.corpses.clone(),
+            corpses: self.corpses.iter().map(CorpseSnapshot::view).collect(),
             shots: self.projectiles.snapshots(),
             history: self.history.clone(),
             stats: self.stats.clone(),
@@ -11182,12 +11106,6 @@ fn default_capabilities() -> BackendCapabilities {
     }
 }
 
-fn inside_file_teleporter(teleporter: &FileTeleporter, position: [f32; 2]) -> bool {
-    let dx = position[0] - teleporter.center[0];
-    let dy = position[1] - teleporter.center[1];
-    dx * dx + dy * dy <= teleporter.radius * teleporter.radius
-}
-
 fn validate_file_teleporter(teleporter: &FileTeleporter) -> Result<(), EngineError> {
     if !teleporter.radius.is_finite()
         || teleporter.radius <= 0.0
@@ -11213,18 +11131,19 @@ fn validate_file_teleporter(teleporter: &FileTeleporter) -> Result<(), EngineErr
 }
 
 fn write_transfer_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let temporary = path.with_extension("dbo.tmp");
-    fs::write(&temporary, bytes)?;
-    match fs::rename(&temporary, path) {
-        Ok(()) => Ok(()),
-        Err(error) => {
-            let _ = fs::remove_file(&temporary);
-            Err(error)
-        }
-    }
+    use std::io::Write;
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    fs::create_dir_all(parent)?;
+    let mut temporary = tempfile::Builder::new()
+        .prefix(".db2-transfer-")
+        .suffix(".tmp")
+        .tempfile_in(parent)?;
+    temporary.write_all(bytes)?;
+    temporary.as_file().sync_all()?;
+    temporary
+        .persist_noclobber(path)
+        .map_err(|error| error.error)?;
+    Ok(())
 }
 
 fn toxin_location(robot: &mut RobotState, raw_location: i32) -> i32 {

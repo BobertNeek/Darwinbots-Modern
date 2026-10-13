@@ -1,6 +1,6 @@
 use crate::config::{CorpseDecayMode, CorpseDecaySettings};
 use crate::environment::TeleporterBackflow;
-use crate::{OrganismId, RobotState};
+use crate::{OrganismId, RobotState, TieState};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -40,6 +40,12 @@ pub struct CorpseSnapshot {
     pub(crate) body_fraction: f32,
     #[serde(default)]
     pub(crate) decay_timer: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) native_state: Option<Box<RobotState>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) native_id: Option<OrganismId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) native_ties: Vec<TieState>,
     #[serde(skip)]
     pub(crate) teleporter_backflow: Option<TeleporterBackflow>,
 }
@@ -69,7 +75,41 @@ impl CorpseSnapshot {
             chloroplasts: 0,
             body_fraction: exact_body - body as f32,
             decay_timer: 0,
+            native_state: Some(Box::new(robot.clone())),
+            native_id: None,
+            native_ties: Vec::new(),
             teleporter_backflow: None,
+        }
+    }
+
+    // The public snapshot carries the small display/recording projection.
+    // Modern save files retain the complete robot separately in this object.
+    pub(crate) fn view(&self) -> Self {
+        Self {
+            position: self.position,
+            velocity: self.velocity,
+            energy: self.energy,
+            body: self.body,
+            age: self.age,
+            species: self.species,
+            repopulating: self.repopulating,
+            dna: self.dna.clone(),
+            generation: self.generation,
+            birth_cycle: self.birth_cycle,
+            parent: self.parent,
+            offspring: self.offspring,
+            kills: self.kills,
+            new_mutations: self.new_mutations,
+            total_mutations: self.total_mutations,
+            dna_length: self.dna_length,
+            unique_id: self.unique_id,
+            chloroplasts: self.chloroplasts,
+            body_fraction: self.body_fraction,
+            decay_timer: self.decay_timer,
+            teleporter_backflow: self.teleporter_backflow,
+            native_state: None,
+            native_id: None,
+            native_ties: Vec::new(),
         }
     }
 
@@ -80,7 +120,6 @@ impl CorpseSnapshot {
         world_size: [f32; 2],
         settings: &CorpseDecaySettings,
     ) -> Option<(i32, i32)> {
-        self.age = self.age.saturating_add(1);
         let retention = 1.0 - drag.clamp(0.0, 1.0);
         self.velocity[0] = (self.velocity[0] + gravity[0]) * retention;
         self.velocity[1] = (self.velocity[1] + gravity[1]) * retention;

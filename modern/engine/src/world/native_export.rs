@@ -232,6 +232,8 @@ impl Engine {
         }
         if let Some(parent) = robot.identity.parents[0].and_then(|id| self.slots.get(id).ok()) {
             long(&mut record, "parent", parent.identity.absolute_id)?;
+        } else if robot.identity.parent_absolute_id != 0 {
+            long(&mut record, "parent", robot.identity.parent_absolute_id)?;
         }
         for (name, value) in [
             ("offspring", robot.counters.offspring as i64),

@@ -109,6 +109,8 @@ pub struct Teleporter {
     pub poll_countdown: u32,
     #[serde(default)]
     pub backflow_limit: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_backflow_guard: Option<PathBuf>,
 }
 
 impl Teleporter {
@@ -141,6 +143,7 @@ impl Teleporter {
             capacity: 1,
             poll_countdown: 0,
             backflow_limit: 0,
+            file_backflow_guard: None,
         }
     }
 }
