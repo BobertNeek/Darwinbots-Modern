@@ -52,11 +52,16 @@
       "passed": 11,
       "failed": 0
     },
-    "strict_engine_lib_tests_clippy": "passed"
+    "strict_engine_lib_tests_clippy": "passed",
+    "desktop_original_return": {
+      "passed": 1,
+      "failed": 0
+    }
   },
   "screenshots": [
     "port-native-sim-export.png",
     "original-loaded-port-native-sim.png",
     "port-original-return-loaded.png"
-  ]
+  ],
+  "code_revision": "63f0b73"
 }
