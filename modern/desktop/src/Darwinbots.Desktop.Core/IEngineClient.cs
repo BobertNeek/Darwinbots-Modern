@@ -65,4 +65,5 @@ public interface IEngineClient : IDisposable
     byte[] SaveWithoutMutations();
     void Load(byte[] save);
     EngineSnapshot Snapshot();
+    WorldConfiguration? ReadConfiguration() => null;
 }

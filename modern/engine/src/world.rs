@@ -2685,6 +2685,46 @@ impl Engine {
         &self.config.dna_costs
     }
 
+    /// Authoritative rules and available seed genomes for world editors.
+    /// Reading this view does not execute DNA or mutate the simulation.
+    pub fn configuration_view(&self) -> Result<serde_json::Value, EngineError> {
+        let species = self
+            .species
+            .iter()
+            .enumerate()
+            .map(|(index, definition)| {
+                let mut value = serde_json::to_value(definition)?;
+                let template = self.species_templates.get(index).and_then(Option::as_ref);
+                let dna = template.map(|value| &value.dna).or_else(|| {
+                    self.slots
+                        .iter()
+                        .filter_map(|slot| slot.organism.as_ref())
+                        .find(|robot| {
+                            robot.identity.species.0 as usize == index && !robot.flags.corpse
+                        })
+                        .map(|robot| &robot.program.dna)
+                });
+                let fields = value.as_object_mut().unwrap();
+                fields.insert(
+                    "dna".into(),
+                    dna.map_or(serde_json::Value::Null, |dna| {
+                        serde_json::Value::String(dna.to_source())
+                    }),
+                );
+                fields.insert(
+                    "initial_energy".into(),
+                    serde_json::json!(template.map_or(3000, |value| value.initial_energy)),
+                );
+                fields.insert(
+                    "initial_count".into(),
+                    serde_json::json!(template.map_or(1, |value| value.initial_population)),
+                );
+                Ok(value)
+            })
+            .collect::<Result<Vec<_>, EngineError>>()?;
+        Ok(serde_json::json!({ "config": self.config, "species": species }))
+    }
+
     pub fn update_cost_settings(&mut self, costs: DnaCosts) -> Result<(), EngineError> {
         if !costs.global_multiplier.is_finite()
             || costs.global_multiplier < 0.0

@@ -119,7 +119,8 @@ public sealed record Db2VegetationOptions(
     int SunUpThreshold = 500_000,
     bool SunDownEnabled = false,
     int SunDownThreshold = 1_000_000,
-    int SunThresholdMode = 0)
+    int SunThresholdMode = 0,
+    bool SunOnRandom = false)
 {
     public static Db2VegetationOptions Default { get; } = new(16_000, 100, 50, 10, 10, 0.75f, true, false, 10_000, Gradient: 1.02f);
 }
@@ -458,6 +459,7 @@ public static class NativeCommandSerializer
         tides = value.Tides,
         tides_offset = value.TidesOffset,
         weather_enabled = value.WeatherEnabled,
+        sun_on_random = value.SunOnRandom,
         sun_up_enabled = value.SunUpEnabled,
         sun_up_threshold = value.SunUpThreshold,
         sun_down_enabled = value.SunDownEnabled,

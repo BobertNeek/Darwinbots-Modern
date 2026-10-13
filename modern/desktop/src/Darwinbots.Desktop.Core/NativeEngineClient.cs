@@ -739,6 +739,15 @@ public sealed partial class NativeEngineClient : IEngineClient
         _ => "f1",
     };
 
+    public WorldConfiguration ReadConfiguration()
+    {
+        EnsureAlive();
+        var buffer = new NativeBuffer();
+        ThrowIfFailed(NativeMethods.EngineConfigurationJson(_engine, ref buffer), "read world configuration");
+        try { return NativeConfigurationParser.Parse(CopyBuffer(buffer)); }
+        finally { NativeMethods.BufferFree(ref buffer); }
+    }
+
     public EngineCapabilities Capabilities()
     {
         EnsureAlive();
@@ -927,6 +936,9 @@ public sealed partial class NativeEngineClient : IEngineClient
 
         [LibraryImport(LibraryName, EntryPoint = "db_engine_capabilities_json")]
         internal static partial DbStatus EngineCapabilitiesJson(IntPtr engine, ref NativeBuffer buffer);
+
+        [LibraryImport(LibraryName, EntryPoint = "db_engine_configuration_json")]
+        internal static partial DbStatus EngineConfigurationJson(IntPtr engine, ref NativeBuffer buffer);
 
         [LibraryImport(LibraryName, EntryPoint = "db_last_error_json")]
         internal static partial DbStatus LastErrorJson(ref NativeBuffer buffer);

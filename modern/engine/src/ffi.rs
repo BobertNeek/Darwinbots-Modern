@@ -444,6 +444,29 @@ pub extern "C" fn db_engine_snapshot_json(
     }
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[unsafe(no_mangle)]
+pub extern "C" fn db_engine_configuration_json(
+    engine: *const Engine,
+    out_buffer: *mut DbBuffer,
+) -> DbStatus {
+    let (Some(engine), Some(out_buffer)) =
+        (unsafe { engine.as_ref() }, unsafe { out_buffer.as_mut() })
+    else {
+        return DbStatus::NullPointer;
+    };
+    if !out_buffer.data.is_null() {
+        return fail(DbStatus::EngineError, "output buffer must be empty");
+    }
+    match engine
+        .configuration_view()
+        .and_then(|value| serde_json::to_vec(&value).map_err(Into::into))
+    {
+        Ok(bytes) => write_buffer(out_buffer, bytes),
+        Err(error) => fail(DbStatus::EngineError, error),
+    }
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn db_engine_command_batch(
     engine: *mut Engine,

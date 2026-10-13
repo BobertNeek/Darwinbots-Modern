@@ -55,6 +55,7 @@ public sealed record WorldSetupOptions
     public IReadOnlyList<SpeciesImport> Species { get; init; } = [];
     public GlobalSettings GlobalSettings { get; init; } = new();
     public string? LoadSavePath { get; init; }
+    public bool IsAutosaveRecovery { get; init; }
 
     public int EffectiveMetabolismCost => StartingMode == StartingMode.StarterBotsAndVegetables
         ? MetabolismCost

@@ -276,6 +276,13 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 
+    public async Task<WorldConfiguration?> ReadConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        WorldConfiguration? configuration = null;
+        await Enqueue(engine => configuration = engine.ReadConfiguration(), cancellationToken).ConfigureAwait(false);
+        return configuration;
+    }
+
     public async Task<byte[]> SaveAsync(CancellationToken cancellationToken = default)
     {
         byte[]? save = null;

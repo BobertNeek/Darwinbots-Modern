@@ -613,6 +613,53 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, relative))) directory = directory.Parent;
+        Assert.NotNull(directory);
+        var path = Path.Combine(directory.FullName, relative);
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var setup = new WorldSetupOptions { Backend = "Cpu", WorldWidth = 1000, WorldHeight = 1000, LoadSavePath = path };
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            SimulationSession? session = null;
+            try
+            {
+                window.Show();
+                await WaitFor(() => Field<MainWindowViewModel>(window, "_viewModel").Status == "LOADED");
+                session = Field<SimulationSession>(window, "_session");
+                Assert.Equal(281ul, session.LatestSnapshot.Tick);
+                Assert.Equal(196, session.LatestSnapshot.Population);
+                Assert.False(window.FindControl<CheckBox>("ToroidalWorldToggle")!.IsChecked);
+                var species = Field<System.Collections.ObjectModel.ObservableCollection<SpeciesImport>>(window, "_insertionSpecies");
+                Assert.Equal(2, species.Count);
+                Assert.All(species, value => Assert.False(string.IsNullOrWhiteSpace(value.Dna)));
+                var before = await session.ReadConfigurationAsync();
+                Assert.NotNull(before);
+                window.FindControl<CheckBox>("ToroidalWorldToggle")!.IsChecked = true;
+                await WaitFor(() => Field<EnvironmentUpdate>(window, "_liveEnvironment").ToroidalWorld);
+                var after = await session.ReadConfigurationAsync();
+                Assert.NotNull(after);
+                Assert.True(after.Environment.ToroidalWorld);
+                Assert.Equal(before.Environment.Physics, after.Environment.Physics);
+                Assert.Equal(before.Environment.Shots, after.Environment.Shots);
+                Assert.Equal(before.Environment.Vegetation, after.Environment.Vegetation);
+                Assert.Equal(before.Environment.CorpseDecay, after.Environment.CorpseDecay);
+                Assert.Equal(before.GlobalCostMultiplier, after.GlobalCostMultiplier);
+                Assert.Equal(281ul, session.LatestSnapshot.Tick);
+            }
+            finally
+            {
+                SetField(window, "_session", null);
+                window.Close();
+                if (session is not null) await session.DisposeAsync();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task SaveWithoutMutationsRenderedPlayerRoutePreservesLiveWorldAndDisablesOnlySavedMutationState()
     {
         var setup = new WorldSetupOptions

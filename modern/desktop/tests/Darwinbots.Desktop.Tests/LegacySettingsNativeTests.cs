@@ -103,6 +103,12 @@ public sealed class LegacySettingsNativeTests
         var native = File.ReadAllBytes(Path.Combine(directory.FullName, relative));
         using var engine = new NativeEngineClient(backend: "Cpu", worldWidth: 1000, worldHeight: 1000);
         engine.Load(native);
+        var beforeConfigurationRead = engine.Save();
+        var configuration = engine.ReadConfiguration();
+        Assert.False(configuration.Environment.ToroidalWorld);
+        Assert.Equal(2, configuration.Species.Count);
+        Assert.All(configuration.Species, species => Assert.False(string.IsNullOrWhiteSpace(species.Dna)));
+        Assert.Equal(beforeConfigurationRead, engine.Save());
         var snapshot = engine.Snapshot();
         Assert.Equal(281ul, snapshot.Tick);
         Assert.Equal(196, snapshot.Population);

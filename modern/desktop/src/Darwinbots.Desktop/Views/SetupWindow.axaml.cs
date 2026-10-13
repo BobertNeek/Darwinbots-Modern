@@ -398,7 +398,7 @@ public sealed partial class SetupWindow : Window
     {
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
-        WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = latest });
+        WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true });
     }
 
     private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)

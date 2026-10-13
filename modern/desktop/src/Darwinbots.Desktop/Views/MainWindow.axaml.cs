@@ -976,6 +976,7 @@ public sealed partial class MainWindow : Window
         if (await _storage.OpenSimulationAsync(this) is not { } save)
             return LegacyCommandResult.Cancel();
         await _session.LoadAsync(save);
+        await SynchronizeLoadedWorldAsync();
         return LegacyCommandResult.Success("LOADED");
     }
 
@@ -1672,6 +1673,7 @@ public sealed partial class MainWindow : Window
             }
             _runTimer.Stop();
             await _session.LoadAsync(await File.ReadAllBytesAsync(path));
+            await SynchronizeLoadedWorldAsync();
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
             ClearRecoveryPanel();
             return LegacyCommandResult.Success(_viewModel.Status);
@@ -1791,7 +1793,10 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = "ENGINE READY — IMPORT A LEGACY BOT";
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
+            {
                 await _session.LoadAsync(await File.ReadAllBytesAsync(savePath));
+                await SynchronizeLoadedWorldAsync();
+            }
             else
                 foreach (var species in _setup.Species)
                     compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
@@ -1804,7 +1809,7 @@ public sealed partial class MainWindow : Window
             if (compatibilityWarnings.Count > 0) _viewModel.Status = $"DNA COMPATIBILITY · {string.Join(" · ", compatibilityWarnings.Distinct())}";
             else if (_startupBots.Count > 0) _viewModel.Status = $"IMPORTED {_startupBots.Count} STARTUP BOT(S)";
             else if (_setup.Species.Count > 0) _viewModel.Status = $"WORLD READY · {_setup.Species.Count} SPECIES";
-            else if (_setup.LoadSavePath is not null) _viewModel.Status = "AUTOSAVE RECOVERED";
+            else if (_setup.LoadSavePath is not null) _viewModel.Status = _setup.IsAutosaveRecovery ? "AUTOSAVE RECOVERED" : "LOADED";
             if (_setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables)
                 await ConfigureZerobotModeAsync();
             _autosaveTimer.Start();
@@ -1835,6 +1840,34 @@ public sealed partial class MainWindow : Window
         {
             _viewModel.Status = "NATIVE ZEROBOT SEARCH CONFIGURED";
         }
+    }
+
+    private async Task SynchronizeLoadedWorldAsync()
+    {
+        if (_session is null || await _session.ReadConfigurationAsync() is not { } configuration) return;
+        var controlsReady = _controlsReady;
+        _controlsReady = false;
+        try
+        {
+            _liveEnvironment = configuration.Environment;
+            _activeCostMultiplier = configuration.GlobalCostMultiplier;
+            ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
+            LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
+            LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
+            LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
+            SunButton.Content = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
+            Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
+            Viewport.WrapX = _liveEnvironment.WrapX;
+            Viewport.WrapY = _liveEnvironment.WrapY;
+            var size = _session.LatestSnapshot.WorldSize;
+            WorldParametersText.Text = $"{size[0]:N0} × {size[1]:N0}\nCapacity {configuration.PopulationCapacity:N0}\nVegetables {configuration.VegetablePopulationCap:N0}";
+            _insertionSpecies.Clear();
+            foreach (var species in configuration.Species) _insertionSpecies.Add(species);
+            InsertionSpeciesSelector.SelectedIndex = _insertionSpecies.Count > 0 ? 0 : -1;
+            ToolbarSlot17.SelectedIndex = InsertionSpeciesSelector.SelectedIndex;
+        }
+        finally { _controlsReady = controlsReady; }
+        RefreshLegacyMenuStates();
     }
 
     private void RegisterInsertionSpecies(SpeciesImport species)
@@ -2434,6 +2467,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return;
         if (await _storage.OpenSimulationAsync(this) is not { } save) return;
         await _session.LoadAsync(save);
+        await SynchronizeLoadedWorldAsync();
         _viewModel.Status = "LOADED";
     }
 

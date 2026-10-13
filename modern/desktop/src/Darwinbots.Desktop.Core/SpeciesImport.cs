@@ -79,7 +79,7 @@ public sealed record SpeciesImport(
             throw new ArgumentOutOfRangeException(nameof(Placement));
     }
 
-    private static SkinPointSnapshot[] DefaultSkin() =>
+    internal static SkinPointSnapshot[] DefaultSkin() =>
     [
         new(0.45f, 0),
         new(0.55f, 314),
