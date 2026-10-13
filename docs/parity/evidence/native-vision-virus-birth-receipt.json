@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-13",
+  "branch": "codex/db24832-completion",
+  "code_revision": "e75170758d5fd901182a437f5b3a88b7f9b44b7e",
+  "changes": [
+    {
+      "revision": "262b3fa",
+      "behavior": "Signed body gain/loss; decay evaluates Double before storing Single",
+      "verification": "91 Release library, canonical and precision cases passed"
+    },
+    {
+      "revision": "1f5afab",
+      "behavior": "Shared-pool stored viruses, native timers, two firing charges, native range and angle units",
+      "verification": "148 selected debug cases passed; strict Clippy passed"
+    },
+    {
+      "revision": "8f82038",
+      "behavior": "Power consumes slime; equality infects; infection updates mutation/subspecies state; native loading resets virus timer",
+      "verification": "108 selected debug cases passed; strict Clippy passed"
+    },
+    {
+      "revision": "3a70763",
+      "behavior": "Native east/north vision, real positions, target edge geometry, raw headings, pond/night range and consistent rendered heading/skin/eyes",
+      "verification": "78 library cases and 19 vision/world/spawn integration checks passed; core 134/134; complete Release desktop 103/103; strict Clippy passed"
+    },
+    {
+      "revision": "63e3de0",
+      "behavior": "Coherent visual receipts keep the robot in the displayed world and capture selected eye ranges",
+      "verification": "Two focused rendered cases passed; saved frames inspected"
+    },
+    {
+      "revision": "e751707",
+      "behavior": "Birth uses negative-sine forward Y, pre-split radius fractions, Long summed separation and Long collision probes",
+      "verification": "25 heredity, 11 resource precision, 6 manual, 14 cycle, 2 sensing and 3 placement cases passed; strict Clippy passed"
+    }
+  ],
+  "source_evidence": {
+    "vision": "Quads.bas:418-590; Eyestrength:383-396",
+    "birth": "Robots.bas:2137-2146,2183-2184; absx/absy:744-772",
+    "virus": "Robots.bas:1049-1112; Shots.bas:1084-1120,1173-1223"
+  },
+  "full_release": {
+    "status": "Running",
+    "log": "parity-native-vision-birth-workspace-release.log",
+    "excluded": [
+      "starter_world_sustains_moving_predators_finite_shots_and_bounded_plants",
+      "starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce"
+    ]
+  },
+  "limits": [
+    "Focused counts overlap and must not be summed.",
+    "Full Release desktop predates the birth change.",
+    "Original executable exchange is proven; these repairs still need original behavioral trajectories.",
+    "Corpse physical/tie integration, graph/evolution/league rules, persistent file rollback, remaining compatibility failures and long soak/package qualification remain open.",
+    "Internet Mode is excluded."
+  ]
+}
