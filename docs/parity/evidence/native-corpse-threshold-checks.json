@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "d6084190dae38556f151cd56de29e882dcd7ed8b",
+  "checks": {
+    "engine_library": {
+      "passed": 66,
+      "failed": 0
+    },
+    "corpse_cases": {
+      "passed": 7,
+      "failed": 0
+    },
+    "transport": {
+      "passed": 6,
+      "failed": 0
+    },
+    "native_precision": {
+      "passed": 9,
+      "failed": 0
+    },
+    "defaults": {
+      "passed": 2,
+      "failed": 0
+    },
+    "older_zero_threshold_resume": {
+      "passed": 1,
+      "failed": 0,
+      "overlaps_library": true
+    },
+    "engine_lint": true,
+    "desktop_core": {
+      "passed": 133,
+      "failed": 0
+    },
+    "configured_mode_loaded_ui": {
+      "passed": 1,
+      "failed": 0
+    }
+  },
+  "changes": [
+    "Use original fixed 15-energy corpse threshold for new defaults.",
+    "Older port saves with zero threshold retain their data and use the native threshold at runtime.",
+    "Validate zero, below-15 and exactly-15 boundary values, including old-default save/resume.",
+    "Load a configured mode through the real desktop session and assert controls, retained policy and unchanged tick."
+  ],
+  "logs": [
+    "completion-checks/parity-native-corpse-threshold.log",
+    "completion-checks/parity-native-corpse-threshold-resume.log",
+    "completion-checks/parity-native-corpse-threshold-clippy.log",
+    "completion-checks/parity-corpse-default-core-final.log",
+    "completion-checks/parity-loaded-configured-mode-ui.log"
+  ],
+  "limits": [
+    "Last complete Rust workspace remains 464 passed / 58 failed / 2 filtered at d4ad087.",
+    "Transport corpse-creation failure is repaired in this focused followup; no adjusted complete-suite total is claimed.",
+    "Complete archived-corpse physics/ties and original trajectory comparisons remain open."
+  ]
+}
