@@ -72,6 +72,11 @@ public sealed class FinalToolsVisualRenderedTests
             var fullRangeFrame = CapturePng(viewportHost);
             viewport.SetSnapshot(observedVision);
             var observedRangeFrame = CapturePng(viewportHost);
+            var directory = Environment.GetEnvironmentVariable("DARWINBOTS_GUI_AUDIT_DIR")
+                ?? Path.Combine(Path.GetTempPath(), "darwinbots-modern-control-audit");
+            Directory.CreateDirectory(directory);
+            File.WriteAllBytes(Path.Combine(directory, "native-vision-full-range.png"), fullRangeFrame);
+            File.WriteAllBytes(Path.Combine(directory, "native-vision-observed-range.png"), observedRangeFrame);
 
             Assert.False(
                 fullRangeFrame.SequenceEqual(observedRangeFrame),
@@ -85,6 +90,10 @@ public sealed class FinalToolsVisualRenderedTests
     public async Task LiveToolsAndWorldReceiptShowCompleteRobotFactsAndLegacyShotEncoding()
     {
         var focus = new OrganismKey(7, 3);
+        var eyes = VisionSnapshot.Default.Eyes
+            .Select(eye => eye with { CenterRadians = (eye.CenterRadians + 1.57f) % MathF.Tau })
+            .ToArray();
+        eyes[4] = new EyeSnapshot(314, 70, 3.14f, 0.175f + MathF.PI / 36f, 1440f, 875);
         var organism = new OrganismSnapshot(
             7,
             3,
@@ -123,7 +132,7 @@ public sealed class FinalToolsVisualRenderedTests
                 9),
             Vision = new VisionSnapshot(
                 4,
-                [new EyeSnapshot(314, 70, 0.1f, 0.05f, 1440f, 875)])
+                eyes)
         };
         var snapshot = new EngineSnapshot(27, 1, "CPU", [organism])
         {
@@ -143,7 +152,7 @@ public sealed class FinalToolsVisualRenderedTests
             [new ShotSnapshot(focus, [20f, 40f], [80f, 40f], [40f, 0f], -1, 40, 1, 40, 40f, false)],
             Ties = [new TieSnapshot(focus, focus, 3f)],
             Corpses = [new CorpseSnapshot([60f, 40f], [0f, 0f], 0, 100, 1)],
-            WorldSize = [100f, 100f],
+            WorldSize = [600f, 400f],
         };
 
         await DesktopTestApplication.Session.Dispatch(() =>
