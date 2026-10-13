@@ -679,7 +679,7 @@ fn spawn_soft_tie() -> (Engine, OrganismId, OrganismId) {
 }
 
 #[test]
-fn review_projection_hardened_removal_clears_state_before_reused_slot_dna() {
+fn removed_tie_clears_topology_and_retains_references_until_the_next_read() {
     let (mut engine, source, target) = spawn_soft_tie();
     engine
         .replace_dna(
@@ -718,10 +718,12 @@ fn review_projection_hardened_removal_clears_state_before_reused_slot_dna() {
             engine.robot_state(source).unwrap().counters.multibot,
             engine.memory(source, "trefbody").unwrap(),
         ),
-        (0, 0, 0, 0, false, 0)
+        (0, 0, 0, 0, false, 1000)
     );
 
+    // DeleteTie does not erase references; the next eligible readtie does.
     engine.tick().unwrap();
+    assert_eq!(engine.memory(source, "trefbody").unwrap(), 0);
     assert_eq!(
         (
             engine.memory_at(source, 50).unwrap(),
@@ -1260,6 +1262,10 @@ fn tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage
     batch.batch.velocities[source_index] = [0.0; 2];
     batch.batch.velocities[target_index] = [0.0; 2];
     engine.apply_physics_batch(batch).unwrap();
+    let previous_position_memory = [
+        engine.memory(target, "xpos").unwrap(),
+        engine.memory(target, "ypos").unwrap(),
+    ];
 
     engine.tick().unwrap();
     assert_eq!(engine.memory_at(target, 50).unwrap(), 1_234);
@@ -1267,11 +1273,11 @@ fn tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage
     assert_eq!(engine.memory(source, "tielen").unwrap(), 72);
     assert_eq!(
         engine.memory(source, "trefxpos").unwrap(),
-        engine.organism(target).unwrap().position[0].round() as i32
+        previous_position_memory[0]
     );
     assert_eq!(
         engine.memory(source, "trefypos").unwrap(),
-        engine.organism(target).unwrap().position[1].round() as i32
+        previous_position_memory[1]
     );
 
     engine.tick().unwrap();

@@ -6585,6 +6585,7 @@ impl Engine {
         tie.last = 100;
         self.ties.push(tie);
         self.stats.ties_created = self.stats.ties_created.saturating_add(1);
+        self.refresh_tie_projections_with_references(false, &HashMap::from([(parent, 0)]));
         true
     }
 
@@ -6706,8 +6707,6 @@ impl Engine {
                 .read(location);
             let target_memory = &mut self.slots[target].organism.as_mut().unwrap().program.memory;
             target_memory.write(location, value);
-            target_memory.write(MEM_TIE_MEMORY_LOCATION, location);
-            target_memory.write(MEM_TIE_MEMORY_VALUE, value);
             self.ties[tie_index].information = true;
             trace.memory_write(
                 CyclePhase::TieData,
@@ -6720,6 +6719,7 @@ impl Engine {
             runtime.finish_command(452, CommandOutcome::Consumed, source_memory);
             runtime.finish_command(453, CommandOutcome::Consumed, source_memory);
         }
+        self.refresh_tie_projections_with_references(true, &HashMap::new());
     }
 
     fn tie_exchange_phase(&mut self, trace: &mut CycleRecorder) {
@@ -7113,6 +7113,14 @@ impl Engine {
     }
 
     fn refresh_tie_projections(&mut self) {
+        self.refresh_tie_projections_with_references(false, &HashMap::new());
+    }
+
+    fn refresh_tie_projections_with_references(
+        &mut self,
+        read_references: bool,
+        newly_created: &HashMap<OrganismId, i32>,
+    ) {
         let runtime = SysvarRuntime::new();
         let mut endpoints = vec![[None; MAX_TIES_PER_ROBOT]; self.slots.len()];
         let mut tie_counts = vec![0usize; self.slots.len()];
@@ -7233,7 +7241,19 @@ impl Engine {
             let selected_index = endpoints[slot].iter().position(|endpoint| {
                 endpoint.is_some_and(|endpoint| endpoint.port == selected_port)
             });
-            let reference_values = selected_index
+            let id = OrganismId::new(slot as u32, self.slots[slot].generation);
+            let forced_port = newly_created.get(&id).copied();
+            let can_read_references = forced_port.is_some()
+                || (read_references
+                    && source.counters.simulation_age >= 2
+                    && !source.flags.corpse
+                    && source.flags.can_execute_dna);
+            let reference_port = forced_port.unwrap_or(selected_port);
+            let reference_index = endpoints[slot].iter().position(|endpoint| {
+                endpoint.is_some_and(|endpoint| endpoint.port == reference_port)
+            });
+            let reference_values = reference_index
+                .filter(|_| can_read_references)
                 .and_then(|index| endpoints[slot][index].and_then(|endpoint| endpoint.other))
                 .and_then(|other| {
                     let target = self.slots.get(other).ok()?;
@@ -7260,14 +7280,8 @@ impl Engine {
                             MEM_TREF_BODY as u16,
                             resource_readback(target.materials.body),
                         ),
-                        (
-                            MEM_TREF_XPOS as u16,
-                            sensor_value(target.kinematics.position[0]),
-                        ),
-                        (
-                            MEM_TREF_YPOS as u16,
-                            sensor_value(target.kinematics.position[1]),
-                        ),
+                        (MEM_TREF_XPOS as u16, target.program.memory.read(MEM_XPOS)),
+                        (MEM_TREF_YPOS as u16, target.program.memory.read(MEM_YPOS)),
                         (
                             MEM_TREF_VEL_MY_SX as u16,
                             target_velocity_for_source[1] - source_velocity[1],
@@ -7355,7 +7369,7 @@ impl Engine {
                 PhaseReadbacks::Tie(TieReadbacks { values }),
                 &mut organism.program.memory,
             );
-            if selected_index.is_none() {
+            if can_read_references && reference_index.is_none() {
                 for address in TIED_REFERENCE_ADDRESSES {
                     organism.program.memory.write(address, 0);
                 }
@@ -7423,6 +7437,7 @@ impl Engine {
         let runtime = SysvarRuntime::new();
         let phase_commands = self.capture_tie_commands();
         let mut tie_requests = Vec::new();
+        let mut newly_created = HashMap::new();
         for (attacker_slot, commands) in phase_commands.iter().copied().enumerate() {
             let Some(commands) = commands else {
                 continue;
@@ -7510,6 +7525,7 @@ impl Engine {
                 first_port,
                 second_port,
             ));
+            newly_created.insert(first, first_port);
             let tie_cost = self.active_dna_costs().action_cost_for(
                 SimulationCostAction::TieFormation,
                 1.0,
@@ -7526,7 +7542,7 @@ impl Engine {
                 trace.effect(CyclePhase::TieFire, Some(first), second, "tie_created");
             }
         }
-        self.refresh_tie_projections();
+        self.refresh_tie_projections_with_references(false, &newly_created);
     }
 
     fn virtual_body_for(&self, id: OrganismId) -> f32 {

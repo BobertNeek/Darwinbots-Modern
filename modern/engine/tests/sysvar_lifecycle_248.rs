@@ -497,18 +497,19 @@ fn engine_tick_preserves_tied_references_only_for_a_valid_selected_port() {
 }
 
 fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId) {
+    // Keep all robots clear of native borders and make port 41 select its intended partner.
     let mut engine = testing_engine();
     let source = engine
         .spawn_at(
             LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
-            [100.0, 100.0],
+            [300.0, 300.0],
         )
         .unwrap();
     let port_41_partner = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [600.0, 300.0])
         .unwrap();
     let port_77_partner = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [800.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [800.0, 800.0])
         .unwrap();
     engine.tick().unwrap();
 
@@ -519,7 +520,7 @@ fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId)
         )
         .unwrap();
     engine
-        .move_organism(port_77_partner, [100.0, 350.0])
+        .move_organism(port_77_partner, [300.0, 550.0])
         .unwrap();
     engine.tick().unwrap();
     assert_eq!(
