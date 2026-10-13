@@ -255,12 +255,12 @@ fn three_cycle_sensor_and_command_visibility_is_canonical() {
     .unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse("start\n*.eye5 50 store\n314 .setaim store\nstop").unwrap(),
-            [100.0, 100.0],
+            LegacyDna::parse("start\n*.eye5 50 store\n0 .setaim store\nstop").unwrap(),
+            [300.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [600.0, 500.0])
         .unwrap();
 
     let first = engine.tick_with_trace().unwrap();

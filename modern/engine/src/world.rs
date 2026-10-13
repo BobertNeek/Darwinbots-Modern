@@ -9601,25 +9601,34 @@ impl Engine {
                 continue;
             }
 
-            let mut parent_materials = parent_state.materials.clone();
-            let mut child_materials = parent_materials.split_for_offspring(birth.percentage);
-            let separation = crate::physics::organism_radius(
-                parent_materials.body,
-                parent_materials.chloroplasts,
+            // Reproduce evaluates FindRadius on the unsplit stores, then assigns
+            // their Single sum to the Long sondist before computing absx/absy.
+            let ratio = (f64::from(birth.percentage) / 100.0) as f32;
+            let remaining = (f64::from(100 - birth.percentage) / 100.0) as f32;
+            let separation = (crate::physics::organism_radius(
+                parent_state.materials.body * ratio,
+                parent_state.materials.chloroplasts * ratio,
                 self.config.fixed_bot_radii,
             ) + crate::physics::organism_radius(
-                child_materials.body,
-                child_materials.chloroplasts,
+                parent_state.materials.body * remaining,
+                parent_state.materials.chloroplasts * remaining,
                 self.config.fixed_bot_radii,
-            );
-            let parent_angle = parent_state.heading();
+            ))
+            .round_ties_even();
+            let parent_angle = f64::from(parent_state.heading());
             let position = [
-                parent_state.kinematics.position[0] + parent_angle.cos() * separation,
-                parent_state.kinematics.position[1] + parent_angle.sin() * separation,
+                parent_state.kinematics.position[0]
+                    + (parent_angle.cos() * f64::from(separation)) as f32,
+                parent_state.kinematics.position[1]
+                    - (parent_angle.sin() * f64::from(separation)) as f32,
             ];
-            if !self.birth_position_is_clear(birth.parent, position) {
+            // Source collision probes use Long nx/ny; committed positions remain Single.
+            let candidate = position.map(f32::round_ties_even);
+            if !self.birth_position_is_clear(birth.parent, candidate) {
                 continue;
             }
+            let mut parent_materials = parent_state.materials.clone();
+            let mut child_materials = parent_materials.split_for_offspring(birth.percentage);
 
             let next_rng = advance_random(parent_state.program.rng_state);
             let configured_rate = if self.mutations_enabled {

@@ -7,7 +7,7 @@ fn vision_routes_nearest_target_into_directional_eye_sectors() {
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [650.0, 900.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [850.0, 350.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -18,7 +18,7 @@ fn vision_routes_nearest_target_into_directional_eye_sectors() {
     engine
         .replace_dna(
             observer,
-            LegacyDna::parse("start\n72 .setaim store\nstop").unwrap(),
+            LegacyDna::parse("start\n81 .setaim store\nstop").unwrap(),
         )
         .unwrap();
     engine.tick().unwrap();
