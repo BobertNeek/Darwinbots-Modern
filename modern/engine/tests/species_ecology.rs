@@ -1335,7 +1335,7 @@ fn heterospecific_venom_consumes_shell_before_starting_an_effect() {
 
 #[test]
 fn attenuated_venom_below_one_has_no_effect() {
-    assert_positive_toxin_edge_gap(TOXIN_TARGET_POSITION);
+    assert_positive_toxin_edge_gap(FRACTIONAL_TOXIN_TARGET_POSITION);
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         ..EngineConfig::testing()
@@ -1360,7 +1360,7 @@ fn attenuated_venom_below_one_has_no_effect() {
         .spawn_species_at(
             LegacyDna::parse("start\nstop").unwrap(),
             target_species,
-            TOXIN_TARGET_POSITION,
+            FRACTIONAL_TOXIN_TARGET_POSITION,
         )
         .unwrap();
     engine.tick().unwrap();
@@ -1378,6 +1378,9 @@ fn attenuated_venom_below_one_has_no_effect() {
     engine
         .replace_dna(source, LegacyDna::parse("start\nstop").unwrap())
         .unwrap();
+    // The first travel cycle must miss so the one-power shot actually ages.
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 0);
     engine.tick().unwrap();
 
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
@@ -1559,7 +1562,7 @@ fn toxin_location_340_is_a_no_op_and_random_location_is_safe() {
             .unwrap();
         engine.tick().unwrap();
         assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
-        assert_eq!(engine.organism(target).unwrap().paralyzed, 1);
+        assert_eq!(engine.organism(target).unwrap().paralyzed, 2);
         let save = SaveFile::encode(&engine).unwrap();
         let payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
         payload["slots"][target.slot() as usize]["organism"]["effects"]["paralysis_location"]
@@ -1691,7 +1694,7 @@ fn toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory() {
         .unwrap();
     engine.tick().unwrap();
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
-    assert_eq!(engine.organism(target).unwrap().paralyzed, 1);
+    assert_eq!(engine.organism(target).unwrap().paralyzed, 2);
 
     engine
         .replace_dna(
@@ -1699,6 +1702,10 @@ fn toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory() {
             LegacyDna::parse("start\n55 500 store\nstop").unwrap(),
         )
         .unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.organism(target).unwrap().paralyzed, 1);
+    assert_eq!(engine.memory_at(target, 500).unwrap(), 77);
+
     engine.tick().unwrap();
     assert_eq!(engine.organism(target).unwrap().paralyzed, 0);
     assert_eq!(engine.memory_at(target, 500).unwrap(), 77);
