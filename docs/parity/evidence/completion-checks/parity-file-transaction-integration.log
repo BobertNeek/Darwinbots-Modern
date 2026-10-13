@@ -1,0 +1,76 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 04s
+     Running tests\canonical_cycle_248.rs (target\debug\deps\canonical_cycle_248-2afe620a5fe5a704.exe)
+
+running 14 tests
+test one_tick_publishes_one_completed_cycle ... ok
+test births_and_deaths_commit_only_after_the_final_robot_pass ... ok
+test dna_and_observable_robot_visits_use_ascending_slot_order ... ok
+test deleting_tie_still_applies_first_pass_spring_before_second_pass_delete ... ok
+test post_dna_tie_write_precedes_shot_and_reproduction_consumption ... ok
+test shot_effect_occurs_after_dna_and_before_robot_passes ... ok
+test trace_matches_the_complete_24832_phase_manifest ... ok
+test teleporter_relocation_precedes_same_cycle_senses ... ok
+test three_cycle_sensor_and_command_visibility_is_canonical ... ok
+test tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle ... ok
+test asexual_birth_side_effects_execute_in_commit_phase ... ok
+test zero_cost_birth_does_not_emit_a_copy_charge_effect ... ok
+test dna_skips_corpse_and_dna_disabled_robots ... ok
+test a_new_tie_exchanges_resources_only_after_hardening ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\final_state_persistence_248.rs (target\debug\deps\final_state_persistence_248-efbe07504d513b4c.exe)
+
+running 4 tests
+test per_01_loads_legacy_simulation_state_and_promotes_it_to_db3s_v3 ... ok
+test mut_02_point_and_delta_mutations_run_through_an_ordinary_cycle ... ok
+test core_02_persists_remaining_robot_flags_counters_private_diagnostics_and_occurrences ... ok
+test core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\gpu_ffi.rs (target\debug\deps\gpu_ffi-625ae4070967ba49.exe)
+
+running 26 tests
+test cpu_physics_integrates_and_clamps_world_bounds ... ok
+test cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn ... ok
+test cpu_and_gpu_emit_identical_nontiming_cycle_traces ... ok
+test engine_retains_gpu_backend_and_uses_it_for_tick_physics ... ok
+test engine_can_switch_backends_while_preserving_live_state ... ok
+test cpu_and_gpu_match_toxin_state_memory_and_position ... ok
+test cpu_and_gpu_match_tie_lifecycle_spring_and_hardening ... ok
+test ffi_adds_and_removes_live_environment_features ... ok
+test cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance ... ok
+test ffi_import_accepts_known_sysvars_without_inert_warnings ... ok
+test ffi_v1_consumers_accept_the_additive_snapshot ... ok
+test ffi_binary_save_load_round_trip_replaces_engine_atomically ... ok
+test ffi_rejects_unknown_batch_versions_with_owned_structured_error ... ok
+test ffi_environment_updates_preserve_optional_db2_settings ... ok
+test ffi_executes_versioned_command_batches_and_reports_capabilities ... ok
+test ffi_imports_a_configured_species_as_one_command ... ok
+test ffi_manual_tools_return_ids_and_exported_dna ... ok
+test fused_gpu_sensing_and_motion_match_cpu_contract_when_adapter_is_available ... ok
+test gpu_prepares_render_instances_with_integrated_positions ... ok
+test gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_available ... ok
+test gpu_builds_spatial_grid_before_neighborhood_queries_when_adapter_is_available ... ok
+test gpu_physics_matches_cpu_when_an_adapter_is_available ... ok
+test ffi_loads_genuine_native_sim_and_preserves_the_world_after_rejected_load ... ok
+test physical_gpu_fuses_grid_sensing_integration_and_render_preparation ... ok
+test gpu_sensing_matches_nearest_neighbor_contract_when_adapter_is_available ... ok
+test ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.71s
+
+     Running tests\legacy_transport.rs (target\debug\deps\legacy_transport-63165eb7b8542d67.exe)
+
+running 6 tests
+test legacy_vb6_organism_records_import_without_losing_state_or_ties ... ok
+test legacy_organism_fixture_round_trips_and_rejects_unknown_version ... ok
+test entire_organism_interchange_restores_members_state_and_ties ... ok
+test legacy_codecs_round_trip_the_authoritative_fixture_fields ... ok
+test legacy_settings_corpus_round_trips_all_shipped_assets ... ok
+test file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
