@@ -35,7 +35,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs;
-use std::path::Path;
 use std::time::Instant;
 
 use crate::physics::{
@@ -58,6 +57,10 @@ mod native_organism_io;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+
+#[path = "world/file_transfer_transaction.rs"]
+mod file_transfer_transaction;
+use file_transfer_transaction::FileTransferTransaction;
 
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
@@ -4485,20 +4488,31 @@ impl Engine {
         publish: bool,
         trace_enabled: bool,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
-        let checkpoint = (matches!(self.physics, RuntimePhysics::Gpu(_))
+        let checkpoint = ((matches!(self.physics, RuntimePhysics::Gpu(_))
             && !self.config.allow_cpu_fallback)
-            .then(|| self.cycle_checkpoint());
+            || self.has_file_transfers())
+        .then(|| self.cycle_checkpoint());
+        let mut transfers = FileTransferTransaction::default();
         self.update_dynamic_cost_state();
-        match self.tick_internal(publish, trace_enabled) {
+        match self
+            .tick_internal(publish, trace_enabled, &mut transfers)
+            .and_then(|trace| {
+                transfers.commit()?;
+                Ok(trace)
+            }) {
             Ok(trace) => Ok(trace),
             Err(error) => {
+                let file_rollback = transfers.rollback();
                 if let Some(checkpoint) = checkpoint {
                     self.restore_cycle_checkpoint(checkpoint);
                     if matches!(error, EngineError::Gpu(_) | EngineError::GpuUnavailable(_)) {
                         self.recreate_gpu_backend_after_failure(&error)?;
                     }
                 }
-                Err(error)
+                match file_rollback {
+                    Ok(()) => Err(error),
+                    Err(recovery) => Err(EngineError::Invariant(format!("{error}; {recovery}"))),
+                }
             }
         }
     }
@@ -4614,6 +4628,7 @@ impl Engine {
         &mut self,
         publish: bool,
         trace_enabled: bool,
+        transfers: &mut FileTransferTransaction,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         let cycle_started = Instant::now();
         let next_tick = self.tick.saturating_add(1);
@@ -4657,7 +4672,7 @@ impl Engine {
 
         trace.phase(CyclePhase::RobotPipeline);
         self.trace_robot_phase(&mut trace, CyclePhase::TeleporterTest);
-        self.apply_file_teleporters()?;
+        self.apply_file_teleporters_staged(transfers)?;
         self.apply_environment_features(false, true);
         self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
         self.trace_robot_phase(&mut trace, CyclePhase::Tide);
@@ -10950,22 +10965,6 @@ fn validate_file_teleporter(teleporter: &FileTeleporter) -> Result<(), EngineErr
     Ok(())
 }
 
-fn write_transfer_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(parent)?;
-    let mut temporary = tempfile::Builder::new()
-        .prefix(".db2-transfer-")
-        .suffix(".tmp")
-        .tempfile_in(parent)?;
-    temporary.write_all(bytes)?;
-    temporary.as_file().sync_all()?;
-    temporary
-        .persist_noclobber(path)
-        .map_err(|error| error.error)?;
-    Ok(())
-}
-
 fn toxin_location(robot: &mut RobotState, raw_location: i32) -> i32 {
     if raw_location > 0 {
         let normalized = (raw_location - 1).rem_euclid(1_000) + 1;
@@ -11440,6 +11439,70 @@ mod tests {
             panic!("the physical GPU is required for this test");
         };
         backend.fail_next_sensing_after_submit_for_tests();
+    }
+
+    #[test]
+    fn failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once() {
+        let incoming = tempfile::tempdir().unwrap();
+        let outgoing = tempfile::tempdir().unwrap();
+        let mut source = Engine::new(EngineConfig::testing()).unwrap();
+        let imported = source
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        source.set_organism_memory(imported, 900, 1234).unwrap();
+        let bytes = source.export_native_organisms(&[imported]).unwrap();
+        let input = incoming.path().join("original.dbo");
+        fs::write(&input, &bytes).unwrap();
+        let mut engine = Engine::new(EngineConfig {
+            backend: BackendPreference::Gpu,
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .expect("physical GPU required for the transactional failure check");
+        let departing = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [200.0, 500.0])
+            .unwrap();
+        engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        engine
+            .add_file_teleporter(
+                FileTeleporter::new(1, [200.0, 500.0], 20.0)
+                    .with_paths("", outgoing.path())
+                    .with_polling(1, 1),
+            )
+            .unwrap();
+        engine
+            .add_file_teleporter(
+                FileTeleporter::new(2, [800.0, 500.0], 20.0)
+                    .with_paths(incoming.path(), "")
+                    .with_polling(1, 1),
+            )
+            .unwrap();
+        let before = crate::SaveFile::encode(&engine).unwrap();
+        fail_next_gpu_sensing_after_submit(&engine);
+        let error = engine.tick().unwrap_err();
+        assert!(error.to_string().contains("after GPU submission"));
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(fs::read(&input).unwrap(), bytes);
+        assert_eq!(fs::read_dir(incoming.path()).unwrap().count(), 1);
+        assert_eq!(fs::read_dir(outgoing.path()).unwrap().count(), 0);
+        assert!(engine.organism(departing).is_ok());
+        engine.tick().unwrap();
+        assert!(engine.organism(departing).is_err());
+        assert_eq!(engine.population(), 2);
+        assert_eq!(engine.snapshot().tick, 1);
+        assert_eq!(fs::read_dir(incoming.path()).unwrap().count(), 0);
+        assert_eq!(fs::read_dir(outgoing.path()).unwrap().count(), 1);
+        assert_eq!(engine.file_teleporters[0].sent, 1);
+        assert_eq!(engine.file_teleporters[1].received, 1);
+        let matches = engine
+            .slots
+            .iter()
+            .filter_map(|s| s.organism.as_ref())
+            .filter(|r| r.program.memory.read(900) == 1234)
+            .count();
+        assert_eq!(matches, 1);
     }
 
     #[test]

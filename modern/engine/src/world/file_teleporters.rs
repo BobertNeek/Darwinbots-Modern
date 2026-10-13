@@ -4,7 +4,36 @@ use super::*;
 use crate::SaveFile;
 
 impl Engine {
+    pub(super) fn has_file_transfers(&self) -> bool {
+        !self.file_teleporters.is_empty()
+            || self.teleporters.iter().any(|tele| {
+                !tele.internet
+                    && ((tele.inbound
+                        && (!tele.inbound_path.as_os_str().is_empty()
+                            || !tele.path.as_os_str().is_empty()))
+                        || (tele.outbound
+                            && (!tele.outbound_path.as_os_str().is_empty()
+                                || !tele.path.as_os_str().is_empty())))
+            })
+    }
+
+    #[cfg(test)]
     pub(super) fn apply_file_teleporters(&mut self) -> Result<(), EngineError> {
+        let checkpoint = self.cycle_checkpoint();
+        let mut transfers = FileTransferTransaction::default();
+        let result = self
+            .apply_file_teleporters_staged(&mut transfers)
+            .and_then(|()| transfers.commit());
+        if result.is_err() {
+            self.restore_cycle_checkpoint(checkpoint);
+        }
+        result
+    }
+
+    pub(super) fn apply_file_teleporters_staged(
+        &mut self,
+        transfers: &mut FileTransferTransaction,
+    ) -> Result<(), EngineError> {
         let configured_count = self.file_teleporters.len();
         let mut gateways = self
             .file_teleporters
@@ -77,14 +106,14 @@ impl Engine {
                     let Ok(bytes) = self.export_native_organisms(&members) else {
                         continue;
                     };
-                    if write_transfer_atomically(&path, &bytes).is_err() {
+                    if transfers.stage_export(&path, &bytes).is_err() {
                         continue;
                     }
                     if self.remove_many(&members).is_ok() {
                         sent = sent.saturating_add(1);
                         emitted_paths.push(path);
                     } else {
-                        let _ = fs::remove_file(path);
+                        transfers.cancel_export(&path);
                     }
                 }
 
@@ -114,7 +143,7 @@ impl Engine {
                         corpse_index += 1;
                         continue;
                     };
-                    if write_transfer_atomically(&path, &transfer.bytes).is_err() {
+                    if transfers.stage_export(&path, &transfer.bytes).is_err() {
                         corpse_index += 1;
                         continue;
                     }
@@ -175,8 +204,8 @@ impl Engine {
                         continue;
                     };
                     // TeleportInBots counts files, not cells. Its type filters
-                    // apply to departures. Consume the input before committing
-                    // the candidate world so deletion failures cannot duplicate it.
+                    // apply to departures. Claim the input under a recovery name
+                    // before accepting it; finish only after the cycle succeeds.
                     let mut candidate = SaveFile::decode(&SaveFile::encode(self)?)?;
                     let imported = if bytes.starts_with(b"DB2S") {
                         LegacySimulationFile::decode(&bytes).and_then(|transfer| {
@@ -202,7 +231,12 @@ impl Engine {
                             }),
                         )
                     };
-                    if imported.is_ok_and(|count| count > 0) && fs::remove_file(&path).is_ok() {
+                    if imported.is_ok_and(|count| count > 0)
+                        && transfers.claim_input(&path, &bytes).is_ok()
+                    {
+                        // Importing into a candidate must preserve the active
+                        // backend, including its runtime failure state.
+                        std::mem::swap(&mut candidate.physics, &mut self.physics);
                         *self = candidate;
                         received = received.saturating_add(1);
                     }
