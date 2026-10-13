@@ -521,17 +521,19 @@ impl ProjectilePool {
                     self.previous_positions[slot][axis] -= wrap_offset;
                 }
             }
-            let no_decay = (self.kinds[slot] == -2 && settings.energy_shots_do_not_decay)
+            let no_decay = self.stored[slot]
+                || (self.kinds[slot] == -2 && settings.energy_shots_do_not_decay)
                 || (self.kinds[slot] == -4 && settings.waste_shots_do_not_decay);
             if !no_decay {
                 self.ages[slot] = self.ages[slot].saturating_add(1);
             }
             if self.ages[slot] as f32 > self.ranges[slot]
-                || (0..2).any(|axis| {
-                    !wrapped_axes[axis]
-                        && (self.positions[slot][axis] < 0.0
-                            || self.positions[slot][axis] > world_size[axis])
-                })
+                || (!self.stored[slot]
+                    && (0..2).any(|axis| {
+                        !wrapped_axes[axis]
+                            && (self.positions[slot][axis] < 0.0
+                                || self.positions[slot][axis] > world_size[axis])
+                    }))
             {
                 expired.push(slot as u32);
             }
@@ -559,7 +561,9 @@ impl ProjectilePool {
         self.alive
             .iter()
             .enumerate()
-            .filter_map(|(slot, alive)| (*alive && !self.impact_flash[slot]).then_some(slot as u32))
+            .filter_map(|(slot, alive)| {
+                (*alive && !self.impact_flash[slot] && !self.stored[slot]).then_some(slot as u32)
+            })
             .collect()
     }
 

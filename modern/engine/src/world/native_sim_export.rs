@@ -459,11 +459,17 @@ impl Engine {
                 &(p.clone() + "species"),
                 s.source_species_names[i].as_deref().unwrap_or(""),
             )?;
-            let dna = s.payloads[i]
+            let mut dna = s.payloads[i]
                 .as_ref()
                 .map(native_dna)
                 .transpose()?
                 .unwrap_or_default();
+            if !s.alive[i] || s.impact_flash[i] || !matches!(s.kinds[i], -7 | -8) {
+                dna.clear();
+            } else if s.kinds[i] == -7 && s.dna_lengths[i] > 0 {
+                // Native virus DNA contains the copied gene without a master-end block.
+                dna.truncate(s.dna_lengths[i] as usize * 4);
+            }
             number(t, &(p.clone() + "dna_length"), (dna.len() / 4) as f64)?;
             t.set_value(&(p + "dna"), NativeValue::Bytes(dna))?;
         }

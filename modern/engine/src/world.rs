@@ -68,6 +68,9 @@ mod native_aim;
 #[path = "world/native_biology.rs"]
 mod native_biology;
 
+#[path = "world/native_virus.rs"]
+mod native_virus;
+
 const MEM_ROBAGE: i32 = 9;
 const MEM_HIT: i32 = 201;
 const MEM_SHOT_FLAVOR: i32 = 202;
@@ -300,10 +303,6 @@ fn publish_reproductive_readbacks(robot: &mut RobotState) {
         .program
         .memory
         .write(MEM_DNA_LENGTH, robot.program.dna.blocks().len() as i32);
-    robot
-        .program
-        .memory
-        .write(MEM_VIRUS_TIMER, robot.effects.virus_build_timer);
     robot
         .program
         .memory
@@ -4004,6 +4003,11 @@ impl Engine {
         for &id in ids {
             self.slots.remove(id)?;
         }
+        for shot in 0..self.projectiles.owners.len() {
+            if self.projectiles.stored[shot] && ids.contains(&self.projectiles.owners[shot]) {
+                self.projectiles.deactivate(shot as u32);
+            }
+        }
         self.ties
             .retain(|tie| !ids.contains(&tie.first) && !ids.contains(&tie.second));
         self.publish_snapshot();
@@ -5607,9 +5611,6 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
-            if robot.effects.virus_build_timer > 1 {
-                robot.effects.virus_build_timer -= 1;
-            }
             if robot.effects.fertilization_timer > 0 {
                 robot.effects.fertilization_timer -= 1;
                 if robot.effects.fertilization_timer == 0 {
@@ -5617,123 +5618,6 @@ impl Engine {
                 }
             }
             publish_reproductive_readbacks(robot);
-        }
-    }
-
-    fn virus_commands_phase(&mut self) {
-        let costs = self.active_dna_costs();
-        let runtime = SysvarRuntime::new();
-        let mut virus_requests = Vec::new();
-        for slot_index in 0..self.slots.len() {
-            let generation = self.slots[slot_index].generation;
-            let Some(robot) = self.slots[slot_index].organism.as_mut() else {
-                continue;
-            };
-            if robot.flags.corpse || !robot.flags.can_execute_dna {
-                continue;
-            }
-            let Some(PhaseCommands::Virus(commands)) =
-                runtime.consume(CyclePhase::Virus, &mut robot.program.memory)
-            else {
-                unreachable!("virus phase must return virus commands")
-            };
-            let owner = OrganismId::new(slot_index as u32, generation);
-            let mut make_outcome = CommandOutcome::Excluded;
-            let mut shoot_outcome = CommandOutcome::Excluded;
-            let mut delete_outcome = CommandOutcome::Excluded;
-            if commands.make != 0 && robot.effects.stored_virus.is_none() {
-                let requested_gene = commands.make.max(1);
-                if let Some(gene) = robot.program.dna.gene(requested_gene) {
-                    let copy_cost =
-                        gene.blocks().len() as f64 * costs.dna_copy * costs.global_multiplier;
-                    robot.materials.energy = (robot.materials.energy - copy_cost as f32).max(0.0);
-                    robot.materials.publish(&mut robot.program.memory);
-                    robot.effects.stored_virus = Some(StoredGeneticMaterial {
-                        dna: gene.clone(),
-                        source: Some(owner),
-                    });
-                    robot.effects.virus_build_timer =
-                        gene.blocks().len().saturating_mul(2).clamp(1, 32_000) as i32;
-                    make_outcome = CommandOutcome::Consumed;
-                }
-            }
-            if commands.shoot != 0
-                && robot.effects.virus_build_timer == 1
-                && let Some(stored) = robot.effects.stored_virus.take()
-            {
-                let random = advance_random(
-                    self.config.seed
-                        ^ self.tick.rotate_left(19)
-                        ^ (slot_index as u64).rotate_left(37),
-                );
-                virus_requests.push((
-                    PendingProjectileRequest {
-                        owner_slot: slot_index,
-                        kind: -7,
-                        value: commands.shoot.abs().max(1) as f32,
-                        range_multiplier: 1.0,
-                        angle: (random % 6_283) as f32 / 1_000.0,
-                    },
-                    stored.dna,
-                ));
-                robot.effects.virus_build_timer = 0;
-                shoot_outcome = CommandOutcome::Consumed;
-            }
-            if commands.delete_gene > 0
-                && let Some(dna) = robot.program.dna.delete_gene(commands.delete_gene)
-            {
-                robot.program.dna = dna;
-                robot.refresh_occurrence_census();
-                delete_outcome = CommandOutcome::Consumed;
-            }
-            runtime.finish_command(335, make_outcome, &mut robot.program.memory);
-            runtime.finish_command(338, shoot_outcome, &mut robot.program.memory);
-            runtime.finish_command(340, delete_outcome, &mut robot.program.memory);
-            publish_reproductive_readbacks(robot);
-        }
-        for (request, payload) in virus_requests {
-            let slot = request.owner_slot;
-            let Some(owner) = self.slots[slot].organism.as_ref() else {
-                continue;
-            };
-            let owner_id = OrganismId::new(slot as u32, self.slots[slot].generation);
-            let owner_virtual_body = self.virtual_body_for(owner_id);
-            let source_species_name = self
-                .species
-                .get(owner.identity.species.0 as usize)
-                .map(|species| species.name.clone());
-            self.projectiles.spawn(
-                ProjectileSpawn {
-                    owner: OrganismId::new(slot as u32, self.slots[slot].generation),
-                    owner_position: owner.kinematics.position,
-                    owner_velocity: owner.kinematics.velocity,
-                    correct_position: false,
-                    owner_actual_velocity: owner.kinematics.actual_velocity,
-                    owner_radius: crate::physics::organism_radius(
-                        owner.materials.body,
-                        owner.materials.chloroplasts,
-                        self.config.fixed_bot_radii,
-                    ),
-                    owner_virtual_body,
-                    range_multiplier: 1.0,
-                    angle: request.angle,
-                    kind: request.kind,
-                    value: request.value,
-                    payload: Some(payload),
-                    source_species_name,
-                    toxin_memory_location: 0,
-                    toxin_memory_value: 0,
-                    color: owner.phenotype.color,
-                    source_vegetable: self
-                        .species
-                        .get(owner.identity.species.0 as usize)
-                        .is_some_and(|species| species.vegetable),
-                    stored: request.kind == -7,
-                    gene_number: owner.program.current_gene as i32,
-                    dna_length: 0,
-                },
-                &self.config.shots,
-            );
         }
     }
 
@@ -7951,6 +7835,13 @@ impl Engine {
     }
 
     fn projectile_update_phase(&mut self, trace: &mut CycleRecorder) {
+        for shot in 0..self.projectiles.owners.len() {
+            if self.projectiles.stored[shot]
+                && self.slots.get(self.projectiles.owners[shot]).is_err()
+            {
+                self.projectiles.deactivate(shot as u32);
+            }
+        }
         self.projectiles.advance(
             &self.config.shots,
             [self.config.world_width, self.config.world_height],

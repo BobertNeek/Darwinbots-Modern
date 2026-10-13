@@ -387,7 +387,7 @@ fn engine_tick_preserves_unfinished_virus_commands() {
 
     assert_eq!(engine.memory(robot, "mkvirus").unwrap(), 12);
     assert_eq!(engine.memory(robot, "vshoot").unwrap(), 30);
-    assert_eq!(engine.memory(robot, "delgene").unwrap(), 5);
+    assert_eq!(engine.memory(robot, "delgene").unwrap(), 0);
 }
 
 #[test]

@@ -513,8 +513,8 @@ fn engine_tick_dna06_cost_table_covers_tokens_store_copy_and_consumption() {
             },
             expected_vm_cost: 20.0,
             copy_gene: true,
-            consumed_command: Some("mkvirus"),
-            expected_memory: Some(("mkvirus", 0)),
+            consumed_command: None,
+            expected_memory: Some(("mkvirus", 1)),
         },
     ];
 
@@ -531,7 +531,9 @@ fn engine_tick_dna06_cost_table_covers_tokens_store_copy_and_consumption() {
 
         let state = engine.robot_state(id).unwrap();
         let copy_cost = state.effects.stored_virus.as_ref().map_or(0.0, |virus| {
-            virus.dna.blocks().len() as f64 * case.costs.dna_copy * case.costs.global_multiplier
+            virus.dna.blocks().len().saturating_sub(1) as f64
+                * case.costs.dna_copy
+                * case.costs.global_multiplier
         });
         let after = &state.materials;
         let expected_loss = (case.expected_vm_cost + copy_cost) as f32;
