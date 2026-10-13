@@ -257,7 +257,14 @@ mod tests {
         // Latched commands from before death must not run corpse metabolism,
         // manufacture materials, shoot or modify its saved genome.
         let robot = returned.slots.get_mut(id).unwrap();
-        for (address, value) in [(313, 100), (822, 100), (824, 100), (7, -4), (335, 1), (340, 1)] {
+        for (address, value) in [
+            (313, 100),
+            (822, 100),
+            (824, 100),
+            (7, -4),
+            (335, 1),
+            (340, 1),
+        ] {
             robot.program.memory.write(address, value);
         }
         let dna = robot.program.dna.blocks().to_vec();

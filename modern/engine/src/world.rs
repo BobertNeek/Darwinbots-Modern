@@ -62,6 +62,9 @@ mod file_teleporters;
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
 
+#[path = "world/native_aim.rs"]
+mod native_aim;
+
 const MEM_ROBAGE: i32 = 9;
 const MEM_HIT: i32 = 201;
 const MEM_SHOT_FLAVOR: i32 = 202;
@@ -5558,6 +5561,7 @@ impl Engine {
         let runtime = SysvarRuntime::new();
         let costs = self.active_dna_costs();
         let population = self.cost_population();
+        let rotation_multiplier = costs.dynamic_multiplier(population);
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -5570,37 +5574,7 @@ impl Engine {
             else {
                 unreachable!("aim phase must return aim commands")
             };
-            for address in [5, 6, 19] {
-                runtime.finish_command(
-                    address,
-                    CommandOutcome::Consumed,
-                    &mut robot.program.memory,
-                );
-            }
-            robot.materials.apply_outputs(
-                &mut robot.program.memory,
-                0,
-                commands,
-                Default::default(),
-            );
-            let amount = f64::from(commands.turn_right.unsigned_abs())
-                + f64::from(commands.turn_left.unsigned_abs());
-            settle_simulation_cost(
-                robot,
-                costs.action_cost_for(SimulationCostAction::Rotation, amount, population),
-            );
-            let turn = robot
-                .kinematics
-                .angular_momentum
-                .clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
-            if turn.abs() > f32::EPSILON {
-                robot.materials.aim = (robot.materials.aim
-                    + (turn * 200.0).round_ties_even() as i32)
-                    .rem_euclid(1_257);
-                robot.kinematics.angular_momentum = turn;
-            }
-            let aim_radians = robot.materials.aim as f32 / 200.0;
-            robot.set_heading(aim_radians);
+            native_aim::apply(robot, commands, costs.rotation, rotation_multiplier);
             robot.materials.publish(&mut robot.program.memory);
         }
     }
