@@ -8,6 +8,43 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LegacySettingsNativeTests
 {
     [Fact]
+    public void OriginalExecutableRetainsExportedAnimalCellsAndTheirNativeTie()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        const string relative = "docs/parity/evidence/native-organism-original-roundtrip.zip";
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, relative))) directory = directory.Parent;
+        Assert.NotNull(directory);
+        using var archive = System.IO.Compression.ZipFile.OpenRead(Path.Combine(directory.FullName, relative));
+        var entry = archive.GetEntry("original-after-animal-dbo.sim");
+        Assert.NotNull(entry);
+        using var stream = entry.Open();
+        using var bytes = new MemoryStream();
+        stream.CopyTo(bytes);
+        using var engine = new NativeEngineClient(backend: "Cpu");
+        engine.Load(bytes.ToArray());
+        var snapshot = engine.Snapshot();
+        Assert.Equal(1185ul, snapshot.Tick);
+        Assert.Equal(922, snapshot.Population);
+        var first = Assert.Single(snapshot.Organisms, bot => bot.UniqueId == 250 && bot.Age == 44);
+        var second = Assert.Single(snapshot.Organisms, bot => bot.UniqueId == 294 && bot.Age == 0);
+        Assert.Equal(1899, first.Energy);
+        Assert.Equal(1899, second.Energy);
+        Assert.Equal(150, first.Body);
+        Assert.Equal(149, second.Body);
+        Assert.Equal(378u, first.DnaLength);
+        Assert.Equal(378u, second.DnaLength);
+        var tie = Assert.Single(snapshot.Ties, value => value.First.Slot == first.Slot && value.Second.Slot == second.Slot);
+        Assert.Equal(109f, tie.RestLength);
+        using var saved = System.Text.Json.JsonDocument.Parse(engine.Save().AsMemory(10));
+        var nativeTie = Assert.Single(saved.RootElement.GetProperty("ties").EnumerateArray(), value =>
+            value.GetProperty("first").GetProperty("slot").GetUInt32() == first.Slot
+            && value.GetProperty("second").GetProperty("slot").GetUInt32() == second.Slot);
+        Assert.Equal(0, nativeTie.GetProperty("first_port").GetInt32());
+        Assert.Equal(1, nativeTie.GetProperty("second_port").GetInt32());
+        Assert.True(snapshot.Organisms.Count(bot => bot.UniqueId == 250) > 1);
+    }
+
+    [Fact]
     public void OriginalExecutableContinuationOfThePortExportLoadsAndSteps()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

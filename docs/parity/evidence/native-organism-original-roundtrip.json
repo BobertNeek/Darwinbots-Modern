@@ -1,0 +1,118 @@
+{
+  "code_revision": "857ab7f",
+  "file": "port-animal-tied-group.dbo",
+  "bytes": 21730,
+  "sha256": "47778b52e6860988755b86d99b58724d578ae56809d1a7239b72864eed48c240",
+  "members": [
+    {
+      "id": {
+        "slot": 104,
+        "generation": 0
+      },
+      "unique_id": 250,
+      "age": 44,
+      "energy": 1899,
+      "body": 150,
+      "position": [
+        11097.323,
+        2646.405
+      ]
+    },
+    {
+      "id": {
+        "slot": 184,
+        "generation": 0
+      },
+      "unique_id": 294,
+      "age": 0,
+      "energy": 1899,
+      "body": 149,
+      "position": [
+        11197.867,
+        2604.3103
+      ]
+    }
+  ],
+  "tie": {
+    "first": {
+      "slot": 104,
+      "generation": 0
+    },
+    "second": {
+      "slot": 184,
+      "generation": 0
+    },
+    "rest_length": 109.0,
+    "first_port": 0,
+    "second_port": 1,
+    "last": 100,
+    "b": 0.02,
+    "k": 0.01,
+    "hardened": false,
+    "requested_angle": 0.0,
+    "angle_fixed": false,
+    "angle_initialized": true
+  },
+  "date": "2026-10-12",
+  "original_executable_sha256": "7f580d9ce8f1095a01fd162e9bcac03fe437599e080786fd670b676671c31990",
+  "original_return": {
+    "cycle": 1185,
+    "robot_records": 922,
+    "imported_members": [
+      {
+        "slot": 892,
+        "unique_id": 250,
+        "age": 44,
+        "energy": 1899,
+        "body": 150,
+        "position": [
+          13589.0,
+          628.0
+        ],
+        "dna_length": 378
+      },
+      {
+        "slot": 921,
+        "unique_id": 294,
+        "age": 0,
+        "energy": 1899,
+        "body": 149,
+        "position": [
+          13689.544,
+          585.9053
+        ],
+        "dna_length": 378
+      }
+    ],
+    "tie": {
+      "first_slot": 892,
+      "second_slot": 921,
+      "rest_length": 109.0,
+      "first_port": 0,
+      "second_port": 1,
+      "last": 100,
+      "b": 0.02,
+      "k": 0.01,
+      "hardened": false
+    },
+    "duplicate_native_ids_exist": true
+  },
+  "files": [
+    {
+      "name": "port-animal-tied-group.dbo",
+      "bytes": 21730,
+      "sha256": "47778b52e6860988755b86d99b58724d578ae56809d1a7239b72864eed48c240"
+    },
+    {
+      "name": "original-after-animal-dbo.sim",
+      "bytes": 10041074,
+      "sha256": "6cc7e8900f7fb971d7f46970bc0074e919e815ed4bcb47e03ca039519bde357c"
+    }
+  ],
+  "route": "Production C API export_organism_group -> original Ctrl+I Load organism -> original F3 Save simulation -> production C API load and snapshot",
+  "limits": [
+    "This verifies native organism insertion, translated placement and retained modeled state/ties; it does not prove complete simulation equivalence.",
+    "An earlier plant-group check ran many cycles before saving and the cells were absent; it is not credited.",
+    "The port desktop native insertion placement policy still needs alignment with original random placement."
+  ]
+}
