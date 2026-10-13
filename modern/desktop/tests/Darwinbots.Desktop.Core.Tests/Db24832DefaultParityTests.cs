@@ -18,7 +18,7 @@ public sealed class Db24832DefaultParityTests
         Assert.Equal(0.5f, update.BrownianMotion);
         Assert.False(update.CorpseDecay!.Enabled);
         Assert.Equal(Db2CorpseDecayMode.None, update.CorpseDecay.Mode);
-        Assert.Equal(0, update.CorpseDecay.DeathEnergyThreshold);
+        Assert.Equal(15, update.CorpseDecay.DeathEnergyThreshold);
         Assert.Equal(0, update.CorpseDecay.PacketSize);
         Assert.Equal(0UL, update.CorpseDecay.Period);
         Assert.Equal(200, update.Recording!.SamplingInterval);

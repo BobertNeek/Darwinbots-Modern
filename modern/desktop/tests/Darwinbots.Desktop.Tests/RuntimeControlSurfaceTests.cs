@@ -613,6 +613,59 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
+    public async Task LoadedConfiguredModePopulatesItsControlsWithoutAdvancingTheWorld()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"db24832-loaded-mode-{Guid.NewGuid():N}.db3s");
+        LocalModeConfig expected;
+        using (var engine = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" }))
+        {
+            engine.ConfigureLocalMode(LocalModeConfig.Default with
+            {
+                Kind = LocalModeKind.Contest, Preset = LeaguePreset.F2,
+                MinimumRounds = 2, MaximumRounds = 7, MaximumCycles = 123,
+                MaximumPopulation = 37, RestartOnExtinction = false,
+                SourceSpecies = 0, SelectionPopulationWeight = 0.25f,
+                SelectionEnergyWeight = 0.75f, EnergyHandicap = 25,
+                Restrictions = new LocalModeRestrictions(ProhibitViruses: true),
+            });
+            expected = Assert.IsType<LocalModeConfig>(engine.Snapshot().LocalMode.Configuration);
+            File.WriteAllBytes(path, engine.Save());
+        }
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var window = new MainWindow([], new WorldSetupOptions { Backend = "Cpu", LoadSavePath = path },
+                    NativeEngineClientFactory.Instance, new AuditStorageService());
+                SimulationSession? session = null;
+                try
+                {
+                    window.Show();
+                    await WaitFor(() => Field<MainWindowViewModel>(window, "_viewModel").Status == "LOADED");
+                    session = Field<SimulationSession>(window, "_session");
+                    Assert.Equal((int)expected.Kind, window.FindControl<ComboBox>("LocalModeKindSelector")!.SelectedIndex);
+                    Assert.Equal((int)expected.Preset, window.FindControl<ComboBox>("LocalModePreset")!.SelectedIndex);
+                    Assert.Equal((decimal)expected.MinimumRounds, window.FindControl<NumericUpDown>("ModeMinimumRounds")!.Value);
+                    Assert.Equal((decimal)expected.MaximumRounds, window.FindControl<NumericUpDown>("ModeMaximumRounds")!.Value);
+                    Assert.Equal((decimal)expected.MaximumCycles, window.FindControl<NumericUpDown>("ModeMaximumCycles")!.Value);
+                    Assert.Equal((decimal)expected.MaximumPopulation, window.FindControl<NumericUpDown>("ModePopulationCap")!.Value);
+                    Assert.Equal(expected.RestartOnExtinction, window.FindControl<CheckBox>("ModeRestartOnExtinction")!.IsChecked);
+                    Assert.Equal(expected.Restrictions.ProhibitViruses, window.FindControl<CheckBox>("ModeProhibitViruses")!.IsChecked);
+                    Assert.Equal(expected, Field<MainWindowViewModel>(window, "_viewModel").LocalMode.BuildConfiguration());
+                    Assert.Equal(0ul, session.LatestSnapshot.Tick);
+                }
+                finally
+                {
+                    SetField(window, "_session", null);
+                    window.Close();
+                    if (session is not null) await session.DisposeAsync();
+                }
+            }, CancellationToken.None);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public async Task LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

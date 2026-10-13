@@ -102,11 +102,22 @@ pub struct CorpseDecaySettings {
     pub period: u64,
 }
 
+impl CorpseDecaySettings {
+    pub(crate) fn effective_death_energy_threshold(self) -> i32 {
+        // Earlier port saves wrote zero for DB2's fixed 15-energy threshold.
+        if self.death_energy_threshold == 0 {
+            15
+        } else {
+            self.death_energy_threshold
+        }
+    }
+}
+
 impl Default for CorpseDecaySettings {
     fn default() -> Self {
         Self {
             enabled: false,
-            death_energy_threshold: 0,
+            death_energy_threshold: 15,
             mode: CorpseDecayMode::None,
             packet_size: 0,
             period: 0,

@@ -251,6 +251,27 @@ mod tests {
     }
 
     #[test]
+    fn native_corpse_death_uses_fifteen_after_senses_including_older_zero_defaults() {
+        for threshold in [0, 15] {
+            for (energy, expected_corpses) in [(0.0, 1), (14.5, 1), (15.0, 0)] {
+                let (mut engine, id) = world("start\nstop");
+                engine.config.corpse_decay.enabled = true;
+                engine.config.corpse_decay.death_energy_threshold = threshold;
+                engine.slots.get_mut(id).unwrap().materials.energy = energy;
+                if threshold == 0 && energy == 14.5 {
+                    engine = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap())
+                        .unwrap();
+                    assert_eq!(engine.config.corpse_decay.death_energy_threshold, 0);
+                }
+                engine.tick().unwrap();
+                assert_eq!(engine.snapshot().corpses.len(), expected_corpses);
+                assert_eq!(engine.population(), 1 - expected_corpses);
+                engine.validate_invariants().unwrap();
+            }
+        }
+    }
+
+    #[test]
     fn excluded_commands_remain_pending_and_negative_body_commands_are_ignored() {
         let (mut engine, id) = world("start\nstop");
         let robot = engine.slots.get_mut(id).unwrap();

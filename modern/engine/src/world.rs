@@ -9670,7 +9670,7 @@ impl Engine {
                     !robot.flags.corpse
                         && robot.counters.age > 0
                         && robot.materials.energy
-                            < self.config.corpse_decay.death_energy_threshold as f32
+                            < self.config.corpse_decay.effective_death_energy_threshold() as f32
                 } else {
                     robot.materials.energy < 0.5 || robot.materials.body < 0.5
                 };

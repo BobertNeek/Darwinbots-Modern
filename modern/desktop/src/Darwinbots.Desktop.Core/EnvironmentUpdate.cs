@@ -70,7 +70,7 @@ public enum Db2CorpseDecayMode
 
 public sealed record Db2CorpseDecayOptions(
     bool Enabled = false,
-    int DeathEnergyThreshold = 0,
+    int DeathEnergyThreshold = 15,
     Db2CorpseDecayMode Mode = Db2CorpseDecayMode.None,
     int PacketSize = 0,
     ulong Period = 0);
@@ -371,7 +371,7 @@ public static class NativeCommandSerializer
     internal static object CorpseDecay(Db2CorpseDecayOptions? value) => new
     {
         enabled = value?.Enabled ?? false,
-        death_energy_threshold = value?.DeathEnergyThreshold ?? 0,
+        death_energy_threshold = value?.DeathEnergyThreshold ?? 15,
         mode = (value?.Mode ?? Db2CorpseDecayMode.None) switch
         {
             Db2CorpseDecayMode.WasteShot => "waste_shot",

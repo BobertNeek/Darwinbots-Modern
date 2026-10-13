@@ -19,7 +19,7 @@ fn clean_start_defaults_match_db24832() {
     assert_eq!(config.brownian_motion, 0.5);
 
     assert!(!config.corpse_decay.enabled);
-    assert_eq!(config.corpse_decay.death_energy_threshold, 0);
+    assert_eq!(config.corpse_decay.death_energy_threshold, 15);
     assert_eq!(config.corpse_decay.mode, CorpseDecayMode::None);
     assert_eq!(config.corpse_decay.packet_size, 0);
     assert_eq!(config.corpse_decay.period, 0);
