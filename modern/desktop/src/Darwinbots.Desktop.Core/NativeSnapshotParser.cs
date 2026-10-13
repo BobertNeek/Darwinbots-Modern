@@ -322,6 +322,7 @@ public static class NativeSnapshotParser
         {
             MinimumRounds = parsedConfig.MinimumRounds,
             EnergyHandicap = parsedConfig.EnergyHandicap,
+            Configuration = parsedConfig,
         };
     }
 

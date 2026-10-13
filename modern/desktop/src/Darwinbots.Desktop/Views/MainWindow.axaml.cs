@@ -1880,6 +1880,21 @@ public sealed partial class MainWindow : Window
             foreach (var species in configuration.Species) _insertionSpecies.Add(species);
             InsertionSpeciesSelector.SelectedIndex = _insertionSpecies.Count > 0 ? 0 : -1;
             ToolbarSlot17.SelectedIndex = InsertionSpeciesSelector.SelectedIndex;
+            if (_session.LatestSnapshot.LocalMode.Configuration is { } localMode)
+            {
+                _viewModel.LocalMode.Observe(_session.LatestSnapshot.LocalMode);
+                LocalModeKindSelector.SelectedIndex = (int)localMode.Kind;
+                LocalModePreset.SelectedIndex = (int)localMode.Preset;
+                ModeMinimumRounds.Value = localMode.MinimumRounds;
+                ModeMaximumRounds.Value = localMode.MaximumRounds;
+                ModeMaximumCycles.Value = localMode.MaximumCycles;
+                ModePopulationCap.Value = localMode.MaximumPopulation;
+                ModeEnergyHandicap.Value = localMode.EnergyHandicap;
+                ModeRestartOnExtinction.IsChecked = localMode.RestartOnExtinction;
+                ModeProhibitInformation.IsChecked = localMode.Restrictions.ProhibitInformationShots;
+                ModeProhibitViruses.IsChecked = localMode.Restrictions.ProhibitViruses;
+                ModeProhibitSexual.IsChecked = localMode.Restrictions.ProhibitSexualReproduction;
+            }
         }
         finally { _controlsReady = controlsReady; }
         RefreshLegacyMenuStates();

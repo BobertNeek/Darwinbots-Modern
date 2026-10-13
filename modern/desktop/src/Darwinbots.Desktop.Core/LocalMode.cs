@@ -93,6 +93,7 @@ public sealed record LocalModeSnapshot(
 {
     public uint MinimumRounds { get; init; } = 1;
     public int EnergyHandicap { get; init; }
+    public LocalModeConfig? Configuration { get; init; }
 
     public static LocalModeSnapshot Idle { get; } = new(
         LocalModeStatus.Idle,

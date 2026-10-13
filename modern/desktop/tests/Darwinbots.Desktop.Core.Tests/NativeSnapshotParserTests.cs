@@ -6,6 +6,36 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class NativeSnapshotParserTests
 {
     [Fact]
+    public void RetainsCompleteLocalModeConfigurationForLoadedEditors()
+    {
+        const string json = """
+            {
+              "tick": 17, "organisms": [],
+              "local_mode": {
+                "status": "Configured", "current_round": 0,
+                "cycle_in_round": 0, "restart_count": 0, "results": [],
+                "config": {
+                  "kind": "Contest", "preset": "F2",
+                  "minimum_rounds": 2, "maximum_rounds": 7,
+                  "maximum_cycles": 123, "maximum_population": 37,
+                  "restart_on_extinction": false, "energy_handicap": 25,
+                  "source_species": 4, "selection_population_weight": 0.25,
+                  "selection_energy_weight": 0.75
+                }
+              }
+            }
+            """;
+        var mode = NativeSnapshotParser.Parse(json, "CPU").LocalMode;
+        var configuration = Assert.IsType<LocalModeConfig>(mode.Configuration);
+        Assert.Equal(37, configuration.MaximumPopulation);
+        Assert.Equal(2u, configuration.MinimumRounds);
+        Assert.False(configuration.RestartOnExtinction);
+        Assert.Equal(4u, configuration.SourceSpecies);
+        Assert.Equal(0.25f, configuration.SelectionPopulationWeight);
+        Assert.Equal(0.75f, configuration.SelectionEnergyWeight);
+    }
+
+    [Fact]
     public void ParsesStableIdsVectorsAndPopulationFromRustSnapshot()
     {
         const string json = """

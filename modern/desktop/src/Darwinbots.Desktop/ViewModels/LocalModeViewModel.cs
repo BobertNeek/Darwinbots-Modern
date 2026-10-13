@@ -119,6 +119,15 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         MaximumCycles = snapshot.MaximumCycles;
         RestartCount = snapshot.RestartCount;
         EnergyHandicap = snapshot.EnergyHandicap;
+        if (snapshot.Configuration is { } configuration)
+        {
+            MinimumRounds = configuration.MinimumRounds;
+            MaximumPopulation = configuration.MaximumPopulation;
+            RestartOnExtinction = configuration.RestartOnExtinction;
+            SourceSpecies = configuration.SourceSpecies;
+            SelectionPopulationWeight = configuration.SelectionPopulationWeight;
+            SelectionEnergyWeight = configuration.SelectionEnergyWeight;
+        }
         Results = snapshot.Results;
         Adjudication = snapshot.Adjudication;
         ProhibitInformationShots = snapshot.Restrictions.ProhibitInformationShots;

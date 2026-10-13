@@ -7,6 +7,31 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LocalModeWorkflowTests
 {
     [Fact]
+    public void LoadedModeEditsRetainItsPopulationSourceAndSelectionPolicy()
+    {
+        var configuration = LocalModeConfig.Default with
+        {
+            Kind = LocalModeKind.Contest, Preset = LeaguePreset.F2,
+            MinimumRounds = 2, MaximumRounds = 7, MaximumCycles = 123,
+            MaximumPopulation = 37, RestartOnExtinction = false,
+            SourceSpecies = 4, SelectionPopulationWeight = 0.25f,
+            SelectionEnergyWeight = 0.75f, EnergyHandicap = 25,
+        };
+        var viewModel = new LocalModeViewModel();
+        viewModel.Observe(new LocalModeSnapshot(
+            LocalModeStatus.Configured, configuration.Kind, configuration.Preset,
+            0, configuration.MaximumRounds, 0, configuration.MaximumCycles,
+            0, [], null, configuration.Restrictions)
+        {
+            Configuration = configuration, MinimumRounds = configuration.MinimumRounds,
+            EnergyHandicap = configuration.EnergyHandicap,
+        });
+        Assert.Equal(configuration, viewModel.BuildConfiguration());
+        viewModel.MaximumPopulation = 38;
+        Assert.Equal(configuration with { MaximumPopulation = 38 }, viewModel.BuildConfiguration());
+    }
+
+    [Fact]
     public void LocalModeOpensWithDb24832ContestDefaults()
     {
         var localMode = new MainWindowViewModel().LocalMode;
