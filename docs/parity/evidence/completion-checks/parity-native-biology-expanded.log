@@ -1,0 +1,527 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 5m 52s
+     Running unittests src\lib.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\darwinbots_engine-01d7936031f3692d.exe)
+
+running 65 tests
+test corpse::tests::energy_decay_packet_uses_original_body_conversion_and_rejects_empty_body ... ok
+test ffi::tests::ffi_guard_converts_panics_to_structured_engine_errors ... ok
+test corpse::tests::no_shot_decay_dissipates_body_and_fractional_period_survives_resume ... ok
+test biology::native_material_tests::native_transactions_charge_in_make_stuff_order_and_keep_failed_commands ... ok
+test biology::native_material_tests::multibot_material_discount_changes_energy_but_keeps_full_transaction_waste ... ok
+test ffi::tests::legacy_save_emits_native_24832_sim_for_file_command ... ok
+test physics::collision::projectile_motion_tests::original_shot_collision_accounts_for_motion_and_excludes_cycle_endpoints ... ok
+test native_binary::tests::new_native_records_and_simulation_groups_have_independent_valid_framing ... ok
+test robot_state::tests::stale_physics_batch_id_does_not_partially_mutate_earlier_robot ... ok
+test robot_state::tests::robot_arena_deref_exposes_only_slot_slice ... ok
+test senses::tests::direction_thresholds_are_strict ... ok
+test senses::tests::relative_angle_selects_all_four_aim_relative_quadrants ... ok
+test shot::projectile::tests::db24832_impact_decay_uses_age_before_the_current_tick_increment ... ok
+test ffi::tests::invalid_find_best_weight_preserves_the_entire_command_batch ... ok
+test shot::projectile::tests::feeding_power_uses_fixed_or_proportional_original_settings_without_changing_toxins ... ok
+test shot::projectile::tests::db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent ... ok
+test vm::memory_persistence_tests::addressed_memory_restores_independently_of_serialized_order ... ok
+test vm::memory_persistence_tests::ambiguous_or_invalid_saved_memory_is_rejected ... ok
+test native_binary::tests::native_bad_counts_truncation_and_terminators_are_rejected ... ok
+test native_binary::tests::editing_one_native_single_preserves_all_other_bytes ... ok
+test native_binary::tests::genuine_native_record_stream_round_trips_every_byte ... ok
+test world::native_aim::tests::native_aim_keeps_full_turn_momentum_and_only_opposing_turns_reduce_it ... ok
+test world::native_aim::tests::native_aim_rounds_the_combined_single_before_mod_and_uses_1256 ... ok
+test world::native_aim::tests::native_turn_fee_uses_net_radians_and_absolute_cost_product ... ok
+test world::native_aim::tests::dna_setaim_1256_runs_through_the_world_and_persists_the_native_zero_readbacks ... ok
+test world::native_biology::tests::chloroplast_request_is_atomic_and_net_growth_is_charged_after_shots ... ok
+test world::native_biology::tests::chloroplast_construction_and_body_feeding_cannot_fund_an_earlier_shot ... ok
+test world::native_biology::tests::native_age_cost_rounds_start_and_log_mode_overrides_linear ... ok
+test world::native_biology::tests::excluded_commands_remain_pending_and_negative_body_commands_are_ignored ... ok
+test world::native_biology::tests::upkeep_rounds_each_fee_and_excludes_corpse_stores ... ok
+test world::native_biology::tests::shot_uses_body_and_energy_before_body_commands ... ok
+test native_binary::tests::genuine_simulation_tail_round_trips_all_options_species_and_shots ... ok
+test world::native_corpses::tests::newborn_native_parent_identity_survives_removal_and_slot_reuse ... ok
+test world::native_corpses::tests::returned_native_corpse_decays_without_becoming_another_archived_corpse ... ok
+test world::native_export::tests::genuine_robot_group_export_remaps_forward_and_back_ties_into_the_new_file ... ok
+test world::native_export::tests::native_organism_export_contains_live_memory_resource_bits_dna_and_restrictions ... ok
+test world::native_export::tests::native_export_retains_unrepresented_tie_metadata_and_type ... ok
+test native_binary::tests::native_records_keep_bits_and_opaque_bytes_through_json ... ok
+test world::native_io::tests::native_runtime_rejects_nonfinite_stores_and_truncated_tails ... ok
+test world::native_io::tests::genuine_native_save_becomes_a_live_world_with_exact_resources_and_shots ... ok
+test world::native_organism_io::tests::invalid_later_native_member_rolls_back_all_imported_state ... ok
+test world::native_organism_io::tests::malformed_native_tie_is_rejected_without_partial_import ... ok
+test world::file_teleporters::tests::native_group_capacity_failure_keeps_file_and_existing_world ... ok
+test world::file_teleporters::tests::output_collision_preserves_existing_file_and_departing_robot ... ok
+test world::native_organism_io::tests::native_group_import_preserves_memory_singles_and_ties_in_reused_slots ... ok
+test world::native_sim_export::tests::empty_native_world_loads_through_production_save_dispatch ... ok
+test world::native_sim_export::tests::fresh_world_native_export_needs_no_reference_save ... ok
+test world::file_teleporters::tests::file_exchange_moves_a_native_multibot_as_one_file_with_memory_stores_and_tie_intact ... ok
+test world::tests::all_dna_finishes_before_the_after_dna_clear_pass ... ok
+test world::tests::db24832_minus_six_body_feed_contract ... ok
+test world::tests::eco03_photosynthesis_pond_sun_conversion_population_and_bounds_contract ... ok
+test world::tests::exhausted_corpse_is_removed_when_energy_remains ... ok
+test world::native_organism_io::tests::native_integer_memory_preserves_full_word_range_until_a_dna_store ... ok
+test world::file_teleporters::tests::native_sim_offline_gateway_uses_its_saved_path_geometry_and_poll_state ... ok
+test world::native_organism_io::tests::repeated_native_imports_keep_duplicate_absolute_ids_and_separate_metadata ... ok
+test world::native_organism_io::tests::native_menu_insertion_uses_whole_twips_translates_all_cells_and_continues_after_save ... ok
+test world::tests::native_border_respawn_moves_the_whole_multibot_from_its_nearest_cell ... ok
+test world::native_sim_export::tests::live_native_sim_export_updates_resources_memory_world_and_shots ... ok
+test world::native_io::tests::native_origin_and_live_state_survive_modern_save_and_resume ... ok
+test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ok
+test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ok
+test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ok
+test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ok
+test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ok
+test world::native_corpses::tests::archived_native_corpse_keeps_memory_materials_and_tie_through_modern_save_and_native_export ... ok
+
+test result: ok. 65 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.91s
+
+     Running tests\advanced_mutation_costs.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\advanced_mutation_costs-ee372d75c5b0abf3.exe)
+
+running 2 tests
+test advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority ... ok
+test db24832_dynamic_costs_latch_zero_and_reinstate_across_live_population_ticks ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\canonical_cycle_248.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\canonical_cycle_248-e82d68d536e9bc73.exe)
+
+running 14 tests
+test one_tick_publishes_one_completed_cycle ... ok
+test dna_and_observable_robot_visits_use_ascending_slot_order ... ok
+test births_and_deaths_commit_only_after_the_final_robot_pass ... ok
+test deleting_tie_still_applies_first_pass_spring_before_second_pass_delete ... ok
+test post_dna_tie_write_precedes_shot_and_reproduction_consumption ... ok
+test teleporter_relocation_precedes_same_cycle_senses ... ok
+test shot_effect_occurs_after_dna_and_before_robot_passes ... ok
+test trace_matches_the_complete_24832_phase_manifest ... ok
+test three_cycle_sensor_and_command_visibility_is_canonical ... ok
+test tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle ... ok
+test asexual_birth_side_effects_execute_in_commit_phase ... ok
+test dna_skips_corpse_and_dna_disabled_robots ... ok
+test a_new_tie_exchanges_resources_only_after_hardening ... ok
+test zero_cost_birth_does_not_emit_a_copy_charge_effect ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\db2_projectiles.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\db2_projectiles-db613d8262accd2a.exe)
+
+running 23 tests
+test energy_ammunition_is_capped_to_the_senders_available_energy ... ok
+test db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn ... ok
+test energy_packet_applies_db24832_transfer_without_a_live_packet_owner ... ok
+test direct_poff_command_does_not_create_a_projectile ... ok
+test direct_minus_seven_command_does_not_emit_a_virus ... ok
+test firing_creates_a_moving_projectile_instead_of_an_instant_hit_line ... ok
+test delgene_information_shot_is_inert_without_defensive_poison_return ... ok
+test energy_feeding_request_extracts_target_resources_and_returns_energy_packet ... ok
+test information_shots_cannot_bypass_sexual_reproduction_requirements ... ok
+test lethal_projectile_hit_cannot_be_undone_by_same_tick_photosynthesis ... ok
+test newborn_is_immune_to_parent_stream_for_one_tick ... ok
+test obstacle_intercepts_projectile_before_target ... ok
+test moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants ... ok
+test positive_memory_shot_writes_the_target_address ... ok
+test negative_and_zero_information_values_reach_the_requested_memory_address ... ok
+test pass_through_shape_allows_a_projectile_to_reach_the_target ... ok
+test shot_velocity_inherits_the_firers_actual_velocity ... ok
+test sperm_shot_fertilizes_without_forcing_reproduction ... ok
+test shot_formation_spends_the_original_flat_boost_and_ammunition_costs ... ok
+test swept_collision_hits_a_bot_between_projectile_endpoints ... ok
+test reproductive_projectiles_use_staged_virus_and_sperm_gates ... ok
+test projectile_moves_once_per_tick_and_expires_after_range ... ok
+test shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundaries ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\db2_vegetation.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\db2_vegetation-80dd5b34cb567973.exe)
+
+running 19 tests
+test chloroplast_sysvars_use_db2_memory_addresses ... ok
+test every_db2_248_sysvar_resolves_to_its_vb6_address ... ok
+test darkness_prevents_chloroplast_feeding ... ok
+test chloroplast_construction_charges_the_configured_cost_once ... ok
+test full_chloroplast_plant_receives_db2_light_and_body_split ... ok
+test initial_and_reseeded_vegetables_start_with_db2_chloroplasts ... ok
+test chloroplasts_decay_naturally_without_a_removal_command ... ok
+test day_night_cycle_changes_after_the_configured_number_of_completed_cycles ... ok
+test chloroplast_pressure_refuses_new_chloroplasts_at_the_vegetable_cap ... FAILED
+test repopulation_waits_for_cooldown_and_spawns_configured_batch ... ok
+test slime_blocks_ties_by_the_legacy_probability_threshold ... ok
+test sunlight_intensity_scales_non_pond_photosynthesis ... ok
+test slime_shell_poison_and_venom_use_db2_caps_costs_and_decay ... ok
+test tides_reduce_photosynthetic_yield_at_high_tide ... ok
+test vegetable_reproduction_splits_parent_biology_without_resetting_child ... ok
+test vegetable_reproduction_is_throttled_near_the_population_cap ... ok
+test weather_sun_band_controls_light_memory_for_wrapped_positions ... FAILED
+test total_energy_threshold_modes_apply_vb6_sun_overrides ... ok
+test chloroplasts_metabolize_waste_into_energy_and_body ... ok
+
+failures:
+
+---- chloroplast_pressure_refuses_new_chloroplasts_at_the_vegetable_cap stdout ----
+
+thread 'chloroplast_pressure_refuses_new_chloroplasts_at_the_vegetable_cap' (16320) panicked at modern\engine\tests\db2_vegetation.rs:369:5:
+assertion `left == right` failed
+  left: 16010
+ right: 16000
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- weather_sun_band_controls_light_memory_for_wrapped_positions stdout ----
+
+thread 'weather_sun_band_controls_light_memory_for_wrapped_positions' (22136) panicked at modern\engine\tests\db2_vegetation.rs:683:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+
+failures:
+    chloroplast_pressure_refuses_new_chloroplasts_at_the_vegetable_cap
+    weather_sun_band_controls_light_memory_for_wrapped_positions
+
+test result: FAILED. 17 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test db2_vegetation`
+     Running tests\native_resource_precision.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\native_resource_precision-dc1ad44cb7d399b4.exe)
+
+running 9 tests
+test dna_costs_round_the_native_store_after_each_instruction ... ok
+test birth_preserves_fractional_energy_then_applies_the_native_half_unit_death_threshold ... ok
+test fractional_upkeep_changes_the_store_before_an_integer_readback_changes ... ok
+test unmaking_fractional_shell_spends_the_native_conversion_cost ... ok
+test default_energy_ammunition_keeps_a_fraction_below_its_integer_value ... ok
+test fractional_material_transaction_cost_is_energy_and_waste ... ok
+test birth_uses_native_double_percentage_expression_before_single_assignment ... ok
+test genuine_reference_single_values_survive_modern_save_restore_exactly ... ok
+test v3_carried_fractions_are_absorbed_once_when_the_old_save_is_loaded ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\species_ecology.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\species_ecology-bfdb025584c7f8ad.exe)
+
+running 41 tests
+test body_conversion_uses_db2_energy_units_and_cycle_caps ... ok
+test aim_rotates_forward_movement ... ok
+test animal_minimalis_recognizes_and_moves_toward_non_family_targets ... ok
+test chloroplasts_generate_environmental_energy_for_any_species ... ok
+test configured_species_reseed_after_extinction ... ok
+test body_feeding_shots_consume_shell_before_body ... FAILED
+test body_feeding_shots_use_body_coefficients_and_return_energy_from_target ... FAILED
+test attenuated_venom_below_one_has_no_effect ... FAILED
+test corpses_ignore_venom_impacts ... FAILED
+test direct_dna_poison_request_does_not_fire_a_projectile ... ok
+test conspecific_defensive_poison_adds_to_store_without_forced_effect ... FAILED
+test dna_controls_body_defenses_chloroplasts_waste_and_aim ... FAILED
+test eye_strength_uses_db2_edge_to_edge_distance ... ok
+test conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect ... FAILED
+test defensive_poison_uses_db2_information_and_feeding_equality_rules ... FAILED
+test feeding_shots_without_shootval_use_legacy_body_based_strength ... FAILED
+test feeding_energy_shots_ignore_shell ... FAILED
+test in_flight_venom_keeps_payload_after_owner_removal ... FAILED
+test heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five ... FAILED
+test heterospecific_venom_consumes_shell_before_starting_an_effect ... FAILED
+test heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression ... ok
+test modern_chloroplast_sysvars_use_the_latest_vb6_addresses ... ok
+test minus_two_shots_donate_energy_to_zerobots ... FAILED
+test later_venom_hit_adds_duration_and_replaces_payload ... FAILED
+test automatic_overflow_defecation_subtracts_the_emitted_waste_packet ... ok
+test negative_shots_feed_the_attacker_from_the_target ... FAILED
+test reproduction_synchronizes_energy_memory_before_the_next_dna_cycle ... ok
+test non_integral_venom_power_keeps_fractional_countdown_through_expiry ... FAILED
+test species_identity_and_vegetable_energy_are_part_of_the_world_state ... ok
+test shot_302_forces_target_reproduction_for_zerobot_feeding ... FAILED
+test species_batches_publish_once_with_configured_initial_energy ... ok
+test species_mutation_rate_applies_to_ordinary_reproduction ... ok
+test shot07_venom_resolution_contract_covers_store_effect_and_edges ... FAILED
+test information_defense_applies_vb_cint_to_reversed_velocity ... FAILED
+test toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory ... FAILED
+test vegetable_cap_applies_to_initial_imports_and_reproduction ... ok
+test waste_phase_runs_alzheimer_and_defecation_after_waste_shot ... FAILED
+test toxin_location_340_is_a_no_op_and_random_location_is_safe ... FAILED
+test release_energy_defense_applies_vb_cint_after_target_velocity_formula ... FAILED
+test reproduction_wave_stops_cleanly_at_population_capacity ... FAILED
+test negative_alzheimer_threshold_disables_memory_mutation ... ok
+
+failures:
+
+---- body_feeding_shots_consume_shell_before_body stdout ----
+
+thread 'body_feeding_shots_consume_shell_before_body' (13748) panicked at modern\engine\tests\species_ecology.rs:628:5:
+assertion `left == right` failed
+  left: 100
+ right: 98
+
+---- body_feeding_shots_use_body_coefficients_and_return_energy_from_target stdout ----
+
+thread 'body_feeding_shots_use_body_coefficients_and_return_energy_from_target' (20884) panicked at modern\engine\tests\species_ecology.rs:663:5:
+assertion `left == right` failed
+  left: 1000
+ right: 980
+
+---- attenuated_venom_below_one_has_no_effect stdout ----
+
+thread 'attenuated_venom_below_one_has_no_effect' (2648) panicked at modern\engine\tests\species_ecology.rs:1385:5:
+assertion `left != right` failed
+  left: 77
+ right: 77
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- corpses_ignore_venom_impacts stdout ----
+
+thread 'corpses_ignore_venom_impacts' (9676) panicked at modern\engine\tests\species_ecology.rs:1793:50:
+index out of bounds: the len is 0 but the index is 0
+
+---- conspecific_defensive_poison_adds_to_store_without_forced_effect stdout ----
+
+thread 'conspecific_defensive_poison_adds_to_store_without_forced_effect' (8276) panicked at modern\engine\tests\species_ecology.rs:1213:5:
+assertion `left == right` failed
+  left: 9
+ right: 30
+
+---- dna_controls_body_defenses_chloroplasts_waste_and_aim stdout ----
+
+thread 'dna_controls_body_defenses_chloroplasts_waste_and_aim' (16152) panicked at modern\engine\tests\species_ecology.rs:373:5:
+assertion failed: organism.waste > 0
+
+---- conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect stdout ----
+
+thread 'conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect' (21604) panicked at modern\engine\tests\species_ecology.rs:1160:5:
+assertion `left == right` failed
+  left: 120
+ right: 32000
+
+---- defensive_poison_uses_db2_information_and_feeding_equality_rules stdout ----
+
+thread 'defensive_poison_uses_db2_information_and_feeding_equality_rules' (20012) panicked at modern\engine\tests\species_ecology.rs:980:5:
+assertion `left == right` failed
+  left: 96
+ right: 22
+
+---- feeding_shots_without_shootval_use_legacy_body_based_strength stdout ----
+
+thread 'feeding_shots_without_shootval_use_legacy_body_based_strength' (16888) panicked at modern\engine\tests\species_ecology.rs:427:5:
+assertion `left == right` failed
+  left: 0
+ right: 165
+
+---- feeding_energy_shots_ignore_shell stdout ----
+
+thread 'feeding_energy_shots_ignore_shell' (11108) panicked at modern\engine\tests\species_ecology.rs:588:5:
+assertion `left == right` failed
+  left: 990
+ right: 940
+
+---- in_flight_venom_keeps_payload_after_owner_removal stdout ----
+
+thread 'in_flight_venom_keeps_payload_after_owner_removal' (13556) panicked at modern\engine\tests\species_ecology.rs:1756:5:
+assertion `left == right` failed
+  left: 7
+ right: 6
+
+---- heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five stdout ----
+
+thread 'heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five' (1944) panicked at modern\engine\tests\species_ecology.rs:1271:5:
+assertion `left == right` failed
+  left: 1608
+ right: 1000
+
+---- heterospecific_venom_consumes_shell_before_starting_an_effect stdout ----
+
+thread 'heterospecific_venom_consumes_shell_before_starting_an_effect' (15192) panicked at modern\engine\tests\species_ecology.rs:1332:5:
+assertion `left == right` failed
+  left: (0, 3)
+ right: (0, 2)
+
+---- minus_two_shots_donate_energy_to_zerobots stdout ----
+
+thread 'minus_two_shots_donate_energy_to_zerobots' (19952) panicked at modern\engine\tests\species_ecology.rs:540:5:
+assertion `left == right` failed
+  left: 900
+ right: 950
+
+---- later_venom_hit_adds_duration_and_replaces_payload stdout ----
+
+thread 'later_venom_hit_adds_duration_and_replaces_payload' (20936) panicked at modern\engine\tests\species_ecology.rs:1623:5:
+assertion `left == right` failed
+  left: 3
+ right: 2
+
+---- negative_shots_feed_the_attacker_from_the_target stdout ----
+
+thread 'negative_shots_feed_the_attacker_from_the_target' (1476) panicked at modern\engine\tests\species_ecology.rs:141:5:
+assertion failed: engine.organism(attacker).unwrap().energy > 1_000
+
+---- non_integral_venom_power_keeps_fractional_countdown_through_expiry stdout ----
+
+thread 'non_integral_venom_power_keeps_fractional_countdown_through_expiry' (22100) panicked at modern\engine\tests\species_ecology.rs:1440:5:
+assertion `left == right` failed
+  left: 6.9870706
+ right: 6.9712706
+
+---- shot_302_forces_target_reproduction_for_zerobot_feeding stdout ----
+
+thread 'shot_302_forces_target_reproduction_for_zerobot_feeding' (8636) panicked at modern\engine\tests\species_ecology.rs:556:5:
+assertion `left == right` failed
+  left: 2
+ right: 3
+
+---- shot07_venom_resolution_contract_covers_store_effect_and_edges stdout ----
+
+thread 'shot07_venom_resolution_contract_covers_store_effect_and_edges' (13544) panicked at modern\engine\tests\species_ecology.rs:2035:9:
+assertion `left == right` failed: heterospecific payload counts down
+  left: Expected { source_venom: 0, impacts: 1, effects: 1, target: Some([0, 0, 6, 500, 77, 77]), countdown: Some(6.9870706), corpse_unchanged: false }
+ right: Expected { source_venom: 0, impacts: 1, effects: 1, target: Some([0, 0, 7, 500, 77, 77]), countdown: Some(7.0), corpse_unchanged: false }
+
+---- information_defense_applies_vb_cint_to_reversed_velocity stdout ----
+
+thread 'information_defense_applies_vb_cint_to_reversed_velocity' (12864) panicked at modern\engine\tests\species_ecology.rs:851:10:
+called `Option::unwrap()` on a `None` value
+
+---- toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory stdout ----
+
+thread 'toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory' (5288) panicked at modern\engine\tests\species_ecology.rs:1694:5:
+assertion `left == right` failed
+  left: 2
+ right: 1
+
+---- waste_phase_runs_alzheimer_and_defecation_after_waste_shot stdout ----
+
+thread 'waste_phase_runs_alzheimer_and_defecation_after_waste_shot' (21152) panicked at modern\engine\tests\species_ecology.rs:172:5:
+assertion failed: after.materials.permanent_waste > 0.0
+
+---- toxin_location_340_is_a_no_op_and_random_location_is_safe stdout ----
+
+thread 'toxin_location_340_is_a_no_op_and_random_location_is_safe' (19572) panicked at modern\engine\tests\species_ecology.rs:1562:9:
+assertion `left == right` failed
+  left: 2
+ right: 1
+
+---- release_energy_defense_applies_vb_cint_after_target_velocity_formula stdout ----
+
+thread 'release_energy_defense_applies_vb_cint_after_target_velocity_formula' (9592) panicked at modern\engine\tests\species_ecology.rs:929:10:
+called `Option::unwrap()` on a `None` value
+
+---- reproduction_wave_stops_cleanly_at_population_capacity stdout ----
+
+thread 'reproduction_wave_stops_cleanly_at_population_capacity' (6972) panicked at modern\engine\tests\species_ecology.rs:525:5:
+assertion `left == right` failed
+  left: 21
+ right: 32
+
+
+failures:
+    attenuated_venom_below_one_has_no_effect
+    body_feeding_shots_consume_shell_before_body
+    body_feeding_shots_use_body_coefficients_and_return_energy_from_target
+    conspecific_defensive_poison_adds_to_store_without_forced_effect
+    conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect
+    corpses_ignore_venom_impacts
+    defensive_poison_uses_db2_information_and_feeding_equality_rules
+    dna_controls_body_defenses_chloroplasts_waste_and_aim
+    feeding_energy_shots_ignore_shell
+    feeding_shots_without_shootval_use_legacy_body_based_strength
+    heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five
+    heterospecific_venom_consumes_shell_before_starting_an_effect
+    in_flight_venom_keeps_payload_after_owner_removal
+    information_defense_applies_vb_cint_to_reversed_velocity
+    later_venom_hit_adds_duration_and_replaces_payload
+    minus_two_shots_donate_energy_to_zerobots
+    negative_shots_feed_the_attacker_from_the_target
+    non_integral_venom_power_keeps_fractional_countdown_through_expiry
+    release_energy_defense_applies_vb_cint_after_target_velocity_formula
+    reproduction_wave_stops_cleanly_at_population_capacity
+    shot07_venom_resolution_contract_covers_store_effect_and_edges
+    shot_302_forces_target_reproduction_for_zerobot_feeding
+    toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory
+    toxin_location_340_is_a_no_op_and_random_location_is_safe
+    waste_phase_runs_alzheimer_and_defecation_after_waste_shot
+
+test result: FAILED. 16 passed; 25 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test species_ecology`
+     Running tests\sysvar_lifecycle_248.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\sysvar_lifecycle_248-4b8dc2c7b73de808.exe)
+
+running 24 tests
+test canonical_table_has_255_names_and_247_addresses ... ok
+test command_outcomes_control_when_and_how_registers_reset ... ok
+test capturing_commands_does_not_clear_their_registers ... ok
+test aliases_share_identical_lifecycle ... ok
+test engine_tick_clears_only_legacy_after_dna_transients_and_keeps_hitang ... ok
+test engine_tick_keeps_aimshoot_when_shoot_kind_has_no_handler ... ok
+test engine_tick_executes_delgene_in_the_authoritative_virus_phase ... ok
+test engine_tick_preserves_blocked_reproduction_until_birth_succeeds ... ok
+test body_transfer_sysvars_apply_once_with_exact_next_cycle_cost ... ok
+test engine_tick_resets_fixang_to_legacy_sentinel ... ok
+test engine_tick_preserves_unfinished_virus_commands ... ok
+test engine_tick_keeps_tie_port_selectors_distinct_from_tie_count ... ok
+test engine_tick_marks_tie_information_transfer_on_selected_endpoint ... ok
+test every_canonical_address_has_one_lifecycle_definition ... ok
+test engine_tick_preserves_tied_references_only_for_a_valid_selected_port ... FAILED
+test engine_tick_setaim_overrides_relative_turns_and_mirrors_next_cycle_memory ... ok
+test future_mechanism_commands_are_typed_and_phase_routed ... ok
+test late_sensors_replace_prior_values_without_clearing_private_memory ... ok
+test engine_tick_keeps_tie_memory_pending_without_a_valid_selected_port ... ok
+test only_legacy_touch_taste_and_edge_cells_clear_after_dna ... ok
+test engine_tick_routes_tie_memory_only_through_the_selected_local_port ... FAILED
+test engine_tick_resets_tie_memory_only_after_a_valid_selected_write ... FAILED
+test setboy_updates_persisted_buoyancy_readback_and_consumes_command ... ok
+test known_sysvars_never_report_inert ... ok
+
+failures:
+
+---- engine_tick_preserves_tied_references_only_for_a_valid_selected_port stdout ----
+
+thread 'engine_tick_preserves_tied_references_only_for_a_valid_selected_port' (9112) panicked at modern\engine\tests\sysvar_lifecycle_248.rs:478:5:
+assertion `left == right` failed
+  left: 1000
+ right: 777
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- engine_tick_routes_tie_memory_only_through_the_selected_local_port stdout ----
+
+thread 'engine_tick_routes_tie_memory_only_through_the_selected_local_port' (19640) panicked at modern\engine\tests\sysvar_lifecycle_248.rs:547:5:
+assertion `left == right` failed
+  left: 1234
+ right: 0
+
+---- engine_tick_resets_tie_memory_only_after_a_valid_selected_write stdout ----
+
+thread 'engine_tick_resets_tie_memory_only_after_a_valid_selected_write' (13668) panicked at modern\engine\tests\sysvar_lifecycle_248.rs:636:5:
+assertion `left == right` failed
+  left: 0
+ right: 2004
+
+
+failures:
+    engine_tick_preserves_tied_references_only_for_a_valid_selected_port
+    engine_tick_resets_tie_memory_only_after_a_valid_selected_write
+    engine_tick_routes_tie_memory_only_through_the_selected_local_port
+
+test result: FAILED. 21 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test sysvar_lifecycle_248`
+     Running tests\ties_multibot.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\ties_multibot-0528997ef5d2a008.exe)
+
+running 21 tests
+test dragging_one_member_moves_the_tied_organism_and_clears_momentum ... ok
+test hardened_shell_share_marks_only_the_forward_tie_endpoint ... ok
+test fixang_command_applies_canonical_tie_torque ... ok
+test hardened_tie_group_follows_teleporter_relocation ... ok
+test fixlen_command_changes_the_authoritative_tie_spring_response ... ok
+test multibot_amplifies_feeding_shot_and_virtual_body_range ... ok
+test slime_is_consumed_to_resist_new_ties ... ok
+test review_projection_create_save_load_break_tracks_one_canonical_tie ... ok
+test new_tie_hardens_on_db2_cycle ... ok
+test soft_tie_uses_twenty_unit_deadband ... ok
+test review_projection_hardened_removal_clears_state_before_reused_slot_dna ... ok
+test successful_tie_attack_consumes_twenty_slime ... ok
+test tie_breaks_when_surface_gap_exceeds_one_thousand ... ok
+test stifftie_command_changes_hardened_tie_force ... ok
+test structural_tie_torque_rotates_both_members_in_opposite_directions ... ok
+test eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity ... ok
+test tie_formation_skips_existing_pair_for_next_eligible_target ... ok
+test sharing_requires_hardening ... ok
+test tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage ... ok
+test legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clamping ... ok
+test negative_tieloc_resource_exchange_runs_in_engine_tick ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+error: 3 targets failed:
+    `-p darwinbots-engine --test db2_vegetation`
+    `-p darwinbots-engine --test species_ecology`
+    `-p darwinbots-engine --test sysvar_lifecycle_248`

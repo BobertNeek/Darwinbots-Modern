@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "d4ad087a76d2400724a8fa8e5cfb80089da81756",
+  "scope": "Native biology cycle repair; source-based checks, not original-executable trajectory equality",
+  "checks": {
+    "library": {
+      "passed": 65,
+      "failed": 0
+    },
+    "new_biology_cases": {
+      "passed": 6,
+      "failed": 0,
+      "included_in_library": true
+    },
+    "advanced_mutation_costs": {
+      "passed": 2,
+      "failed": 0
+    },
+    "canonical_cycle_248": {
+      "passed": 14,
+      "failed": 0
+    },
+    "db2_projectiles": {
+      "passed": 23,
+      "failed": 0
+    },
+    "native_resource_precision": {
+      "passed": 9,
+      "failed": 0
+    },
+    "ties_multibot": {
+      "passed": 21,
+      "failed": 0
+    },
+    "species_ecology": {
+      "passed": 16,
+      "failed": 25
+    },
+    "sysvar_lifecycle_248": {
+      "passed": 21,
+      "failed": 3
+    },
+    "db2_vegetation_after_fixture_correction": {
+      "passed": 18,
+      "failed": 1
+    }
+  },
+  "selected_target_totals": {
+    "passed": 189,
+    "failed": 29,
+    "targets": 9
+  },
+  "lint": {
+    "engine_library_and_tests": true,
+    "final_vegetation_fixture": true
+  },
+  "logs": [
+    "completion-checks/parity-native-biology-expanded.log",
+    "completion-checks/parity-native-biology-clippy.log",
+    "completion-checks/parity-native-chloroplast-boundary.log",
+    "completion-checks/parity-native-chloroplast-boundary-clippy.log"
+  ],
+  "changes": [
+    "Shots execute before chloroplast, body and buoyancy commands.",
+    "Chloroplast construction is a whole request; charge only net growth and refuse unaffordable growth.",
+    "Body/chloroplast/buoyancy commands are consumed in their actual phases; excluded commands remain pending.",
+    "Age cost uses banker-rounded start, log(delta) and log-mode precedence; age/body/DNA fees round and subtract separately.",
+    "Corpse and disabled-DNA gates now cover upkeep, toxin updates, reproduction, shock and core senses as applicable.",
+    "Pain/pleasure sample after body and shots; the historical cost report no longer counts DNA upkeep twice.",
+    "Fixture changes preserve separation distances, avoid native border wrapping, use save version 4 and native toxin timing.",
+    "Chloroplast pressure fixture covers equality and above-cap equivalents."
+  ],
+  "limits": [
+    "Last complete release workspace gate remains 454 passed / 58 failed / 2 filtered at 4e83860.",
+    "Selected targets remain red; passing focused cases do not establish complete parity.",
+    "Original executable shared trajectory checks remain open.",
+    "Global per-robot timing, chloroplast census timing and archived corpse physical/tie integration remain open."
+  ]
+}
