@@ -5683,6 +5683,8 @@ impl Engine {
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
                     owner_position: owner.kinematics.position,
+                    owner_velocity: owner.kinematics.velocity,
+                    correct_position: false,
                     owner_actual_velocity: owner.kinematics.actual_velocity,
                     owner_radius: crate::physics::organism_radius(
                         owner.materials.body,
@@ -7943,6 +7945,8 @@ impl Engine {
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
                     owner_position: owner.kinematics.position,
+                    owner_velocity: owner.kinematics.velocity,
+                    correct_position: true,
                     owner_actual_velocity: owner.kinematics.actual_velocity,
                     owner_radius: crate::physics::organism_radius(
                         owner.materials.body,

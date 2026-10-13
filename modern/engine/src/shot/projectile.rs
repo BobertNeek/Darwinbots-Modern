@@ -7,7 +7,9 @@ use super::ShotSnapshot;
 pub(crate) struct ProjectileSpawn {
     pub owner: OrganismId,
     pub owner_position: [f32; 2],
+    pub owner_velocity: [f32; 2],
     pub owner_actual_velocity: [f32; 2],
+    pub correct_position: bool,
     pub owner_radius: f32,
     pub owner_virtual_body: f32,
     pub range_multiplier: f32,
@@ -230,10 +232,16 @@ impl ProjectilePool {
     pub(crate) fn spawn(&mut self, request: ProjectileSpawn, settings: &ShotSettings) -> u32 {
         let slot = self.allocate_slot();
         let direction = [request.angle.cos(), -request.angle.sin()];
-        let position = [
+        let mut position = [
             request.owner_position[0] + direction[0] * request.owner_radius,
             request.owner_position[1] + direction[1] * request.owner_radius,
         ];
+        if request.correct_position {
+            for (axis, coordinate) in position.iter_mut().enumerate() {
+                *coordinate -= request.owner_velocity[axis];
+                *coordinate += request.owner_actual_velocity[axis];
+            }
+        }
         let velocity = [
             request.owner_actual_velocity[0] + direction[0] * settings.speed,
             request.owner_actual_velocity[1] + direction[1] * settings.speed,
@@ -254,7 +262,8 @@ impl ProjectilePool {
         if slot == self.owners.len() {
             self.owners.push(request.owner);
             self.positions.push(position);
-            self.previous_positions.push(position);
+            self.previous_positions
+                .push([position[0] - velocity[0], position[1] - velocity[1]]);
             self.velocities.push(velocity);
             self.ages.push(0);
             self.ranges.push(range);
@@ -277,7 +286,7 @@ impl ProjectilePool {
         } else {
             self.owners[slot] = request.owner;
             self.positions[slot] = position;
-            self.previous_positions[slot] = position;
+            self.previous_positions[slot] = [position[0] - velocity[0], position[1] - velocity[1]];
             self.velocities[slot] = velocity;
             self.ages[slot] = 0;
             self.ranges[slot] = range;
@@ -712,6 +721,8 @@ mod tests {
         let request = ProjectileSpawn {
             owner: OrganismId::new(1, 0),
             owner_position: [0.0, 0.0],
+            owner_velocity: [0.0, 0.0],
+            correct_position: false,
             owner_actual_velocity: [0.0, 0.0],
             owner_radius: 1.0,
             owner_virtual_body: 1.0,
@@ -730,6 +741,27 @@ mod tests {
             dna_length: 0,
         };
         let settings = ShotSettings::default();
+
+        let moving = ProjectileSpawn {
+            owner_position: [200.25, 300.75],
+            owner_velocity: [5.0, -7.0],
+            owner_actual_velocity: [2.0, 3.0],
+            owner_radius: 10.0,
+            correct_position: true,
+            ..request.clone()
+        };
+        // newshot adds the radial offset, then subtracts vel and adds actvel.
+        // opos is one complete inherited shot velocity behind the new point.
+        let slot = pool.spawn(moving.clone(), &settings) as usize;
+        assert_eq!(pool.positions[slot], [207.25, 310.75]);
+        assert_eq!(pool.velocities[slot], [42.0, 3.0]);
+        assert_eq!(pool.previous_positions[slot], [165.25, 307.75]);
+        pool.alive[slot] = false;
+        pool.free_slots.push(slot as u32);
+        let reused = pool.spawn(moving, &settings) as usize;
+        assert_eq!(reused, slot);
+        assert_eq!(pool.previous_positions[reused], [165.25, 307.75]);
+        pool = ProjectilePool::default();
 
         for _ in 0..101 {
             pool.spawn(request.clone(), &settings);
