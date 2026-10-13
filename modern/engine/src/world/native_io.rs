@@ -11,7 +11,7 @@ fn invalid(message: impl Into<String>) -> EngineError {
     EngineError::InvalidSave(format!("native DB2 {}", message.into()))
 }
 
-fn text(bytes: &[u8]) -> String {
+pub(super) fn text(bytes: &[u8]) -> String {
     // VB6 saves ANSI, not UTF-8. Retain the original bytes in native_origin;
     // the Windows-1252 projection supplies names used by the running world.
     const C1: [char; 32] = [
@@ -53,12 +53,12 @@ fn nonnegative(value: i32, name: &str) -> Result<u64, EngineError> {
     u64::try_from(value).map_err(|_| invalid(format!("{name} is negative")))
 }
 
-fn color(value: i32) -> u32 {
+pub(super) fn color(value: i32) -> u32 {
     let bgr = value as u32;
     0xff00_0000 | ((bgr & 0xff) << 16) | (bgr & 0xff00) | ((bgr >> 16) & 0xff)
 }
 
-fn skin(bytes: &[u8]) -> [SkinPoint; 4] {
+pub(super) fn skin(bytes: &[u8]) -> [SkinPoint; 4] {
     std::array::from_fn(|i| SkinPoint {
         radius: word(bytes, i * 4) as f32 / 60.0,
         angle: 314 - word(bytes, i * 4 + 2) * 2,
@@ -340,21 +340,26 @@ impl Engine {
         }
         let mut old_slots = HashMap::new();
         let mut absolute_ids = HashMap::new();
-        for record in &file.robots {
-            let robot = engine.native_robot(record)?;
+        for (index, record) in file.robots.iter().enumerate() {
+            let mut robot = engine.native_robot(record)?;
+            robot.native_record_index = Some(index);
             let absolute_id = robot.identity.absolute_id;
             let id = engine.slots.spawn(robot);
-            if old_slots.insert(record.word("old_slot")?, id).is_some()
-                || absolute_ids.insert(absolute_id, id).is_some()
-            {
-                return Err(invalid("duplicate robot identity"));
+            if old_slots.insert(record.word("old_slot")?, id).is_some() {
+                return Err(invalid("duplicate robot slot"));
             }
+            // LoadOrganism preserves nonzero AbsNum, so imports can create
+            // legitimate duplicates. Slot identity remains unambiguous.
+            absolute_ids.entry(absolute_id).or_insert(id);
         }
         for (i, record) in file.robots.iter().enumerate() {
             let state = engine.slots[i].organism.as_mut().unwrap();
             state.identity.parents[0] = absolute_ids
                 .get(&(record.long("parent")? as u32 as u64))
                 .copied();
+            if state.flags.corpse {
+                continue;
+            }
             let species_index = state.identity.species.0 as usize;
             if engine.species_templates[species_index].is_none() {
                 let p = format!("species[{species_index}].");
@@ -375,17 +380,18 @@ impl Engine {
         Self::restore(engine)
     }
 
-    fn native_robot(&self, r: &NativeRobotRecord) -> Result<RobotState, EngineError> {
+    pub(super) fn native_robot(&self, r: &NativeRobotRecord) -> Result<RobotState, EngineError> {
         let name = text(r.bytes("species_name")?);
         let species = self
             .species
             .iter()
             .position(|s| s.name == name)
+            .or_else(|| (name == "Corpse" || boolean(r, "corpse").unwrap_or(false)).then_some(0))
             .ok_or_else(|| invalid(format!("robot species {name} is missing")))?;
         let position = [r.single("position_x")?, r.single("position_y")?];
         let mut memory = VmMemory::default();
         for (address, value) in r.bytes("memory")?.chunks_exact(2).enumerate().skip(1) {
-            memory.write(address as i32, word(value, 0));
+            memory.restore_native_cell(address as i32, word(value, 0) as i16);
         }
         let body = r.single("body")?;
         let energy = r.single("energy")?;
@@ -413,14 +419,17 @@ impl Engine {
             position,
             materials,
             VisualPhenotype::new(
-                self.species[species].lineage_id,
+                self.species.get(species).map_or(0, |s| s.lineage_id),
                 color(r.long("color")?),
                 skin(r.bytes("skin")?),
             ),
         );
         // Construction computes occurrence counts. Restore the saved VM cells afterwards.
         for (address, value) in r.bytes("memory")?.chunks_exact(2).enumerate().skip(1) {
-            robot.program.memory.write(address as i32, word(value, 0));
+            robot
+                .program
+                .memory
+                .restore_native_cell(address as i32, word(value, 0) as i16);
         }
         robot.identity.species_file = name;
         robot.identity.owner = text(r.bytes("owner")?);
@@ -503,7 +512,7 @@ impl Engine {
             robot
                 .program
                 .private_variables
-                .write(address, word(private, offset));
+                .restore_native_cell(address, word(private, offset) as i16);
             offset += 2;
         }
         robot.program.dna.set_native_context(
@@ -539,15 +548,22 @@ impl Engine {
         Ok(robot)
     }
 
-    fn native_ties(
+    pub(super) fn native_ties(
         &mut self,
         file: &NativeRecordFile,
         old_slots: &HashMap<i16, OrganismId>,
     ) -> Result<(), EngineError> {
-        for (slot, r) in file.robots.iter().enumerate() {
+        let source_records: HashMap<_, _> = file
+            .robots
+            .iter()
+            .map(|r| Ok((r.word("old_slot")?, r)))
+            .collect::<Result<_, EngineError>>()?;
+        for r in &file.robots {
             let core = r.bytes("ties_core")?;
             let extensions = r.bytes("ties_extension")?;
-            let first = OrganismId::new(slot as u32, 0);
+            let first = *old_slots
+                .get(&r.word("old_slot")?)
+                .ok_or_else(|| invalid("robot slot is missing from tie remap"))?;
             for index in 1..=10 {
                 let c = &core[index * 38..(index + 1) * 38];
                 let e = &extensions[index * 13..(index + 1) * 13];
@@ -556,6 +572,18 @@ impl Engine {
                 };
                 if first == second {
                     return Err(invalid("self tie"));
+                }
+                if [
+                    single(c, 6),
+                    single(c, 10),
+                    single(e, 1),
+                    single(e, 5),
+                    single(e, 9),
+                ]
+                .iter()
+                .any(|v| !v.is_finite())
+                {
+                    return Err(invalid("nonfinite tie state"));
                 }
                 let endpoint = TieEndpointState {
                     other: Some(second),
@@ -571,14 +599,14 @@ impl Engine {
                     energy_marker: word(c, 32),
                     ..TieEndpointState::default()
                 };
-                self.slots[slot].organism.as_mut().unwrap().ties[index - 1] = Some(endpoint);
+                self.slots.get_mut(first)?.ties[index - 1] = Some(endpoint);
                 if word(c, 30) != 0 {
                     continue;
                 }
                 let reciprocal = word(c, 4) as usize;
                 let second_port = if reciprocal <= 10 {
                     word(
-                        file.robots[second.slot() as usize].bytes("ties_core")?,
+                        source_records[&(word(c, 2) as i16)].bytes("ties_core")?,
                         reciprocal * 38,
                     )
                 } else {

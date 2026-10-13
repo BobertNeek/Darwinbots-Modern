@@ -15,6 +15,8 @@ public interface IEngineClient : IDisposable
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);
     string ExportDna(uint slot, uint generation);
+    byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms) =>
+        throw new NotSupportedException("This engine client does not support native organism export.");
     OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position);
     OrganismKey Reproduce(ManualReproductionRequest request) =>
         Reproduce(

@@ -150,13 +150,29 @@ impl Engine {
 
     fn native_robot_record(&self, id: OrganismId) -> Result<NativeRobotRecord, EngineError> {
         let robot = self.slots.get(id)?;
-        let mut record = self
-            .native_origin
-            .as_ref()
-            .and_then(|file| {
-                file.robots.iter().find(|record| {
-                    record.long("absolute_id").ok().map(|id| id as u32 as u64)
-                        == Some(robot.identity.absolute_id)
+        if let Some(index) = robot.native_record_index
+            && self
+                .native_origin
+                .as_ref()
+                .and_then(|file| file.robots.get(index))
+                .is_none()
+        {
+            return Err(invalid("robot source record reference is invalid"));
+        }
+        let mut record = robot
+            .native_record_override
+            .as_deref()
+            .or_else(|| {
+                self.native_origin.as_ref().and_then(|file| {
+                    robot
+                        .native_record_index
+                        .and_then(|index| file.robots.get(index))
+                        .or_else(|| {
+                            file.robots.iter().find(|record| {
+                                record.long("absolute_id").ok().map(|id| id as u32 as u64)
+                                    == Some(robot.identity.absolute_id)
+                            })
+                        })
                 })
             })
             .cloned()
@@ -398,25 +414,33 @@ impl Engine {
             let c = &mut core[(i + 1) * 38..(i + 2) * 38];
             let e = &mut extension[(i + 1) * 13..(i + 2) * 13];
             let other_robot = self.slots.get(other)?;
-            if let Some(origin) = &self.native_origin {
-                for old_index in 1..=10 {
-                    let old = &original_core[old_index * 38..(old_index + 1) * 38];
-                    let old_slot = i16::from_le_bytes(old[2..4].try_into().unwrap());
-                    if old_slot == 0 {
-                        continue;
+            for old_index in 1..=10 {
+                let old = &original_core[old_index * 38..(old_index + 1) * 38];
+                let old_slot = i16::from_le_bytes(old[2..4].try_into().unwrap());
+                if old_slot == 0 {
+                    continue;
+                }
+                let matches = |record: &NativeRobotRecord| {
+                    record.word("old_slot").ok() == Some(old_slot)
+                        && record.long("absolute_id").ok().map(|id| id as u32 as u64)
+                            == Some(other_robot.identity.absolute_id)
+                };
+                let same_robot = if let Some(record) = other_robot.native_record_override.as_deref()
+                {
+                    matches(record)
+                } else if let Some(origin) = &self.native_origin {
+                    if let Some(index) = other_robot.native_record_index {
+                        origin.robots.get(index).is_some_and(matches)
+                    } else {
+                        origin.robots.iter().any(matches)
                     }
-                    let same_robot = origin.robots.iter().any(|record| {
-                        record.word("old_slot").ok() == Some(old_slot)
-                            && record.long("absolute_id").ok().map(|id| id as u32 as u64)
-                                == Some(other_robot.identity.absolute_id)
-                    });
-                    if same_robot {
-                        c.copy_from_slice(old);
-                        e.copy_from_slice(
-                            &original_extension[old_index * 13..(old_index + 1) * 13],
-                        );
-                        break;
-                    }
+                } else {
+                    false
+                };
+                if same_robot {
+                    c.copy_from_slice(old);
+                    e.copy_from_slice(&original_extension[old_index * 13..(old_index + 1) * 13]);
+                    break;
                 }
             }
             let endpoint = robot

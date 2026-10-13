@@ -131,6 +131,14 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no DNA.");
     }
 
+    public async Task<byte[]> ExportOrganismGroupAsync(IReadOnlyList<OrganismKey> organisms, CancellationToken cancellationToken = default)
+    {
+        var captured = organisms.ToArray();
+        byte[]? bytes = null;
+        await Enqueue(engine => bytes = engine.ExportOrganismGroup(captured), cancellationToken).ConfigureAwait(false);
+        return bytes ?? throw new InvalidDataException("Engine returned no organism group.");
+    }
+
     public async Task<OrganismKey> ReproduceAsync(
         uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration,
         float[] position, CancellationToken cancellationToken = default)

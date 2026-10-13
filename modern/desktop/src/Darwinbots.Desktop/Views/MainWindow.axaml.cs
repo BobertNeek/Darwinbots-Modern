@@ -1513,46 +1513,14 @@ public sealed partial class MainWindow : Window
     {
         var group = SelectedOrganismGroup();
         if (_session is null || group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
-        var memberKeys = group.Select(value => new OrganismKey(value.Slot, value.Generation)).ToHashSet();
-        var snapshot = _session.LatestSnapshot;
-        var ties = FilterTiesForCapturedGroup(snapshot.Ties, memberKeys);
-        var saved = await _storage.SaveOrganismAsync(this, $"organism-{_viewModel.SelectedSlot}.dbo", async stream =>
-        {
-            var members = new List<Db2OrganismMember>();
-            foreach (var member in group)
-            {
-                var dna = await _session.ExportDnaAsync(member.Slot, member.Generation);
-                members.Add(new Db2OrganismMember(
-                    member.Slot,
-                    member.Generation,
-                    dna,
-                    member.Species,
-                    member.Vegetable,
-                    false,
-                    false,
-                    member.Position,
-                    member.Velocity,
-                    member.Energy,
-                    member.Age,
-                    member.BirthCycle,
-                    member.Body));
-            }
-            var db2Ties = ties.Select(tie => new Db2OrganismTie(
-                new Db2OrganismKey(tie.First.Slot, tie.First.Generation),
-                new Db2OrganismKey(tie.Second.Slot, tie.Second.Generation),
-                tie.RestLength)).ToArray();
-            var bytes = new Db2OrganismFile(1, snapshot.Tick, members, db2Ties).Encode();
-            await stream.WriteAsync(bytes);
-        });
+        var members = group.Select(value => new OrganismKey(value.Slot, value.Generation)).ToArray();
+        var bytes = await _session.ExportOrganismGroupAsync(members);
+        var saved = await _storage.SaveOrganismAsync(this, $"organism-{group[0].Slot}.dbo",
+            async stream => await stream.WriteAsync(bytes));
         return saved
             ? LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)")
             : LegacyCommandResult.Cancel();
     }
-
-    private static TieSnapshot[] FilterTiesForCapturedGroup(
-        IReadOnlyList<TieSnapshot> ties,
-        IReadOnlySet<OrganismKey> memberKeys) =>
-        ties.Where(tie => memberKeys.Contains(tie.First) && memberKeys.Contains(tie.Second)).ToArray();
 
     private async Task<LegacyCommandResult> SaveSelectedDnaCommandAsync()
     {

@@ -294,6 +294,10 @@ pub struct TieEndpointState {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RobotState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) native_record_index: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) native_record_override: Option<Box<crate::native_binary::NativeRobotRecord>>,
     pub identity: RobotIdentity,
     pub flags: RobotFlags,
     pub kinematics: RobotKinematics,
@@ -328,6 +332,8 @@ impl RobotState {
     ) -> Self {
         let new_move = dna.uses_new_move();
         let mut state = Self {
+            native_record_index: None,
+            native_record_override: None,
             identity: RobotIdentity {
                 species,
                 parents,

@@ -53,6 +53,9 @@ mod native_export;
 #[path = "world/native_sim_export.rs"]
 mod native_sim_export;
 
+#[path = "world/native_organism_io.rs"]
+mod native_organism_io;
+
 const MEM_ROBAGE: i32 = 9;
 const MEM_HIT: i32 = 201;
 const MEM_SHOT_FLAVOR: i32 = 202;

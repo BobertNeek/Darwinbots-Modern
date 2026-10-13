@@ -47,11 +47,21 @@ impl VmMemory {
     }
 
     pub fn write(&mut self, address: i32, value: i32) {
+        self.write_cell(address, normalize_store(value));
+    }
+
+    // A saved VB6 Integer cell can contain the full signed 16-bit range.
+    // DNA stores still normalize to +/-32000; file loading must not perform
+    // a store instruction and turn 32767 into 767.
+    pub(crate) fn restore_native_cell(&mut self, address: i32, value: i16) {
+        self.write_cell(address, i32::from(value));
+    }
+
+    fn write_cell(&mut self, address: i32, value: i32) {
         if address == 0 {
             return;
         }
         let address = normalize_address(address) as u16;
-        let value = normalize_store(value);
         match self.cells.binary_search_by_key(&address, |cell| cell.0) {
             Ok(index) if value == 0 => {
                 self.cells.remove(index);

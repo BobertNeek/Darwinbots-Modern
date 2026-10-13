@@ -80,6 +80,8 @@ enum EngineCommand {
     },
     ImportOrganism {
         payload: Vec<u8>,
+        #[serde(default)]
+        position: Option<[f32; 2]>,
     },
     Remove {
         slot: u32,
@@ -128,6 +130,9 @@ enum EngineCommand {
     ExportDna {
         slot: u32,
         generation: u32,
+    },
+    ExportOrganismGroup {
+        organisms: Vec<OrganismIdCommand>,
     },
     ManualReproduce {
         first_slot: u32,
@@ -538,12 +543,19 @@ fn db_engine_command_batch_impl(
                         })
                     })
             }),
-            EngineCommand::ImportOrganism { payload } => LegacyOrganismFile::decode(&payload)
-                .and_then(|file| {
+            EngineCommand::ImportOrganism { payload, position } => {
+                if payload.starts_with(b"DB2O") {
+                    LegacyOrganismFile::decode(&payload).and_then(|file| {
+                        engine
+                            .import_legacy_organism_file(&file)
+                            .map(|count| serde_json::json!({ "count": count }))
+                    })
+                } else {
                     engine
-                        .import_legacy_organism_file(&file)
+                        .import_native_organisms(&payload, position)
                         .map(|count| serde_json::json!({ "count": count }))
-                }),
+                }
+            }
             EngineCommand::Remove { slot, generation } => engine
                 .remove(OrganismId::new(slot, generation))
                 .map(|_| serde_json::Value::Null),
@@ -624,6 +636,15 @@ fn db_engine_command_batch_impl(
             EngineCommand::ExportDna { slot, generation } => engine
                 .export_dna(OrganismId::new(slot, generation))
                 .map(|dna| serde_json::json!({ "dna": dna })),
+            EngineCommand::ExportOrganismGroup { organisms } => {
+                let members: Vec<_> = organisms
+                    .into_iter()
+                    .map(|id| OrganismId::new(id.slot, id.generation))
+                    .collect();
+                engine
+                    .export_native_organisms(&members)
+                    .map(|bytes| serde_json::json!({ "payload": bytes }))
+            }
             EngineCommand::ManualReproduce {
                 first_slot,
                 first_generation,

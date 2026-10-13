@@ -991,7 +991,7 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
-    public async Task SaveEntireOrganismMenuWritesTheExactTiedGroupDb2FrameThroughThePicker()
+    public async Task SaveEntireOrganismMenuWritesTheCapturedEngineGroupThroughThePicker()
     {
         var selected = RecordingEngineClient.Organism;
         var tied = selected with { Slot = 4, Generation = 7 };
@@ -1035,28 +1035,10 @@ public sealed class RuntimeControlSurfaceTests
 
                 await WaitFor(() => storage.SavedOrganism is not null);
                 Assert.Equal("organism-3.dbo", storage.SavedOrganismSuggestedFileName);
-                var file = Db2OrganismFile.Decode(storage.SavedOrganism!);
-                Assert.Equal(1, file.Version);
-                Assert.Equal(42UL, file.Tick);
+                Assert.Equal(engine.ExportedOrganismPayload, storage.SavedOrganism);
+                Assert.Equal([new OrganismKey(3, 2), new OrganismKey(4, 7)], Assert.Single(engine.ExportedGroups));
+                Assert.Empty(engine.DnaExports);
 
-                var members = file.Members;
-                Assert.Equal(2, members.Count);
-                Assert.Equal((3U, 2U), (members[0].Slot, members[0].Generation));
-                Assert.Equal((4U, 7U), (members[1].Slot, members[1].Generation));
-                Assert.All(members, member => Assert.Equal("start\nstop", member.Dna));
-
-                var tie = Assert.Single(file.Ties);
-                Assert.Equal((3U, 2U), (tie.First.Slot, tie.First.Generation));
-                Assert.Equal((4U, 7U), (tie.Second.Slot, tie.Second.Generation));
-                var serializedSlots = members.Select(member => member.Slot)
-                    .Concat(file.Ties.SelectMany(value => new[]
-                    {
-                        value.First.Slot,
-                        value.Second.Slot,
-                    }));
-                Assert.DoesNotContain(8U, serializedSlots);
-                Assert.DoesNotContain(99U, serializedSlots);
-                Assert.Equal([(3U, 2U), (4U, 7U)], engine.DnaExports.ToArray());
             }
             finally
             {
@@ -1121,14 +1103,14 @@ public sealed class RuntimeControlSurfaceTests
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
                 await WaitFor(() => storageState.SavedOrganism is not null);
-                var exported = Db2OrganismFile.Decode(storageState.SavedOrganism!);
-                var member = Assert.Single(exported.Members);
-                Assert.Equal(1, exported.Version);
+                var exported = ReadNativeOrganismGroup(storageState.SavedOrganism!);
+                var member = Assert.Single(exported.Organisms);
                 Assert.Equal([12.5f, 34.5f], member.Position);
                 Assert.Equal([1.25f, -2.5f], member.Velocity);
                 Assert.Equal(1234, member.Energy);
                 Assert.Equal(91UL, member.Age);
                 Assert.Equal(321, member.Body);
+
             }
             finally
             {
@@ -1227,12 +1209,10 @@ public sealed class RuntimeControlSurfaceTests
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveEntireOrganism)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => storageState.SavedOrganism is not null);
-                var exported = Db2OrganismFile.Decode(storageState.SavedOrganism!);
-                Assert.Equal(2, exported.Members.Count);
+                var exported = ReadNativeOrganismGroup(storageState.SavedOrganism!);
+                Assert.Equal(2, exported.Organisms.Count);
                 Assert.Equal(42.5f, Assert.Single(exported.Ties).RestLength);
-                Assert.Equal(
-                    new Db2OrganismKey(selected.Slot, selected.Generation),
-                    exported.SelectedMember);
+                Assert.Equal(selected.Position, exported.Organisms[0].Position);
 
                 var expectedState = group
                     .Select(organism => (
@@ -1244,7 +1224,7 @@ public sealed class RuntimeControlSurfaceTests
                         Body: organism.Body))
                     .OrderBy(value => value.X)
                     .ToArray();
-                Assert.Equal(expectedState, exported.Members
+                Assert.Equal(expectedState, exported.Organisms
                     .Select(member => (
                         X: member.Position[0],
                         Y: member.Position[1],
@@ -1384,15 +1364,10 @@ public sealed class RuntimeControlSurfaceTests
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotSaveEntireOrganism)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => storage.SavedOrganism is not null);
-                var saved = Db2OrganismFile.Decode(storage.SavedOrganism!);
-                Assert.Equal(2, saved.Members.Count);
-                Assert.Equal([(3U, 2U), (4U, 7U)], saved.Members
-                    .Select(member => (member.Slot, member.Generation))
-                    .ToArray());
-                var tie = Assert.Single(saved.Ties);
-                Assert.Equal((3U, 2U), (tie.First.Slot, tie.First.Generation));
-                Assert.Equal((4U, 7U), (tie.Second.Slot, tie.Second.Generation));
-                Assert.Equal([(3U, 2U), (4U, 7U)], engine.DnaExports.ToArray());
+                Assert.Equal(engine.ExportedOrganismPayload, storage.SavedOrganism);
+                Assert.Equal([new OrganismKey(3, 2), new OrganismKey(4, 7)], Assert.Single(engine.ExportedGroups));
+                Assert.Empty(engine.DnaExports);
+
             }
             finally
             {
@@ -1594,6 +1569,15 @@ public sealed class RuntimeControlSurfaceTests
         return false;
 
         static bool Close(byte left, byte right) => Math.Abs(left - right) <= 24;
+    }
+
+    private static EngineSnapshot ReadNativeOrganismGroup(byte[] bytes)
+    {
+        Assert.InRange(BitConverter.ToInt16(bytes, 0), 1, 50);
+        Assert.NotEqual("DB2O", Encoding.ASCII.GetString(bytes, 0, 4));
+        using var engine = new NativeEngineClient(backend: "Cpu");
+        engine.ImportOrganism(bytes);
+        return engine.Snapshot();
     }
 
     private static byte[] SyntheticVb6Organism()
@@ -1810,6 +1794,8 @@ internal sealed class RecordingEngineClient : IEngineClient
     public ConcurrentQueue<LocalModeConfig> LocalModeConfigs { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation, string Dna)> DnaReplacements { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation)> DnaExports { get; } = [];
+    public ConcurrentQueue<OrganismKey[]> ExportedGroups { get; } = [];
+    public byte[] ExportedOrganismPayload { get; } = Encoding.ASCII.GetBytes("engine-owned organism fixture");
     public string Backend { get; private set; } = "CPU";
     private ulong _tick;
     private readonly EngineSnapshot _snapshot;
@@ -1854,6 +1840,11 @@ internal sealed class RecordingEngineClient : IEngineClient
     {
         DnaExports.Enqueue((slot, generation));
         return "start\nstop";
+    }
+    public byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms)
+    {
+        ExportedGroups.Enqueue(organisms.ToArray());
+        return ExportedOrganismPayload.ToArray();
     }
     public OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position)
     {

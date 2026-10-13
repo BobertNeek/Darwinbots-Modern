@@ -588,4 +588,14 @@ mod tests {
         assert_eq!(imported.config.vegetation, engine.config.vegetation);
         assert_eq!(imported.config.dna_costs, engine.config.dna_costs);
     }
+
+    #[test]
+    fn empty_native_world_loads_through_production_save_dispatch() {
+        let engine = Engine::new(EngineConfig::testing()).unwrap();
+        let native = engine.export_native_sim().unwrap();
+        assert!(native.len() < 9323);
+        let loaded = crate::SaveFile::decode(&native).unwrap();
+        assert_eq!(loaded.population(), 0);
+        assert_eq!(loaded.config.world_width, 1000.0);
+    }
 }

@@ -263,6 +263,19 @@ public sealed partial class NativeEngineClient : IEngineClient
             ?? throw new InvalidDataException("Native engine returned empty DNA.");
     }
 
+    public byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms)
+    {
+        ArgumentNullException.ThrowIfNull(organisms);
+        if (organisms.Count is < 1 or > 50 || organisms.Distinct().Count() != organisms.Count)
+            throw new ArgumentException("A Darwinbots 2 organism must contain 1 to 50 distinct robots.", nameof(organisms));
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "export_organism_group", organisms = organisms.Select(key => new { slot = key.Slot, generation = key.Generation }).ToArray() } },
+        }, "export organism group");
+        return result.GetProperty("results")[0].GetProperty("payload").EnumerateArray().Select(value => value.GetByte()).ToArray();
+    }
+
     public OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position)
     {
         ValidatePosition(position);
