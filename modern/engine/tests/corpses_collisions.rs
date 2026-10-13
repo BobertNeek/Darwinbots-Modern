@@ -14,8 +14,14 @@ fn corpse_settings() -> CorpseDecaySettings {
 fn body_amount(engine: &Engine) -> f32 {
     let save = SaveFile::encode(engine).unwrap();
     let payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
-    let corpse = &payload["corpses"][0];
-    (corpse["body"].as_f64().unwrap() + corpse["body_fraction"].as_f64().unwrap()) as f32
+    let corpse = payload["slots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|slot| slot["organism"].as_object())
+        .find(|robot| robot["flags"]["corpse"] == true)
+        .unwrap();
+    corpse["materials"]["body"].as_f64().unwrap() as f32
 }
 
 #[test]
@@ -206,7 +212,13 @@ fn body_feeding_shots_multiply_corpse_damage_and_return_a_packet() {
         .spawn_species_batch(idle, SpeciesId::default(), [[500.0, 500.0]], 1)
         .unwrap();
     engine.tick().unwrap();
-    let corpse_before = engine.snapshot().corpses[0].clone();
+    let corpse_id = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|robot| robot.flags.corpse)
+        .unwrap()
+        .id;
     engine
         .replace_dna(
             attacker,
@@ -220,14 +232,16 @@ fn body_feeding_shots_multiply_corpse_damage_and_return_a_packet() {
         .unwrap();
     engine.tick().unwrap();
 
-    let corpse_after = &engine.snapshot().corpses[0];
-    assert_eq!(corpse_after.body, corpse_before.body - 40);
+    // releasebod explicitly sets Dead when nrg <= 0.5, including corpses.
+    assert!(engine.snapshot().corpses.is_empty());
+    assert!(engine.organism(corpse_id).is_err());
+    assert_eq!(engine.organism(attacker).unwrap().kills, 1);
     assert!(
         engine
             .snapshot()
             .shots
             .iter()
-            .any(|shot| { shot.kind == -2 && shot.owner.slot() == u32::MAX && shot.value == 400 })
+            .any(|shot| { shot.kind == -2 && shot.owner == corpse_id && shot.value == 400 })
     );
 }
 

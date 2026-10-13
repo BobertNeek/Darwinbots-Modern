@@ -10,6 +10,141 @@ pub(super) struct NativeCorpseTransfer {
 }
 
 impl Engine {
+    pub(super) fn decay_native_corpses(&mut self) {
+        for id in self.slots.ids_in_slot_order() {
+            if !self.slots.get(id).is_ok_and(|robot| robot.flags.corpse) {
+                continue;
+            }
+            let virtual_body = self.virtual_body_for(id);
+            let robot = self.slots.get_mut(id).unwrap();
+            robot.counters.decay_timer = robot.counters.decay_timer.saturating_add(1);
+            if u64::from(robot.counters.decay_timer) < self.config.corpse_decay.period {
+                continue;
+            }
+            robot.counters.decay_timer = 0;
+            robot.program.rng_state = advance_random(robot.program.rng_state);
+            let unit = (robot.program.rng_state >> 40) as f32 / (1_u32 << 24) as f32;
+            robot.set_heading(unit * 2.0 * std::f32::consts::PI);
+            let body = robot.materials.body.max(0.0);
+            let packet = self.config.corpse_decay.packet_size.max(0) as f32;
+            let value = if f64::from(body) > f64::from(packet) / 10.0 {
+                packet
+            } else {
+                body
+            };
+            let kind = match self.config.corpse_decay.mode {
+                crate::CorpseDecayMode::None => None,
+                crate::CorpseDecayMode::WasteShot => Some(-4),
+                crate::CorpseDecayMode::EnergyShot => Some(-2),
+            };
+            if let Some(kind) = kind.filter(|_| value != 0.0) {
+                let mut angle = robot.heading();
+                if robot.program.memory.read(900) != 0 {
+                    angle = (angle - std::f32::consts::PI).rem_euclid(std::f32::consts::TAU);
+                    robot.program.memory.write(900, 0);
+                }
+                let aimed = robot.program.memory.read(901);
+                if aimed != 0 {
+                    angle = (f64::from(robot.heading()) - f64::from(aimed % 1256) / 200.0) as f32;
+                    robot.program.memory.write(901, 0);
+                }
+                // newshot consumes the unused range draw before angle scatter.
+                robot.program.rng_state = advance_random(robot.program.rng_state);
+                robot.program.rng_state = advance_random(robot.program.rng_state);
+                angle = (f64::from(angle)
+                    + ((robot.program.rng_state % 41) as i32 - 20) as f64 / 200.0)
+                    as f32;
+                let slot = self.projectiles.spawn(
+                    ProjectileSpawn {
+                        owner: id,
+                        owner_position: robot.kinematics.position,
+                        owner_velocity: robot.kinematics.velocity,
+                        owner_actual_velocity: robot.kinematics.actual_velocity,
+                        correct_position: false,
+                        owner_radius: crate::physics::organism_radius(
+                            body,
+                            0.0,
+                            self.config.fixed_bot_radii,
+                        ),
+                        owner_virtual_body: virtual_body,
+                        range_multiplier: 1.0,
+                        angle,
+                        kind,
+                        value: value.floor(),
+                        payload: None,
+                        source_species_name: Some("Corpse".into()),
+                        toxin_memory_location: robot.program.memory.read(835),
+                        toxin_memory_value: robot.program.memory.read(836),
+                        color: robot.phenotype.color,
+                        source_vegetable: false,
+                        stored: false,
+                        gene_number: 0,
+                        dna_length: 0,
+                    },
+                    &self.config.shots,
+                );
+                // Decay calls newshot directly; it does not replace nrg with
+                // the explicit donation amount used by ManageShoot.
+                self.projectiles.energies[slot as usize] =
+                    self.projectiles.ranges[slot as usize] * 40.0;
+                self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
+            }
+            robot.materials.body = (f64::from(body) - f64::from(packet) / 10.0) as f32;
+            robot.materials.radius = crate::physics::organism_radius(
+                robot.materials.body,
+                0.0,
+                self.config.fixed_bot_radii,
+            );
+        }
+    }
+
+    pub(super) fn become_native_corpse(&mut self, id: OrganismId) -> Result<(), EngineError> {
+        let robot = self.slots.get_mut(id)?;
+        robot.flags.corpse = true;
+        robot.flags.dead = false;
+        robot.flags.vegetable = false;
+        robot.flags.fixed = false;
+        robot.flags.can_execute_dna = false;
+        robot.flags.can_move = false;
+        robot.flags.can_see = false;
+        robot.flags.virus_immune = true;
+        robot.flags.can_receive_viruses = false;
+        robot.identity.species_file = "Corpse".into();
+        robot.phenotype.color = 0xffff_ffff;
+        robot.materials.energy = 0.0;
+        robot.materials.chloroplasts = 0.0;
+        robot.buoyancy = 0.0;
+        robot.senses.occurrence_counts.fill(0);
+        robot.senses.vision_reference_occurrences.fill(0);
+        for address in 501..=509 {
+            robot.program.memory.write(address, 0);
+        }
+        robot.publish_occurrence_readbacks();
+        Ok(())
+    }
+
+    pub(super) fn corpse_views(&self) -> Vec<CorpseSnapshot> {
+        let mut views = self
+            .corpses
+            .iter()
+            .map(CorpseSnapshot::view)
+            .collect::<Vec<_>>();
+        for robot in self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .filter(|robot| robot.flags.corpse)
+        {
+            let mut view =
+                CorpseSnapshot::projection_from_robot(robot, robot.identity.species.0, false);
+            view.energy = resource_readback(robot.materials.energy);
+            view.decay_timer = u64::from(robot.counters.decay_timer);
+            views.push(view);
+        }
+        views
+    }
+
+    #[cfg(test)]
     pub(super) fn archive_corpse(
         &self,
         id: OrganismId,
@@ -36,7 +171,7 @@ impl Engine {
         &self,
         indices: &[usize],
     ) -> Result<(Self, Vec<OrganismId>), EngineError> {
-        if self.population() + indices.len() > MAX_ROBOTS {
+        if self.occupied_robot_records() + indices.len() > MAX_ROBOTS {
             return Err(EngineError::InvalidSave(
                 "native world exceeds 32000 records".into(),
             ));
@@ -143,6 +278,216 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::native_binary::NativeRecordFile;
+
+    #[test]
+    fn native_corpse_decay_shot_retains_owner_radius_range_and_newshot_energy() {
+        let mut world = Engine::new(EngineConfig {
+            fixed_bot_radii: true,
+            metabolism_cost: 0,
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                mode: crate::CorpseDecayMode::EnergyShot,
+                packet_size: 3,
+                period: 1,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world.set_organism_energy(id, 14).unwrap();
+        world.tick().unwrap();
+        world.tick().unwrap();
+        let slot = world.projectiles.live_slots()[0] as usize;
+        assert_eq!(world.projectiles.owners[slot], id);
+        assert_eq!(world.projectiles.values[slot], 3);
+        assert_eq!(world.projectiles.ranges[slot], 11.0);
+        assert_eq!(world.projectiles.energies[slot], 440.0);
+        let robot = world.slots.get(id).unwrap();
+        let shot = world.projectiles.positions[slot];
+        let position = robot.kinematics.position;
+        assert!(((shot[0] - position[0]).hypot(shot[1] - position[1]) - 60.0).abs() < 0.0001);
+        assert_eq!(robot.materials.body, 999.7);
+        world.tick().unwrap();
+        assert!(world.projectiles.alive[slot]);
+        assert!(
+            !world.projectiles.impact_flash[slot],
+            "a decay shot must not hit its own corpse"
+        );
+    }
+
+    #[test]
+    fn natural_corpse_retains_its_robot_identity_memory_dna_and_physical_tie() {
+        let mut world = Engine::new(EngineConfig {
+            fixed_bot_radii: true,
+            metabolism_cost: 0,
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let plant = world.register_species(SpeciesDefinition {
+            vegetable: true,
+            minimum_population: 1,
+            reseed: false,
+            ..Default::default()
+        });
+        let dna = LegacyDna::parse("start 7 999 store stop").unwrap();
+        let dead = world
+            .spawn_species_at(dna.clone(), plant, [400.0, 500.0])
+            .unwrap();
+        let living = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [600.0, 500.0])
+            .unwrap();
+        let absolute = world.slots.get(dead).unwrap().identity.absolute_id;
+        world.set_organism_energy(dead, 14).unwrap();
+        world.ties.push(TieState::legacy(dead, living, 200.0, 1, 1));
+        world.tick().unwrap();
+        let corpse = world.slots.get(dead).unwrap();
+        assert!(corpse.flags.corpse);
+        assert!(
+            !corpse.flags.fixed
+                && !corpse.flags.can_execute_dna
+                && !corpse.flags.can_move
+                && !corpse.flags.can_see
+        );
+        assert_eq!(corpse.identity.absolute_id, absolute);
+        assert_eq!(corpse.identity.species_file, "Corpse");
+        assert_eq!(corpse.program.memory.read(999), 7);
+        assert_eq!(corpse.program.dna.blocks(), dna.blocks());
+        assert!(
+            corpse
+                .senses
+                .occurrence_counts
+                .iter()
+                .all(|&value| value == 0)
+        );
+        assert!(
+            world
+                .ties
+                .iter()
+                .any(|tie| tie.contains(dead) && tie.contains(living))
+        );
+        assert_eq!(world.population(), 1);
+        assert_eq!(world.snapshot().stats.population, 1);
+        assert_eq!(world.snapshot().organisms.len(), 2);
+        assert!(
+            !world
+                .snapshot()
+                .organisms
+                .iter()
+                .find(|r| r.id == dead)
+                .unwrap()
+                .vegetable
+        );
+        assert_eq!(world.vegetable_population(), 0);
+        assert_eq!(world.snapshot().corpses.len(), 1);
+        assert!(
+            world.corpses.is_empty(),
+            "natural deaths must not move into the legacy archive"
+        );
+        let resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert!(resumed.slots.get(dead).unwrap().flags.corpse);
+        assert!(
+            resumed
+                .ties
+                .iter()
+                .any(|tie| tie.contains(dead) && tie.contains(living))
+        );
+        let native = NativeRecordFile::decode(&resumed.export_native_sim().unwrap()).unwrap();
+        let record = native
+            .robots
+            .iter()
+            .find(|r| r.long("absolute_id").unwrap() as u64 == absolute)
+            .unwrap();
+        assert_eq!(record.word("corpse").unwrap(), -1);
+        assert_eq!(record.word("vegetable").unwrap(), 0);
+        assert_eq!(record.single("energy").unwrap(), 0.0);
+        assert_eq!(record.word("fixed").unwrap(), 0);
+    }
+
+    #[test]
+    fn natural_corpse_keeps_momentum_and_collides_with_living_robots() {
+        let mut config = EngineConfig {
+            fixed_bot_radii: true,
+            drag: 0.0,
+            metabolism_cost: 0,
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        };
+        config.physics.density = 0.0;
+        config.physics.surface_gravity = 0.0;
+        config.physics.static_friction = 0.0;
+        config.physics.kinetic_friction = 0.0;
+        let mut world = Engine::new(config).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world.set_organism_energy(id, 14).unwrap();
+        world.slots.get_mut(id).unwrap().kinematics.velocity = [10.0, 0.0];
+        world.tick().unwrap();
+        let first_position = world.slots.get(id).unwrap().kinematics.position;
+        world.tick().unwrap();
+        let second_position = world.slots.get(id).unwrap().kinematics.position;
+        assert_eq!(
+            second_position,
+            [first_position[0] + 10.0, first_position[1]]
+        );
+        let living = world
+            .spawn_at(
+                LegacyDna::parse("stop").unwrap(),
+                [second_position[0] + 50.0, second_position[1]],
+            )
+            .unwrap();
+        world.tick().unwrap();
+        let dead = world.slots.get(id).unwrap().kinematics.position;
+        let living = world.slots.get(living).unwrap().kinematics.position;
+        assert!((dead[0] - living[0]).hypot(dead[1] - living[1]) >= 119.99);
+        assert_eq!(world.stats.deaths, 1);
+    }
+
+    #[test]
+    fn corpse_occupies_capacity_until_exhausted_without_counting_a_second_death() {
+        let mut world = Engine::new(EngineConfig {
+            organism_capacity: 1,
+            metabolism_cost: 0,
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                packet_size: 2000,
+                period: 1,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world.set_organism_energy(id, 14).unwrap();
+        world.slots.get_mut(id).unwrap().materials.body = 100.0;
+        world.tick().unwrap();
+        assert_eq!(world.population(), 0);
+        assert!(matches!(
+            world.spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2]),
+            Err(EngineError::CapacityReached)
+        ));
+        world.tick().unwrap();
+        assert!(world.slots.get(id).is_err());
+        assert!(world.snapshot().corpses.is_empty());
+        assert_eq!(world.stats.deaths, 1);
+        let replacement = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        assert_eq!(id.slot(), replacement.slot());
+        assert_ne!(id.generation(), replacement.generation());
+    }
 
     #[test]
     fn archived_native_corpse_keeps_memory_materials_and_tie_through_modern_save_and_native_export()

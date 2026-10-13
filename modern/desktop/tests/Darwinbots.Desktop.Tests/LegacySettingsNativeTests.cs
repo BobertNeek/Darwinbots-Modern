@@ -104,11 +104,18 @@ public sealed class LegacySettingsNativeTests
         stream.CopyTo(bytes);
         using var engine = new NativeEngineClient(backend: "Cpu");
         engine.Load(bytes.ToArray());
-        Assert.Equal(654ul, engine.Snapshot().Tick);
-        Assert.Equal(543, engine.Snapshot().Population);
+        var loaded = engine.Snapshot();
+        Assert.Equal(654ul, loaded.Tick);
+        Assert.Equal(543, loaded.Population);
         engine.Tick();
         Assert.Equal(655ul, engine.Snapshot().Tick);
-        Assert.Equal(544, engine.Snapshot().Population);
+        var advanced = engine.Snapshot();
+        // Source-correct body feeding kills one robot while a birth adds one.
+        // The fixture proves native exchange, not matching future trajectories.
+        Assert.Equal(1ul, advanced.Stats.Births - loaded.Stats.Births);
+        Assert.Equal(1ul, advanced.Stats.Deaths - loaded.Stats.Deaths);
+        Assert.Equal(543, advanced.Population);
+        Assert.Equal(advanced.Population, advanced.Organisms.Count);
     }
 
     [Fact]

@@ -67,7 +67,7 @@ impl Engine {
         file: NativeRecordFile,
         position: Option<[f32; 2]>,
     ) -> Result<usize, EngineError> {
-        if self.population().saturating_add(file.robots.len()) > self.config.organism_capacity {
+        if file.robots.len() > self.available_robot_capacity() {
             return Err(EngineError::CapacityReached);
         }
         let mut old_slots = HashMap::new();

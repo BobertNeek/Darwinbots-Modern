@@ -51,7 +51,18 @@ pub struct CorpseSnapshot {
 }
 
 impl CorpseSnapshot {
+    #[cfg(test)]
     pub(crate) fn from_robot(robot: &RobotState, species: u32, repopulating: bool) -> Self {
+        let mut corpse = Self::projection_from_robot(robot, species, repopulating);
+        corpse.native_state = Some(Box::new(robot.clone()));
+        corpse
+    }
+
+    pub(crate) fn projection_from_robot(
+        robot: &RobotState,
+        species: u32,
+        repopulating: bool,
+    ) -> Self {
         let exact_body = robot.materials.body.max(0.0);
         let body = exact_body.round_ties_even() as i32;
         Self {
@@ -75,7 +86,7 @@ impl CorpseSnapshot {
             chloroplasts: 0,
             body_fraction: exact_body - body as f32,
             decay_timer: 0,
-            native_state: Some(Box::new(robot.clone())),
+            native_state: None,
             native_id: None,
             native_ties: Vec::new(),
             teleporter_backflow: None,

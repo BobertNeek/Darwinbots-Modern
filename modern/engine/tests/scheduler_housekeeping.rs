@@ -102,15 +102,17 @@ fn low_memory_housekeeping_preserves_inclusive_budget_composite_rank_threshold_c
     let mut config = EngineConfig::testing();
     config.low_memory_dna_limit = 1;
     config.low_memory_detail_limit = 1;
+    config.metabolism_cost = 0;
     let mut engine = Engine::new(config).unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();
     let first = engine.spawn(dna.clone()).unwrap();
     let second = engine.spawn(dna.clone()).unwrap();
     let protected = engine.spawn(dna).unwrap();
-    engine = restore_with_bodies(&engine, &[(first, 100), (second, 1), (protected, 31_999)]);
+    engine = restore_with_bodies(&engine, &[(first, 100), (second, 1), (protected, 31_998)]);
     engine.set_organism_energy(first, 1_000).unwrap();
     engine.set_organism_energy(second, 1_500).unwrap();
-    engine.set_organism_energy(protected, 10).unwrap();
+    // Exact rank 320000, with energy above native corpse threshold 15.
+    engine.set_organism_energy(protected, 20).unwrap();
 
     let trace = engine.tick_with_trace().unwrap();
     let committed: Vec<_> = trace
@@ -130,9 +132,8 @@ fn low_memory_housekeeping_preserves_inclusive_budget_composite_rank_threshold_c
     assert_eq!(engine.snapshot().organisms.len(), 1);
     assert_eq!(engine.snapshot().organisms[0].id, protected);
     assert_eq!(engine.snapshot().stats.deaths, 2);
-    assert_eq!(engine.snapshot().corpses.len(), 2);
-    assert_eq!(engine.snapshot().corpses[0].body, 1);
-    assert_eq!(engine.snapshot().corpses[0].energy, 1);
-    assert_eq!(engine.snapshot().corpses[1].body, 100);
-    assert_eq!(engine.snapshot().corpses[1].energy, 100);
+    assert!(
+        engine.snapshot().corpses.is_empty(),
+        "ReStart uses KillRobot and leaves no corpse"
+    );
 }

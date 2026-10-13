@@ -737,8 +737,13 @@ public sealed class WorldViewport : Control
                 radius);
         }
         if (!ShowDeathPoffs) return;
+        var arenaBodies = _snapshot.Organisms
+            .Select(robot => (robot.UniqueId, robot.Position[0], robot.Position[1])).ToHashSet();
         foreach (var corpse in _snapshot.Corpses)
         {
+            // Arena corpses already have a full robot body and tie rendering.
+            if (corpse.UniqueId != 0 && arenaBodies.Contains(
+                (corpse.UniqueId, corpse.Position[0], corpse.Position[1]))) continue;
             var center = new Point(corpse.Position[0] * scaleX + _pan.X, corpse.Position[1] * scaleY + _pan.Y);
             var worldRadius = Math.Clamp(Math.Sqrt(Math.Max(1, corpse.Body)) * 0.45, 2.0, 24.0);
             var radius = Math.Clamp(worldRadius * Math.Min(scaleX, scaleY), 1.5, 9.0);
