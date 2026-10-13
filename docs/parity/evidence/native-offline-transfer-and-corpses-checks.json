@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "4e838600fee2519a37d88e5d3bb33ec1cbea1611",
+  "checks": {
+    "release_workspace": {
+      "passed": 454,
+      "failed": 58,
+      "filtered": 2,
+      "failing_targets": 14,
+      "log": "completion-checks/parity-native-file-corpse-workspace-release.log"
+    },
+    "engine_library": {
+      "passed": 55,
+      "failed": 0,
+      "included_in_workspace": true
+    },
+    "legacy_transport": {
+      "passed": 6,
+      "failed": 0,
+      "included_in_workspace": true
+    },
+    "desktop_native_subset": {
+      "passed": 15,
+      "failed": 0,
+      "log": "completion-checks/parity-native-file-corpse-desktop.log"
+    },
+    "strict_lib_tests_clippy": {
+      "passed": true,
+      "log": "completion-checks/parity-native-file-corpse-gates-clippy.log"
+    }
+  },
+  "changes": [
+    "Complete native .dbo files replace the partial teleporter payload for live and archived robots.",
+    "Hardened multibots cross as complete groups; inbound poll capacity counts files.",
+    "Native saved offline gateway paths, geometry, inbound placement and poll countdown now drive file exchange.",
+    "Modern file gateways are emitted as native offline portals in .sim exports.",
+    "Imports retain files on failure; output publication refuses to replace an existing transfer.",
+    "Corpse archives retain full robot state and tie provenance; native simulation and organism exports include it.",
+    "Corpse age remains frozen; returned native corpses decay without being re-archived and do not execute latched living commands.",
+    "Native menu insertion follows inclusive whole-twip 60..FieldSize-60 placement and preserves group displacement; its sequence survives DB3S.",
+    "Newborn, clone and manual-birth native parent IDs survive parent removal and slot reuse."
+  ],
+  "limits": [
+    "58 broad failures remain; two long ecology cases were filtered.",
+    "These new file/corpse scenarios have Rust round-trip tests, not new original-executable trajectory proof.",
+    "Older partial corpse projections lack recoverable full state and native export rejects them.",
+    "The archived corpse runtime still needs complete physical/tie equivalence to original arena corpses.",
+    "Whole-cycle external file rollback on backend failure remains unqualified.",
+    "Complete global/main-rule, graph, evolution and contest editors remain open.",
+    "Mixed per-obstacle policies cannot be represented by original global policies."
+  ]
+}
