@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "b474f872b1ce4b924fc18ff382aaea9da957ebdb",
+  "checks": {
+    "library": 66,
+    "canonical_cycle": 14,
+    "persistence": 4,
+    "reproduction": 25,
+    "sysvar_lifecycle": 24,
+    "ties_multibot": 21,
+    "all_passed": true,
+    "total_selected_passed": 154,
+    "strict_lint": true
+  },
+  "changes": [
+    "Structural tie publication no longer performs normal tied-reference reads.",
+    "Normal reads use the early data phase and require simulation age two and enabled DNA.",
+    "New ties immediately read references only for the creating robot and new port.",
+    "Tied position references copy partner position memory, matching ReadTRefVars.",
+    "Information transfer writes only the requested cell; it does not change receiver tie-memory selector/readback.",
+    "Fixture geometry now selects its intended first and second ports without border wrapping.",
+    "Removal fixture preserves tied references until the next eligible read, and coordinate fixture checks pre-movement position memory."
+  ],
+  "logs": [
+    "completion-checks/parity-native-tie-reference-final.log",
+    "completion-checks/parity-native-tie-reference-clippy.log"
+  ],
+  "limits": [
+    "Last complete workspace remains 464 passed / 58 failed / 2 filtered at d4ad087.",
+    "Three prior tied-sysvar failures are resolved in the selected rerun; no new complete score is claimed.",
+    "Full native reference velocity/clamping/fudging, combined pool sharing and original trajectories remain open."
+  ]
+}

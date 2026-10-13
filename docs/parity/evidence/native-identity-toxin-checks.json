@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-12",
+  "identity_code_revision": "2f481043fd1dc75126d768587865add2ad3b953d",
+  "toxin_fixture_revision": "fa4da9b145d500b4711a56ba63cbf8fac88e8988",
+  "identity_checks": {
+    "library": 66,
+    "reproduction": 25,
+    "manual_tools": 6,
+    "transport": 6,
+    "persistence": 4,
+    "all_passed": true,
+    "strict_lint": true,
+    "strengthened_parent": {
+      "passed": 1,
+      "overlaps_library": true
+    }
+  },
+  "toxin_checks": {
+    "passed": 19,
+    "failed": 22,
+    "previous_selected": {
+      "passed": 16,
+      "failed": 25
+    },
+    "fixture_dispositions": [
+      "Weak-shot target moved farther so the one-power projectile ages before impact; first travel cycle must miss.",
+      "Power-three age-zero hit leaves duration two after Poisons.",
+      "Expiry fixture now checks the additional active cycle and the final payload write before cleanup."
+    ]
+  },
+  "logs": [
+    "completion-checks/parity-native-absolute-identity.log",
+    "completion-checks/parity-native-identity-parent-final.log",
+    "completion-checks/parity-native-identity-clippy.log",
+    "completion-checks/parity-native-toxin-fixture-triage.log"
+  ],
+  "limits": [
+    "Complete workspace remains 464 passed / 58 failed / 2 filtered at d4ad087.",
+    "Identity and toxin follow-ups are selected checks, not another complete gate.",
+    "Tied-reference age/phase behavior has a source-confirmed gap and is under repair."
+  ]
+}
