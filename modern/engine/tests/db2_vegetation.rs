@@ -339,34 +339,36 @@ fn chloroplasts_decay_naturally_without_a_removal_command() {
 }
 
 #[test]
-fn chloroplast_pressure_refuses_new_chloroplasts_at_the_vegetable_cap() {
-    let mut engine = Engine::new(EngineConfig {
-        metabolism_cost: 0,
-        vegetable_energy_per_tick: 0,
-        vegetable_population_cap: 1,
-        vegetation: VegetationSettings {
-            daytime: false,
-            start_chloroplasts: START_CHLR,
-            ..VegetationSettings::default()
-        },
-        ..EngineConfig::testing()
-    })
-    .unwrap();
-    let vegetables = engine.register_species(SpeciesDefinition {
-        vegetable: true,
-        ..SpeciesDefinition::default()
-    });
-    let plant = engine
-        .spawn_species_at(
-            LegacyDna::parse("start\n10 .mkchlr store\nstop").unwrap(),
-            vegetables,
-            [500.0, 500.0],
-        )
+fn chloroplast_pressure_uses_equivalents_and_a_strict_population_boundary() {
+    // Robots.bas ChangeChlr uses TotalChlr > MaxPopulation, not bot count.
+    for (initial, expected) in [(START_CHLR, START_CHLR + 10), (32_000, 32_000)] {
+        let mut engine = Engine::new(EngineConfig {
+            metabolism_cost: 0,
+            vegetable_energy_per_tick: 0,
+            vegetable_population_cap: 1,
+            vegetation: VegetationSettings {
+                daytime: false,
+                start_chloroplasts: initial,
+                ..VegetationSettings::default()
+            },
+            ..EngineConfig::testing()
+        })
         .unwrap();
-
-    engine.tick().unwrap();
-
-    assert_eq!(engine.organism(plant).unwrap().chloroplasts, START_CHLR);
+        let vegetables = engine.register_species(SpeciesDefinition {
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let plant = engine
+            .spawn_species_at(
+                LegacyDna::parse("start\n10 .mkchlr store\nstop").unwrap(),
+                vegetables,
+                [500.0, 500.0],
+            )
+            .unwrap();
+        engine.tick().unwrap();
+        assert_eq!(engine.organism(plant).unwrap().chloroplasts, expected);
+        assert_eq!(engine.memory(plant, "mkchlr").unwrap(), 0);
+    }
 }
 
 #[test]

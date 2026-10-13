@@ -187,12 +187,11 @@ impl RobotMaterials {
     }
 
     pub(crate) fn decay_chloroplasts(&mut self) -> f32 {
-        if self.chloroplasts <= 0.0 {
-            return 0.0;
-        }
-        let removed = (0.5 / 100.0_f32.powf(self.chloroplasts / 16_000.0)).min(self.chloroplasts);
-        self.chloroplasts -= removed;
-        removed
+        let prior = self.chloroplasts;
+        let chloroplasts = f64::from(prior);
+        self.chloroplasts = ((chloroplasts - 0.5 / 100.0_f64.powf(chloroplasts / 16_000.0)) as f32)
+            .clamp(0.0, 32_000.0);
+        prior - self.chloroplasts
     }
 
     pub(crate) fn metabolize_waste(&mut self, feeding_to_body: f32) -> (f32, f32) {
@@ -237,6 +236,29 @@ impl RobotMaterials {
         let fed = commands.feed_body.clamp(0, 100) as f32;
         self.body = (self.body - fed / 10.0).max(0.0);
         self.energy = (self.energy + fed).min(32_000.0);
+        let amounts = self.make_stuff(memory, commands, transaction_costs, multibot_divisor);
+        self.chloroplasts += spend(
+            &mut self.energy,
+            commands.make_chloroplasts.max(0) as f32,
+            2.0,
+        );
+        self.chloroplasts =
+            (self.chloroplasts - commands.remove_chloroplasts.max(0) as f32).max(0.0);
+        self.waste += metabolism.max(0) as f32;
+        self.pain = resource_readback((prior - self.energy).max(0.0));
+        self.pleasure = resource_readback((self.energy - prior).max(0.0));
+        self.previous_energy = self.energy;
+        self.publish(memory);
+        amounts
+    }
+
+    pub(crate) fn make_stuff(
+        &mut self,
+        memory: &mut VmMemory,
+        commands: MaterialCommands,
+        transaction_costs: [f64; 4],
+        multibot_divisor: f32,
+    ) -> MaterialAmounts {
         let mut amounts = MaterialAmounts::default();
         // MakeStuff executes venom, poison, shell, then slime. Each transaction
         // changes the energy available to the next command.
@@ -297,18 +319,6 @@ impl RobotMaterials {
             self.waste += cost;
             memory.write(address, 0);
         }
-        self.chloroplasts += spend(
-            &mut self.energy,
-            commands.make_chloroplasts.max(0) as f32,
-            2.0,
-        );
-        self.chloroplasts =
-            (self.chloroplasts - commands.remove_chloroplasts.max(0) as f32).max(0.0);
-        self.waste += metabolism.max(0) as f32;
-        self.pain = resource_readback((prior - self.energy).max(0.0));
-        self.pleasure = resource_readback((self.energy - prior).max(0.0));
-        self.previous_energy = self.energy;
-        self.publish(memory);
         amounts
     }
 

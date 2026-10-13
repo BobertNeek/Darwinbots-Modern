@@ -155,7 +155,7 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         body_upkeep: c(30),
         age_base: c(31),
         age_start: c(32),
-        age_linear: if c(60) != 0.0 { c(33) } else { 0.0 },
+        age_linear: if c(60) == 1.0 { c(33) } else { 0.0 },
         age_logarithmic: c(51),
         global_multiplier: c(54),
         dynamic_target_population: c(53).max(0.0) as usize,

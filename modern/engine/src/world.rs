@@ -65,6 +65,9 @@ mod native_corpses;
 #[path = "world/native_aim.rs"]
 mod native_aim;
 
+#[path = "world/native_biology.rs"]
+mod native_biology;
+
 const MEM_ROBAGE: i32 = 9;
 const MEM_HIT: i32 = 201;
 const MEM_SHOT_FLAVOR: i32 = 202;
@@ -4745,7 +4748,9 @@ impl Engine {
         self.trace_robot_phase(&mut trace, CyclePhase::Chloroplast);
         self.chloroplast_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Body);
+        self.body_commands_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Buoyancy);
+        self.buoyancy_commands_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Reproduction);
         let started = Instant::now();
         let mut lifecycle = self.prepare_lifecycle_queues(&mut trace);
@@ -5432,14 +5437,32 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse {
+                continue;
+            }
+            let multiplier = costs.dynamic_multiplier(population);
+            // Upkeep stores each fee in a Single and subtracts age, body, DNA
+            // separately. Combining fees changes native rounding and survival.
+            let age_cost = costs.age_cost_before_multiplier(robot.counters.age) as f32;
+            robot.materials.energy =
+                (f64::from(robot.materials.energy) - f64::from(age_cost) * multiplier) as f32;
+            let body_cost =
+                (f64::from(robot.materials.body) * costs.body_upkeep * multiplier) as f32;
+            robot.materials.energy -= body_cost;
+            let dna_cost = (robot.program.dna.blocks().len().saturating_sub(1) as f64
+                * costs.dna_upkeep
+                * multiplier) as f32;
+            robot.materials.energy -= dna_cost;
+            settle_simulation_cost(robot, f64::from(metabolism) * multiplier);
             robot.materials.decay_slime_and_poison();
-            let cost = costs.upkeep_cost(
-                f64::from(robot.materials.body),
-                robot.program.dna.blocks().len(),
-                population,
-            ) + costs.age_cost(robot.counters.age, population)
-                + f64::from(metabolism) * costs.dynamic_multiplier(population);
-            settle_simulation_cost(robot, cost);
+            robot
+                .program
+                .memory
+                .write(821, resource_readback(robot.materials.slime));
+            robot
+                .program
+                .memory
+                .write(827, resource_readback(robot.materials.poison));
         }
     }
 
@@ -5448,6 +5471,9 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse || !robot.flags.can_execute_dna {
+                continue;
+            }
             if robot.effects.paralysis_active {
                 if robot.effects.paralysis_location != 0 {
                     robot.program.memory.write(
@@ -5730,8 +5756,13 @@ impl Engine {
         let runtime = SysvarRuntime::new();
         let costs = self.active_dna_costs();
         let population = self.cost_population();
-        let vegetable_population = self.vegetable_population();
-        let vegetable_population_cap = self.config.vegetable_population_cap;
+        let transaction_costs = [
+            SimulationCostAction::Shell,
+            SimulationCostAction::Slime,
+            SimulationCostAction::Venom,
+            SimulationCostAction::Poison,
+        ]
+        .map(|action| costs.action_cost_for(action, 1.0, population));
         for slot in self.slots.iter_mut() {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
@@ -5744,96 +5775,17 @@ impl Engine {
             else {
                 unreachable!("material phase must return material commands")
             };
-            for address in [312, 313, 820, 822, 824, 826, 921, 922] {
-                runtime.finish_command(
-                    address,
-                    CommandOutcome::Consumed,
-                    &mut robot.program.memory,
-                );
-            }
-            if commands.set_buoyancy != 0 {
-                robot.buoyancy =
-                    (robot.buoyancy + commands.set_buoyancy as f32 / 32_000.0).clamp(0.0, 1.0);
-            }
-            runtime.finish_command(
-                MEM_SET_BUOYANCY as u16,
-                CommandOutcome::Consumed,
-                &mut robot.program.memory,
-            );
-            let requested_chloroplasts = commands.make_chloroplasts.max(0);
-            let pressure_refusal =
-                robot.flags.vegetable && vegetable_population >= vegetable_population_cap;
-            let construction_cost = costs.action_cost_for(
-                SimulationCostAction::ChloroplastConstruction,
-                1.0,
-                population,
-            );
-            let affordable_chloroplasts = if robot.materials.energy < 100.0 || pressure_refusal {
-                0
-            } else if construction_cost > 0.0 {
-                (((f64::from(robot.materials.energy - 100.0)) / construction_cost).floor() as i32)
-                    .max(0)
-            } else {
-                requested_chloroplasts
-            };
-            let accepted_chloroplasts = requested_chloroplasts
-                .min(affordable_chloroplasts)
-                .min((32_000.0 - robot.materials.chloroplasts).floor() as i32);
-            let mut applied_commands = commands;
-            applied_commands.make_chloroplasts = 0;
-            let aim = crate::AimCommands {
-                set: robot.materials.aim,
-                ..Default::default()
-            };
-            let material_unit_costs = [
-                SimulationCostAction::Shell,
-                SimulationCostAction::Slime,
-                SimulationCostAction::Venom,
-                SimulationCostAction::Poison,
-            ]
-            .map(|action| costs.action_cost_for(action, 1.0, population));
             let multibot_divisor = if robot.counters.multibot {
                 (robot.ties.iter().flatten().count() + 1) as f32
             } else {
                 1.0
             };
-            robot.materials.apply_outputs_with_costs(
+            robot.materials.make_stuff(
                 &mut robot.program.memory,
-                0,
-                aim,
-                applied_commands,
-                material_unit_costs,
+                commands,
+                transaction_costs,
                 multibot_divisor,
             );
-            robot.materials.chloroplasts += accepted_chloroplasts as f32;
-            settle_simulation_cost(
-                robot,
-                costs.action_cost_for(
-                    SimulationCostAction::ChloroplastConstruction,
-                    f64::from(accepted_chloroplasts),
-                    population,
-                ),
-            );
-            robot.materials.publish(&mut robot.program.memory);
-            robot.program.memory.write(
-                MEM_READ_BUOYANCY,
-                (robot.buoyancy * 32_000.0).round_ties_even() as i32,
-            );
-        }
-    }
-
-    fn chloroplast_phase(&mut self) {
-        for slot in self.slots.iter_mut() {
-            let Some(robot) = slot.organism.as_mut() else {
-                continue;
-            };
-            if robot.flags.corpse || !robot.flags.can_execute_dna || robot.flags.no_chloroplasts {
-                continue;
-            }
-            if robot.materials.chloroplasts > 0.0 && robot.counters.chloroplast_share_delay > 0 {
-                robot.counters.chloroplast_share_delay -= 1;
-            }
-            robot.materials.decay_chloroplasts();
             robot.materials.publish(&mut robot.program.memory);
         }
     }
@@ -5941,6 +5893,15 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
+            if robot.flags.corpse || !robot.flags.can_execute_dna {
+                continue;
+            }
+            robot.materials.energy = robot.materials.energy.clamp(0.0, 32_000.0);
+            let prior = robot.materials.previous_energy.max(0.0);
+            robot.materials.pain = resource_readback(prior - robot.materials.energy);
+            robot.materials.pleasure = resource_readback(robot.materials.energy - prior);
+            robot.materials.previous_energy = robot.materials.energy;
+            robot.materials.publish(&mut robot.program.memory);
             let (body_gain, body_loss) = robot.materials.consume_body_change();
             let [
                 velocity_scalar,
@@ -9598,6 +9559,9 @@ impl Engine {
             let Some(organism) = slot.organism.as_mut() else {
                 continue;
             };
+            if organism.flags.corpse || !organism.flags.can_execute_dna {
+                continue;
+            }
             let Some(PhaseCommands::Reproduction(reproduction_commands)) =
                 runtime.consume(CyclePhase::Reproduction, &mut organism.program.memory)
             else {
@@ -9682,7 +9646,7 @@ impl Engine {
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
-            if robot.flags.corpse || robot.flags.vegetable {
+            if robot.flags.corpse || !robot.flags.can_execute_dna || robot.flags.vegetable {
                 continue;
             }
             let energy = robot.materials.energy;

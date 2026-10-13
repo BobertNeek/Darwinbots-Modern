@@ -128,15 +128,20 @@ impl DnaCosts {
     }
 
     pub fn age_cost(&self, age: u64, population: usize) -> f64 {
-        let age = age as f64;
-        if age <= 0.0 || age <= self.age_start {
+        self.age_cost_before_multiplier(age) * self.dynamic_multiplier(population)
+    }
+
+    pub(crate) fn age_cost_before_multiplier(&self, age: u64) -> f64 {
+        // Native age_start is converted with CLng before subtracting it.
+        let elapsed = age as f64 - self.age_start.round_ties_even();
+        if age == 0 || elapsed <= 0.0 {
             return 0.0;
         }
-        let elapsed = age - self.age_start;
-        (self.age_base
-            + elapsed.max(0.0) * self.age_linear
-            + (elapsed + 1.0).ln() * self.age_logarithmic)
-            * self.dynamic_multiplier(population)
+        if self.age_logarithmic == 1.0 {
+            self.age_base * elapsed.ln()
+        } else {
+            self.age_base + elapsed * self.age_linear
+        }
     }
 
     pub fn action_cost_for(
@@ -151,14 +156,7 @@ impl DnaCosts {
     pub fn calculate_cost(&self, input: SimulationCostInput) -> SimulationCostReport {
         let dna = input.dna_len.saturating_sub(1) as f64 * self.dna_upkeep;
         let upkeep = input.body.max(0.0) * self.body_upkeep + dna;
-        let age = if input.age as f64 > 0.0 && input.age as f64 > self.age_start {
-            let elapsed = input.age as f64 - self.age_start;
-            self.age_base
-                + elapsed.max(0.0) * self.age_linear
-                + (elapsed + 1.0).ln() * self.age_logarithmic
-        } else {
-            0.0
-        };
+        let age = self.age_cost_before_multiplier(input.age);
         let action = input
             .action
             .map(|(kind, amount)| self.action_cost(kind) * amount.max(0.0))
@@ -170,7 +168,7 @@ impl DnaCosts {
             upkeep,
             age,
             dynamic_multiplier,
-            total: (dna + action + upkeep + age) * dynamic_multiplier,
+            total: (action + upkeep + age) * dynamic_multiplier,
         }
     }
 

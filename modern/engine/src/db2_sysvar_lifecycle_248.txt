@@ -47,9 +47,9 @@
 303|Readback|-|CoreReadback|-
 310|Readback|-|MaterialsReadback|-
 311|Readback|-|MaterialsReadback|-
-312|Command|Material|-|Material
-313|Command|Material|-|Material
-314|Command|Material|-|Material
+312|Command|Body|-|Body
+313|Command|Body|-|Body
+314|Command|Buoyancy|-|Buoyancy
 315|Readback|-|MaterialsReadback|-
 330|Command|Tie|-|Tie
 331|Command|Tie|-|Tie
@@ -242,7 +242,7 @@
 900|Command|Shot|-|Shot
 901|Command|Shot|-|Shot
 920|Readback|-|MaterialsReadback|-
-921|Command|Material|-|Material
-922|Command|Material|-|Material
+921|Command|Chloroplast|-|Chloroplast
+922|Command|Chloroplast|-|Chloroplast
 923|Readback|-|CoreReadback|-
 924|Command|Tie|-|Tie

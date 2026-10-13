@@ -3,9 +3,10 @@ use darwinbots_engine::{
     sysvar_address,
 };
 
-const TOXIN_SOURCE_POSITION: [f32; 2] = [100.0, 100.0];
-const TOXIN_TARGET_POSITION: [f32; 2] = [350.0, 100.0];
-const FRACTIONAL_TOXIN_TARGET_POSITION: [f32; 2] = [400.0, 100.0];
+// Keep 1000-body fixture robots (radius 114.28) clear of native borders.
+const TOXIN_SOURCE_POSITION: [f32; 2] = [300.0, 500.0];
+const TOXIN_TARGET_POSITION: [f32; 2] = [550.0, 500.0];
+const FRACTIONAL_TOXIN_TARGET_POSITION: [f32; 2] = [600.0, 500.0];
 const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
 
 fn assert_positive_toxin_edge_gap(target_position: [f32; 2]) {
@@ -24,7 +25,7 @@ fn restore_with_toxin_motion(
     incoming_velocity: [f32; 2],
 ) -> Engine {
     let encoded = SaveFile::encode(engine).unwrap();
-    assert_eq!(u16::from_le_bytes([encoded[4], encoded[5]]), 3);
+    assert_eq!(u16::from_le_bytes([encoded[4], encoded[5]]), 4);
     let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
     payload["slots"][source.slot() as usize]["organism"]["kinematics"]["actual_velocity"] =
         serde_json::json!(source_actual_velocity);
@@ -755,7 +756,8 @@ fn heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppressi
     );
     let after = engine.organism(target).unwrap();
     assert_eq!(after.energy, energy_before);
-    assert_eq!(after.paralyzed, 6);
+    // ShotUpdate delivers power 8 at age zero; Poisons decrements once.
+    assert_eq!(after.paralyzed, 7);
     assert_eq!(engine.memory_at(target, 500).unwrap(), 77);
     assert_eq!(engine.organism(source).unwrap().venom, 0);
 
@@ -770,7 +772,7 @@ fn heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppressi
 
     let after_move = engine.organism(target).unwrap();
     assert_eq!(after_move.energy, energy_before);
-    assert_eq!(after_move.paralyzed, 5);
+    assert_eq!(after_move.paralyzed, 6);
     assert_ne!(after_move.position, position_before_move);
 }
 
