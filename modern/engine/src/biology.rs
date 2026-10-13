@@ -163,15 +163,17 @@ impl RobotMaterials {
     }
 
     pub(crate) fn consume_body_change(&mut self) -> (i32, i32) {
-        let gain = resource_readback((self.body - self.previous_body).max(0.0));
-        let loss = resource_readback((self.previous_body - self.body).max(0.0));
+        let prior = self.previous_body.max(0.0);
+        let gain = resource_readback(self.body - prior);
+        let loss = resource_readback(prior - self.body);
         self.previous_body = self.body;
         (gain, loss)
     }
 
     pub(crate) fn decay_slime_and_poison(&mut self) {
         for store in [&mut self.slime, &mut self.poison] {
-            *store *= 0.98;
+            // The VB literal is Double; round only when assigning the Single store.
+            *store = (f64::from(*store) * 0.98) as f32;
             if *store < 0.5 {
                 *store = 0.0;
             }

@@ -22,6 +22,49 @@ fn idle_engine() -> (Engine, OrganismId) {
 }
 
 #[test]
+fn core_senses_publish_signed_body_changes_and_round_half_units_to_even() {
+    let (engine, id) = idle_engine();
+    let mut engine = restore_fields(&engine, 4, |payload| {
+        let materials = &mut payload["slots"][id.slot() as usize]["organism"]["materials"];
+        materials["body"] = json!(1000.0);
+        materials["previous_body"] = json!(1002.5);
+    });
+    engine.tick().unwrap();
+    assert_eq!(engine.memory(id, "bodgain").unwrap(), -2);
+    assert_eq!(engine.memory(id, "bodloss").unwrap(), 2);
+    let mut restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    restored.tick().unwrap();
+    assert_eq!(restored.memory(id, "bodgain").unwrap(), 0);
+    assert_eq!(restored.memory(id, "bodloss").unwrap(), 0);
+    restored
+        .replace_dna(
+            id,
+            LegacyDna::parse("start 100 .strbody store stop").unwrap(),
+        )
+        .unwrap();
+    restored.tick().unwrap();
+    assert_eq!(restored.memory(id, "bodgain").unwrap(), 10);
+    assert_eq!(restored.memory(id, "bodloss").unwrap(), -10);
+}
+
+#[test]
+fn upkeep_uses_double_decay_before_storing_and_publishing_single_resources() {
+    let (engine, id) = idle_engine();
+    let mut engine = restore_fields(&engine, 4, |payload| {
+        let materials = &mut payload["slots"][id.slot() as usize]["organism"]["materials"];
+        materials["slime"] = json!(1.375);
+        materials["poison"] = json!(1.375);
+    });
+    engine.tick().unwrap();
+    let expected = (1.375_f64 * 0.98) as f32;
+    let materials = &engine.robot_state(id).unwrap().materials;
+    assert_eq!(materials.slime.to_bits(), expected.to_bits());
+    assert_eq!(materials.poison.to_bits(), expected.to_bits());
+    assert_eq!(engine.memory_at(id, 821).unwrap(), 1);
+    assert_eq!(engine.memory_at(id, 827).unwrap(), 1);
+}
+
+#[test]
 fn genuine_reference_single_values_survive_modern_save_restore_exactly() {
     // First robot in the user's genuine 2.48.32 test.sim, SHA256 09b77b6e...e8a55e.
     let (engine, id) = idle_engine();
