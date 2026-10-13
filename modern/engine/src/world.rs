@@ -4059,7 +4059,7 @@ impl Engine {
             id,
             self.slots.get(id)?,
             &self.species,
-            self.config.fixed_bot_radii,
+            &self.config,
         ))
     }
 
@@ -6143,8 +6143,17 @@ impl Engine {
                     return Some((observer_slot, [0; 9], None));
                 }
                 let observer_position = observer.kinematics.position;
-                let vision =
-                    VisionSnapshot::from_memory(&observer.program.memory, observer.materials.aim);
+                let vision = VisionSnapshot::from_heading(
+                    &observer.program.memory,
+                    observer.heading(),
+                    crate::vision::native_eye_strength(
+                        observer_position[1],
+                        self.config.world_height,
+                        self.config.vegetation.pond_mode,
+                        self.config.vegetation.gradient,
+                        self.config.vegetation.daytime,
+                    ),
+                );
                 let observer_radius = crate::physics::organism_radius(
                     observer.materials.body,
                     observer.materials.chloroplasts,
@@ -6152,46 +6161,20 @@ impl Engine {
                 );
                 let mut nearest_by_eye = [None; 9];
                 let sensing_radius = vision.max_range() + observer_radius + max_organism_radius;
-                let world_size = [self.config.world_width, self.config.world_height];
-                let wrapped_axes = self.config.axis_topology();
-                let x_offsets = [-world_size[0], 0.0, world_size[0]];
-                let y_offsets = [-world_size[1], 0.0, world_size[1]];
-                let x_offsets = if wrapped_axes[0] {
-                    &x_offsets[..]
-                } else {
-                    &x_offsets[1..2]
-                };
-                let y_offsets = if wrapped_axes[1] {
-                    &y_offsets[..]
-                } else {
-                    &y_offsets[1..2]
-                };
-                let mut target_slots = Vec::new();
-                for &x_offset in x_offsets {
-                    for &y_offset in y_offsets {
-                        target_slots.extend(self.sensing_spatial.neighbors(
-                            [
-                                observer_position[0] + x_offset,
-                                observer_position[1] + y_offset,
-                            ],
-                            sensing_radius,
-                        ));
-                    }
-                }
-                target_slots.sort_unstable();
-                target_slots.dedup();
+                // Native borders relocate robots; vision uses their actual positions.
+                let target_slots = self
+                    .sensing_spatial
+                    .neighbors(observer_position, sensing_radius);
                 for target_slot in target_slots {
                     if target_slot == observer_slot || self.slots[target_slot].organism.is_none() {
                         continue;
                     }
                     let target = self.slots[target_slot].organism.as_ref().unwrap();
                     let target_position = target.kinematics.position;
-                    let target_delta = shortest_wrapped_delta(
-                        observer_position,
-                        target_position,
-                        world_size,
-                        wrapped_axes,
-                    );
+                    let target_delta = [
+                        target_position[0] - observer_position[0],
+                        target_position[1] - observer_position[1],
+                    ];
                     let target_distance =
                         target_delta[0] * target_delta[0] + target_delta[1] * target_delta[1];
                     let target_radius = crate::physics::organism_radius(
@@ -10390,7 +10373,7 @@ impl Engine {
                         OrganismId::new(index as u32, slot.generation),
                         organism,
                         &self.species,
-                        fixed_bot_radii,
+                        &self.config,
                     )
                 })
             })
@@ -11014,7 +10997,7 @@ fn snapshot_organism(
     id: OrganismId,
     organism: &RobotState,
     species: &[SpeciesDefinition],
-    fixed_bot_radii: bool,
+    config: &EngineConfig,
 ) -> OrganismSnapshot {
     OrganismSnapshot {
         id,
@@ -11047,7 +11030,7 @@ fn snapshot_organism(
         parents: organism.identity.parents,
         body: resource_readback(organism.materials.body),
         mass: organism.materials.mass,
-        radius: if fixed_bot_radii {
+        radius: if config.fixed_bot_radii {
             crate::physics::organism_radius(
                 organism.materials.body,
                 organism.materials.chloroplasts,
@@ -11089,7 +11072,17 @@ fn snapshot_organism(
         dna_length: organism.program.dna.blocks().len() as u32,
         gene_count: organism.program.dna.gene_count().max(0) as u32,
         phenotype: organism.phenotype.clone(),
-        vision: VisionSnapshot::from_memory(&organism.program.memory, organism.materials.aim),
+        vision: VisionSnapshot::from_heading(
+            &organism.program.memory,
+            organism.heading(),
+            crate::vision::native_eye_strength(
+                organism.kinematics.position[1],
+                config.world_height,
+                config.vegetation.pond_mode,
+                config.vegetation.gradient,
+                config.vegetation.daytime,
+            ),
+        ),
     }
 }
 
@@ -11097,22 +11090,6 @@ fn distance_squared(left: [f32; 2], right: [f32; 2]) -> f32 {
     let x = right[0] - left[0];
     let y = right[1] - left[1];
     x * x + y * y
-}
-
-fn shortest_wrapped_delta(
-    observer: [f32; 2],
-    target: [f32; 2],
-    world_size: [f32; 2],
-    wrapped_axes: [bool; 2],
-) -> [f32; 2] {
-    let mut delta = [target[0] - observer[0], target[1] - observer[1]];
-    for axis in 0..2 {
-        if wrapped_axes[axis] {
-            let extent = world_size[axis].max(1.0);
-            delta[axis] = (delta[axis] + extent * 0.5).rem_euclid(extent) - extent * 0.5;
-        }
-    }
-    delta
 }
 
 fn sample_age_mutation_clock(

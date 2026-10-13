@@ -163,7 +163,7 @@ fn sen_01_opaque_shapes_occlude_and_disabled_vision_clears_nine_eyes() {
     let mut engine = Engine::new(config).unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse("start\n314 .eye5dir store\nstop").unwrap(),
+            LegacyDna::parse("start\n0 .eye5dir store\nstop").unwrap(),
             [500.0, 500.0],
         )
         .unwrap();
@@ -193,7 +193,7 @@ fn sen_01_opaque_shapes_occlude_and_disabled_vision_clears_nine_eyes() {
 }
 
 #[test]
-fn sen_01_projects_each_of_nine_eyes_in_bounded_and_toroidal_geometry() {
+fn sen_01_projects_each_of_nine_eyes_with_native_bearings_under_both_border_modes() {
     let projections =
         (0..9).map(|index| (index, (4.0 - index as f32) * std::f32::consts::PI / 18.0));
 
@@ -205,22 +205,14 @@ fn sen_01_projects_each_of_nine_eyes_in_bounded_and_toroidal_geometry() {
             config.toroidal_world = toroidal_world;
             config.axis_topology = Some([toroidal_world; 2]);
             let mut engine = Engine::new(config).unwrap();
-            let observer_position = if toroidal_world {
-                [1_000.0, 1_900.0]
-            } else {
-                [1_000.0, 1_000.0]
-            };
+            let observer_position = [1_000.0, 1_000.0];
             let observer = engine
                 .spawn_at(LegacyDna::parse("start\nstop").unwrap(), observer_position)
                 .unwrap();
-            let mut target_position = [
-                observer_position[0] + 300.0 * expected_angle.sin(),
-                observer_position[1] + 300.0 * expected_angle.cos(),
+            let target_position = [
+                observer_position[0] + 300.0 * expected_angle.cos(),
+                observer_position[1] - 300.0 * expected_angle.sin(),
             ];
-            if toroidal_world {
-                target_position[0] = target_position[0].rem_euclid(2_000.0);
-                target_position[1] = target_position[1].rem_euclid(2_000.0);
-            }
             engine
                 .spawn_at(LegacyDna::parse("start\nstop").unwrap(), target_position)
                 .unwrap();

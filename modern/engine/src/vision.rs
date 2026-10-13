@@ -31,6 +31,10 @@ pub struct VisionSnapshot {
 
 impl VisionSnapshot {
     pub fn from_memory(memory: &VmMemory, aim: i32) -> Self {
+        Self::from_heading(memory, aim as f32 / AIM_UNITS_PER_RADIAN, 1.0)
+    }
+
+    pub(crate) fn from_heading(memory: &VmMemory, heading: f32, strength: f32) -> Self {
         let focus_value = memory.read(FOCUS_EYE) as i64 + 4;
         let focus_eye = (focus_value.unsigned_abs() % EYE_COUNT as u64) as u8;
         let eyes = std::array::from_fn(|index| {
@@ -39,9 +43,9 @@ impl VisionSnapshot {
             EyeSnapshot {
                 direction,
                 width,
-                center_radians: eye_center_radians(aim, index, direction),
-                half_width_radians: absolute_eye_width(width) as f32 / AIM_UNITS_PER_RADIAN / 2.0,
-                range: eye_sight_distance(width),
+                center_radians: eye_center_radians(heading, index, direction),
+                half_width_radians: native_half_width(width),
+                range: eye_sight_distance(width) * strength,
                 value: memory.read(EYE_VALUE_START + index as i32),
             }
         });
@@ -68,11 +72,12 @@ impl VisionSnapshot {
             return [false; EYE_COUNT];
         }
         let edge_distance = (center_distance - observer_radius - target_radius).max(0.0);
-        let target_angle = delta[0].atan2(delta[1]);
-        let target_half_width = if center_distance <= target_radius || center_distance == 0.0 {
+        let target_angle = (-delta[1]).atan2(delta[0]);
+        let target_half_width = if center_distance == 0.0 {
             std::f32::consts::PI
         } else {
-            (target_radius / center_distance).clamp(0.0, 1.0).asin()
+            // CompareRobots3 views the endpoints of a perpendicular radius.
+            (target_radius / center_distance).atan()
         };
 
         std::array::from_fn(|index| {
@@ -124,18 +129,93 @@ pub fn eye_value(range: f32, edge_distance: f32) -> i32 {
     }
     let percent_distance = (edge_distance + 10.0) / range;
     (1.0 / (percent_distance * percent_distance))
-        .round()
+        .round_ties_even()
         .clamp(0.0, 32_000.0) as i32
 }
 
-fn eye_center_radians(aim: i32, index: usize, direction: i32) -> f32 {
+fn eye_center_radians(heading: f32, index: usize, direction: i32) -> f32 {
     let standard_offset = (4.0 - index as f32) * std::f32::consts::PI / 18.0;
-    (aim as f32 / AIM_UNITS_PER_RADIAN
-        + (direction % AIM_MODULUS) as f32 / AIM_UNITS_PER_RADIAN
-        + standard_offset)
+    (heading + (direction % AIM_MODULUS) as f32 / AIM_UNITS_PER_RADIAN + standard_offset)
         .rem_euclid(std::f32::consts::TAU)
+}
+
+fn native_half_width(width: i32) -> f32 {
+    let pi = std::f32::consts::PI;
+    let mut half = (width % AIM_MODULUS) as f32 / 400.0;
+    while half > pi - pi / 36.0 {
+        half -= pi;
+    }
+    while half < -pi / 36.0 {
+        half += pi;
+    }
+    half + pi / 36.0
+}
+
+pub(crate) fn native_eye_strength(
+    y: f32,
+    height: f32,
+    pond: bool,
+    gradient: f32,
+    daytime: bool,
+) -> f32 {
+    let mut strength = if pond && y > 1.0 {
+        (3.0 / (f64::from(y) / 2000.0).powf(f64::from(gradient))).powf(6828.0 / f64::from(height))
+            as f32
+    } else {
+        1.0
+    };
+    if !daytime {
+        strength = (f64::from(strength) * 0.8) as f32;
+    }
+    strength.min(1.0)
 }
 
 fn signed_angle(angle: f32) -> f32 {
     (angle + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI
+}
+
+#[cfg(test)]
+mod native_tests {
+    use super::*;
+
+    #[test]
+    fn native_heading_zero_sees_east_and_positive_quarter_turn_sees_north() {
+        let memory = VmMemory::default();
+        for (aim, target) in [
+            (0, [1000.0, 0.0]),
+            (314, [0.0, -1000.0]),
+            (628, [-1000.0, 0.0]),
+            (942, [0.0, 1000.0]),
+        ] {
+            let vision = VisionSnapshot::from_memory(&memory, aim);
+            assert!(vision.matching_eyes([0.0; 2], target, 60.0, 60.0)[4]);
+        }
+        let vision = VisionSnapshot::from_memory(&memory, 0);
+        assert!(!vision.matching_eyes([0.0; 2], [0.0, -1000.0], 60.0, 60.0)[4]);
+    }
+
+    #[test]
+    fn native_eye_width_and_target_edges_use_quads_geometry() {
+        let vision = VisionSnapshot::default();
+        assert_eq!(
+            vision.eyes[4].half_width_radians,
+            std::f32::consts::PI / 36.0
+        );
+        let bearing = 0.1872_f32;
+        let target = [100.0 * bearing.cos(), -100.0 * bearing.sin()];
+        assert!(!vision.matching_eyes([0.0; 2], target, 0.0, 10.0)[4]);
+    }
+
+    #[test]
+    fn native_raw_heading_and_pond_night_strength_survive_publication() {
+        let memory = VmMemory::default();
+        let strength = native_eye_strength(4000.0, 8000.0, true, 2.0, false);
+        let expected = ((0.75_f64.powf(6828.0 / 8000.0) as f32) as f64 * 0.8) as f32;
+        assert_eq!(strength.to_bits(), expected.to_bits());
+        let vision = VisionSnapshot::from_heading(&memory, 0.0049, strength);
+        assert_eq!(vision.eyes[4].center_radians, 0.0049);
+        assert_eq!(vision.eyes[4].range, 1440.0 * strength);
+        assert_eq!(native_eye_strength(0.5, 8000.0, true, 2.0, true), 1.0);
+        assert_eq!(native_eye_strength(4000.0, 8000.0, false, 2.0, false), 0.8);
+    }
 }

@@ -23,11 +23,12 @@ public static class OrganismVisualGeometry
         for (var index = 0; index < skin.Count; index++)
         {
             var point = skin[index];
-            var angle = aimRadians + point.Angle / AimUnitsPerRadian;
+            // Native skin angles are encoded as 314 - 2 * Skin(angle).
+            var angle = (314 - point.Angle) / AimUnitsPerRadian - aimRadians;
             var distance = radius * Math.Clamp(point.Radius, 0f, 1f);
             points[index] = new VisualPoint(
-                MathF.Sin(angle) * distance,
-                MathF.Cos(angle) * distance);
+                MathF.Cos(angle) * distance,
+                -MathF.Sin(angle) * distance);
         }
         return points;
     }
@@ -36,8 +37,8 @@ public static class OrganismVisualGeometry
     {
         var angle = aim / AimUnitsPerRadian;
         return new VisualPoint(
-            MathF.Sin(angle) * radius,
-            MathF.Cos(angle) * radius);
+            MathF.Cos(angle) * radius,
+            MathF.Sin(angle) * radius);
     }
 
     public static float SelectionRingRadius(float renderedRadius) =>
@@ -55,15 +56,15 @@ public static class OrganismVisualGeometry
         for (var index = 0; index < eyes.Length; index++)
         {
             var eye = eyes[index];
-            var center = aimRadians
-                + eye.Direction / AimUnitsPerRadian
-                + (4 - index) * MathF.PI / 18f;
+            var center = float.IsFinite(eye.CenterRadians)
+                ? eye.CenterRadians
+                : aimRadians + eye.Direction / AimUnitsPerRadian + (4 - index) * MathF.PI / 18f;
             var halfWidth = float.IsFinite(eye.HalfWidthRadians)
-                ? Math.Clamp(MathF.Abs(eye.HalfWidthRadians), MathF.PI / 360f, MathF.PI)
+                ? Math.Clamp(MathF.Abs(eye.HalfWidthRadians), 0f, MathF.PI)
                 : MathF.PI / 36f;
             sectors[index] = new EyeSectorGeometry(
                 NormalizeRadians(center - halfWidth),
-                Math.Clamp(halfWidth * 2f, MathF.PI / 180f, MathF.Tau),
+                Math.Clamp(halfWidth * 2f, 0f, MathF.Tau),
                 Math.Max(radius, float.IsFinite(eye.Range) ? eye.Range : 1_440f),
                 index == vision.FocusEye);
         }

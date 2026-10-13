@@ -18,16 +18,16 @@ fn sensing_writes_nearest_organism_reference_sysvars() {
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse("start\n314 .setaim store\nstop").unwrap(),
-            [100.0, 100.0],
+            LegacyDna::parse("start\n0 .setaim store\nstop").unwrap(),
+            [300.0, 500.0],
         )
         .unwrap();
-    engine.spawn_at(idle, [400.0, 100.0]).unwrap();
+    engine.spawn_at(idle, [600.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.memory(observer, "refxpos").unwrap(), 400);
-    assert_eq!(engine.memory(observer, "refypos").unwrap(), 100);
+    assert_eq!(engine.memory(observer, "refxpos").unwrap(), 600);
+    assert_eq!(engine.memory(observer, "refypos").unwrap(), 500);
     assert!(engine.memory(observer, "eye5").unwrap() > 0);
 }
 
@@ -36,15 +36,13 @@ fn sensing_projects_focus_reference_occurrences_materials_and_addressed_memory()
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse(
-                "start\n314 .setaim store\n0 .focuseye store\n950 .memloc store\nstop",
-            )
-            .unwrap(),
-            [100.0, 100.0],
+            LegacyDna::parse("start\n0 .setaim store\n0 .focuseye store\n950 .memloc store\nstop")
+                .unwrap(),
+            [300.0, 500.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [600.0, 500.0])
         .unwrap();
 
     let encoded = SaveFile::encode(&engine).unwrap();
@@ -89,14 +87,14 @@ fn sensing_projects_tie_occurrence_reference() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse("start\n314 .setaim store\n0 .focuseye store\nstop").unwrap(),
-            [100.0, 100.0],
+            LegacyDna::parse("start\n0 .setaim store\n0 .focuseye store\nstop").unwrap(),
+            [300.0, 500.0],
         )
         .unwrap();
     engine
         .spawn_at(
             LegacyDna::parse("start\n0 .tie store\nstop").unwrap(),
-            [400.0, 100.0],
+            [600.0, 500.0],
         )
         .unwrap();
 
@@ -110,14 +108,14 @@ fn sensing_projects_shoot_occurrence_reference() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse("start\n314 .setaim store\n0 .focuseye store\nstop").unwrap(),
-            [100.0, 100.0],
+            LegacyDna::parse("start\n0 .setaim store\n0 .focuseye store\nstop").unwrap(),
+            [300.0, 500.0],
         )
         .unwrap();
     engine
         .spawn_at(
             LegacyDna::parse("start\n7 .shoot store\nstop").unwrap(),
-            [400.0, 100.0],
+            [600.0, 500.0],
         )
         .unwrap();
 
@@ -131,8 +129,8 @@ fn sensing_projects_direction_and_aim_occurrence_references() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse("start\n314 .setaim store\n0 .focuseye store\nstop").unwrap(),
-            [100.0, 100.0],
+            LegacyDna::parse("start\n0 .setaim store\n0 .focuseye store\nstop").unwrap(),
+            [300.0, 500.0],
         )
         .unwrap();
     engine
@@ -141,7 +139,7 @@ fn sensing_projects_direction_and_aim_occurrence_references() {
                 "start\n1 .up store\n2 .dn store\n3 .sx store\n4 .dx store\n5 .aimright store\n6 .aimleft store\nstop",
             )
             .unwrap(),
-            [400.0, 100.0],
+            [600.0, 500.0],
         )
         .unwrap();
 
@@ -158,10 +156,10 @@ fn sensing_projects_direction_and_aim_occurrence_references() {
 #[test]
 fn negative_shot_damages_nearest_target_and_records_event() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let attacker = LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap();
+    let attacker = LegacyDna::parse("start\n-1 .shoot store\n0 .shootval store\nstop").unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(attacker, [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
+    let attacker = engine.spawn_at(attacker, [300.0, 500.0]).unwrap();
+    let target = engine.spawn_at(idle, [550.0, 500.0]).unwrap();
     let before = engine.organism(target).unwrap().energy;
 
     engine.tick().unwrap();
@@ -297,18 +295,25 @@ fn reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descend
 #[test]
 fn tie_commands_create_multibot_link_and_share_energy() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let connector = LegacyDna::parse("start\n1 .tie store\n10 .sharenrg store\nstop").unwrap();
+    let connector =
+        LegacyDna::parse("cond *.robage 1 < start 1 .tie store stop start 10 .sharenrg store stop")
+            .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let source = engine.spawn_at(connector, [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(idle, [140.0, 100.0]).unwrap();
+    let source = engine.spawn_at(connector, [300.0, 500.0]).unwrap();
+    let target = engine.spawn_at(idle, [600.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
 
     assert_eq!(engine.snapshot().ties.len(), 1);
     assert_eq!(engine.snapshot().stats.ties_created, 1);
 
-    engine.tick().unwrap();
-
+    assert!(!engine.snapshot().ties[0].hardened);
+    assert_eq!(
+        engine.organism(source).unwrap().energy,
+        engine.organism(target).unwrap().energy
+    );
+    engine.tick_many(20).unwrap();
+    assert!(engine.snapshot().ties[0].hardened);
     assert!(engine.organism(source).unwrap().energy < engine.organism(target).unwrap().energy);
 }
 
@@ -365,19 +370,19 @@ fn tie_readback_publishes_the_selected_partner_reference_state() {
     let source = engine
         .spawn_at(
             LegacyDna::parse("start\n1 .tie store\nstop").unwrap(),
-            [100.0, 100.0],
+            [300.0, 500.0],
         )
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
 
     assert_eq!(engine.memory(source, "trefbody").unwrap(), 1_000);
     assert_eq!(engine.memory(source, "trefnrg").unwrap(), 1_000);
-    assert_eq!(engine.memory(source, "trefxpos").unwrap(), 500);
-    assert_eq!(engine.memory(source, "trefypos").unwrap(), 100);
+    assert_eq!(engine.memory(source, "trefxpos").unwrap(), 700);
+    assert_eq!(engine.memory(source, "trefypos").unwrap(), 500);
     assert_eq!(engine.memory(source, "trefshell").unwrap(), 0);
     assert_eq!(engine.memory(source, "trefaim").unwrap(), 0);
     assert_eq!(engine.memory(source, "treffixed").unwrap(), 0);

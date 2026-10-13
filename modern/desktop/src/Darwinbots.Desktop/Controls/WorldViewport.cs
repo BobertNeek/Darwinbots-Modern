@@ -389,8 +389,8 @@ public sealed class WorldViewport : Control
             {
                 var angle = sector.StartRadians + sector.SweepRadians * step / curveSteps;
                 geometryContext.LineTo(new Point(
-                    center.X + Math.Sin(angle) * range,
-                    center.Y - Math.Cos(angle) * range));
+                    center.X + Math.Cos(angle) * range,
+                    center.Y - Math.Sin(angle) * range));
             }
             geometryContext.EndFigure(true);
         }

@@ -1,9 +1,10 @@
 use darwinbots_engine::{Engine, EngineConfig, LegacyDna};
 
 #[test]
-fn reproduction_places_children_at_seeded_random_offsets() {
+fn reproduction_places_children_forward_at_native_fixed_radius_separation() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        fixed_bot_radii: true,
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -14,6 +15,7 @@ fn reproduction_places_children_at_seeded_random_offsets() {
         )
         .unwrap();
 
+    engine.set_organism_aim(parent, 0).unwrap();
     engine.tick().unwrap();
 
     let child = engine
@@ -22,9 +24,7 @@ fn reproduction_places_children_at_seeded_random_offsets() {
         .iter()
         .find(|organism| organism.id != parent)
         .unwrap();
-    let dx = child.position[0] - 500.0;
-    let dy = child.position[1] - 500.0;
-    let distance = (dx * dx + dy * dy).sqrt();
-    assert!((12.0..=32.0).contains(&distance));
-    assert_ne!(child.position, [508.0, 500.0]);
+    // Robots.Reproduce assigns the summed radii to a Long, then places forward.
+    // FindRadius returns 60 for each fixed-radius robot; no random offset is used.
+    assert_eq!(child.position, [620.0, 500.0]);
 }

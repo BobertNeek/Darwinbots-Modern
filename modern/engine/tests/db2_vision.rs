@@ -1,4 +1,4 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, sysvar_address};
+use darwinbots_engine::{Engine, EngineConfig, LegacyDna};
 
 fn vision_engine() -> Engine {
     Engine::new(EngineConfig {
@@ -18,7 +18,7 @@ fn eye_direction_moves_detection_into_eye_five() {
         )
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [850.0, 500.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 150.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -58,77 +58,51 @@ fn focus_eye_selects_reference_target() {
         )
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [850.0, 500.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 150.0])
         .unwrap();
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.memory_at(observer, 689).unwrap(), 850);
-    assert_eq!(engine.memory_at(observer, 690).unwrap(), 500);
+    assert_eq!(engine.memory_at(observer, 689).unwrap(), 500);
+    assert_eq!(engine.memory_at(observer, 690).unwrap(), 150);
 }
 
 #[test]
-fn focus_eye_publishes_and_resets_references_across_wrapped_targets() {
+fn native_vision_uses_actual_positions_and_resets_references_when_target_leaves_focus() {
     let mut config = EngineConfig::testing();
-    config.world_width = 1_000.0;
-    config.world_height = 1_000.0;
+    config.world_width = 3_000.0;
+    config.world_height = 3_000.0;
     config.axis_topology = Some([false, true]);
     let mut engine = Engine::new(config).unwrap();
     let observer = engine
         .spawn_at(
-            LegacyDna::parse("start\n0 .focuseye store\nstop").unwrap(),
-            [500.0, 800.0],
+            LegacyDna::parse("start 942 .setaim store stop").unwrap(),
+            [1500.0, 2700.0],
         )
         .unwrap();
-    let wrapped_target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 100.0])
+    let target = engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [1500.0, 300.0])
         .unwrap();
-    engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [900.0, 800.0])
-        .unwrap();
-
-    let memloc = sysvar_address("memloc").unwrap() as u16;
-    engine
-        .set_organism_memory(wrapped_target, 950, 111)
-        .unwrap();
-    engine.set_organism_memory(observer, memloc, 0).unwrap();
+    engine.set_organism_memory(target, 950, 111).unwrap();
+    engine.tick().unwrap();
+    // Quads.CompareRobots3 uses VectorSub of real positions, with no periodic image.
+    assert_eq!(engine.memory(observer, "eye5").unwrap(), 0);
     assert_eq!(engine.memory(observer, "refxpos").unwrap(), 0);
-
-    engine.tick().unwrap();
-
-    assert!(engine.memory(observer, "eye4").unwrap() > 0);
-    let eye5 = engine.memory(observer, "eye5").unwrap();
-    assert!(
-        eye5 > 0,
-        "eye5={eye5} refxpos={} refypos={}",
-        engine.memory(observer, "refxpos").unwrap(),
-        engine.memory(observer, "refypos").unwrap()
-    );
-    let wrapped_position = engine.organism(wrapped_target).unwrap().position;
-    assert_eq!(
-        engine.memory(observer, "refxpos").unwrap(),
-        wrapped_position[0].round() as i32
-    );
-    assert_eq!(
-        engine.memory(observer, "refypos").unwrap(),
-        wrapped_position[1].round() as i32
-    );
-    assert_eq!(engine.memory(observer, "refmemval").unwrap(), 0);
-
-    engine.set_organism_memory(observer, memloc, 1001).unwrap();
-    engine.tick().unwrap();
-    let wrapped_position = engine.organism(wrapped_target).unwrap().position;
-    assert_eq!(
-        engine.memory(observer, "refxpos").unwrap(),
-        wrapped_position[0].round() as i32
-    );
-    assert_eq!(engine.memory(observer, "refmemval").unwrap(), 0);
-
     engine
-        .move_organism(wrapped_target, [500.0, 500.0])
+        .replace_dna(
+            observer,
+            LegacyDna::parse("start 314 .setaim store 950 .memloc store stop").unwrap(),
+        )
         .unwrap();
+    engine.move_organism(target, [1500.0, 2100.0]).unwrap();
+    engine.tick().unwrap();
+    assert!(engine.memory(observer, "eye5").unwrap() > 0);
+    assert_eq!(engine.memory(observer, "refxpos").unwrap(), 1500);
+    assert_eq!(engine.memory(observer, "refypos").unwrap(), 2100);
+    assert_eq!(engine.memory(observer, "memval").unwrap(), 111);
+    engine.move_organism(target, [2200.0, 2700.0]).unwrap();
     engine.tick().unwrap();
     assert_eq!(engine.memory(observer, "refxpos").unwrap(), 0);
     assert_eq!(engine.memory(observer, "refypos").unwrap(), 0);
-    assert_eq!(engine.memory(observer, "refmemval").unwrap(), 0);
+    assert_eq!(engine.memory(observer, "memval").unwrap(), 0);
 }
