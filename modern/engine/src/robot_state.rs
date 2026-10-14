@@ -88,6 +88,10 @@ pub struct RobotKinematics {
     pub aim_vector: [f32; 2],
     pub angular_momentum: f32,
     #[serde(default)]
+    pub native_added_mass: Option<f32>,
+    #[serde(default)]
+    pub native_fixed_state: Option<bool>,
+    #[serde(default)]
     pub angular_torque: f32,
     /// Native Single heading; the integer aim remains the VM and UI projection.
     #[serde(default, skip_serializing_if = "Option::is_none")]

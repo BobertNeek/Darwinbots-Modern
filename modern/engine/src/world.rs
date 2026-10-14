@@ -305,7 +305,9 @@ fn velocity_readbacks(velocity: [f32; 2], aim: f32) -> [i32; 5] {
 }
 
 fn robot_is_fixed(robot: &RobotState, fixing_allowed: bool) -> bool {
-    fixing_allowed && (robot.flags.fixed || robot.program.memory.read(MEM_FIXED) != 0)
+    robot.kinematics.native_fixed_state.unwrap_or_else(|| {
+        fixing_allowed && (robot.flags.fixed || robot.program.memory.read(MEM_FIXED) != 0)
+    })
 }
 
 fn write_directional_sensor(
@@ -4806,12 +4808,14 @@ impl Engine {
         self.apply_file_teleporters_staged(transfers)?;
         self.apply_environment_features(false, true);
         self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
+        if self.native_random.is_some() { self.capture_native_added_mass(); }
         self.trace_robot_phase(&mut trace, CyclePhase::Tide);
         self.trace_robot_phase(&mut trace, CyclePhase::Upkeep);
         self.upkeep_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::PoisonVenom);
         self.poison_venom_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::FixPosition);
+        if self.native_random.is_some() { self.manage_native_fixed_state(); }
         self.trace_robot_phase(&mut trace, CyclePhase::Mass);
         self.trace_robot_phase(&mut trace, CyclePhase::ObstaclesBorders);
         self.apply_environment_features(true, false);
@@ -5368,6 +5372,12 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        if self.config.disqualification > 2 {
+            return Err(EngineError::Invariant("disqualification level must be 0, 1 or 2".into()));
+        }
+        for species in &self.species {
+            species.validate_placement_bounds().map_err(EngineError::Invariant)?;
+        }
         self.config
             .shots
             .validate()
@@ -10589,6 +10599,7 @@ impl Engine {
 }
 
 fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
+    robot.kinematics.native_fixed_state = None;
     robot.flags.fixed = column.fixed_in_place;
     robot.counters.multibot_time = if column.kill_multibot { 210 } else { 0 };
     robot.counters.disqualification = u8::from(column.kill_disqualified);

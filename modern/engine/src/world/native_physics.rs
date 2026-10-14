@@ -2,6 +2,24 @@
 use super::*;
 
 impl Engine {
+    pub(super) fn capture_native_added_mass(&mut self) {
+        for slot in self.slots.iter_mut() {
+            if let Some(robot) = slot.organism.as_mut() {
+                robot.kinematics.native_added_mass = Some(fluid_added_mass(
+                    robot.materials.radius, self.config.physics.density));
+            }
+        }
+    }
+
+    pub(super) fn manage_native_fixed_state(&mut self) {
+        for slot in self.phase_slot_range() {
+            if let Some(robot) = self.slots[slot].organism.as_mut() {
+                if self.robot_fixing_allowed { robot.flags.fixed = robot.program.memory.read(MEM_FIXED) > 0; }
+                robot.kinematics.native_fixed_state = Some(robot.flags.fixed);
+            }
+        }
+    }
+
     pub(super) fn native_intent_phase(&mut self) {
         let settings = &self.config.physics;
         let scaling = self.tide_scaling();
@@ -83,7 +101,10 @@ impl Engine {
         for (index, id) in batch.ids.iter().enumerate() {
             let robot = self.slots.get(*id).unwrap();
             if robot_is_fixed(robot, self.robot_fixing_allowed) { batch.batch.velocities[index] = [0.0; 2]; continue; }
-            let mass = (robot.materials.mass + fluid_added_mass(robot.materials.radius, self.config.physics.density)).max(0.25);
+            let added = robot.kinematics.native_added_mass.unwrap_or_else(|| {
+                fluid_added_mass(robot.materials.radius, self.config.physics.density)
+            });
+            let mass = (robot.materials.mass + added).max(0.25);
             let inverse = 1.0 / mass;
             let mut velocity = robot.kinematics.velocity;
             for (axis, component) in velocity.iter_mut().enumerate() {
@@ -115,6 +136,35 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn negative_fixpos_is_unfixed_and_later_writes_wait_for_manage_fixed() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let id = world.spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2]).unwrap();
+        world.slots.get_mut(id).unwrap().program.memory.write(MEM_FIXED, -1);
+        world.manage_native_fixed_state();
+        assert!(!robot_is_fixed(world.slots.get(id).unwrap(), true));
+        world.slots.get_mut(id).unwrap().program.memory.write(MEM_FIXED, 1);
+        assert!(!robot_is_fixed(world.slots.get(id).unwrap(), true));
+        world.manage_native_fixed_state();
+        assert!(robot_is_fixed(world.slots.get(id).unwrap(), true));
+    }
+
+    #[test]
+    fn sampled_added_mass_is_not_recomputed_after_radius_changes() {
+        let mut config = EngineConfig::testing(); config.physics.density = 0.001;
+        let mut world = Engine::new(config).unwrap();
+        let id = world.spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2]).unwrap();
+        world.capture_native_added_mass();
+        let cached = world.slots.get(id).unwrap().kinematics.native_added_mass.unwrap();
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.materials.radius = 1.0;
+        robot.kinematics.independent_impulse = [10.0, 0.0];
+        let mut batch = world.physics_batch();
+        world.native_integration_velocities(&mut batch);
+        assert_eq!(batch.batch.velocities[0][0], 10.0 * (1.0 / (1.0 + cached)));
+        assert!(batch.batch.velocities[0][0] < 1.0);
+    }
 
     #[test]
     fn force_waits_until_integration_and_divides_by_mass() {

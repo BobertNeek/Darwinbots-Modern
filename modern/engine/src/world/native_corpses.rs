@@ -98,6 +98,7 @@ impl Engine {
         robot.flags.dead = false;
         robot.flags.vegetable = false;
         robot.flags.fixed = false;
+        robot.kinematics.native_fixed_state = Some(false);
         robot.flags.can_execute_dna = false;
         robot.flags.can_move = false;
         robot.flags.can_see = false;
@@ -228,6 +229,7 @@ impl Engine {
             robot.flags.exists = true;
             robot.flags.vegetable = false;
             robot.flags.fixed = false;
+            robot.kinematics.native_fixed_state = Some(false);
             robot.flags.can_execute_dna = false;
             robot.flags.can_move = false;
             robot.flags.can_see = false;
