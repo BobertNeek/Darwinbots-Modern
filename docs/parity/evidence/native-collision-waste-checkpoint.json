@@ -69,5 +69,10 @@
     "parity-native-waste-clippy.log",
     "parity-native-waste-complete-engine-debug.log",
     "parity-native-waste-desktop.log"
-  ]
+  ],
+  "desktop_core_release": {
+    "passed": 134,
+    "failed": 0,
+    "log": "completion-checks/parity-native-waste-core-release.log"
+  }
 }
