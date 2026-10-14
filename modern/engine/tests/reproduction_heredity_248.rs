@@ -64,6 +64,8 @@ fn set_transfer_materials(robot: &mut Value) {
     let materials = &mut robot["materials"];
     materials["energy"] = json!(4_000);
     materials["body"] = json!(400);
+    // Source FindRadius(400 body, 200 chloroplasts) before the first physics pass.
+    materials["radius"] = json!(82.392_265);
     materials["waste"] = json!(40);
     materials["permanent_waste"] = json!(20);
     materials["shell"] = json!(70);
@@ -176,6 +178,7 @@ fn make_blocker_small(engine: &Engine, blocker: OrganismId) -> Engine {
         let materials = &mut robot["materials"];
         materials["energy"] = json!(1_000);
         materials["body"] = json!(1);
+        materials["radius"] = json!(1);
         materials["waste"] = json!(0);
         materials["permanent_waste"] = json!(0);
         materials["shell"] = json!(0);

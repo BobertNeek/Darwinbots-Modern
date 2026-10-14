@@ -61,11 +61,7 @@ impl Engine {
                         owner_velocity: robot.kinematics.velocity,
                         owner_actual_velocity: robot.kinematics.actual_velocity,
                         correct_position: false,
-                        owner_radius: crate::physics::organism_radius(
-                            body,
-                            0.0,
-                            self.config.fixed_bot_radii,
-                        ),
+                        owner_radius: robot.materials.radius,
                         owner_virtual_body: virtual_body,
                         range_multiplier: 1.0,
                         angle,

@@ -68,6 +68,9 @@ mod native_corpses;
 #[path = "world/native_graphs.rs"]
 mod native_graphs;
 
+#[path = "world/cached_radius.rs"]
+mod cached_radius;
+
 #[path = "world/native_feeding.rs"]
 mod native_feeding;
 
@@ -2046,7 +2049,7 @@ struct Db3sV2Biology {
     body: f32,
     #[serde(default = "db3s_v2_default_legacy_dimension")]
     mass: f32,
-    #[serde(default = "db3s_v2_default_legacy_dimension")]
+    #[serde(default = "crate::biology::missing_cached_radius")]
     radius: f32,
     waste: f32,
     #[serde(default)]
@@ -3983,8 +3986,13 @@ impl Engine {
             let definition = &self.species[species.0 as usize];
             VisualPhenotype::new(definition.lineage_id, definition.color, definition.skin)
         };
-        let initial_biology =
+        let mut initial_biology =
             BiologyState::for_species(vegetable, self.config.vegetation.start_chloroplasts);
+        initial_biology.radius = crate::physics::organism_radius(
+            initial_biology.body,
+            initial_biology.chloroplasts,
+            self.config.fixed_bot_radii,
+        );
         let mut memory = VmMemory::default();
         memory.write(MEM_NRG, 1_000);
         memory.write(468, 32_000);
@@ -4474,7 +4482,17 @@ impl Engine {
         if second.is_none() {
             let child_materials = {
                 let parent = self.slots.get_mut(first)?;
-                let child_materials = parent.materials.split_for_offspring(50);
+                let mut child_materials = parent.materials.split_for_offspring(50);
+                parent.materials.radius = crate::physics::organism_radius(
+                    parent.materials.body,
+                    parent.materials.chloroplasts,
+                    self.config.fixed_bot_radii,
+                );
+                child_materials.radius = crate::physics::organism_radius(
+                    child_materials.body,
+                    child_materials.chloroplasts,
+                    self.config.fixed_bot_radii,
+                );
                 parent.materials.synchronize_energy();
                 parent
                     .program
@@ -5916,7 +5934,6 @@ impl Engine {
         let seed = self.config.seed;
         let tick = self.tick;
         let settings = &self.config.physics;
-        let fixed_bot_radii = self.config.fixed_bot_radii;
         let positions: Vec<[f32; 2]> = self
             .slots
             .iter()
@@ -5974,16 +5991,11 @@ impl Engine {
                         robot.materials.chloroplasts,
                     )
                     .clamp(1.0, 32_000.0);
-                    let radius = crate::physics::organism_radius(
-                        robot.materials.body,
-                        robot.materials.chloroplasts,
-                        fixed_bot_radii,
-                    );
+                    let radius = robot.materials.radius;
                     let effective_mass =
                         (mass + fluid_added_mass(radius, settings.density)).max(1.0);
                     let force_scale = mass / effective_mass;
                     robot.materials.mass = mass;
-                    robot.materials.radius = radius;
                     robot.kinematics.velocity[0] +=
                         robot.kinematics.pending_velocity[0] * force_scale;
                     robot.kinematics.velocity[1] +=
@@ -6076,13 +6088,9 @@ impl Engine {
                 .slots
                 .iter()
                 .map(|slot| {
-                    slot.organism.as_ref().map_or(1.0, |robot| {
-                        crate::physics::organism_radius(
-                            robot.materials.body,
-                            robot.materials.chloroplasts,
-                            self.config.fixed_bot_radii,
-                        )
-                    })
+                    slot.organism
+                        .as_ref()
+                        .map_or(1.0, |robot| robot.materials.radius)
                 })
                 .collect();
             let energies: Vec<_> = self
@@ -6114,13 +6122,7 @@ impl Engine {
             .slots
             .iter()
             .filter_map(|slot| slot.organism.as_ref())
-            .map(|robot| {
-                crate::physics::organism_radius(
-                    robot.materials.body,
-                    robot.materials.chloroplasts,
-                    self.config.fixed_bot_radii,
-                )
-            })
+            .map(|robot| robot.materials.radius)
             .fold(1.0_f32, f32::max);
         let gpu_targets = match gpu_result {
             Some(Ok((targets, render_instances))) => {
@@ -6167,11 +6169,7 @@ impl Engine {
                         self.config.vegetation.daytime,
                     ),
                 );
-                let observer_radius = crate::physics::organism_radius(
-                    observer.materials.body,
-                    observer.materials.chloroplasts,
-                    self.config.fixed_bot_radii,
-                );
+                let observer_radius = observer.materials.radius;
                 let mut nearest_by_eye = [None; 9];
                 let sensing_radius = vision.max_range() + observer_radius + max_organism_radius;
                 // Native borders relocate robots; vision uses their actual positions.
@@ -6190,11 +6188,7 @@ impl Engine {
                     ];
                     let target_distance =
                         target_delta[0] * target_delta[0] + target_delta[1] * target_delta[1];
-                    let target_radius = crate::physics::organism_radius(
-                        target.materials.body,
-                        target.materials.chloroplasts,
-                        self.config.fixed_bot_radii,
-                    );
+                    let target_radius = target.materials.radius;
                     if self.obstacles.iter().any(|obstacle| {
                         obstacle.vision_policy != ShapeVisionPolicy::SeeThrough
                             && crate::physics::segment_aabb_fraction(
@@ -6892,11 +6886,7 @@ impl Engine {
             let angle_overwrites = robot.program.tie_angle_overwrites;
             let length_overwrites = robot.program.tie_length_overwrites;
             let source_id = OrganismId::new(slot as u32, self.slots[slot].generation);
-            let source_radius = crate::physics::organism_radius(
-                robot.materials.body,
-                robot.materials.chloroplasts,
-                self.config.fixed_bot_radii,
-            );
+            let source_radius = robot.materials.radius;
             let first_aim = self
                 .slots
                 .get(source_id)
@@ -6925,13 +6915,7 @@ impl Engine {
                     .slots
                     .get(other_id)
                     .ok()
-                    .map(|other| {
-                        crate::physics::organism_radius(
-                            other.materials.body,
-                            other.materials.chloroplasts,
-                            self.config.fixed_bot_radii,
-                        )
-                    })
+                    .map(|other| other.materials.radius)
                     .unwrap_or(source_radius);
                 let second_aim = self
                     .slots
@@ -7031,16 +7015,8 @@ impl Engine {
             ) else {
                 continue;
             };
-            let first_radius = crate::physics::organism_radius(
-                first_robot.materials.body,
-                first_robot.materials.chloroplasts,
-                self.config.fixed_bot_radii,
-            );
-            let second_radius = crate::physics::organism_radius(
-                second_robot.materials.body,
-                second_robot.materials.chloroplasts,
-                self.config.fixed_bot_radii,
-            );
+            let first_radius = first_robot.materials.radius;
+            let second_radius = second_robot.materials.radius;
             let first_index = tie_counts[first];
             let second_index = tie_counts[second];
             if first_index >= MAX_TIES_PER_ROBOT || second_index >= MAX_TIES_PER_ROBOT {
@@ -7628,11 +7604,7 @@ impl Engine {
                 continue;
             };
             let position = robot.kinematics.position;
-            let radius = crate::physics::organism_radius(
-                robot.materials.body,
-                robot.materials.chloroplasts,
-                self.config.fixed_bot_radii,
-            );
+            let radius = robot.materials.radius;
             if (0..2)
                 .all(|axis| position[axis] > radius && position[axis] < world_size[axis] - radius)
             {
@@ -7698,11 +7670,7 @@ impl Engine {
         }
         let radius_for = |id| {
             let robot = self.slots.get(id).unwrap();
-            crate::physics::organism_radius(
-                robot.materials.body,
-                robot.materials.chloroplasts,
-                self.config.fixed_bot_radii,
-            )
+            robot.materials.radius
         };
         let (nearest, _) = members
             .iter()
@@ -7808,11 +7776,7 @@ impl Engine {
                     owner_velocity: owner.kinematics.velocity,
                     correct_position: true,
                     owner_actual_velocity: owner.kinematics.actual_velocity,
-                    owner_radius: crate::physics::organism_radius(
-                        owner.materials.body,
-                        owner.materials.chloroplasts,
-                        self.config.fixed_bot_radii,
-                    ),
+                    owner_radius: owner.materials.radius,
                     owner_virtual_body,
                     range_multiplier: request.range_multiplier,
                     angle: request.angle,
@@ -7874,12 +7838,9 @@ impl Engine {
             .iter()
             .filter_map(|entry| entry.organism.as_ref())
             .map(|robot| {
-                crate::physics::organism_radius(
-                    robot.materials.body,
-                    robot.materials.chloroplasts,
-                    self.config.fixed_bot_radii,
-                ) + (robot.kinematics.actual_velocity[0] - robot.kinematics.velocity[0])
-                    .hypot(robot.kinematics.actual_velocity[1] - robot.kinematics.velocity[1])
+                robot.materials.radius
+                    + (robot.kinematics.actual_velocity[0] - robot.kinematics.velocity[0])
+                        .hypot(robot.kinematics.actual_velocity[1] - robot.kinematics.velocity[1])
                     + robot.kinematics.actual_velocity[0].hypot(robot.kinematics.actual_velocity[1])
             })
             .fold(1.0_f32, f32::max);
@@ -7907,11 +7868,7 @@ impl Engine {
                 if newborn_is_immune {
                     continue;
                 }
-                let radius = crate::physics::organism_radius(
-                    target_robot.materials.body,
-                    target_robot.materials.chloroplasts,
-                    self.config.fixed_bot_radii,
-                );
+                let radius = target_robot.materials.radius;
                 let actual_velocity = target_robot.kinematics.actual_velocity;
                 let center = std::array::from_fn(|axis| {
                     target_robot.kinematics.position[axis] - target_robot.kinematics.velocity[axis]
@@ -8196,6 +8153,11 @@ impl Engine {
                             let body_loss = scale_tie_amount(packet_value, 0.01);
                             target_robot.materials.body =
                                 (target_robot.materials.body - body_loss).max(0.0);
+                            target_robot.materials.radius = crate::physics::organism_radius(
+                                target_robot.materials.body,
+                                target_robot.materials.chloroplasts,
+                                self.config.fixed_bot_radii,
+                            );
                             let lethal = target_robot.materials.energy <= 0.5
                                 || target_robot.materials.body <= 0.5;
                             target_robot.flags.dead |= lethal;
@@ -8240,6 +8202,11 @@ impl Engine {
                         target_robot.materials.body =
                             (target_robot.materials.body + packet_body + overflow * 0.10)
                                 .min(32_000.0);
+                        target_robot.materials.radius = crate::physics::organism_radius(
+                            target_robot.materials.body,
+                            target_robot.materials.chloroplasts,
+                            self.config.fixed_bot_radii,
+                        );
                         target_robot.materials.waste += packet_waste;
                         target_robot
                             .materials
@@ -8638,6 +8605,11 @@ impl Engine {
         state.kinematics.previous_position = organism.position;
         state.materials.energy = organism.energy.max(1) as f32;
         state.materials.body = organism.body.max(1) as f32;
+        state.materials.radius = crate::physics::organism_radius(
+            state.materials.body,
+            state.materials.chloroplasts,
+            self.config.fixed_bot_radii,
+        );
         state.materials.synchronize_energy();
         state.counters.age = organism.age;
         state.counters.birth_cycle = organism.birth_cycle;
@@ -8687,13 +8659,9 @@ impl Engine {
                     .slots
                     .iter()
                     .map(|slot| {
-                        slot.organism.as_ref().map_or(0.0, |robot| {
-                            crate::physics::organism_radius(
-                                robot.materials.body,
-                                robot.materials.chloroplasts,
-                                self.config.fixed_bot_radii,
-                            )
-                        })
+                        slot.organism
+                            .as_ref()
+                            .map_or(0.0, |robot| robot.materials.radius)
                     })
                     .collect::<Vec<_>>(),
                 &mut positions,
@@ -8912,13 +8880,9 @@ impl Engine {
             .slots
             .iter()
             .map(|slot| {
-                slot.organism.as_ref().map_or(1.0, |robot| {
-                    crate::physics::organism_radius(
-                        robot.materials.body,
-                        robot.materials.chloroplasts,
-                        self.config.fixed_bot_radii,
-                    )
-                })
+                slot.organism
+                    .as_ref()
+                    .map_or(1.0, |robot| robot.materials.radius)
             })
             .collect();
         let max_radius = radii.iter().copied().fold(1.0_f32, f32::max);
@@ -9021,7 +8985,6 @@ impl Engine {
     }
 
     fn apply_tie_constraints(&mut self) {
-        let fixed_bot_radii = self.config.fixed_bot_radii;
         let slots = &mut self.slots;
         self.ties.retain_mut(|tie| {
             let first_slot = tie.first.slot() as usize;
@@ -9050,16 +9013,8 @@ impl Engine {
                 second.kinematics.position[1] - first.kinematics.position[1],
             ];
             let distance = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
-            let first_radius = crate::physics::organism_radius(
-                first.materials.body,
-                first.materials.chloroplasts,
-                fixed_bot_radii,
-            );
-            let second_radius = crate::physics::organism_radius(
-                second.materials.body,
-                second.materials.chloroplasts,
-                fixed_bot_radii,
-            );
+            let first_radius = first.materials.radius;
+            let second_radius = second.materials.radius;
             if distance - first_radius - second_radius > MAX_TIE_SURFACE_GAP {
                 return false;
             }
@@ -9171,11 +9126,7 @@ impl Engine {
             .iter()
             .filter_map(|slot| slot.organism.as_ref())
             .map(|robot| {
-                let radius = crate::physics::organism_radius(
-                    robot.materials.body,
-                    robot.materials.chloroplasts,
-                    self.config.fixed_bot_radii,
-                );
+                let radius = robot.materials.radius;
                 std::f32::consts::PI * radius * radius
             })
             .sum();
@@ -9243,6 +9194,13 @@ impl Engine {
             let (energy_gain, body_gain) = organism
                 .materials
                 .apply_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body);
+            if organism.materials.chloroplasts > 0.0 {
+                organism.materials.radius = crate::physics::organism_radius(
+                    organism.materials.body,
+                    organism.materials.chloroplasts,
+                    self.config.fixed_bot_radii,
+                );
+            }
             if feeding.light
                 && self
                     .species
@@ -10312,7 +10270,6 @@ impl Engine {
     fn publish_snapshot(&mut self) {
         self.refresh_tie_projections();
         self.refresh_occurrence_census_readbacks();
-        let fixed_bot_radii = self.config.fixed_bot_radii;
         let organisms: Vec<_> = self
             .slots
             .par_iter()
@@ -10343,9 +10300,7 @@ impl Engine {
                             slot,
                             robot.kinematics.position,
                             robot.materials.energy,
-                            robot.materials.body,
-                            robot.materials.chloroplasts,
-                            fixed_bot_radii,
+                            robot.materials.radius,
                         )
                     })
                 })
@@ -10362,11 +10317,7 @@ impl Engine {
                 .get(slot)
                 .and_then(|slot| slot.organism.as_ref())
             {
-                instance.radius = crate::physics::organism_radius(
-                    organism.materials.body,
-                    organism.materials.chloroplasts,
-                    fixed_bot_radii,
-                );
+                instance.radius = organism.materials.radius;
                 instance.generation = self.slots[slot].generation;
                 instance.aim = organism.materials.aim;
                 instance.skin = organism.phenotype.skin;
@@ -10463,6 +10414,13 @@ impl Engine {
                     .materials
                     .absorb_legacy_fractions(organism.program.fractional_cost_remainder);
                 organism.program.fractional_cost_remainder = 0.0;
+                if !organism.materials.radius.is_finite() || organism.materials.radius < 1.0 {
+                    organism.materials.radius = crate::physics::organism_radius(
+                        organism.materials.body,
+                        organism.materials.chloroplasts,
+                        engine.config.fixed_bot_radii,
+                    );
+                }
                 if organism.program.genetic_graph.is_none() {
                     organism.program.genetic_graph =
                         Some(crate::GeneticGraphState::for_dna(&organism.program.dna));
@@ -10966,15 +10924,7 @@ fn snapshot_organism(
         parents: organism.identity.parents,
         body: resource_readback(organism.materials.body),
         mass: organism.materials.mass,
-        radius: if config.fixed_bot_radii {
-            crate::physics::organism_radius(
-                organism.materials.body,
-                organism.materials.chloroplasts,
-                true,
-            )
-        } else {
-            organism.materials.radius
-        },
+        radius: organism.materials.radius,
         waste: resource_readback(organism.materials.waste),
         permanent_waste: resource_readback(organism.materials.permanent_waste),
         shell: resource_readback(organism.materials.shell),
@@ -11092,11 +11042,8 @@ fn cpu_render_instance(
     slot: usize,
     position: [f32; 2],
     energy: f32,
-    body: f32,
-    chloroplasts: f32,
-    fixed_bot_radii: bool,
+    radius: f32,
 ) -> RenderInstance {
-    let radius = crate::physics::organism_radius(body, chloroplasts, fixed_bot_radii);
     let energy_color = (energy.clamp(0.0, 4_000.0) * 255.0 / 4_000.0) as u32;
     RenderInstance {
         slot: slot as u32,

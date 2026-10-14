@@ -678,7 +678,7 @@ struct LegacyBiologyState {
     body: f32,
     #[serde(default = "default_legacy_dimension")]
     mass: f32,
-    #[serde(default = "default_legacy_dimension")]
+    #[serde(default = "crate::biology::missing_cached_radius")]
     radius: f32,
     waste: f32,
     #[serde(default)]

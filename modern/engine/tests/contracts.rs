@@ -1440,7 +1440,8 @@ fn db3s_v2_accepts_parent_defaulted_field_omissions() {
     let id = nested.snapshot().organisms[0].id;
     let robot = nested.robot_state(id).unwrap();
     assert_eq!(robot.materials.mass, 1.0);
-    assert_eq!(robot.materials.radius, 1.0);
+    // Missing radius is reconstructed from the legacy body/chloroplast stores.
+    assert_eq!(robot.materials.radius, 226.829_35);
     assert_eq!(robot.materials.permanent_waste, 0.0);
     assert_eq!(nested.snapshot().stats.projectile_effects, 0);
     assert_eq!(nested.snapshot().corpses[0].species, 0);

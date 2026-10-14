@@ -26,7 +26,7 @@ pub struct RobotMaterials {
     pub body: f32,
     #[serde(default = "default_mass")]
     pub mass: f32,
-    #[serde(default = "default_radius")]
+    #[serde(default = "missing_cached_radius")]
     pub radius: f32,
     pub waste: f32,
     #[serde(default)]
@@ -69,8 +69,9 @@ const fn default_body() -> f32 {
 const fn default_mass() -> f32 {
     1.0
 }
-const fn default_radius() -> f32 {
-    1.0
+pub(crate) const fn missing_cached_radius() -> f32 {
+    // FindRadius never yields zero; it marks an older save with no cached value.
+    0.0
 }
 
 impl Default for RobotMaterials {
@@ -79,7 +80,7 @@ impl Default for RobotMaterials {
             energy: default_energy(),
             body: 1_000.0,
             mass: default_mass(),
-            radius: default_radius(),
+            radius: crate::physics::organism_radius(default_body(), 0.0, false),
             waste: 0.0,
             permanent_waste: 0.0,
             shell: 0.0,
@@ -122,14 +123,16 @@ impl RobotMaterials {
     }
 
     pub(crate) fn for_species(vegetable: bool, start_chloroplasts: i32) -> Self {
-        Self {
+        let mut state = Self {
             chloroplasts: if vegetable {
                 start_chloroplasts.clamp(0, 32_000) as f32
             } else {
                 0.0
             },
             ..Self::default()
-        }
+        };
+        state.radius = crate::physics::organism_radius(state.body, state.chloroplasts, false);
+        state
     }
 
     pub(crate) fn split_for_offspring(&mut self, percentage: i32) -> Self {

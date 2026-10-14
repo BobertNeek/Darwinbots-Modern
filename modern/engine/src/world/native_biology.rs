@@ -29,11 +29,13 @@ impl Engine {
                 runtime.finish_command(312, CommandOutcome::Consumed, &mut robot.program.memory);
             }
             robot.materials.body = robot.materials.body.clamp(0.0, 32_000.0);
-            robot.materials.radius = crate::physics::organism_radius(
-                robot.materials.body,
-                robot.materials.chloroplasts,
-                self.config.fixed_bot_radii,
-            );
+            if stored > 0 || fed > 0 {
+                robot.materials.radius = crate::physics::organism_radius(
+                    robot.materials.body,
+                    robot.materials.chloroplasts,
+                    self.config.fixed_bot_radii,
+                );
+            }
             robot.materials.publish(&mut robot.program.memory);
         }
     }

@@ -40,6 +40,7 @@ fn fixed_bot_radii_config_survives_save_and_uses_db2_half_radius() {
     let encoded = SaveFile::encode(&engine).unwrap();
     let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
     payload["config"]["fixed_bot_radii"] = serde_json::json!(true);
+    payload["slots"][0]["organism"]["materials"]["radius"] = serde_json::json!(60.0);
     let payload = serde_json::to_vec(&payload).unwrap();
 
     let mut fixed_radius_save = Vec::with_capacity(10 + payload.len());

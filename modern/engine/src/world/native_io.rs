@@ -546,11 +546,9 @@ impl Engine {
             robot.materials.shell,
             robot.materials.chloroplasts,
         );
-        robot.materials.radius = crate::physics::organism_radius(
-            robot.materials.body,
-            robot.materials.chloroplasts,
-            self.config.fixed_bot_radii,
-        );
+        // HDRoutines calculates radius after body, before loading chloroplasts.
+        robot.materials.radius =
+            crate::physics::organism_radius(robot.materials.body, 0.0, self.config.fixed_bot_radii);
         Ok(robot)
     }
 
