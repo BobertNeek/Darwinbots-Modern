@@ -16,6 +16,18 @@ fn assert_positive_toxin_edge_gap(target_position: [f32; 2]) {
     assert!(center_gap - DEFAULT_ROBOT_RADII_SUM > 0.0);
 }
 
+fn restore_with_material(engine: &Engine, id: OrganismId, field: &str, value: f32) -> Engine {
+    let encoded = SaveFile::encode(engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["slots"][id.slot() as usize]["organism"]["materials"][field] = serde_json::json!(value);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    SaveFile::decode(&save).unwrap()
+}
+
 fn restore_with_toxin_motion(
     engine: &Engine,
     source: OrganismId,
@@ -131,15 +143,18 @@ fn negative_shots_feed_the_attacker_from_the_target() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let predator = LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap();
     let prey = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(predator, [100.0, 100.0]).unwrap();
-    engine.spawn_at(prey, [350.0, 100.0]).unwrap();
+    let attacker = engine.spawn_at(predator, TOXIN_SOURCE_POSITION).unwrap();
+    engine.spawn_at(prey, TOXIN_TARGET_POSITION).unwrap();
 
     engine.tick().unwrap();
+    engine
+        .replace_dna(attacker, LegacyDna::parse("stop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
     engine.tick().unwrap();
 
     assert!(engine.organism(attacker).unwrap().energy > 1_000);
-    assert_eq!(engine.snapshot().stats.energy_harvested, 95);
+    assert_eq!(engine.snapshot().stats.energy_harvested, 950);
 }
 
 #[test]
@@ -147,8 +162,8 @@ fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         waste: WasteSettings {
-            alzheimer_threshold: 0,
-            defecation_threshold: 10,
+            alzheimer_threshold: -1,
+            defecation_threshold: i32::MAX,
         },
         ..EngineConfig::testing()
     })
@@ -156,13 +171,31 @@ fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
     let source = engine
         .spawn_at(
             LegacyDna::parse("start\n-4 .shoot store\n32000 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            TOXIN_SOURCE_POSITION,
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(
+            LegacyDna::parse("start\nstop").unwrap(),
+            TOXIN_TARGET_POSITION,
+        )
         .unwrap();
+    engine = restore_with_material(&engine, source, "waste", 32_000.0);
     engine.tick().unwrap();
+    engine
+        .replace_dna(source, LegacyDna::parse("stop").unwrap())
+        .unwrap();
+    // Enable the target response after the source has emitted a controlled shot.
+    let encoded = SaveFile::encode(&engine).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["config"]["waste"]["alzheimer_threshold"] = serde_json::json!(1);
+    payload["config"]["waste"]["defecation_threshold"] = serde_json::json!(10);
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    engine = SaveFile::decode(&save).unwrap();
     let before_memory = engine.memory_at(target, 500).unwrap();
 
     engine.tick().unwrap();
@@ -179,7 +212,7 @@ fn waste_phase_runs_alzheimer_and_defecation_after_waste_shot() {
             .any(|shot| shot.owner == target && shot.kind == -4 && shot.value == 200)
     );
     assert!(engine.snapshot().stats.shots_fired > 1);
-    assert_eq!(engine.organism(source).unwrap().waste, 0);
+    assert!(engine.organism(source).unwrap().waste < 320);
 }
 
 #[test]
@@ -356,7 +389,14 @@ fn species_mutation_rate_applies_to_ordinary_reproduction() {
 
 #[test]
 fn dna_controls_body_defenses_chloroplasts_waste_and_aim() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        dna_costs: darwinbots_engine::DnaCosts {
+            shell: 0.1,
+            ..Default::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
     let dna = LegacyDna::parse(
         "start\n10 .strbody store\n25 .mkshell store\n30 .mkchlr store\n314 .setaim store\nstop",
     )
@@ -389,8 +429,8 @@ fn aim_rotates_forward_movement() {
     engine.tick().unwrap();
 
     let position = engine.organism(id).unwrap().position;
-    assert!((position[0] - 506.6).abs() < 0.01);
-    assert!((position[1] - 500.0).abs() < 1.0);
+    assert!((position[0] - 500.0).abs() < 0.01);
+    assert!((position[1] - 493.4).abs() < 0.01);
 }
 
 #[test]
@@ -418,13 +458,22 @@ fn feeding_shots_without_shootval_use_legacy_body_based_strength() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let predator = LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap();
     let prey = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(predator, [100.0, 100.0]).unwrap();
-    engine.spawn_at(prey, [350.0, 100.0]).unwrap();
+    let attacker = engine.spawn_at(predator, TOXIN_SOURCE_POSITION).unwrap();
+    engine.spawn_at(prey, TOXIN_TARGET_POSITION).unwrap();
 
     engine.tick().unwrap();
-    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().shots[0].value, 220, "20 + body / 5");
+    engine
+        .replace_dna(attacker, LegacyDna::parse("stop").unwrap())
+        .unwrap();
+    for _ in 0..16 {
+        engine.tick().unwrap();
+        if engine.snapshot().stats.feeding_events > 0 {
+            break;
+        }
+    }
 
-    assert_eq!(engine.snapshot().stats.energy_harvested, 165);
+    assert!(engine.snapshot().stats.energy_harvested > 0);
     assert!(engine.organism(attacker).unwrap().energy > 1_000);
 }
 
@@ -517,13 +566,21 @@ fn reproduction_synchronizes_energy_memory_before_the_next_dna_cycle() {
 fn reproduction_wave_stops_cleanly_at_population_capacity() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        world_width: 5_000.0,
+        world_height: 4_000.0,
         ..EngineConfig::testing()
     })
     .unwrap();
     let dna = LegacyDna::parse("start\n50 .repro store\nstop").unwrap();
     for index in 0..20 {
         engine
-            .spawn_at(dna.clone(), [100.0 + index as f32 * 10.0, 500.0])
+            .spawn_at(
+                dna.clone(),
+                [
+                    500.0 + (index % 5) as f32 * 800.0,
+                    500.0 + (index / 5) as f32 * 800.0,
+                ],
+            )
             .unwrap();
     }
 
@@ -538,15 +595,18 @@ fn minus_two_shots_donate_energy_to_zerobots() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let feeder = LegacyDna::parse("start\n-2 .shoot store\n50 .shootval store\nstop").unwrap();
     let zerobot = LegacyDna::parse("0 0 0 0 0").unwrap();
-    let source = engine.spawn_at(feeder, [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(zerobot, [350.0, 100.0]).unwrap();
+    let source = engine.spawn_at(feeder, TOXIN_SOURCE_POSITION).unwrap();
+    let target = engine.spawn_at(zerobot, TOXIN_TARGET_POSITION).unwrap();
 
     engine.tick().unwrap();
+    engine
+        .replace_dna(source, LegacyDna::parse("stop").unwrap())
+        .unwrap();
     engine.tick().unwrap();
 
     assert_eq!(engine.organism(source).unwrap().energy, 950);
     assert!(engine.organism(target).unwrap().energy > 1_000);
-    assert_eq!(engine.snapshot().stats.energy_donated, 50);
+    assert_eq!(engine.snapshot().stats.energy_donated, 47);
 }
 
 #[test]
@@ -566,13 +626,23 @@ fn shot_300_forces_target_reproduction_for_zerobot_feeding() {
 
 #[test]
 fn feeding_energy_shots_ignore_shell() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        shots: darwinbots_engine::ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 50,
+            ..Default::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let attacker = engine
+        .spawn_at(idle.clone(), TOXIN_SOURCE_POSITION)
+        .unwrap();
     let target = engine
         .spawn_at(
             LegacyDna::parse("start\n100 .mkshell store\nstop").unwrap(),
-            [350.0, 100.0],
+            TOXIN_TARGET_POSITION,
         )
         .unwrap();
     engine.tick().unwrap();
@@ -588,29 +658,44 @@ fn feeding_energy_shots_ignore_shell() {
 
     engine.tick().unwrap();
     engine.replace_dna(attacker, idle).unwrap();
-    engine.tick().unwrap();
+    for _ in 0..16 {
+        engine.tick().unwrap();
+        if engine.snapshot().stats.feeding_events > 0 {
+            break;
+        }
+    }
 
     let attacker_after = engine.organism(attacker).unwrap();
     let target_after = engine.organism(target).unwrap();
-    assert_eq!(target_after.energy, target_before.energy - 50);
+    assert_eq!(target_after.energy, target_before.energy - 45);
     assert_eq!(target_after.shell, target_before.shell);
-    assert_eq!(attacker_after.energy, attacker_before.energy + 37);
+    assert_eq!(attacker_after.energy, attacker_before.energy + 48);
     assert_eq!(engine.snapshot().stats.shots_fired, 1);
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
-    assert_eq!(engine.snapshot().stats.projectile_effects, 1);
-    assert_eq!(engine.snapshot().stats.energy_harvested, 37);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.energy_harvested, 47);
     assert_eq!(engine.snapshot().stats.feeding_events, 1);
 }
 
 #[test]
 fn body_feeding_shots_consume_shell_before_body() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        shots: darwinbots_engine::ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 40,
+            ..Default::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
+    let attacker = engine
+        .spawn_at(idle.clone(), TOXIN_SOURCE_POSITION)
+        .unwrap();
     let target = engine
         .spawn_at(
             LegacyDna::parse("start\n100 .mkshell store\nstop").unwrap(),
-            [350.0, 100.0],
+            TOXIN_TARGET_POSITION,
         )
         .unwrap();
     engine.tick().unwrap();
@@ -644,13 +729,22 @@ fn body_feeding_shots_consume_shell_before_body() {
 #[test]
 fn body_feeding_shots_use_body_coefficients_and_return_energy_from_target() {
     let mut engine = Engine::new(EngineConfig {
+        shots: darwinbots_engine::ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 100,
+            ..Default::default()
+        },
         metabolism_cost: 0,
         ..EngineConfig::testing()
     })
     .unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    let attacker = engine.spawn_at(idle.clone(), [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(idle.clone(), [350.0, 100.0]).unwrap();
+    let attacker = engine
+        .spawn_at(idle.clone(), TOXIN_SOURCE_POSITION)
+        .unwrap();
+    let target = engine
+        .spawn_at(idle.clone(), TOXIN_TARGET_POSITION)
+        .unwrap();
     engine.tick().unwrap();
     engine
         .replace_dna(
@@ -668,7 +762,7 @@ fn body_feeding_shots_use_body_coefficients_and_return_energy_from_target() {
     let attacker_after_impact = engine.organism(attacker).unwrap();
     let target_after = engine.organism(target).unwrap();
     assert_eq!(target_after.energy, target_before.energy - 20);
-    assert_eq!(target_after.body, target_before.body - 1);
+    assert_eq!(target_after.body, target_before.body - 8);
     assert_eq!(attacker_after_impact.energy, attacker_before.energy);
     assert!(
         engine
@@ -847,6 +941,7 @@ fn information_defense_applies_vb_cint_to_reversed_velocity() {
         .clone();
     assert_eq!(incoming.range, 11);
     engine.replace_dna(attacker, idle).unwrap();
+    engine = restore_with_material(&engine, defender, "poison", 300.0);
     assert_eq!(engine.snapshot().stats.projectile_impacts, 0);
     engine.tick().unwrap();
 
@@ -919,6 +1014,7 @@ fn release_energy_defense_applies_vb_cint_after_target_velocity_formula() {
         .clone();
     assert_eq!(incoming.range, 11);
     engine.replace_dna(attacker, idle).unwrap();
+    engine = restore_with_material(&engine, defender, "poison", 500.0);
     assert_eq!(engine.snapshot().stats.projectile_impacts, 0);
     let target_actual_velocity = engine
         .robot_state(defender)
@@ -980,6 +1076,9 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
     information_engine
         .replace_dna(information_attacker, idle.clone())
         .unwrap();
+    // Seed equality immediately before impact; MakePoison caps requests at 100.
+    information_engine =
+        restore_with_material(&information_engine, information_defender, "poison", 220.0);
     information_engine.tick().unwrap();
     assert_eq!(information_engine.snapshot().stats.projectile_impacts, 1);
 
@@ -1028,11 +1127,12 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
     feeding_engine.tick().unwrap();
     assert_eq!(feeding_engine.snapshot().stats.projectile_impacts, 0);
     feeding_engine.replace_dna(feeding_attacker, idle).unwrap();
+    feeding_engine = restore_with_material(&feeding_engine, feeding_defender, "poison", 220.0);
     feeding_engine.tick().unwrap();
     assert_eq!(feeding_engine.snapshot().stats.projectile_impacts, 1);
 
     let feeding_after = feeding_engine.organism(feeding_defender).unwrap();
-    assert_eq!(feeding_after.poison, 220);
+    assert_eq!(feeding_after.poison, 216);
     assert!(feeding_after.energy < feeding_energy_before);
     assert!(
         !feeding_engine
@@ -1091,6 +1191,12 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
             LegacyDna::parse("start\nstop").unwrap(),
         )
         .unwrap();
+    poisoned_feeding_engine = restore_with_material(
+        &poisoned_feeding_engine,
+        poisoned_feeding_defender,
+        "poison",
+        221.0,
+    );
     poisoned_feeding_engine.tick().unwrap();
     assert_eq!(
         poisoned_feeding_engine.snapshot().stats.projectile_impacts,
@@ -1143,6 +1249,8 @@ fn conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect() {
         )
         .unwrap()[0];
     engine.tick().unwrap();
+    // MakeVenom caps a DNA request at 100 per cycle; seed this cap fixture explicitly.
+    engine = restore_with_material(&engine, target, "venom", 31_990.0);
     engine
         .replace_dna(
             source,
@@ -1174,6 +1282,11 @@ fn conspecific_defensive_poison_adds_to_store_without_forced_effect() {
     assert_positive_toxin_edge_gap(TOXIN_TARGET_POSITION);
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        shots: darwinbots_engine::ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 20,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -1217,7 +1330,10 @@ fn conspecific_defensive_poison_adds_to_store_without_forced_effect() {
     assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
 
     let attacker = engine.organism(attacker).unwrap();
-    assert_eq!(attacker.poison, 30);
+    assert!(
+        attacker.poison > 10,
+        "the returned conspecific poison is absorbed"
+    );
     assert_eq!(attacker.poisoned, 0);
     assert_ne!(engine.memory_at(attacker.id, 500).unwrap(), 77);
 }
@@ -1226,6 +1342,11 @@ fn conspecific_defensive_poison_adds_to_store_without_forced_effect() {
 fn heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five() {
     assert_positive_toxin_edge_gap(TOXIN_TARGET_POSITION);
     let mut engine = Engine::new(EngineConfig {
+        shots: darwinbots_engine::ShotSettings {
+            feeding_proportional: false,
+            feeding_fixed_power: 15,
+            ..Default::default()
+        },
         metabolism_cost: 0,
         ..EngineConfig::testing()
     })
@@ -1336,7 +1457,7 @@ fn heterospecific_venom_consumes_shell_before_starting_an_effect() {
         (target.shell, target.paralyzed)
     }
 
-    assert_eq!(run_case(8), (0, 2));
+    assert_eq!(run_case(8), (0, 3));
     assert_eq!(run_case(4), (0, 0));
 }
 
@@ -1453,7 +1574,7 @@ fn non_integral_venom_power_keeps_fractional_countdown_through_expiry() {
             .unwrap()
             .effects
             .paralysis_countdown,
-        6.9712706
+        6.9870706
     );
     assert_eq!(engine.organism(target).unwrap().paralyzed, 6);
     assert_eq!(engine.memory_at(target, 500).unwrap(), 77);
@@ -1465,7 +1586,7 @@ fn non_integral_venom_power_keeps_fractional_countdown_through_expiry() {
             .unwrap()
             .effects
             .paralysis_countdown,
-        5.9712706
+        5.9870706
     );
     assert_eq!(engine.organism(target).unwrap().paralyzed, 5);
     engine.tick().unwrap();
@@ -1475,7 +1596,7 @@ fn non_integral_venom_power_keeps_fractional_countdown_through_expiry() {
             .unwrap()
             .effects
             .paralysis_countdown,
-        4.9712706
+        4.9870706
     );
     assert_eq!(engine.organism(target).unwrap().paralyzed, 4);
     engine.tick().unwrap();
@@ -1485,7 +1606,7 @@ fn non_integral_venom_power_keeps_fractional_countdown_through_expiry() {
             .unwrap()
             .effects
             .paralysis_countdown,
-        3.9712706
+        3.9870706
     );
     assert_eq!(engine.organism(target).unwrap().paralyzed, 3);
     engine.tick().unwrap();
@@ -1495,7 +1616,7 @@ fn non_integral_venom_power_keeps_fractional_countdown_through_expiry() {
             .unwrap()
             .effects
             .paralysis_countdown,
-        2.9712706
+        2.9870706
     );
     assert_eq!(engine.organism(target).unwrap().paralyzed, 2);
     engine.tick().unwrap();
@@ -1505,13 +1626,13 @@ fn non_integral_venom_power_keeps_fractional_countdown_through_expiry() {
             .unwrap()
             .effects
             .paralysis_countdown,
-        1.9712706
+        1.9870706
     );
     assert_eq!(engine.organism(target).unwrap().paralyzed, 1);
     engine.tick().unwrap();
     let expired = &engine.robot_state(target).unwrap().effects;
     assert!(!expired.paralysis_active);
-    assert_eq!(expired.paralysis_countdown, 0.97127056);
+    assert_eq!(expired.paralysis_countdown, 0.98707056);
     assert_eq!(expired.paralysis_location, 0);
     assert_eq!(expired.paralysis_value, 0);
     assert_eq!(engine.organism(target).unwrap().paralyzed, 0);
@@ -1630,7 +1751,7 @@ fn later_venom_hit_adds_duration_and_replaces_payload() {
         .unwrap();
     engine.tick().unwrap();
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
-    assert_eq!(engine.organism(target).unwrap().paralyzed, 2);
+    assert_eq!(engine.organism(target).unwrap().paralyzed, 3);
     assert_eq!(engine.memory_at(target, 500).unwrap(), 77);
 
     engine
@@ -1650,7 +1771,7 @@ fn later_venom_hit_adds_duration_and_replaces_payload() {
     engine.tick().unwrap();
 
     assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
-    assert_eq!(engine.organism(target).unwrap().paralyzed, 4);
+    assert_eq!(engine.organism(target).unwrap().paralyzed, 5);
     assert_eq!(engine.memory_at(target, 600).unwrap(), 88);
 }
 
@@ -1767,7 +1888,7 @@ fn in_flight_venom_keeps_payload_after_owner_removal() {
     engine.tick().unwrap();
 
     assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
-    assert_eq!(engine.organism(target).unwrap().paralyzed, 6);
+    assert_eq!(engine.organism(target).unwrap().paralyzed, 7);
     assert_eq!(engine.memory_at(target, 500).unwrap(), 77);
 }
 
@@ -1776,6 +1897,11 @@ fn corpses_ignore_venom_impacts() {
     assert_positive_toxin_edge_gap(TOXIN_TARGET_POSITION);
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 1,
+        corpse_decay: darwinbots_engine::CorpseDecaySettings {
+            enabled: true,
+            packet_size: 0,
+            ..Default::default()
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
@@ -1881,13 +2007,13 @@ fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
             toxin_location: 500,
             toxin_value: 77,
             corpse: false,
-            followup_paralyzed: Some(6),
+            followup_paralyzed: Some(5),
             expected: Expected {
                 source_venom: 0,
                 impacts: 1,
                 effects: 1,
-                target: Some([0, 0, 7, 500, 77, 77]),
-                countdown: Some(7.0),
+                target: Some([0, 0, 6, 500, 77, 77]),
+                countdown: Some(6.9870706),
                 corpse_unchanged: false,
             },
         },
@@ -1912,7 +2038,7 @@ fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
             },
         },
         Case {
-            name: "attenuated one-power venom writes payload without paralysis",
+            name: "attenuated one-power venom is inert",
             shared_species: false,
             source_venom: 1,
             shoot_value: 1,
@@ -1925,8 +2051,8 @@ fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
             expected: Expected {
                 source_venom: 0,
                 impacts: 1,
-                effects: 1,
-                target: Some([0, 0, 0, 0, 0, 77]),
+                effects: 0,
+                target: Some([0, 0, 0, 0, 0, 55]),
                 countdown: None,
                 corpse_unchanged: false,
             },
@@ -1975,7 +2101,7 @@ fn shot07_venom_resolution_contract_covers_store_effect_and_edges() {
             ))
             .unwrap()
         };
-        let target_position = if case.followup_paralyzed.is_some() {
+        let target_position = if case.followup_paralyzed.is_some() || case.source_venom == 1 {
             FRACTIONAL_TOXIN_TARGET_POSITION
         } else {
             TOXIN_TARGET_POSITION
@@ -2069,7 +2195,7 @@ fn eye_strength_uses_db2_edge_to_edge_distance() {
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 850.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [850.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();

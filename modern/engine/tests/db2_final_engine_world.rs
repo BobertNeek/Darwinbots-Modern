@@ -151,10 +151,13 @@ fn phy_08_resolves_every_cluster_pair_and_substitutes_fixed_body_mass() {
     assert_eq!(fixed.memory_at(fixed_id, 216).unwrap(), 1);
     fixed.tick().unwrap();
 
-    assert_eq!(fixed.organism(fixed_id).unwrap().position, [500.0, 500.0]);
+    // Repel3 shifts fixed positions too, and damps/clamps its velocity projections.
+    let fixed_position = fixed.organism(fixed_id).unwrap().position;
+    assert!((fixed_position[0] - 429.95862).abs() < 0.01);
+    assert_eq!(fixed_position[1], 500.0);
     let moving_velocity = fixed.organism(moving_id).unwrap().velocity[0];
     assert!(
-        (moving_velocity - 6.6).abs() < 0.01,
+        (moving_velocity - 0.9339687).abs() < 0.01,
         "fixed-body elasticity used finite mass: {moving_velocity}"
     );
 }

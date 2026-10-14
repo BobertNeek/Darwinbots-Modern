@@ -135,7 +135,8 @@ fn overlapping_organisms_are_separated_without_non_finite_motion() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let dna = LegacyDna::parse("start\nstop").unwrap();
     engine
-        .spawn_batch([(dna.clone(), [500.0, 500.0]), (dna, [500.0, 500.0])])
+        // Repel3 cannot derive a direction from exactly coincident centers.
+        .spawn_batch([(dna.clone(), [500.0, 500.0]), (dna, [501.0, 500.0])])
         .unwrap();
 
     engine.tick().unwrap();

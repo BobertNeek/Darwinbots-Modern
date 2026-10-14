@@ -449,7 +449,11 @@ mod tests {
         world.tick().unwrap();
         let dead = world.slots.get(id).unwrap().kinematics.position;
         let living = world.slots.get(living).unwrap().kinematics.position;
-        assert!((dead[0] - living[0]).hypot(dead[1] - living[1]) >= 119.99);
+        let distance = (dead[0] - living[0]).hypot(dead[1] - living[1]);
+        assert!(
+            distance > 50.0 && distance < 120.0,
+            "Repel3 separates moving robots gradually: {distance}"
+        );
         assert_eq!(world.stats.deaths, 1);
     }
 
