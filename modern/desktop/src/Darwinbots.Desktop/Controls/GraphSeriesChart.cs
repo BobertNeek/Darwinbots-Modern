@@ -7,9 +7,14 @@ namespace Darwinbots.Desktop.Controls;
 
 public sealed class GraphSeriesChart : Control
 {
-    private GraphSeriesViewModel? _series;
+    private IReadOnlyList<GraphSeriesViewModel> _series = [];
 
     public void SetSeries(GraphSeriesViewModel? series)
+    {
+        SetSeries(series is null ? [] : new[] { series });
+    }
+
+    public void SetSeries(IReadOnlyList<GraphSeriesViewModel> series)
     {
         _series = series;
         InvalidateVisual();
@@ -26,29 +31,36 @@ public sealed class GraphSeriesChart : Control
             context.DrawLine(gridPen, new Point(0, y), new Point(area.Width, y));
         }
 
-        if (_series is null || _series.Samples.Count < 2)
+        var series = _series.Where(value => value.Samples.Count >= 2).ToArray();
+        if (series.Length == 0)
         {
             DrawLabel(context, "OPEN A GRAPH TO COLLECT SAMPLES", area);
             return;
         }
-
-        var values = _series.Samples.Select(value => value.Value).ToArray();
-        var minimum = values.Min();
-        var maximum = values.Max();
+        var values = series.SelectMany(value => value.Samples).Where(value => double.IsFinite(value.Value)).ToArray();
+        if (values.Length == 0) return;
+        var minimum = Math.Min(0, values.Min(value => value.Value));
+        var maximum = values.Max(value => value.Value);
         if (maximum <= minimum) maximum = minimum + 1;
-        var pen = new Pen(new SolidColorBrush(Color.Parse("#2D826F")), 2.2);
-        Point PointAt(int index) => new(
-            index * area.Width / Math.Max(1, values.Length - 1),
-            area.Height - ((values[index] - minimum) / (maximum - minimum) * Math.Max(1, area.Height - 8)) - 4);
-        var previous = PointAt(0);
-        for (var index = 1; index < values.Length; index++)
+        var firstTick = values.Min(value => value.Tick);
+        var lastTick = values.Max(value => value.Tick);
+        foreach (var graph in series)
         {
-            var current = PointAt(index);
-            context.DrawLine(pen, previous, current);
-            previous = current;
+            var pen = new Pen(new SolidColorBrush(Color.FromUInt32(graph.Color)), 2.2);
+            Point PointAt(GraphSample sample) => new(
+                ((double)sample.Tick - firstTick) * area.Width / Math.Max(1, (double)lastTick - firstTick),
+                area.Height - ((sample.Value - minimum) / (maximum - minimum) * Math.Max(1, area.Height - 24)) - 4);
+            Point? previous = null;
+            foreach (var sample in graph.Samples)
+            {
+                if (!double.IsFinite(sample.Value)) { previous = null; continue; }
+                var current = PointAt(sample);
+                if (previous is { } point) context.DrawLine(pen, point, current);
+                previous = current;
+            }
         }
-
-        DrawLabel(context, $"{_series.Title} · {_series.CurrentValueText}", area, top: true);
+        DrawLabel(context, string.Join(" · ", series.Select(graph =>
+            $"{graph.SpeciesName ?? graph.Title}: {graph.CurrentValueText}")), area, top: true);
     }
 
     private static void DrawLabel(DrawingContext context, string text, Rect area, bool top = false)

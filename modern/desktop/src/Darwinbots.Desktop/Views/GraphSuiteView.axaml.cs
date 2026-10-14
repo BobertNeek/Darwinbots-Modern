@@ -130,6 +130,7 @@ public sealed partial class GraphSuiteView : UserControl
 
     private void RefreshChart()
     {
-        SeriesChart.SetSeries(_displayedSeries ?? _viewModel.RunningGraphs.LastOrDefault());
+        var selected = _displayedSeries ?? _viewModel.RunningGraphs.LastOrDefault();
+        SeriesChart.SetSeries(selected is null ? [] : _viewModel.RunningGraphs.Where(graph => graph.Metric == selected.Metric).ToArray());
     }
 }

@@ -6,18 +6,20 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class GraphSeriesWindow : Window
 {
     private readonly GraphSeriesViewModel _graph;
+    private readonly IReadOnlyList<GraphSeriesViewModel> _series;
 
     public GraphSeriesWindow() : this(new GraphSeriesViewModel("empty", GraphMetric.Population, "Population", []))
     {
     }
 
-    public GraphSeriesWindow(GraphSeriesViewModel graph)
+    public GraphSeriesWindow(GraphSeriesViewModel graph, IReadOnlyList<GraphSeriesViewModel>? series = null)
     {
         _graph = graph ?? throw new ArgumentNullException(nameof(graph));
+        _series = series ?? new[] { graph };
         InitializeComponent();
-        _graph.PropertyChanged += Graph_PropertyChanged;
+        foreach (var item in _series) item.PropertyChanged += Graph_PropertyChanged;
         Refresh();
-        Closed += (_, _) => _graph.PropertyChanged -= Graph_PropertyChanged;
+        Closed += (_, _) => { foreach (var item in _series) item.PropertyChanged -= Graph_PropertyChanged; };
     }
 
     private void Graph_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => Refresh();
@@ -26,6 +28,6 @@ public sealed partial class GraphSeriesWindow : Window
     {
         TitleText.Text = _graph.Title.ToUpperInvariant();
         ValueText.Text = _graph.CurrentValueText;
-        SeriesChart.SetSeries(_graph);
+        SeriesChart.SetSeries(_series);
     }
 }

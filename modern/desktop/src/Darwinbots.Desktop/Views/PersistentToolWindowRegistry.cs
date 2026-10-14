@@ -19,6 +19,12 @@ public sealed class PersistentToolWindowRegistry
     }
 
     public int Count => _windows.Count;
+    public GraphSamplingSettings GraphSampling => _windows.Values.OfType<GraphSuiteWindow>()
+        .Select(window => window.SamplingSettings)
+        .Aggregate(new GraphSamplingSettings(), (combined, settings) => new(
+            combined.Selective || settings.Selective,
+            combined.Generational || settings.Generational,
+            combined.Slow || settings.Slow));
 
     public T ShowOrActivate<T>(string key, Func<T> factory)
         where T : Window

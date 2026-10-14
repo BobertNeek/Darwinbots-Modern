@@ -28,6 +28,8 @@ impl Engine {
         robot.refresh_occurrence_census();
         let metadata = &mut robot.program.mutation_metadata;
         metadata.total_mutations = metadata.total_mutations.saturating_add(1);
+        metadata.native_last_mutations =
+            metadata.native_last_mutations.saturating_add(1).min(32_000);
         metadata.last_mutation_cycle = Some(self.tick);
         metadata.detailed_log.insert(
             0,

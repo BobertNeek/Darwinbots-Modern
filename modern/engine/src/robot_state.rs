@@ -142,6 +142,9 @@ pub struct RobotCounters {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RobotMutationMetadata {
     pub total_mutations: u64,
+    /// Native LastMut counts mutations since birth; it is not a cycle number.
+    #[serde(default)]
+    pub native_last_mutations: u64,
     pub last_mutation_cycle: Option<u64>,
     pub detailed_log: Vec<String>,
     pub subspecies: i32,
@@ -168,6 +171,8 @@ pub struct RobotProgramState {
     #[serde(default)]
     pub point2_mutation_schedule: Option<PointMutationSchedule>,
     pub mutation_metadata: RobotMutationMetadata,
+    #[serde(default)]
+    pub genetic_graph: Option<crate::GeneticGraphState>,
     pub fractional_cost_remainder: f64,
     pub debug_text: String,
     pub current_gene: u32,
@@ -183,6 +188,7 @@ pub struct RobotProgramState {
 
 impl RobotProgramState {
     fn new(dna: LegacyDna, memory: VmMemory, rng_state: u64) -> Self {
+        let genetic_graph = Some(crate::GeneticGraphState::for_dna(&dna));
         Self {
             dna,
             memory,
@@ -194,6 +200,7 @@ impl RobotProgramState {
             point_mutation_schedule: None,
             point2_mutation_schedule: None,
             mutation_metadata: RobotMutationMetadata::default(),
+            genetic_graph,
             fractional_cost_remainder: 0.0,
             debug_text: String::new(),
             current_gene: 0,

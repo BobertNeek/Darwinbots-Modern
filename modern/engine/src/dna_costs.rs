@@ -39,6 +39,8 @@ pub struct DnaCosts {
     pub dynamic_allow_negative: bool,
     pub dynamic_target_population: usize,
     pub dynamic_population_range: usize,
+    pub dynamic_lower_range_percent: f64,
+    pub dynamic_upper_range_percent: f64,
     pub dynamic_sensitivity: f64,
 }
 
@@ -81,6 +83,8 @@ impl Default for DnaCosts {
             dynamic_allow_negative: false,
             dynamic_target_population: 0,
             dynamic_population_range: 0,
+            dynamic_lower_range_percent: 0.0,
+            dynamic_upper_range_percent: 0.0,
             dynamic_sensitivity: 1.0,
         }
     }

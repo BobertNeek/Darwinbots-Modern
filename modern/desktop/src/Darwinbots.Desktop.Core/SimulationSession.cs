@@ -273,6 +273,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetOrganismAimAsync(uint slot, uint generation, int aim, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetOrganismAim(slot, generation, aim), cancellationToken);
 
+    public Task ConfigureGraphSamplingAsync(GraphSamplingSettings settings, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.ConfigureGraphSampling(settings), cancellationToken);
+
     public Task UpdateEnvironmentAsync(EnvironmentUpdate update, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateEnvironment(update), cancellationToken);
 

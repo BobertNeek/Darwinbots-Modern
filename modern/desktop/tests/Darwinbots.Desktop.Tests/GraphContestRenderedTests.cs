@@ -18,6 +18,55 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class GraphContestRenderedTests
 {
     [Fact]
+    public async Task SpeciesGraphWindowRendersDistinctNativeColorsAndClosingStopsQueries()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var snapshot = EngineSnapshot.Empty with { History = [
+                new HistorySampleSnapshot(100, 5, 0, 0, 0, 0, 0) { SpeciesGraphs = [
+                    new("Alga.txt", 0xff00a040, new Dictionary<string, double> { ["population"] = 2 }),
+                    new("Animal.txt", 0xffd03020, new Dictionary<string, double> { ["population"] = 3 }),
+                ] },
+                new HistorySampleSnapshot(200, 5, 0, 0, 0, 0, 0) { SpeciesGraphs = [
+                    new("Alga.txt", 0xff00a040, new Dictionary<string, double> { ["population"] = 4 }),
+                    new("Animal.txt", 0xffd03020, new Dictionary<string, double> { ["population"] = 1 }),
+                ] },
+            ] };
+            var suite = new GraphSuiteWindow(snapshot);
+            try
+            {
+                suite.Show();
+                var settings = new List<GraphSamplingSettings>();
+                suite.SamplingChanged += settings.Add;
+                suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+                var view = suite.FindControl<GraphSuiteView>("GraphView")!;
+                var button = view.FindControl<Button>("OpenGraphButton")!;
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var graphWindow = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                using var frame = graphWindow.CaptureRenderedFrame();
+                Assert.NotNull(frame);
+                var area = new PixelRect(0, 0, frame.PixelSize.Width, frame.PixelSize.Height);
+                Assert.True(ReadColour(frame, area, 0, 160, 64).Count > 20, "Alga trace did not render in its native species color.");
+                Assert.True(ReadColour(frame, area, 208, 48, 32).Count > 20, "Animal trace did not render in its native species color.");
+                var directory = Environment.GetEnvironmentVariable("DARWINBOTS_GUI_AUDIT_DIR") ?? Path.GetTempPath();
+                Directory.CreateDirectory(directory);
+                using (var stream = File.Create(Path.Combine(directory, "native-species-graph.png")))
+                    frame.Save(stream, new PngBitmapEncoderOptions());
+                graphWindow.Close();
+                Assert.Empty(suite.ViewModel.RunningGraphs);
+                suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.SlowGeneticDistance);
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(new GraphSamplingSettings(Slow: true), Assert.Single(settings));
+                Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>()).Close();
+                Assert.Equal(new GraphSamplingSettings(), settings[^1]);
+            }
+            finally { suite.Close(); }
+            await Task.CompletedTask;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task MainWindowRoutesToRustBackedGraphAndContestResultsWithOnlineCommandsDisabled()
     {
         var dna = new[] { "start\nstop", "start\n1\nstop", "start\n2\nstop", "start\n3\nstop", "start\n4\nstop" };
@@ -145,7 +194,11 @@ public sealed class GraphContestRenderedTests
                 Assert.Contains("Population", export, StringComparison.Ordinal);
                 Assert.Contains("Average DNA length", export, StringComparison.Ordinal);
 
-                foreach (var graph in graphWindow.ViewModel.RunningGraphs) graph.IsSelected = true;
+                Assert.Equal(5, graphWindow.ViewModel.RunningGraphs.Count(graph => graph.Metric == GraphMetric.Population));
+                Assert.All(graphWindow.ViewModel.RunningGraphs, graph => Assert.False(string.IsNullOrWhiteSpace(graph.SpeciesName)));
+                var comparisonSpecies = graphWindow.ViewModel.RunningGraphs[0].SpeciesName;
+                foreach (var graph in graphWindow.ViewModel.RunningGraphs)
+                    graph.IsSelected = graph.SpeciesName == comparisonSpecies;
                 graphView.FindControl<Button>("JoinCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.Contains("JOINED", graphWindow.ViewModel.Status, StringComparison.Ordinal);
 

@@ -44,7 +44,7 @@ public sealed class LegacySettingsNativeTests
         });
         var before = engine.Save();
         var configuration = engine.ReadConfiguration();
-        Assert.Equal(costs, configuration.Costs);
+        Assert.Equal(costs with { DynamicUpperRangePercent = 10, DynamicLowerRangePercent = 0 }, configuration.Costs);
         Assert.Equal(advanced, configuration.AdvancedMutation);
         Assert.Equal(12345, configuration.BodyCutoff);
         Assert.True(configuration.GreedyReproduction);

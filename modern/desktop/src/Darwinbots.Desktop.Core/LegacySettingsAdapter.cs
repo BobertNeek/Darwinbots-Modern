@@ -111,7 +111,7 @@ internal static class LegacySettingsAdapter
             (23,cost.ShotFormation), (24,cost.DnaUpkeep), (25,cost.DnaCopy), (26,cost.Venom), (27,cost.Poison),
             (28,cost.Slime), (29,cost.Shell), (30,cost.BodyUpkeep), (31,cost.AgeBase), (32,cost.AgeStart), (33,cost.AgeLinear),
             (51,cost.AgeLogarithmic), (52,cost.DynamicLowerZeroThreshold), (53,cost.DynamicTargetPopulation), (54,cost.GlobalMultiplier), (55,cost.DynamicSensitivity),
-            (57,cost.DynamicPopulationRange), (58,cost.DynamicUpperZeroThreshold),
+            (57,cost.DynamicUpperRangePercent ?? cost.DynamicPopulationRange), (58,cost.DynamicLowerRangePercent ?? cost.DynamicUpperZeroThreshold),
             (59,cost.DynamicLowerReinstateThreshold), (60,cost.DynamicUpperReinstateThreshold) };
         foreach (var (index, value) in indexedCosts) Number(costs + index, value);
         Flag(costs + 56, cost.DynamicMultiplier != 0); Flag(costs + 61, cost.DynamicAllRobots); Flag(costs + 62, cost.DynamicAllowNegative);
@@ -257,6 +257,7 @@ internal static class LegacySettingsAdapter
             DynamicMultiplier = Flag(costs + 56) ? 1 : 0, DynamicPopulationRange = Integer(costs + 57),
             DynamicAllRobots = Flag(costs + 61, true), DynamicAllowNegative = Flag(costs + 62),
             DynamicLowerZeroThreshold = Cost(52), DynamicUpperZeroThreshold = Cost(58),
+            DynamicUpperRangePercent = Cost(57), DynamicLowerRangePercent = Cost(58),
             DynamicLowerReinstateThreshold = Cost(59), DynamicUpperReinstateThreshold = Cost(60),
         };
         var vegetation = Db2VegetationOptions.Default with

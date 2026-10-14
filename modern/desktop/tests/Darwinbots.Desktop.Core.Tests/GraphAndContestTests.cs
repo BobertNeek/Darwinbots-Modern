@@ -5,6 +5,85 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class GraphAndContestTests
 {
+    [Theory]
+    [InlineData("pop 2 mult avgmut add", 13)]
+    [InlineData("pop 0 div", 0)]
+    [InlineData("pop 100 sub", 0)]
+    [InlineData("2 20 pow", 1024)]
+    [InlineData("2000000000 2 mult", 2000000000)]
+    public void NativeCustomGraphQueriesUseTheOriginalStackOperators(string expression, double expected)
+    {
+        var sample = new GraphMetricSample(1, new Dictionary<GraphMetric, double>
+        {
+            [GraphMetric.Population] = 5, [GraphMetric.AverageMutations] = 3,
+        });
+        var projected = GraphMetricSampleProjector.Project([sample], GraphMetric.CustomizableGraph1,
+            new CustomMetricSlotViewModel(1, "Native query", expression));
+        Assert.Equal(expected, projected[0].Value);
+    }
+
+    [Fact]
+    public void GraphOpenedBeforeFirstHistorySampleKeepsItsSpeciesUntilNativeSamplesArrive()
+    {
+        var suite = new GraphSuiteViewModel();
+        suite.Update(EngineSnapshot.Empty with
+        {
+            Species = [new SpeciesSnapshot("First.txt", false, 0xff123456, 0, false)],
+            Organisms = [new OrganismSnapshot(0, 0, [500, 500], [0, 0], 1000, 0)],
+        });
+        suite.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+        var graph = suite.OpenSelectedGraph()!;
+        Assert.Equal("First.txt", graph.SpeciesName);
+        Assert.Empty(graph.Samples);
+        suite.Update(EngineSnapshot.Empty with { History = [new HistorySampleSnapshot(200, 3, 0, 0, 0, 0, 0)
+        {
+            SpeciesGraphs = [new("First.txt", 0xff123456, new Dictionary<string, double> { ["population"] = 3 })],
+        }] });
+        Assert.Equal(3, graph.CurrentValue);
+    }
+
+    [Fact]
+    public void NativeSpeciesGraphsKeepSeparateSeriesAndRefreshEachSpeciesValue()
+    {
+        var history = new HistorySampleSnapshot(100, 5, 12345, 0, 0, 0, 0)
+        {
+            SpeciesGraphs = [
+                new("Alga.txt", 0xff00ff00, new Dictionary<string, double> { ["population"] = 3 }),
+                new("Animal.txt", 0xffff0000, new Dictionary<string, double> { ["population"] = 2 }),
+            ],
+        };
+        var suite = new GraphSuiteViewModel();
+        suite.Update(EngineSnapshot.Empty with { History = [history] });
+        suite.SelectedChoice = GraphCatalog.For(GraphMetric.Population);
+        suite.OpenSelectedGraph();
+        Assert.Equal(2, suite.RunningGraphs.Count);
+        Assert.Equal([3d, 2d], suite.RunningGraphs.Select(graph => graph.CurrentValue));
+        Assert.Equal(["Alga.txt", "Animal.txt"], suite.RunningGraphs.Select(graph => graph.SpeciesName));
+        suite.Update(EngineSnapshot.Empty with { History = [history, history with { Tick = 200, SpeciesGraphs = [
+            new("Alga.txt", 0xff00ff00, new Dictionary<string, double> { ["population"] = 4 }),
+            new("Animal.txt", 0xffff0000, new Dictionary<string, double> { ["population"] = 1 }),
+        ] }] });
+        Assert.Equal([4d, 1d], suite.RunningGraphs.Select(graph => graph.CurrentValue));
+        Assert.Contains("Alga.txt", suite.ExportCsv());
+    }
+
+    [Fact]
+    public void DynamicCostGraphShowsAllSixNativeSeriesWithoutUsingTheDnaFeeProxy()
+    {
+        var suite = new GraphSuiteViewModel();
+        suite.Update(EngineSnapshot.Empty with { History = [new HistorySampleSnapshot(100, 5, 0, 0, 0, 0, 0)
+        {
+            DynamicCostStats = 999,
+            DynamicCostSeries = [0.5, 1.2, 1.1, 0.9, 0.2, 0.4],
+        }] });
+        suite.SelectedChoice = GraphCatalog.For(GraphMetric.DynamicCostStats);
+        suite.OpenSelectedGraph();
+        Assert.Equal(6, suite.RunningGraphs.Count);
+        Assert.Equal([0.5, 1.2, 1.1, 0.9, 0.2, 0.4], suite.RunningGraphs.Select(graph => graph.CurrentValue));
+        Assert.Equal("Cost Multiplier", suite.RunningGraphs[0].Title);
+        Assert.Equal("Reinstatement Level", suite.RunningGraphs[5].Title);
+    }
+
     [Fact]
     public void GraphCatalogAndCustomMetricWorkflowPreserveHistoricalChoices()
     {

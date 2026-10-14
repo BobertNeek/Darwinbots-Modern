@@ -103,6 +103,8 @@ public sealed record GlobalSimulationCostSettings
     public bool DynamicAllRobots { get; init; } = true;
     public int DynamicTargetPopulation { get; init; }
     public int DynamicPopulationRange { get; init; }
+    public double? DynamicUpperRangePercent { get; init; }
+    public double? DynamicLowerRangePercent { get; init; }
     public double DynamicSensitivity { get; init; } = 1.0;
     public bool DynamicAllowNegative { get; init; }
     public double DynamicLowerZeroThreshold { get; init; }

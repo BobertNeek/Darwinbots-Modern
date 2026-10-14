@@ -1844,7 +1844,9 @@ public sealed partial class MainWindow : Window
 
     private async Task SynchronizeLoadedWorldAsync()
     {
-        if (_session is null || await _session.ReadConfigurationAsync() is not { } configuration) return;
+        if (_session is null) return;
+        await _session.ConfigureGraphSamplingAsync(_toolWindows.GraphSampling);
+        if (await _session.ReadConfigurationAsync() is not { } configuration) return;
         var controlsReady = _controlsReady;
         _controlsReady = false;
         try
@@ -2547,7 +2549,19 @@ public sealed partial class MainWindow : Window
     {
         _toolWindows.ShowOrActivate(
             "graph-suite",
-            () => new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty));
+            () =>
+            {
+                var window = new GraphSuiteWindow(_session?.LatestSnapshot ?? EngineSnapshot.Empty);
+                window.SamplingChanged += ConfigureGraphSampling;
+                return window;
+            });
+    }
+
+    private async void ConfigureGraphSampling(GraphSamplingSettings settings)
+    {
+        if (_session is null) return;
+        try { await _session.ConfigureGraphSamplingAsync(settings); }
+        catch (Exception error) { _viewModel.Status = $"GRAPH ERROR · {error.Message}"; }
     }
 
     private void ContestResults_Click(object? sender, RoutedEventArgs e)

@@ -197,6 +197,9 @@ public static class NativeSnapshotParser
             SelectiveGeneticDistance = value.SelectiveGeneticDistance,
             GenerationalDistance = value.GenerationalDistance,
             SlowGeneticDistance = value.SlowGeneticDistance,
+            SpeciesGraphs = (value.SpeciesGraphs ?? []).Select(species => new SpeciesGraphSampleSnapshot(
+                species.Name, species.Color, species.Values)).ToArray(),
+            DynamicCostSeries = value.DynamicCostSeries ?? [],
         }).ToArray();
         var ties = (native.Ties ?? []).Select(value => new TieSnapshot(
             new OrganismKey(value.First.Slot, value.First.Generation),
@@ -583,7 +586,14 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("average_chloroplasts")] double AverageChloroplasts,
         [property: JsonPropertyName("selective_genetic_distance")] double SelectiveGeneticDistance,
         [property: JsonPropertyName("generational_distance")] double GenerationalDistance,
-        [property: JsonPropertyName("slow_genetic_distance")] double SlowGeneticDistance);
+        [property: JsonPropertyName("slow_genetic_distance")] double SlowGeneticDistance,
+        [property: JsonPropertyName("species_graphs")] NativeSpeciesGraphSample[]? SpeciesGraphs,
+        [property: JsonPropertyName("dynamic_cost_series")] double[]? DynamicCostSeries);
+
+    private sealed record NativeSpeciesGraphSample(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("color")] uint Color,
+        [property: JsonPropertyName("values")] Dictionary<string, double> Values);
 
     private sealed record NativeTie(
         [property: JsonPropertyName("first")] NativeId First,

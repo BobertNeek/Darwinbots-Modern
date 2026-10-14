@@ -502,6 +502,8 @@ public static class NativeCommandSerializer
         dynamic_all_robots = value.DynamicAllRobots,
         dynamic_target_population = value.DynamicTargetPopulation,
         dynamic_population_range = value.DynamicPopulationRange,
+        dynamic_upper_range_percent = value.DynamicUpperRangePercent ?? value.DynamicPopulationRange,
+        dynamic_lower_range_percent = value.DynamicLowerRangePercent ?? value.DynamicUpperZeroThreshold,
         dynamic_sensitivity = value.DynamicSensitivity,
         dynamic_allow_negative = value.DynamicAllowNegative,
         dynamic_lower_zero_threshold = value.DynamicLowerZeroThreshold,

@@ -75,7 +75,9 @@ public static class GraphCatalog
 
 public sealed record GraphMetricSample(
     ulong Tick,
-    IReadOnlyDictionary<GraphMetric, double> Values);
+    IReadOnlyDictionary<GraphMetric, double> Values,
+    IReadOnlyList<SpeciesGraphSampleSnapshot>? SpeciesGraphs = null,
+    IReadOnlyList<double>? DynamicCostSeries = null);
 
 public sealed record GraphSample(ulong Tick, double Value);
 
@@ -131,7 +133,9 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
         string title,
         IReadOnlyList<GraphSample> samples,
         string? customExpression = null,
-        uint color = 0xff62a844u)
+        uint color = 0xff62a844u,
+        string? speciesName = null,
+        int? dynamicCostIndex = null)
     {
         Id = id;
         Metric = metric;
@@ -139,11 +143,15 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
         _customExpression = customExpression;
         _samples = samples;
         Color = color;
+        SpeciesName = speciesName;
+        DynamicCostIndex = dynamicCostIndex;
     }
 
     public string Id { get; }
     public GraphMetric Metric { get; }
     public uint Color { get; }
+    public string? SpeciesName { get; }
+    public int? DynamicCostIndex { get; }
     public string Title { get => _title; private set => Set(ref _title, value); }
     public string? CustomExpression { get => _customExpression; private set => Set(ref _customExpression, value); }
     public IReadOnlyList<GraphSample> Samples { get => _samples; private set => Set(ref _samples, value); }
@@ -179,6 +187,7 @@ public sealed class GraphSeriesViewModel : INotifyPropertyChanged
 public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 {
     private IReadOnlyList<GraphMetricSample> _samples;
+    private IReadOnlyList<SpeciesGraphSampleSnapshot> _currentSpecies = [];
     private GraphChoice _selectedChoice = GraphCatalog.Metrics[0];
     private string _status = "SELECT A GRAPH";
     private string _comparisonText = "NO COMPARISON";
@@ -215,6 +224,10 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         _samples = GraphMetricSampleProjector.FromSnapshot(snapshot);
+        _currentSpecies = snapshot.Species.Select((species, index) => (species, index))
+            .Where(value => snapshot.Organisms.Any(robot => robot.Species == value.index))
+            .Select(value => new SpeciesGraphSampleSnapshot(value.species.Name, value.species.Color, new Dictionary<string, double>()))
+            .ToArray();
         foreach (var graph in RunningGraphs)
             graph.Update(ProjectGraph(graph));
     }
@@ -250,13 +263,30 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
 
         var custom = CustomMetric(metric);
         var title = custom?.Name ?? SelectedChoice.Label;
-        var graph = new GraphSeriesViewModel(
-            $"graph-{RunningGraphs.Count + 1}",
-            metric,
-            title,
-            ProjectGraph(metric, custom),
-            custom?.Expression);
-        RunningGraphs.Add(graph);
+        var graphs = new List<GraphSeriesViewModel>();
+        var latest = _samples.LastOrDefault();
+        var speciesGraphs = latest?.SpeciesGraphs?.Count > 0 ? latest.SpeciesGraphs : _currentSpecies;
+        if (metric == GraphMetric.DynamicCostStats && latest?.DynamicCostSeries?.Count == 6)
+        {
+            string[] labels = ["Cost Multiplier", "Population / Target", "Upper Range", "Lower Range", "Zero Level", "Reinstatement Level"];
+            uint[] colors = [0xff2d826f, 0xffd88724, 0xff4169aa, 0xffa64d79, 0xff888536, 0xff7956b5];
+            for (var index = 0; index < labels.Length; index++)
+                graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + graphs.Count + 1}", metric, labels[index], [], color: colors[index], dynamicCostIndex: index));
+        }
+        else if (metric != GraphMetric.DynamicCostStats && speciesGraphs.Count > 0)
+        {
+            foreach (var species in speciesGraphs)
+                graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + graphs.Count + 1}", metric,
+                    $"{title} · {species.Name}", [], custom?.Expression, species.Color, species.Name));
+        }
+        else
+            graphs.Add(new GraphSeriesViewModel($"graph-{RunningGraphs.Count + 1}", metric, title, [], custom?.Expression));
+        foreach (var opened in graphs)
+        {
+            opened.Update(ProjectGraph(opened));
+            RunningGraphs.Add(opened);
+        }
+        var graph = graphs[0];
         Status = $"RUNNING · {title.ToUpperInvariant()}";
         return graph;
     }
@@ -334,14 +364,14 @@ public sealed class GraphSuiteViewModel : INotifyPropertyChanged
     };
 
     private IReadOnlyList<GraphSample> ProjectGraph(GraphSeriesViewModel graph) =>
-        ProjectGraph(graph.Metric, CustomMetric(graph.Metric));
+        ProjectGraph(graph.Metric, CustomMetric(graph.Metric), graph.SpeciesName, graph.DynamicCostIndex);
 
-    private IReadOnlyList<GraphSample> ProjectGraph(GraphMetric metric, CustomMetricSlotViewModel? custom)
+    private IReadOnlyList<GraphSample> ProjectGraph(GraphMetric metric, CustomMetricSlotViewModel? custom, string? speciesName = null, int? dynamicCostIndex = null)
     {
         var samples = _historyCutoffTick is { } cutoff
             ? _samples.Where(sample => sample.Tick > cutoff).ToArray()
             : _samples;
-        return GraphMetricSampleProjector.Project(samples, metric, custom);
+        return GraphMetricSampleProjector.Project(samples, metric, custom, speciesName, dynamicCostIndex);
     }
 
     private void CustomMetric_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -390,20 +420,54 @@ public static class GraphMetricSampleProjector
             [GraphMetric.CustomizableGraph1] = sample.AverageEnergy,
             [GraphMetric.CustomizableGraph2] = sample.TotalEnergy,
             [GraphMetric.CustomizableGraph3] = sample.AverageChloroplasts,
-        })).ToArray();
+        }, sample.SpeciesGraphs, sample.DynamicCostSeries)).ToArray();
     }
 
     public static IReadOnlyList<GraphSample> Project(
         IReadOnlyList<GraphMetricSample> samples,
         GraphMetric metric,
-        CustomMetricSlotViewModel? custom)
+        CustomMetricSlotViewModel? custom,
+        string? speciesName = null,
+        int? dynamicCostIndex = null)
     {
-        return samples.Select(sample => new GraphSample(
+        return samples.Where(sample => speciesName is null || sample.SpeciesGraphs?.Count > 0).Select(sample =>
+        {
+            if (dynamicCostIndex is { } index)
+                return new GraphSample(sample.Tick, sample.DynamicCostSeries?.ElementAtOrDefault(index) ?? 0);
+            if (speciesName is not null)
+            {
+                var species = sample.SpeciesGraphs?.FirstOrDefault(value => value.Name == speciesName);
+                sample = sample with { Values = SpeciesValues(species) };
+            }
+            return new GraphSample(
             sample.Tick,
             custom is null
                 ? sample.Values.GetValueOrDefault(metric)
-                : GraphExpressionEvaluator.Evaluate(custom.Expression, sample))).ToArray();
+                : GraphExpressionEvaluator.Evaluate(custom.Expression, sample));
+        }).ToArray();
     }
+    private static IReadOnlyDictionary<GraphMetric, double> SpeciesValues(SpeciesGraphSampleSnapshot? species)
+    {
+        var names = new Dictionary<GraphMetric, string>
+        {
+            [GraphMetric.Population] = "population",
+            [GraphMetric.AverageMutations] = "average_mutations",
+            [GraphMetric.AverageMutationsPerDnaLength] = "average_mutations_per_dna_length",
+            [GraphMetric.AverageAge] = "average_age",
+            [GraphMetric.AverageDescendents] = "average_descendents",
+            [GraphMetric.AverageEnergy] = "average_energy",
+            [GraphMetric.AverageDnaLength] = "average_dna_length",
+            [GraphMetric.AverageDnaConditions] = "average_dna_conditions",
+            [GraphMetric.TotalEnergy] = "total_energy",
+            [GraphMetric.SpeciesDiversity] = "species_diversity",
+            [GraphMetric.AverageChloroplasts] = "average_chloroplasts",
+            [GraphMetric.SelectiveGeneticDistance] = "selective_genetic_distance",
+            [GraphMetric.GenerationalDistance] = "generational_distance",
+            [GraphMetric.SlowGeneticDistance] = "slow_genetic_distance",
+        };
+        return names.ToDictionary(value => value.Key, value => species?.Values.GetValueOrDefault(value.Value) ?? 0);
+    }
+
 }
 
 public static class GraphExport
@@ -440,6 +504,9 @@ internal static class GraphExpressionEvaluator
     {
         try
         {
+            var tokens = expression.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Any(token => NativeNames.ContainsKey(token) || token is "add" or "sub" or "mult" or "div" or "pow"))
+                return EvaluateNativeQuery(tokens, sample);
             var parser = new Parser(expression, sample);
             var value = parser.ParseExpression();
             return parser.AtEnd ? value : 0;
@@ -448,6 +515,59 @@ internal static class GraphExpressionEvaluator
         {
             return 0;
         }
+    }
+
+    private static readonly IReadOnlyDictionary<string, GraphMetric> NativeNames = new Dictionary<string, GraphMetric>
+    {
+        ["pop"] = GraphMetric.Population, ["avgmut"] = GraphMetric.AverageMutations,
+        ["avgage"] = GraphMetric.AverageAge, ["avgsons"] = GraphMetric.AverageDescendents,
+        ["avgnrg"] = GraphMetric.AverageEnergy, ["avglen"] = GraphMetric.AverageDnaLength,
+        ["avgcond"] = GraphMetric.AverageDnaConditions, ["simnrg"] = GraphMetric.TotalEnergy,
+        ["specidiv"] = GraphMetric.SpeciesDiversity, ["maxgd"] = GraphMetric.GenerationalDistance,
+        ["simpgenetic"] = GraphMetric.SelectiveGeneticDistance,
+    };
+
+    private static double EvaluateNativeQuery(string[] tokens, GraphMetricSample sample)
+    {
+        var stack = new List<double>();
+        double Pop()
+        {
+            if (stack.Count == 0) return 0;
+            var value = stack[^1];
+            stack.RemoveAt(stack.Count - 1);
+            return value;
+        }
+        void Push(double value)
+        {
+            if (stack.Count == 101) stack.RemoveAt(0);
+            stack.Add(value);
+        }
+        const double limit = 2_000_000_000;
+        foreach (var token in tokens)
+        {
+            if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) Push(number);
+            else if (NativeNames.TryGetValue(token, out var metric)) Push(sample.Values.GetValueOrDefault(metric));
+            else if (token is "add" or "sub" or "mult" or "div" or "pow")
+            {
+                var right = Pop();
+                var left = Pop();
+                if (token is "add" or "sub")
+                {
+                    if (left > limit) left = Math.Round(left, MidpointRounding.ToEven) % limit;
+                    if (right > limit) right = Math.Round(right, MidpointRounding.ToEven) % limit;
+                    var value = token == "add" ? left + right : left - right;
+                    if (Math.Abs(value) > limit) value -= Math.Sign(value) * limit;
+                    Push(value);
+                }
+                else if (token == "div") Push(right == 0 ? 0 : left / right);
+                else
+                {
+                    var value = token == "mult" ? left * right : left == 0 ? 0 : Math.Pow(left, Math.Clamp(right, -10, 10));
+                    Push(double.IsNaN(value) ? 0 : Math.Clamp(value, -limit, limit));
+                }
+            }
+        }
+        return Math.Max(0, Pop());
     }
 
     private sealed class Parser

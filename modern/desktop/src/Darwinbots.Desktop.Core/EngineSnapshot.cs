@@ -253,7 +253,12 @@ public sealed partial record HistorySampleSnapshot
     public double SelectiveGeneticDistance { get; init; }
     public double GenerationalDistance { get; init; }
     public double SlowGeneticDistance { get; init; }
+    public IReadOnlyList<SpeciesGraphSampleSnapshot> SpeciesGraphs { get; init; } = [];
+    public IReadOnlyList<double> DynamicCostSeries { get; init; } = [];
 }
+public sealed record SpeciesGraphSampleSnapshot(string Name, uint Color, IReadOnlyDictionary<string, double> Values);
+public sealed record GraphSamplingSettings(bool Selective = false, bool Generational = false, bool Slow = false);
+
 public sealed record PhaseTimingsSnapshot(
     double Dna, double Intent, double Spatial, double Sensing, double Interactions,
     double Physics, double Lifecycle, double Mutation, double Snapshot)

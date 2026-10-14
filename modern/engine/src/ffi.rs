@@ -58,6 +58,9 @@ enum EngineCommand {
     ConfigureLocalMode {
         config: crate::LocalModeConfig,
     },
+    ConfigureGraphSampling {
+        settings: crate::GraphSamplingSettings,
+    },
     UpdateCostSettings {
         costs: crate::DnaCosts,
     },
@@ -533,6 +536,10 @@ fn db_engine_command_batch_impl(
             EngineCommand::ConfigureLocalMode { config } => engine
                 .configure_local_mode(config)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::ConfigureGraphSampling { settings } => {
+                engine.configure_graph_sampling(settings);
+                Ok(serde_json::Value::Null)
+            }
             EngineCommand::UpdateCostSettings { costs } => engine
                 .update_cost_settings(costs)
                 .map(|_| serde_json::Value::Null),

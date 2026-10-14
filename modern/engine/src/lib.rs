@@ -50,7 +50,7 @@ pub use environment::{
     FileTeleporter, Obstacle, ShapeShotPolicy, ShapeVisionPolicy, Teleporter, TeleporterFilters,
 };
 pub use error::EngineError;
-pub use history::HistorySample;
+pub use history::{GeneticGraphState, GraphSamplingSettings, HistorySample, SpeciesGraphSample};
 pub use id::OrganismId;
 pub use legacy::{
     LegacyOrganism, LegacyOrganismFile, LegacyOrganismKey, LegacyOrganismMember, LegacyOrganismTie,

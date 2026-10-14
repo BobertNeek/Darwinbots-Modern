@@ -683,6 +683,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { version = 1, commands = new[] { new { type = "set_organism_aim", slot, generation, aim } } },
         "set organism aim");
 
+    public void ConfigureGraphSampling(GraphSamplingSettings settings) => ExecuteBatch(new
+    {
+        version = 1,
+        commands = new[] { new { type = "configure_graph_sampling", settings = new
+        {
+            selective = settings.Selective,
+            generational = settings.Generational,
+            slow = settings.Slow,
+        } } },
+    }, "configure graph sampling");
+
     public void UpdateEnvironment(EnvironmentUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);

@@ -65,6 +65,9 @@ use file_transfer_transaction::FileTransferTransaction;
 #[path = "world/native_corpses.rs"]
 mod native_corpses;
 
+#[path = "world/native_graphs.rs"]
+mod native_graphs;
+
 #[path = "world/native_feeding.rs"]
 mod native_feeding;
 
@@ -1668,6 +1671,8 @@ impl From<Db3sV2HistorySample> for HistorySample {
             selective_genetic_distance: value.selective_genetic_distance,
             generational_distance: value.generational_distance,
             slow_genetic_distance: value.slow_genetic_distance,
+            species_graphs: Vec::new(),
+            dynamic_cost_series: [0.0; 6],
         }
     }
 }
@@ -2143,6 +2148,8 @@ struct EngineCycleCheckpoint {
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
     #[serde(default)]
+    graph_sampling: crate::GraphSamplingSettings,
+    #[serde(default)]
     dynamic_cost_state: DynamicCostRuntimeState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_origin: Option<crate::native_binary::NativeRecordFile>,
@@ -2420,6 +2427,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
         })
     }
@@ -2591,6 +2599,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
         })
     }
@@ -2844,8 +2853,10 @@ impl Engine {
         let new_species = self.register_species(definition);
         let lineage = self.species[new_species.0 as usize].lineage_id;
         let skin = self.species[new_species.0 as usize].skin;
+        let name = self.species[new_species.0 as usize].name.clone();
         let organism = self.slots[id.slot() as usize].organism.as_mut().unwrap();
         organism.identity.species = new_species;
+        organism.identity.species_file = name;
         organism.phenotype = VisualPhenotype::new(lineage, color, skin);
         self.publish_snapshot();
         Ok(new_species)
@@ -4453,6 +4464,12 @@ impl Engine {
             child_organism.counters.offspring = 0;
             child_organism.counters.descendants = 0;
             child_organism.phenotype = first_organism.phenotype;
+            child_organism.program.genetic_graph = first_organism.program.genetic_graph;
+            child_organism.program.mutation_metadata = first_organism.program.mutation_metadata;
+            child_organism
+                .program
+                .mutation_metadata
+                .native_last_mutations = 0;
         }
         if second.is_none() {
             let child_materials = {
@@ -9636,6 +9653,11 @@ impl Engine {
                 child_organism.program.point2_mutation_schedule = None;
                 child_organism.program.mutation_metadata =
                     parent_state.program.mutation_metadata.clone();
+                child_organism
+                    .program
+                    .mutation_metadata
+                    .native_last_mutations = 0;
+                child_organism.program.genetic_graph = parent_state.program.genetic_graph;
                 child_organism.phenotype = parent_state.phenotype.clone();
                 child_organism
                     .program
@@ -10036,6 +10058,19 @@ impl Engine {
             organism.program.rng_state = mutator.random_state();
             organism.refresh_occurrence_census();
             if report.changes > 0 {
+                organism.program.mutation_metadata.native_last_mutations = organism
+                    .program
+                    .mutation_metadata
+                    .native_last_mutations
+                    .saturating_add(report.changes as u64)
+                    .min(32_000);
+                let graph = organism.program.genetic_graph.get_or_insert_with(|| {
+                    crate::GeneticGraphState::for_dna(&organism.program.dna)
+                });
+                // NeoMutations subtracts the cumulative LastMut when a mutation occurred.
+                graph.mutations_remaining = (graph.mutations_remaining
+                    - organism.program.mutation_metadata.native_last_mutations as f32)
+                    .max(0.0);
                 organism.phenotype.apply_color_mutation(
                     report.changes,
                     vegetable,
@@ -10144,40 +10179,15 @@ impl Engine {
         let definition = self.species[new_species.0 as usize].clone();
         if let Ok(organism) = self.slots.get_mut(id) {
             organism.identity.species = new_species;
+            organism.identity.species_file = definition.name.clone();
             organism.phenotype =
                 VisualPhenotype::new(definition.lineage_id, definition.color, definition.skin);
         }
     }
 
-    fn graph_dynamic_cost(dna: &LegacyDna, costs: &DnaCosts) -> f64 {
-        let token_cost = dna
-            .blocks()
-            .iter()
-            .map(|block| match block.class {
-                TokenClass::Number => costs.number,
-                TokenClass::Dereference => costs.dereference,
-                TokenClass::Basic => costs.basic,
-                TokenClass::Advanced => costs.advanced,
-                TokenClass::Bitwise => costs.bitwise,
-                TokenClass::Condition => costs.condition,
-                TokenClass::Logic => costs.logic,
-                TokenClass::Store => costs.store,
-                TokenClass::Flow => costs.flow,
-                TokenClass::Reserved | TokenClass::End => 0.0,
-            })
-            .sum::<f64>();
-        let upkeep = dna.blocks().len().saturating_sub(1) as f64 * costs.dna_upkeep;
-        (token_cost + upkeep) * costs.global_multiplier
-    }
-
-    fn dna_block_distance(left: &LegacyDna, right: &LegacyDna) -> usize {
-        let length = left.blocks().len().max(right.blocks().len());
-        (0..length)
-            .filter(|index| left.blocks().get(*index) != right.blocks().get(*index))
-            .count()
-    }
-
     fn record_history(&mut self) {
+        let species_graphs = self.sample_native_graphs();
+        let dynamic_cost_series = self.native_dynamic_cost_series();
         if self.history.len() == 10_000 {
             self.history.remove(0);
         }
@@ -10233,29 +10243,21 @@ impl Engine {
                 })
                 .sum(),
         );
-        let dynamic_cost_stats = average(
-            organisms
-                .iter()
-                .map(|robot| Self::graph_dynamic_cost(&robot.program.dna, &self.config.dna_costs))
-                .sum(),
-        );
+        let dynamic_cost_stats = dynamic_cost_series[0];
         let species_diversity = organisms
             .iter()
             .map(|robot| robot.identity.species.0)
             .collect::<std::collections::BTreeSet<_>>()
             .len() as f64;
-        let reference_dna = organisms.first().map(|robot| &robot.program.dna);
-        let slow_genetic_distance = match (reference_dna, population) {
-            (Some(reference), count) if count > 1 => {
-                organisms
-                    .iter()
-                    .skip(1)
-                    .map(|robot| Self::dna_block_distance(reference, &robot.program.dna) as f64)
-                    .sum::<f64>()
-                    / (count - 1) as f64
-            }
-            _ => 0.0,
+        let max_metric = |name: &str| {
+            species_graphs
+                .iter()
+                .map(|species| species.values.get(name).copied().unwrap_or(0.0))
+                .fold(0.0_f64, f64::max)
         };
+        let selective_genetic_distance = max_metric("selective_genetic_distance");
+        let generational_distance = max_metric("generational_distance");
+        let slow_genetic_distance = max_metric("slow_genetic_distance");
         self.history.push(HistorySample {
             tick: self.tick,
             population,
@@ -10299,14 +10301,11 @@ impl Engine {
                     .map(|robot| robot.materials.chloroplasts as f64)
                     .sum(),
             ),
-            selective_genetic_distance: average_mutations,
-            generational_distance: average(
-                organisms
-                    .iter()
-                    .map(|robot| f64::from(robot.counters.generation))
-                    .sum(),
-            ),
+            selective_genetic_distance,
+            generational_distance,
             slow_genetic_distance,
+            species_graphs,
+            dynamic_cost_series,
         });
     }
 
@@ -10464,6 +10463,10 @@ impl Engine {
                     .materials
                     .absorb_legacy_fractions(organism.program.fractional_cost_remainder);
                 organism.program.fractional_cost_remainder = 0.0;
+                if organism.program.genetic_graph.is_none() {
+                    organism.program.genetic_graph =
+                        Some(crate::GeneticGraphState::for_dna(&organism.program.dna));
+                }
                 organism.publish_occurrence_readbacks();
                 if organism.phenotype.lineage_id == 0
                     && let Some(species) = engine.species.get(organism.identity.species.0 as usize)
@@ -10990,7 +10993,7 @@ fn snapshot_organism(
         simulation_id: organism.identity.simulation_id,
         unique_id: organism.identity.absolute_id,
         virus_timer: organism.effects.virus_build_timer,
-        new_mutations: organism.program.dna.metadata().mutations,
+        new_mutations: organism.program.mutation_metadata.native_last_mutations,
         total_mutations: organism.program.mutation_metadata.total_mutations,
         last_mutation_cycle: organism.program.mutation_metadata.last_mutation_cycle,
         last_mutation_kind: organism.program.mutation_metadata.last_mutation_kind,

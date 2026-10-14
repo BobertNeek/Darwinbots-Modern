@@ -6,6 +6,21 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class NativeSnapshotParserTests
 {
     [Fact]
+    public void RetainsNativeSpeciesGraphSamplesAndSixCostSeries()
+    {
+        const string json = """
+            { "tick": 100, "organisms": [], "history": [{ "tick": 100, "population": 3,
+              "species_graphs": [{ "name": "Alga.txt", "color": 4278255360,
+                 "values": { "population": 3, "average_age": 2.5, "slow_genetic_distance": 123.5 } }],
+              "dynamic_cost_series": [0.5, 1.2, 1.1, 0.9, 0.2, 0.4] }] }
+            """;
+        var history = NativeSnapshotParser.Parse(json, "CPU").History[0];
+        Assert.Equal("Alga.txt", history.SpeciesGraphs[0].Name);
+        Assert.Equal(123.5, history.SpeciesGraphs[0].Values["slow_genetic_distance"]);
+        Assert.Equal([0.5, 1.2, 1.1, 0.9, 0.2, 0.4], history.DynamicCostSeries);
+    }
+
+    [Fact]
     public void RetainsCompleteLocalModeConfigurationForLoadedEditors()
     {
         const string json = """

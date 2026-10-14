@@ -60,6 +60,11 @@ public interface IEngineClient : IDisposable
     void AdjudicateLocalRound(uint? winner, string reason);
     void SetOrganismAim(uint slot, uint generation, int aim);
     void UpdateEnvironment(EnvironmentUpdate update);
+    void ConfigureGraphSampling(GraphSamplingSettings settings)
+    {
+        if (settings.Selective || settings.Generational || settings.Slow)
+            throw new NotSupportedException("Native graph sampling is unavailable.");
+    }
     byte[] Save();
     byte[] SaveLegacy() => throw new NotSupportedException("This engine client does not support legacy simulation export.");
     byte[] SaveWithoutMutations();

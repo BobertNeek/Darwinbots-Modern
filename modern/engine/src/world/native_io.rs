@@ -162,8 +162,9 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         dynamic_cost_multiplier: c(56),
         dynamic_sensitivity: c(55),
         dynamic_all_robots: c(61) != 0.0,
-        dynamic_lower_zero_threshold: c(58),
-        dynamic_upper_zero_threshold: c(57),
+        dynamic_lower_zero_threshold: c(52),
+        dynamic_lower_range_percent: c(58),
+        dynamic_upper_range_percent: c(57),
         dynamic_lower_reinstate_threshold: c(59),
         dynamic_allow_negative: c(62) != 0.0,
         ..DnaCosts::default()
@@ -491,8 +492,12 @@ impl Engine {
             i32::from(r.word("copy_error_policy")?),
         )?;
         robot.program.mutation_metadata.total_mutations = r.word("mutations")? as u16 as u64;
-        robot.program.mutation_metadata.last_mutation_cycle =
-            Some(r.word("last_mutation")? as u16 as u64);
+        robot.program.mutation_metadata.native_last_mutations =
+            r.word("last_mutation")? as u16 as u64;
+        robot.program.mutation_metadata.last_mutation_cycle = None;
+        let mut graph = crate::GeneticGraphState::for_dna(&robot.program.dna);
+        graph.previous_distance = r.single("old_genetic_distance")?;
+        robot.program.genetic_graph = Some(graph);
         robot.program.mutation_metadata.subspecies = i32::from(r.word("subspecies")?);
         robot.program.mutation_metadata.detailed_log = text(r.bytes("mutation_details")?)
             .lines()

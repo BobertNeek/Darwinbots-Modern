@@ -251,8 +251,7 @@ impl Engine {
                 robot
                     .program
                     .mutation_metadata
-                    .last_mutation_cycle
-                    .unwrap_or(0)
+                    .native_last_mutations
                     .min(32_000) as i64,
             ),
             (
@@ -343,6 +342,13 @@ impl Engine {
             variables.len() as i64,
         )?;
         record.set_value("private_variables", NativeValue::Bytes(private))?;
+        record.set_single(
+            "old_genetic_distance",
+            robot
+                .program
+                .genetic_graph
+                .map_or(0.0, |graph| graph.previous_distance),
+        )?;
         let mut epigenetic = vec![];
         for value in robot.heredity.epigenetic_staging {
             epigenetic.extend_from_slice(
