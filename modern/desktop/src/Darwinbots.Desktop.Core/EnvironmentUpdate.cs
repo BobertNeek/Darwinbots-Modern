@@ -519,6 +519,16 @@ public static class NativeCommandSerializer
 
     internal static object AdvancedMutation(GlobalAdvancedMutationSettings value, GlobalMainSettings main) => new
     {
+        native_delta2 = new {
+            rate_exponential = value.NativeDelta2.RateExponential,
+            rate_linear = value.NativeDelta2.RateLinear,
+            distribution_exponential = value.NativeDelta2.DistributionExponential,
+            distribution_linear = value.NativeDelta2.DistributionLinear,
+            rate_chance_percent = value.NativeDelta2.RateChancePercent,
+            distribution_chance_percent = value.NativeDelta2.DistributionChancePercent,
+            preference_step = value.NativeDelta2.PreferenceStep,
+            maximum_rate_per_base = value.NativeDelta2.MaximumRatePerBase,
+        },
         point2_enabled = value.Point2Enabled,
         copy_error2_enabled = value.CopyError2Enabled,
         amplification_enabled = value.AmplificationEnabled,

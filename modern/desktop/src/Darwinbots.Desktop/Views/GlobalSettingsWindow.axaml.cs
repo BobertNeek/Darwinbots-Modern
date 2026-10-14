@@ -41,9 +41,15 @@ public sealed partial class GlobalSettingsWindow : Window
         TranslocationEnabled.IsChecked = mutation.TranslocationEnabled;
         Delta2Enabled.IsChecked = mutation.Delta2Enabled;
         Delta2Interval.Value = mutation.Delta2Interval;
-        Delta2RateStep.Value = (decimal)mutation.Delta2RateStep;
-        Delta2DistributionStep.Value = (decimal)mutation.Delta2DistributionStep;
-        Delta2PreferenceStep.Value = mutation.Delta2PreferenceStepPercent;
+        var native = mutation.NativeDelta2;
+        NativeRateExponential.Value = (decimal)native.RateExponential;
+        NativeRateLinear.Value = (decimal)native.RateLinear;
+        NativeDistributionExponential.Value = (decimal)native.DistributionExponential;
+        NativeDistributionLinear.Value = (decimal)native.DistributionLinear;
+        NativeRateChance.Value = native.RateChancePercent;
+        NativeDistributionChance.Value = native.DistributionChancePercent;
+        NativePreferenceStep.Value = native.PreferenceStep;
+        NativeMaximumRate.Value = native.MaximumRatePerBase;
         NormalizationEnabled.IsChecked = mutation.NormalizationEnabled;
         NormalizationDnaLength.Value = mutation.NormalizationDnaLength;
         OscillationMode.ItemsSource = Enum.GetNames<GlobalMutationOscillationMode>();
@@ -136,12 +142,21 @@ public sealed partial class GlobalSettingsWindow : Window
             AmplificationEnabled = AmplificationEnabled.IsChecked == true,
             TranslocationEnabled = TranslocationEnabled.IsChecked == true,
             Delta2Enabled = Delta2Enabled.IsChecked == true,
-            Delta2Interval = (ulong)(Delta2Interval.Value ?? 100),
-            Delta2RateStep = (double)(Delta2RateStep.Value ?? 1),
-            Delta2DistributionStep = (double)(Delta2DistributionStep.Value ?? 0),
-            Delta2PreferenceStepPercent = (int)(Delta2PreferenceStep.Value ?? 0),
+            Delta2Interval = (ulong)(Delta2Interval.Value ?? 3000),
+            Delta2RateStep = Settings.AdvancedMutation.Delta2RateStep,
+            Delta2DistributionStep = Settings.AdvancedMutation.Delta2DistributionStep,
+            Delta2PreferenceStepPercent = Settings.AdvancedMutation.Delta2PreferenceStepPercent,
+            NativeDelta2 = new NativeDelta2Settings {
+                RateExponential = (double)(NativeRateExponential.Value ?? 1), RateLinear = (double)(NativeRateLinear.Value ?? 0),
+                DistributionExponential = (double)(NativeDistributionExponential.Value ?? 7),
+                DistributionLinear = (double)(NativeDistributionLinear.Value ?? 1),
+                RateChancePercent = (byte)(NativeRateChance.Value ?? 100),
+                DistributionChancePercent = (byte)(NativeDistributionChance.Value ?? 30),
+                PreferenceStep = (byte)(NativePreferenceStep.Value ?? 15),
+                MaximumRatePerBase = (uint)(NativeMaximumRate.Value ?? 1071),
+            },
             NormalizationEnabled = NormalizationEnabled.IsChecked == true,
-            NormalizationDnaLength = (int)(NormalizationDnaLength.Value ?? 32_000),
+            NormalizationDnaLength = (int)(NormalizationDnaLength.Value ?? 1071),
             OscillationMode = (GlobalMutationOscillationMode)(OscillationMode.SelectedIndex < 0 ? 0 : OscillationMode.SelectedIndex),
             OscillationPeriod = (ulong)(OscillationPeriod.Value ?? 0),
             OscillationAmplitude = (double)(OscillationAmplitude.Value ?? 0),

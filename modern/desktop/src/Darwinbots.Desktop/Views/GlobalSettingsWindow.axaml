@@ -32,10 +32,15 @@
         <ScrollViewer><StackPanel Margin="20,0,8,24" Spacing="14">
           <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="MUTATION POLICIES"/>
             <CheckBox x:Name="Point2Enabled" Content="Point2 mutation"/><CheckBox x:Name="CopyError2Enabled" Content="CopyError2 mutation"/><CheckBox x:Name="AmplificationEnabled" Content="Amplification"/><CheckBox x:Name="TranslocationEnabled" Content="Translocation"/><CheckBox x:Name="Delta2Enabled" Content="Delta2 evolves inherited mutation rates"/>
-            <Grid ColumnDefinitions="*,150"><TextBlock Text="Delta2 interval"/><NumericUpDown Grid.Column="1" x:Name="Delta2Interval" Minimum="1" Maximum="100000000"/></Grid>
-            <Grid ColumnDefinitions="*,150"><TextBlock Text="Delta2 rate step"/><NumericUpDown Grid.Column="1" x:Name="Delta2RateStep" Minimum="-100000" Maximum="100000" Increment="0.1"/></Grid>
-            <Grid ColumnDefinitions="*,150"><TextBlock Text="Distribution step"/><NumericUpDown Grid.Column="1" x:Name="Delta2DistributionStep" Minimum="-100000" Maximum="100000" Increment="0.1"/></Grid>
-            <Grid ColumnDefinitions="*,150"><TextBlock Text="Preference step (%)"/><NumericUpDown Grid.Column="1" x:Name="Delta2PreferenceStep" Minimum="-100" Maximum="100"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Delta2 interval"/><NumericUpDown Grid.Column="1" x:Name="Delta2Interval" Minimum="0" Maximum="100000000"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Rate exponential divisor"/><NumericUpDown Grid.Column="1" x:Name="NativeRateExponential" Minimum="0" Maximum="32000" Increment="0.1"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Rate linear range"/><NumericUpDown Grid.Column="1" x:Name="NativeRateLinear" Minimum="0" Maximum="32000" Increment="0.1"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Distribution exponential divisor"/><NumericUpDown Grid.Column="1" x:Name="NativeDistributionExponential" Minimum="0" Maximum="32000" Increment="0.1"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Distribution linear range"/><NumericUpDown Grid.Column="1" x:Name="NativeDistributionLinear" Minimum="0" Maximum="32000" Increment="0.1"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Rate change chance (%)"/><NumericUpDown Grid.Column="1" x:Name="NativeRateChance" Minimum="0" Maximum="100" Increment="1"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Distribution change chance (%)"/><NumericUpDown Grid.Column="1" x:Name="NativeDistributionChance" Minimum="0" Maximum="100" Increment="1"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Type/value drift (%)"/><NumericUpDown Grid.Column="1" x:Name="NativePreferenceStep" Minimum="0" Maximum="255" Increment="1"/></Grid>
+            <Grid ColumnDefinitions="*,150"><TextBlock Text="Slowest rate per DNA base"/><NumericUpDown Grid.Column="1" x:Name="NativeMaximumRate" Minimum="1" Maximum="32000" Increment="1"/></Grid>
           </StackPanel></Border>
           <Border Classes="card"><StackPanel Spacing="10"><TextBlock Classes="section" Text="NORMALIZATION + OSCILLATION"/>
             <CheckBox x:Name="NormalizationEnabled" Content="Normalize mutation rates by DNA length"/><Grid ColumnDefinitions="*,150"><TextBlock Text="DNA length at slowest rate"/><NumericUpDown Grid.Column="1" x:Name="NormalizationDnaLength" Minimum="1" Maximum="32000"/></Grid>

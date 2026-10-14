@@ -335,6 +335,8 @@ impl LegacyDna {
         &self.ordered_user_variables
     }
 
+    pub(crate) fn set_native_movement_mode(&mut self, new_move: bool) { self.new_move = new_move; }
+
     pub(crate) fn clear_native_user_variables(&mut self) {
         self.user_variables.clear();
         self.ordered_user_variables.clear();

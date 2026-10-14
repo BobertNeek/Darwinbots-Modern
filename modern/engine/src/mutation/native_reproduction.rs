@@ -3,6 +3,60 @@ use super::*;
 use super::native_sysvars::{ALL, INPUT, OUTPUT};
 
 impl GenomeMutator {
+    pub(crate) fn native_delta2_rates(&mut self, profile: &mut StandardMutationProfile,
+        settings: &AdvancedMutationSettings, dna_length: usize, reproduction: bool, dmoc: f64) {
+        let parameters = settings.native_delta2;
+        let maximum = if settings.normalization_enabled {
+            (dna_length as f64 * f64::from(parameters.maximum_rate_per_base)).min(2_000_000_000.0)
+        } else { 2_000_000_000.0 };
+        let kinds = [StandardMutationKind::Point, StandardMutationKind::MinorDeletion,
+            StandardMutationKind::Reversal, StandardMutationKind::Insertion, StandardMutationKind::Amplification,
+            StandardMutationKind::MajorDeletion, StandardMutationKind::CopyError, StandardMutationKind::Delta,
+            StandardMutationKind::Translocation, StandardMutationKind::Point2, StandardMutationKind::CopyError2];
+        for (index, kind) in kinds.into_iter().enumerate() {
+            if (reproduction && (index == 0 || index == 9)) || (!reproduction && index != 0 && index != 9)
+                || profile.rate(kind).one_in < 1.0 { continue; }
+            let rate = profile.rate_mut(kind);
+            if f64::from(self.native_unit()) < f64::from(parameters.rate_chance_percent) / 100.0 {
+                if parameters.rate_exponential != 0.0 {
+                    if reproduction {
+                        let scale = match kind {
+                            StandardMutationKind::CopyError | StandardMutationKind::Translocation
+                                | StandardMutationKind::Reversal | StandardMutationKind::CopyError2 => (dmoc + 2.0) / 3.0,
+                            StandardMutationKind::MinorDeletion | StandardMutationKind::MajorDeletion => 1.0,
+                            _ => dmoc,
+                        };
+                        rate.one_in = f64::from((rate.one_in * scale) as f32);
+                    }
+                    let exponent = (f64::from(self.native_unit()) * 2.0 - 1.0) / f64::from(parameters.rate_exponential);
+                    rate.one_in = f64::from((rate.one_in * 10.0_f64.powf(exponent)) as f32);
+                }
+                rate.one_in = f64::from((rate.one_in + (f64::from(self.native_unit()) * 2.0 - 1.0)
+                    * f64::from(parameters.rate_linear)) as f32).clamp(1.0, maximum);
+            }
+            if f64::from(self.native_unit()) < f64::from(parameters.distribution_chance_percent) / 100.0 {
+                if parameters.distribution_exponential != 0.0 {
+                    let exponent = (f64::from(self.native_unit()) * 2.0 - 1.0) / f64::from(parameters.distribution_exponential);
+                    rate.std_dev = f64::from((rate.std_dev * 10.0_f64.powf(exponent)) as f32);
+                }
+                rate.std_dev = f64::from((rate.std_dev + (f64::from(self.native_unit()) * 2.0 - 1.0)
+                    * f64::from(parameters.distribution_linear)) as f32);
+                if parameters.distribution_exponential != 0.0 {
+                    let exponent = (f64::from(self.native_unit()) * 2.0 - 1.0) / f64::from(parameters.distribution_exponential);
+                    rate.mean = f64::from((rate.mean * 10.0_f64.powf(exponent)) as f32);
+                }
+                rate.mean = f64::from((rate.mean + (f64::from(self.native_unit()) * 2.0 - 1.0)
+                    * f64::from(parameters.distribution_linear)) as f32);
+                rate.std_dev = rate.std_dev.clamp(0.0, 200.0);
+                rate.mean = rate.mean.clamp(1.0, 400.0);
+            }
+        }
+        let preference = if reproduction { &mut profile.copy_error_value_change_percent }
+            else { &mut profile.point_value_change_percent };
+        *preference = (f64::from(*preference) + (f64::from(self.native_unit()) * 2.0 - 1.0)
+            * f64::from(parameters.preference_step)).round_ties_even().clamp(0.0, 100.0) as u8;
+    }
+
     pub(crate) fn native_lifelong_mutations(&mut self, dna: &mut LegacyDna,
         profile: &mut StandardMutationProfile, point: &mut Option<PointMutationSchedule>,
         point2: &mut Option<PointMutationSchedule>, age: u64,
@@ -52,8 +106,8 @@ impl GenomeMutator {
                 *clock = self.native_point_clock(age, dna.blocks().len(), profile, kind, multiplier);
             }
         }
-        if settings.delta2.enabled && settings.delta2.interval > 0 && age.is_multiple_of(settings.delta2.interval) {
-            apply_delta2(profile, settings.delta2);
+        if settings.delta2.enabled && settings.delta2.interval > 0 && age > 0 && age.is_multiple_of(settings.delta2.interval) {
+            self.native_delta2_rates(profile, settings, dna.blocks().len(), false, 1.0);
             *point = None;
             *point2 = None;
         }
@@ -346,14 +400,14 @@ mod tests {
     }
 
     #[test]
-    fn disabled_native_categories_consume_no_draw_even_for_mutated_reproduction() {
+    fn disabled_native_categories_consume_no_draw_for_regular_reproduction() {
         let random = NativeRandom::with_user_seed(42);
         let mut mutator = GenomeMutator::with_native_random(random.clone());
         let mut dna = LegacyDna::parse("start stop").unwrap();
         let report = mutator.mutate_with_advanced_policy_mut(&mut dna, &mut disabled(), MutationPolicyReport {
             effective_multiplier: 1.0, effective_one_in: 1.0, delta2_applied: false,
             epigenetic_action: EpigeneticPolicyAction::None, save_as_temporary_gene: false,
-        }, &AdvancedMutationSettings::default(), MutationContext::Reproduction { forced: true });
+        }, &AdvancedMutationSettings::default(), MutationContext::Reproduction { forced: false });
         assert_eq!(report.changes, 0);
         assert_eq!(mutator.native_random().unwrap(), random);
     }
@@ -413,5 +467,53 @@ mod tests {
         assert_eq!(ALL[9], Some(7));
         assert_eq!(OUTPUT[255], Some(924));
         assert_eq!(OUTPUT[250], None); // chlr is commented out in sysvarOUT
+    }
+
+    #[test]
+    fn mutated_reproduction_restores_temporary_rates_but_consumes_native_trials() {
+        let mut profile = disabled();
+        let original = profile.clone();
+        let random = NativeRandom::with_user_seed(42);
+        let mut mutator = GenomeMutator::with_native_random(random.clone());
+        let mut dna = LegacyDna::parse("start stop").unwrap();
+        mutator.mutate_with_advanced_policy_mut(&mut dna, &mut profile, MutationPolicyReport {
+            effective_multiplier: 1.0, effective_one_in: 1.0, delta2_applied: false,
+            epigenetic_action: EpigeneticPolicyAction::None, save_as_temporary_gene: false,
+        }, &AdvancedMutationSettings::default(), MutationContext::Reproduction { forced: true });
+        assert_eq!(profile, original);
+        assert_ne!(mutator.native_random().unwrap(), random);
+    }
+
+    #[test]
+    fn native_delta2_draws_trial_and_preference_values_even_when_their_steps_are_zero() {
+        let mut profile = StandardMutationProfile::default();
+        let original = profile.clone();
+        let settings = AdvancedMutationSettings { native_delta2: NativeDelta2Settings {
+            rate_chance_percent: 0, distribution_chance_percent: 0, preference_step: 0,
+            ..Default::default()
+        }, ..Default::default() };
+        let mut expected = NativeRandom::with_user_seed(42);
+        let mut mutator = GenomeMutator::with_native_random(expected.clone());
+        for _ in 0..5 { expected.unit(); } // two trials per Point/Point2, then preference
+        mutator.native_delta2_rates(&mut profile, &settings, 10, false, 1.0);
+        assert_eq!(profile, original);
+        assert_eq!(mutator.native_random().unwrap(), expected);
+    }
+
+    #[test]
+    fn native_delta2_lifetime_updates_only_point_rates_and_honors_normalization_cap() {
+        let mut profile = StandardMutationProfile::default();
+        profile.point.one_in = 2_000_000_000.0;
+        profile.point2.one_in = 2_000_000_000.0;
+        let copy = profile.copy_error;
+        let settings = AdvancedMutationSettings { normalization_enabled: true,
+            native_delta2: NativeDelta2Settings { rate_exponential: 0.0, rate_linear: 0.0,
+                rate_chance_percent: 100, distribution_chance_percent: 0, preference_step: 0,
+                ..Default::default() }, ..Default::default() };
+        let mut mutator = GenomeMutator::with_native_random(NativeRandom::with_user_seed(42));
+        mutator.native_delta2_rates(&mut profile, &settings, 3, false, 1.0);
+        assert_eq!(profile.point.one_in, 3_213.0);
+        assert_eq!(profile.point2.one_in, 3_213.0);
+        assert_eq!(profile.copy_error, copy);
     }
 }

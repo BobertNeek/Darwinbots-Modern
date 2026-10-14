@@ -306,7 +306,7 @@ impl Default for Delta2Settings {
     fn default() -> Self {
         Self {
             enabled: false,
-            interval: 100,
+            interval: 3_000,
             rate_step: 1.0,
             distribution_step: 0.0,
             preference_step_percent: 0,
@@ -337,6 +337,7 @@ impl Default for EpigeneticSettings {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AdvancedMutationSettings {
+    pub native_delta2: NativeDelta2Settings,
     pub point2_enabled: bool,
     pub copy_error2_enabled: bool,
     pub amplification_enabled: bool,
@@ -351,16 +352,51 @@ pub struct AdvancedMutationSettings {
 impl Default for AdvancedMutationSettings {
     fn default() -> Self {
         Self {
+            native_delta2: NativeDelta2Settings::default(),
             point2_enabled: false,
             copy_error2_enabled: false,
             amplification_enabled: false,
             translocation_enabled: false,
             normalization_enabled: false,
-            normalization_dna_length: 32_000,
+            normalization_dna_length: 1_071,
             delta2: Delta2Settings::default(),
             oscillation: MutationOscillationSettings::default(),
             epigenetic: EpigeneticSettings::default(),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct NativeDelta2Settings {
+    pub rate_exponential: f32,
+    pub rate_linear: f32,
+    pub distribution_exponential: f32,
+    pub distribution_linear: f32,
+    pub rate_chance_percent: u8,
+    pub distribution_chance_percent: u8,
+    pub preference_step: u8,
+    pub maximum_rate_per_base: u32,
+}
+
+impl Default for NativeDelta2Settings {
+    fn default() -> Self {
+        // HDRoutines.LoadGlobalSettings defaults (DB2.48.32).
+        Self { rate_exponential: 1.0, rate_linear: 0.0, distribution_exponential: 7.0,
+            distribution_linear: 1.0, rate_chance_percent: 100, distribution_chance_percent: 30,
+            preference_step: 15, maximum_rate_per_base: 1_071 }
+    }
+}
+
+impl NativeDelta2Settings {
+    pub(crate) fn validate(&self) -> Result<(), EngineError> {
+        if [self.rate_exponential, self.rate_linear, self.distribution_exponential, self.distribution_linear]
+            .iter().any(|value| !value.is_finite() || *value < 0.0)
+            || self.rate_chance_percent > 100 || self.distribution_chance_percent > 100
+            || !(1..=32_000).contains(&self.maximum_rate_per_base) {
+            return Err(EngineError::Invariant("invalid native Delta2 parameters".into()));
+        }
+        Ok(())
     }
 }
 
@@ -1042,6 +1078,21 @@ impl GenomeMutator {
         context: MutationContext,
     ) -> MutationReport {
         if self.random_state.native().is_some() && matches!(context, MutationContext::Reproduction { .. }) {
+            let forced = matches!(context, MutationContext::Reproduction { forced: true });
+            if forced && !settings.delta2.enabled {
+                let saved = profile.clone();
+                for kind in [StandardMutationKind::Point, StandardMutationKind::Point2, StandardMutationKind::Delta,
+                    StandardMutationKind::CopyError, StandardMutationKind::CopyError2, StandardMutationKind::Insertion,
+                    StandardMutationKind::Reversal, StandardMutationKind::MinorDeletion, StandardMutationKind::MajorDeletion,
+                    StandardMutationKind::Amplification, StandardMutationKind::Translocation] {
+                    let rate = profile.rate_mut(kind);
+                    rate.one_in = f64::from((rate.one_in / 10.0) as f32);
+                    if rate.one_in == 0.0 { rate.one_in = 1_000.0; }
+                }
+                let report = self.native_reproductive_mutations(dna, profile, settings, policy.effective_multiplier);
+                *profile = saved;
+                return report;
+            }
             return self.native_reproductive_mutations(dna, profile, settings, policy.effective_multiplier);
         }
         let forced = matches!(context, MutationContext::Reproduction { forced: true });

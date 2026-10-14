@@ -50,17 +50,18 @@ public sealed record GlobalMainSettings
 
 public sealed record GlobalAdvancedMutationSettings
 {
+    public NativeDelta2Settings NativeDelta2 { get; init; } = new();
     public bool Point2Enabled { get; init; }
     public bool CopyError2Enabled { get; init; }
     public bool AmplificationEnabled { get; init; }
     public bool TranslocationEnabled { get; init; }
     public bool Delta2Enabled { get; init; }
-    public ulong Delta2Interval { get; init; } = 100;
+    public ulong Delta2Interval { get; init; } = 3000;
     public double Delta2RateStep { get; init; } = 1.0;
     public double Delta2DistributionStep { get; init; }
     public int Delta2PreferenceStepPercent { get; init; }
     public bool NormalizationEnabled { get; init; }
-    public int NormalizationDnaLength { get; init; } = 32_000;
+    public int NormalizationDnaLength { get; init; } = 1071;
     public GlobalMutationOscillationMode OscillationMode { get; init; }
     public ulong OscillationPeriod { get; init; }
     public double OscillationAmplitude { get; init; }
@@ -68,6 +69,27 @@ public sealed record GlobalAdvancedMutationSettings
     public double EpigeneticAmplification { get; init; } = 1.0;
     public ulong EpigeneticOverloadThreshold { get; init; } = 32;
     public bool SaveAsTemporaryGene { get; init; }
+}
+
+public sealed record NativeDelta2Settings
+{
+    public double RateExponential { get; init; } = 1;
+    public double RateLinear { get; init; }
+    public double DistributionExponential { get; init; } = 7;
+    public double DistributionLinear { get; init; } = 1;
+    public byte RateChancePercent { get; init; } = 100;
+    public byte DistributionChancePercent { get; init; } = 30;
+    public byte PreferenceStep { get; init; } = 15;
+    public uint MaximumRatePerBase { get; init; } = 1071;
+
+    public void Validate()
+    {
+        if (new[] { RateExponential, RateLinear, DistributionExponential, DistributionLinear }
+                .Any(value => !double.IsFinite(value) || value < 0)
+            || RateChancePercent > 100 || DistributionChancePercent > 100
+            || MaximumRatePerBase is < 1 or > 32000)
+            throw new InvalidDataException("Invalid native Delta2 parameters.");
+    }
 }
 
 public sealed record GlobalSimulationCostSettings
@@ -161,8 +183,7 @@ public sealed record GlobalSettings
             throw new InvalidDataException("Find Best weighting must be between 0 and 200.");
         if (AdvancedMutation.NormalizationEnabled && AdvancedMutation.NormalizationDnaLength <= 0)
             throw new InvalidDataException("Mutation normalization DNA length must be positive.");
-        if (AdvancedMutation.Delta2Enabled && AdvancedMutation.Delta2Interval == 0)
-            throw new InvalidDataException("Delta2 interval must be positive when enabled.");
+        AdvancedMutation.NativeDelta2.Validate();
         if (!double.IsFinite(Evolution.StageLength) || Evolution.StageLength is < 0.01 or > 150)
             throw new InvalidDataException("Evolution reduction unit must be between 0.01 and 150.");
         if (Evolution.CycleLength is < 1 or > 15000)

@@ -68,7 +68,7 @@ pub use evolution::{EvolutionConfig, EvolutionGenome, EvolutionMode, EvolutionPh
 pub use mutation::{
     AdvancedMutationSettings, Delta2Settings, EpigeneticPolicyAction, EpigeneticSettings,
     GenomeMutator, MutationCategoryDistribution, MutationContext, MutationKind,
-    MutationOscillationMode, MutationOscillationSettings, MutationPolicyInput,
+    MutationOscillationMode, MutationOscillationSettings, MutationPolicyInput, NativeDelta2Settings,
     MutationPolicyReport, MutationPreference, MutationRate, MutationReport, PointMutationSchedule,
     PointMutator, StandardMutationEvent, StandardMutationKind, StandardMutationProfile,
     StandardMutationReport, apply_advanced_mutation_policies, apply_standard_mutation,

@@ -100,6 +100,8 @@ mod league_series;
 mod staged_evolution;
 #[path = "world/native_speciation.rs"]
 mod native_speciation;
+#[path = "world/native_birth_mutation.rs"]
+mod native_birth_mutation;
 
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
@@ -2788,10 +2790,9 @@ impl Engine {
                 "mutation normalization DNA length must be positive".to_owned(),
             ));
         }
-        if settings.delta2.enabled && settings.delta2.interval == 0 {
-            return Err(EngineError::Invariant(
-                "Delta2 interval must be positive when enabled".to_owned(),
-            ));
+        settings.native_delta2.validate()?;
+        if self.native_random.is_none() && settings.delta2.enabled && settings.delta2.interval == 0 {
+            return Err(EngineError::Invariant("Delta2 interval must be positive in legacy mode".into()));
         }
         if !settings.oscillation.amplitude.is_finite()
             || !settings.epigenetic.amplification.is_finite()
@@ -5481,6 +5482,7 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        self.config.advanced_mutation.native_delta2.validate()?;
         self.local_mode.series.validate(self.species.len()).map_err(EngineError::Invariant)?;
         if let Some(evolution) = &self.local_mode.evolution {
             evolution.validate().map_err(EngineError::Invariant)?;
@@ -9809,7 +9811,10 @@ impl Engine {
                     } else { parent_state.program.dna.crossover(&stored.dna) }
                 } else { parent_state.program.dna.clone() }
             } else { parent_state.program.dna.clone() };
-            if self.native_random.is_some() { child_dna.clear_native_user_variables(); }
+            if self.native_random.is_some() {
+                child_dna.clear_native_user_variables();
+                child_dna.set_native_movement_mode(parent_state.flags.new_move);
+            }
             let child = self.spawn_species_at_unpublished(child_dna, species, position)?;
             let absolute_id = self.slots.get(child)?.identity.absolute_id;
             available_births -= 1;
@@ -9994,11 +9999,11 @@ impl Engine {
                     "birth_dna_copy_cost_charged",
                 );
             }
-            if mutate {
+            if self.native_random.is_some() {
+                self.native_birth_mutations(child, birth.mutation_reproduction);
+            } else if mutate {
                 self.pending_mutations.push(child);
-                self.mutation_phase(MutationContext::Reproduction {
-                    forced: birth.mutation_reproduction,
-                });
+                self.mutation_phase(MutationContext::Reproduction { forced: birth.mutation_reproduction });
             }
             self.stats.births = self.stats.births.saturating_add(1);
             trace.queue_change(
@@ -10216,16 +10221,14 @@ impl Engine {
             .and_then(|species| self.species.get(species.0 as usize))
             .map_or(0.0, |definition| f64::from(definition.mutation_rate));
         let mut policy_settings = settings.clone();
-        if self.native_random.is_some() && matches!(context, MutationContext::Lifelong) {
-            policy_settings.delta2.enabled = false;
-        }
+        if self.native_random.is_some() { policy_settings.delta2.enabled = false; }
         let (report, should_fork) = {
             let Ok(organism) = self.slots.get_mut(id) else {
                 return;
             };
-            if !organism.flags.can_mutate {
-                return;
-            }
+            let native_mrepro = self.native_random.is_some() && !settings.delta2.enabled
+                && matches!(context, MutationContext::Reproduction { forced: true });
+            if !organism.flags.can_mutate && !native_mrepro { return; }
             let mut policy = scheduled.map_or_else(
                 || {
                     apply_advanced_mutation_policies(
