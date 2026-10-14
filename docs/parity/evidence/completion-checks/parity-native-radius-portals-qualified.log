@@ -1,0 +1,140 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 47.88s
+     Running tests\db2_final_engine_world.rs (target\debug\deps\db2_final_engine_world-7df028117f3e59bb.exe)
+
+running 4 tests
+test phy_08_resolves_every_cluster_pair_and_substitutes_fixed_body_mass ... ok
+test sen_01_opaque_shapes_occlude_and_disabled_vision_clears_nine_eyes ... ok
+test sen_01_projects_each_of_nine_eyes_with_native_bearings_under_both_border_modes ... ok
+test eco_03_pond_depth_moving_sun_band_and_tide_reduce_authoritative_feed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\db2_physics.rs (target\debug\deps\db2_physics-fb80da21d080f2fb.exe)
+
+running 22 tests
+test elasticity_rebounds_colliding_bots_with_finite_velocity ... ok
+test brownian_motion_rotates_aim_on_the_next_cycle ... ok
+test drag_reduces_retained_momentum_instead_of_replacing_it ... ok
+test maximum_velocity_caps_total_velocity_after_environment_impulses ... ok
+test fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick ... ok
+test newmove_directive_is_preserved_by_legacy_dna ... ok
+test newly_loaded_bots_start_with_db2_body_reserve ... ok
+test non_toroidal_border_collision_writes_edge_sense ... ok
+test movement_command_adds_impulse_and_bot_coasts_without_new_thrust ... ok
+test pond_buoyancy_reverses_vertical_gravity_at_the_bottom ... ok
+test db2_gravity_is_applied_after_friction_on_the_first_tick ... ok
+test fixed_bot_radii_config_survives_save_and_uses_db2_half_radius ... ok
+test pond_full_buoyancy_sinks_shallow_but_floats_deep_when_raw_threshold_exceeds_one ... ok
+test static_friction_blocks_impulses_below_the_breakaway_threshold ... ok
+test voluntary_acceleration_is_clamped_before_efficiency_multiplier ... ok
+test pond_tides_modulate_vertical_gravity_over_the_configured_period ... ok
+test edge_sense_matches_vb6_boundary_distance_calibration ... ok
+test physical_radius_is_derived_from_body_like_db2 ... ok
+test static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impulse ... ok
+test voluntary_motion_cost_uses_the_clipped_acceleration_magnitude ... ok
+test phy04_cpu_engine_physics_contract ... ok
+test fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\db2_vegetation.rs (target\debug\deps\db2_vegetation-fcda9fc109c5ce04.exe)
+
+running 19 tests
+test chloroplast_sysvars_use_db2_memory_addresses ... ok
+test every_db2_248_sysvar_resolves_to_its_vb6_address ... ok
+test initial_and_reseeded_vegetables_start_with_db2_chloroplasts ... ok
+test darkness_prevents_chloroplast_feeding ... ok
+test chloroplast_construction_charges_the_configured_cost_once ... ok
+test full_chloroplast_plant_receives_db2_light_and_body_split ... ok
+test chloroplast_pressure_uses_equivalents_and_a_strict_population_boundary ... ok
+test chloroplasts_decay_naturally_without_a_removal_command ... ok
+test day_night_cycle_changes_after_the_configured_number_of_completed_cycles ... ok
+test repopulation_waits_for_cooldown_and_spawns_configured_batch ... ok
+test slime_shell_poison_and_venom_use_db2_caps_costs_and_decay ... ok
+test slime_blocks_ties_by_the_legacy_probability_threshold ... ok
+test sunlight_intensity_scales_non_pond_photosynthesis ... ok
+test tides_reduce_photosynthetic_yield_at_high_tide ... ok
+test vegetable_reproduction_splits_parent_biology_without_resetting_child ... ok
+test vegetable_reproduction_is_throttled_near_the_population_cap ... ok
+test weather_sun_band_controls_light_memory_for_wrapped_positions ... ok
+test total_energy_threshold_modes_apply_vb6_sun_overrides ... ok
+test chloroplasts_metabolize_waste_into_energy_and_body ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\environment_world.rs (target\debug\deps\environment_world-bbf2ad9ab3606928.exe)
+
+running 13 tests
+test brownian_motion_can_be_disabled_while_running ... ok
+test intrasim_teleporter_respects_shape_blocking ... ok
+test gravity_and_drag_affect_motion ... ok
+test complete_environment_settings_can_change_while_running ... ok
+test opaque_obstacle_blocks_vision_of_a_target_behind_it ... ok
+test obstacles_reject_organisms_and_teleporters_relocate_them ... ok
+test intrasim_teleporter_blocks_immediate_paired_backflow ... ok
+test shape_drift_moves_the_obstacle_before_publication ... ok
+test outbound_only_teleporter_does_not_relocate_intrasim_organisms ... ok
+test shape_editor_properties_persist_through_the_authoritative_engine ... ok
+test planet_eaters_apply_mutual_db2_mass_scaled_attraction ... ok
+test see_through_shape_preserves_vision_of_a_target_behind_it ... ok
+test intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\gpu_ffi.rs (target\debug\deps\gpu_ffi-625ae4070967ba49.exe)
+
+running 26 tests
+test cpu_physics_integrates_and_clamps_world_bounds ... ok
+test cpu_and_gpu_emit_identical_nontiming_cycle_traces ... ok
+test engine_retains_gpu_backend_and_uses_it_for_tick_physics ... ok
+test engine_can_switch_backends_while_preserving_live_state ... ok
+test cpu_and_gpu_match_toxin_state_memory_and_position ... ok
+test cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn ... ok
+test cpu_and_gpu_match_tie_lifecycle_spring_and_hardening ... ok
+test ffi_adds_and_removes_live_environment_features ... ok
+test ffi_import_accepts_known_sysvars_without_inert_warnings ... ok
+test cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance ... ok
+test ffi_v1_consumers_accept_the_additive_snapshot ... ok
+test ffi_executes_versioned_command_batches_and_reports_capabilities ... ok
+test ffi_binary_save_load_round_trip_replaces_engine_atomically ... ok
+test ffi_environment_updates_preserve_optional_db2_settings ... ok
+test ffi_imports_a_configured_species_as_one_command ... ok
+test gpu_builds_spatial_grid_before_neighborhood_queries_when_adapter_is_available ... ok
+test ffi_manual_tools_return_ids_and_exported_dna ... ok
+test ffi_rejects_unknown_batch_versions_with_owned_structured_error ... ok
+test gpu_prepares_render_instances_with_integrated_positions ... ok
+test gpu_physics_matches_cpu_when_an_adapter_is_available ... ok
+test fused_gpu_sensing_and_motion_match_cpu_contract_when_adapter_is_available ... ok
+test ffi_loads_genuine_native_sim_and_preserves_the_world_after_rejected_load ... ok
+test gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_available ... ok
+test gpu_sensing_matches_nearest_neighbor_contract_when_adapter_is_available ... ok
+test physical_gpu_fuses_grid_sensing_integration_and_render_preparation ... ok
+test ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.23s
+
+     Running tests\legacy_transport.rs (target\debug\deps\legacy_transport-63165eb7b8542d67.exe)
+
+running 6 tests
+test legacy_vb6_organism_records_import_without_losing_state_or_ties ... ok
+test legacy_organism_fixture_round_trips_and_rejects_unknown_version ... ok
+test entire_organism_interchange_restores_members_state_and_ties ... ok
+test legacy_codecs_round_trip_the_authoritative_fixture_fields ... ok
+test legacy_settings_corpus_round_trips_all_shipped_assets ... ok
+test file_teleporter_cycles_through_tempfiles_with_filters_and_safe_failures ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+     Running tests\mutation_advanced_248.rs (target\debug\deps\mutation_advanced_248-ae021c00b843464c.exe)
+
+running 7 tests
+test point2_and_copyerror2_are_seeded_and_sysvar_biased ... ok
+test amplification_copies_and_translocation_moves_coding_segments ... ok
+test mrepro_uses_reproductive_mutation_context ... ok
+test mrepro_auto_forked_zerobot_checkpoint_preserves_mutation_lineage_on_rollback ... ok
+test automatic_named_species_fork_uses_prefix_and_49_species_limit ... ok
+test engine_advanced_mutations_cover_all_four_sunline_operators_deterministically ... ok
+test zerobot_mode_mutates_selects_and_rolls_back_unstable_rounds ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s

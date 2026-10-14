@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-13",
+  "code_revision": "d67ae33a36b12b96b9c900454ae41c86d58be5cd",
+  "movement_revision": "a9bbfa56767d8f337f6a8f0e7a4cc3c4879f24af",
+  "scope": "Offline DB2.48.32 parity; Internet Mode excluded.",
+  "repairs": [
+    "Native Dot/Cross movement bearings and signed velocity readbacks",
+    "External reproduction provenance persists across blocking and save/resume; actual DNA stores supersede external commands",
+    "FindRadius Double-to-Single boundary and minimum after chloroplast blend",
+    "Arena corpse filters and hardened group filtering in local gateways"
+  ],
+  "verification": {
+    "movement_targeted_debug": {
+      "passed": 234,
+      "failed": 0
+    },
+    "movement_complete_desktop_debug": {
+      "passed": 104,
+      "failed": 0
+    },
+    "radius_gateway_library_debug": {
+      "passed": 93,
+      "failed": 0
+    },
+    "radius_gateway_selected_debug": {
+      "passed": 97,
+      "failed": 0
+    },
+    "strict_clippy": "passed at both checkpoints"
+  },
+  "logs": [
+    "completion-checks/parity-native-movement-provenance-final.log",
+    "completion-checks/parity-native-movement-provenance-clippy.log",
+    "completion-checks/parity-native-movement-desktop.log",
+    "completion-checks/parity-native-radius-portals-library.log",
+    "completion-checks/parity-native-radius-portals-qualified.log",
+    "completion-checks/parity-native-radius-portals-clippy.log"
+  ],
+  "latest_complete_release": {
+    "code_revision": "e75170758d5fd901182a437f5b3a88b7f9b44b7e",
+    "passed": 495,
+    "failed": 44,
+    "filtered": 2,
+    "failing_targets": 11,
+    "receipt": "evidence/parity-native-vision-birth-workspace-summary.json"
+  },
+  "limits": [
+    "Focused counts overlap; they do not define a new workspace score.",
+    "d67ae33 has not received a new complete desktop or Release workspace run.",
+    "Cached radius lifecycle, native collision rules, reference velocity rounding, broader numeric and phase/RNG differences remain open.",
+    "Species feeding/toxin and repopulation acceptance failures remain under source-based diagnosis.",
+    "Original executable trajectories, older corpse migration, graph/evolution/league rules, long ecology/performance and platform packaging remain unqualified."
+  ]
+}
