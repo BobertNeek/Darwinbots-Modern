@@ -176,6 +176,16 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         return Err(invalid("nonfinite cost"));
     }
     let config = EngineConfig {
+        advanced_mutation: AdvancedMutationSettings {
+            oscillation: crate::MutationOscillationSettings {
+                mode: if !b("mutation_oscillate")? { crate::MutationOscillationMode::Disabled }
+                    else if b("mutation_sine")? { crate::MutationOscillationMode::Sine }
+                    else { crate::MutationOscillationMode::Sawtooth },
+                high_cycles: u("mutation_max")?, low_cycles: u("mutation_min")?,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
         backend: BackendPreference::Cpu,
         seed: t.integer("seed")? as u32 as u64,
         world_width: n("field_width")?,

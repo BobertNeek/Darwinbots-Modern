@@ -20,6 +20,14 @@ pub struct MutationReport {
     pub changes: u32,
     pub kind: Option<MutationKind>,
     pub standard_kind: Option<StandardMutationKind>,
+    /// Native passes are independent; changes must not all be credited to the last pass.
+    pub class_counts: [u32; 11],
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct NativeMutationEvent {
+    pub kind: StandardMutationKind,
+    pub detail: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -53,6 +61,13 @@ pub enum StandardMutationKind {
     MajorDeletion,
     Amplification,
     Translocation,
+}
+
+impl StandardMutationKind {
+    pub(crate) const ALL: [Self; 11] = [Self::Point, Self::Point2, Self::Delta,
+        Self::CopyError, Self::CopyError2, Self::Insertion, Self::Reversal,
+        Self::MinorDeletion, Self::MajorDeletion, Self::Amplification, Self::Translocation];
+    pub(crate) fn index(self) -> usize { self as usize }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -280,6 +295,8 @@ pub struct MutationOscillationSettings {
     pub mode: MutationOscillationMode,
     pub period: u64,
     pub amplitude: f64,
+    pub high_cycles: u64,
+    pub low_cycles: u64,
 }
 
 impl Default for MutationOscillationSettings {
@@ -288,6 +305,8 @@ impl Default for MutationOscillationSettings {
             mode: MutationOscillationMode::Disabled,
             period: 0,
             amplitude: 0.0,
+            high_cycles: 10_000,
+            low_cycles: 10_000,
         }
     }
 }
@@ -317,6 +336,7 @@ impl Default for Delta2Settings {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EpigeneticSettings {
+    pub native_exponent: f32,
     pub reset_enabled: bool,
     pub amplification: f64,
     pub overload_threshold: u64,
@@ -326,9 +346,10 @@ pub struct EpigeneticSettings {
 impl Default for EpigeneticSettings {
     fn default() -> Self {
         Self {
+            native_exponent: 1.3,
             reset_enabled: false,
             amplification: 1.0,
-            overload_threshold: 32,
+            overload_threshold: 17,
             save_as_temporary_gene: false,
         }
     }
@@ -983,6 +1004,7 @@ impl PointMutator {
             changes: 1,
             kind: Some(MutationKind::Point),
             standard_kind: Some(StandardMutationKind::Point),
+            ..MutationReport::default()
         }
     }
 
@@ -991,17 +1013,29 @@ impl PointMutator {
 
 pub struct GenomeMutator {
     random_state: crate::native_random::RandomStream,
+    native_events: Vec<NativeMutationEvent>,
+    native_kind: Option<StandardMutationKind>,
 }
 
 impl GenomeMutator {
     pub(crate) fn with_native_random(random: crate::native_random::NativeRandom) -> Self {
-        Self { random_state: crate::native_random::RandomStream::Native(random) }
+        Self { random_state: crate::native_random::RandomStream::Native(random),
+            native_events: Vec::new(), native_kind: None }
     }
     pub(crate) fn native_random(&self) -> Option<crate::native_random::NativeRandom> { self.random_state.native() }
+
+    pub(crate) fn take_native_events(&mut self) -> Vec<NativeMutationEvent> {
+        std::mem::take(&mut self.native_events)
+    }
+
+    fn native_event(&mut self, detail: String) {
+        if let Some(kind) = self.native_kind { self.native_events.push(NativeMutationEvent { kind, detail }); }
+    }
 
     pub fn new(seed: u64) -> Self {
         Self {
             random_state: crate::native_random::RandomStream::legacy(seed),
+            native_events: Vec::new(), native_kind: None,
         }
     }
 
@@ -1242,6 +1276,7 @@ impl GenomeMutator {
                 changes: report.changes,
                 kind: Some(MutationKind::Point),
                 standard_kind: Some(kind),
+                ..MutationReport::default()
             };
         }
         self.apply_advanced_kind(dna, profile, kind)
@@ -1505,6 +1540,7 @@ impl GenomeMutator {
                 StandardMutationKind::Delta => MutationKind::Point,
             }),
             standard_kind: Some(standard_report.kind),
+            ..MutationReport::default()
         }
     }
 
@@ -1664,6 +1700,7 @@ impl GenomeMutator {
                 MutationKind::Duplication => StandardMutationKind::Amplification,
                 MutationKind::Replacement => StandardMutationKind::CopyError,
             }),
+            ..MutationReport::default()
         }
     }
 

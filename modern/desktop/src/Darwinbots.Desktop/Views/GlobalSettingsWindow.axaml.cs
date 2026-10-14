@@ -52,12 +52,12 @@ public sealed partial class GlobalSettingsWindow : Window
         NativeMaximumRate.Value = native.MaximumRatePerBase;
         NormalizationEnabled.IsChecked = mutation.NormalizationEnabled;
         NormalizationDnaLength.Value = mutation.NormalizationDnaLength;
-        OscillationMode.ItemsSource = Enum.GetNames<GlobalMutationOscillationMode>();
+        OscillationMode.ItemsSource = new[] { "Disabled", "Sine", "Square" };
         OscillationMode.SelectedIndex = (int)mutation.OscillationMode;
-        OscillationPeriod.Value = mutation.OscillationPeriod;
-        OscillationAmplitude.Value = (decimal)mutation.OscillationAmplitude;
+        OscillationPeriod.Value = mutation.OscillationHighCycles;
+        OscillationAmplitude.Value = mutation.OscillationLowCycles;
         EpigeneticReset.IsChecked = mutation.EpigeneticReset;
-        EpigeneticAmplification.Value = (decimal)mutation.EpigeneticAmplification;
+        EpigeneticAmplification.Value = (decimal)mutation.EpigeneticExponent;
         EpigeneticOverloadThreshold.Value = mutation.EpigeneticOverloadThreshold;
         SaveAsTemporaryGene.IsChecked = mutation.SaveAsTemporaryGene;
         var costs = settings.Costs;
@@ -155,11 +155,14 @@ public sealed partial class GlobalSettingsWindow : Window
             NormalizationEnabled = NormalizationEnabled.IsChecked == true,
             NormalizationDnaLength = (int)(NormalizationDnaLength.Value ?? 1071),
             OscillationMode = (GlobalMutationOscillationMode)(OscillationMode.SelectedIndex < 0 ? 0 : OscillationMode.SelectedIndex),
-            OscillationPeriod = (ulong)(OscillationPeriod.Value ?? 0),
-            OscillationAmplitude = (double)(OscillationAmplitude.Value ?? 0),
+            OscillationPeriod = Settings.AdvancedMutation.OscillationPeriod,
+            OscillationAmplitude = Settings.AdvancedMutation.OscillationAmplitude,
+            OscillationHighCycles = (ulong)(OscillationPeriod.Value ?? 10000),
+            OscillationLowCycles = (ulong)(OscillationAmplitude.Value ?? 10000),
             EpigeneticReset = EpigeneticReset.IsChecked == true,
-            EpigeneticAmplification = (double)(EpigeneticAmplification.Value ?? 1),
-            EpigeneticOverloadThreshold = (ulong)(EpigeneticOverloadThreshold.Value ?? 32),
+            EpigeneticAmplification = Settings.AdvancedMutation.EpigeneticAmplification,
+            EpigeneticExponent = (double)(EpigeneticAmplification.Value ?? 1.3m),
+            EpigeneticOverloadThreshold = (ulong)(EpigeneticOverloadThreshold.Value ?? 17),
             SaveAsTemporaryGene = SaveAsTemporaryGene.IsChecked == true,
         },
         Costs = new GlobalSimulationCostSettings

@@ -65,9 +65,12 @@ public sealed record GlobalAdvancedMutationSettings
     public GlobalMutationOscillationMode OscillationMode { get; init; }
     public ulong OscillationPeriod { get; init; }
     public double OscillationAmplitude { get; init; }
+    public ulong OscillationHighCycles { get; init; } = 10000;
+    public ulong OscillationLowCycles { get; init; } = 10000;
     public bool EpigeneticReset { get; init; }
     public double EpigeneticAmplification { get; init; } = 1.0;
-    public ulong EpigeneticOverloadThreshold { get; init; } = 32;
+    public double EpigeneticExponent { get; init; } = 1.3;
+    public ulong EpigeneticOverloadThreshold { get; init; } = 17;
     public bool SaveAsTemporaryGene { get; init; }
 }
 
@@ -184,6 +187,8 @@ public sealed record GlobalSettings
         if (AdvancedMutation.NormalizationEnabled && AdvancedMutation.NormalizationDnaLength <= 0)
             throw new InvalidDataException("Mutation normalization DNA length must be positive.");
         AdvancedMutation.NativeDelta2.Validate();
+        if (!double.IsFinite(AdvancedMutation.EpigeneticExponent) || AdvancedMutation.EpigeneticExponent < 0)
+            throw new InvalidDataException("Epigenetic mutation dose exponent must be finite and nonnegative.");
         if (!double.IsFinite(Evolution.StageLength) || Evolution.StageLength is < 0.01 or > 150)
             throw new InvalidDataException("Evolution reduction unit must be between 0.01 and 150.");
         if (Evolution.CycleLength is < 1 or > 15000)

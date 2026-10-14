@@ -53,6 +53,7 @@ public interface IEngineClient : IDisposable
     OrganismKey? FindBestRobot(int weightPercent) => FindBestRobot(weightPercent > 0);
     void UpdateMainRules(GlobalMainSettings settings) { }
     void UpdateAdvancedMutationSettings(GlobalAdvancedMutationSettings settings, GlobalMainSettings main) { }
+    void UpdateCostSettings(GlobalSimulationCostSettings settings) { }
     void UpdateDisqualificationRules(int level) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);
     void UpdateRestrictionOptions(RestrictionOptions options);

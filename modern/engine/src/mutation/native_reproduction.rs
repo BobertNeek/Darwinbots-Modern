@@ -63,6 +63,7 @@ impl GenomeMutator {
         settings: &AdvancedMutationSettings, multiplier: f64) -> MutationReport {
         let mut report = MutationReport::default();
         for kind in [StandardMutationKind::Point, StandardMutationKind::Delta, StandardMutationKind::Point2] {
+            self.native_kind = Some(kind);
             if profile.rate(kind).one_in <= 0.0 || (kind == StandardMutationKind::Point2 && !settings.point2_enabled)
                 || (kind == StandardMutationKind::Delta && settings.delta2.enabled) { continue; }
             if kind == StandardMutationKind::Delta {
@@ -79,7 +80,9 @@ impl GenomeMutator {
                     let value = loop { let value = self.sample_value(MutationRate::new(1.0, old, profile.delta.mean));
                         if value > 0.0 && value != old { break value; } };
                     profile.rate_mut(target).one_in = value;
+                    self.native_event(format!("changed {target:?} rate from {old} to {value}"));
                     report.changes += 1;
+                    report.class_counts[kind.index()] += 1;
                     report.kind = Some(MutationKind::Replacement);
                     report.standard_kind = Some(kind);
                 }
@@ -101,7 +104,8 @@ impl GenomeMutator {
                     let index = (self.native_unit() * coding as f32).floor() as usize;
                     self.native_change_dna2(dna, index, coding)
                 };
-                if changes > 0 { report.changes += changes; report.kind = Some(MutationKind::Point); report.standard_kind = Some(kind); }
+                if changes > 0 { report.changes += changes; report.class_counts[kind.index()] += changes;
+                    report.kind = Some(MutationKind::Point); report.standard_kind = Some(kind); }
                 // The mutation consumes its draws before scheduling the next event.
                 *clock = self.native_point_clock(age, dna.blocks().len(), profile, kind, multiplier);
             }
@@ -196,6 +200,8 @@ impl GenomeMutator {
                 }
             } else { self.native_type(Some(old.class), old.value) };
             dna.blocks_mut()[index] = replacement;
+            self.native_event(format!("position={} from={:?}:{} to={:?}:{}", index + 1,
+                old.class, old.value, replacement.class, replacement.value));
             changes += 1;
         }
         changes
@@ -222,13 +228,19 @@ impl GenomeMutator {
                     Some(choices[(self.native_unit() * 5.0).floor() as usize]) },
                 _ => None,
             };
-            if let Some(value) = value { dna.blocks_mut()[index] = DnaBlock { class: TokenClass::Number, value }; return 1; }
+            if let Some(value) = value {
+                let old = dna.blocks()[index];
+                dna.blocks_mut()[index] = DnaBlock { class: TokenClass::Number, value };
+                self.native_event(format!("position={} from={:?}:{} to=Number:{value}", index + 1, old.class, old.value));
+                return 1;
+            }
         }
         // VB's And is eager, even at the last position.
         let functional = (self.native_unit() * 3.0).floor() == 0.0;
         if index + 1 < dna_size.saturating_sub(1) && functional {
             dna.blocks_mut()[index] = DnaBlock { class: TokenClass::Number, value: output };
             dna.blocks_mut()[index + 1] = DnaBlock { class: TokenClass::Store, value: 1 };
+            self.native_event(format!("position={} length=2 output={output} store", index + 1));
             2
         } else {
             let block = if (self.native_unit() * 5.0).floor() == 0.0 {
@@ -236,6 +248,7 @@ impl GenomeMutator {
                 DnaBlock { class: TokenClass::Number, value: value + (self.native_unit() * 32.0).floor() as i32 * 1_000 }
             } else { let (_, value) = self.native_sysvar(&INPUT); DnaBlock { class: TokenClass::Dereference, value } };
             dna.blocks_mut()[index] = block;
+            self.native_event(format!("position={} to={:?}:{}", index + 1, block.class, block.value));
             1
         }
     }
@@ -263,6 +276,7 @@ impl GenomeMutator {
             StandardMutationKind::Insertion, StandardMutationKind::Reversal,
             StandardMutationKind::Translocation, StandardMutationKind::Amplification,
             StandardMutationKind::MajorDeletion, StandardMutationKind::MinorDeletion] {
+            self.native_kind = Some(kind);
             if profile.rate(kind).one_in <= 0.0 { continue; }
             if (kind == StandardMutationKind::CopyError2 && !settings.copy_error2_enabled)
                 || (kind == StandardMutationKind::Translocation && !settings.translocation_enabled)
@@ -271,6 +285,7 @@ impl GenomeMutator {
             let changes = self.native_reproductive_pass(dna, profile, kind, multiplier);
             if changes > 0 {
                 report.changes = report.changes.saturating_add(changes);
+                report.class_counts[kind.index()] = changes;
                 report.standard_kind = Some(kind);
                 report.kind = Some(match kind {
                     StandardMutationKind::Insertion => MutationKind::Insertion,
@@ -317,9 +332,11 @@ impl GenomeMutator {
                         if dna.blocks().len() + length > MAX_DNA_BLOCKS { break; }
                         let start = position + inserted;
                         let mut blocks = Vec::with_capacity(length);
-                        for _ in 0..length {
+                        for offset in 0..length {
                             self.native_integer(0, 99); // ChangeDNA's first, type-only pass.
-                            blocks.push(self.native_type(None, -1));
+                            let block = self.native_type(None, -1);
+                            self.native_event(format!("inserted position={} type={:?}", start + offset + 1, block.class));
+                            blocks.push(block);
                         }
                         dna.blocks_mut().splice(start..start, blocks);
                         changes += length as u32;
@@ -330,7 +347,10 @@ impl GenomeMutator {
                         profile.reversal.mean = profile.reversal.mean.max(2.0);
                         let radius = (self.native_positive_length(profile.reversal) / 2)
                             .min(position - 1).min(dna.blocks().len().saturating_sub(1 + position));
-                        if radius > 0 { dna.blocks_mut()[position - 1 - radius..position + radius].reverse(); changes += 1; }
+                        if radius > 0 {
+                            dna.blocks_mut()[position - 1 - radius..position + radius].reverse(); changes += 1;
+                            self.native_event(format!("center={position} length={}", radius * 2 + 1));
+                        }
                     }
                     StandardMutationKind::MinorDeletion | StandardMutationKind::MajorDeletion => {
                         let rate = profile.rate_mut(kind);
@@ -340,6 +360,7 @@ impl GenomeMutator {
                         let length = length.min(dna.blocks().len() - position);
                         if length == 0 { break; }
                         dna.blocks_mut().drain(position - 1..position - 1 + length);
+                        self.native_event(format!("deleted position={position} length={length}"));
                         changes += 1;
                     }
                     StandardMutationKind::Amplification | StandardMutationKind::Translocation => {
@@ -353,7 +374,10 @@ impl GenomeMutator {
                             if kind == StandardMutationKind::Translocation { dna.blocks_mut().drain(start..start + length); }
                             if dna.blocks().len() + length <= MAX_DNA_BLOCKS {
                                 let after = self.native_integer(1, dna.blocks().len() as i32 - 2).max(0) as usize;
-                                if after < dna.blocks().len() { dna.blocks_mut().splice(after..after, segment); changes += 1; }
+                                if after < dna.blocks().len() {
+                                    dna.blocks_mut().splice(after..after, segment); changes += 1;
+                                    self.native_event(format!("source={} destination={} length={length}", start + 1, after + 1));
+                                }
                             }
                         }
                     }
@@ -396,6 +420,11 @@ mod tests {
         let report = mutator.native_reproductive_mutations(&mut dna, &mut profile, &AdvancedMutationSettings::default(), 1.0);
         assert_eq!(report.changes, 6); // four CopyError positions plus two reversal centers
         assert_eq!(report.standard_kind, Some(StandardMutationKind::Reversal));
+        assert_eq!(report.class_counts[StandardMutationKind::CopyError.index()], 4);
+        assert_eq!(report.class_counts[StandardMutationKind::Reversal.index()], 2);
+        let events = mutator.take_native_events();
+        assert_eq!(events.iter().filter(|event| event.kind == StandardMutationKind::CopyError).count(), 4);
+        assert_eq!(events.iter().filter(|event| event.kind == StandardMutationKind::Reversal).count(), 2);
         assert_eq!(dna.blocks().last(), Some(&DnaBlock { class: TokenClass::End, value: 1 }));
     }
 

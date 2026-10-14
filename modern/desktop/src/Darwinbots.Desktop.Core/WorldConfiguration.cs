@@ -65,8 +65,11 @@ internal static class NativeConfigurationParser
             OscillationMode = oscillation.GetProperty("mode").Deserialize<GlobalMutationOscillationMode>(Options),
             OscillationPeriod = oscillation.GetProperty("period").GetUInt64(),
             OscillationAmplitude = oscillation.GetProperty("amplitude").GetDouble(),
+            OscillationHighCycles = oscillation.TryGetProperty("high_cycles", out var highCycles) ? highCycles.GetUInt64() : 10000,
+            OscillationLowCycles = oscillation.TryGetProperty("low_cycles", out var lowCycles) ? lowCycles.GetUInt64() : 10000,
             EpigeneticReset = epigenetic.GetProperty("reset_enabled").GetBoolean(),
             EpigeneticAmplification = epigenetic.GetProperty("amplification").GetDouble(),
+            EpigeneticExponent = epigenetic.TryGetProperty("native_exponent", out var exponent) ? exponent.GetDouble() : 1.3,
             EpigeneticOverloadThreshold = epigenetic.GetProperty("overload_threshold").GetUInt64(),
             SaveAsTemporaryGene = epigenetic.GetProperty("save_as_temporary_gene").GetBoolean(),
         };

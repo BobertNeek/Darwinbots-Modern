@@ -526,6 +526,11 @@ public sealed partial class NativeEngineClient : IEngineClient
         new { type = "update_main_rules", body_cutoff = settings.BodyCutoff, greedy_reproduction = settings.GreedyEnforcement },
     } }, "update global main rules");
 
+    public void UpdateCostSettings(GlobalSimulationCostSettings settings) =>
+        ExecuteBatch(new { version = 1, commands = new[] { new {
+            type = "update_cost_settings", costs = NativeCommandSerializer.DnaCosts(settings),
+        } } }, "update simulation costs");
+
     public void UpdateMutationSettings(MutationSettingsUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);

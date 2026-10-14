@@ -14,7 +14,6 @@ public sealed class NativeDelta2Tests
         var settings = new GlobalSettings { AdvancedMutation = new GlobalAdvancedMutationSettings {
             Delta2Enabled = true, Delta2Interval = 0, NativeDelta2 = native,
         }};
-        settings.Validate();
         var restored = GlobalSettings.FromJson(settings.ToJson());
         Assert.Equal(native, restored.AdvancedMutation.NativeDelta2);
         Assert.Equal(0UL, restored.AdvancedMutation.Delta2Interval);

@@ -13,6 +13,18 @@ impl Engine {
     /// HDRoutines.InsertOrganism chooses integer coordinates from the inclusive
     /// 60..FieldSize-60 interval, then translates the entire incoming group.
     pub fn insert_native_organisms(&mut self, bytes: &[u8]) -> Result<usize, EngineError> {
+        if let Some(mut random) = self.native_random.clone() {
+            let position = [
+                random.integer(60, (self.config.world_width - 60.0).round_ties_even() as i32) as f32,
+                random.integer(60, (self.config.world_height - 60.0).round_ties_even() as i32) as f32,
+            ];
+            // The modern command is atomic. Failed imports retain the RNG stream,
+            // just as they retain every robot and file transfer.
+            let count = self.import_native_organisms(bytes, Some(position))?;
+            self.native_random = Some(random);
+            self.native_insertion_sequence = self.native_insertion_sequence.saturating_add(1);
+            return Ok(count);
+        }
         let first = advance_random(
             self.config.seed
                 ^ self.native_insertion_sequence.rotate_left(29)
@@ -166,9 +178,14 @@ mod tests {
         let file = tied_file();
         let bytes = file.encode().unwrap();
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let mut expected_random = world.native_random.clone().unwrap();
+        let expected_position = [expected_random.integer(60, (world.config.world_width - 60.0) as i32) as f32,
+            expected_random.integer(60, (world.config.world_height - 60.0) as i32) as f32];
         world.insert_native_organisms(&bytes).unwrap();
         let ids = world.slots.ids_in_slot_order();
         let anchor = world.slots.get(ids[0]).unwrap().kinematics.position;
+        assert_eq!(anchor, expected_position);
+        assert_eq!(world.native_random.as_ref().unwrap(), &expected_random);
         for (axis, extent) in [world.config.world_width, world.config.world_height]
             .into_iter()
             .enumerate()

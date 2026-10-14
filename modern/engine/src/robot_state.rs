@@ -308,10 +308,14 @@ impl RobotEffectState {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct RobotHeredityState {
     pub addresses: [u16; 20],
     pub epigenetic_staging: [i32; 15],
+    /// DB2 MutEpiReset is a Double. Original .sim/.dbo omit this value;
+    /// modern saves retain it so reset progress survives a modern reload.
+    #[serde(default)]
+    pub native_mutation_dose: f64,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]

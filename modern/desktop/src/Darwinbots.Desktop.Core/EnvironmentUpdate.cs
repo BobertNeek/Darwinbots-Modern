@@ -548,9 +548,12 @@ public static class NativeCommandSerializer
             mode = value.OscillationMode.ToString(),
             period = value.OscillationPeriod,
             amplitude = value.OscillationAmplitude,
+            high_cycles = value.OscillationHighCycles,
+            low_cycles = value.OscillationLowCycles,
         },
         epigenetic = new
         {
+            native_exponent = value.EpigeneticExponent,
             reset_enabled = value.EpigeneticReset || main.EpigeneticReset,
             amplification = value.EpigeneticAmplification * main.EpigeneticAmplification,
             overload_threshold = value.EpigeneticOverloadThreshold,

@@ -102,6 +102,10 @@ mod staged_evolution;
 mod native_speciation;
 #[path = "world/native_birth_mutation.rs"]
 mod native_birth_mutation;
+#[path = "world/native_epigenetics.rs"]
+mod native_epigenetics;
+#[path = "world/native_mutation_oscillation.rs"]
+mod native_mutation_oscillation;
 
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
@@ -2598,6 +2602,11 @@ impl Engine {
 
     pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
         config.shots.validate().map_err(EngineError::Invariant)?;
+        config.advanced_mutation.native_delta2.validate()?;
+        if !config.advanced_mutation.epigenetic.native_exponent.is_finite()
+            || config.advanced_mutation.epigenetic.native_exponent < 0.0 {
+            return Err(EngineError::Invariant("invalid epigenetic mutation dose exponent".into()));
+        }
         if config.disqualification > 2 { return Err(EngineError::Invariant("disqualification level must be 0, 1 or 2".into())); }
         if config.organism_capacity > MAX_ROBOTS {
             return Err(EngineError::Invariant(
@@ -2796,6 +2805,8 @@ impl Engine {
         }
         if !settings.oscillation.amplitude.is_finite()
             || !settings.epigenetic.amplification.is_finite()
+            || !settings.epigenetic.native_exponent.is_finite()
+            || settings.epigenetic.native_exponent < 0.0
         {
             return Err(EngineError::Invariant(
                 "advanced mutation values must be finite".to_owned(),
@@ -4567,7 +4578,21 @@ impl Engine {
         let tag = (!organism.identity.tag.is_empty())
             .then_some(organism.identity.tag.as_str())
             .or_else(|| (!dna.metadata().tag.is_empty()).then_some(dna.metadata().tag.as_str()));
-        Ok(dna.to_source_with_runtime_metadata(generation, mutations, tag))
+        let mut exported = dna.clone();
+        if self.config.advanced_mutation.epigenetic.save_as_temporary_gene {
+            let mut gene = String::from("start\n");
+            let mut any = false;
+            for address in 971..=990 {
+                let value = organism.program.memory.read(address);
+                if value != 0 { gene.push_str(&format!("{value} {address} store\n")); any = true; }
+            }
+            if any {
+                gene.push_str("*.thisgene .delgene store\nstop\n");
+                let temporary = LegacyDna::parse(&gene)?;
+                exported.blocks_mut().splice(0..0, temporary.blocks()[..temporary.blocks().len() - 1].iter().copied());
+            }
+        }
+        Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
     }
 
     pub fn manual_reproduce(
@@ -4615,7 +4640,7 @@ impl Engine {
                     .to_owned(),
             ));
         }
-        let dna = if let Some(second) = second {
+        let mut dna = if let Some(second) = second {
             let second_dna = self.slots.get(second)?.program.dna.clone();
             if let Some(random) = self.native_random.as_mut() {
                 first_organism.program.dna.crossover_native(&second_dna, random)
@@ -4628,6 +4653,10 @@ impl Engine {
             }
             first_organism.program.dna.clone()
         };
+        if self.native_random.is_some() {
+            dna.clear_native_user_variables();
+            dna.set_native_movement_mode(first_organism.flags.new_move);
+        }
         let child =
             self.spawn_species_at_unpublished(dna, first_organism.identity.species, position)?;
         let absolute_id = self.slots.get(child)?.identity.absolute_id;
@@ -4645,9 +4674,18 @@ impl Engine {
             child_organism.counters.birth_cycle = self.tick;
             child_organism.counters.offspring = 0;
             child_organism.counters.descendants = 0;
-            child_organism.phenotype = first_organism.phenotype;
+            child_organism.phenotype = first_organism.phenotype.clone();
             child_organism.program.genetic_graph = first_organism.program.genetic_graph;
-            child_organism.program.mutation_metadata = first_organism.program.mutation_metadata;
+            child_organism.program.mutation_metadata = first_organism.program.mutation_metadata.clone();
+            child_organism.program.mutation_profile = first_organism.program.mutation_profile.clone();
+            child_organism.flags.new_move = first_organism.flags.new_move;
+            child_organism.flags.can_mutate = first_organism.flags.can_mutate;
+            for address in 971..=975 {
+                child_organism.program.memory.write(address, first_organism.program.memory.read(address));
+            }
+            for offset in 0..15 {
+                child_organism.heredity.epigenetic_staging[offset as usize] = first_organism.program.memory.read(976 + offset);
+            }
             child_organism
                 .program
                 .mutation_metadata
@@ -4688,9 +4726,13 @@ impl Engine {
         self.record_offspring([Some(first), second]);
         self.propagate_descendant_count([Some(first), second]);
         if mutate {
-            self.pending_mutations.push(child);
-            self.mutation_phase(MutationContext::Reproduction { forced: true });
+            if self.native_random.is_some() { self.native_birth_mutations(child, true); }
+            else {
+                self.pending_mutations.push(child);
+                self.mutation_phase(MutationContext::Reproduction { forced: true });
+            }
         }
+        if self.native_random.is_some() { self.native_inherit_epigenetic_dose(child, first_organism.heredity.native_mutation_dose); }
         self.stats.births = self.stats.births.saturating_add(1);
         self.publish_snapshot();
         Ok(child)
@@ -4727,6 +4769,7 @@ impl Engine {
             || self.has_file_transfers())
         .then(|| self.cycle_checkpoint());
         let mut transfers = FileTransferTransaction::default();
+        self.update_native_mutation_oscillation();
         self.update_dynamic_cost_state();
         match self
             .tick_internal(publish, trace_enabled, &mut transfers)
@@ -5493,6 +5536,10 @@ impl Engine {
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
         self.config.advanced_mutation.native_delta2.validate()?;
+        if !self.config.advanced_mutation.epigenetic.native_exponent.is_finite()
+            || self.config.advanced_mutation.epigenetic.native_exponent < 0.0 {
+            return Err(EngineError::Invariant("invalid epigenetic mutation dose exponent".into()));
+        }
         self.local_mode.series.validate(self.species.len()).map_err(EngineError::Invariant)?;
         if let Some(evolution) = &self.local_mode.evolution {
             evolution.validate().map_err(EngineError::Invariant)?;
@@ -5531,6 +5578,9 @@ impl Engine {
                     ))
                 })?;
                 let position = robot.kinematics.position;
+                if !robot.heredity.native_mutation_dose.is_finite() || robot.heredity.native_mutation_dose < 0.0 {
+                    return Err(EngineError::Invariant(format!("slot {index} has invalid epigenetic mutation dose")));
+                }
                 if !position[0].is_finite() || !position[1].is_finite() {
                     return Err(EngineError::Invariant(format!(
                         "slot {index} has invalid position {position:?}"
@@ -10011,6 +10061,7 @@ impl Engine {
             }
             if self.native_random.is_some() {
                 self.native_birth_mutations(child, birth.mutation_reproduction);
+                self.native_inherit_epigenetic_dose(child, parent_state.heredity.native_mutation_dose);
             } else if mutate {
                 self.pending_mutations.push(child);
                 self.mutation_phase(MutationContext::Reproduction { forced: birth.mutation_reproduction });
@@ -10217,6 +10268,8 @@ impl Engine {
         scheduled: Option<(StandardMutationKind, usize, crate::MutationPolicyReport)>,
     ) {
         let original_color = self.slots.get(id).map_or(0, |robot| robot.phenotype.color);
+        // The original log budget uses the displayed census from the preceding cycle.
+        let native_log_population = self.snapshot.organisms.len().max(1);
         let species = self
             .slots
             .get(id)
@@ -10231,7 +10284,12 @@ impl Engine {
             .and_then(|species| self.species.get(species.0 as usize))
             .map_or(0.0, |definition| f64::from(definition.mutation_rate));
         let mut policy_settings = settings.clone();
-        if self.native_random.is_some() { policy_settings.delta2.enabled = false; }
+        if self.native_random.is_some() {
+            policy_settings.delta2.enabled = false;
+            policy_settings.epigenetic.reset_enabled = false;
+            policy_settings.epigenetic.amplification = 1.0;
+            policy_settings.oscillation.mode = crate::MutationOscillationMode::Disabled;
+        }
         let (report, should_fork) = {
             let Ok(organism) = self.slots.get_mut(id) else {
                 return;
@@ -10297,9 +10355,14 @@ impl Engine {
                 )
             };
             organism.program.rng_state = mutator.random_state();
+            let native_events = mutator.take_native_events();
             if self.native_random.is_some() { self.native_random = mutator.native_random(); }
             organism.refresh_occurrence_census();
             if report.changes > 0 {
+                if self.native_random.is_some() && settings.epigenetic.reset_enabled
+                    && matches!(context, MutationContext::Lifelong) {
+                    organism.heredity.native_mutation_dose += f64::from(report.changes).powf(f64::from(settings.epigenetic.native_exponent));
+                }
                 organism.program.mutation_metadata.native_last_mutations = organism
                     .program
                     .mutation_metadata
@@ -10331,16 +10394,36 @@ impl Engine {
                     .saturating_add(report.changes as u64);
                 organism.program.mutation_metadata.last_mutation_cycle = Some(self.tick);
                 organism.program.mutation_metadata.last_mutation_kind = report.standard_kind;
-                if let Some(kind) = report.standard_kind {
+                for kind in StandardMutationKind::ALL {
+                    let changes = if self.native_random.is_some() { report.class_counts[kind.index()] }
+                        else if report.standard_kind == Some(kind) { report.changes } else { 0 };
+                    if changes == 0 { continue; }
                     let count = organism
                         .program
                         .mutation_metadata
                         .mutation_class_counts
                         .entry(kind)
                         .or_default();
-                    *count = count.saturating_add(report.changes as u64);
+                    *count = count.saturating_add(u64::from(changes));
                 }
-                organism.program.mutation_metadata.detailed_log.insert(
+                if self.native_random.is_some() {
+                    if self.tick > 0 {
+                        let limit = 100_000_000usize / native_log_population;
+                        let log = &mut organism.program.mutation_metadata.detailed_log;
+                        let mut bytes = log.iter().map(|line| line.len() + 2).sum::<usize>();
+                        let mut added = Vec::with_capacity(native_events.len());
+                        for event in native_events {
+                            if bytes > limit { log.clear(); added.clear(); bytes = 0; }
+                            let line = format!("mutation:{:?}:{}:cycle={}", event.kind, event.detail, self.tick);
+                            bytes += line.len() + 2;
+                            added.push(line);
+                        }
+                        added.reverse();
+                        added.append(log);
+                        *log = added;
+                    }
+                } else {
+                    organism.program.mutation_metadata.detailed_log.insert(
                     0,
                     format!(
                         "mutation:{:?}:cycle={}:changes={}",
@@ -10352,6 +10435,7 @@ impl Engine {
                     .mutation_metadata
                     .detailed_log
                     .truncate(128);
+                }
             }
             (report, report.changes > 0)
         };

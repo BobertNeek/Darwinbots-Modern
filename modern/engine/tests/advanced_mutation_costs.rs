@@ -72,6 +72,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
                     mode: MutationOscillationMode::Sawtooth,
                     period: 4,
                     amplitude: 0.5,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -96,6 +97,7 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
                     amplification: 2.0,
                     overload_threshold: 3,
                     save_as_temporary_gene: true,
+                    ..Default::default()
                 },
                 ..Default::default()
             },

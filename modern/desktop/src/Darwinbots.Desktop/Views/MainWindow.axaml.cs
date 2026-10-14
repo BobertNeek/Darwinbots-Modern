@@ -1376,10 +1376,12 @@ public sealed partial class MainWindow : Window
             await _session.UpdateMainRulesAsync(_globalSettings.Main);
             await _session.UpdateDisqualificationRulesAsync(_globalSettings.League.DisqualificationRule);
             await _session.UpdateAdvancedMutationSettingsAsync(_globalSettings.AdvancedMutation, _globalSettings.Main);
+            await _session.UpdateCostSettingsAsync(_globalSettings.Costs);
+            _activeCostMultiplier = _globalSettings.Costs.GlobalMultiplier;
         }
         if (_trayIcon is not null)
             _trayIcon.IsVisible = !_globalSettings.Main.HideTray;
-        _viewModel.Status = "GLOBAL SETTINGS SAVED FOR NEXT WORLD";
+        _viewModel.Status = _session is null ? "GLOBAL SETTINGS SAVED FOR NEXT WORLD" : "GLOBAL RULES AND COSTS APPLIED";
         return LegacyCommandResult.Success("GLOBAL SETTINGS SAVED");
     }
 
