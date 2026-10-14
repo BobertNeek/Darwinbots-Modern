@@ -47,7 +47,7 @@
     "native_dll_sha256": "a72dbf2b6ce8f8f1500a1de9e58916f41d1ad443c85842178271b7aa53323ac8"
   },
   "limits": [
-    "Complete bounded workspace Release passed 562/0; two named long ecology tests are running separately.",
+    "Complete bounded workspace Release passed 562/0; the two later CPU ecology runs passed on different source states. See native-long-ecology-receipt.json.",
     "Original per-robot phase order and global RNG, cached radii, older corpse migration and matching original trajectories remain open.",
     "Graph/evolution/league requirements and supported-platform package smoke remain open.",
     "Internet Mode is excluded."
