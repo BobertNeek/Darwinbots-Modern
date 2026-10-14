@@ -46,14 +46,8 @@
     "log": "completion-checks/parity-native-waste-desktop.log",
     "native_dll_sha256": "a72dbf2b6ce8f8f1500a1de9e58916f41d1ad443c85842178271b7aa53323ac8"
   },
-  "latest_complete_release": {
-    "revision": "e751707",
-    "passed": 495,
-    "failed": 44,
-    "filtered": 2
-  },
   "limits": [
-    "Engine-only Debug gate excludes the two long ecology tests; full workspace Release qualification is still historical.",
+    "Complete bounded workspace Release passed 562/0; two named long ecology tests are running separately.",
     "Original per-robot phase order and global RNG, cached radii, older corpse migration and matching original trajectories remain open.",
     "Graph/evolution/league requirements and supported-platform package smoke remain open.",
     "Internet Mode is excluded."
@@ -74,5 +68,19 @@
     "passed": 134,
     "failed": 0,
     "log": "completion-checks/parity-native-waste-core-release.log"
+  },
+  "previous_complete_release": {
+    "revision": "e751707",
+    "passed": 495,
+    "failed": 44,
+    "filtered": 2
+  },
+  "latest_complete_release": {
+    "code_revision": "020642950a66e259851bb31633a7ff3b32daada8",
+    "passed": 562,
+    "failed": 0,
+    "filtered": 2,
+    "failing_targets": 0,
+    "receipt": "evidence/parity-native-waste-workspace-summary.json"
   }
 }
