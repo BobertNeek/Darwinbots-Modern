@@ -33,10 +33,18 @@ public enum LeagueWorkflow { Direct, Ladder, Tournament, Seeding }
 
 public sealed record StagedEvolutionConfiguration(EvolutionMode Mode, string SourceDna,
     float ReductionUnit, uint CycleLength, bool NormalizeDnaSize, int ZerobotInitialDnaLength,
-    bool ReducePopulationOscillation, bool AutoGraphs, bool RestrictMutation, bool RestrictSpeciesMixing);
+    bool AutoGraphs)
+{
+    public ushort FitnessWeight { get; init; } = 100;
+}
 
 public sealed record StagedEvolutionSnapshot(uint Stage, string Phase, bool Hidden,
-    float ReductionUnit, uint HideCycles, uint TestWins, uint OpponentStage, double Handicap);
+    float ReductionUnit, uint HideCycles, uint TestWins, uint OpponentStage, double Handicap)
+{
+    public IReadOnlyList<uint> BaselineSpecies { get; init; } = [];
+    public IReadOnlyList<uint> MutatorSpecies { get; init; } = [];
+    public int TestResultCursor { get; init; }
+}
 
 public sealed record LeagueMatchSnapshot(uint Number, IReadOnlyList<uint> Entrants, uint Winner,
     int FirstResult, int ResultCount);

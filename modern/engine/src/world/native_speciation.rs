@@ -2,9 +2,22 @@
 use super::*;
 
 impl Engine {
+    pub(super) fn native_default_mutation_profile(&self, length: usize) -> StandardMutationProfile {
+        let mut profile = StandardMutationProfile::default();
+        profile.point2.mean = 1.0;
+        profile.point2.std_dev = 0.0;
+        if self.config.advanced_mutation.normalization_enabled {
+            let rate = f64::from((length as f64 * self.config.advanced_mutation.normalization_dna_length as f64) as f32);
+            for kind in [StandardMutationKind::Point, StandardMutationKind::Point2, StandardMutationKind::Delta,
+                StandardMutationKind::CopyError, StandardMutationKind::CopyError2, StandardMutationKind::Insertion,
+                StandardMutationKind::Reversal, StandardMutationKind::MinorDeletion, StandardMutationKind::MajorDeletion,
+                StandardMutationKind::Amplification, StandardMutationKind::Translocation] { profile.rate_mut(kind).one_in = rate; }
+        }
+        profile
+    }
+
     pub(super) fn native_auto_fork_species(&mut self, id: OrganismId, original_color: u32) {
         if !self.config.auto_speciation || self.species.len() >= 49 { return; }
-        if self.local_mode.evolution.as_ref().is_some_and(|state| state.config.restrict_species_mixing) { return; }
         let Ok(robot) = self.slots.get(id) else { return };
         let length = robot.program.dna.blocks().len();
         let threshold = length as f64 * f64::from(self.config.speciation_genetic_distance_percent) / 100.0;
@@ -20,18 +33,7 @@ impl Engine {
         definition.skin = robot.phenotype.skin;
         definition.custom_skin = true;
         definition.lineage_id = 0;
-        let mut profile = StandardMutationProfile::default();
-        if self.config.advanced_mutation.normalization_enabled {
-            let scale = length as f64 / self.config.advanced_mutation.normalization_dna_length.max(1) as f64;
-            for kind in [StandardMutationKind::Point, StandardMutationKind::Point2, StandardMutationKind::Delta,
-                StandardMutationKind::CopyError, StandardMutationKind::CopyError2, StandardMutationKind::Insertion,
-                StandardMutationKind::Reversal, StandardMutationKind::MinorDeletion, StandardMutationKind::MajorDeletion,
-                StandardMutationKind::Amplification, StandardMutationKind::Translocation] {
-                let rate = f64::from((profile.rate(kind).one_in * scale) as f32);
-                profile.rate_mut(kind).one_in = rate;
-            }
-        }
-        definition.mutation_profile = Some(profile);
+        definition.mutation_profile = Some(self.native_default_mutation_profile(length));
         definition.mutation_rate = 0.0;
         let new_species = self.register_species_unpublished(definition);
         let definition = &self.species[new_species.0 as usize];
@@ -48,6 +50,19 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn normalized_defaults_are_dna_length_times_the_native_per_base_setting() {
+        let mut config = EngineConfig::testing();
+        config.advanced_mutation.normalization_enabled = true;
+        let mut world = Engine::new(config).unwrap();
+        let id = world.spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2]).unwrap();
+        let profile = &world.slots.get(id).unwrap().program.mutation_profile;
+        assert_eq!(profile.point.one_in, 3_213.0);
+        assert_eq!(profile.point2.one_in, 3_213.0);
+        assert_eq!(profile.point2.mean, 1.0);
+        assert_eq!(profile.point2.std_dev, 0.0);
+    }
 
     #[test]
     fn strict_threshold_preserves_pose_and_skin_and_resets_native_mutations() {

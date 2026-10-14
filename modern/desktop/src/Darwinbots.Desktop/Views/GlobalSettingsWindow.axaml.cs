@@ -108,13 +108,10 @@ public sealed partial class GlobalSettingsWindow : Window
         SourceBot.Text = evolution.SourceBot;
         StageLength.Value = (decimal)evolution.StageLength;
         CycleLength.Value = evolution.CycleLength;
-        ReducePopulationOscillation.IsChecked = evolution.ReducePopulationOscillation;
         AutoGraphs.IsChecked = evolution.AutoGraphs;
         OptionalInternetStartup.IsChecked = evolution.OptionalInternetStartup;
         NormalizeDnaSize.IsChecked = evolution.NormalizeDnaSize;
         ZerobotInitialDnaLength.Value = evolution.ZerobotInitialDnaLength;
-        RestrictMutation.IsChecked = evolution.RestrictMutation;
-        RestrictSpeciesMixing.IsChecked = evolution.RestrictSpeciesMixing;
     }
 
     private GlobalSettings ReadSettings() => new()
@@ -213,13 +210,13 @@ public sealed partial class GlobalSettingsWindow : Window
             SourceBot = SourceBot.Text ?? string.Empty,
             StageLength = (double)(StageLength.Value ?? 10),
             CycleLength = (int)(CycleLength.Value ?? 100),
-            ReducePopulationOscillation = ReducePopulationOscillation.IsChecked == true,
+            ReducePopulationOscillation = Settings.Evolution.ReducePopulationOscillation,
             AutoGraphs = AutoGraphs.IsChecked == true,
             OptionalInternetStartup = OptionalInternetStartup.IsChecked == true,
             NormalizeDnaSize = NormalizeDnaSize.IsChecked == true,
             ZerobotInitialDnaLength = (int)(ZerobotInitialDnaLength.Value ?? 32_000),
-            RestrictMutation = RestrictMutation.IsChecked == true,
-            RestrictSpeciesMixing = RestrictSpeciesMixing.IsChecked == true,
+            RestrictMutation = Settings.Evolution.RestrictMutation,
+            RestrictSpeciesMixing = Settings.Evolution.RestrictSpeciesMixing,
         },
     };
 

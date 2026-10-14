@@ -12,6 +12,8 @@ public sealed class WorldViewport : Control
 {
     private Bitmap? _backgroundImage;
     private EngineSnapshot _snapshot = EngineSnapshot.Empty;
+    private IReadOnlyList<OrganismSnapshot> _visibleOrganisms = [];
+    private Dictionary<OrganismKey, OrganismSnapshot> _organismsByKey = [];
     private readonly Pen _gridPen = new(new SolidColorBrush(Color.Parse("#D9D8D0")), 0.6);
     private double _zoom = 1.0;
     private bool _zoomLocked;
@@ -73,7 +75,7 @@ public sealed class WorldViewport : Control
     public bool ShowResourceGauges { get => _showResourceGauges; set { _showResourceGauges = value; InvalidateVisual(); } }
     public bool HasBackgroundImage => _backgroundImage is not null;
     public WorldOverlayProjection OverlayProjection => WorldOverlayProjection.Create(
-        _snapshot.Organisms.Where(robot => !robot.IsHidden).ToArray(),
+        _visibleOrganisms,
         _showMovementVectors,
         _showShotImpacts,
         _showResourceGauges,
@@ -158,6 +160,9 @@ public sealed class WorldViewport : Control
     public void SetSnapshot(EngineSnapshot snapshot)
     {
         _snapshot = snapshot;
+        _organismsByKey = snapshot.Organisms.ToDictionary(robot => KeyOf(robot));
+        _visibleOrganisms = snapshot.Organisms.Any(robot => robot.IsHidden)
+            ? snapshot.Organisms.Where(robot => !robot.IsHidden).ToArray() : snapshot.Organisms;
         if (_selectedKey is { } selected && !Contains(snapshot, selected))
         {
             _selectedKey = null;
@@ -280,7 +285,7 @@ public sealed class WorldViewport : Control
         var center = ScreenPoint(position, scaleX, scaleY);
         var radiusScale = Math.Min(scaleX, scaleY);
         var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
-        var organism = _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == KeyOf(instance));
+        var organism = _organismsByKey.GetValueOrDefault(KeyOf(instance));
         if (organism?.IsHidden == true) return;
         var color = organism is not null && _rgbMemoryMonitor is { } monitor
             ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
@@ -402,7 +407,7 @@ public sealed class WorldViewport : Control
 
     private void DrawFallbackOrganisms(DrawingContext context, double scaleX, double scaleY)
     {
-        foreach (var organism in _snapshot.Organisms)
+        foreach (var organism in _visibleOrganisms)
         {
             if (organism.IsHidden) continue;
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
@@ -568,7 +573,7 @@ public sealed class WorldViewport : Control
         var scaleY = ScaleY;
         OrganismKey? best = null;
         var bestDistance = InputHitRadius * InputHitRadius;
-        foreach (var organism in _snapshot.Organisms)
+        foreach (var organism in _visibleOrganisms)
         {
             if (organism.IsHidden) continue;
             var x = organism.Position[0] * scaleX * _zoom + _pan.X;
@@ -785,11 +790,11 @@ public sealed class WorldViewport : Control
         WorldOverlayProjection overlay)
     {
         if (!overlay.ShowMovementVectors) return;
-        var stride = _snapshot.Organisms.Count > 20_000 ? 8 : _snapshot.Organisms.Count > 5_000 ? 3 : 1;
+        var stride = _visibleOrganisms.Count > 20_000 ? 8 : _visibleOrganisms.Count > 5_000 ? 3 : 1;
         var pen = new Pen(new SolidColorBrush(Color.Parse("#A5239AC0")), 0.9);
-        for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
+        for (var index = 0; index < _visibleOrganisms.Count; index += stride)
         {
-            var organism = _snapshot.Organisms[index];
+            var organism = _visibleOrganisms[index];
             if (organism.IsHidden) continue;
             var start = ScreenPoint(organism.Position, scaleX, scaleY);
             var end = new Point(
@@ -806,10 +811,10 @@ public sealed class WorldViewport : Control
         WorldOverlayProjection overlay)
     {
         if (!overlay.ShowResourceGauges) return;
-        var stride = _snapshot.Organisms.Count > 10_000 ? 6 : _snapshot.Organisms.Count > 3_000 ? 2 : 1;
-        for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
+        var stride = _visibleOrganisms.Count > 10_000 ? 6 : _visibleOrganisms.Count > 3_000 ? 2 : 1;
+        for (var index = 0; index < _visibleOrganisms.Count; index += stride)
         {
-            var organism = _snapshot.Organisms[index];
+            var organism = _visibleOrganisms[index];
             if (organism.IsHidden) continue;
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
             var width = 26.0;

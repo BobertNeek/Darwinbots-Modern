@@ -38,7 +38,7 @@ public sealed record MutationProfileUpdate(
 {
     public static MutationProfileUpdate Default { get; } = new(
         new(5_000, 3, 1),
-        new(5_000, 3, 1),
+        new(5_000, 1, 0),
         new(5_000, 500, 150),
         new(5_000, 1, 0),
         new(5_000, 1, 0),

@@ -15,29 +15,27 @@ pub enum EvolutionMode { #[default] SimpleSurvival, Eco, Zerobot }
 #[serde(default)]
 pub struct EvolutionConfig {
     pub mode: EvolutionMode,
+    pub fitness_weight: u16,
     pub source_dna: String,
     pub reduction_unit: f32,
     pub cycle_length: u32,
     pub normalize_dna_size: bool,
     pub zerobot_initial_dna_length: usize,
     pub mutation_rate_limit: Option<f64>,
-    pub reduce_population_oscillation: bool,
     pub auto_graphs: bool,
-    pub restrict_mutation: bool,
-    pub restrict_species_mixing: bool,
 }
 
 impl Default for EvolutionConfig {
     fn default() -> Self {
-        Self { mode: EvolutionMode::SimpleSurvival, source_dna: String::new(), reduction_unit: 10.0,
+        Self { mode: EvolutionMode::SimpleSurvival, fitness_weight: 100, source_dna: String::new(), reduction_unit: 10.0,
             cycle_length: 100, normalize_dna_size: false, zerobot_initial_dna_length: 32_000,
-            mutation_rate_limit: None, reduce_population_oscillation: false, auto_graphs: false,
-            restrict_mutation: false, restrict_species_mixing: false }
+            mutation_rate_limit: None, auto_graphs: false }
     }
 }
 
 impl EvolutionConfig {
     pub fn validate(&self) -> Result<(), String> {
+        if self.fitness_weight > 200 { return Err("evolution fitness weight must be 0..200".into()); }
         if !self.reduction_unit.is_finite() || !(0.01..=150.0).contains(&self.reduction_unit) {
             return Err("evolution reduction unit must be 0.01..150".into());
         }
@@ -149,8 +147,9 @@ impl EvolutionState {
         let length = seeds[0].dna.blocks().len();
         let reduction_unit = config.reduction_unit;
         let hide_cycles = config.cycle_length;
+        let fitness_weight = config.fitness_weight;
         Ok(Self { baseline_species: Vec::new(), mutator_species: Vec::new(), test_start_energy: 0.0,
-            fitness_weight: 100, config, phase: EvolutionPhase::Evolving, stage: 0,
+            fitness_weight, config, phase: EvolutionPhase::Evolving, stage: 0,
             stages: BTreeMap::from([(0, seeds.clone())]), mutators: seeds,
             retired_stages: Vec::new(), candidate: Vec::new(),
             test_wins: 0, test_result_cursor: 0, opponent_stage: 0, reduction_unit, decreasing_difficulty: true, correction: 5.0,

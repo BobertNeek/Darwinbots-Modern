@@ -86,6 +86,20 @@ mod tests {
             assert_eq!(world.slots.get(id).unwrap().kinematics.position, restored.slots.get(id).unwrap().kinematics.position);
         }
     }
+
+    #[test]
+    fn completed_zerobot_stops_advancing_world_and_trace_stays_paused() {
+        let mut world = simple();
+        world.local_mode.evolution.as_mut().unwrap().phase = EvolutionPhase::Complete;
+        world.local_mode.status = LocalModeStatus::Completed;
+        let tick = world.tick;
+        let random = world.native_random.clone();
+        world.tick_many(10).unwrap();
+        let trace = world.tick_with_trace().unwrap();
+        assert_eq!(trace.tick, tick);
+        assert_eq!(world.tick, tick);
+        assert_eq!(world.native_random, random);
+    }
 }
 
 impl Engine {
@@ -130,20 +144,27 @@ impl Engine {
     }
 
     pub(super) fn prepare_staged_evolution(&self, config: &LocalModeConfig) -> Result<Option<EvolutionState>, EngineError> {
-        let Some(settings) = config.staged_evolution.clone() else { return Ok(None) };
+        let Some(mut settings) = config.staged_evolution.clone() else { return Ok(None) };
+        if self.config.advanced_mutation.normalization_enabled && settings.mutation_rate_limit.is_none() {
+            settings.mutation_rate_limit = Some(f64::from(self.config.advanced_mutation.native_delta2.maximum_rate_per_base));
+        }
         let dna = if settings.mode == EvolutionMode::Zerobot {
             LegacyDna::from_legacy_blocks(vec![DnaBlock { class: TokenClass::Number, value: 0 };
                 settings.zerobot_initial_dna_length.min(MAX_DNA_BLOCKS - 1)])
         } else if !settings.source_dna.trim().is_empty() { LegacyDna::parse(&settings.source_dna)? }
         else {
             let source = config.source_species.map(|id| id.0 as usize).or_else(||
-                self.species.iter().position(|definition| !definition.vegetable));
+                self.species.iter().enumerate().position(|(index, definition)| !definition.vegetable
+                    && self.species_templates.get(index).and_then(Option::as_ref).is_some()));
             source.and_then(|index| self.species_templates.get(index)).and_then(Option::as_ref)
                 .map(|template| template.dna.clone()).ok_or_else(||
                     EngineError::Invariant("staged evolution needs a source bot or registered startup genome".into()))?
         };
         let profile = config.source_species.and_then(|id| self.species.get(id.0 as usize))
-            .and_then(|definition| definition.mutation_profile.clone()).unwrap_or_else(|| self.default_mutation_profile.clone());
+            .and_then(|definition| definition.mutation_profile.clone()).unwrap_or_else(|| {
+                if self.default_mutation_profile == StandardMutationProfile::default() { self.native_default_mutation_profile(dna.blocks().len()) }
+                else { self.default_mutation_profile.clone() }
+            });
         let count = match settings.mode { EvolutionMode::SimpleSurvival => 1, EvolutionMode::Eco => 15, EvolutionMode::Zerobot => 8 };
         EvolutionState::new(settings, vec![EvolutionGenome { dna, mutation_profile: profile }; count])
             .map(Some).map_err(EngineError::Invariant)
@@ -247,25 +268,41 @@ impl Engine {
         (count > 0).then(|| energy / f64::from(count))
     }
 
-    fn staged_candidates(&self, eco: bool) -> Vec<EvolutionGenome> {
-        if !eco { return self.find_best_robot_weighted(100).and_then(|id| self.slots.get(id).ok()).map(genome_of).into_iter().collect(); }
-        let families = self.native_family_scores();
-        let mut candidates = Vec::new();
-        for id in self.slots.ids_in_slot_order() {
+    fn staged_candidates(&mut self, eco: bool, weight: u16) -> Vec<EvolutionGenome> {
+        if !eco { return self.find_best_robot_weighted(weight).and_then(|id| self.slots.get(id).ok()).map(genome_of).into_iter().collect(); }
+        let ids = self.slots.ids_in_slot_order();
+        let mut diversity = HashMap::new();
+        for &id in &ids {
             let robot = self.slots.get(id).unwrap();
             if robot.flags.corpse || robot.flags.vegetable || robot.flags.hidden { continue; }
             let name = &self.species[robot.identity.species.0 as usize].name;
-            let distance: f32 = self.slots.ids_in_slot_order().into_iter().filter(|other| *other != id)
+            let distance: f32 = ids.iter().copied().filter(|other| *other != id)
                 .filter_map(|other| self.slots.get(other).ok()).filter(|target| !target.flags.corpse
                     && self.species[target.identity.species.0 as usize].name == *name)
                 .map(|target| robot.program.dna.genetic_distance(&target.program.dna)).sum();
-            // Native Eco selection uses the current fittest energy/population
-            // weighting; its default is 100 (pure family invested energy).
-            candidates.push((id, families[id.slot() as usize].1.max(0.0) * f64::from(distance)));
+            diversity.insert(id, distance);
         }
-        candidates.sort_by(|(left, left_score), (right, right_score)| right_score.total_cmp(left_score)
-            .then_with(|| right.slot().cmp(&left.slot())));
-        candidates.into_iter().take(15).filter_map(|(id, _)| self.slots.get(id).ok()).map(genome_of).collect()
+        let population_exponent = if weight < 100 { 1.0 } else { f64::from(200 - weight) / 100.0 };
+        let energy_exponent = f64::from(weight.min(100)) / 100.0;
+        let mut selected = Vec::new();
+        for _ in 0..15 {
+            // Deleting a selected family member changes later family scores.
+            let families = self.native_family_scores();
+            let mut best = None;
+            let mut best_score = 0.0;
+            for id in self.slots.ids_in_slot_order() {
+                let Some(distance) = diversity.get(&id) else { continue };
+                let family = families[id.slot() as usize];
+                let score = (family.0 as f64).powf(population_exponent)
+                    * family.1.max(0.0).powf(energy_exponent) * f64::from(*distance);
+                if score >= best_score { best_score = score; best = Some(id); }
+            }
+            let Some(id) = best else { break };
+            selected.push(genome_of(self.slots.get(id).unwrap()));
+            self.slots.remove(id).expect("selected evolution candidate must exist");
+            diversity.remove(&id);
+        }
+        selected
     }
 
     /// Returns true when a process-style restart replaced the world this cycle.
@@ -281,9 +318,10 @@ impl Engine {
             let random = self.native_random.get_or_insert_with(|| crate::native_random::NativeRandom::with_user_seed(self.config.seed));
             if mutators == 0 { state.decrease_difficulty(random); restart = true; }
             else if baselines == 0 {
-                let candidates = self.staged_candidates(state.config.mode == EvolutionMode::Eco);
-                let changed = candidates.first().is_some_and(|genome| genome.dna.metadata().mutations > 0);
+                let changed = self.find_best_robot_weighted(state.fitness_weight).and_then(|id| self.slots.get(id).ok())
+                    .is_some_and(|robot| robot.program.mutation_metadata.total_mutations > 0);
                 if changed && (state.config.mode != EvolutionMode::Eco || mutators >= 15) {
+                    let candidates = self.staged_candidates(state.config.mode == EvolutionMode::Eco, state.fitness_weight);
                     state.begin_test(candidates).map_err(EngineError::Invariant)?;
                 } else {
                     state.scale_mutations();
@@ -417,6 +455,7 @@ impl Engine {
                 restart = true;
             }
         }
+        self.local_mode.cycle_in_round = state.cycle_in_attempt;
         self.local_mode.evolution = Some(state);
         if restart { self.restart_staged_world()?; }
         Ok(())

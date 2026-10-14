@@ -38,7 +38,7 @@ public sealed record GlobalMainSettings
     public bool NewSeed { get; init; }
     public string MainDirectory { get; init; } = string.Empty;
     public bool SafeMode { get; init; }
-    public bool FindBestEnergyWeighting { get; init; }
+    public bool FindBestEnergyWeighting { get; init; } = true;
     public int? FindBestWeight { get; init; }
     [JsonIgnore]
     public int EffectiveFindBestWeight => FindBestWeight ?? (FindBestEnergyWeighting ? 100 : 0);

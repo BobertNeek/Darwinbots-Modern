@@ -516,6 +516,11 @@ public sealed partial class NativeEngineClient : IEngineClient
         if (level is < 0 or > 2) throw new ArgumentOutOfRangeException(nameof(level));
         ExecuteBatch(new { version = 1, commands = new[] { new { type = "update_disqualification_rules", level } } }, "update disqualification rules");
     }
+    public void UpdateAdvancedMutationSettings(GlobalAdvancedMutationSettings settings, GlobalMainSettings main) =>
+        ExecuteBatch(new { version = 1, commands = new[] { new {
+            type = "update_advanced_mutation_settings", settings = NativeCommandSerializer.AdvancedMutation(settings, main),
+        } } }, "update advanced mutation settings");
+
     public void UpdateMainRules(GlobalMainSettings settings) => ExecuteBatch(new { version = 1, commands = new[]
     {
         new { type = "update_main_rules", body_cutoff = settings.BodyCutoff, greedy_reproduction = settings.GreedyEnforcement },
@@ -652,9 +657,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                             source_dna = evolution.SourceDna, reduction_unit = evolution.ReductionUnit,
                             cycle_length = evolution.CycleLength, normalize_dna_size = evolution.NormalizeDnaSize,
                             zerobot_initial_dna_length = evolution.ZerobotInitialDnaLength,
-                            reduce_population_oscillation = evolution.ReducePopulationOscillation,
-                            auto_graphs = evolution.AutoGraphs, restrict_mutation = evolution.RestrictMutation,
-                            restrict_species_mixing = evolution.RestrictSpeciesMixing,
+                            auto_graphs = evolution.AutoGraphs, fitness_weight = evolution.FitnessWeight,
                         } : null,
                         minimum_rounds = config.MinimumRounds,
                         maximum_rounds = config.MaximumRounds,

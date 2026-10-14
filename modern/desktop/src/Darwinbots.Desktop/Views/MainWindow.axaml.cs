@@ -1375,6 +1375,7 @@ public sealed partial class MainWindow : Window
         if (_session is not null) {
             await _session.UpdateMainRulesAsync(_globalSettings.Main);
             await _session.UpdateDisqualificationRulesAsync(_globalSettings.League.DisqualificationRule);
+            await _session.UpdateAdvancedMutationSettingsAsync(_globalSettings.AdvancedMutation, _globalSettings.Main);
         }
         if (_trayIcon is not null)
             _trayIcon.IsVisible = !_globalSettings.Main.HideTray;
@@ -1791,6 +1792,10 @@ public sealed partial class MainWindow : Window
                 _playerBotEnabled = snapshot.PlayerBot.Enabled;
                 _playerBotBindings = snapshot.PlayerBot.Bindings;
                 _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
+                if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
+                    _runTimer.Stop();
+                    _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
+                }
                 Viewport.SetSnapshot(snapshot);
                 Viewport.SelectKey(_viewModel.SelectedKey);
                 var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
@@ -1919,8 +1924,7 @@ public sealed partial class MainWindow : Window
                         Enabled = true, Mode = evolution.Mode, SourceBot = string.Empty,
                         StageLength = evolution.ReductionUnit, CycleLength = (int)evolution.CycleLength,
                         NormalizeDnaSize = evolution.NormalizeDnaSize, ZerobotInitialDnaLength = evolution.ZerobotInitialDnaLength,
-                        ReducePopulationOscillation = evolution.ReducePopulationOscillation, AutoGraphs = evolution.AutoGraphs,
-                        RestrictMutation = evolution.RestrictMutation, RestrictSpeciesMixing = evolution.RestrictSpeciesMixing,
+                        AutoGraphs = evolution.AutoGraphs,
                     }};
                 }
                 ModeMinimumRounds.Value = localMode.MinimumRounds;
@@ -2331,6 +2335,7 @@ public sealed partial class MainWindow : Window
         try
         {
             await _session.StartLocalModeAsync();
+            _runTimer.Start();
             if (_viewModel.LocalMode.StagedEvolution is { AutoGraphs: true, Mode: not EvolutionMode.Zerobot })
                 Graphs_Click(this, new RoutedEventArgs());
             _viewModel.Status = "LOCAL MODE RUNNING";
@@ -2344,6 +2349,7 @@ public sealed partial class MainWindow : Window
         try
         {
             await _session.RestartLocalModeAsync();
+            _runTimer.Start();
             _viewModel.Status = "LOCAL MODE RESTARTED";
         }
         catch (Exception error) { _viewModel.Status = $"LOCAL MODE RESTART FAILED · {error.Message}"; }
@@ -2385,8 +2391,7 @@ public sealed partial class MainWindow : Window
             source = await File.ReadAllTextAsync(Path.GetFullPath(settings.SourceBot));
         var evolution = new StagedEvolutionConfiguration(mode, source, (float)settings.StageLength,
             (uint)settings.CycleLength, settings.NormalizeDnaSize, settings.ZerobotInitialDnaLength,
-            settings.ReducePopulationOscillation, settings.AutoGraphs, settings.RestrictMutation,
-            settings.RestrictSpeciesMixing);
+            settings.AutoGraphs) { FitnessWeight = (ushort)_globalSettings.Main.EffectiveFindBestWeight };
         _viewModel.LocalMode.StagedEvolution = evolution;
         return config with { StagedEvolution = evolution };
     }

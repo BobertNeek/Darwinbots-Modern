@@ -2785,9 +2785,9 @@ impl Engine {
         &mut self,
         settings: AdvancedMutationSettings,
     ) -> Result<(), EngineError> {
-        if settings.normalization_enabled && settings.normalization_dna_length == 0 {
+        if settings.normalization_enabled && !(1..=32_000).contains(&settings.normalization_dna_length) {
             return Err(EngineError::Invariant(
-                "mutation normalization DNA length must be positive".to_owned(),
+                "mutation normalization per-base rate must be 1..32000".to_owned(),
             ));
         }
         settings.native_delta2.validate()?;
@@ -3550,14 +3550,15 @@ impl Engine {
                 return Err(EngineError::Invariant("test winner must be a baseline or candidate entrant".into()));
             }
         }
-        let winner = if contest {
-            winner
-        } else {
-            winner.or_else(|| self.best_mode_species())
-        };
-        let (winning_population, winning_energy) = winner
-            .map(|species| self.mode_species_score(species))
-            .unwrap_or_default();
+        let winning_role = if staged_test {
+            self.local_mode.evolution.as_ref().and_then(|state| winner.map(|winner|
+                if state.mutator_species.contains(&winner) { state.mutator_species.clone() } else { state.baseline_species.clone() }))
+        } else { None };
+        let winner = if let Some(role) = &winning_role { role.first().copied() }
+            else if contest { winner } else { winner.or_else(|| self.best_mode_species()) };
+        let (winning_population, winning_energy) = if let Some(role) = &winning_role {
+            role.iter().map(|id| self.mode_species_score(*id)).fold((0, 0.0), |total, value| (total.0 + value.0, total.1 + value.1))
+        } else { winner.map(|species| self.mode_species_score(species)).unwrap_or_default() };
         let zerobot = config.kind == LocalModeKind::Zerobot;
         let candidate_seed = if zerobot {
             winner.and_then(|species| self.best_mode_organism(species))
@@ -4212,7 +4213,11 @@ impl Engine {
         state.program.mutation_profile = self.species[species.0 as usize]
             .mutation_profile
             .clone()
-            .unwrap_or_else(|| self.default_mutation_profile.clone());
+            .unwrap_or_else(|| {
+                if self.native_random.is_some() && self.default_mutation_profile == StandardMutationProfile::default() {
+                    self.native_default_mutation_profile(state.program.dna.blocks().len())
+                } else { self.default_mutation_profile.clone() }
+            });
         apply_restriction_column(&mut state, &restriction_column);
         state.identity.absolute_id = self.allocate_absolute_identity();
         Ok(self.slots.spawn(state))
@@ -4712,6 +4717,11 @@ impl Engine {
         publish: bool,
         trace_enabled: bool,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
+        if self.local_mode.evolution.as_ref().is_some_and(|state| state.phase == crate::EvolutionPhase::Complete) {
+            let mut trace = if trace_enabled { CycleRecorder::enabled(self.tick) } else { CycleRecorder::disabled(self.tick) };
+            trace.phase(CyclePhase::Pause);
+            return Ok(trace.finish());
+        }
         let checkpoint = ((matches!(self.physics, RuntimePhysics::Gpu(_))
             && !self.config.allow_cpu_fallback)
             || self.has_file_transfers())

@@ -45,6 +45,10 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task UpdateMainRulesAsync(GlobalMainSettings settings, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateMainRules(settings), cancellationToken);
 
+    public Task UpdateAdvancedMutationSettingsAsync(GlobalAdvancedMutationSettings settings, GlobalMainSettings main,
+        CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateAdvancedMutationSettings(settings, main), cancellationToken);
+
     public async Task<DnaImportReport> ImportDnaAsync(
         string dna,
         float[]? position = null,

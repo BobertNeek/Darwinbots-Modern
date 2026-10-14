@@ -28,6 +28,19 @@ public sealed record ContestResultSnapshot(
         if (snapshot.LocalMode.Status == LocalModeStatus.Idle)
             return Empty;
 
+        if (snapshot.LocalMode.Evolution is { } evolution)
+        {
+            if (evolution.Phase != "testing") return Empty;
+            var results = snapshot.LocalMode.Results.Skip(evolution.TestResultCursor).ToArray();
+            var roles = new[] { (Name: "Base.txt", Ids: evolution.BaselineSpecies), (Name: "Test.txt", Ids: evolution.MutatorSpecies) };
+            return new ContestResultSnapshot("Staged champion test", (int)snapshot.LocalMode.CurrentRound,
+                (int)snapshot.LocalMode.MinimumRounds, (int)snapshot.LocalMode.MaximumRounds,
+                roles.Where(role => role.Ids.Count > 0).Select(role => new ContestCompetitorResult(
+                    $"species-{role.Ids[0]}", role.Name, results.Count(result => result.Winner is { } id && role.Ids.Contains(id)),
+                    snapshot.Organisms.Count(robot => role.Ids.Contains(robot.Species) && !robot.IsCorpse),
+                    IsActive: snapshot.LocalMode.Status == LocalModeStatus.Running)).ToArray());
+        }
+
         var pair = snapshot.LocalMode.Series?.ActiveMatch;
         var winsBySpecies = snapshot.LocalMode.Results
             .Skip(Math.Max(0, snapshot.LocalMode.Series?.MatchStartResult ?? 0))

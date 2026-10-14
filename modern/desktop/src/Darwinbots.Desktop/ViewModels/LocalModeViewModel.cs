@@ -47,7 +47,10 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
     public string InitialLadderText { get => _initialLadderText; set => Set(ref _initialLadderText, value); }
     public uint? SeedingOpponent { get => _seedingOpponent; set => Set(ref _seedingOpponent, value); }
     public LeagueSeriesSnapshot? Series { get => _series; private set => Set(ref _series, value); }
-    public string SeriesLabel => Series?.ActiveMatch is { Count: 2 } pair
+    public string SeriesLabel => Evolution is { } evolution
+        ? evolution.Phase == "testing" ? $"TEST AGAINST STAGE {evolution.OpponentStage}"
+            : evolution.Hidden ? "BASELINE HIDDEN" : "BASELINE ACTIVE"
+        : Series?.ActiveMatch is { Count: 2 } pair
         ? $"MATCH {Series.MatchNumber} · SPECIES {pair[0]} vs {pair[1]}"
         : Series is { Workflow: not LeagueWorkflow.Direct } ? "SCHEDULE COMPLETE" : "DIRECT MATCH";
     public string RankingLabel => Series is { Workflow: LeagueWorkflow.Seeding } series
@@ -86,11 +89,15 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         _ => "IDLE",
     };
 
-    public string RoundLabel => CurrentRound == 0
+    public string RoundLabel => Evolution is { } evolution
+        ? evolution.Phase == "testing" ? $"CHAMPION TEST WINS {evolution.TestWins}" : $"ATTEMPT {RestartCount}"
+        : CurrentRound == 0
         ? "NOT STARTED"
         : $"ROUND {CurrentRound} / {MaximumRounds}";
 
-    public string CycleLabel => MaximumCycles == 0
+    public string CycleLabel => Evolution is { Phase: not "testing" }
+        ? $"CYCLE {CycleInRound:N0}"
+        : MaximumCycles == 0
         ? "CYCLE —"
         : $"CYCLE {CycleInRound:N0} / {MaximumCycles:N0}";
 
@@ -192,7 +199,9 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value;
         Raise(name);
-        if (name == nameof(Evolution)) Raise(nameof(EvolutionLabel));
+        if (name == nameof(Evolution)) {
+            Raise(nameof(EvolutionLabel)); Raise(nameof(SeriesLabel)); Raise(nameof(RoundLabel)); Raise(nameof(CycleLabel));
+        }
         if (name == nameof(Series)) { Raise(nameof(SeriesLabel)); Raise(nameof(RankingLabel)); }
         if (name is nameof(Status) or nameof(CurrentRound) or nameof(MaximumRounds)
             or nameof(CycleInRound) or nameof(MaximumCycles) or nameof(Adjudication))

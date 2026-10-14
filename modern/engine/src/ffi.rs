@@ -64,6 +64,7 @@ enum EngineCommand {
     UpdateCostSettings {
         costs: crate::DnaCosts,
     },
+    UpdateAdvancedMutationSettings { settings: crate::AdvancedMutationSettings },
     UpdateDisqualificationRules { level: u8 },
     UpdateMainRules {
         body_cutoff: i32,
@@ -546,6 +547,7 @@ fn db_engine_command_batch_impl(
             EngineCommand::UpdateCostSettings { costs } => engine
                 .update_cost_settings(costs)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateAdvancedMutationSettings { settings } => engine.update_advanced_mutation_settings(settings).map(|_| serde_json::Value::Null),
             EngineCommand::UpdateDisqualificationRules { level } => engine.update_disqualification_rules(level).map(|_| serde_json::Value::Null),
             EngineCommand::UpdateMainRules {
                 body_cutoff,

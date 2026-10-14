@@ -6,6 +6,16 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class WorldOverlayProjectionTests
 {
     [Fact]
+    public void HiddenEvolutionBaselinesDoNotProduceResourceGauges()
+    {
+        var visible = new OrganismSnapshot(1, 1, [100, 100], [0, 0], 500, 0);
+        var hidden = visible with { Slot = 2, IsHidden = true };
+        var projection = WorldOverlayProjection.Create([hidden, visible], true, true, true, false);
+        Assert.Equal(3, projection.Gauges.Count);
+        Assert.All(projection.Gauges, gauge => Assert.Equal(1U, gauge.Organism.Slot));
+    }
+
+    [Fact]
     public void ProjectsResourceGaugesAndViewportOverlayFlags()
     {
         var organism = new OrganismSnapshot(
