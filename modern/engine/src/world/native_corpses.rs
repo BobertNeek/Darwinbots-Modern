@@ -13,7 +13,7 @@ pub(super) struct NativeCorpseTransfer {
 impl Engine {
     pub(super) fn decay_native_corpses(&mut self) {
         for id in self.slots.ids_in_slot_order() {
-            if !self.slots.get(id).is_ok_and(|robot| robot.flags.corpse) {
+            if !self.slots.get(id).is_ok_and(|robot| robot.flags.corpse && !robot.flags.hidden) {
                 continue;
             }
             let virtual_body = self.virtual_body_for(id);

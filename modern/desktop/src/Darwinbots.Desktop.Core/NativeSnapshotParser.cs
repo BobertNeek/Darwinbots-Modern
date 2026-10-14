@@ -37,6 +37,7 @@ public static class NativeSnapshotParser
             organism.Parents?.Select(parent => parent is null ? (OrganismKey?)null : new OrganismKey(parent.Slot, parent.Generation)).ToArray())
         {
             IsCorpse = organism.Flags?.Corpse ?? false,
+            IsHidden = organism.Flags?.Hidden ?? false,
             Phenotype = ParsePhenotype(organism.Phenotype),
             Vision = ParseVision(organism.Vision),
             CurrentGene = organism.CurrentGene,
@@ -304,6 +305,7 @@ public static class NativeSnapshotParser
                 : new(),
             config.EnergyHandicap)
         {
+            StagedEvolution = ParseStagedEvolution(config.StagedEvolution),
             Workflow = ParseWorkflow(config.Workflow),
             EntrantOrder = config.EntrantOrder ?? [],
             InitialLadder = config.InitialLadder ?? [],
@@ -333,6 +335,9 @@ public static class NativeSnapshotParser
             MinimumRounds = parsedConfig.MinimumRounds,
             EnergyHandicap = parsedConfig.EnergyHandicap,
             Configuration = parsedConfig,
+            Evolution = native.Evolution is { } evolution ? new StagedEvolutionSnapshot(evolution.Stage,
+                evolution.Phase ?? "evolving", evolution.Hidden, evolution.ReductionUnit, evolution.HideCycles,
+                evolution.TestWins, evolution.OpponentStage, evolution.Handicap - evolution.InverseHandicap) : null,
             Series = native.Series is { } series ? new LeagueSeriesSnapshot(
                 ParseWorkflow(series.Workflow), series.ActiveMatch ?? [], series.MatchNumber,
                 series.Ladder ?? [], series.Seeded ?? [], (series.Matches ?? []).Select(match =>
@@ -388,6 +393,12 @@ public static class NativeSnapshotParser
         "zerobot" => LocalModeKind.Zerobot,
         _ => LocalModeKind.League,
     };
+
+    private static StagedEvolutionConfiguration? ParseStagedEvolution(NativeEvolutionConfig? value) => value is null ? null : new(
+        value.Mode switch { "eco" => EvolutionMode.Eco, "zerobot" => EvolutionMode.Zerobot, _ => EvolutionMode.SimpleSurvival },
+        value.SourceDna ?? string.Empty, value.ReductionUnit, value.CycleLength, value.NormalizeDnaSize,
+        value.ZerobotInitialDnaLength, value.ReducePopulationOscillation, value.AutoGraphs,
+        value.RestrictMutation, value.RestrictSpeciesMixing);
 
     private static LeagueWorkflow ParseWorkflow(string? value) => value?.ToLowerInvariant() switch
     {
@@ -525,7 +536,31 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("adjudication")] NativeLocalModeAdjudication? Adjudication,
         [property: JsonPropertyName("contest_runtime")] NativeContestRuntime? ContestRuntime,
         [property: JsonPropertyName("disqualifications")] NativeDisqualification[]? Disqualifications,
-        [property: JsonPropertyName("series")] NativeLeagueSeries? Series);
+        [property: JsonPropertyName("series")] NativeLeagueSeries? Series,
+        [property: JsonPropertyName("evolution")] NativeEvolutionState? Evolution);
+
+    private sealed record NativeEvolutionState(
+        [property: JsonPropertyName("stage")] uint Stage,
+        [property: JsonPropertyName("phase")] string? Phase,
+        [property: JsonPropertyName("hidden")] bool Hidden,
+        [property: JsonPropertyName("reduction_unit")] float ReductionUnit,
+        [property: JsonPropertyName("hide_cycles")] uint HideCycles,
+        [property: JsonPropertyName("test_wins")] uint TestWins,
+        [property: JsonPropertyName("opponent_stage")] uint OpponentStage,
+        [property: JsonPropertyName("handicap")] double Handicap,
+        [property: JsonPropertyName("inverse_handicap")] double InverseHandicap);
+
+    private sealed record NativeEvolutionConfig(
+        [property: JsonPropertyName("mode")] string? Mode,
+        [property: JsonPropertyName("source_dna")] string? SourceDna,
+        [property: JsonPropertyName("reduction_unit")] float ReductionUnit,
+        [property: JsonPropertyName("cycle_length")] uint CycleLength,
+        [property: JsonPropertyName("normalize_dna_size")] bool NormalizeDnaSize,
+        [property: JsonPropertyName("zerobot_initial_dna_length")] int ZerobotInitialDnaLength,
+        [property: JsonPropertyName("reduce_population_oscillation")] bool ReducePopulationOscillation,
+        [property: JsonPropertyName("auto_graphs")] bool AutoGraphs,
+        [property: JsonPropertyName("restrict_mutation")] bool RestrictMutation,
+        [property: JsonPropertyName("restrict_species_mixing")] bool RestrictSpeciesMixing);
 
     private sealed record NativeLeagueSeries(
         [property: JsonPropertyName("workflow")] string? Workflow,
@@ -569,7 +604,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("workflow")] string? Workflow,
         [property: JsonPropertyName("entrant_order")] uint[]? EntrantOrder,
         [property: JsonPropertyName("initial_ladder")] uint[]? InitialLadder,
-        [property: JsonPropertyName("seeding_opponent")] uint? SeedingOpponent);
+        [property: JsonPropertyName("seeding_opponent")] uint? SeedingOpponent,
+        [property: JsonPropertyName("staged_evolution")] NativeEvolutionConfig? StagedEvolution);
 
     private sealed record NativeLocalModeRestrictions(
         [property: JsonPropertyName("prohibit_information_shots")] bool ProhibitInformationShots,
@@ -820,7 +856,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("gene_count")] uint GeneCount,
         [property: JsonPropertyName("flags")] NativeOrganismFlags? Flags);
 
-    private sealed record NativeOrganismFlags([property: JsonPropertyName("corpse")] bool Corpse);
+    private sealed record NativeOrganismFlags([property: JsonPropertyName("corpse")] bool Corpse,
+        [property: JsonPropertyName("hidden")] bool Hidden);
 
     private sealed record NativeMutationProfile(
         [property: JsonPropertyName("point")] NativeMutationRate? Point,

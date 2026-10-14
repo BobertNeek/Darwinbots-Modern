@@ -321,6 +321,12 @@ impl LegacyDna {
         &self.metadata
     }
 
+    pub(crate) fn synchronize_runtime_metadata(&mut self, generation: u32, mutations: u64, tag: &str) {
+        self.metadata.generation = generation;
+        self.metadata.mutations = mutations;
+        self.metadata.tag = tag.to_owned();
+    }
+
     pub fn user_variable(&self, name: &str) -> Option<i32> {
         self.user_variables.get(&name.to_ascii_lowercase()).copied()
     }

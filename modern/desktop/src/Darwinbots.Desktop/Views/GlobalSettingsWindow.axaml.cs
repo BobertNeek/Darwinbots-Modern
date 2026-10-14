@@ -96,10 +96,11 @@ public sealed partial class GlobalSettingsWindow : Window
         DisqualificationRule.SelectedIndex = settings.League.DisqualificationRule;
 
         var evolution = settings.Evolution;
+        EnableStagedEvolution.IsChecked = evolution.Enabled;
         EvolutionMode.ItemsSource = Enum.GetNames<EvolutionMode>();
         EvolutionMode.SelectedIndex = (int)evolution.Mode;
         SourceBot.Text = evolution.SourceBot;
-        StageLength.Value = evolution.StageLength;
+        StageLength.Value = (decimal)evolution.StageLength;
         CycleLength.Value = evolution.CycleLength;
         ReducePopulationOscillation.IsChecked = evolution.ReducePopulationOscillation;
         AutoGraphs.IsChecked = evolution.AutoGraphs;
@@ -192,9 +193,10 @@ public sealed partial class GlobalSettingsWindow : Window
         League = new GlobalLeagueSettings { OwnedByOfflineModes = true, DisqualificationRule = Math.Max(0, DisqualificationRule.SelectedIndex) },
         Evolution = new GlobalEvolutionSettings
         {
+            Enabled = EnableStagedEvolution.IsChecked == true,
             Mode = (EvolutionMode)(EvolutionMode.SelectedIndex < 0 ? 0 : EvolutionMode.SelectedIndex),
             SourceBot = SourceBot.Text ?? string.Empty,
-            StageLength = (int)(StageLength.Value ?? 1),
+            StageLength = (double)(StageLength.Value ?? 10),
             CycleLength = (int)(CycleLength.Value ?? 100),
             ReducePopulationOscillation = ReducePopulationOscillation.IsChecked == true,
             AutoGraphs = AutoGraphs.IsChecked == true,

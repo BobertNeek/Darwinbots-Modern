@@ -30,6 +30,7 @@ impl Engine {
     pub(super) fn refresh_native_chloroplast_population(&mut self) -> usize {
         // Master.bas accumulates AllChlr into a Long after each Single add.
         let sum = self.slots.iter().filter_map(|slot| slot.organism.as_ref())
+            .filter(|robot| !robot.flags.hidden)
             .fold(0_i64, |total, robot| {
                 (total as f64 + f64::from(robot.materials.chloroplasts.max(0.0)))
                     .round_ties_even() as i64

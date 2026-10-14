@@ -107,6 +107,7 @@ impl NativeContacts {
                     let key = (bucket, member.order);
                     if after.is_some_and(|previous| key <= previous) || next.as_ref().is_some_and(|(best, _)| key >= *best) { continue; }
                     let Ok(target) = world.slots.get(other) else { continue };
+                    if target.flags.hidden { continue; }
                     let delta = std::array::from_fn::<_, 2, _>(|axis| target.kinematics.position[axis] - position[axis]);
                     let distance = robot.materials.radius + target.materials.radius;
                     if delta[0] * delta[0] + delta[1] * delta[1] < distance * distance { next = Some((key, other)); }

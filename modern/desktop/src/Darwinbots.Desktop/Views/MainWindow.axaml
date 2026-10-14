@@ -189,6 +189,7 @@
                 <Border Background="#E5ECD9" Padding="6">
                   <StackPanel Spacing="2">
                     <TextBlock Text="{Binding LocalMode.StatusLabel}" FontWeight="Bold" />
+                    <TextBlock Text="{Binding LocalMode.EvolutionLabel}" FontSize="10" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding LocalMode.SeriesLabel}" FontSize="10" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding LocalMode.RankingLabel}" FontSize="10" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding LocalMode.RoundLabel}" FontSize="10" />

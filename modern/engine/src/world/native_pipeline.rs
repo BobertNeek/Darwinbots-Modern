@@ -20,6 +20,7 @@ impl Engine {
         let chloroplast_total = self.phase_chloroplast_total();
         for tie in &mut self.ties { tie.information = false; }
         for id in self.slots.ids_in_slot_order() {
+            if self.slots.get(id)?.flags.hidden { continue; }
             self.native_phase = Some(NativeRobotPhase { actor: id, cost_population: population,
                 chloroplast_total, radius_bound: 415.0 });
             self.trace_robot_phase(trace, CyclePhase::Upkeep);
@@ -181,6 +182,7 @@ impl Engine {
         let result = (|| {
             for id in ids {
                 let Ok(robot) = self.slots.get(id) else { continue };
+                if robot.flags.hidden { continue; }
                 let old_chloroplasts = f64::from(robot.materials.chloroplasts);
                 let counted = !robot.flags.corpse
                     && (self.config.dna_costs.dynamic_all_robots || !robot.flags.vegetable);

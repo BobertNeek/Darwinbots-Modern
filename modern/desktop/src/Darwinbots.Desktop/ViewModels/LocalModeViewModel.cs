@@ -13,6 +13,12 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
     private string _initialLadderText = string.Empty;
     private uint? _seedingOpponent;
     private LeagueSeriesSnapshot? _series;
+    private StagedEvolutionSnapshot? _evolution;
+    public StagedEvolutionConfiguration? StagedEvolution { get; set; }
+    public StagedEvolutionSnapshot? Evolution { get => _evolution; private set => Set(ref _evolution, value); }
+    public string EvolutionLabel => Evolution is { } state
+        ? $"STAGE {state.Stage} · {state.Phase.Replace('_', ' ').ToUpperInvariant()} · LFOR {state.ReductionUnit:0.###}"
+        : string.Empty;
     private uint _minimumRounds = 5;
     private uint _maximumRounds = 1;
     private ulong _maximumCycles = 15_000;
@@ -122,6 +128,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             AsexualReproductionAllowed),
         EnergyHandicap)
     {
+        StagedEvolution = StagedEvolution,
         Workflow = Workflow,
         EntrantOrder = ParseSpeciesOrder(EntrantOrderText),
         InitialLadder = ParseSpeciesOrder(InitialLadderText),
@@ -152,6 +159,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         EnergyHandicap = snapshot.EnergyHandicap;
         if (snapshot.Configuration is { } configuration)
         {
+            StagedEvolution = configuration.StagedEvolution;
             Workflow = configuration.Workflow;
             EntrantOrderText = string.Join(", ", configuration.EntrantOrder);
             InitialLadderText = string.Join(", ", configuration.InitialLadder);
@@ -163,6 +171,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             SelectionPopulationWeight = configuration.SelectionPopulationWeight;
             SelectionEnergyWeight = configuration.SelectionEnergyWeight;
         }
+        Evolution = snapshot.Evolution;
         Series = snapshot.Series;
         Results = snapshot.Results;
         Adjudication = snapshot.Adjudication;
@@ -183,6 +192,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value;
         Raise(name);
+        if (name == nameof(Evolution)) Raise(nameof(EvolutionLabel));
         if (name == nameof(Series)) { Raise(nameof(SeriesLabel)); Raise(nameof(RankingLabel)); }
         if (name is nameof(Status) or nameof(CurrentRound) or nameof(MaximumRounds)
             or nameof(CycleInRound) or nameof(MaximumCycles) or nameof(Adjudication))

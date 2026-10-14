@@ -74,6 +74,7 @@ impl Default for LocalModeRestrictions {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LocalModeConfig {
+    pub staged_evolution: Option<crate::EvolutionConfig>,
     pub workflow: LeagueWorkflow,
     pub entrant_order: Vec<SpeciesId>,
     pub initial_ladder: Vec<SpeciesId>,
@@ -95,6 +96,7 @@ pub struct LocalModeConfig {
 impl Default for LocalModeConfig {
     fn default() -> Self {
         Self {
+            staged_evolution: None,
             workflow: LeagueWorkflow::Direct,
             entrant_order: Vec::new(),
             initial_ladder: Vec::new(),
@@ -117,6 +119,15 @@ impl Default for LocalModeConfig {
 
 impl LocalModeConfig {
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(evolution) = &self.staged_evolution {
+            evolution.validate()?;
+            let expected = match evolution.mode {
+                crate::EvolutionMode::SimpleSurvival => LocalModeKind::SimpleSurvival,
+                crate::EvolutionMode::Eco => LocalModeKind::EcoSurvival,
+                crate::EvolutionMode::Zerobot => LocalModeKind::Zerobot,
+            };
+            if self.kind != expected { return Err("evolution settings must match the selected survival mode".into()); }
+        }
         if self.workflow != LeagueWorkflow::Direct && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest) {
             return Err("league schedules require League or Contest mode".to_owned());
         }
@@ -187,6 +198,7 @@ pub struct ContestRuntime {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LocalModeState {
+    pub evolution: Option<crate::EvolutionState>,
     pub series: crate::league::LeagueSeries,
     pub config: Option<LocalModeConfig>,
     #[serde(default)]
@@ -203,6 +215,7 @@ pub struct LocalModeState {
 impl Default for LocalModeState {
     fn default() -> Self {
         Self {
+            evolution: None,
             series: crate::league::LeagueSeries::default(),
             config: None,
             contest_runtime: ContestRuntime::default(),
@@ -218,6 +231,15 @@ impl Default for LocalModeState {
 }
 
 impl LocalModeState {
+    pub(crate) fn presentation(&self) -> Self {
+        Self { config: self.config.clone(), series: self.series.clone(),
+            evolution: self.evolution.as_ref().map(crate::EvolutionState::presentation),
+            contest_runtime: self.contest_runtime.clone(), status: self.status,
+            current_round: self.current_round, cycle_in_round: self.cycle_in_round,
+            restart_count: self.restart_count, results: self.results.clone(),
+            disqualifications: self.disqualifications.clone(), adjudication: self.adjudication.clone() }
+    }
+
     pub fn configured(config: LocalModeConfig) -> Self {
         Self {
             config: Some(config),

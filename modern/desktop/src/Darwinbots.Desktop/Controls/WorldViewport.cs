@@ -73,7 +73,7 @@ public sealed class WorldViewport : Control
     public bool ShowResourceGauges { get => _showResourceGauges; set { _showResourceGauges = value; InvalidateVisual(); } }
     public bool HasBackgroundImage => _backgroundImage is not null;
     public WorldOverlayProjection OverlayProjection => WorldOverlayProjection.Create(
-        _snapshot.Organisms,
+        _snapshot.Organisms.Where(robot => !robot.IsHidden).ToArray(),
         _showMovementVectors,
         _showShotImpacts,
         _showResourceGauges,
@@ -281,6 +281,7 @@ public sealed class WorldViewport : Control
         var radiusScale = Math.Min(scaleX, scaleY);
         var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
         var organism = _snapshot.Organisms.FirstOrDefault(value => KeyOf(value) == KeyOf(instance));
+        if (organism?.IsHidden == true) return;
         var color = organism is not null && _rgbMemoryMonitor is { } monitor
             ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
             : Color.FromUInt32(instance.Color);
@@ -403,6 +404,7 @@ public sealed class WorldViewport : Control
     {
         foreach (var organism in _snapshot.Organisms)
         {
+            if (organism.IsHidden) continue;
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
             var color = _rgbMemoryMonitor is { } monitor
                 ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
@@ -568,6 +570,7 @@ public sealed class WorldViewport : Control
         var bestDistance = InputHitRadius * InputHitRadius;
         foreach (var organism in _snapshot.Organisms)
         {
+            if (organism.IsHidden) continue;
             var x = organism.Position[0] * scaleX * _zoom + _pan.X;
             var y = organism.Position[1] * scaleY * _zoom + _pan.Y;
             var distance = (pointer.X - x) * (pointer.X - x) + (pointer.Y - y) * (pointer.Y - y);
@@ -787,6 +790,7 @@ public sealed class WorldViewport : Control
         for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
         {
             var organism = _snapshot.Organisms[index];
+            if (organism.IsHidden) continue;
             var start = ScreenPoint(organism.Position, scaleX, scaleY);
             var end = new Point(
                 start.X + organism.Velocity[0] * scaleX * _zoom * 12,
@@ -806,6 +810,7 @@ public sealed class WorldViewport : Control
         for (var index = 0; index < _snapshot.Organisms.Count; index += stride)
         {
             var organism = _snapshot.Organisms[index];
+            if (organism.IsHidden) continue;
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
             var width = 26.0;
             var origin = new Point(center.X - width / 2, center.Y - 17);
@@ -848,6 +853,7 @@ public sealed class WorldViewport : Control
         var cells = new Dictionary<(int X, int Y), (int Count, double Energy)>();
         foreach (var organism in _snapshot.Organisms)
         {
+            if (organism.IsHidden) continue;
             var point = ScreenPoint(organism.Position, scaleX, scaleY);
             var key = ((int)Math.Floor(point.X / cellSize), (int)Math.Floor(point.Y / cellSize));
             cells.TryGetValue(key, out var value);

@@ -134,6 +134,15 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
         Viewport.OldColors = _globalSettings.Main.OldColors;
+        if (_globalSettings.Evolution.Enabled) {
+            var kind = _globalSettings.Evolution.Mode switch {
+                EvolutionMode.Zerobot => LocalModeKind.Zerobot,
+                EvolutionMode.Eco => LocalModeKind.EcoSurvival,
+                _ => LocalModeKind.SimpleSurvival,
+            };
+            LocalModeKindSelector.SelectedIndex = (int)kind;
+            _viewModel.LocalMode.SelectKind(kind);
+        }
         UiPreferencesController.Register(this);
         var numericCultureAppliedAfterExpansion = false;
         EnergyExpander.LayoutUpdated += (_, _) =>
@@ -1354,6 +1363,15 @@ public sealed partial class MainWindow : Window
         _globalSettings = dialog.Settings;
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
         Viewport.OldColors = _globalSettings.Main.OldColors;
+        if (_globalSettings.Evolution.Enabled) {
+            var kind = _globalSettings.Evolution.Mode switch {
+                EvolutionMode.Zerobot => LocalModeKind.Zerobot,
+                EvolutionMode.Eco => LocalModeKind.EcoSurvival,
+                _ => LocalModeKind.SimpleSurvival,
+            };
+            LocalModeKindSelector.SelectedIndex = (int)kind;
+            _viewModel.LocalMode.SelectKind(kind);
+        }
         if (_session is not null) {
             await _session.UpdateMainRulesAsync(_globalSettings.Main);
             await _session.UpdateDisqualificationRulesAsync(_globalSettings.League.DisqualificationRule);
@@ -1896,6 +1914,15 @@ public sealed partial class MainWindow : Window
                 ModeEntrantOrder.Text = string.Join(", ", localMode.EntrantOrder);
                 ModeInitialLadder.Text = string.Join(", ", localMode.InitialLadder);
                 ModeSeedingOpponent.Value = localMode.SeedingOpponent;
+                if (localMode.StagedEvolution is { } evolution) {
+                    _globalSettings = _globalSettings with { Evolution = _globalSettings.Evolution with {
+                        Enabled = true, Mode = evolution.Mode, SourceBot = string.Empty,
+                        StageLength = evolution.ReductionUnit, CycleLength = (int)evolution.CycleLength,
+                        NormalizeDnaSize = evolution.NormalizeDnaSize, ZerobotInitialDnaLength = evolution.ZerobotInitialDnaLength,
+                        ReducePopulationOscillation = evolution.ReducePopulationOscillation, AutoGraphs = evolution.AutoGraphs,
+                        RestrictMutation = evolution.RestrictMutation, RestrictSpeciesMixing = evolution.RestrictSpeciesMixing,
+                    }};
+                }
                 ModeMinimumRounds.Value = localMode.MinimumRounds;
                 ModeMaximumRounds.Value = localMode.MaximumRounds;
                 ModeMaximumCycles.Value = localMode.MaximumCycles;
@@ -2290,7 +2317,7 @@ public sealed partial class MainWindow : Window
         try
         {
             SynchronizeLocalModeControls();
-            var config = _viewModel.LocalMode.BuildConfiguration();
+            var config = await ResolveStagedEvolutionAsync(_viewModel.LocalMode.BuildConfiguration());
             await _session.ConfigureLocalModeAsync(config);
             _viewModel.LocalMode.MarkConfigured();
             _viewModel.Status = $"LOCAL MODE CONFIGURED · {config.Kind.ToString().ToUpperInvariant()}";
@@ -2304,6 +2331,8 @@ public sealed partial class MainWindow : Window
         try
         {
             await _session.StartLocalModeAsync();
+            if (_viewModel.LocalMode.StagedEvolution is { AutoGraphs: true, Mode: not EvolutionMode.Zerobot })
+                Graphs_Click(this, new RoutedEventArgs());
             _viewModel.Status = "LOCAL MODE RUNNING";
         }
         catch (Exception error) { _viewModel.Status = $"LOCAL MODE START FAILED · {error.Message}"; }
@@ -2339,6 +2368,27 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = "LOCAL ROUND ADJUDICATED";
         }
         catch (Exception error) { _viewModel.Status = $"LOCAL ADJUDICATION FAILED · {error.Message}"; }
+    }
+
+    private async Task<LocalModeConfig> ResolveStagedEvolutionAsync(LocalModeConfig config)
+    {
+        var settings = _globalSettings.Evolution;
+        if (!settings.Enabled || config.Kind is LocalModeKind.League or LocalModeKind.Contest)
+            return config with { StagedEvolution = null };
+        var mode = config.Kind switch {
+            LocalModeKind.Zerobot => EvolutionMode.Zerobot,
+            LocalModeKind.EcoSurvival => EvolutionMode.Eco,
+            _ => EvolutionMode.SimpleSurvival,
+        };
+        var source = config.StagedEvolution?.SourceDna ?? string.Empty;
+        if (mode != EvolutionMode.Zerobot && !string.IsNullOrWhiteSpace(settings.SourceBot))
+            source = await File.ReadAllTextAsync(Path.GetFullPath(settings.SourceBot));
+        var evolution = new StagedEvolutionConfiguration(mode, source, (float)settings.StageLength,
+            (uint)settings.CycleLength, settings.NormalizeDnaSize, settings.ZerobotInitialDnaLength,
+            settings.ReducePopulationOscillation, settings.AutoGraphs, settings.RestrictMutation,
+            settings.RestrictSpeciesMixing);
+        _viewModel.LocalMode.StagedEvolution = evolution;
+        return config with { StagedEvolution = evolution };
     }
 
     private void SynchronizeLocalModeControls()

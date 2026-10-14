@@ -31,6 +31,13 @@ public enum LocalModeStatus
 
 public enum LeagueWorkflow { Direct, Ladder, Tournament, Seeding }
 
+public sealed record StagedEvolutionConfiguration(EvolutionMode Mode, string SourceDna,
+    float ReductionUnit, uint CycleLength, bool NormalizeDnaSize, int ZerobotInitialDnaLength,
+    bool ReducePopulationOscillation, bool AutoGraphs, bool RestrictMutation, bool RestrictSpeciesMixing);
+
+public sealed record StagedEvolutionSnapshot(uint Stage, string Phase, bool Hidden,
+    float ReductionUnit, uint HideCycles, uint TestWins, uint OpponentStage, double Handicap);
+
 public sealed record LeagueMatchSnapshot(uint Number, IReadOnlyList<uint> Entrants, uint Winner,
     int FirstResult, int ResultCount);
 
@@ -66,6 +73,7 @@ public sealed record LocalModeConfig(
     public IReadOnlyList<uint> EntrantOrder { get; init; } = [];
     public IReadOnlyList<uint> InitialLadder { get; init; } = [];
     public uint? SeedingOpponent { get; init; }
+    public StagedEvolutionConfiguration? StagedEvolution { get; init; }
     public static LocalModeConfig Default { get; } = new(
         LocalModeKind.League,
         LeaguePreset.F1,
@@ -114,6 +122,7 @@ public sealed record LocalModeSnapshot(
     public LocalModeConfig? Configuration { get; init; }
     public IReadOnlyList<DisqualificationRecord> Disqualifications { get; init; } = [];
     public LeagueSeriesSnapshot? Series { get; init; }
+    public StagedEvolutionSnapshot? Evolution { get; init; }
 
     public static LocalModeSnapshot Idle { get; } = new(
         LocalModeStatus.Idle,

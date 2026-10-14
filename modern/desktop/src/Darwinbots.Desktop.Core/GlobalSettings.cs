@@ -121,9 +121,10 @@ public sealed record GlobalLeagueSettings
 
 public sealed record GlobalEvolutionSettings
 {
+    public bool Enabled { get; init; }
     public EvolutionMode Mode { get; init; } = EvolutionMode.SimpleSurvival;
     public string SourceBot { get; init; } = string.Empty;
-    public int StageLength { get; init; } = 1;
+    public double StageLength { get; init; } = 10;
     public int CycleLength { get; init; } = 100;
     public bool ReducePopulationOscillation { get; init; }
     public bool AutoGraphs { get; init; }
@@ -162,10 +163,12 @@ public sealed record GlobalSettings
             throw new InvalidDataException("Mutation normalization DNA length must be positive.");
         if (AdvancedMutation.Delta2Enabled && AdvancedMutation.Delta2Interval == 0)
             throw new InvalidDataException("Delta2 interval must be positive when enabled.");
-        if (Evolution.StageLength <= 0 || Evolution.CycleLength <= 0)
-            throw new InvalidDataException("Evolution stage and cycle lengths must be positive.");
-        if (Evolution.ZerobotInitialDnaLength <= 0)
-            throw new InvalidDataException("Zerobot initial DNA length must be positive.");
+        if (!double.IsFinite(Evolution.StageLength) || Evolution.StageLength is < 0.01 or > 150)
+            throw new InvalidDataException("Evolution reduction unit must be between 0.01 and 150.");
+        if (Evolution.CycleLength is < 1 or > 15000)
+            throw new InvalidDataException("Evolution hide interval must be between 1 and 15000 cycles.");
+        if (Evolution.ZerobotInitialDnaLength is < 1 or > 32000)
+            throw new InvalidDataException("Zerobot initial DNA length must be between 1 and 32000.");
     }
 
     private static readonly JsonSerializerOptions SerializerOptions = new()

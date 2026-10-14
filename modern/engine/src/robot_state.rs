@@ -25,6 +25,8 @@ pub struct RobotIdentity {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RobotFlags {
+    #[serde(default)]
+    pub hidden: bool,
     pub exists: bool,
     pub corpse: bool,
     pub dead: bool,
@@ -55,6 +57,7 @@ impl Default for RobotFlags {
     fn default() -> Self {
         Self {
             exists: true,
+            hidden: false,
             corpse: false,
             dead: false,
             vegetable: false,
@@ -545,7 +548,7 @@ impl RobotArena {
         world_size: [f32; 2],
         wrapped_axes: [bool; 2],
     ) -> RobotPhysicsBatch {
-        let ids = self.ids_in_slot_order();
+        let ids = self.ids_in_slot_order().into_iter().filter(|id| !self.get(*id).unwrap().flags.hidden).collect::<Vec<_>>();
         let positions = ids
             .iter()
             .map(|id| {

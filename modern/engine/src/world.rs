@@ -96,6 +96,8 @@ mod native_collisions;
 mod native_tie_physics;
 #[path = "world/league_series.rs"]
 mod league_series;
+#[path = "world/staged_evolution.rs"]
+mod staged_evolution;
 
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
@@ -2045,6 +2047,7 @@ impl From<Db3sV2Flags> for crate::RobotFlags {
     fn from(flags: Db3sV2Flags) -> Self {
         Self {
             exists: flags.exists,
+            hidden: false,
             corpse: flags.corpse,
             dead: flags.dead,
             vegetable: flags.vegetable,
@@ -2970,12 +2973,14 @@ impl Engine {
             )));
         }
         let series = self.prepare_league_series(&config)?;
+        let evolution = self.prepare_staged_evolution(&config)?;
         if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
             self.apply_league_preset(config.preset);
         }
         self.apply_mode_restrictions(&config);
         self.local_mode = LocalModeState::configured(config);
         self.local_mode.series = series;
+        self.local_mode.evolution = evolution;
         self.publish_snapshot();
         Ok(())
     }
@@ -3004,6 +3009,11 @@ impl Engine {
             self.publish_snapshot();
             return Ok(());
         }
+        if self.local_mode.evolution.is_some() {
+            self.restart_staged_world()?;
+            self.publish_snapshot();
+            return Ok(());
+        }
         if config.kind == LocalModeKind::Zerobot {
             self.zerobot_checkpoint = None;
             self.zerobot_checkpoint_score = 0;
@@ -3028,6 +3038,17 @@ impl Engine {
                 "a local mode must be configured before it restarts".to_owned(),
             ));
         };
+        if let Some(evolution) = self.local_mode.evolution.as_ref() {
+            self.local_mode.evolution = Some(crate::EvolutionState::new(evolution.config.clone(), evolution.stages[&0].clone())
+                .map_err(EngineError::Invariant)?);
+            self.local_mode.results.clear();
+            self.local_mode.adjudication = None;
+            self.local_mode.current_round = 1;
+            self.local_mode.status = LocalModeStatus::Running;
+            self.restart_staged_world()?;
+            self.publish_snapshot();
+            return Ok(());
+        }
         if config.kind == LocalModeKind::Zerobot {
             self.zerobot_checkpoint = None;
             self.zerobot_checkpoint_score = 0;
@@ -3219,6 +3240,7 @@ impl Engine {
     }
 
     fn apply_survival_handicap(&mut self) {
+        if self.local_mode.evolution.is_some() { return; }
         let Some(config) = self.local_mode_config().cloned() else {
             return;
         };
@@ -3333,7 +3355,7 @@ impl Engine {
 
     fn remove_extinct_species_phase(&mut self) {
         // Match schedules and archived results retain registered species IDs.
-        if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct { return; }
+        if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct || self.local_mode.evolution.is_some() { return; }
         let mut populations = vec![0_usize; self.species.len()];
         for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
             if organism.flags.corpse {
@@ -3497,7 +3519,11 @@ impl Engine {
                 "local mode is not configured".to_owned(),
             ));
         };
-        let contest = matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest);
+        let staged_test = self.local_mode.evolution.as_ref().is_some_and(|state| state.phase == crate::EvolutionPhase::Testing);
+        if self.local_mode.evolution.is_some() && !staged_test {
+            return Err(EngineError::Invariant("staged evolution is not in a champion test".into()));
+        }
+        let contest = staged_test || matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest);
         if let Some(species) = winner
             && self
                 .species
@@ -3510,6 +3536,11 @@ impl Engine {
         }
         if let (Some(pair), Some(winner)) = (self.local_mode.series.active_match, winner) {
             if !pair.contains(&winner) { return Err(EngineError::Invariant("winner must be an active match entrant".into())); }
+        }
+        if let (Some(state), Some(winner)) = (&self.local_mode.evolution, winner) {
+            if !state.baseline_species.contains(&winner) && !state.mutator_species.contains(&winner) {
+                return Err(EngineError::Invariant("test winner must be a baseline or candidate entrant".into()));
+            }
         }
         let winner = if contest {
             winner
@@ -3559,7 +3590,8 @@ impl Engine {
             automatic,
         });
         let complete = if contest {
-            let start = self.local_mode.series.match_start_result;
+            let start = self.local_mode.evolution.as_ref().map_or(self.local_mode.series.match_start_result,
+                |state| state.test_result_cursor);
             let rounds = self.local_mode.results.len().saturating_sub(start) as f64;
             let mut wins = BTreeMap::<SpeciesId, u32>::new();
             for result in &self.local_mode.results[start..] {
@@ -3575,6 +3607,15 @@ impl Engine {
         } else {
             self.local_mode.current_round >= config.maximum_rounds.max(config.minimum_rounds)
         };
+        if staged_test {
+            let start = self.local_mode.evolution.as_ref().unwrap().test_result_cursor;
+            let mut wins = BTreeMap::<SpeciesId, u32>::new();
+            for result in &self.local_mode.results[start..] {
+                if let Some(winner) = result.winner { *wins.entry(winner).or_default() += 1; }
+            }
+            let match_winner = wins.into_iter().max_by_key(|(_, count)| *count).map(|(id, _)| id);
+            return self.staged_test_round(match_winner, complete);
+        }
         if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct {
             let match_winner = if complete {
                 let mut wins = BTreeMap::<SpeciesId, u32>::new();
@@ -3618,6 +3659,7 @@ impl Engine {
     }
 
     fn advance_local_mode_after_cycle(&mut self) -> Result<(), EngineError> {
+        if self.local_mode.evolution.is_some() { return self.advance_staged_test(); }
         if self.local_mode.status != LocalModeStatus::Running {
             return Ok(());
         }
@@ -4276,6 +4318,7 @@ impl Engine {
             if robot.flags.corpse
                 || robot.flags.dead
                 || robot.flags.vegetable
+                || robot.flags.hidden
             {
                 continue;
             }
@@ -4822,6 +4865,13 @@ impl Engine {
         trace.phase(CyclePhase::CycleIncrement);
         self.tick = next_tick;
         trace.phase(CyclePhase::ModeLogic);
+        let (staged_restart, staged_energy_before) = self.staged_evolution_before_cycle()?;
+        if staged_restart {
+            trace.phase(CyclePhase::Restart);
+            self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
+            if publish { self.publish_snapshot(); }
+            return Ok(trace.finish());
+        }
         trace.phase(CyclePhase::Bookkeeping);
         self.apply_survival_handicap();
         if self
@@ -4925,7 +4975,7 @@ impl Engine {
                 .enumerate()
                 .filter_map(|(slot, entry)| {
                     let robot = entry.organism.as_ref()?;
-                    (robot.materials.body > self.config.body_cutoff as f32
+                    (!robot.flags.hidden && robot.materials.body > self.config.body_cutoff as f32
                         && (robot.materials.chloroplasts < robot.materials.body / 2.0
                             || robot.counters.kills > 5))
                         .then_some(slot)
@@ -4954,6 +5004,7 @@ impl Engine {
         trace.phase(CyclePhase::Restart);
         self.enforce_low_memory_safety(&mut trace);
         self.enforce_mode_population_cap()?;
+        self.staged_evolution_after_cycle(staged_energy_before)?;
         self.advance_local_mode_after_cycle()?;
         trace.phase(CyclePhase::ActualVelocity);
         self.record_actual_velocities();
@@ -5374,7 +5425,7 @@ impl Engine {
         self.slots
             .iter()
             .filter_map(|slot| slot.organism.as_ref())
-            .filter(|robot| !robot.flags.corpse)
+            .filter(|robot| !robot.flags.corpse && !robot.flags.hidden)
             .count()
     }
 
@@ -5424,6 +5475,12 @@ impl Engine {
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
         self.local_mode.series.validate(self.species.len()).map_err(EngineError::Invariant)?;
+        if let Some(evolution) = &self.local_mode.evolution {
+            evolution.validate().map_err(EngineError::Invariant)?;
+            if evolution.baseline_species.iter().chain(&evolution.mutator_species).any(|id| id.0 as usize >= self.species.len()) {
+                return Err(EngineError::Invariant("saved evolution role references an unknown species".into()));
+            }
+        }
         if self.local_mode.series.match_start_result > self.local_mode.results.len() {
             return Err(EngineError::Invariant("league result cursor exceeds saved results".into()));
         }
@@ -5549,7 +5606,7 @@ impl Engine {
             let Some(organism) = &mut self.slots[slot_index].organism else {
                 continue;
             };
-            if organism.flags.corpse || !organism.flags.can_execute_dna {
+            if organism.flags.hidden || organism.flags.corpse || !organism.flags.can_execute_dna {
                 continue;
             }
             trace.visit(
@@ -6195,7 +6252,7 @@ impl Engine {
         let alive: Vec<_> = self
             .slots
             .iter()
-            .map(|slot| slot.organism.is_some())
+            .map(|slot| slot.organism.as_ref().is_some_and(|robot| !robot.flags.hidden))
             .collect();
         self.spatial.rebuild_from_soa(&positions, &alive, 64.0);
         self.sensing_spatial
@@ -6218,7 +6275,7 @@ impl Engine {
             let alive: Vec<_> = self
                 .slots
                 .iter()
-                .map(|slot| slot.organism.is_some())
+                .map(|slot| slot.organism.as_ref().is_some_and(|robot| !robot.flags.hidden))
                 .collect();
             let radii: Vec<_> = self
                 .slots
@@ -7205,6 +7262,7 @@ impl Engine {
 
     fn refresh_one_tie_projection(&mut self, slot: usize, read_references: bool,
         newly_created: &HashMap<OrganismId, i32>) {
+        if self.slots[slot].organism.as_ref().is_none_or(|robot| robot.flags.hidden) { return; }
         let runtime = SysvarRuntime::new();
         let id = OrganismId::new(slot as u32, self.slots[slot].generation);
         let mut endpoints = [None; MAX_TIES_PER_ROBOT];
@@ -8029,7 +8087,7 @@ impl Engine {
         let alive: Vec<_> = self
             .slots
             .iter()
-            .map(|entry| entry.organism.is_some())
+            .map(|entry| entry.organism.as_ref().is_some_and(|robot| !robot.flags.hidden))
             .collect();
         self.spatial.rebuild_from_soa(&positions, &alive, 64.0);
         let max_organism_reach = self
@@ -8862,7 +8920,7 @@ impl Engine {
             let alive: Vec<_> = self
                 .slots
                 .iter()
-                .map(|slot| slot.organism.is_some())
+                .map(|slot| slot.organism.as_ref().is_some_and(|robot| !robot.flags.hidden))
                 .collect();
             crate::environment::apply_world_features(
                 &self
@@ -8911,7 +8969,7 @@ impl Engine {
         let alive: Vec<_> = self
             .slots
             .iter()
-            .map(|slot| slot.organism.is_some())
+            .map(|slot| slot.organism.as_ref().is_some_and(|robot| !robot.flags.hidden))
             .collect();
         let prior_backflow: Vec<_> = self
             .slots
@@ -10478,6 +10536,7 @@ impl Engine {
         self.stats.population = self.population();
         self.stats.total_energy = organisms
             .iter()
+            .filter(|organism| !organism.flags.hidden)
             .map(|organism| organism.energy as i64)
             .sum();
         let mut render_instances = self.pending_gpu_render_instances.take().unwrap_or_else(|| {
@@ -10499,7 +10558,7 @@ impl Engine {
         render_instances.retain(|instance| {
             self.slots[..]
                 .get(instance.slot as usize)
-                .is_some_and(|slot| slot.organism.is_some())
+                .is_some_and(|slot| slot.organism.as_ref().is_some_and(|robot| !robot.flags.hidden))
         });
         for instance in &mut render_instances {
             let slot = instance.slot as usize;
@@ -10542,7 +10601,7 @@ impl Engine {
             teleporters: self.teleporters.clone(),
             file_teleporters: self.file_teleporters.clone(),
             phase_timings: self.phase_timings.clone(),
-            local_mode: self.local_mode.clone(),
+            local_mode: self.local_mode.presentation(),
         };
         self.snapshot_publication_count += 1;
     }

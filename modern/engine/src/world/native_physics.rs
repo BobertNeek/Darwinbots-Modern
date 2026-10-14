@@ -5,6 +5,7 @@ impl Engine {
     pub(super) fn capture_native_added_mass(&mut self) {
         for slot in self.slots.iter_mut() {
             if let Some(robot) = slot.organism.as_mut() {
+                if robot.flags.hidden { continue; }
                 robot.kinematics.native_added_mass = Some(fluid_added_mass(
                     robot.materials.radius, self.config.physics.density));
             }
