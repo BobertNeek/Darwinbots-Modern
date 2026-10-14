@@ -1,0 +1,21 @@
+{
+  "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+  "passed": 577,
+  "failed": 0,
+  "filtered": 2,
+  "log": "completion-checks/parity-cached-radius-workspace-release.log",
+  "targets": 59,
+  "long_ecology": "two named current-source tests running separately",
+  "ci": {
+    "repository": "BobertNeek/Darwinbots-Modern",
+    "run_id": 38506430843,
+    "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+    "status": "in_progress",
+    "platforms": [
+      "windows-latest/win-x64",
+      "ubuntu-latest/linux-x64",
+      "macos-15-intel/osx-x64",
+      "macos-latest/osx-arm64"
+    ]
+  }
+}

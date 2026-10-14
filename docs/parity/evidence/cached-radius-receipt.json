@@ -56,11 +56,32 @@
       "verified_bot_files": 48,
       "native_dll_sha256": "2b64885af8c9bd7df0f725b55047dc1d67cfaebe9c31a5294e60528aea7bf0d8",
       "application_sha256": "347527d6ad12fd89f4dc78f7321ed24bd018de61da958d68435d86144935babe"
+    },
+    "rust_workspace_release": {
+      "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+      "passed": 577,
+      "failed": 0,
+      "filtered": 2,
+      "log": "completion-checks/parity-cached-radius-workspace-release.log",
+      "targets": 59,
+      "long_ecology": "two named current-source tests running separately",
+      "ci": {
+        "repository": "BobertNeek/Darwinbots-Modern",
+        "run_id": 38506430843,
+        "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+        "status": "in_progress",
+        "platforms": [
+          "windows-latest/win-x64",
+          "ubuntu-latest/linux-x64",
+          "macos-15-intel/osx-x64",
+          "macos-latest/osx-arm64"
+        ]
+      }
     }
   },
   "limits": [
-    "Complete Rust workspace Release and both long ecology scenarios are running again for this physics change. The previous 562/0 workspace and two passed CPU soaks refer to earlier source states.",
-    "Linux packaging could not run locally: Ubuntu is registered but WSL reports virtualization unavailable. macOS packaging is unverified. No host virtualization settings were changed.",
+    "Complete Rust workspace Release passed 577/0; two named current-source long ecology scenarios are running separately.",
+    "Local WSL cannot start, but hosted cross-platform CI run 38506430843 is in progress on Windows, Ubuntu and both macOS targets. No platform result is claimed before completion.",
     "Windows smoke checks packaged bot presence, native library loading, movement and matching continuous/save-resumed state through tick 13; graphical workflow tests were run separately.",
     "Older complete archived-corpse migration, relative velocity/reference details, adaptive costs, per-robot phase order/global RNG, evolution and league requirements, and original trajectory comparisons remain open.",
     "Internet Mode is excluded."
