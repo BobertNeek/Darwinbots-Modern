@@ -11,8 +11,27 @@ pub(crate) const TIE_DEADBAND: f32 = 20.0;
 pub(crate) const MAX_TIE_SURFACE_GAP: f32 = 1_000.0;
 pub(crate) const TIE_ANGLE_SLACK: f32 = 5.0_f32.to_radians();
 
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct NativeTieEnd {
+    pub rest_length: f32,
+    pub last: i32,
+    pub b: f32,
+    pub k: f32,
+    pub hardened: bool,
+    pub angle: f32,
+    pub angle_fixed: bool,
+    pub angle_initialized: bool,
+    pub bend: f32,
+    #[serde(default)]
+    pub shrink: i32,
+    #[serde(default)]
+    pub kind: u8,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct TieState {
+    #[serde(default)]
+    pub(crate) native_ends: Option<[NativeTieEnd; 2]>,
     pub(crate) first: OrganismId,
     pub(crate) second: OrganismId,
     pub(crate) rest_length: f32,
@@ -51,6 +70,7 @@ impl TieState {
         second_port: i32,
     ) -> Self {
         Self {
+            native_ends: None,
             first,
             second,
             rest_length,
@@ -77,6 +97,7 @@ impl TieState {
         second_port: i32,
     ) -> Self {
         Self {
+            native_ends: None,
             first,
             second,
             rest_length,
@@ -97,6 +118,28 @@ impl TieState {
 
     pub(crate) fn contains(&self, id: OrganismId) -> bool {
         self.first == id || self.second == id
+    }
+
+    pub(crate) fn native_end_states(&self) -> [NativeTieEnd; 2] {
+        self.native_ends.unwrap_or_else(|| {
+            let first = NativeTieEnd { rest_length: self.rest_length, last: self.last,
+                b: self.b, k: self.k, hardened: self.hardened, angle: self.requested_angle,
+                angle_fixed: self.angle_fixed, angle_initialized: self.angle_initialized, bend: 0.0,
+                shrink: 0, kind: if self.hardened { 3 } else { 0 } };
+            [first, NativeTieEnd { angle: 0.0, angle_fixed: false, angle_initialized: true, ..first }]
+        })
+    }
+
+    pub(crate) fn sync_native_primary(&mut self) {
+        let Some([first, _]) = self.native_ends else { return };
+        self.rest_length = first.rest_length;
+        self.last = first.last;
+        self.b = first.b;
+        self.k = first.k;
+        self.hardened = first.hardened;
+        self.requested_angle = first.angle;
+        self.angle_fixed = first.angle_fixed;
+        self.angle_initialized = first.angle_initialized;
     }
 
     pub(crate) fn advance_lifecycle(&mut self, current_length: f32) -> bool {

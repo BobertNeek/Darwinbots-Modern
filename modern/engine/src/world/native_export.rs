@@ -418,6 +418,7 @@ impl Engine {
         let robot = self.slots.get(id)?;
         for (i, tie) in ties.into_iter().enumerate() {
             let forward = tie.first == id;
+            let end = tie.native_end_states()[usize::from(!forward)];
             let other = if forward { tie.second } else { tie.first };
             let c = &mut core[(i + 1) * 38..(i + 2) * 38];
             let e = &mut extension[(i + 1) * 13..(i + 2) * 13];
@@ -477,8 +478,8 @@ impl Engine {
                 ),
                 (2, i32::from(remap[&other])),
                 (4, reciprocal as i32),
-                (14, if tie.angle_fixed { -1 } else { 0 }),
-                (26, tie.last),
+                (14, if end.angle_fixed { -1 } else { 0 }),
+                (26, end.last),
                 (30, if forward { 0 } else { -1 }),
                 (34, if tie.information { -1 } else { 0 }),
                 (
@@ -500,14 +501,14 @@ impl Engine {
                         .to_le_bytes(),
                 );
             }
-            let angle = endpoint.map_or(tie.requested_angle, |endpoint| endpoint.current_angle);
-            let bend = endpoint.map_or(tie.requested_angle, |endpoint| endpoint.requested_angle);
+            let angle = end.angle;
+            let bend = end.bend;
             let length = endpoint.map_or(tie.rest_length, |endpoint| endpoint.current_length);
-            let shrink = endpoint.map_or(0.0, |endpoint| endpoint.requested_length);
+            let shrink = end.shrink;
             c[6..10].copy_from_slice(&angle.to_le_bytes());
             c[10..14].copy_from_slice(&bend.to_le_bytes());
             c[16..20].copy_from_slice(&(length.round_ties_even() as i32).to_le_bytes());
-            c[20..24].copy_from_slice(&(shrink.round_ties_even() as i32).to_le_bytes());
+            c[20..24].copy_from_slice(&shrink.to_le_bytes());
             if let Some(endpoint) = endpoint {
                 c[32..34].copy_from_slice(
                     &i16::try_from(endpoint.energy_marker)
@@ -515,16 +516,10 @@ impl Engine {
                         .to_le_bytes(),
                 );
             }
-            e[0] = if !tie.hardened {
-                0
-            } else if e[0] == 0 {
-                2
-            } else {
-                e[0]
-            };
-            e[1..5].copy_from_slice(&tie.b.to_le_bytes());
-            e[5..9].copy_from_slice(&tie.k.to_le_bytes());
-            e[9..13].copy_from_slice(&tie.rest_length.to_le_bytes());
+            e[0] = end.kind;
+            e[1..5].copy_from_slice(&end.b.to_le_bytes());
+            e[5..9].copy_from_slice(&end.k.to_le_bytes());
+            e[9..13].copy_from_slice(&end.rest_length.to_le_bytes());
         }
         record.set_value("ties_core", NativeValue::Bytes(core))?;
         record.set_value("ties_extension", NativeValue::Bytes(extension))
@@ -580,6 +575,41 @@ mod tests {
         assert!(engine.export_native_organisms(&[id, id]).is_err());
         assert!(engine.export_native_organisms(&[]).is_err());
         assert!(ansi("unsupported 🐉").is_err());
+    }
+
+    #[test]
+    fn native_export_keeps_distinct_endpoint_springs_angles_and_bends() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = engine.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+        let second = engine.spawn_at(dna, [700.0, 500.0]).unwrap();
+        let mut tie = TieState::legacy(first, second, 200.0, 1, 1);
+        let mut ends = tie.native_end_states();
+        ends[0].angle = 0.25;
+        ends[0].bend = 0.125;
+        ends[1].rest_length = 250.0;
+        ends[1].b = 0.04;
+        ends[1].last = -7;
+        ends[1].angle = -0.75;
+        ends[1].bend = -0.125;
+        ends[1].shrink = 19;
+        ends[1].kind = 0;
+        ends[1].hardened = false;
+        tie.native_ends = Some(ends);
+        tie.sync_native_primary();
+        engine.ties.push(tie);
+        let file = NativeRecordFile { robots: engine.native_robot_records(&[first, second]).unwrap(), tail: vec![] };
+        for (index, end) in ends.into_iter().enumerate() {
+            let core = file.robots[index].bytes("ties_core").unwrap();
+            let extension = file.robots[index].bytes("ties_extension").unwrap();
+            assert_eq!(f32::from_le_bytes(core[44..48].try_into().unwrap()), end.angle);
+            assert_eq!(f32::from_le_bytes(core[48..52].try_into().unwrap()), end.bend);
+            assert_eq!(i32::from_le_bytes(core[58..62].try_into().unwrap()), end.shrink);
+            assert_eq!(i16::from_le_bytes(core[64..66].try_into().unwrap()), end.last as i16);
+            assert_eq!(extension[13], end.kind);
+            assert_eq!(f32::from_le_bytes(extension[14..18].try_into().unwrap()), end.b);
+            assert_eq!(f32::from_le_bytes(extension[22..26].try_into().unwrap()), end.rest_length);
+        }
     }
 
     #[test]

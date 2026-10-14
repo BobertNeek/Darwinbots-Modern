@@ -602,7 +602,7 @@ impl Engine {
                     reciprocal_index: word(c, 4) as u8,
                     port: word(c, 0),
                     current_angle: single(c, 6),
-                    requested_angle: single(c, 10),
+                    requested_angle: single(c, 6),
                     current_length: long(c, 16) as f32,
                     requested_length: long(c, 20) as f32,
                     countdown: word(c, 26),
@@ -624,7 +624,24 @@ impl Engine {
                 } else {
                     0
                 };
+                let read_end = |core: &[u8], extension: &[u8]| crate::tie::NativeTieEnd {
+                    rest_length: single(extension, 9), last: word(core, 26),
+                    b: single(extension, 1), k: single(extension, 5), hardened: extension[0] == 3, kind: extension[0], shrink: long(core, 20),
+                    angle: single(core, 6), bend: single(core, 10),
+                    angle_fixed: word(core, 14) != 0, angle_initialized: true,
+                };
+                let second_record = source_records[&(word(c, 2) as i16)];
+                let second_core = second_record.bytes("ties_core")?;
+                let second_extension = second_record.bytes("ties_extension")?;
+                let first_end = read_end(c, e);
+                let second_end = if (1..=10).contains(&reciprocal) {
+                    read_end(&second_core[reciprocal * 38..(reciprocal + 1) * 38],
+                        &second_extension[reciprocal * 13..(reciprocal + 1) * 13])
+                } else { crate::tie::NativeTieEnd { angle_fixed: false, ..first_end } };
+                if [second_end.rest_length, second_end.b, second_end.k, second_end.angle, second_end.bend]
+                    .iter().any(|value| !value.is_finite()) { return Err(invalid("nonfinite reciprocal tie state")); }
                 self.ties.push(TieState {
+                    native_ends: Some([first_end, second_end]),
                     first,
                     second,
                     rest_length: single(e, 9),
@@ -633,11 +650,11 @@ impl Engine {
                     last: word(c, 26),
                     b: single(e, 1),
                     k: single(e, 5),
-                    hardened: e[0] != 0,
+                    hardened: e[0] == 3,
                     information: word(c, 34) != 0,
                     sharing_first: word(c, 36) != 0,
                     sharing_second: false,
-                    requested_angle: single(c, 10),
+                    requested_angle: single(c, 6),
                     angle_fixed: word(c, 14) != 0,
                     angle_initialized: true,
                 });

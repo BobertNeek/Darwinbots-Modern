@@ -10,6 +10,55 @@ pub(super) struct NativeRobotPhase {
 }
 
 impl Engine {
+    pub(super) fn native_pre_robot_pipeline(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
+        self.native_tie_index = Some(HashMap::new());
+        self.rebuild_native_tie_index();
+        self.native_buckets.synchronize([self.config.world_width, self.config.world_height], &self.slots);
+        self.pending_gpu_collision_pairs = None;
+        let mut contacts = native_collisions::NativeContacts::new(&self.slots);
+        let population = self.cost_population();
+        let chloroplast_total = self.phase_chloroplast_total();
+        for tie in &mut self.ties { tie.information = false; }
+        for id in self.slots.ids_in_slot_order() {
+            self.native_phase = Some(NativeRobotPhase { actor: id, cost_population: population,
+                chloroplast_total, radius_bound: 415.0 });
+            self.trace_robot_phase(trace, CyclePhase::Upkeep);
+            self.upkeep_phase();
+            self.trace_robot_phase(trace, CyclePhase::PoisonVenom);
+            self.poison_venom_phase();
+            self.trace_robot_phase(trace, CyclePhase::FixPosition);
+            self.manage_native_fixed_state();
+            self.trace_robot_phase(trace, CyclePhase::Mass);
+            let robot = self.slots.get_mut(id)?;
+            robot.materials.mass = derived_mass(robot.materials.body, robot.materials.shell,
+                robot.materials.chloroplasts).clamp(1.0, 32_000.0);
+            self.trace_robot_phase(trace, CyclePhase::ObstaclesBorders);
+            self.apply_environment_features(true, false);
+            let relocated = self.border_collision_phase();
+            for member in relocated { contacts.relocate(member, self.slots.get(member)?.kinematics.position); }
+            contacts.relocate(id, self.slots.get(id)?.kinematics.position);
+            self.trace_robot_phase(trace, CyclePhase::TieSpring);
+            self.native_tie_forces(id);
+            self.trace_robot_phase(trace, CyclePhase::Movement);
+            let started = Instant::now();
+            self.movement_commands_phase();
+            self.native_intent_phase();
+            self.phase_timings.intent += elapsed_ms(started);
+            self.trace_robot_phase(trace, CyclePhase::RobotCollisions);
+            let started = Instant::now();
+            self.native_collisions_for(id, &mut contacts);
+            self.phase_timings.spatial += elapsed_ms(started);
+            self.trace_robot_phase(trace, CyclePhase::StaticFriction);
+            self.native_finalize_forces();
+            self.trace_robot_phase(trace, CyclePhase::TieData);
+            let started = Instant::now();
+            self.tie_data_phase(trace);
+            self.phase_timings.interactions += elapsed_ms(started);
+        }
+        self.native_phase = None;
+        Ok(())
+    }
+
     pub(super) fn rebuild_native_tie_index(&mut self) {
         if self.native_tie_index.is_none() { return; }
         let mut index: HashMap<OrganismId, Vec<usize>> = HashMap::new();
@@ -208,6 +257,52 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn tie_fixed_order(source_first: bool) -> (Engine, OrganismId, OrganismId) {
+        let mut world = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = world.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+        let second = world.spawn_at(dna, [700.0, 500.0]).unwrap();
+        world.ties.push(TieState::legacy(first, second, 200.0, 1, 1));
+        let (source, target) = if source_first { (first, second) } else { (second, first) };
+        let robot = world.slots.get_mut(source).unwrap();
+        robot.program.memory.write(455, 1);
+        robot.program.memory.write(452, MEM_FIXED);
+        robot.program.memory.write(453, 1);
+        (world, source, target)
+    }
+
+    #[test]
+    fn early_tie_write_fixes_later_robot_in_same_pre_pass() {
+        let (mut world, _, target) = tie_fixed_order(true);
+        world.native_pre_robot_pipeline(&mut CycleRecorder::disabled(0)).unwrap();
+        let robot = world.slots.get(target).unwrap();
+        assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
+        assert!(robot_is_fixed(robot, true));
+    }
+
+    #[test]
+    fn late_tie_write_to_earlier_robot_waits_for_next_pre_pass() {
+        let (mut world, _, target) = tie_fixed_order(false);
+        world.native_pre_robot_pipeline(&mut CycleRecorder::disabled(0)).unwrap();
+        let robot = world.slots.get(target).unwrap();
+        assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
+        assert!(!robot_is_fixed(robot, true));
+        world.native_pre_robot_pipeline(&mut CycleRecorder::disabled(0)).unwrap();
+        assert!(robot_is_fixed(world.slots.get(target).unwrap(), true));
+    }
+
+    #[test]
+    fn native_pre_trace_finishes_tie_data_before_next_robot_upkeep() {
+        let (mut world, first, second) = tie_fixed_order(true);
+        let trace = world.tick_with_trace().unwrap();
+        let visits: Vec<_> = trace.events.iter().filter_map(|event| match event {
+            crate::CycleEvent::RobotVisited { phase, id, .. } => Some((*phase, *id)), _ => None,
+        }).collect();
+        let first_data = visits.iter().position(|visit| *visit == (CyclePhase::TieData, first)).unwrap();
+        let second_upkeep = visits.iter().position(|visit| *visit == (CyclePhase::Upkeep, second)).unwrap();
+        assert!(first_data < second_upkeep);
+    }
 
     #[test]
     fn later_robot_observes_earlier_body_command_but_not_the_reverse() {

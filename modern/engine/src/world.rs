@@ -90,6 +90,10 @@ mod native_physics;
 
 #[path = "world/native_pipeline.rs"]
 mod native_pipeline;
+#[path = "world/native_collisions.rs"]
+mod native_collisions;
+#[path = "world/native_tie_physics.rs"]
+mod native_tie_physics;
 
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
@@ -2187,11 +2191,14 @@ struct DynamicCostRuntimeState {
 struct EngineCycleCheckpoint {
     checkpoint: CycleCheckpoint,
     native_random: Option<crate::native_random::NativeRandom>,
+    native_buckets: native_collisions::NativeBuckets,
     dynamic_cost_state: DynamicCostRuntimeState,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
+    #[serde(default)]
+    native_buckets: native_collisions::NativeBuckets,
     #[serde(skip, default)]
     native_phase: Option<native_pipeline::NativeRobotPhase>,
     #[serde(skip, default)]
@@ -2480,6 +2487,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_buckets: native_collisions::NativeBuckets::default(),
             native_phase: None,
             pending_disqualifications: Vec::new(),
             native_tie_index: None,
@@ -2658,6 +2666,7 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_buckets: native_collisions::NativeBuckets::default(),
             native_phase: None,
             pending_disqualifications: Vec::new(),
             native_tie_index: None,
@@ -4692,6 +4701,7 @@ impl Engine {
             },
             dynamic_cost_state: self.dynamic_cost_state.clone(),
             native_random: self.native_random.clone(),
+            native_buckets: self.native_buckets.clone(),
         }
     }
 
@@ -4701,6 +4711,7 @@ impl Engine {
         self.native_tie_index = None;
         self.dynamic_cost_state = checkpoint.dynamic_cost_state;
         self.native_random = checkpoint.native_random;
+        self.native_buckets = checkpoint.native_buckets;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
@@ -4810,6 +4821,9 @@ impl Engine {
         self.trace_robot_phase(&mut trace, CyclePhase::FluidMass);
         if self.native_random.is_some() { self.capture_native_added_mass(); }
         self.trace_robot_phase(&mut trace, CyclePhase::Tide);
+        if self.native_random.is_some() {
+            self.native_pre_robot_pipeline(&mut trace)?;
+        } else {
         self.trace_robot_phase(&mut trace, CyclePhase::Upkeep);
         self.upkeep_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::PoisonVenom);
@@ -4839,6 +4853,8 @@ impl Engine {
         let started = Instant::now();
         self.tie_data_phase(&mut trace);
         self.phase_timings.interactions = elapsed_ms(started);
+
+        }
 
         self.trace_robot_phase(&mut trace, CyclePhase::SpeciesCounts);
         self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
@@ -5574,8 +5590,8 @@ impl Engine {
         let metabolism = self.config.metabolism_cost.max(0);
         let population = self.cost_population();
         let costs = self.active_dna_costs();
-        for slot in self.slots.iter_mut() {
-            let Some(robot) = slot.organism.as_mut() else {
+        for slot in self.phase_slot_range() {
+            let Some(robot) = self.slots[slot].organism.as_mut() else {
                 continue;
             };
             if robot.flags.corpse {
@@ -5608,8 +5624,8 @@ impl Engine {
     }
 
     fn poison_venom_phase(&mut self) {
-        for slot in self.slots.iter_mut() {
-            let Some(robot) = slot.organism.as_mut() else {
+        for slot in self.phase_slot_range() {
+            let Some(robot) = self.slots[slot].organism.as_mut() else {
                 continue;
             };
             if robot.flags.corpse || !robot.flags.can_execute_dna {
@@ -5673,8 +5689,8 @@ impl Engine {
         } else {
             0.0
         };
-        for slot in self.slots.iter_mut() {
-            let Some(robot) = slot.organism.as_mut() else {
+        for slot in self.phase_slot_range() {
+            let Some(robot) = self.slots[slot].organism.as_mut() else {
                 continue;
             };
             let Some(PhaseCommands::Movement(commands)) =
@@ -5682,7 +5698,7 @@ impl Engine {
             else {
                 unreachable!("movement phase must return movement commands")
             };
-            for address in [1, 2, 3, 4] {
+            for address in [1, 2, 3, 4].into_iter().filter(|_| self.native_random.is_none()) {
                 runtime.finish_command(
                     address,
                     CommandOutcome::Consumed,
@@ -6648,12 +6664,13 @@ impl Engine {
 
     fn tie_data_phase(&mut self, trace: &mut CycleRecorder) {
         let runtime = SysvarRuntime::new();
-        for tie in &mut self.ties {
-            tie.information = false;
+        if self.native_phase.is_none() {
+            for tie in &mut self.ties { tie.information = false; }
         }
         let phase_commands = self.capture_tie_commands();
         let mut channels = Vec::new();
-        for (tie_index, tie) in self.ties.iter().enumerate() {
+        for tie_index in self.phase_tie_indices() {
+            let tie = &self.ties[tie_index];
             for (source_slot, target_slot, source_port) in [
                 (
                     tie.first.slot() as usize,
@@ -6666,9 +6683,9 @@ impl Engine {
                     tie.second_port,
                 ),
             ] {
-                if self.slots[source_slot].organism.is_none() {
-                    continue;
-                }
+                let Some(source) = self.slots[source_slot].organism.as_ref() else { continue };
+                if self.native_phase.as_ref().is_some_and(|phase| phase.actor.slot() as usize != source_slot)
+                    || source.flags.corpse || !source.flags.can_execute_dna { continue; }
                 let commands = phase_commands.get(&source_slot).copied().unwrap_or_default();
                 channels.push((
                     tie_index,
@@ -7026,6 +7043,7 @@ impl Engine {
             for (source_endpoint_index, tie_index) in self.tie_indices_for(source_id).into_iter().enumerate() {
                 let tie = &mut self.ties[tie_index];
                 let source_is_first = tie.first == source_id;
+                let mut native_ends = self.native_random.as_ref().map(|_| tie.native_end_states());
                 let other_id = if source_is_first { tie.second } else { tie.first };
                 if !tie.hardened {
                     continue;
@@ -7100,6 +7118,29 @@ impl Engine {
                             (requested_surface_length + source_radius + other_radius).min(32_000.0);
                     }
                 }
+                if let Some(ends) = native_ends.as_mut() {
+                    let side = usize::from(!source_is_first);
+                    if selected && commands.fix_angle != 32_000 {
+                        if commands.fix_angle >= 0 {
+                            ends[side].angle = normalize_tie_angle((commands.fix_angle.rem_euclid(1_256) as f32) / 200.0);
+                            ends[side].angle_fixed = true;
+                            ends[side].angle_initialized = true;
+                        } else { ends[side].angle_fixed = false; }
+                    }
+                    if indexed && angle_overwrites[source_endpoint_index] {
+                        ends[side].angle = normalize_tie_angle(commands.angles[source_endpoint_index] as f32 / 200.0);
+                        ends[side].angle_fixed = true;
+                        ends[side].angle_initialized = true;
+                    }
+                    if (selected && commands.fix_length != 0) || (indexed && length_overwrites[source_endpoint_index]) {
+                        for end in ends.iter_mut() { end.rest_length = tie.rest_length; }
+                    }
+                    if selected && commands.stiffness != 0 {
+                        for end in ends.iter_mut() { end.b = tie.b; end.k = tie.k; }
+                    }
+                    tie.native_ends = native_ends;
+                    tie.sync_native_primary();
+                }
             }
         }
     }
@@ -7113,120 +7154,70 @@ impl Engine {
     }
 
     fn refresh_tie_projections_with_references(
-        &mut self,
-        read_references: bool,
-        newly_created: &HashMap<OrganismId, i32>,
+        &mut self, read_references: bool, newly_created: &HashMap<OrganismId, i32>,
     ) {
-        let runtime = SysvarRuntime::new();
-        let mut endpoints = vec![[None; MAX_TIES_PER_ROBOT]; self.slots.len()];
-        let mut tie_counts = vec![0usize; self.slots.len()];
-        let mut multibot = vec![false; self.slots.len()];
-        let mut latest_ports = vec![None; self.slots.len()];
-        let mut tie_angles = vec![[0_i32; MAX_TIES_PER_ROBOT]; self.slots.len()];
-        let mut tie_lengths = vec![[0_i32; MAX_TIES_PER_ROBOT]; self.slots.len()];
-        for tie in &self.ties {
-            let first = tie.first.slot() as usize;
-            let second = tie.second.slot() as usize;
-            if first == second || first >= self.slots.len() || second >= self.slots.len() {
-                continue;
-            }
-            if self.slots[first].generation != tie.first.generation()
-                || self.slots[second].generation != tie.second.generation()
-            {
-                continue;
-            }
-            let (Some(first_robot), Some(second_robot)) = (
-                self.slots[first].organism.as_ref(),
-                self.slots[second].organism.as_ref(),
-            ) else {
-                continue;
-            };
-            let first_radius = first_robot.materials.radius;
-            let second_radius = second_robot.materials.radius;
-            let first_index = tie_counts[first];
-            let second_index = tie_counts[second];
-            if first_index >= MAX_TIES_PER_ROBOT || second_index >= MAX_TIES_PER_ROBOT {
-                continue;
-            }
-            let delta = [
-                second_robot.kinematics.position[0] - first_robot.kinematics.position[0],
-                second_robot.kinematics.position[1] - first_robot.kinematics.position[1],
-            ];
-            let current_length = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
-            let first_angle = delta[1].atan2(delta[0]);
-            let second_angle = (-delta[1]).atan2(-delta[0]);
-            let first_aim = first_robot.heading();
-            let second_aim = second_robot.heading();
-            let first_relative_angle = normalize_tie_angle(first_angle - first_aim);
-            let second_relative_angle = normalize_tie_angle(second_angle - second_aim);
-            let requested_second_angle = normalize_tie_angle(
-                tie.requested_angle + first_aim + std::f32::consts::PI - second_aim,
-            );
-            let surface_length = (current_length - first_radius - second_radius)
-                .clamp(0.0, 32_000.0)
-                .round_ties_even() as i32;
-            let spring_velocity = if current_length > f32::EPSILON {
-                let unit = [delta[0] / current_length, delta[1] / current_length];
-                (second_robot.kinematics.velocity[0] - first_robot.kinematics.velocity[0]) * unit[0]
-                    + (second_robot.kinematics.velocity[1] - first_robot.kinematics.velocity[1])
-                        * unit[1]
-            } else {
-                0.0
-            };
-            endpoints[first][first_index] = Some(TieEndpointState {
-                other: Some(tie.second),
-                reciprocal_index: (second_index + 1) as u8,
-                port: tie.first_port,
-                information: i32::from(tie.information),
-                current_angle: first_relative_angle,
-                requested_angle: tie.requested_angle,
-                current_length,
-                requested_length: tie.rest_length,
-                countdown: tie.last,
-                sharing_marker: i32::from(tie.sharing_first),
-                spring_velocity,
-                ..TieEndpointState::default()
-            });
-            endpoints[second][second_index] = Some(TieEndpointState {
-                other: Some(tie.first),
-                reciprocal_index: (first_index + 1) as u8,
-                port: tie.second_port,
-                information: i32::from(tie.information),
-                current_angle: second_relative_angle,
-                requested_angle: requested_second_angle,
-                current_length,
-                requested_length: tie.rest_length,
-                countdown: tie.last,
-                sharing_marker: i32::from(tie.sharing_second),
-                spring_velocity,
-                ..TieEndpointState::default()
-            });
-            tie_angles[first][first_index] =
-                (first_relative_angle * 200.0).round_ties_even() as i32;
-            tie_angles[second][second_index] =
-                (second_relative_angle * 200.0).round_ties_even() as i32;
-            tie_lengths[first][first_index] = surface_length;
-            tie_lengths[second][second_index] = surface_length;
-            tie_counts[first] += 1;
-            tie_counts[second] += 1;
-            if tie.hardened {
-                multibot[first] = true;
-                multibot[second] = true;
-            }
-            latest_ports[first] = Some(tie.first_port);
-            latest_ports[second] = Some(tie.second_port);
+        let temporary_index = self.native_tie_index.is_none();
+        if temporary_index { self.native_tie_index = Some(HashMap::new()); self.rebuild_native_tie_index(); }
+        for slot in self.phase_slot_range() {
+            self.refresh_one_tie_projection(slot, read_references, newly_created);
         }
-        for slot in 0..self.slots.len() {
+        if temporary_index { self.native_tie_index = None; }
+    }
+
+    fn refresh_one_tie_projection(&mut self, slot: usize, read_references: bool,
+        newly_created: &HashMap<OrganismId, i32>) {
+        let runtime = SysvarRuntime::new();
+        let id = OrganismId::new(slot as u32, self.slots[slot].generation);
+        let mut endpoints = [None; MAX_TIES_PER_ROBOT];
+        let mut tie_count = 0;
+        let mut multibot = false;
+        let mut latest_port = None;
+        let mut tie_angles = [0_i32; MAX_TIES_PER_ROBOT];
+        let mut tie_lengths = [0_i32; MAX_TIES_PER_ROBOT];
+        for index in self.tie_indices_for(id) {
+            let tie = &self.ties[index];
+            let forward = tie.first == id;
+            let other = if forward { tie.second } else { tie.first };
+            let (Ok(source), Ok(target)) = (self.slots.get(id), self.slots.get(other)) else { continue };
+            if tie_count >= MAX_TIES_PER_ROBOT { break; }
+            let Some(reciprocal) = self.tie_indices_for(other).iter().position(|ordinal| *ordinal == index) else { continue };
+            let delta = std::array::from_fn::<_, 2, _>(|axis| target.kinematics.position[axis] - source.kinematics.position[axis]);
+            let length = (delta[0] * delta[0] + delta[1] * delta[1]).sqrt();
+            let angle = if self.native_random.is_some() { (-delta[1]).atan2(delta[0]) } else { delta[1].atan2(delta[0]) };
+            let relative = normalize_tie_angle(angle - source.heading());
+            let end = tie.native_end_states()[usize::from(!forward)];
+            let port = if forward { tie.first_port } else { tie.second_port };
+            let spring_velocity = if length > f32::EPSILON {
+                (target.kinematics.velocity[0] - source.kinematics.velocity[0]) * delta[0] / length
+                    + (target.kinematics.velocity[1] - source.kinematics.velocity[1]) * delta[1] / length
+            } else { 0.0 };
+            let native = self.native_random.is_some();
+            let requested = if native { end.angle } else if forward { tie.requested_angle }
+                else { normalize_tie_angle(tie.requested_angle + target.heading() + std::f32::consts::PI - source.heading()) };
+            endpoints[tie_count] = Some(TieEndpointState {
+                other: Some(other), reciprocal_index: (reciprocal + 1) as u8, port,
+                information: i32::from(tie.information), current_angle: relative, requested_angle: requested,
+                current_length: length, requested_length: if native { end.rest_length } else { tie.rest_length },
+                countdown: if native { end.last } else { tie.last },
+                sharing_marker: i32::from(if forward { tie.sharing_first } else { tie.sharing_second }),
+                spring_velocity, ..TieEndpointState::default()
+            });
+            tie_angles[tie_count] = (relative * 200.0).round_ties_even() as i32;
+            tie_lengths[tie_count] = (length - source.materials.radius - target.materials.radius)
+                .clamp(0.0, 32_000.0).round_ties_even() as i32;
+            multibot |= if native { end.hardened } else { tie.hardened };
+            latest_port = Some(port);
+            tie_count += 1;
+        }
             let Some(source) = self.slots[slot].organism.as_ref() else {
-                continue;
+                return;
             };
-            let count = tie_counts[slot] as i32;
-            let multibot = multibot.get(slot).copied().unwrap_or(false);
+            let count = tie_count as i32;
             let selected_port = match source.program.memory.read(MEM_READ_TIE) {
-                0 => latest_ports[slot].unwrap_or(0),
+                0 => latest_port.unwrap_or(0),
                 selected => selected,
             };
-            let selected_index = endpoints[slot].iter().position(|endpoint| {
+            let selected_index = endpoints.iter().position(|endpoint| {
                 endpoint.is_some_and(|endpoint| endpoint.port == selected_port)
             });
             let id = OrganismId::new(slot as u32, self.slots[slot].generation);
@@ -7237,7 +7228,7 @@ impl Engine {
                     && !source.flags.corpse
                     && source.flags.can_execute_dna);
             let reference_port = forced_port.unwrap_or(selected_port);
-            let reference_index = endpoints[slot].iter().position(|endpoint| {
+            let reference_index = endpoints.iter().position(|endpoint| {
                 endpoint.is_some_and(|endpoint| endpoint.port == reference_port)
             });
             let source_aim = source.heading();
@@ -7246,7 +7237,7 @@ impl Engine {
             let memory_location = source.program.memory.read(MEM_TIE_MEMORY_LOCATION);
             let reference_values = reference_index
                 .filter(|_| can_read_references)
-                .and_then(|index| endpoints[slot][index].and_then(|endpoint| endpoint.other))
+                .and_then(|index| endpoints[index].and_then(|endpoint| endpoint.other))
                 .and_then(|other| {
                     let target = self.slots.get_mut(other).ok()?;
                     // ReadTRefVars changes the target's physical velocity, but
@@ -7332,23 +7323,23 @@ impl Engine {
                 (
                     MEM_TIE_ANGLE as u16,
                     selected_index
-                        .map(|index| tie_angles[slot][index])
+                        .map(|index| tie_angles[index])
                         .unwrap_or(0),
                 ),
                 (
                     MEM_TIE_LENGTH as u16,
                     selected_index
-                        .map(|index| tie_lengths[slot][index])
+                        .map(|index| tie_lengths[index])
                         .unwrap_or(0),
                 ),
                 (MEM_MULTI as u16, i32::from(multibot)),
                 (MEM_NUMBER_OF_TIES as u16, count),
                 (MEM_MY_TIES as u16, count),
-                (MEM_TIE_PRESENT as u16, latest_ports[slot].unwrap_or(0)),
+                (MEM_TIE_PRESENT as u16, latest_port.unwrap_or(0)),
             ];
             for index in 0..4 {
-                values.push((480 + index as u16, tie_angles[slot][index]));
-                values.push((484 + index as u16, tie_lengths[slot][index]));
+                values.push((480 + index as u16, tie_angles[index]));
+                values.push((484 + index as u16, tie_lengths[index]));
             }
             let native_velocity_values: Vec<_> = reference_values
                 .as_ref()
@@ -7361,7 +7352,7 @@ impl Engine {
                 values.extend(reference_values);
             }
             let organism = self.slots[slot].organism.as_mut().unwrap();
-            organism.ties = endpoints[slot];
+            organism.ties = endpoints;
             organism.counters.multibot = multibot;
             runtime.publish(
                 PhaseReadbacks::Tie(TieReadbacks { values }),
@@ -7378,7 +7369,6 @@ impl Engine {
                     organism.program.memory.write(address, 0);
                 }
             }
-        }
     }
 
     fn first_free_tie_port(&self, id: OrganismId) -> Option<i32> {
@@ -7750,10 +7740,11 @@ impl Engine {
         for id in disqualified { self.native_disqualify_action(id, DisqualificationAction::InformationShot); }
     }
 
-    fn border_collision_phase(&mut self) {
+    fn border_collision_phase(&mut self) -> Vec<OrganismId> {
+        let mut relocated = Vec::new();
         let world_size = [self.config.world_width, self.config.world_height];
         let wrapped_axes = self.config.axis_topology();
-        for id in self.slots.ids_in_slot_order() {
+        for id in self.phase_robot_ids() {
             let Ok(robot) = self.slots.get(id) else {
                 continue;
             };
@@ -7780,7 +7771,7 @@ impl Engine {
                     } else {
                         world_size[axis] - smudge
                     };
-                    self.respawn_border_group(id, target);
+                    relocated.extend(self.respawn_border_group(id, target));
                 } else {
                     let robot = self.slots.get_mut(id).unwrap();
                     if robot.kinematics.position[axis] - radius < 0.0 {
@@ -7796,9 +7787,10 @@ impl Engine {
                 }
             }
         }
+        relocated
     }
 
-    fn respawn_border_group(&mut self, origin: OrganismId, target: [f32; 2]) {
+    fn respawn_border_group(&mut self, origin: OrganismId, target: [f32; 2]) -> Vec<OrganismId> {
         let mut members = vec![origin];
         let mut cursor = 0;
         while cursor < members.len() {
@@ -7851,13 +7843,15 @@ impl Engine {
                 delta + delta.signum() * (radii_difference - 1.0)
             }
         });
-        for member in members {
+        for &member in &members {
             let robot = self.slots.get_mut(member).unwrap();
             for (axis, delta) in displacement.into_iter().enumerate() {
                 robot.kinematics.position[axis] += delta;
             }
             robot.kinematics.previous_position = robot.kinematics.position;
+            if self.native_random.is_some() { self.native_buckets.relocate(member, robot.kinematics.position); }
         }
+        members
     }
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
@@ -8796,7 +8790,18 @@ impl Engine {
     }
 
     fn apply_environment_features(&mut self, obstacles: bool, teleporters: bool) {
-        if obstacles {
+        if obstacles && self.native_phase.is_some() {
+            let id = self.native_phase.as_ref().unwrap().actor;
+            if let Ok(robot) = self.slots.get_mut(id) {
+                let mut positions = [robot.kinematics.position];
+                let mut velocities = [robot.kinematics.velocity];
+                crate::environment::apply_world_features(&[robot.materials.radius], &mut positions,
+                    &mut velocities, &[true], &self.obstacles, &[],
+                    [self.config.world_width, self.config.world_height]);
+                robot.kinematics.position = positions[0];
+                robot.kinematics.velocity = velocities[0];
+            }
+        } else if obstacles {
             let mut positions: Vec<_> = self
                 .slots
                 .iter()
@@ -8946,12 +8951,15 @@ impl Engine {
             }
         }
 
-        for (slot, (position, backflow)) in self
+        for (index, (slot, (position, backflow))) in self
             .slots
             .iter_mut()
-            .zip(positions.into_iter().zip(next_backflow))
+            .zip(positions.into_iter().zip(next_backflow)).enumerate()
         {
             if let Some(robot) = slot.organism.as_mut() {
+                if self.native_random.is_some() && robot.kinematics.position != position {
+                    self.native_buckets.relocate(OrganismId::new(index as u32, slot.generation), position);
+                }
                 robot.kinematics.position = position;
                 robot.teleporter_backflow = backflow;
             }

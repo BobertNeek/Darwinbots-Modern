@@ -21,31 +21,27 @@ impl Engine {
     }
 
     pub(super) fn native_intent_phase(&mut self) {
-        let settings = &self.config.physics;
+        let settings = self.config.physics.clone();
         let scaling = self.tide_scaling();
         let mut gravity = self.config.gravity;
         if self.config.vegetation.tides > 0 { gravity[1] = (1.0 - scaling) * 4.0; }
-        let brownian = if self.config.vegetation.tides > 0 && scaling > 0.8 {
-            10.0
+        let brownian = if self.config.vegetation.tides > 0 {
+            if scaling > 0.8 { 10.0 } else { 0.0 }
         } else { self.config.brownian_motion };
-        let positions: Vec<_> = self.slots.iter().map(|slot| slot.organism.as_ref()
-            .map_or([0.0; 2], |robot| robot.kinematics.position)).collect();
-        let masses: Vec<_> = self.slots.iter().map(|slot| slot.organism.as_ref()
-            .map_or(0.0, |robot| derived_mass(robot.materials.body, robot.materials.shell,
-                robot.materials.chloroplasts).clamp(1.0, 32_000.0))).collect();
-        let planet = mutual_gravity_impulses(&positions, &masses, settings.planet_eaters, settings.planet_eaters_g);
-        for (slot, entry) in self.slots.iter_mut().enumerate() {
-            let Some(robot) = entry.organism.as_mut() else { continue };
-            let mass = masses[slot];
+        for id in self.phase_robot_ids() {
+            self.native_planet_forces(id);
+            let robot = self.slots.get_mut(id).unwrap();
+            let mass = derived_mass(robot.materials.body, robot.materials.shell,
+                robot.materials.chloroplasts).clamp(1.0, 32_000.0);
             robot.materials.mass = mass;
             if robot_is_fixed(robot, self.robot_fixing_allowed) {
                 robot.kinematics.pending_velocity = [0.0; 2];
                 continue;
             }
             apply_resistance(&mut robot.kinematics.velocity, mass,
-                robot.materials.radius, self.config.drag, settings);
+                robot.materials.radius, self.config.drag, &settings);
             apply_angular_damping(&mut robot.kinematics.angular_momentum,
-                mass * settings.surface_gravity * settings.kinetic_friction, settings);
+                mass * settings.surface_gravity * settings.kinetic_friction, &settings);
             if brownian != 0.0 {
                 let random = self.native_random.as_mut().unwrap();
                 let impulse = (f64::from(brownian) * 0.5 * f64::from(random.unit())) as f32;
@@ -57,7 +53,7 @@ impl Engine {
                 robot.program.rng_state = u64::from(random.state());
             }
             let mut effective_gravity = gravity;
-            if self.config.vegetation.pond_mode && gravity[1] != 0.0 {
+            if self.config.vegetation.pond_mode && !self.config.axis_topology()[1] && gravity[1] != 0.0 {
                 let threshold = 1.0 / scaling.max(f32::EPSILON)
                     - robot.kinematics.position[1] / self.config.world_height.max(1.0);
                 effective_gravity[1] = if threshold > robot.buoyancy { gravity[1].abs() } else { -gravity[1].abs() };
@@ -69,16 +65,39 @@ impl Engine {
                 // pending_velocity holds VoluntaryForces' impulse, despite its
                 // historical field name. Divide by effective mass only later.
                 robot.kinematics.independent_impulse[axis] +=
-                    (planet[slot][axis] + effective_gravity[axis]) * mass;
+                    effective_gravity[axis] * mass;
                 robot.kinematics.independent_impulse[axis] += robot.kinematics.pending_velocity[axis];
             }
             robot.kinematics.pending_velocity = [0.0; 2];
         }
     }
 
+    fn native_planet_forces(&mut self, id: OrganismId) {
+        let robot = self.slots.get(id).unwrap();
+        if !self.config.physics.planet_eaters || robot_is_fixed(robot, self.robot_fixing_allowed) { return; }
+        let position = robot.kinematics.position;
+        let mass = robot.materials.mass.min(192.0);
+        let mut own = [0.0; 2];
+        for slot in id.slot() as usize + 1..self.slots.len() {
+            let Some(other) = self.slots[slot].organism.as_mut() else { continue };
+            let delta = std::array::from_fn::<_, 2, _>(|axis| other.kinematics.position[axis] - position[axis]);
+            let squared = delta[0] * delta[0] + delta[1] * delta[1];
+            if squared == 0.0 || other.materials.mass == 0.0 { continue; }
+            let distance = f64::from(squared).sqrt() as f32;
+            let force = self.config.physics.planet_eaters_g * mass * other.materials.mass.min(192.0) / squared;
+            for axis in 0..2 {
+                let impulse = (delta[axis] / distance) * force;
+                own[axis] += impulse;
+                other.kinematics.independent_impulse[axis] -= impulse;
+            }
+        }
+        let robot = self.slots.get_mut(id).unwrap();
+        for axis in 0..2 { robot.kinematics.independent_impulse[axis] += own[axis]; }
+    }
+
     pub(super) fn native_finalize_forces(&mut self) {
-        for entry in self.slots.iter_mut() {
-            let Some(robot) = entry.organism.as_mut() else { continue };
+        for slot in self.phase_slot_range() {
+            let Some(robot) = self.slots[slot].organism.as_mut() else { continue };
             let impulse = robot.kinematics.independent_impulse;
             let magnitude = impulse[0].hypot(impulse[1]);
             let velocity = robot.kinematics.velocity;
@@ -120,6 +139,10 @@ impl Engine {
 
     pub(super) fn finish_native_integration(&mut self, id: OrganismId) -> Result<(), EngineError> {
         let robot = self.slots.get_mut(id)?;
+        if !robot_is_fixed(robot, self.robot_fixing_allowed) {
+            self.native_buckets.relocate(id, robot.kinematics.position);
+        }
+        for address in [1, 2, 3, 4] { robot.program.memory.write(address, 0); }
         robot.kinematics.independent_impulse = [0.0; 2];
         robot.kinematics.resistive_impulse = [0.0; 2];
         if self.config.physics.zero_momentum { robot.kinematics.velocity = [0.0; 2]; }
