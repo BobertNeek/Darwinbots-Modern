@@ -42,6 +42,7 @@ fn set_vegetation_runtime(
 #[test]
 fn eco_03_pond_depth_moving_sun_band_and_tide_reduce_authoritative_feed() {
     let mut config = quiet_config();
+    config.fixed_bot_radii = true;
     config.vegetable_energy_per_tick = 0;
     config.vegetation = VegetationSettings {
         pond_mode: true,
@@ -123,6 +124,8 @@ fn phy_08_resolves_every_cluster_pair_and_substitutes_fixed_body_mass() {
         radius * 2.0
     );
 
+    // Unit elasticity isolates the fixed-body mass substitution.
+    config.physics.elasticity = 1.0;
     let mut fixed = Engine::new(config).unwrap();
     let fixed_species = fixed.register_species(SpeciesDefinition {
         restrictions: Some(RestrictionColumn {
@@ -140,7 +143,7 @@ fn phy_08_resolves_every_cluster_pair_and_substitutes_fixed_body_mass() {
         .unwrap();
     let moving_id = fixed
         .spawn_at(
-            LegacyDna::parse("start\n-10 .sx store\nstop").unwrap(),
+            LegacyDna::parse("start\n-10 .up store\nstop").unwrap(),
             [580.0, 500.0],
         )
         .unwrap();

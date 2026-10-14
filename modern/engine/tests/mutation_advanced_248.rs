@@ -215,7 +215,8 @@ fn engine_advanced_mutations_cover_all_four_sunline_operators_deterministically(
 
         let target = if kind == StandardMutationKind::Point2 {
             let mut target = None;
-            for _ in 0..64 {
+            // NeoMutations.bas: rate 1 means one event per base pair per 1000 cycles.
+            for _ in 0..4_096 {
                 engine.tick().unwrap();
                 if engine
                     .snapshot()
@@ -437,14 +438,18 @@ fn zerobot_mode_mutates_selects_and_rolls_back_unstable_rounds() {
             source_species: Some(species),
             minimum_rounds: 1,
             maximum_rounds: 2,
-            maximum_cycles: 1,
+            maximum_cycles: 1_000,
             restart_on_extinction: false,
             ..Default::default()
         })
         .unwrap();
     engine.start_local_mode().unwrap();
-    engine.tick().unwrap();
-    engine.tick().unwrap();
+    for _ in 0..2_000 {
+        engine.tick().unwrap();
+        if engine.snapshot().local_mode.results.len() == 2 {
+            break;
+        }
+    }
 
     assert_eq!(
         engine

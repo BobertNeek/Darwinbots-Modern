@@ -13,15 +13,15 @@ fn gravity_and_drag_affect_motion() {
     let id = engine
         .spawn_at(
             LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
-            [100.0, 100.0],
+            [300.0, 500.0],
         )
         .unwrap();
 
     engine.tick().unwrap();
 
     let position = engine.organism(id).unwrap().position;
-    assert!((position[0] - 100.0).abs() < 0.01);
-    assert!((position[1] - 104.3).abs() < 0.01);
+    assert!((position[0] - 303.3).abs() < 0.01);
+    assert!((position[1] - 502.0).abs() < 0.01);
 }
 
 #[test]
@@ -57,18 +57,18 @@ fn planet_eaters_apply_mutual_db2_mass_scaled_attraction() {
 fn obstacles_reject_organisms_and_teleporters_relocate_them() {
     let mut obstacle_engine = Engine::new(EngineConfig::testing()).unwrap();
     obstacle_engine
-        .add_obstacle(Obstacle::new(1, [120.0, 80.0], [180.0, 160.0]))
+        .add_obstacle(Obstacle::new(1, [320.0, 480.0], [380.0, 560.0]))
         .unwrap();
     let mover = obstacle_engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [133.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [333.0, 500.0])
         .unwrap();
     obstacle_engine.tick().unwrap();
     let obstacle_position = obstacle_engine.organism(mover).unwrap().position;
     assert!(
-        obstacle_position[0] <= 120.0
-            || obstacle_position[0] >= 180.0
-            || obstacle_position[1] <= 80.0
-            || obstacle_position[1] >= 160.0,
+        obstacle_position[0] <= 320.0
+            || obstacle_position[0] >= 380.0
+            || obstacle_position[1] <= 480.0
+            || obstacle_position[1] >= 560.0,
         "position: {obstacle_position:?}"
     );
 
@@ -76,14 +76,14 @@ fn obstacles_reject_organisms_and_teleporters_relocate_them() {
     teleporter_engine
         .add_teleporter(Teleporter {
             id: 1,
-            center: [150.0, 100.0],
+            center: [350.0, 500.0],
             radius: 30.0,
             destination: [800.0, 700.0],
-            ..Teleporter::new(1, [150.0, 100.0], 30.0, [800.0, 700.0])
+            ..Teleporter::new(1, [350.0, 500.0], 30.0, [800.0, 700.0])
         })
         .unwrap();
     let traveler = teleporter_engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [150.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 500.0])
         .unwrap();
     teleporter_engine.tick().unwrap();
     assert_eq!(
@@ -98,13 +98,13 @@ fn obstacles_reject_organisms_and_teleporters_relocate_them() {
 fn opaque_obstacle_blocks_vision_of_a_target_behind_it() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let observer = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [300.0, 500.0])
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 300.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [650.0, 500.0])
         .unwrap();
     engine
-        .add_obstacle(Obstacle::new(1, [80.0, 190.0], [120.0, 210.0]))
+        .add_obstacle(Obstacle::new(1, [450.0, 450.0], [500.0, 550.0]))
         .unwrap();
 
     engine.tick().unwrap();
@@ -151,12 +151,12 @@ fn shape_editor_properties_persist_through_the_authoritative_engine() {
 fn see_through_shape_preserves_vision_of_a_target_behind_it() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let observer = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [300.0, 500.0])
         .unwrap();
     engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 300.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [650.0, 500.0])
         .unwrap();
-    let mut obstacle = Obstacle::new(1, [80.0, 190.0], [120.0, 210.0]);
+    let mut obstacle = Obstacle::new(1, [450.0, 450.0], [500.0, 550.0]);
     obstacle.vision_policy = ShapeVisionPolicy::SeeThrough;
     engine.add_obstacle(obstacle).unwrap();
 
@@ -193,20 +193,21 @@ fn complete_environment_settings_can_change_while_running() {
         .spawn_species_at(
             LegacyDna::parse("start\nstop").unwrap(),
             vegetable,
-            [100.0, 100.0],
+            [300.0, 500.0],
         )
         .unwrap();
 
     engine.tick().unwrap();
 
     assert_eq!(engine.brownian_motion(), 3.0);
-    assert_eq!(engine.organism(id).unwrap().energy, 1_041);
-    assert_eq!(engine.snapshot().stats.plant_energy_generated, 31);
+    assert_eq!(engine.organism(id).unwrap().energy, 1_050);
+    assert_eq!(engine.snapshot().stats.plant_energy_generated, 39);
 }
 
 #[test]
 fn intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer() {
     let mut engine = Engine::new(EngineConfig {
+        fixed_bot_radii: true,
         metabolism_cost: 0,
         gravity: [0.0, 0.0],
         drag: 0.0,
@@ -219,19 +220,19 @@ fn intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer() {
         ..SpeciesDefinition::default()
     });
     let accepted = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [300.0, 500.0])
         .unwrap();
     let over_capacity = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [110.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [310.0, 500.0])
         .unwrap();
     let filtered_vegetable = engine
         .spawn_species_at(
             LegacyDna::parse("start\nstop").unwrap(),
             vegetables,
-            [120.0, 100.0],
+            [320.0, 500.0],
         )
         .unwrap();
-    let mut teleporter = Teleporter::new(1, [100.0, 100.0], 40.0, [800.0, 800.0]);
+    let mut teleporter = Teleporter::new(1, [300.0, 500.0], 40.0, [800.0, 800.0]);
     teleporter.capacity = 1;
     teleporter.filters = TeleporterFilters {
         teleport_vegetables: false,
@@ -251,6 +252,11 @@ fn intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer() {
     assert!(engine.organism(filtered_vegetable).unwrap().position[0] < 400.0);
 
     let mut corpse_engine = Engine::new(EngineConfig {
+        corpse_decay: darwinbots_engine::CorpseDecaySettings {
+            enabled: true,
+            packet_size: 0,
+            ..Default::default()
+        },
         metabolism_cost: 2_000,
         gravity: [0.0, 0.0],
         drag: 0.0,
@@ -258,7 +264,7 @@ fn intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer() {
         ..EngineConfig::testing()
     })
     .unwrap();
-    let mut corpse_teleporter = Teleporter::new(2, [100.0, 100.0], 40.0, [800.0, 800.0]);
+    let mut corpse_teleporter = Teleporter::new(2, [300.0, 500.0], 40.0, [800.0, 800.0]);
     corpse_teleporter.filters = TeleporterFilters {
         teleport_vegetables: false,
         teleport_corpses: true,
@@ -266,7 +272,7 @@ fn intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer() {
     };
     corpse_engine.add_teleporter(corpse_teleporter).unwrap();
     corpse_engine
-        .spawn_at(LegacyDna::parse("stop").unwrap(), [100.0, 100.0])
+        .spawn_at(LegacyDna::parse("stop").unwrap(), [300.0, 500.0])
         .unwrap();
     corpse_engine.tick().unwrap();
     corpse_engine.tick().unwrap();
@@ -285,14 +291,14 @@ fn intrasim_teleporter_respects_shape_blocking() {
         ..EngineConfig::testing()
     })
     .unwrap();
-    let mut teleporter = Teleporter::new(1, [100.0, 100.0], 40.0, [800.0, 800.0]);
+    let mut teleporter = Teleporter::new(1, [300.0, 500.0], 40.0, [800.0, 800.0]);
     teleporter.respect_shapes = true;
     engine.add_teleporter(teleporter).unwrap();
     engine
-        .add_obstacle(Obstacle::new(1, [80.0, 80.0], [120.0, 120.0]))
+        .add_obstacle(Obstacle::new(1, [280.0, 480.0], [320.0, 520.0]))
         .unwrap();
     let traveler = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [300.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
@@ -310,24 +316,24 @@ fn intrasim_teleporter_blocks_immediate_paired_backflow() {
         ..EngineConfig::testing()
     })
     .unwrap();
-    let mut outbound = Teleporter::new(1, [100.0, 100.0], 30.0, [300.0, 100.0]);
+    let mut outbound = Teleporter::new(1, [300.0, 500.0], 30.0, [700.0, 500.0]);
     outbound.backflow_limit = 1;
-    let mut inbound = Teleporter::new(2, [300.0, 100.0], 30.0, [100.0, 100.0]);
+    let mut inbound = Teleporter::new(2, [700.0, 500.0], 30.0, [300.0, 500.0]);
     inbound.backflow_limit = 1;
     engine.add_teleporter(outbound).unwrap();
     engine.add_teleporter(inbound).unwrap();
     let traveler = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [300.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
-    assert_eq!(engine.organism(traveler).unwrap().position, [300.0, 100.0]);
+    assert_eq!(engine.organism(traveler).unwrap().position, [700.0, 500.0]);
 
     engine.tick().unwrap();
 
     assert_eq!(
         engine.organism(traveler).unwrap().position,
-        [300.0, 100.0],
+        [700.0, 500.0],
         "a paired teleporter must not immediately send a traveler back"
     );
 }
@@ -342,20 +348,20 @@ fn outbound_only_teleporter_does_not_relocate_intrasim_organisms() {
         ..EngineConfig::testing()
     })
     .unwrap();
-    let mut teleporter = Teleporter::new(1, [100.0, 100.0], 30.0, [300.0, 100.0]);
+    let mut teleporter = Teleporter::new(1, [300.0, 500.0], 30.0, [700.0, 500.0]);
     teleporter.local = false;
     teleporter.inbound = false;
     teleporter.outbound = true;
     engine.add_teleporter(teleporter).unwrap();
     let traveler = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [300.0, 500.0])
         .unwrap();
 
     engine.tick().unwrap();
 
     assert_eq!(
         engine.organism(traveler).unwrap().position,
-        [100.0, 100.0],
+        [300.0, 500.0],
         "outbound-only gateways are not intrasim relocation routes"
     );
 }

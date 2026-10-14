@@ -642,6 +642,7 @@ fn total_energy_threshold_modes_apply_vb6_sun_overrides() {
 #[test]
 fn weather_sun_band_controls_light_memory_for_wrapped_positions() {
     let mut engine = Engine::new(EngineConfig {
+        fixed_bot_radii: true,
         metabolism_cost: 0,
         vegetation: VegetationSettings {
             weather_enabled: true,

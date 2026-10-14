@@ -8815,12 +8815,16 @@ impl Engine {
                 if !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
                     || !inside_teleporter(teleporter, positions[seed])
-                    || !teleporter.filters.accepts(robot.flags.vegetable, false)
+                    || !teleporter
+                        .filters
+                        .accepts(robot.flags.vegetable, robot.flags.corpse)
                     || teleporter_blocked_by_obstacles(teleporter, &self.obstacles)
                     || blocks_backflow(teleporter, prior_backflow[seed])
                     || connected.iter().any(|member| {
                         self.slots[*member].organism.as_ref().is_none_or(|member| {
-                            !teleporter.filters.accepts(member.flags.vegetable, false)
+                            !teleporter
+                                .filters
+                                .accepts(member.flags.vegetable, member.flags.corpse)
                         })
                     })
                     || connected.iter().any(|member| handled[*member])

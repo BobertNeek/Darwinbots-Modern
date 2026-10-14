@@ -232,17 +232,14 @@ pub(crate) fn organism_radius(body: f32, chloroplasts: f32, fixed_bot_radii: boo
         return 60.0;
     }
 
-    const CUBIC_TWIPS_PER_BODY: f32 = 905.0;
-    const FULL_CHLOROPLAST_RADIUS: f32 = 415.0;
-
-    let body_points = body.max(1.0);
-    let body_radius = (body_points.ln() * body_points * CUBIC_TWIPS_PER_BODY * 3.0 * 0.25
-        / std::f32::consts::PI)
-        .max(0.0)
-        .cbrt()
-        .max(1.0);
-    let chloroplast_fraction = chloroplasts.clamp(0.0, 32_000.0) / 32_000.0;
-    (body_radius + (FULL_CHLOROPLAST_RADIUS - body_radius) * chloroplast_fraction).max(1.0)
+    // FindRadius: Log and exponentiation evaluate as Double, then assign Single.
+    // PI is a Single constant in the original. The chloroplast blend uses that
+    // stored radius, and the minimum applies only after the blend.
+    let body_points = f64::from(body.max(1.0));
+    let body_radius = (body_points.ln() * body_points * 905.0 * 3.0 * 0.25
+        / f64::from(std::f32::consts::PI))
+    .powf(1.0 / 3.0) as f32;
+    (body_radius + (415.0 - body_radius) * chloroplasts / 32_000.0).max(1.0)
 }
 
 #[derive(Default)]
@@ -1011,3 +1008,24 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     particles[id.x].position = integrated;
 }
 "#;
+
+#[cfg(test)]
+mod radius_tests {
+    use super::organism_radius;
+
+    #[test]
+    fn native_radius_rounds_double_result_before_chloroplast_blend() {
+        // Robots.bas FindRadius numeric boundaries, evaluated with Single PI.
+        for (body, chloroplasts, bits) in [
+            (1.0, 0.0, 0x3f80_0000),
+            (1.0, 16_000.0, 0x434f_8000),
+            (1.0, 32_000.0, 0x43cf_8000),
+            (1_000.0, 0.0, 0x42e4_8ebe),
+            (153.94616, 0.0, 0x425c_80e6),
+            (1_000.0, 12_345.0, 0x4366_4a98),
+        ] {
+            assert_eq!(organism_radius(body, chloroplasts, false).to_bits(), bits);
+        }
+        assert_eq!(organism_radius(1.0, 16_000.0, true), 60.0);
+    }
+}
