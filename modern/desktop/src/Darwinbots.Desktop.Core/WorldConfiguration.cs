@@ -14,6 +14,7 @@ public sealed record WorldConfiguration(
     public GlobalAdvancedMutationSettings AdvancedMutation { get; init; } = new();
     public int BodyCutoff { get; init; }
     public bool GreedyReproduction { get; init; }
+    public int DisqualificationRule { get; init; }
 }
 
 internal static class NativeConfigurationParser
@@ -99,6 +100,7 @@ internal static class NativeConfigurationParser
             AdvancedMutation = advanced,
             BodyCutoff = Read<int>("body_cutoff"),
             GreedyReproduction = Read<bool>("greedy_reproduction"),
+            DisqualificationRule = config.TryGetProperty("disqualification", out var rule) ? rule.GetInt32() : 0,
         };
     }
 }

@@ -54,7 +54,15 @@
         </StackPanel></ScrollViewer>
       </TabItem>
       <TabItem x:Name="LeagueTab" Header="LEAGUE">
-        <ScrollViewer><StackPanel Margin="20,0,8,24" Spacing="14"><Border Classes="card"><StackPanel Spacing="12"><TextBlock Classes="section" Text="LEAGUE SETTINGS"/><TextBlock Text="League content is a typed seam owned by the offline-modes task." TextWrapping="Wrap"/><TextBlock Classes="muted" Text="Online play is excluded from this runtime. The tab remains reachable so the historical workflow has a stable owner boundary." TextWrapping="Wrap"/><CheckBox x:Name="LeagueOfflineOwned" Content="Owned by offline modes" IsChecked="True" IsEnabled="False"/></StackPanel></Border></StackPanel></ScrollViewer>
+        <ScrollViewer><StackPanel Margin="20,0,8,24" Spacing="14"><Border Classes="card"><StackPanel Spacing="12">
+          <TextBlock Classes="section" Text="DISQUALIFICATION RULES"/>
+          <Grid ColumnDefinitions="*,200"><TextBlock Text="Rule" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" x:Name="DisqualificationRule"><ComboBoxItem Content="NONE"/><ComboBoxItem Content="F2"/><ComboBoxItem Content="F3"/></ComboBox>
+          </Grid>
+          <TextBlock Text="Contests remove an animal's whole species and retain the reason. Outside contests, the kill-disqualified species option controls which bots are killed." TextWrapping="Wrap"/>
+          <TextBlock Classes="muted" Text="Choose match formats, entrants and rounds in the offline modes panel." TextWrapping="Wrap"/>
+          <CheckBox x:Name="LeagueOfflineOwned" Content="Offline league and contest controls" IsChecked="True" IsEnabled="False"/>
+        </StackPanel></Border></StackPanel></ScrollViewer>
       </TabItem>
       <TabItem x:Name="EvolutionTab" Header="EVOLUTION">
         <ScrollViewer><StackPanel Margin="20,0,8,24" Spacing="14"><Border Classes="card"><StackPanel Spacing="11"><TextBlock Classes="section" Text="EVOLUTION MODE"/><Grid ColumnDefinitions="*,200"><TextBlock Text="Mode" VerticalAlignment="Center"/><ComboBox Grid.Column="1" x:Name="EvolutionMode"/></Grid><Grid ColumnDefinitions="*,200"><TextBlock Text="Source bot"/><TextBox Grid.Column="1" x:Name="SourceBot"/></Grid><Grid ColumnDefinitions="*,200"><TextBlock Text="Stage length"/><NumericUpDown Grid.Column="1" x:Name="StageLength" Minimum="1" Maximum="1000000"/></Grid><Grid ColumnDefinitions="*,200"><TextBlock Text="Cycle length"/><NumericUpDown Grid.Column="1" x:Name="CycleLength" Minimum="1" Maximum="100000000"/></Grid></StackPanel></Border><Border Classes="card"><StackPanel Spacing="11"><TextBlock Classes="section" Text="EVOLUTION GUARDRAILS"/><CheckBox x:Name="ReducePopulationOscillation" Content="Reduce population oscillation"/><CheckBox x:Name="AutoGraphs" Content="Create graphs automatically"/><CheckBox x:Name="OptionalInternetStartup" Content="Optional internet startup (offline inert)" IsEnabled="False"/><CheckBox x:Name="NormalizeDnaSize" Content="Normalize DNA size"/><Grid ColumnDefinitions="*,200"><TextBlock Text="Zerobot initial DNA length"/><NumericUpDown Grid.Column="1" x:Name="ZerobotInitialDnaLength" Minimum="1" Maximum="32000"/></Grid><CheckBox x:Name="RestrictMutation" Content="Restrict mutation"/><CheckBox x:Name="RestrictSpeciesMixing" Content="Restrict species mixing"/></StackPanel></Border></StackPanel></ScrollViewer>

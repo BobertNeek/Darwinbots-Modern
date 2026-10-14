@@ -6,6 +6,15 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class GlobalSettingsTests
 {
     [Fact]
+    public void GlobalDisqualificationRuleRoundTripsAndRejectsUnknownRules()
+    {
+        var settings = new GlobalSettings { League = new GlobalLeagueSettings { DisqualificationRule = 2 } };
+        Assert.Equal(2, GlobalSettings.FromJson(settings.ToJson()).League.DisqualificationRule);
+        var invalid = settings with { League = settings.League with { DisqualificationRule = 3 } };
+        Assert.Throws<InvalidDataException>(() => GlobalSettings.FromJson(invalid.ToJson()));
+    }
+
+    [Fact]
     public void ViewModelExposesFourTypedTabsAndPersistsSettings()
     {
         var settings = new GlobalSettings

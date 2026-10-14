@@ -1354,7 +1354,10 @@ public sealed partial class MainWindow : Window
         _globalSettings = dialog.Settings;
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
         Viewport.OldColors = _globalSettings.Main.OldColors;
-        if (_session is not null) await _session.UpdateMainRulesAsync(_globalSettings.Main);
+        if (_session is not null) {
+            await _session.UpdateMainRulesAsync(_globalSettings.Main);
+            await _session.UpdateDisqualificationRulesAsync(_globalSettings.League.DisqualificationRule);
+        }
         if (_trayIcon is not null)
             _trayIcon.IsVisible = !_globalSettings.Main.HideTray;
         _viewModel.Status = "GLOBAL SETTINGS SAVED FOR NEXT WORLD";
@@ -1858,6 +1861,7 @@ public sealed partial class MainWindow : Window
             {
                 Costs = configuration.Costs,
                 AdvancedMutation = configuration.AdvancedMutation,
+                League = _globalSettings.League with { DisqualificationRule = configuration.DisqualificationRule },
                 Main = _globalSettings.Main with
                 {
                     BodyCutoff = configuration.BodyCutoff,

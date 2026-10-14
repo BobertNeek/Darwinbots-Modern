@@ -5,6 +5,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub use crate::dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
 
+#[path = "dna/native_crossover.rs"]
+mod native_crossover;
+
 pub(crate) const LEGACY_OCCURRENCE_CENSUS_SLOTS: usize = 11;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -427,76 +430,9 @@ impl LegacyDna {
 
     /// DB2 `DNAtoInt` and `simplematch`: align insertions before counting unmatched bases.
     pub fn genetic_distance(&self, other: &Self) -> f32 {
-        if self.blocks == other.blocks {
-            return 0.0;
-        }
-        // The original arrays contain a dummy number at zero and the master end.
-        let encoded = |dna: &Self| {
-            std::iter::once(-16646)
-                .chain(dna.blocks.iter().copied().map(legacy_nucleotide))
-                .collect::<Vec<_>>()
-        };
-        let left = encoded(self);
-        let right = encoded(other);
-        let mut left_matched = vec![false; left.len()];
-        let mut right_matched = vec![false; right.len()];
-        let (left_end, right_end) = (left.len() as isize - 1, right.len() as isize - 1);
-        let (mut i, mut j) = (0_isize, 0_isize);
-        let (mut left_start, mut right_start) = (0_isize, 0_isize);
-        let (mut left_list, mut right_list) = (Vec::new(), Vec::new());
-        let mut work = 0_u64;
-        loop {
-            i = i.min(left_end);
-            j = j.min(right_end);
-            left_list.push(left[i as usize]);
-            right_list.push(right[j as usize]);
-            let mut found = None;
-            for index in 0..left_list.len() {
-                work += 1;
-                if right[j as usize] == left_list[index] {
-                    found = Some((true, index));
-                    break;
-                }
-                if left[i as usize] == right_list[index] {
-                    found = Some((false, index));
-                    break;
-                }
-            }
-            if let Some((match_right, index)) = found {
-                if match_right {
-                    i = left_start + index as isize;
-                } else {
-                    j = right_start + index as isize;
-                }
-                while i <= left_end && j <= right_end {
-                    if left[i as usize] != right[j as usize] {
-                        left_start = i;
-                        right_start = j;
-                        i -= 1;
-                        j -= 1;
-                        break;
-                    }
-                    left_matched[i as usize] = true;
-                    right_matched[j as usize] = true;
-                    i += 1;
-                    j += 1;
-                    work += 1;
-                }
-                left_list.clear();
-                right_list.clear();
-            }
-            i += 1;
-            j += 1;
-            work += 1;
-            if (i > left_end && j > right_end) || work > 16000_u64.pow(2) {
-                break;
-            }
-        }
-        let unmatched = left_matched
-            .iter()
-            .chain(&right_matched)
-            .filter(|matched| !**matched)
-            .count();
+        if self.blocks == other.blocks { return 0.0; }
+        let (left, right) = native_crossover::match_labels(&self.blocks, &other.blocks);
+        let unmatched = left.iter().chain(&right).filter(|label| **label == 0).count();
         unmatched as f32 / (left.len() + right.len()) as f32
     }
 

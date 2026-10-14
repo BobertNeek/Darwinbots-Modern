@@ -93,6 +93,7 @@ public sealed partial class GlobalSettingsWindow : Window
         DynamicLowerReinstateThreshold.Value = (decimal)costs.DynamicLowerReinstateThreshold;
         DynamicUpperReinstateThreshold.Value = (decimal)costs.DynamicUpperReinstateThreshold;
         LeagueOfflineOwned.IsChecked = settings.League.OwnedByOfflineModes;
+        DisqualificationRule.SelectedIndex = settings.League.DisqualificationRule;
 
         var evolution = settings.Evolution;
         EvolutionMode.ItemsSource = Enum.GetNames<EvolutionMode>();
@@ -188,7 +189,7 @@ public sealed partial class GlobalSettingsWindow : Window
             DynamicLowerReinstateThreshold = (double)(DynamicLowerReinstateThreshold.Value ?? 0),
             DynamicUpperReinstateThreshold = (double)(DynamicUpperReinstateThreshold.Value ?? 0),
         },
-        League = new GlobalLeagueSettings { OwnedByOfflineModes = true },
+        League = new GlobalLeagueSettings { OwnedByOfflineModes = true, DisqualificationRule = Math.Max(0, DisqualificationRule.SelectedIndex) },
         Evolution = new GlobalEvolutionSettings
         {
             Mode = (EvolutionMode)(EvolutionMode.SelectedIndex < 0 ? 0 : EvolutionMode.SelectedIndex),

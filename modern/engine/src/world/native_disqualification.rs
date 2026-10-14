@@ -33,6 +33,13 @@ impl DisqualificationAction {
 }
 
 impl Engine {
+    pub fn update_disqualification_rules(&mut self, level: u8) -> Result<(), EngineError> {
+        if level > 2 { return Err(EngineError::Invariant("disqualification level must be 0, 1 or 2".into())); }
+        self.config.disqualification = level;
+        self.publish_snapshot();
+        Ok(())
+    }
+
     pub(super) fn native_disqualification_level(&self) -> u8 {
         if self.local_mode.status == LocalModeStatus::Running
             && let Some(config) = self.local_mode.config.as_ref()

@@ -4514,8 +4514,10 @@ impl Engine {
             ));
         }
         let dna = if let Some(second) = second {
-            let second_dna = &self.slots.get(second)?.program.dna;
-            first_organism.program.dna.crossover(second_dna)
+            let second_dna = self.slots.get(second)?.program.dna.clone();
+            if let Some(random) = self.native_random.as_mut() {
+                first_organism.program.dna.crossover_native(&second_dna, random)
+            } else { first_organism.program.dna.crossover(&second_dna) }
         } else {
             if first_organism.materials.energy < 2.0 {
                 return Err(EngineError::Invariant(
@@ -9679,13 +9681,12 @@ impl Engine {
                 birth.mutation_reproduction || ((next_rng % 10_000) as f32) < configured_rate * 100.0
             };
             let child_dna = if birth.sexual {
-                parent_state.effects.stored_sperm.as_ref().map_or_else(
-                    || parent_state.program.dna.clone(),
-                    |stored| parent_state.program.dna.crossover(&stored.dna),
-                )
-            } else {
-                parent_state.program.dna.clone()
-            };
+                if let Some(stored) = parent_state.effects.stored_sperm.as_ref() {
+                    if let Some(random) = self.native_random.as_mut() {
+                        parent_state.program.dna.crossover_native(&stored.dna, random)
+                    } else { parent_state.program.dna.crossover(&stored.dna) }
+                } else { parent_state.program.dna.clone() }
+            } else { parent_state.program.dna.clone() };
             let child = self.spawn_species_at_unpublished(child_dna, species, position)?;
             let absolute_id = self.slots.get(child)?.identity.absolute_id;
             available_births -= 1;

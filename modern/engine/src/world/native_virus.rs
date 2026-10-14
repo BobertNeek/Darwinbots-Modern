@@ -79,6 +79,13 @@ impl Engine {
                 .write(MEM_VIRUS_TIMER, robot.effects.virus_build_timer);
             let make = robot.program.memory.read(335);
             let shoot = robot.program.memory.read(338);
+            let build_angle = if !prohibited && make > 0 && robot.effects.virus_build_timer == 0
+                && robot.materials.chloroplasts == 0.0 && self.native_random.is_some() {
+                // newshot consumes both draws before copygene can reject the gene.
+                world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -2, 2);
+                let scatter = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -20, 20);
+                (f64::from(robot.heading()) + f64::from(scatter) / 200.0) as f32
+            } else { robot.heading() };
             let source_name = self
                 .species
                 .get(robot.identity.species.0 as usize)
@@ -111,7 +118,7 @@ impl Engine {
                             owner_radius: robot.materials.radius,
                             owner_virtual_body: virtual_body,
                             range_multiplier: 1.0,
-                            angle: robot.heading(),
+                            angle: build_angle,
                             kind: -7,
                             value: make as f32,
                             payload: Some(gene.clone()),
@@ -246,6 +253,18 @@ impl ProjectilePool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn invalid_virus_gene_still_consumes_newshot_draws() {
+        let (mut world, id) = maker();
+        world.slots.get_mut(id).unwrap().program.memory.write(335, 32000);
+        let mut expected = world.native_random.clone().unwrap();
+        expected.integer(-2, 2);
+        expected.integer(-20, 20);
+        world.virus_commands_phase();
+        assert_eq!(world.native_random.as_ref().unwrap(), &expected);
+        assert!(world.projectiles.live_slots().is_empty());
+    }
     use crate::SaveFile;
 
     fn maker() -> (Engine, OrganismId) {

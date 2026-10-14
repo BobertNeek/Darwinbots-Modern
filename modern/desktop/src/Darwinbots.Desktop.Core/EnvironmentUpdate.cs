@@ -247,6 +247,7 @@ public static class NativeCommandSerializer
             shapes_visible = options.ShapesVisible,
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
+            disqualification = options.GlobalSettings.League.DisqualificationRule,
             body_cutoff = options.GlobalSettings.Main.BodyCutoff,
             greedy_reproduction = options.GlobalSettings.Main.GreedyEnforcement,
             axis_topology = AxisTopology(options.ToroidalWorld, options.WrapX, options.WrapY),

@@ -52,6 +52,7 @@ public interface IEngineClient : IDisposable
     OrganismKey? FindBestRobot(bool energyWeighting) => null;
     OrganismKey? FindBestRobot(int weightPercent) => FindBestRobot(weightPercent > 0);
     void UpdateMainRules(GlobalMainSettings settings) { }
+    void UpdateDisqualificationRules(int level) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);
     void UpdateRestrictionOptions(RestrictionOptions options);
     void ConfigureLocalMode(LocalModeConfig config);

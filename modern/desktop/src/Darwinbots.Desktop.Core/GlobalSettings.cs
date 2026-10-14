@@ -116,6 +116,7 @@ public sealed record GlobalSimulationCostSettings
 public sealed record GlobalLeagueSettings
 {
     public bool OwnedByOfflineModes { get; init; } = true;
+    public int DisqualificationRule { get; init; }
 }
 
 public sealed record GlobalEvolutionSettings
@@ -154,6 +155,7 @@ public sealed record GlobalSettings
 
     private void Validate()
     {
+        if (League.DisqualificationRule is < 0 or > 2) throw new InvalidDataException("Disqualification rule must be None, F2 or F3.");
         if (Main.EffectiveFindBestWeight is < 0 or > 200)
             throw new InvalidDataException("Find Best weighting must be between 0 and 200.");
         if (AdvancedMutation.NormalizationEnabled && AdvancedMutation.NormalizationDnaLength <= 0)

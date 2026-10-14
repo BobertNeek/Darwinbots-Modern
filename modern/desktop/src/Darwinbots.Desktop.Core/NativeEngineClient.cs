@@ -511,6 +511,11 @@ public sealed partial class NativeEngineClient : IEngineClient
             .GetProperty("results")[0];
         return value.ValueKind == JsonValueKind.Null ? null : ReadKey(value);
     }
+    public void UpdateDisqualificationRules(int level)
+    {
+        if (level is < 0 or > 2) throw new ArgumentOutOfRangeException(nameof(level));
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "update_disqualification_rules", level } } }, "update disqualification rules");
+    }
     public void UpdateMainRules(GlobalMainSettings settings) => ExecuteBatch(new { version = 1, commands = new[]
     {
         new { type = "update_main_rules", body_cutoff = settings.BodyCutoff, greedy_reproduction = settings.GreedyEnforcement },
