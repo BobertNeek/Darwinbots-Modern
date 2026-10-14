@@ -98,6 +98,8 @@ mod native_tie_physics;
 mod league_series;
 #[path = "world/staged_evolution.rs"]
 mod staged_evolution;
+#[path = "world/native_speciation.rs"]
+mod native_speciation;
 
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
@@ -2695,7 +2697,13 @@ impl Engine {
         Ok(id)
     }
 
-    pub fn register_species(&mut self, mut species: SpeciesDefinition) -> SpeciesId {
+    pub fn register_species(&mut self, species: SpeciesDefinition) -> SpeciesId {
+        let id = self.register_species_unpublished(species);
+        self.publish_snapshot();
+        id
+    }
+
+    fn register_species_unpublished(&mut self, mut species: SpeciesDefinition) -> SpeciesId {
         if species.lineage_id == 0 {
             species.lineage_id = self.next_lineage_id.max(1);
             if !species.custom_skin {
@@ -2711,7 +2719,6 @@ impl Engine {
         self.species.push(species);
         self.species_templates.push(None);
         self.subspecies_counters.resize(self.species.len(), 0);
-        self.publish_snapshot();
         id
     }
 
@@ -10072,6 +10079,15 @@ impl Engine {
             return;
         }
         let settings = self.config.advanced_mutation.clone();
+        if self.native_random.is_some() && matches!(context, MutationContext::Lifelong) {
+            let base_multiplier = f64::from(self.global_mutation_multiplier);
+            for id in self.phase_robot_ids() {
+                let robot = self.slots.get(id).unwrap();
+                if robot.flags.hidden || robot.flags.corpse || !robot.flags.can_execute_dna { continue; }
+                self.apply_mutation_to_organism(id, &settings, base_multiplier, context, None);
+            }
+            return;
+        }
         let base_multiplier = f64::from(self.global_mutation_multiplier);
         let ids = match context {
             MutationContext::Reproduction { .. } => std::mem::take(&mut self.pending_mutations),
@@ -10185,6 +10201,7 @@ impl Engine {
         context: MutationContext,
         scheduled: Option<(StandardMutationKind, usize, crate::MutationPolicyReport)>,
     ) {
+        let original_color = self.slots.get(id).map_or(0, |robot| robot.phenotype.color);
         let species = self
             .slots
             .get(id)
@@ -10198,6 +10215,10 @@ impl Engine {
         let configured_reproductive_rate = species
             .and_then(|species| self.species.get(species.0 as usize))
             .map_or(0.0, |definition| f64::from(definition.mutation_rate));
+        let mut policy_settings = settings.clone();
+        if self.native_random.is_some() && matches!(context, MutationContext::Lifelong) {
+            policy_settings.delta2.enabled = false;
+        }
         let (report, should_fork) = {
             let Ok(organism) = self.slots.get_mut(id) else {
                 return;
@@ -10209,7 +10230,7 @@ impl Engine {
                 || {
                     apply_advanced_mutation_policies(
                         &mut organism.program.mutation_profile,
-                        settings,
+                        &policy_settings,
                         MutationPolicyInput {
                             cycle: self.tick,
                             dna_len: organism.program.dna.blocks().len(),
@@ -10242,7 +10263,11 @@ impl Engine {
             }
             let mut mutator = self.native_random.clone().map(GenomeMutator::with_native_random)
                 .unwrap_or_else(|| GenomeMutator::new(organism.program.rng_state));
-            let report = if let Some((kind, location, _)) = scheduled {
+            let report = if self.native_random.is_some() && matches!(context, MutationContext::Lifelong) && scheduled.is_none() {
+                mutator.native_lifelong_mutations(&mut organism.program.dna, &mut organism.program.mutation_profile,
+                    &mut organism.program.point_mutation_schedule, &mut organism.program.point2_mutation_schedule,
+                    organism.counters.age, settings, policy.effective_multiplier)
+            } else if let Some((kind, location, _)) = scheduled {
                 mutator.apply_scheduled_kind(
                     &mut organism.program.dna,
                     &mut organism.program.mutation_profile,
@@ -10318,14 +10343,24 @@ impl Engine {
             (report, report.changes > 0)
         };
         self.stats.mutations = self.stats.mutations.saturating_add(report.changes as u64);
-        if should_fork {
-            if let Some(species) = species {
-                let subspecies = self.next_subspecies(species);
-                if let Ok(organism) = self.slots.get_mut(id) {
-                    organism.program.mutation_metadata.subspecies = subspecies;
+        if self.native_random.is_some() {
+            self.maybe_auto_fork_species(id, original_color);
+            if let Ok(robot) = self.slots.get_mut(id) {
+                robot.program.mutation_metadata.total_mutations = robot.program.mutation_metadata.total_mutations.min(32_000);
+                robot.phenotype.accumulated_mutations = robot.phenotype.accumulated_mutations.min(32_000);
+            }
+            if should_fork {
+                if let Ok(robot) = self.slots.get(id) {
+                    let subspecies = self.next_subspecies(robot.identity.species);
+                    self.slots.get_mut(id).unwrap().program.mutation_metadata.subspecies = subspecies;
                 }
             }
-            self.maybe_auto_fork_species(id);
+        } else if should_fork {
+            if let Some(species) = species {
+                let subspecies = self.next_subspecies(species);
+                if let Ok(organism) = self.slots.get_mut(id) { organism.program.mutation_metadata.subspecies = subspecies; }
+            }
+            self.maybe_auto_fork_species(id, original_color);
         }
     }
 
@@ -10343,7 +10378,8 @@ impl Engine {
         *counter
     }
 
-    fn maybe_auto_fork_species(&mut self, id: OrganismId) {
+    fn maybe_auto_fork_species(&mut self, id: OrganismId, original_color: u32) {
+        if self.native_random.is_some() { self.native_auto_fork_species(id, original_color); return; }
         if !self.config.auto_speciation || self.species.len() >= 49 {
             return;
         }

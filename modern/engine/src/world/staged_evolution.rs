@@ -172,12 +172,12 @@ impl Engine {
             let mutators = if testing { state.candidate.clone() } else { state.mutators.clone() };
             let groups = baselines.len().max(mutators.len());
             while state.baseline_species.len() < groups {
-                state.baseline_species.push(self.register_species(SpeciesDefinition {
+                state.baseline_species.push(self.register_species_unpublished(SpeciesDefinition {
                     name: "Base.txt".into(), color: 0xffda6c59, ..Default::default()
                 }));
             }
             while state.mutator_species.len() < groups {
-                state.mutator_species.push(self.register_species(SpeciesDefinition {
+                state.mutator_species.push(self.register_species_unpublished(SpeciesDefinition {
                     name: "Mutate.txt".into(), color: 0xff62a844, ..Default::default()
                 }));
             }

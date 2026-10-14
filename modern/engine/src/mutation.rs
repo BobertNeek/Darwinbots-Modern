@@ -1,6 +1,10 @@
 use crate::dna::normalize_master_end;
 use crate::{DnaBlock, EngineError, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
 use serde::{Deserialize, Serialize};
+#[path = "mutation/native_reproduction.rs"]
+mod native_reproduction;
+#[path = "mutation/native_sysvars.rs"]
+mod native_sysvars;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutationKind {
@@ -1037,6 +1041,9 @@ impl GenomeMutator {
         settings: &AdvancedMutationSettings,
         context: MutationContext,
     ) -> MutationReport {
+        if self.random_state.native().is_some() && matches!(context, MutationContext::Reproduction { .. }) {
+            return self.native_reproductive_mutations(dna, profile, settings, policy.effective_multiplier);
+        }
         let forced = matches!(context, MutationContext::Reproduction { forced: true });
         if !forced {
             let one_in = policy.effective_one_in.max(1.0);
