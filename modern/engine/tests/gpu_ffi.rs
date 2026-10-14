@@ -267,6 +267,7 @@ fn gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_av
 }
 
 #[test]
+#[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
 fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
     let gpu = GpuPhysicsBackend::new().unwrap_or_else(|error| {
         panic!("AUT-02 physical GPU gate unavailable: {error}");

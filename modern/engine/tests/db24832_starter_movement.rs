@@ -93,6 +93,7 @@ fn untouched_starter_animal_moves_on_cpu() {
 }
 
 #[test]
+#[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
 fn untouched_starter_animal_moves_on_physical_gpu() {
     assert_untouched_starter_animal_moves(BackendPreference::Gpu);
 }

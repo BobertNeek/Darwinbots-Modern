@@ -11381,6 +11381,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
     fn failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once() {
         let incoming = tempfile::tempdir().unwrap();
         let outgoing = tempfile::tempdir().unwrap();
@@ -11517,6 +11518,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
     fn gpu_failure_does_not_partially_advance_the_cycle() {
         let mut engine = Engine::new(EngineConfig {
             backend: BackendPreference::Gpu,
@@ -11550,6 +11552,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
     fn gpu_in_backend_failure_allows_later_tick_with_trace() {
         let mut engine = Engine::new(EngineConfig {
             backend: BackendPreference::Gpu,
@@ -11577,6 +11580,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
     fn gpu_in_backend_failure_keeps_tick_many_iterations_atomic() {
         let mut engine = Engine::new(EngineConfig {
             backend: BackendPreference::Gpu,

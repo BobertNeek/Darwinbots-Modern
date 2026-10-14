@@ -45,41 +45,49 @@ mod tests {
         assert_eq!(engine.snapshot().render_instances[0].radius, radius);
     }
 
+    fn assert_death_retains_cached_radius(backend: BackendPreference) {
+        let (mut engine, id) = scene(backend);
+        assert_eq!(
+            engine.capabilities.active,
+            if backend == BackendPreference::Cpu {
+                BackendKind::Cpu
+            } else {
+                BackendKind::Gpu
+            }
+        );
+        assert!(engine.capabilities.fallback_reason.is_none());
+        let robot = engine.slots.get_mut(id).unwrap();
+        robot.materials.chloroplasts = 32_000.0;
+        robot.materials.radius = 415.0;
+        engine.become_native_corpse(id).unwrap();
+        let other = engine
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [1000.0, 500.0])
+            .unwrap();
+        engine.tick().unwrap();
+        let corpse = engine.slots.get(id).unwrap();
+        assert_eq!(corpse.materials.chloroplasts, 0.0);
+        assert_eq!(corpse.materials.radius, 415.0);
+        assert!(corpse.kinematics.position[0] < 500.0);
+        assert!(engine.slots.get(other).unwrap().kinematics.position[0] > 1000.0);
+        let rendered = engine
+            .snapshot()
+            .render_instances
+            .iter()
+            .find(|instance| instance.slot == id.slot())
+            .unwrap();
+        assert_eq!(rendered.radius, 415.0);
+        assert!(engine.capabilities.fallback_reason.is_none());
+    }
+
     #[test]
-    fn death_retains_the_large_chloroplast_radius_for_physics_and_render_on_cpu_and_gpu() {
-        for backend in [BackendPreference::Cpu, BackendPreference::Gpu] {
-            let (mut engine, id) = scene(backend);
-            assert_eq!(
-                engine.capabilities.active,
-                if backend == BackendPreference::Cpu {
-                    BackendKind::Cpu
-                } else {
-                    BackendKind::Gpu
-                }
-            );
-            assert!(engine.capabilities.fallback_reason.is_none());
-            let robot = engine.slots.get_mut(id).unwrap();
-            robot.materials.chloroplasts = 32_000.0;
-            robot.materials.radius = 415.0;
-            engine.become_native_corpse(id).unwrap();
-            let other = engine
-                .spawn_at(LegacyDna::parse("start stop").unwrap(), [1000.0, 500.0])
-                .unwrap();
-            engine.tick().unwrap();
-            let corpse = engine.slots.get(id).unwrap();
-            assert_eq!(corpse.materials.chloroplasts, 0.0);
-            assert_eq!(corpse.materials.radius, 415.0);
-            assert!(corpse.kinematics.position[0] < 500.0);
-            assert!(engine.slots.get(other).unwrap().kinematics.position[0] > 1000.0);
-            let rendered = engine
-                .snapshot()
-                .render_instances
-                .iter()
-                .find(|instance| instance.slot == id.slot())
-                .unwrap();
-            assert_eq!(rendered.radius, 415.0);
-            assert!(engine.capabilities.fallback_reason.is_none());
-        }
+    fn death_retains_the_large_chloroplast_radius_on_cpu() {
+        assert_death_retains_cached_radius(BackendPreference::Cpu);
+    }
+
+    #[test]
+    #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
+    fn death_retains_the_large_chloroplast_radius_on_physical_gpu() {
+        assert_death_retains_cached_radius(BackendPreference::Gpu);
     }
 
     #[test]

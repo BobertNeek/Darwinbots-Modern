@@ -166,6 +166,7 @@ fn seed_differential_engine(engine: &mut Engine) -> darwinbots_engine::OrganismI
 }
 
 #[test]
+#[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
 fn physical_gpu_phase2_ecological_differential_has_adapter_receipt() {
     let mut cpu = Engine::new(differential_config(BackendPreference::Cpu)).unwrap();
     let mut gpu = Engine::new(differential_config(BackendPreference::Gpu)).unwrap();
