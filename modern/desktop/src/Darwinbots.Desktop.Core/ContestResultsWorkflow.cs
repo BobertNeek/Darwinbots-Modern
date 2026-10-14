@@ -10,7 +10,8 @@ public sealed record ContestCompetitorResult(
     int Wins,
     int Population,
     bool IsDisqualified = false,
-    string DisqualificationReason = "");
+    string DisqualificationReason = "",
+    bool IsActive = true);
 
 public sealed record ContestResultSnapshot(
     string ContestName,
@@ -27,7 +28,9 @@ public sealed record ContestResultSnapshot(
         if (snapshot.LocalMode.Status == LocalModeStatus.Idle)
             return Empty;
 
+        var pair = snapshot.LocalMode.Series?.ActiveMatch;
         var winsBySpecies = snapshot.LocalMode.Results
+            .Skip(Math.Max(0, snapshot.LocalMode.Series?.MatchStartResult ?? 0))
             .Where(value => value.Winner is not null)
             .GroupBy(value => value.Winner!.Value)
             .ToDictionary(group => group.Key, group => group.Count());
@@ -36,13 +39,14 @@ public sealed record ContestResultSnapshot(
             .GroupBy(value => value.Species)
             .ToDictionary(group => group.Key, group => group.Last());
         var entrants = snapshot.Species.Select((species, index) => (Species: species, Index: (uint)index))
-            .Where(value => !value.Species.Vegetable);
+            .Where(value => !value.Species.Vegetable && (pair is not { Count: 2 } || pair.Contains(value.Index)));
         var competitors = entrants.Select(value => new ContestCompetitorResult(
                 $"species-{value.Index}", value.Species.Name,
                 winsBySpecies.GetValueOrDefault(value.Index),
                 snapshot.Organisms.Count(robot => robot.Species == value.Index && !robot.IsCorpse),
                 disqualifications.ContainsKey(value.Index),
-                disqualifications.GetValueOrDefault(value.Index)?.Reason ?? string.Empty))
+                disqualifications.GetValueOrDefault(value.Index)?.Reason ?? string.Empty,
+                snapshot.LocalMode.Status == LocalModeStatus.Running))
             .Where(value => value.Population > 0 || value.Wins > 0 || value.IsDisqualified)
             .ToArray();
         return competitors.Length == 0
@@ -81,7 +85,8 @@ public sealed class ContestCompetitorViewModel : INotifyPropertyChanged
         _wins = result.Wins;
         Population = result.Population;
         IsDisqualified = result.IsDisqualified;
-        _status = result.IsDisqualified ? $"DISQUALIFIED: {result.DisqualificationReason}" : "READY";
+        IsActive = result.IsActive;
+        _status = result.IsDisqualified ? $"DISQUALIFIED: {result.DisqualificationReason}" : result.IsActive ? "READY" : "FINISHED";
     }
 
     public string Id { get; }
@@ -89,9 +94,10 @@ public sealed class ContestCompetitorViewModel : INotifyPropertyChanged
     public int Wins { get => _wins; private set => Set(ref _wins, value); }
     public int Population { get; }
     public bool IsDisqualified { get; }
+    public bool IsActive { get; }
     public bool InstantWinner { get => _instantWinner; private set => Set(ref _instantWinner, value); }
     public string Status { get => _status; private set => Set(ref _status, value); }
-    public bool CanAdjudicate => !IsDisqualified && !InstantWinner;
+    public bool CanAdjudicate => IsActive && !IsDisqualified && !InstantWinner;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

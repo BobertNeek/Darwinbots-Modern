@@ -1892,6 +1892,10 @@ public sealed partial class MainWindow : Window
                 _viewModel.LocalMode.Observe(_session.LatestSnapshot.LocalMode);
                 LocalModeKindSelector.SelectedIndex = (int)localMode.Kind;
                 LocalModePreset.SelectedIndex = (int)localMode.Preset;
+                LocalModeWorkflow.SelectedIndex = (int)localMode.Workflow;
+                ModeEntrantOrder.Text = string.Join(", ", localMode.EntrantOrder);
+                ModeInitialLadder.Text = string.Join(", ", localMode.InitialLadder);
+                ModeSeedingOpponent.Value = localMode.SeedingOpponent;
                 ModeMinimumRounds.Value = localMode.MinimumRounds;
                 ModeMaximumRounds.Value = localMode.MaximumRounds;
                 ModeMaximumCycles.Value = localMode.MaximumCycles;
@@ -2341,6 +2345,11 @@ public sealed partial class MainWindow : Window
     {
         _viewModel.LocalMode.SelectKind(LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex));
         _viewModel.LocalMode.Preset = PresetFromIndex(LocalModePreset.SelectedIndex);
+        _viewModel.LocalMode.Workflow = (LeagueWorkflow)Math.Clamp(LocalModeWorkflow.SelectedIndex, 0, 3);
+        _viewModel.LocalMode.EntrantOrderText = ModeEntrantOrder.Text ?? string.Empty;
+        _viewModel.LocalMode.InitialLadderText = ModeInitialLadder.Text ?? string.Empty;
+        _viewModel.LocalMode.SeedingOpponent = _viewModel.LocalMode.Workflow == LeagueWorkflow.Seeding
+            ? (uint)Math.Clamp(ModeSeedingOpponent.Value ?? 0m, 0m, uint.MaxValue) : null;
         _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds.Value, 5);
         _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds.Value, 1);
         _viewModel.LocalMode.MaximumCycles = ReadULong(ModeMaximumCycles.Value, 15_000);

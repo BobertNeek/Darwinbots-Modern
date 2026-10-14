@@ -8,6 +8,11 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
 {
     private LocalModeKind _kind = LocalModeKind.League;
     private LeaguePreset _preset = LeaguePreset.F1;
+    private LeagueWorkflow _workflow;
+    private string _entrantOrderText = string.Empty;
+    private string _initialLadderText = string.Empty;
+    private uint? _seedingOpponent;
+    private LeagueSeriesSnapshot? _series;
     private uint _minimumRounds = 5;
     private uint _maximumRounds = 1;
     private ulong _maximumCycles = 15_000;
@@ -31,6 +36,18 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
     private LocalModeAdjudication? _adjudication;
 
     public LocalModeKind Kind { get => _kind; private set => Set(ref _kind, value); }
+    public LeagueWorkflow Workflow { get => _workflow; set => Set(ref _workflow, value); }
+    public string EntrantOrderText { get => _entrantOrderText; set => Set(ref _entrantOrderText, value); }
+    public string InitialLadderText { get => _initialLadderText; set => Set(ref _initialLadderText, value); }
+    public uint? SeedingOpponent { get => _seedingOpponent; set => Set(ref _seedingOpponent, value); }
+    public LeagueSeriesSnapshot? Series { get => _series; private set => Set(ref _series, value); }
+    public string SeriesLabel => Series?.ActiveMatch is { Count: 2 } pair
+        ? $"MATCH {Series.MatchNumber} · SPECIES {pair[0]} vs {pair[1]}"
+        : Series is { Workflow: not LeagueWorkflow.Direct } ? "SCHEDULE COMPLETE" : "DIRECT MATCH";
+    public string RankingLabel => Series is { Workflow: LeagueWorkflow.Seeding } series
+        ? $"SEEDED · {string.Join(", ", series.Seeded)}"
+        : Series is { Ladder.Count: > 0 } ranked ? $"RANKING · {string.Join(", ", ranked.Ladder)}" : string.Empty;
+
     public LeaguePreset Preset { get => _preset; set => Set(ref _preset, value); }
     public uint MinimumRounds { get => _minimumRounds; set => Set(ref _minimumRounds, value); }
     public uint MaximumRounds { get => _maximumRounds; set => Set(ref _maximumRounds, value); }
@@ -103,7 +120,21 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             ProhibitCrossSpeciesTieTransfer,
             RobotFixingAllowed,
             AsexualReproductionAllowed),
-        EnergyHandicap);
+        EnergyHandicap)
+    {
+        Workflow = Workflow,
+        EntrantOrder = ParseSpeciesOrder(EntrantOrderText),
+        InitialLadder = ParseSpeciesOrder(InitialLadderText),
+        SeedingOpponent = SeedingOpponent,
+    };
+
+    public static IReadOnlyList<uint> ParseSpeciesOrder(string text)
+    {
+        return text.Split([',', ';', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(value => uint.TryParse(value, System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var id)
+                ? id : throw new ArgumentException("League entries must be non-negative species IDs.")).ToArray();
+    }
 
     public void MarkConfigured() => Status = LocalModeStatus.Configured;
 
@@ -121,6 +152,10 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         EnergyHandicap = snapshot.EnergyHandicap;
         if (snapshot.Configuration is { } configuration)
         {
+            Workflow = configuration.Workflow;
+            EntrantOrderText = string.Join(", ", configuration.EntrantOrder);
+            InitialLadderText = string.Join(", ", configuration.InitialLadder);
+            SeedingOpponent = configuration.SeedingOpponent;
             MinimumRounds = configuration.MinimumRounds;
             MaximumPopulation = configuration.MaximumPopulation;
             RestartOnExtinction = configuration.RestartOnExtinction;
@@ -128,6 +163,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             SelectionPopulationWeight = configuration.SelectionPopulationWeight;
             SelectionEnergyWeight = configuration.SelectionEnergyWeight;
         }
+        Series = snapshot.Series;
         Results = snapshot.Results;
         Adjudication = snapshot.Adjudication;
         ProhibitInformationShots = snapshot.Restrictions.ProhibitInformationShots;
@@ -147,6 +183,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value;
         Raise(name);
+        if (name == nameof(Series)) { Raise(nameof(SeriesLabel)); Raise(nameof(RankingLabel)); }
         if (name is nameof(Status) or nameof(CurrentRound) or nameof(MaximumRounds)
             or nameof(CycleInRound) or nameof(MaximumCycles) or nameof(Adjudication))
         {

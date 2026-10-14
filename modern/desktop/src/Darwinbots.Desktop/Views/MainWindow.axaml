@@ -155,6 +155,17 @@
                     <ComboBoxItem Content="SINGLE STORE" />
                   </ComboBox>
                 </Grid>
+                <ComboBox x:Name="LocalModeWorkflow" SelectedIndex="0">
+                  <ComboBoxItem Content="DIRECT MATCH" />
+                  <ComboBoxItem Content="STEP LADDER" />
+                  <ComboBoxItem Content="KNOCKOUT TOURNAMENT" />
+                  <ComboBoxItem Content="SEED FILTER" />
+                </ComboBox>
+                <TextBox x:Name="ModeEntrantOrder" Watermark="Entrant species IDs (blank: registered order)" FontSize="10" />
+                <TextBox x:Name="ModeInitialLadder" Watermark="Existing ladder, best species ID first (optional)" FontSize="10" />
+                <StackPanel Spacing="2"><TextBlock Text="Seed filter reference species ID" FontSize="10"/>
+                  <NumericUpDown x:Name="ModeSeedingOpponent" Minimum="0" Maximum="1000000" Value="0" />
+                </StackPanel>
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
                   <StackPanel Spacing="2"><TextBlock Text="Rounds" FontSize="10"/><NumericUpDown x:Name="ModeMinimumRounds" Minimum="1" Maximum="100" Value="5" /></StackPanel>
                   <StackPanel Grid.Column="1" Spacing="2"><TextBlock Text="Round cap" FontSize="10"/><NumericUpDown x:Name="ModeMaximumRounds" Minimum="1" Maximum="100" Value="1" /></StackPanel>
@@ -178,6 +189,8 @@
                 <Border Background="#E5ECD9" Padding="6">
                   <StackPanel Spacing="2">
                     <TextBlock Text="{Binding LocalMode.StatusLabel}" FontWeight="Bold" />
+                    <TextBlock Text="{Binding LocalMode.SeriesLabel}" FontSize="10" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding LocalMode.RankingLabel}" FontSize="10" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding LocalMode.RoundLabel}" FontSize="10" />
                     <TextBlock Text="{Binding LocalMode.CycleLabel}" FontSize="10" />
                     <TextBlock Text="{Binding LocalMode.AdjudicationLabel}" FontSize="10" Foreground="#2D826F" />

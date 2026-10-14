@@ -29,6 +29,17 @@ public enum LocalModeStatus
     Completed,
 }
 
+public enum LeagueWorkflow { Direct, Ladder, Tournament, Seeding }
+
+public sealed record LeagueMatchSnapshot(uint Number, IReadOnlyList<uint> Entrants, uint Winner,
+    int FirstResult, int ResultCount);
+
+public sealed record LeagueSeriesSnapshot(LeagueWorkflow Workflow, IReadOnlyList<uint> ActiveMatch,
+    uint MatchNumber, IReadOnlyList<uint> Ladder, IReadOnlyList<uint> Seeded, IReadOnlyList<LeagueMatchSnapshot> Matches)
+{
+    public int MatchStartResult { get; init; }
+}
+
 public sealed record LocalModeRestrictions(
     bool ProhibitInformationShots = false,
     bool ProhibitViruses = false,
@@ -51,6 +62,10 @@ public sealed record LocalModeConfig(
     LocalModeRestrictions Restrictions,
     int EnergyHandicap = 0)
 {
+    public LeagueWorkflow Workflow { get; init; }
+    public IReadOnlyList<uint> EntrantOrder { get; init; } = [];
+    public IReadOnlyList<uint> InitialLadder { get; init; } = [];
+    public uint? SeedingOpponent { get; init; }
     public static LocalModeConfig Default { get; } = new(
         LocalModeKind.League,
         LeaguePreset.F1,
@@ -98,6 +113,7 @@ public sealed record LocalModeSnapshot(
     public int EnergyHandicap { get; init; }
     public LocalModeConfig? Configuration { get; init; }
     public IReadOnlyList<DisqualificationRecord> Disqualifications { get; init; } = [];
+    public LeagueSeriesSnapshot? Series { get; init; }
 
     public static LocalModeSnapshot Idle { get; } = new(
         LocalModeStatus.Idle,

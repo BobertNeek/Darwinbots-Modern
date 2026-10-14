@@ -302,7 +302,13 @@ public static class NativeSnapshotParser
                     restrictions.RobotFixingAllowed,
                     restrictions.AsexualReproductionAllowed)
                 : new(),
-            config.EnergyHandicap);
+            config.EnergyHandicap)
+        {
+            Workflow = ParseWorkflow(config.Workflow),
+            EntrantOrder = config.EntrantOrder ?? [],
+            InitialLadder = config.InitialLadder ?? [],
+            SeedingOpponent = config.SeedingOpponent,
+        };
         return new LocalModeSnapshot(
             ParseStatus(native.Status),
             parsedConfig.Kind,
@@ -327,6 +333,12 @@ public static class NativeSnapshotParser
             MinimumRounds = parsedConfig.MinimumRounds,
             EnergyHandicap = parsedConfig.EnergyHandicap,
             Configuration = parsedConfig,
+            Series = native.Series is { } series ? new LeagueSeriesSnapshot(
+                ParseWorkflow(series.Workflow), series.ActiveMatch ?? [], series.MatchNumber,
+                series.Ladder ?? [], series.Seeded ?? [], (series.Matches ?? []).Select(match =>
+                    new LeagueMatchSnapshot(match.Number, match.Entrants ?? [], match.Winner,
+                        match.FirstResult, match.ResultCount)).ToArray())
+                    { MatchStartResult = series.MatchStartResult } : null,
             Disqualifications = (native.Disqualifications ?? []).Select(value => new DisqualificationRecord(
                 value.Tick, value.Round, value.Species, value.FileName ?? string.Empty,
                 value.Tag ?? string.Empty, value.Reason ?? string.Empty)).ToArray(),
@@ -373,7 +385,16 @@ public static class NativeSnapshotParser
         "contest" => LocalModeKind.Contest,
         "simple_survival" => LocalModeKind.SimpleSurvival,
         "eco_survival" => LocalModeKind.EcoSurvival,
+        "zerobot" => LocalModeKind.Zerobot,
         _ => LocalModeKind.League,
+    };
+
+    private static LeagueWorkflow ParseWorkflow(string? value) => value?.ToLowerInvariant() switch
+    {
+        "ladder" => LeagueWorkflow.Ladder,
+        "tournament" => LeagueWorkflow.Tournament,
+        "seeding" => LeagueWorkflow.Seeding,
+        _ => LeagueWorkflow.Direct,
     };
 
     private static LeaguePreset ParsePreset(string? value) => value?.ToLowerInvariant() switch
@@ -503,7 +524,24 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("results")] NativeLocalModeResult[]? Results,
         [property: JsonPropertyName("adjudication")] NativeLocalModeAdjudication? Adjudication,
         [property: JsonPropertyName("contest_runtime")] NativeContestRuntime? ContestRuntime,
-        [property: JsonPropertyName("disqualifications")] NativeDisqualification[]? Disqualifications);
+        [property: JsonPropertyName("disqualifications")] NativeDisqualification[]? Disqualifications,
+        [property: JsonPropertyName("series")] NativeLeagueSeries? Series);
+
+    private sealed record NativeLeagueSeries(
+        [property: JsonPropertyName("workflow")] string? Workflow,
+        [property: JsonPropertyName("active_match")] uint[]? ActiveMatch,
+        [property: JsonPropertyName("match_number")] uint MatchNumber,
+        [property: JsonPropertyName("match_start_result")] int MatchStartResult,
+        [property: JsonPropertyName("ladder")] uint[]? Ladder,
+        [property: JsonPropertyName("seeded")] uint[]? Seeded,
+        [property: JsonPropertyName("matches")] NativeLeagueMatch[]? Matches);
+
+    private sealed record NativeLeagueMatch(
+        [property: JsonPropertyName("number")] uint Number,
+        [property: JsonPropertyName("entrants")] uint[]? Entrants,
+        [property: JsonPropertyName("winner")] uint Winner,
+        [property: JsonPropertyName("first_result")] int FirstResult,
+        [property: JsonPropertyName("result_count")] int ResultCount);
 
     private sealed record NativeDisqualification(
         [property: JsonPropertyName("tick")] ulong Tick,
@@ -527,7 +565,11 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("source_species")] uint? SourceSpecies,
         [property: JsonPropertyName("selection_population_weight")] float SelectionPopulationWeight,
         [property: JsonPropertyName("selection_energy_weight")] float SelectionEnergyWeight,
-        [property: JsonPropertyName("restrictions")] NativeLocalModeRestrictions? Restrictions);
+        [property: JsonPropertyName("restrictions")] NativeLocalModeRestrictions? Restrictions,
+        [property: JsonPropertyName("workflow")] string? Workflow,
+        [property: JsonPropertyName("entrant_order")] uint[]? EntrantOrder,
+        [property: JsonPropertyName("initial_ladder")] uint[]? InitialLadder,
+        [property: JsonPropertyName("seeding_opponent")] uint? SeedingOpponent);
 
     private sealed record NativeLocalModeRestrictions(
         [property: JsonPropertyName("prohibit_information_shots")] bool ProhibitInformationShots,

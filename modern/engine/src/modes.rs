@@ -28,6 +28,16 @@ pub enum LeaguePreset {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum LeagueWorkflow {
+    #[default]
+    Direct,
+    Ladder,
+    Tournament,
+    Seeding,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum LocalModeStatus {
     #[default]
     Idle,
@@ -64,6 +74,10 @@ impl Default for LocalModeRestrictions {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LocalModeConfig {
+    pub workflow: LeagueWorkflow,
+    pub entrant_order: Vec<SpeciesId>,
+    pub initial_ladder: Vec<SpeciesId>,
+    pub seeding_opponent: Option<SpeciesId>,
     pub kind: LocalModeKind,
     pub preset: LeaguePreset,
     pub minimum_rounds: u32,
@@ -81,6 +95,10 @@ pub struct LocalModeConfig {
 impl Default for LocalModeConfig {
     fn default() -> Self {
         Self {
+            workflow: LeagueWorkflow::Direct,
+            entrant_order: Vec::new(),
+            initial_ladder: Vec::new(),
+            seeding_opponent: None,
             kind: LocalModeKind::League,
             preset: LeaguePreset::F1,
             minimum_rounds: 5,
@@ -99,6 +117,12 @@ impl Default for LocalModeConfig {
 
 impl LocalModeConfig {
     pub fn validate(&self) -> Result<(), String> {
+        if self.workflow != LeagueWorkflow::Direct && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest) {
+            return Err("league schedules require League or Contest mode".to_owned());
+        }
+        if self.workflow == LeagueWorkflow::Seeding && self.seeding_opponent.is_none() {
+            return Err("seeding requires a reference opponent".to_owned());
+        }
         if self.minimum_rounds == 0 {
             return Err("minimum rounds must be greater than zero".to_owned());
         }
@@ -163,6 +187,7 @@ pub struct ContestRuntime {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LocalModeState {
+    pub series: crate::league::LeagueSeries,
     pub config: Option<LocalModeConfig>,
     #[serde(default)]
     pub contest_runtime: ContestRuntime,
@@ -178,6 +203,7 @@ pub struct LocalModeState {
 impl Default for LocalModeState {
     fn default() -> Self {
         Self {
+            series: crate::league::LeagueSeries::default(),
             config: None,
             contest_runtime: ContestRuntime::default(),
             status: LocalModeStatus::Idle,

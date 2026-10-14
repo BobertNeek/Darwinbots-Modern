@@ -7,6 +7,21 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LocalModeWorkflowTests
 {
     [Fact]
+    public void LeagueScheduleControlsRetainExplicitOrderAndReference()
+    {
+        var model = new LocalModeViewModel {
+            Workflow = LeagueWorkflow.Seeding, EntrantOrderText = "4, 2; 1",
+            InitialLadderText = "4 2", SeedingOpponent = 0,
+        };
+        var config = model.BuildConfiguration();
+        Assert.Equal(LeagueWorkflow.Seeding, config.Workflow);
+        Assert.Equal(new uint[] { 4, 2, 1 }, config.EntrantOrder);
+        Assert.Equal(new uint[] { 4, 2 }, config.InitialLadder);
+        Assert.Equal(0U, config.SeedingOpponent);
+        Assert.Throws<ArgumentException>(() => LocalModeViewModel.ParseSpeciesOrder("1, rubbish"));
+    }
+
+    [Fact]
     public void LoadedModeEditsRetainItsPopulationSourceAndSelectionPolicy()
     {
         var configuration = LocalModeConfig.Default with

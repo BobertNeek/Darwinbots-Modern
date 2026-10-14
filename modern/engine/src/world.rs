@@ -94,6 +94,8 @@ mod native_pipeline;
 mod native_collisions;
 #[path = "world/native_tie_physics.rs"]
 mod native_tie_physics;
+#[path = "world/league_series.rs"]
+mod league_series;
 
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
@@ -2967,11 +2969,13 @@ impl Engine {
                 species.0
             )));
         }
+        let series = self.prepare_league_series(&config)?;
         if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
             self.apply_league_preset(config.preset);
         }
         self.apply_mode_restrictions(&config);
         self.local_mode = LocalModeState::configured(config);
+        self.local_mode.series = series;
         self.publish_snapshot();
         Ok(())
     }
@@ -2985,6 +2989,7 @@ impl Engine {
         if self.local_mode.status == LocalModeStatus::Running {
             return Ok(());
         }
+        self.local_mode.series = self.prepare_league_series(&config)?;
         self.apply_mode_restrictions(&config);
         self.local_mode.status = LocalModeStatus::Running;
         self.local_mode.current_round = 1;
@@ -2994,6 +2999,11 @@ impl Engine {
         self.local_mode.results.clear();
         self.local_mode.disqualifications.clear();
         self.local_mode.adjudication = None;
+        if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct && self.local_mode.series.active_match.is_none() {
+            self.local_mode.status = LocalModeStatus::Completed;
+            self.publish_snapshot();
+            return Ok(());
+        }
         if config.kind == LocalModeKind::Zerobot {
             self.zerobot_checkpoint = None;
             self.zerobot_checkpoint_score = 0;
@@ -3022,6 +3032,7 @@ impl Engine {
             self.zerobot_checkpoint = None;
             self.zerobot_checkpoint_score = 0;
         }
+        self.local_mode.series = self.prepare_league_series(&config)?;
         self.restart_mode_world(None)?;
         self.local_mode.current_round = 1;
         self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
@@ -3030,7 +3041,8 @@ impl Engine {
         self.local_mode.results.clear();
         self.local_mode.disqualifications.clear();
         self.local_mode.adjudication = None;
-        self.local_mode.status = LocalModeStatus::Running;
+        self.local_mode.status = if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct
+            && self.local_mode.series.active_match.is_none() { LocalModeStatus::Completed } else { LocalModeStatus::Running };
         self.apply_mode_restrictions(&config);
         self.publish_snapshot();
         Ok(())
@@ -3196,6 +3208,7 @@ impl Engine {
         self.slots
             .iter()
             .filter_map(|slot| slot.organism.as_ref())
+            .filter(|robot| !robot.flags.corpse && !robot.flags.dead)
             .filter(|organism| {
                 !self
                     .species
@@ -3319,6 +3332,8 @@ impl Engine {
     }
 
     fn remove_extinct_species_phase(&mut self) {
+        // Match schedules and archived results retain registered species IDs.
+        if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct { return; }
         let mut populations = vec![0_usize; self.species.len()];
         for organism in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
             if organism.flags.corpse {
@@ -3407,6 +3422,7 @@ impl Engine {
         self.slots
             .iter()
             .filter_map(|slot| slot.organism.as_ref())
+            .filter(|robot| !robot.flags.corpse && !robot.flags.dead)
             .filter(|organism| organism.identity.species == species)
             .fold((0, 0.0), |(population, energy), organism| {
                 (
@@ -3420,6 +3436,7 @@ impl Engine {
         self.slots
             .iter()
             .filter_map(|slot| slot.organism.as_ref())
+            .filter(|robot| !robot.flags.corpse && !robot.flags.dead)
             .filter(|organism| organism.identity.species == species)
             .max_by(|left, right| {
                 left.materials
@@ -3437,6 +3454,7 @@ impl Engine {
             let Some(organism) = slot.organism.as_ref() else {
                 continue;
             };
+            if organism.flags.corpse || organism.flags.dead { continue; }
             if self
                 .species
                 .get(organism.identity.species.0 as usize)
@@ -3490,6 +3508,9 @@ impl Engine {
                 "contest winner must be a registered animal species".to_owned(),
             ));
         }
+        if let (Some(pair), Some(winner)) = (self.local_mode.series.active_match, winner) {
+            if !pair.contains(&winner) { return Err(EngineError::Invariant("winner must be an active match entrant".into())); }
+        }
         let winner = if contest {
             winner
         } else {
@@ -3538,9 +3559,10 @@ impl Engine {
             automatic,
         });
         let complete = if contest {
-            let rounds = self.local_mode.results.len() as f64;
+            let start = self.local_mode.series.match_start_result;
+            let rounds = self.local_mode.results.len().saturating_sub(start) as f64;
             let mut wins = BTreeMap::<SpeciesId, u32>::new();
-            for result in &self.local_mode.results {
+            for result in &self.local_mode.results[start..] {
                 if let Some(winner) = result.winner {
                     *wins.entry(winner).or_default() += 1;
                 }
@@ -3553,6 +3575,16 @@ impl Engine {
         } else {
             self.local_mode.current_round >= config.maximum_rounds.max(config.minimum_rounds)
         };
+        if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct {
+            let match_winner = if complete {
+                let mut wins = BTreeMap::<SpeciesId, u32>::new();
+                for result in &self.local_mode.results[self.local_mode.series.match_start_result..] {
+                    if let Some(winner) = result.winner { *wins.entry(winner).or_default() += 1; }
+                }
+                wins.into_iter().max_by_key(|(_, count)| *count).map(|(id, _)| id)
+            } else { None };
+            return self.advance_league_series(&config, match_winner);
+        }
         if complete {
             if zerobot && rollback {
                 self.local_mode.status = LocalModeStatus::RoundComplete;
@@ -3687,6 +3719,8 @@ impl Engine {
             self.slots.remove(id)?;
         }
         self.ties.clear();
+        self.native_tie_index = None;
+        self.native_buckets = native_collisions::NativeBuckets::default();
         self.projectiles = ProjectilePool::default();
         self.pending_projectile_requests.clear();
         self.pending_mutations.clear();
@@ -3705,7 +3739,8 @@ impl Engine {
                 let species_id = SpeciesId(*index as u32);
                 let is_winner_seed_species =
                     winner_seed.is_some() && keep_species == Some(species_id);
-                keep_species.is_none_or(|keep| keep == species_id)
+                self.local_mode.series.active_match.is_none_or(|pair| species.vegetable || pair.contains(&species_id))
+                    && keep_species.is_none_or(|keep| keep == species_id)
                     && (!species.vegetable || keep_species.is_none())
                     && (is_winner_seed_species
                         || self
@@ -5388,6 +5423,10 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        self.local_mode.series.validate(self.species.len()).map_err(EngineError::Invariant)?;
+        if self.local_mode.series.match_start_result > self.local_mode.results.len() {
+            return Err(EngineError::Invariant("league result cursor exceeds saved results".into()));
+        }
         if self.config.disqualification > 2 {
             return Err(EngineError::Invariant("disqualification level must be 0, 1 or 2".into()));
         }
@@ -7045,9 +7084,9 @@ impl Engine {
                 let source_is_first = tie.first == source_id;
                 let mut native_ends = self.native_random.as_ref().map(|_| tie.native_end_states());
                 let other_id = if source_is_first { tie.second } else { tie.first };
-                if !tie.hardened {
-                    continue;
-                }
+                let hardened = native_ends.as_ref().map_or(tie.hardened,
+                    |ends| ends[usize::from(!source_is_first)].hardened);
+                if !hardened { continue; }
                 let selected = selected_controls
                     && ((source_is_first && tie.first_port == selected_port)
                         || (!source_is_first && tie.second_port == selected_port));

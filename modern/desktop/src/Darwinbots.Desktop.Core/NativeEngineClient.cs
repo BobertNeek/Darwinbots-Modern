@@ -643,6 +643,10 @@ public sealed partial class NativeEngineClient : IEngineClient
                     {
                         kind = ModeKindName(config.Kind),
                         preset = PresetName(config.Preset),
+                        workflow = config.Workflow.ToString().ToLowerInvariant(),
+                        entrant_order = config.EntrantOrder,
+                        initial_ladder = config.InitialLadder,
+                        seeding_opponent = config.SeedingOpponent,
                         minimum_rounds = config.MinimumRounds,
                         maximum_rounds = config.MaximumRounds,
                         maximum_cycles = config.MaximumCycles,

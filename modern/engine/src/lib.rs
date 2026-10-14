@@ -11,6 +11,7 @@ mod history;
 mod id;
 mod legacy;
 mod modes;
+mod league;
 mod mutation;
 mod native_random;
 pub mod native_binary;
@@ -58,9 +59,10 @@ pub use legacy::{
     LegacySettingsFile, LegacySimulationFile, LegacySpeciesStartup,
 };
 pub use modes::{
-    ContestRuntime, LeaguePreset, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
+    ContestRuntime, LeaguePreset, LeagueWorkflow, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
     LocalModeResult, LocalModeState, LocalModeStatus,
 };
+pub use league::{LeagueMatch, LeagueSeries};
 pub use mutation::{
     AdvancedMutationSettings, Delta2Settings, EpigeneticPolicyAction, EpigeneticSettings,
     GenomeMutator, MutationCategoryDistribution, MutationContext, MutationKind,
