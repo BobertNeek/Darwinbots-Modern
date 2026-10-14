@@ -107,10 +107,10 @@ impl LocalModeConfig {
         {
             return Err("maximum rounds must be greater than zero".to_owned());
         }
-        if self.maximum_cycles == 0 {
+        if self.maximum_cycles == 0 && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest) {
             return Err("maximum cycles must be greater than zero".to_owned());
         }
-        if self.maximum_population == 0 {
+        if self.maximum_population == 0 && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest) {
             return Err("maximum population must be greater than zero".to_owned());
         }
         if !self.selection_population_weight.is_finite()
@@ -142,10 +142,20 @@ pub struct LocalModeAdjudication {
     pub automatic: bool,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ContestRuntime {
+    pub effective_cycle_limit: u64,
+    pub cycles_since_population_sample: u64,
+    pub previous_population: std::collections::BTreeMap<SpeciesId, usize>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LocalModeState {
     pub config: Option<LocalModeConfig>,
+    #[serde(default)]
+    pub contest_runtime: ContestRuntime,
     pub status: LocalModeStatus,
     pub current_round: u32,
     pub cycle_in_round: u64,
@@ -158,6 +168,7 @@ impl Default for LocalModeState {
     fn default() -> Self {
         Self {
             config: None,
+            contest_runtime: ContestRuntime::default(),
             status: LocalModeStatus::Idle,
             current_round: 0,
             cycle_in_round: 0,

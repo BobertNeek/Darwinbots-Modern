@@ -176,30 +176,10 @@ impl DnaCosts {
         }
     }
 
-    pub fn dynamic_multiplier(&self, population: usize) -> f64 {
-        let global = if self.global_multiplier.is_finite() {
-            self.global_multiplier
-        } else {
-            1.0
-        };
-        if self.dynamic_cost_multiplier == 0.0
-            || self.dynamic_population_range == 0
-            || !self.dynamic_sensitivity.is_finite()
-        {
-            return global;
-        }
-        let distance = self.dynamic_target_population as f64 - population as f64;
-        let population_factor = distance / self.dynamic_population_range as f64;
-        let mut multiplier = global
-            * (1.0 + self.dynamic_cost_multiplier * population_factor * self.dynamic_sensitivity);
-        if !self.dynamic_allow_negative {
-            multiplier = multiplier.max(0.0);
-        }
-        if self.dynamic_upper_zero_threshold > 0.0 && -distance >= self.dynamic_upper_zero_threshold
-        {
-            multiplier = 0.0;
-        }
-        multiplier
+    // The world controller advances the multiplier once per cycle. Cost
+    // evaluation must not apply another instantaneous population formula.
+    pub fn dynamic_multiplier(&self, _population: usize) -> f64 {
+        if self.global_multiplier.is_finite() { self.global_multiplier } else { 1.0 }
     }
 
     fn action_cost(&self, action: SimulationCostAction) -> f64 {

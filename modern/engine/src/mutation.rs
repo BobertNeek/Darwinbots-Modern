@@ -911,19 +911,17 @@ fn invalid_location(location: usize, coding_len: usize) -> EngineError {
 }
 
 pub struct PointMutator {
-    random_state: u64,
+    random_state: crate::native_random::RandomStream,
 }
 
 impl PointMutator {
     pub fn new(seed: u64) -> Self {
         Self {
-            random_state: seed.max(1),
+            random_state: crate::native_random::RandomStream::legacy(seed),
         }
     }
 
-    pub fn random_state(&self) -> u64 {
-        self.random_state
-    }
+    pub fn random_state(&self) -> u64 { self.random_state.state() }
 
     pub fn mutate(&mut self, dna: &mut LegacyDna) -> MutationReport {
         let numeric_positions = dna
@@ -935,8 +933,8 @@ impl PointMutator {
         if numeric_positions.is_empty() {
             return MutationReport::default();
         }
-        let position = numeric_positions[(self.next() as usize) % numeric_positions.len()];
-        let mut delta = (self.next() % 21) as i32 - 10;
+        let position = numeric_positions[self.index(numeric_positions.len())];
+        let mut delta = ((self.index(21) as u64)) as i32 - 10;
         if delta == 0 {
             delta = 1;
         }
@@ -948,33 +946,29 @@ impl PointMutator {
         }
     }
 
-    fn next(&mut self) -> u64 {
-        let mut value = self.random_state;
-        value ^= value << 13;
-        value ^= value >> 7;
-        value ^= value << 17;
-        self.random_state = value.max(1);
-        value
-    }
+    fn index(&mut self, count: usize) -> usize { self.random_state.index(count) }
 }
 
 pub struct GenomeMutator {
-    random_state: u64,
+    random_state: crate::native_random::RandomStream,
 }
 
 impl GenomeMutator {
+    pub(crate) fn with_native_random(random: crate::native_random::NativeRandom) -> Self {
+        Self { random_state: crate::native_random::RandomStream::Native(random) }
+    }
+    pub(crate) fn native_random(&self) -> Option<crate::native_random::NativeRandom> { self.random_state.native() }
+
     pub fn new(seed: u64) -> Self {
         Self {
-            random_state: seed.max(1),
+            random_state: crate::native_random::RandomStream::legacy(seed),
         }
     }
 
-    pub fn random_state(&self) -> u64 {
-        self.random_state
-    }
+    pub fn random_state(&self) -> u64 { self.random_state.state() }
 
     pub fn mutate(&mut self, dna: &mut LegacyDna) -> MutationReport {
-        let kind = match self.next() % 5 {
+        let kind = match (self.index(5) as u64) {
             0 => MutationKind::Point,
             1 => MutationKind::Insertion,
             2 => MutationKind::Deletion,
@@ -992,7 +986,7 @@ impl GenomeMutator {
     ) -> MutationReport {
         let one_in = policy.effective_one_in.max(1.0);
         let chance = (1_000_000.0 / one_in).min(1_000_000.0) as u64;
-        if self.next() % 1_000_000 >= chance {
+        if (self.index(1_000_000) as u64) >= chance {
             return MutationReport::default();
         }
 
@@ -1047,7 +1041,7 @@ impl GenomeMutator {
         if !forced {
             let one_in = policy.effective_one_in.max(1.0);
             let chance = (1_000_000.0 / one_in).min(1_000_000.0) as u64;
-            if self.next() % 1_000_000 >= chance {
+            if (self.index(1_000_000) as u64) >= chance {
                 return MutationReport::default();
             }
         }
@@ -1143,7 +1137,7 @@ impl GenomeMutator {
                 (0..length)
                     .map(|index| {
                         let old = dna.blocks()[location - 1 + index];
-                        if self.next() % 100 < u64::from(profile.point_value_change_percent) {
+                        if (self.index(100) as u64) < u64::from(profile.point_value_change_percent) {
                             self.change_point_value(old)
                         } else {
                             let mut block = self.random_block_with_distribution(
@@ -1211,7 +1205,7 @@ impl GenomeMutator {
     fn change_point_value(&mut self, old: DnaBlock) -> DnaBlock {
         let value = if matches!(old.class, TokenClass::Number | TokenClass::Dereference) {
             let deviation = if old.value.unsigned_abs() <= 1000 {
-                if self.next().is_multiple_of(2) {
+                if self.random_multiple_of(2) {
                     94.0
                 } else {
                     7.0
@@ -1234,7 +1228,7 @@ impl GenomeMutator {
             }
         } else {
             let maximum = Self::maximum_command_value(old.class);
-            let sampled = (self.next() % maximum as u64) as i32 + 1;
+            let sampled = (self.index(maximum as usize) as u64) as i32 + 1;
             if sampled == old.value {
                 sampled % maximum + 1
             } else {
@@ -1259,14 +1253,14 @@ impl GenomeMutator {
         }
         let standard_report = match kind {
             StandardMutationKind::Point => {
-                let mut point = PointMutator::new(self.next());
+                let mut point = match self.random_state.native() { Some(random) => PointMutator { random_state: crate::native_random::RandomStream::Native(random) }, None => PointMutator::new(self.next()) };
                 let report = point.mutate(dna);
-                self.random_state = point.random_state();
+                self.random_state = point.random_state;
                 return report;
             }
             StandardMutationKind::Point2 | StandardMutationKind::CopyError2 => {
                 let location = if coding_len > 1 {
-                    (self.next() as usize) % (coding_len - 1) + 1
+                    self.index(coding_len - 1) + 1
                 } else {
                     1
                 };
@@ -1290,7 +1284,7 @@ impl GenomeMutator {
             }
             StandardMutationKind::CopyError => {
                 let length = self.sample_length(profile.copy_error, coding_len);
-                let location = (self.next() as usize) % (coding_len.saturating_sub(length) + 1) + 1;
+                let location = self.index(coding_len.saturating_sub(length) + 1) + 1;
                 let distribution = profile.category_distribution(kind);
                 let replacements = (0..length)
                     .map(|_| self.random_block_with_distribution(distribution))
@@ -1309,7 +1303,7 @@ impl GenomeMutator {
                 if capacity == 0 {
                     return MutationReport::default();
                 }
-                let after_location = (self.next() as usize) % coding_len + 1;
+                let after_location = self.index(coding_len) + 1;
                 let length = self.sample_length(profile.insertion, capacity);
                 let blocks = (0..length).map(|_| self.random_block()).collect();
                 apply_standard_mutation(
@@ -1325,7 +1319,7 @@ impl GenomeMutator {
                 if coding_len < 3 {
                     return MutationReport::default();
                 }
-                let center = (self.next() as usize) % coding_len + 1;
+                let center = self.index(coding_len) + 1;
                 let sampled_length = self.sample_length(profile.reversal, coding_len).max(3);
                 apply_standard_mutation(
                     dna,
@@ -1337,7 +1331,7 @@ impl GenomeMutator {
                 )
             }
             StandardMutationKind::MinorDeletion | StandardMutationKind::MajorDeletion => {
-                let location = (self.next() as usize) % coding_len + 1;
+                let location = self.index(coding_len) + 1;
                 let rate = if kind == StandardMutationKind::MinorDeletion {
                     profile.minor_deletion
                 } else {
@@ -1360,8 +1354,8 @@ impl GenomeMutator {
                     .sample_length(profile.amplification, coding_len)
                     .min(capacity)
                     .max(1);
-                let source_start = (self.next() as usize) % (coding_len - length + 1) + 1;
-                let after_location = (self.next() as usize) % coding_len + 1;
+                let source_start = self.index(coding_len - length + 1) + 1;
+                let after_location = self.index(coding_len) + 1;
                 apply_standard_mutation(
                     dna,
                     profile,
@@ -1380,9 +1374,9 @@ impl GenomeMutator {
                     .sample_length(profile.translocation, coding_len - 1)
                     .min(coding_len - 1)
                     .max(1);
-                let source_start = (self.next() as usize) % (coding_len - length + 1) + 1;
+                let source_start = self.index(coding_len - length + 1) + 1;
                 let remaining = coding_len - length;
-                let after_location = (self.next() as usize) % remaining + 1;
+                let after_location = self.index(remaining) + 1;
                 apply_standard_mutation(
                     dna,
                     profile,
@@ -1413,7 +1407,7 @@ impl GenomeMutator {
                 if targets.is_empty() {
                     return MutationReport::default();
                 }
-                let target = targets[(self.next() as usize) % targets.len()];
+                let target = targets[self.index(targets.len())];
                 let mean = profile.rate(target).one_in;
                 let deviation = if profile.delta.mean == 0.0 {
                     25.0
@@ -1476,7 +1470,7 @@ impl GenomeMutator {
         const SHOOT: i32 = 7;
         const TIELOC: i32 = 452;
         const FOCUSEYE: i32 = 511;
-        let output_value = OUTPUT_SYSVARS[(self.next() as usize) % OUTPUT_SYSVARS.len()];
+        let output_value = OUTPUT_SYSVARS[self.index(OUTPUT_SYSVARS.len())];
         let special_value = match (dna.blocks().get(location), dna.blocks().get(location + 1)) {
             (Some(next), Some(store))
                 if next.class == TokenClass::Number
@@ -1485,9 +1479,9 @@ impl GenomeMutator {
                     && matches!(next.value, SHOOT | TIELOC | FOCUSEYE) =>
             {
                 Some(match next.value {
-                    SHOOT => [-1, -2, -3, -4, -6, -8, output_value][(self.next() as usize) % 7],
-                    TIELOC => [-1, -3, -4, -6, output_value][(self.next() as usize) % 5],
-                    _ => (self.next() % 9) as i32 - 4,
+                    SHOOT => [-1, -2, -3, -4, -6, -8, output_value][self.index(7)],
+                    TIELOC => [-1, -3, -4, -6, output_value][self.index(5)],
+                    _ => ((self.index(9) as u64)) as i32 - 4,
                 })
             }
             _ => None,
@@ -1498,12 +1492,12 @@ impl GenomeMutator {
                 value,
             }];
         }
-        if distribution != MutationCategoryDistribution::default() && self.next().is_multiple_of(2)
+        if distribution != MutationCategoryDistribution::default() && self.random_multiple_of(2)
         {
             return vec![self.random_block_with_distribution(distribution)];
         }
-        if self.next().is_multiple_of(3) {
-            let output_value = OUTPUT_SYSVARS[(self.next() as usize) % OUTPUT_SYSVARS.len()];
+        if self.random_multiple_of(3) {
+            let output_value = OUTPUT_SYSVARS[self.index(OUTPUT_SYSVARS.len())];
             return vec![
                 DnaBlock {
                     class: TokenClass::Number,
@@ -1515,20 +1509,23 @@ impl GenomeMutator {
                 },
             ];
         }
-        if self.next().is_multiple_of(5) {
-            let output_value = OUTPUT_SYSVARS[(self.next() as usize) % OUTPUT_SYSVARS.len()];
+        if self.random_multiple_of(5) {
+            let output_value = OUTPUT_SYSVARS[self.index(OUTPUT_SYSVARS.len())];
             return vec![DnaBlock {
                 class: TokenClass::Number,
-                value: output_value.saturating_add((self.next() % 32) as i32 * 1_000),
+                value: output_value.saturating_add(((self.index(32) as u64)) as i32 * 1_000),
             }];
         }
         vec![DnaBlock {
             class: TokenClass::Dereference,
-            value: INPUT_SYSVARS[(self.next() as usize) % INPUT_SYSVARS.len()],
+            value: INPUT_SYSVARS[self.index(INPUT_SYSVARS.len())],
         }]
     }
 
     fn sample_length(&mut self, rate: MutationRate, maximum: usize) -> usize {
+        if let crate::native_random::RandomStream::Native(random) = &mut self.random_state {
+            return random.gaussian(rate.std_dev as f32, rate.mean as f32).round_ties_even().clamp(1.0, maximum.max(1) as f32) as usize;
+        }
         if maximum == 0 {
             return 0;
         }
@@ -1541,6 +1538,9 @@ impl GenomeMutator {
     }
 
     fn sample_value(&mut self, rate: MutationRate) -> f64 {
+        if let crate::native_random::RandomStream::Native(random) = &mut self.random_state {
+            return f64::from(random.gaussian(rate.std_dev as f32, rate.mean as f32));
+        }
         let unit = (self.next() as f64 / u64::MAX as f64).max(f64::MIN_POSITIVE);
         let angle = (self.next() as f64 / u64::MAX as f64) * std::f64::consts::TAU;
         let gaussian = (-2.0 * unit.ln()).sqrt() * angle.cos();
@@ -1549,9 +1549,9 @@ impl GenomeMutator {
 
     pub fn mutate_kind(&mut self, dna: &mut LegacyDna, kind: MutationKind) -> MutationReport {
         if kind == MutationKind::Point {
-            let mut point = PointMutator::new(self.random_state);
+            let mut point = PointMutator { random_state: self.random_state.clone() };
             let report = point.mutate(dna);
-            self.random_state = point.random_state();
+            self.random_state = point.random_state;
             return report;
         }
         let blocks = dna.blocks_mut();
@@ -1559,30 +1559,30 @@ impl GenomeMutator {
         let master_end = blocks.pop().expect("normalized DNA has a master End");
         let changed = match kind {
             MutationKind::Insertion if blocks.len() < MAX_DNA_BLOCKS - 1 => {
-                let index = (self.next() as usize) % (blocks.len() + 1);
+                let index = self.index(blocks.len() + 1);
                 let block = self.random_block();
                 blocks.insert(index, block);
                 true
             }
             MutationKind::Deletion if !blocks.is_empty() => {
-                let index = (self.next() as usize) % blocks.len();
+                let index = self.index(blocks.len());
                 blocks.remove(index);
                 true
             }
             MutationKind::Duplication
                 if !blocks.is_empty() && blocks.len() < MAX_DNA_BLOCKS - 1 =>
             {
-                let start = (self.next() as usize) % blocks.len();
+                let start = self.index(blocks.len());
                 let available = blocks.len() - start;
                 let capacity = MAX_DNA_BLOCKS - 1 - blocks.len();
-                let length = (1 + (self.next() as usize) % available.min(4)).min(capacity);
+                let length = (1 + self.index(available.min(4))).min(capacity);
                 let copy = blocks[start..start + length].to_vec();
-                let insertion = (self.next() as usize) % (blocks.len() + 1);
+                let insertion = self.index(blocks.len() + 1);
                 blocks.splice(insertion..insertion, copy);
                 true
             }
             MutationKind::Replacement if !blocks.is_empty() => {
-                let index = (self.next() as usize) % blocks.len();
+                let index = self.index(blocks.len());
                 let mut replacement = self.random_block();
                 if replacement == blocks[index] {
                     replacement = DnaBlock {
@@ -1623,18 +1623,18 @@ impl GenomeMutator {
             (TokenClass::Logic, 2),
             (TokenClass::Logic, 4),
         ];
-        match self.next() % 7 {
+        match (self.index(7) as u64) {
             0 => DnaBlock {
                 class: TokenClass::Number,
-                value: (self.next() % 64_001) as i32 - 32_000,
+                value: ((self.index(64_001) as u64)) as i32 - 32_000,
             },
             1 => DnaBlock {
                 class: TokenClass::Number,
-                value: ADDRESSES[(self.next() as usize) % ADDRESSES.len()],
+                value: ADDRESSES[self.index(ADDRESSES.len())],
             },
             2 => DnaBlock {
                 class: TokenClass::Dereference,
-                value: ADDRESSES[(self.next() as usize) % ADDRESSES.len()],
+                value: ADDRESSES[self.index(ADDRESSES.len())],
             },
             3 => DnaBlock {
                 class: TokenClass::Store,
@@ -1649,7 +1649,7 @@ impl GenomeMutator {
                 value: 4,
             },
             _ => {
-                let (class, value) = COMMANDS[(self.next() as usize) % COMMANDS.len()];
+                let (class, value) = COMMANDS[self.index(COMMANDS.len())];
                 DnaBlock { class, value }
             }
         }
@@ -1677,33 +1677,33 @@ impl GenomeMutator {
         if roll < boundary {
             return DnaBlock {
                 class: TokenClass::Number,
-                value: (self.next() % 64_001) as i32 - 32_000,
+                value: ((self.index(64_001) as u64)) as i32 - 32_000,
             };
         }
         boundary += distribution.dereference;
         if roll < boundary {
             return DnaBlock {
                 class: TokenClass::Dereference,
-                value: ADDRESSES[(self.next() as usize) % ADDRESSES.len()],
+                value: ADDRESSES[self.index(ADDRESSES.len())],
             };
         }
         boundary += distribution.operator;
         if roll < boundary {
-            let (class, value) = COMMANDS[(self.next() as usize) % COMMANDS.len()];
+            let (class, value) = COMMANDS[self.index(COMMANDS.len())];
             return DnaBlock { class, value };
         }
         boundary += distribution.logic;
         if roll < boundary {
             return DnaBlock {
                 class: TokenClass::Logic,
-                value: 1 + (self.next() % 4) as i32,
+                value: 1 + ((self.index(4) as u64)) as i32,
             };
         }
         boundary += distribution.comparison;
         if roll < boundary {
             return DnaBlock {
                 class: TokenClass::Condition,
-                value: 1 + (self.next() % 4) as i32,
+                value: 1 + ((self.index(4) as u64)) as i32,
             };
         }
         DnaBlock {
@@ -1716,12 +1716,7 @@ impl GenomeMutator {
         }
     }
 
-    fn next(&mut self) -> u64 {
-        let mut value = self.random_state;
-        value ^= value << 13;
-        value ^= value >> 7;
-        value ^= value << 17;
-        self.random_state = value.max(1);
-        value
-    }
+    fn next(&mut self) -> u64 { self.random_state.next() }
+    fn index(&mut self, count: usize) -> usize { self.random_state.index(count) }
+    fn random_multiple_of(&mut self, modulus: usize) -> bool { self.index(modulus) == 0 }
 }

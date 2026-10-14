@@ -22,8 +22,7 @@ impl Engine {
         let gene = dna.gene(1).unwrap_or(dna);
         let target_dna = robot.program.dna.clone();
         let boundaries = target_dna.gene_count().max(0) as usize;
-        robot.program.rng_state = advance_random(robot.program.rng_state);
-        let boundary = robot.program.rng_state as usize % boundaries.saturating_add(1);
+        let boundary = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, 0, boundaries as i32) as usize;
         robot.program.dna = target_dna.insert_gene(&gene, boundary);
         robot.refresh_occurrence_census();
         let metadata = &mut robot.program.mutation_metadata;
@@ -181,8 +180,7 @@ impl Engine {
                         (f64::from(robot.materials.energy) - f64::from(power) / 20.0 - fee) as f32;
                     robot.materials.energy =
                         (f64::from(robot.materials.energy) - f64::from(command) - fee) as f32;
-                    robot.program.rng_state = advance_random(robot.program.rng_state);
-                    let angle = ((robot.program.rng_state % 1256 + 1) as f64 / 200.0) as f32;
+                    let angle = (f64::from(world_random_integer(&mut self.native_random, &mut robot.program.rng_state, 1, 1256)) / 200.0) as f32;
                     self.projectiles
                         .fire_stored_virus(shot, robot, command, power, angle);
                     self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);

@@ -5,10 +5,11 @@
   <Grid RowDefinitions="Auto,*,Auto" Margin="18" RowSpacing="14">
     <StackPanel Spacing="3">
       <TextBlock Text="SHAPE PROPERTIES" FontSize="20" FontWeight="Bold" />
-      <TextBlock Text="Rust owns collision, vision, shot, and drift behavior." Foreground="#66706B" TextWrapping="Wrap" />
+      <TextBlock Text="Edit shape movement, appearance and how bots see it." Foreground="#66706B" TextWrapping="Wrap" />
     </StackPanel>
     <ScrollViewer Grid.Row="1">
       <StackPanel Spacing="9">
+        <CheckBox x:Name="ShapesVisibleToggle" Content="Bots can see shape surfaces (all shapes)"/>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Minimum X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="MinimumX" Minimum="-1000000" Maximum="1000000" Increment="1" FormatString="0.0" /></Grid>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Minimum Y" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="MinimumY" Minimum="-1000000" Maximum="1000000" Increment="1" FormatString="0.0" /></Grid>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Maximum X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="MaximumX" Minimum="-1000000" Maximum="1000000" Increment="1" FormatString="0.0" /></Grid>

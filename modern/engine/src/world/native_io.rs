@@ -184,6 +184,7 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
         axis_topology: Some([b("wrap_x")?, b("wrap_y")?]),
         vegetable_population_cap: u("max_population")? as usize,
         fixed_bot_radii: b("fixed_radii")?,
+        shapes_visible: b("shapes_visible")?,
         brownian_motion: n("brownian")?,
         gravity: [0.0, n("y_gravity")?],
         physics: PhysicsSettings {
@@ -279,6 +280,8 @@ impl Engine {
             }
         }
         let mut engine = Self::new(configuration(&tail)?)?;
+        engine.dynamic_cost_state.saved_multiplier = tail.number("old_cost")?;
+        engine.config.shapes_visible = tail.integer("shapes_visible")? != 0;
         engine.tick = nonnegative(tail.integer("total_cycles")?, "total cycles")?;
         engine.stats.completed_cycles = engine.tick;
         engine.stats.births = nonnegative(tail.integer("total_born")?, "total born")?;
@@ -746,6 +749,7 @@ impl Engine {
                 [minimum[0] + n("width")?, minimum[1] + n("height")?],
             );
             shape.color = color(t.integer(&(p.clone() + "color"))?);
+            shape.opacity = if t.integer("shapes_transparent")? != 0 { 0.0 } else { 1.0 };
             shape.drift = [n("vx")?, n("vy")?];
             shape.vision_policy = if t.integer("shapes_see_through")? != 0 {
                 ShapeVisionPolicy::SeeThrough

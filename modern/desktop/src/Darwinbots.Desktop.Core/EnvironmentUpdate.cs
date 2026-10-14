@@ -142,7 +142,8 @@ public sealed record EnvironmentUpdate(
     bool WrapY = true,
     Db2CorpseDecayOptions? CorpseDecay = null,
     Db2WasteOptions? Waste = null,
-    Db2RecordingOptions? Recording = null)
+    Db2RecordingOptions? Recording = null,
+    bool? ShapesVisible = null)
 {
     public static EnvironmentUpdate Default { get; } = new(
         0, 0, 100, [0f, 0f], 0f, 0.5f,
@@ -243,6 +244,7 @@ public static class NativeCommandSerializer
             speciation_genetic_distance_percent = options.SpeciationGeneticDistancePercent,
             toroidal_world = options.ToroidalWorld,
             fixed_bot_radii = options.FixedBotRadii,
+            shapes_visible = options.ShapesVisible,
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
             body_cutoff = options.GlobalSettings.Main.BodyCutoff,
@@ -347,6 +349,7 @@ public static class NativeCommandSerializer
                 auto_speciation = update.AutoSpeciation,
                 speciation_genetic_distance_percent = update.SpeciationGeneticDistancePercent,
                 toroidal_world = update.ToroidalWorld,
+                shapes_visible = update.ShapesVisible,
                 axis_topology = AxisTopology(update.ToroidalWorld, update.WrapX, update.WrapY),
             },
         },

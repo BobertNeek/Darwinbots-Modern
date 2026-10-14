@@ -44,6 +44,7 @@ public sealed record WorldSetupOptions
     public bool AutoSpeciation { get; init; }
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
+    public bool ShapesVisible { get; init; }
     public bool FixedBotRadii { get; init; }
     public bool TiesEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;
@@ -78,5 +79,5 @@ public sealed record WorldSetupOptions
         WrapY,
         CorpseDecay,
         Waste,
-        Recording);
+        Recording, ShapesVisible);
 }

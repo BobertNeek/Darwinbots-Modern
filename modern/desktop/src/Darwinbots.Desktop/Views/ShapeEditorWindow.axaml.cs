@@ -13,10 +13,11 @@ public sealed partial class ShapeEditorWindow : Window
     {
     }
 
-    public ShapeEditorWindow(ObstacleSnapshot obstacle)
+    public ShapeEditorWindow(ObstacleSnapshot obstacle, bool shapesVisible = false)
     {
         _original = obstacle ?? throw new ArgumentNullException(nameof(obstacle));
         InitializeComponent();
+        ShapesVisibleToggle.IsChecked = shapesVisible;
         MinimumX.Value = (decimal)obstacle.Minimum.ElementAtOrDefault(0);
         MinimumY.Value = (decimal)obstacle.Minimum.ElementAtOrDefault(1);
         MaximumX.Value = (decimal)obstacle.Maximum.ElementAtOrDefault(0);
@@ -30,6 +31,7 @@ public sealed partial class ShapeEditorWindow : Window
     }
 
     public ObstacleSnapshot? Result { get; private set; }
+    public bool ShapesVisible => ShapesVisibleToggle.IsChecked == true;
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {

@@ -309,7 +309,7 @@ public static class NativeSnapshotParser
             native.CurrentRound,
             parsedConfig.MaximumRounds,
             native.CycleInRound,
-            parsedConfig.MaximumCycles,
+            native.ContestRuntime is { EffectiveCycleLimit: > 0 } runtime ? runtime.EffectiveCycleLimit : parsedConfig.MaximumCycles,
             native.RestartCount,
             (native.Results ?? []).Select(result => new LocalModeResult(
                 result.Round,
@@ -497,7 +497,10 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("cycle_in_round")] ulong CycleInRound,
         [property: JsonPropertyName("restart_count")] uint RestartCount,
         [property: JsonPropertyName("results")] NativeLocalModeResult[]? Results,
-        [property: JsonPropertyName("adjudication")] NativeLocalModeAdjudication? Adjudication);
+        [property: JsonPropertyName("adjudication")] NativeLocalModeAdjudication? Adjudication,
+        [property: JsonPropertyName("contest_runtime")] NativeContestRuntime? ContestRuntime);
+
+    private sealed record NativeContestRuntime([property: JsonPropertyName("effective_cycle_limit")] ulong EffectiveCycleLimit);
 
     private sealed record NativeLocalModeConfig(
         [property: JsonPropertyName("kind")] string? Kind,

@@ -188,8 +188,8 @@ fn advanced_mutation_policies_and_simulation_costs_apply_in_rust_authority() {
     assert_eq!(cost.upkeep, 5.0);
     assert_eq!(cost.age, 1.5);
     assert_eq!(cost.action, 6.0);
-    assert_eq!(cost.dynamic_multiplier, 3.0);
-    assert_eq!(cost.total, 37.5);
+    assert_eq!(cost.dynamic_multiplier, 2.0);
+    assert_eq!(cost.total, 25.0);
 
     let dna_upkeep = DnaCosts {
         dna_upkeep: 2.0,

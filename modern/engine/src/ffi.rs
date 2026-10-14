@@ -285,6 +285,8 @@ enum EngineCommand {
         toroidal_world: Option<bool>,
         #[serde(default)]
         axis_topology: Option<[bool; 2]>,
+        #[serde(default)]
+        shapes_visible: Option<bool>,
     },
 }
 
@@ -899,6 +901,7 @@ fn db_engine_command_batch_impl(
                 speciation_genetic_distance_percent,
                 toroidal_world,
                 axis_topology,
+                shapes_visible,
             } => engine
                 .update_environment(
                     metabolism_cost,
@@ -931,6 +934,7 @@ fn db_engine_command_batch_impl(
                     if let Some(wrapped_axes) = axis_topology {
                         engine.set_axis_topology(wrapped_axes);
                     }
+                    if let Some(visible) = shapes_visible { engine.set_shapes_visible(visible); }
                 })
                 .map(|_| serde_json::Value::Null),
         };

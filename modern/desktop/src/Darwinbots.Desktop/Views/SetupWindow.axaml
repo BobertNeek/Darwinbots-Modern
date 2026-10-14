@@ -97,7 +97,7 @@
                           <CheckBox Content="NO MUTATIONS" IsChecked="{Binding DisableMutations}"/>
                           <CheckBox Content="NO CHLOROPLASTS" IsChecked="{Binding DisableChloroplasts}"/>
                           <CheckBox Content="FIXED" IsChecked="{Binding FixedInPlace}"/>
-                          <CheckBox Content="KILL MULTIBOT" IsChecked="{Binding KillMultibot}"/>
+                          <CheckBox Content="REQUIRE MULTIBOT TIES" IsChecked="{Binding KillMultibot}"/>
                           <CheckBox Content="KILL DISQUALIFIED" IsChecked="{Binding KillDisqualified}"/>
                         </WrapPanel>
                         <TextBox Text="{Binding Comment}" Watermark="Species comment"/>

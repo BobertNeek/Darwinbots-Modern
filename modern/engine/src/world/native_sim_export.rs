@@ -261,11 +261,12 @@ impl Engine {
         let v = &c.vegetation;
         let p = &c.physics;
         let s = &c.shots;
-        let d = &c.dna_costs;
+        let d = &self.active_dna_costs();
         for (name, value) in [
             ("field_width", f64::from(c.world_width)),
             ("field_height", f64::from(c.world_height)),
             ("total_cycles", self.tick as f64),
+            ("old_cost", self.dynamic_cost_state.saved_multiplier),
             ("total_born", self.stats.births as f64),
             ("max_population", c.vegetable_population_cap as f64),
             ("max_energy", f64::from(v.max_energy_per_tick)),
@@ -478,6 +479,7 @@ impl Engine {
     }
 
     fn write_native_objects(&self, t: &mut NativeSimulationTail) -> Result<(), EngineError> {
+        flag(t, "shapes_visible", self.config.shapes_visible)?;
         if let Some(first) = self.obstacles.first() {
             if self.obstacles.iter().any(|o| {
                 o.vision_policy != first.vision_policy || o.shot_policy != first.shot_policy

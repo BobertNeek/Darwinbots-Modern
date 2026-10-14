@@ -126,7 +126,7 @@ internal static class LegacySettingsAdapter
         Flag(shapes + 4, settings.Obstacles.Any(o => o.Drift[1] != 0));
         Flag(shapes + 5, settings.Obstacles.All(o => o.VisionPolicy == "see_through"));
         Flag(shapes + 6, settings.Obstacles.All(o => o.ShotPolicy == "absorb"));
-        Flag(shapes + 7, true); Number(shapes + 8, settings.Obstacles.Count);
+        Flag(shapes + 7, settings.ShapesVisible); Number(shapes + 8, settings.Obstacles.Count);
         for (int i = 0; i < settings.Obstacles.Count; i++)
         {
             var obstacle = settings.Obstacles[i];
@@ -192,7 +192,7 @@ internal static class LegacySettingsAdapter
             obstacles.Add(new((uint)(index + 1), [x, y], [x + (float)Number(o + 1), y + (float)Number(o + 2)])
             {
                 Color = Flag(shapes + 1) ? 0xff000000 : FromVbColor(Integer(o)),
-                Opacity = Flag(shapes) || !Flag(shapes + 7, true) ? 0 : 1,
+                Opacity = Flag(shapes) ? 0 : 1,
                 Drift = [Flag(shapes + 3) ? (float)Number(o + 3) : 0, Flag(shapes + 4) ? (float)Number(o + 4) : 0],
                 VisionPolicy = Flag(shapes + 5) ? "see_through" : "opaque",
                 ShotPolicy = Flag(shapes + 6) ? "absorb" : "pass_through",
@@ -282,7 +282,7 @@ internal static class LegacySettingsAdapter
             Gravity = [0, Float(18)], BrownianMotion = Float(20), Species = species,
             FixedBotRadii = Flag(tail + 14), TiesEnabled = !Flag(global + 7),
             AsexualReproductionAllowed = !Flag(tail + 16), RobotFixingAllowed = !Flag(footer + 9 + 3 * count),
-            Obstacles = obstacles,
+            Obstacles = obstacles, ShapesVisible = Flag(shapes + 7),
             ToroidalWorld = Flag(global + 9), WrapX = Flag(global + 83, Flag(global + 9)),
             WrapY = Flag(global + 84, Flag(global + 9)), Vegetation = vegetation,
             Physics = Db2PhysicsOptions.Default with

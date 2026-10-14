@@ -80,7 +80,8 @@ internal static class NativeConfigurationParser
                 recording.GetProperty("dead_snapshot_enabled").GetBoolean(),
                 recording.GetProperty("exclude_repopulating_robots").GetBoolean(),
                 recording.GetProperty("autosave_interval").GetUInt64(),
-                recording.GetProperty("sampling_interval").GetInt32()));
+                recording.GetProperty("sampling_interval").GetInt32()),
+            config.TryGetProperty("shapes_visible", out var visible) ? visible.GetBoolean() : false);
         var species = root.GetProperty("species").EnumerateArray()
             .Where(value => value.GetProperty("dna").ValueKind == JsonValueKind.String)
             .Select(value =>

@@ -1,6 +1,7 @@
 //! Retain the complete robot at death and materialize it for native exchange.
 
 use super::*;
+#[cfg(test)]
 use crate::SaveFile;
 
 pub(super) struct NativeCorpseTransfer {
@@ -22,8 +23,7 @@ impl Engine {
                 continue;
             }
             robot.counters.decay_timer = 0;
-            robot.program.rng_state = advance_random(robot.program.rng_state);
-            let unit = (robot.program.rng_state >> 40) as f32 / (1_u32 << 24) as f32;
+            let unit = world_random_unit(&mut self.native_random, &mut robot.program.rng_state) as f32;
             robot.set_heading(unit * 2.0 * std::f32::consts::PI);
             let body = robot.materials.body.max(0.0);
             let packet = self.config.corpse_decay.packet_size.max(0) as f32;
@@ -49,11 +49,9 @@ impl Engine {
                     robot.program.memory.write(901, 0);
                 }
                 // newshot consumes the unused range draw before angle scatter.
-                robot.program.rng_state = advance_random(robot.program.rng_state);
-                robot.program.rng_state = advance_random(robot.program.rng_state);
-                angle = (f64::from(angle)
-                    + ((robot.program.rng_state % 41) as i32 - 20) as f64 / 200.0)
-                    as f32;
+                world_random_unit(&mut self.native_random, &mut robot.program.rng_state);
+                let scatter = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -20, 20);
+                angle = (f64::from(angle) + f64::from(scatter) / 200.0) as f32;
                 let slot = self.projectiles.spawn(
                     ProjectileSpawn {
                         owner: id,
@@ -172,15 +170,54 @@ impl Engine {
                 "native world exceeds 32000 records".into(),
             ));
         }
-        let mut world = SaveFile::decode(&SaveFile::encode(self)?)?;
-        world.corpses.clear();
+        // Clear archives before restore so automatic migration cannot duplicate
+        // the selected corpse records in this export-only copy.
+        let mut payload = self.db3s_v3_payload()?;
+        payload["corpses"] = serde_json::json!([]);
+        let mut world = Self::from_db3s_v3_payload(payload)?;
         let corpses = indices
             .iter()
-            .map(|&index| &self.corpses[index])
+            .map(|&index| self.corpses[index].clone())
             .collect::<Vec<_>>();
+        let members = world.materialize_archived_corpses(&corpses)?;
+        Ok((world, members))
+    }
+
+    pub(super) fn migrate_complete_archived_corpses(&mut self) -> Result<(), EngineError> {
+        let archives = std::mem::take(&mut self.corpses);
+        let (complete, partial): (Vec<_>, Vec<_>) = archives
+            .into_iter()
+            .partition(|corpse| corpse.native_state.is_some());
+        self.corpses = partial;
+        if !complete.is_empty() {
+            self.materialize_archived_corpses(&complete)?;
+            self.refresh_tie_projections();
+        }
+        Ok(())
+    }
+
+    fn materialize_archived_corpses(
+        &mut self,
+        corpses: &[CorpseSnapshot],
+    ) -> Result<Vec<OrganismId>, EngineError> {
+        if self.occupied_robot_records() + corpses.len() > MAX_ROBOTS {
+            return Err(EngineError::InvalidSave(
+                "migrated world exceeds 32000 robot records".into(),
+            ));
+        }
+        let mut prior_ids = HashSet::new();
+        for corpse in corpses {
+            if let Some(id) = corpse.native_id
+                && (!prior_ids.insert(id) || self.slots.get(id).is_ok())
+            {
+                return Err(EngineError::InvalidSave(
+                    "archived corpse identity duplicates a retained robot record".into(),
+                ));
+            }
+        }
         let mut remap = HashMap::new();
         let mut members = Vec::with_capacity(corpses.len());
-        for corpse in &corpses {
+        for corpse in corpses {
             let mut robot = corpse.native_state.as_deref().cloned().ok_or_else(|| {
                 EngineError::InvalidSave("older corpse projection lacks the complete robot state required for native export".into())
             })?;
@@ -201,23 +238,49 @@ impl Engine {
             robot.buoyancy = 0.0;
             robot.materials.chloroplasts = 0.0;
             robot.materials.energy = corpse.energy as f32;
-            robot.materials.body = corpse.body as f32 + corpse.body_fraction;
+            let body = corpse.body as f32 + corpse.body_fraction;
+            if body != robot.materials.body {
+                // The old archive decay path updated its projection, while
+                // retaining the original complete robot as exchange metadata.
+                robot.materials.radius =
+                    crate::physics::organism_radius(body, 0.0, self.config.fixed_bot_radii);
+            }
+            robot.materials.body = body;
             robot.kinematics.position = corpse.position;
             robot.kinematics.previous_position = corpse.position;
             robot.kinematics.velocity = corpse.velocity;
             robot.counters.age = corpse.age;
             robot.counters.decay_timer = corpse.decay_timer.min(u32::MAX as u64) as u32;
+            robot.senses.occurrence_counts.fill(0);
+            robot.senses.vision_reference_occurrences.fill(0);
             for address in 501..=509 {
                 robot.program.memory.write(address, 0);
             }
-            let id = world.slots.spawn(robot);
+            let id = self.slots.spawn(robot);
             if let Some(old_id) = corpse.native_id {
                 remap.insert(old_id, id);
             }
             members.push(id);
         }
-        for slot in world.slots.iter_mut() {
+        for slot in self.slots.iter_mut() {
             if let Some(robot) = slot.organism.as_mut() {
+                for parent in robot.identity.parents.iter_mut().flatten() {
+                    *parent = remap.get(parent).copied().unwrap_or(*parent);
+                }
+                for opponent in [&mut robot.senses.focused_opponent, &mut robot.senses.console_reference].into_iter().flatten() {
+                    *opponent = remap.get(opponent).copied().unwrap_or(*opponent);
+                }
+                for material in [
+                    &mut robot.effects.stored_sperm,
+                    &mut robot.effects.stored_virus,
+                ]
+                .into_iter()
+                .flatten()
+                {
+                    if let Some(source) = material.source.as_mut() {
+                        *source = remap.get(source).copied().unwrap_or(*source);
+                    }
+                }
                 for endpoint in robot.ties.iter_mut().flatten() {
                     if let Some(other) = endpoint.other.and_then(|id| remap.get(&id).copied()) {
                         endpoint.other = Some(other);
@@ -225,24 +288,41 @@ impl Engine {
                 }
             }
         }
-        world.ties.retain(|tie| {
-            world.slots.get(tie.first).is_ok() && world.slots.get(tie.second).is_ok()
-        });
+        for owner in &mut self.projectiles.owners {
+            *owner = remap.get(owner).copied().unwrap_or(*owner);
+        }
+        for id in &mut self.pending_mutations {
+            *id = remap.get(id).copied().unwrap_or(*id);
+        }
+        if let Some(focus) = self.player_bot.focus.as_mut() {
+            *focus = remap.get(focus).copied().unwrap_or(*focus);
+        }
+        for tie in &mut self.ties {
+            tie.first = remap.get(&tie.first).copied().unwrap_or(tie.first);
+            tie.second = remap.get(&tie.second).copied().unwrap_or(tie.second);
+        }
+        for corpse in &mut self.corpses {
+            if let Some(parent) = corpse.parent.as_mut() {
+                *parent = remap.get(parent).copied().unwrap_or(*parent);
+            }
+        }
+        self.ties
+            .retain(|tie| self.slots.get(tie.first).is_ok() && self.slots.get(tie.second).is_ok());
         for tie in corpses.iter().flat_map(|corpse| &corpse.native_ties) {
             let mut tie = tie.clone();
             tie.first = remap.get(&tie.first).copied().unwrap_or(tie.first);
             tie.second = remap.get(&tie.second).copied().unwrap_or(tie.second);
-            if world.slots.get(tie.first).is_ok()
-                && world.slots.get(tie.second).is_ok()
-                && !world
+            if self.slots.get(tie.first).is_ok()
+                && self.slots.get(tie.second).is_ok()
+                && !self
                     .ties
                     .iter()
                     .any(|existing| existing.contains(tie.first) && existing.contains(tie.second))
             {
-                world.ties.push(tie);
+                self.ties.push(tie);
             }
         }
-        Ok((world, members))
+        Ok(members)
     }
 
     pub(super) fn native_corpse_transfer(
@@ -505,14 +585,57 @@ mod tests {
         corpse.body_fraction = 0.375;
         corpse.position = [500.0, 600.0];
         corpse.age += 7;
+        let other = world.slots.get_mut(tie.second).unwrap();
+        other.identity.parents[0] = Some(tie.first);
+        other.senses.focused_opponent = Some(tie.first);
+        other.effects.stored_sperm = Some(StoredGeneticMaterial {
+            dna: original.program.dna.clone(),
+            source: Some(tie.first),
+        });
+        world.projectiles.owners[0] = tie.first;
+        world.player_bot.focus = Some(tie.first);
         world.slots.remove(tie.first).unwrap();
         let dead_id = tie.first;
         world.ties.retain(|tie| !tie.contains(dead_id));
         world.corpses.push(corpse);
+        let replacement = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [3500.0; 2])
+            .unwrap();
+        assert_eq!(replacement.slot(), dead_id.slot());
+        assert_ne!(replacement.generation(), dead_id.generation());
         world.publish_snapshot();
         assert!(world.snapshot.corpses[0].native_state.is_none());
         let modern = SaveFile::encode(&world).unwrap();
         let resumed = SaveFile::decode(&modern).unwrap();
+        assert!(resumed.corpses.is_empty());
+        let migrated = resumed
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .find(|&id| {
+                resumed.slots.get(id).unwrap().identity.absolute_id == original.identity.absolute_id
+            })
+            .unwrap();
+        assert!(resumed.slots.get(migrated).unwrap().flags.corpse);
+        assert_ne!(migrated, dead_id);
+        assert!(!resumed.slots.get(replacement).unwrap().flags.corpse);
+        assert_eq!(resumed.projectiles.owners[0], migrated);
+        assert_eq!(resumed.player_bot.focus, Some(migrated));
+        let other = resumed.slots.get(tie.second).unwrap();
+        assert_eq!(other.identity.parents[0], Some(migrated));
+        assert_eq!(other.senses.focused_opponent, Some(migrated));
+        assert_eq!(
+            other.effects.stored_sperm.as_ref().unwrap().source,
+            Some(migrated)
+        );
+        assert_eq!(resumed.slots.get(migrated).unwrap().materials.body, 153.375);
+        assert!(resumed.ties.iter().any(|tie| tie.contains(migrated)));
+        let twice = SaveFile::decode(&SaveFile::encode(&resumed).unwrap()).unwrap();
+        assert!(twice.corpses.is_empty());
+        assert_eq!(
+            twice.occupied_robot_records(),
+            resumed.occupied_robot_records()
+        );
         let before = SaveFile::encode(&resumed).unwrap();
         let bytes = resumed.export_native_sim().unwrap();
         assert_eq!(
@@ -569,7 +692,8 @@ mod tests {
                     == other_absolute
         }));
         let group =
-            NativeRecordFile::decode(&resumed.native_corpse_transfer(0).unwrap().bytes).unwrap();
+            NativeRecordFile::decode(&resumed.export_native_organisms(&[migrated]).unwrap())
+                .unwrap();
         assert_eq!(group.robots.len(), 1);
         assert!(group.tail.is_empty());
         assert_eq!(group.robots[0].word("corpse").unwrap(), -1);
@@ -661,5 +785,69 @@ mod tests {
             file.robots[0].long("parent").unwrap() as u64,
             parent_absolute
         );
+    }
+
+
+    #[test]
+    fn complete_archive_loads_once_and_moves_as_a_physical_corpse() {
+        let mut world = Engine::new(EngineConfig {
+            brownian_motion: 0.0,
+            corpse_decay: CorpseDecaySettings {
+                enabled: true,
+                period: 100,
+                ..Default::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.kinematics.velocity = [10.0, 0.0];
+        robot.materials.radius = 415.0;
+        robot.program.memory.restore_native_cell(999, 32767);
+        let corpse = world.archive_corpse(id, world.slots.get(id).unwrap(), 0, false);
+        world.slots.remove(id).unwrap();
+        world.corpses.push(corpse);
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert!(resumed.corpses.is_empty());
+        assert_eq!(resumed.population(), 0);
+        assert_eq!(resumed.occupied_robot_records(), 1);
+        let dead = resumed.slots.ids_in_slot_order()[0];
+        assert_eq!(resumed.memory_at(dead, 999).unwrap(), 32767);
+        assert_eq!(resumed.slots.get(dead).unwrap().materials.radius, 415.0);
+        resumed.tick().unwrap();
+        assert!(resumed.slots.get(dead).unwrap().kinematics.position[0] > 500.0);
+        assert_eq!(
+            resumed.stats.deaths, 0,
+            "migration does not record a new death"
+        );
+        assert_eq!(resumed.snapshot().render_instances.len(), 1);
+    }
+
+    #[test]
+    fn archive_identity_collision_is_rejected_and_partial_archives_are_retained() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world
+            .corpses
+            .push(world.archive_corpse(id, world.slots.get(id).unwrap(), 0, false));
+        assert!(matches!(
+            SaveFile::decode(&SaveFile::encode(&world).unwrap()),
+            Err(EngineError::InvalidSave(_))
+        ));
+        world.corpses.clear();
+        world.corpses.push(CorpseSnapshot {
+            body: 100,
+            dna: "1 2 3 stop".into(),
+            ..Default::default()
+        });
+        let resumed = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(resumed.corpses.len(), 1);
+        assert!(resumed.corpses[0].native_state.is_none());
+        assert_eq!(resumed.occupied_robot_records(), 1);
     }
 }

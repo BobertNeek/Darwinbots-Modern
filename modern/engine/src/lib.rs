@@ -12,6 +12,7 @@ mod id;
 mod legacy;
 mod modes;
 mod mutation;
+mod native_random;
 pub mod native_binary;
 mod persistence;
 mod physics;
@@ -57,7 +58,7 @@ pub use legacy::{
     LegacySettingsFile, LegacySimulationFile, LegacySpeciesStartup,
 };
 pub use modes::{
-    LeaguePreset, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
+    ContestRuntime, LeaguePreset, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
     LocalModeResult, LocalModeState, LocalModeStatus,
 };
 pub use mutation::{

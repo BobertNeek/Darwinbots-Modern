@@ -1364,6 +1364,7 @@ public sealed partial class MainWindow : Window
     private WorldSetupOptions CreateNextWorldSetup() => _setup with
     {
         GlobalSettings = _globalSettings,
+        ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
     };
 
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
@@ -2163,10 +2164,12 @@ public sealed partial class MainWindow : Window
             || !ObjectEditorPolicy.CanEdit(ObjectEditorKind.Shape, SelectedObject())) return;
         var obstacle = _session.LatestSnapshot.Obstacles.FirstOrDefault(value => value.Id == feature.Id);
         if (obstacle is null) return;
-        var dialog = new ShapeEditorWindow(obstacle);
+        var dialog = new ShapeEditorWindow(obstacle, _liveEnvironment.ShapesVisible ?? false);
         await dialog.ShowDialog(this);
         if (dialog.Result is not { } result) return;
         await _session.UpdateObstacleAsync(result);
+        _liveEnvironment = _liveEnvironment with { ShapesVisible = dialog.ShapesVisible };
+        await _session.UpdateEnvironmentAsync(_liveEnvironment);
         _viewModel.Status = $"SHAPE {result.Id} UPDATED";
     }
 

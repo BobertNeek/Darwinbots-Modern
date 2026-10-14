@@ -122,19 +122,23 @@ pub struct ActivationFrame {
 }
 
 pub struct DnaVm {
-    random_state: u64,
+    random_state: crate::native_random::RandomStream,
 }
 
 impl DnaVm {
     pub fn new(seed: u64) -> Self {
         Self {
-            random_state: seed.max(1),
+            random_state: crate::native_random::RandomStream::legacy(seed),
         }
     }
 
-    pub fn random_state(&self) -> u64 {
-        self.random_state
+    pub fn random_state(&self) -> u64 { self.random_state.state() }
+
+    pub(crate) fn with_native_random(random: crate::native_random::NativeRandom) -> Self {
+        Self { random_state: crate::native_random::RandomStream::Native(random) }
     }
+
+    pub(crate) fn native_random(&self) -> Option<crate::native_random::NativeRandom> { self.random_state.native() }
 
     pub fn execute(
         &mut self,
@@ -361,7 +365,7 @@ fn execute_basic(
     command: i32,
     stack: &mut IntegerStack,
     memory: &VmMemory,
-    random_state: &mut u64,
+    random_state: &mut crate::native_random::RandomStream,
 ) {
     match command {
         1 => binary(stack, legacy_add),
@@ -614,7 +618,7 @@ fn execute_store(
     command: i32,
     stack: &mut IntegerStack,
     memory: &mut VmMemory,
-    random_state: &mut u64,
+    random_state: &mut crate::native_random::RandomStream,
     reproduction_writes: &mut u8,
 ) -> Option<f64> {
     if !(1..=14).contains(&command) {
@@ -687,7 +691,7 @@ fn execute_store(
             let value = if magnitude == 0 {
                 0
             } else {
-                (next_random(random_state) % (magnitude + 1)) as i32 * current.signum()
+                random_state.from_zero(magnitude.min(i32::MAX as u64) as i32) * current.signum()
             };
             memory.write(address, value);
             1.0 / 7.0
@@ -831,21 +835,8 @@ fn custom_approximate(stack: &mut IntegerStack, invert: bool) -> bool {
     result ^ invert
 }
 
-fn random_from_zero(state: &mut u64, upper: i32) -> i32 {
-    if upper >= 0 {
-        (next_random(state) % (u64::from(upper as u32) + 1)) as i32
-    } else {
-        -((next_random(state) % u64::from(upper.unsigned_abs())) as i32)
-    }
-}
-
-fn next_random(state: &mut u64) -> u64 {
-    let mut value = *state;
-    value ^= value << 13;
-    value ^= value >> 7;
-    value ^= value << 17;
-    *state = value.max(1);
-    value
+fn random_from_zero(state: &mut crate::native_random::RandomStream, upper: i32) -> i32 {
+    state.from_zero(upper)
 }
 
 fn ensure_activation_slot(report: &mut VmReport, record: bool) {

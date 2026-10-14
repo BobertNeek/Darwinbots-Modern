@@ -7,6 +7,19 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class Db2EnvironmentSettingsTests
 {
     [Fact]
+    public void ShapeVisibilitySurvivesSettingsAndEnvironmentCommandsIndependentlyOfOpacity()
+    {
+        var setup = new WorldSetupOptions { ShapesVisible = true };
+        using var engine = JsonDocument.Parse(NativeCommandSerializer.SerializeEngineConfig(setup));
+        Assert.True(engine.RootElement.GetProperty("shapes_visible").GetBoolean());
+        var settings = DesktopSettings.FromWorldSetup(setup);
+        Assert.True(settings.ShapesVisible);
+        Assert.True(settings.ToWorldSetup(setup).ShapesVisible);
+        using var environment = JsonDocument.Parse(NativeCommandSerializer.SerializeEnvironment(
+            setup.ToEnvironmentUpdate() with { ShapesVisible = false }));
+        Assert.False(environment.RootElement.GetProperty("commands")[0].GetProperty("shapes_visible").GetBoolean());
+    }
+    [Fact]
     public void StarterModeUsesNormalMetabolismEvenWhenZerobotSustenanceDefaultsToDisabled()
     {
         var options = new WorldSetupOptions

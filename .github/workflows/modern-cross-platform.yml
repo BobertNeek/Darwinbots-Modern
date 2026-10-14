@@ -40,7 +40,7 @@ jobs:
         with:
           dotnet-version: "10.0.x"
       - name: Test Rust workspace
-        run: cargo test --workspace
+        run: cargo test --release --workspace
       - name: Test desktop core
         run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release
       - name: Test rendered desktop controls
@@ -49,6 +49,13 @@ jobs:
         run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release
       - name: Publish desktop package
         run: dotnet publish modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained false -o artifacts/${{ matrix.rid }}
+      - name: Smoke test published desktop package
+        shell: pwsh
+        run: |
+          $package = Join-Path $PWD "artifacts/${{ matrix.rid }}"
+          $name = if ($env:RUNNER_OS -eq "Windows") { "Darwinbots.Desktop.exe" } else { "Darwinbots.Desktop" }
+          & (Join-Path $package $name) --smoke-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: darwinbots-${{ matrix.rid }}
