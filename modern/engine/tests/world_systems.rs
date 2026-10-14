@@ -348,7 +348,7 @@ fn late_internal_senses_publish_full_velocity_body_change_daytime_fixed_and_max_
     assert_eq!(engine.memory(moving, "velscalar").unwrap(), 5);
     assert_eq!(engine.memory(moving, "velsx").unwrap(), 0);
     assert_eq!(engine.memory(moving, "veldx").unwrap(), 0);
-    assert_eq!(engine.memory(moving, "veldn").unwrap(), 0);
+    assert_eq!(engine.memory(moving, "veldn").unwrap(), -5);
     assert_eq!(engine.memory(moving, "velup").unwrap(), 5);
     assert_eq!(engine.memory(moving, "bodloss").unwrap(), -10);
     assert_eq!(engine.memory(moving, "bodgain").unwrap(), 10);

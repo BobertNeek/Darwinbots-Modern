@@ -193,7 +193,7 @@ fn wrapped_motion_overshoots_then_respawns_on_the_next_cycle_after_save_restore(
     .unwrap();
     let id = engine
         .spawn_at(
-            LegacyDna::parse("cond *.robage 1 < start 200 .dx store stop").unwrap(),
+            LegacyDna::parse("cond *.robage 1 < start 200 .up store stop").unwrap(),
             [930.0, 500.0],
         )
         .unwrap();

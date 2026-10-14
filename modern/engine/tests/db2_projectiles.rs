@@ -170,7 +170,7 @@ fn shot_velocity_inherits_the_firers_actual_velocity() {
     .unwrap();
     let attacker = engine
         .spawn_at(
-            LegacyDna::parse("start\n10 .dx store\nstop").unwrap(),
+            LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
             [250.0, 500.0],
         )
         .unwrap();
@@ -940,12 +940,22 @@ fn information_shots_cannot_bypass_sexual_reproduction_requirements() {
             .is_none()
     );
     assert!(
-        !engine
+        engine
             .robot_state(target)
             .unwrap()
             .effects
             .forced_reproduction
     );
+    assert_eq!(
+        engine
+            .robot_state(target)
+            .unwrap()
+            .effects
+            .reproduction_assistance,
+        4
+    );
+    assert_eq!(engine.memory_at(target, 302).unwrap(), 50);
+    assert_eq!(engine.snapshot().stats.self_reproductions, 0);
 }
 
 fn segment_length(start: [f32; 2], end: [f32; 2]) -> f32 {
