@@ -1,0 +1,36 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 24.66s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 5 tests
+test world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu ... ok
+test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ok
+test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ok
+test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ok
+test world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 111 filtered out; finished in 4.79s
+
+     Running tests\db24832_starter_movement.rs (target\debug\deps\db24832_starter_movement-385f5c8be2e169b8.exe)
+
+running 1 test
+physical gpu adapter=NVIDIA GeForce RTX 3050 backend=Vulkan device_type=DiscreteGpu
+test untouched_starter_animal_moves_on_physical_gpu ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1.13s
+
+     Running tests\gpu_ffi.rs (target\debug\deps\gpu_ffi-625ae4070967ba49.exe)
+
+running 1 test
+AUT-02 physical gpu adapter=NVIDIA GeForce RTX 3050 backend=Vulkan device_type=DiscreteGpu
+test physical_gpu_fuses_grid_sensing_integration_and_render_preparation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 25 filtered out; finished in 0.89s
+
+     Running tests\w4_evolution_gpu.rs (target\debug\deps\w4_evolution_gpu-e52f17b66848a22e.exe)
+
+running 1 test
+physical gpu adapter=NVIDIA GeForce RTX 3050 backend=Vulkan device_type=DiscreteGpu
+test physical_gpu_phase2_ecological_differential_has_adapter_receipt ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 1.04s

@@ -5,17 +5,18 @@
   "filtered": 2,
   "log": "completion-checks/parity-cached-radius-workspace-release.log",
   "targets": 59,
-  "long_ecology": "two named current-source tests running separately",
+  "long_ecology": "Both named CPU scenarios passed separately at the same source revision: 880.80s and 348.18s.",
   "ci": {
     "repository": "BobertNeek/Darwinbots-Modern",
     "run_id": 38506430843,
     "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
-    "status": "in_progress",
+    "status": "superseded after Linux failed on five hardware-required library tests; portable/physical separation pushed at 5f00f16",
     "platforms": [
       "windows-latest/win-x64",
       "ubuntu-latest/linux-x64",
       "macos-15-intel/osx-x64",
       "macos-latest/osx-arm64"
     ]
-  }
+  },
+  "long_ecology_receipt": "cached-radius-long-ecology-receipt.json"
 }

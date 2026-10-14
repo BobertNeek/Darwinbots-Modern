@@ -1,0 +1,21 @@
+{
+  "source_revision": "5f00f16f5e3158258d0e6c73f299bc557a9283b5",
+  "portable_library": {
+    "passed": 111,
+    "failed": 0,
+    "ignored": 5
+  },
+  "physical_gpu": {
+    "passed": 8,
+    "failed": 0,
+    "adapter": "NVIDIA GeForce RTX 3050",
+    "backend": "Vulkan",
+    "fallback": false,
+    "log": "completion-checks/parity-physical-gpu-explicit.log"
+  },
+  "command": "cargo test -p darwinbots-engine --lib --test gpu_ffi --test db24832_starter_movement --test w4_evolution_gpu -- --ignored --nocapture",
+  "limits": [
+    "Physical GPU cases are explicitly ignored by the portable default suite and run separately.",
+    "This focused hardware gate is not long GPU ecology or population-scale performance qualification."
+  ]
+}
