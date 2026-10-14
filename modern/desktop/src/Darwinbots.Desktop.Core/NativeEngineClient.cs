@@ -146,6 +146,8 @@ public sealed partial class NativeEngineClient : IEngineClient
                     placement = new
                     {
                         mode = species.Placement.Mode.ToString().ToLowerInvariant(),
+                        left = species.Placement.Left, right = species.Placement.Right,
+                        top = species.Placement.Top, bottom = species.Placement.Bottom,
                         x = species.Placement.X,
                         y = species.Placement.Y,
                     },

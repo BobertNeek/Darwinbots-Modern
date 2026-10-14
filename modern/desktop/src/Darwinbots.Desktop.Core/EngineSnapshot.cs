@@ -46,6 +46,7 @@ public sealed record OrganismSnapshot(
     int Poisoned = 0,
     OrganismKey?[]? Parents = null)
 {
+    public bool IsCorpse { get; init; }
     public VisualPhenotypeSnapshot Phenotype { get; init; } = VisualPhenotypeSnapshot.Default;
     public VisionSnapshot Vision { get; init; } = VisionSnapshot.Default;
     public uint CurrentGene { get; init; }

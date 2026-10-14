@@ -77,6 +77,20 @@ mod native_league;
 #[path = "world/native_fitness.rs"]
 mod native_fitness;
 
+#[path = "world/native_disqualification.rs"]
+mod native_disqualification;
+use native_disqualification::DisqualificationAction;
+
+#[path = "world/native_tie_sharing.rs"]
+mod native_tie_sharing;
+use native_tie_sharing::{SharedResource, native_share_resource};
+
+#[path = "world/native_physics.rs"]
+mod native_physics;
+
+#[path = "world/native_pipeline.rs"]
+mod native_pipeline;
+
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
 
@@ -340,6 +354,7 @@ fn write_shot_taste(robot: &mut RobotState, event_point: [f32; 2], kind: i32) {
 }
 
 fn publish_reproductive_readbacks(robot: &mut RobotState) {
+    robot.program.memory.write(303, robot.effects.fertilization_timer.max(0));
     robot
         .program
         .memory
@@ -2143,6 +2158,8 @@ struct PendingProjectileRequest {
 struct PendingBirth {
     parent: OrganismId,
     percentage: i32,
+    asexual_command: i32,
+    mutated_command: i32,
     mutation_reproduction: bool,
     assisted: bool,
     sexual: bool,
@@ -2173,6 +2190,12 @@ struct EngineCycleCheckpoint {
 
 #[derive(Serialize, Deserialize)]
 pub struct Engine {
+    #[serde(skip, default)]
+    native_phase: Option<native_pipeline::NativeRobotPhase>,
+    #[serde(skip, default)]
+    pending_disqualifications: Vec<OrganismId>,
+    #[serde(skip, default)]
+    native_tie_index: Option<HashMap<OrganismId, Vec<usize>>>,
     #[serde(default)]
     native_random: Option<crate::native_random::NativeRandom>,
     #[serde(default)]
@@ -2455,6 +2478,9 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_phase: None,
+            pending_disqualifications: Vec::new(),
+            native_tie_index: None,
             native_random: None,
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
@@ -2553,6 +2579,7 @@ impl Engine {
 
     pub fn new(config: EngineConfig) -> Result<Self, EngineError> {
         config.shots.validate().map_err(EngineError::Invariant)?;
+        if config.disqualification > 2 { return Err(EngineError::Invariant("disqualification level must be 0, 1 or 2".into())); }
         if config.organism_capacity > MAX_ROBOTS {
             return Err(EngineError::Invariant(
                 "organism capacity cannot exceed 32,000 robots".to_string(),
@@ -2629,6 +2656,9 @@ impl Engine {
             pending_gpu_collision_pairs: None,
             snapshot_publication_count: 0,
             dynamic_cost_state: DynamicCostRuntimeState::default(),
+            native_phase: None,
+            pending_disqualifications: Vec::new(),
+            native_tie_index: None,
             native_random: Some(native_random),
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
@@ -2951,6 +2981,7 @@ impl Engine {
         self.local_mode.contest_runtime = Default::default();
         self.local_mode.restart_count = 0;
         self.local_mode.results.clear();
+        self.local_mode.disqualifications.clear();
         self.local_mode.adjudication = None;
         if config.kind == LocalModeKind::Zerobot {
             self.zerobot_checkpoint = None;
@@ -2986,6 +3017,7 @@ impl Engine {
         self.local_mode.cycle_in_round = 0;
         self.local_mode.contest_runtime = Default::default();
         self.local_mode.results.clear();
+        self.local_mode.disqualifications.clear();
         self.local_mode.adjudication = None;
         self.local_mode.status = LocalModeStatus::Running;
         self.apply_mode_restrictions(&config);
@@ -3081,6 +3113,7 @@ impl Engine {
             restrictions.disable_movement = false;
             restrictions.disable_reproduction = false;
             restrictions.virus_immune = false;
+            restrictions.kill_multibot = preset == crate::LeaguePreset::Multibot && !definition.vegetable;
         }
         for template in self.species_templates.iter_mut().flatten() {
             template.initial_population = 5;
@@ -3711,11 +3744,9 @@ impl Engine {
                         ^ (species.0 as u64).rotate_left(31)
                         ^ ordinal as u64,
                 );
-                let position = [
-                    unit_coordinate(random, self.config.world_width),
-                    unit_coordinate(advance_random(random), self.config.world_height),
-                ];
+                let position = self.native_placement_position(species, random);
                 let id = self.spawn_species_at_unpublished(dna.clone(), species, position)?;
+                self.native_placement_heading(id)?;
                 let organism = self.slots.get_mut(id)?;
                 if let Some(seed) = winner_seed.as_ref() {
                     organism.program = seed.program.clone();
@@ -3948,8 +3979,25 @@ impl Engine {
         positions: impl IntoIterator<Item = [f32; 2]>,
         initial_energy: i32,
     ) -> Result<Vec<OrganismId>, EngineError> {
+        self.spawn_species_batch_internal(dna, species, positions, initial_energy, None)
+    }
+
+    pub(crate) fn spawn_species_batch_with_native_placement(
+        &mut self, dna: LegacyDna, species: SpeciesId, positions: Vec<[f32; 2]>,
+        initial_energy: i32, random_positions: bool,
+    ) -> Result<Vec<OrganismId>, EngineError> {
+        self.spawn_species_batch_internal(dna, species, positions, initial_energy, Some(random_positions))
+    }
+
+    fn spawn_species_batch_internal(
+        &mut self, dna: LegacyDna, species: SpeciesId,
+        positions: impl IntoIterator<Item = [f32; 2]>, initial_energy: i32,
+        native_placement: Option<bool>,
+    ) -> Result<Vec<OrganismId>, EngineError> {
+        self.species.get(species.0 as usize).ok_or_else(|| EngineError::Invariant("species does not exist".into()))?
+            .validate_placement_bounds().map_err(EngineError::Invariant)?;
         let mut positions: Vec<_> = positions.into_iter().collect();
-        if self
+        if native_placement.is_none() && self
             .species
             .get(species.0 as usize)
             .is_some_and(|value| value.vegetable)
@@ -3971,11 +4019,15 @@ impl Engine {
         });
         let mut ids = Vec::with_capacity(positions.len());
         for position in positions {
+            let position = if native_placement == Some(true) {
+                self.native_placement_position(species, advance_random(self.config.seed))
+            } else { position };
             let id = self.spawn_species_at_unpublished(dna.clone(), species, position)?;
             let state = self.slots.get_mut(id)?;
             state.materials.energy = energy as f32;
             state.materials.synchronize_energy();
             state.program.memory.write(MEM_NRG, energy);
+            if native_placement.is_some() { self.native_placement_heading(id)?; }
             ids.push(id);
         }
         self.publish_snapshot();
@@ -4640,6 +4692,9 @@ impl Engine {
     }
 
     fn restore_cycle_checkpoint(&mut self, checkpoint: EngineCycleCheckpoint) {
+        self.native_phase = None;
+        self.pending_disqualifications.clear();
+        self.native_tie_index = None;
         self.dynamic_cost_state = checkpoint.dynamic_cost_state;
         self.native_random = checkpoint.native_random;
         let checkpoint = checkpoint.checkpoint;
@@ -4738,7 +4793,6 @@ impl Engine {
         self.player_bot_phase(&mut trace);
 
         trace.phase(CyclePhase::ShotUpdate);
-        self.advance_reproductive_timers();
         let started = Instant::now();
         self.projectile_update_phase(&mut trace);
         self.phase_timings.projectiles = elapsed_ms(started);
@@ -4774,6 +4828,7 @@ impl Engine {
         self.apply_organism_collisions();
         self.phase_timings.spatial = elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::StaticFriction);
+        if self.native_random.is_some() { self.native_finalize_forces(); }
         self.trace_robot_phase(&mut trace, CyclePhase::TieData);
         let started = Instant::now();
         self.tie_data_phase(&mut trace);
@@ -4782,10 +4837,14 @@ impl Engine {
         self.trace_robot_phase(&mut trace, CyclePhase::SpeciesCounts);
         self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
         self.decay_corpses_phase();
+        if self.native_random.is_some() {
+            self.native_mid_robot_pipeline(&mut trace)?;
+        } else {
         self.trace_robot_phase(&mut trace, CyclePhase::Tie);
         let started = Instant::now();
         self.tie_exchange_phase(&mut trace);
         self.update_multibot_requirements();
+        self.flush_native_disqualifications()?;
         self.phase_timings.interactions += elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::BirthTieHeredity);
         self.birth_tie_heredity_phase(&mut trace);
@@ -4793,12 +4852,14 @@ impl Engine {
         self.aim_commands_phase();
         self.trace_robot_phase(&mut trace, CyclePhase::Virus);
         self.virus_commands_phase();
+        self.flush_native_disqualifications()?;
         self.trace_robot_phase(&mut trace, CyclePhase::PositionIntegration);
         let started = Instant::now();
         self.physics_phase()?;
         self.phase_timings.physics = elapsed_ms(started);
         self.trace_robot_phase(&mut trace, CyclePhase::StoreClamps);
         self.store_clamps_phase();
+        }
         self.trace_robot_phase(&mut trace, CyclePhase::BigBertha);
         if self.config.body_cutoff > 0 {
             let deaths = self
@@ -4822,48 +4883,12 @@ impl Engine {
             )?;
         }
 
-        self.trace_robot_phase(&mut trace, CyclePhase::TieReadback);
-        let started = Instant::now();
-        self.tie_readback_phase();
-        self.phase_timings.interactions += elapsed_ms(started);
-        self.trace_robot_phase(&mut trace, CyclePhase::Mutation);
-        let started = Instant::now();
-        self.mutation_phase(MutationContext::Lifelong);
-        self.phase_timings.mutation = elapsed_ms(started);
-        self.trace_robot_phase(&mut trace, CyclePhase::Material);
-        self.material_commands_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::Waste);
-        self.waste_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::Shot);
-        self.prepare_projectile_requests_phase();
-        self.projectile_spawn_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::Chloroplast);
-        self.chloroplast_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::Body);
-        self.body_commands_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::Buoyancy);
-        self.buoyancy_commands_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::Reproduction);
-        let started = Instant::now();
-        let mut lifecycle = self.prepare_lifecycle_queues(&mut trace);
-        self.phase_timings.lifecycle = elapsed_ms(started);
-        self.trace_robot_phase(&mut trace, CyclePhase::Shock);
-        self.shock_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::Senses);
-        let started = Instant::now();
-        self.spatial_index_phase();
-        self.sensing_phase()?;
-        self.publish_core_senses_phase();
-        self.phase_timings.sensing = elapsed_ms(started);
-        self.trace_robot_phase(&mut trace, CyclePhase::TieFire);
-        let started = Instant::now();
-        self.tie_fire_phase(&mut trace);
-        self.phase_timings.interactions += elapsed_ms(started);
-        self.trace_robot_phase(&mut trace, CyclePhase::AgeTimer);
-        self.age_timer_phase();
-        self.trace_robot_phase(&mut trace, CyclePhase::CorpseRemoval);
-        self.queue_deaths(&mut lifecycle, &mut trace);
-        self.trace_robot_phase(&mut trace, CyclePhase::TotalEnergy);
+        self.phase_timings.mutation = 0.0;
+        self.phase_timings.lifecycle = 0.0;
+        self.phase_timings.sensing = 0.0;
+        let lifecycle = self.native_late_robot_pipeline(&mut trace)?;
+        // Dispatch the GPU grid/render pass once, after all CPU eye/reference
+        // readbacks have observed the native per-robot resource order.
 
         trace.phase(CyclePhase::CommitBirthsDeaths);
         self.commit_lifecycle_queues(lifecycle, &mut trace)?;
@@ -4886,6 +4911,8 @@ impl Engine {
         self.vegetation_feed_phase();
         self.phase_timings.vegetation += elapsed_ms(started);
         self.refresh_occurrence_census_readbacks();
+        self.sensing_gpu_publication_phase()?;
+        self.native_tie_index = None;
         trace.phase(CyclePhase::Publication);
         self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
         if publish {
@@ -4902,7 +4929,8 @@ impl Engine {
     fn trace_robot_phase(&self, trace: &mut CycleRecorder, phase: CyclePhase) {
         trace.phase(phase);
         if trace.is_enabled() {
-            for (slot, entry) in self.slots.iter().enumerate() {
+            for slot in self.phase_slot_range() {
+                let entry = &self.slots[slot];
                 if entry.organism.is_some() {
                     trace.visit(phase, OrganismId::new(slot as u32, entry.generation));
                 }
@@ -5316,6 +5344,9 @@ impl Engine {
     }
 
     fn cost_population(&self) -> usize {
+        if let Some(phase) = &self.native_phase {
+            return phase.cost_population;
+        }
         if self.config.dna_costs.dynamic_all_robots {
             self.population()
         } else {
@@ -5694,7 +5725,8 @@ impl Engine {
         let costs = self.active_dna_costs();
         let population = self.cost_population();
         let rotation_multiplier = costs.dynamic_multiplier(population);
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
@@ -5712,22 +5744,23 @@ impl Engine {
     }
 
     fn advance_reproductive_timers(&mut self) {
-        for slot in &mut self.slots {
-            let Some(robot) = slot.organism.as_mut() else {
-                continue;
-            };
-            if robot.effects.fertilization_timer > 0 {
-                robot.effects.fertilization_timer -= 1;
-                if robot.effects.fertilization_timer == 0 {
-                    robot.effects.stored_sperm = None;
-                }
+        for slot in self.phase_slot_range() {
+            let Some(robot) = self.slots[slot].organism.as_mut() else { continue };
+            if robot.flags.corpse || !robot.flags.can_execute_dna { continue; }
+            let timer = &mut robot.effects.fertilization_timer;
+            if *timer >= 0 { *timer -= 1; }
+            else if *timer < -10 { *timer += 1; }
+            else {
+                if *timer == -1 { robot.effects.stored_sperm = None; }
+                *timer = -2;
             }
             publish_reproductive_readbacks(robot);
         }
     }
 
     fn store_clamps_phase(&mut self) {
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             if let Some(robot) = slot.organism.as_mut() {
                 robot.materials.energy = robot.materials.energy.clamp(-32_000.0, 32_000.0);
                 robot.materials.waste = robot.materials.waste.clamp(0.0, 32_000.0);
@@ -5741,6 +5774,7 @@ impl Engine {
 
     fn material_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let mut actions = Vec::new();
         let costs = self.active_dna_costs();
         let population = self.cost_population();
         let transaction_costs = [
@@ -5750,7 +5784,8 @@ impl Engine {
             SimulationCostAction::Poison,
         ]
         .map(|action| costs.action_cost_for(action, 1.0, population));
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
@@ -5762,6 +5797,15 @@ impl Engine {
             else {
                 unreachable!("material phase must return material commands")
             };
+            let id = OrganismId::new(slot_index as u32, slot.generation);
+            for (command, action) in [
+                (commands.make_venom, DisqualificationAction::Venom),
+                (commands.make_poison, DisqualificationAction::Poison),
+                (commands.make_shell, DisqualificationAction::Shell),
+                (commands.make_slime, DisqualificationAction::Slime),
+            ] {
+                if command != 0 { actions.push((id, action)); }
+            }
             let multibot_divisor = if robot.counters.multibot {
                 (robot.ties.iter().flatten().count() + 1) as f32
             } else {
@@ -5775,11 +5819,13 @@ impl Engine {
             );
             robot.materials.publish(&mut robot.program.memory);
         }
+        for (id, action) in actions { self.native_disqualify_action(id, action); }
     }
 
     fn age_timer_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
@@ -5806,7 +5852,8 @@ impl Engine {
         let daytime = i32::from(self.config.vegetation.daytime);
         let max_velocity = sensor_value(self.config.physics.max_velocity);
         let robot_fixing_allowed = self.robot_fixing_allowed;
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
@@ -5921,6 +5968,7 @@ impl Engine {
     }
 
     fn intent_phase(&mut self) {
+        if self.native_random.is_some() { self.native_intent_phase(); return; }
         let configured_gravity = self.config.gravity;
         let drag = self.config.drag;
         let configured_brownian = self.config.brownian_motion.max(0.0);
@@ -6087,7 +6135,7 @@ impl Engine {
             .rebuild_from_soa(&positions, &alive, 1_000.0);
     }
 
-    fn sensing_phase(&mut self) -> Result<(), EngineError> {
+    fn sensing_gpu_publication_phase(&mut self) -> Result<(), EngineError> {
         self.pending_gpu_render_instances = None;
         self.pending_gpu_collision_pairs = None;
         let gpu_result = if let RuntimePhysics::Gpu(backend) = &self.physics {
@@ -6139,12 +6187,6 @@ impl Engine {
         } else {
             None
         };
-        let max_organism_radius = self
-            .slots
-            .iter()
-            .filter_map(|slot| slot.organism.as_ref())
-            .map(|robot| robot.materials.radius)
-            .fold(1.0_f32, f32::max);
         let gpu_targets = match gpu_result {
             Some(Ok((targets, render_instances))) => {
                 if let Some(instances) = render_instances {
@@ -6171,7 +6213,19 @@ impl Engine {
                     .collect(),
             );
         }
-        let senses: Vec<_> = (0..self.slots.len())
+        Ok(())
+    }
+
+    fn sensing_phase(&mut self) -> Result<(), EngineError> {
+        if self.native_phase.is_none() {
+            self.sensing_gpu_publication_phase()?;
+        }
+        let max_organism_radius = self.native_phase.as_ref().map_or_else(
+            || self.slots.iter().filter_map(|slot| slot.organism.as_ref())
+                .map(|robot| robot.materials.radius).fold(1.0_f32, f32::max),
+            |phase| phase.radius_bound,
+        );
+        let senses: Vec<_> = self.phase_slot_range()
             .into_par_iter()
             .map(|observer_slot| {
                 let observer = self.slots[observer_slot].organism.as_ref()?;
@@ -6447,7 +6501,8 @@ impl Engine {
 
     fn birth_tie_heredity_phase(&mut self, trace: &mut CycleRecorder) {
         let mut transfers = Vec::new();
-        for (slot_index, slot) in self.slots.iter().enumerate() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &self.slots[slot_index];
             let Some(child) = slot.organism.as_ref() else {
                 continue;
             };
@@ -6459,7 +6514,8 @@ impl Engine {
                 continue;
             };
             let child_id = OrganismId::new(slot_index as u32, slot.generation);
-            let has_birth_tie = self.ties.iter().any(|tie| {
+            let has_birth_tie = self.tie_indices_for(child_id).into_iter().any(|index| {
+                let tie = &self.ties[index];
                 tie.first == parent && tie.second == child_id && tie.first_port == 0 && tie.last > 0
             });
             if !has_birth_tie {
@@ -6513,6 +6569,7 @@ impl Engine {
         tie.last = 100;
         self.ties.push(tie);
         self.stats.ties_created = self.stats.ties_created.saturating_add(1);
+        self.rebuild_native_tie_index();
         self.refresh_tie_projections_with_references(false, &HashMap::from([(parent, 0)]));
         true
     }
@@ -6564,20 +6621,17 @@ impl Engine {
         absolute_id
     }
 
-    fn capture_tie_commands(&mut self) -> Vec<Option<TieCommands>> {
+    fn capture_tie_commands(&mut self) -> BTreeMap<usize, TieCommands> {
         let runtime = SysvarRuntime::new();
-        self.slots
-            .iter_mut()
-            .map(|slot| {
-                let organism = slot.organism.as_mut()?;
-                let Some(PhaseCommands::Tie(tie)) =
-                    runtime.consume(CyclePhase::Tie, &mut organism.program.memory)
-                else {
-                    unreachable!("tie phase must return tie commands")
-                };
-                Some(tie)
-            })
-            .collect()
+        let mut commands = BTreeMap::new();
+        for slot in self.phase_slot_range() {
+            let Some(organism) = self.slots[slot].organism.as_mut() else { continue };
+            let Some(PhaseCommands::Tie(tie)) = runtime.consume(CyclePhase::Tie, &mut organism.program.memory) else {
+                unreachable!("tie phase must return tie commands")
+            };
+            commands.insert(slot, tie);
+        }
+        commands
     }
 
     fn tie_data_phase(&mut self, trace: &mut CycleRecorder) {
@@ -6603,7 +6657,7 @@ impl Engine {
                 if self.slots[source_slot].organism.is_none() {
                     continue;
                 }
-                let commands = phase_commands[source_slot].unwrap_or_default();
+                let commands = phase_commands.get(&source_slot).copied().unwrap_or_default();
                 channels.push((
                     tie_index,
                     source_slot,
@@ -6659,28 +6713,178 @@ impl Engine {
     fn tie_exchange_phase(&mut self, trace: &mut CycleRecorder) {
         let runtime = SysvarRuntime::new();
         let phase_commands = self.capture_tie_commands();
-        let tie_deletions: Vec<_> = phase_commands
-            .iter()
-            .enumerate()
-            .filter_map(|(slot, commands)| {
-                commands
-                    .is_some_and(|commands| commands.delete != 0)
-                    .then_some(slot)
-            })
-            .collect();
-        self.ties.retain(|tie| {
-            !tie_deletions.contains(&(tie.first.slot() as usize))
-                && !tie_deletions.contains(&(tie.second.slot() as usize))
-        });
-        self.refresh_tie_projections();
-        self.apply_tie_structural_commands(&phase_commands);
-        for tie in &mut self.ties {
-            tie.sharing_first = false;
-            tie.sharing_second = false;
+        let native = self.native_random.is_some();
+        if native {
+            for &slot in phase_commands.keys() {
+                let id = OrganismId::new(slot as u32, self.slots[slot].generation);
+                let body = self.calculate_virtual_body(id);
+                self.slots.get_mut(id).unwrap().native_virtual_body = Some(body);
+            }
+        }
+        for index in self.phase_tie_indices() {
+            let tie = &mut self.ties[index];
+            if self.native_phase.as_ref().is_none_or(|phase| phase.actor == tie.first) { tie.sharing_first = false; }
+            if self.native_phase.as_ref().is_none_or(|phase| phase.actor == tie.second) { tie.sharing_second = false; }
         }
 
+        let mut channels = Vec::new();
+        let mut chloroplast_delay_requests = Vec::new();
+        for tie_index in self.phase_tie_indices() {
+            let tie = &self.ties[tie_index];
+            if !native && !tie.hardened { continue; }
+            for (source_slot, target_slot) in [
+                (tie.first.slot() as usize, tie.second.slot() as usize),
+                (tie.second.slot() as usize, tie.first.slot() as usize),
+            ] {
+                if self.slots[source_slot].organism.is_none() {
+                    continue;
+                }
+                if self.local_mode_prohibits_cross_species_tie_transfer(source_slot, target_slot) {
+                    continue;
+                }
+                if native && (source_slot != tie.first.slot() as usize
+                    || !self.slots[source_slot].organism.as_ref().unwrap().counters.multibot) { continue; }
+                let commands = phase_commands.get(&source_slot).copied().unwrap_or_default();
+                let requested_chloroplasts = commands.share_chloroplasts.clamp(0, 99);
+                let chloroplasts = if requested_chloroplasts == 0 {
+                    0
+                } else {
+                    let Some(source_robot) = self.slots[source_slot].organism.as_ref() else {
+                        continue;
+                    };
+                    let Some(target_robot) = self.slots[target_slot].organism.as_ref() else {
+                        continue;
+                    };
+                    if !source_robot.flags.can_use_chloroplasts
+                        || source_robot.flags.no_chloroplasts
+                        || source_robot.counters.chloroplast_share_delay > 0
+                    {
+                        0
+                    } else if source_robot
+                        .program
+                        .dna
+                        .genetic_distance(&target_robot.program.dna)
+                        > 0.25
+                    {
+                        chloroplast_delay_requests.push(source_slot);
+                        self.slots[source_slot].organism.as_mut().unwrap().counters.chloroplast_share_delay = 8;
+                        0
+                    } else {
+                        requested_chloroplasts
+                    }
+                };
+                channels.push((
+                    tie_index,
+                    source_slot,
+                    target_slot,
+                    if native { commands.share_energy } else { commands.share_energy.clamp(0, 99) },
+                    commands.share_waste.clamp(0, 99),
+                    commands.share_shell.clamp(0, 99),
+                    commands.share_slime.clamp(0, 99),
+                    chloroplasts,
+                ));
+            }
+        }
+
+        for source_slot in chloroplast_delay_requests {
+            if let Some(source_robot) = self.slots[source_slot].organism.as_mut() {
+                source_robot.counters.chloroplast_share_delay = 8;
+            }
+        }
+
+        for (tie_index, source, target, energy, waste, shell, slime, chloroplasts) in channels {
+            let source_id = OrganismId::new(source as u32, self.slots[source].generation);
+            let target_id = OrganismId::new(target as u32, self.slots[target].generation);
+            if native && [energy, waste, shell, slime, chloroplasts].into_iter().any(|value| value > 0) {
+                self.ties[tie_index].sharing_first = true;
+            }
+            let energy_amount =
+                if native { native_share_resource(&mut self.slots, source, target, energy, SharedResource::Energy) } else {
+                    transfer_robot_percent(&mut self.slots, source, target, energy, |robot| { &mut robot.materials.energy })
+                };
+            if trace.is_enabled() && energy_amount != 0.0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_energy",
+                );
+            }
+            let waste_amount =
+                if native { native_share_resource(&mut self.slots, source, target, waste, SharedResource::Waste) } else {
+                    transfer_robot_percent(&mut self.slots, source, target, waste, |robot| { &mut robot.materials.waste })
+                };
+            if trace.is_enabled() && waste_amount != 0.0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_waste",
+                );
+            }
+            let shell_amount =
+                if native { native_share_resource(&mut self.slots, source, target, shell, SharedResource::Shell) } else {
+                    transfer_robot_percent(&mut self.slots, source, target, shell, |robot| { &mut robot.materials.shell })
+                };
+            if shell_amount != 0.0 {
+                let tie = &mut self.ties[tie_index];
+                if source == tie.first.slot() as usize {
+                    tie.sharing_first = true;
+                } else if source == tie.second.slot() as usize {
+                    tie.sharing_second = true;
+                }
+            }
+            if trace.is_enabled() && shell_amount != 0.0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_shell",
+                );
+            }
+            let slime_amount =
+                if native { native_share_resource(&mut self.slots, source, target, slime, SharedResource::Slime) } else {
+                    transfer_robot_percent(&mut self.slots, source, target, slime, |robot| { &mut robot.materials.slime })
+                };
+            if trace.is_enabled() && slime_amount != 0.0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_slime",
+                );
+            }
+            let chloroplast_amount =
+                if native { native_share_resource(&mut self.slots, source, target, chloroplasts, SharedResource::Chloroplasts) } else {
+                    transfer_robot_percent(&mut self.slots, source, target, chloroplasts, |robot| { &mut robot.materials.chloroplasts })
+                };
+            if trace.is_enabled() && chloroplast_amount != 0.0 {
+                trace.effect(
+                    CyclePhase::Tie,
+                    Some(source_id),
+                    target_id,
+                    "tie_share_chloroplasts",
+                );
+            }
+        }
+
+        if native { self.update_multibot_requirements(); }
+        let prior_ties = self.ties.len();
+        self.ties.retain(|tie| {
+            for (id, port) in [(tie.first, tie.first_port), (tie.second, tie.second_port)] {
+                if let Some(commands) = phase_commands.get(&(id.slot() as usize))
+                    && commands.delete != 0 && (!native || commands.delete == port) { return false; }
+            }
+            true
+        });
+        if self.native_phase.is_none() || prior_ties != self.ties.len() {
+            self.refresh_tie_projections();
+            self.rebuild_native_tie_index();
+        }
+        self.apply_tie_structural_commands(&phase_commands);
         let mut resource_channels = Vec::new();
-        for tie in &self.ties {
+        for tie_index in self.phase_tie_indices() {
+            let tie = &self.ties[tie_index];
             for (source_slot, target_slot, source_port) in [
                 (
                     tie.first.slot() as usize,
@@ -6696,7 +6900,7 @@ impl Engine {
                 if self.slots[source_slot].organism.is_none() {
                     continue;
                 }
-                let commands = phase_commands[source_slot].unwrap_or_default();
+                let commands = phase_commands.get(&source_slot).copied().unwrap_or_default();
                 if commands.number != 0
                     && commands.number == source_port
                     && matches!(commands.location, -1 | -3 | -4 | -6)
@@ -6726,149 +6930,23 @@ impl Engine {
                 &mut self.native_random,
             ) {
                 trace.effect(CyclePhase::Tie, Some(source_id), target_id, kind);
-            }
-        }
-
-        let mut channels = Vec::new();
-        let mut chloroplast_delay_requests = Vec::new();
-        for (tie_index, tie) in self.ties.iter().enumerate().filter(|(_, tie)| tie.hardened) {
-            for (source_slot, target_slot) in [
-                (tie.first.slot() as usize, tie.second.slot() as usize),
-                (tie.second.slot() as usize, tie.first.slot() as usize),
-            ] {
-                if self.slots[source_slot].organism.is_none() {
-                    continue;
-                }
-                if self.local_mode_prohibits_cross_species_tie_transfer(source_slot, target_slot) {
-                    continue;
-                }
-                let commands = phase_commands[source_slot].unwrap_or_default();
-                let requested_chloroplasts = commands.share_chloroplasts.clamp(0, 99);
-                let chloroplasts = if requested_chloroplasts == 0 {
-                    0
-                } else {
-                    let Some(source_robot) = self.slots[source_slot].organism.as_ref() else {
-                        continue;
+                let opponent = self.slots.get(source_id).ok().zip(self.slots.get(target_id).ok())
+                    .is_some_and(|(a,b)| a.identity.species_file != b.identity.species_file);
+                if opponent {
+                    let action = match location {
+                        -1 => Some(DisqualificationAction::OpponentEnergy(value > 0)),
+                        -6 => Some(DisqualificationAction::OpponentBody(value > 0)),
+                        _ => None,
                     };
-                    let Some(target_robot) = self.slots[target_slot].organism.as_ref() else {
-                        continue;
-                    };
-                    if !source_robot.flags.can_use_chloroplasts
-                        || source_robot.flags.no_chloroplasts
-                        || source_robot.counters.chloroplast_share_delay > 0
-                    {
-                        0
-                    } else if source_robot
-                        .program
-                        .dna
-                        .genetic_distance(&target_robot.program.dna)
-                        > 0.25
-                    {
-                        chloroplast_delay_requests.push(source_slot);
-                        0
-                    } else {
-                        requested_chloroplasts
-                    }
-                };
-                channels.push((
-                    tie_index,
-                    source_slot,
-                    target_slot,
-                    commands.share_energy.clamp(0, 99),
-                    commands.share_waste.clamp(0, 99),
-                    commands.share_shell.clamp(0, 99),
-                    commands.share_slime.clamp(0, 99),
-                    chloroplasts,
-                ));
-            }
-        }
-
-        for source_slot in chloroplast_delay_requests {
-            if let Some(source_robot) = self.slots[source_slot].organism.as_mut() {
-                source_robot.counters.chloroplast_share_delay = 8;
-            }
-        }
-
-        for (tie_index, source, target, energy, waste, shell, slime, chloroplasts) in channels {
-            let source_id = OrganismId::new(source as u32, self.slots[source].generation);
-            let target_id = OrganismId::new(target as u32, self.slots[target].generation);
-            let energy_amount =
-                transfer_robot_percent(&mut self.slots, source, target, energy, |robot| {
-                    &mut robot.materials.energy
-                });
-            if trace.is_enabled() && energy_amount != 0.0 {
-                trace.effect(
-                    CyclePhase::Tie,
-                    Some(source_id),
-                    target_id,
-                    "tie_share_energy",
-                );
-            }
-            let waste_amount =
-                transfer_robot_percent(&mut self.slots, source, target, waste, |robot| {
-                    &mut robot.materials.waste
-                });
-            if trace.is_enabled() && waste_amount != 0.0 {
-                trace.effect(
-                    CyclePhase::Tie,
-                    Some(source_id),
-                    target_id,
-                    "tie_share_waste",
-                );
-            }
-            let shell_amount =
-                transfer_robot_percent(&mut self.slots, source, target, shell, |robot| {
-                    &mut robot.materials.shell
-                });
-            if shell_amount != 0.0 {
-                let tie = &mut self.ties[tie_index];
-                if source == tie.first.slot() as usize {
-                    tie.sharing_first = true;
-                } else if source == tie.second.slot() as usize {
-                    tie.sharing_second = true;
+                    if let Some(action) = action { self.native_disqualify_action(source_id, action); }
                 }
             }
-            if trace.is_enabled() && shell_amount != 0.0 {
-                trace.effect(
-                    CyclePhase::Tie,
-                    Some(source_id),
-                    target_id,
-                    "tie_share_shell",
-                );
-            }
-            let slime_amount =
-                transfer_robot_percent(&mut self.slots, source, target, slime, |robot| {
-                    &mut robot.materials.slime
-                });
-            if trace.is_enabled() && slime_amount != 0.0 {
-                trace.effect(
-                    CyclePhase::Tie,
-                    Some(source_id),
-                    target_id,
-                    "tie_share_slime",
-                );
-            }
-            let chloroplast_amount =
-                transfer_robot_percent(&mut self.slots, source, target, chloroplasts, |robot| {
-                    &mut robot.materials.chloroplasts
-                });
-            if trace.is_enabled() && chloroplast_amount != 0.0 {
-                trace.effect(
-                    CyclePhase::Tie,
-                    Some(source_id),
-                    target_id,
-                    "tie_share_chloroplasts",
-                );
-            }
         }
 
-        for (slot, commands) in phase_commands.iter().enumerate() {
+        for (&slot, commands) in phase_commands.iter() {
             let Some(organism) = self.slots[slot].organism.as_mut() else {
                 continue;
             };
-            if commands.is_none() {
-                continue;
-            }
             for address in [455, 467, 468, 830, 831, 832, 833, 924] {
                 runtime.finish_command(
                     address,
@@ -6876,7 +6954,7 @@ impl Engine {
                     &mut organism.program.memory,
                 );
             }
-            if commands.is_some_and(|commands| matches!(commands.location, -1 | -3 | -4 | -6)) {
+            if matches!(commands.location, -1 | -3 | -4 | -6) {
                 for address in [452, 453] {
                     runtime.finish_command(
                         address,
@@ -6904,23 +6982,8 @@ impl Engine {
         }
     }
 
-    fn apply_tie_structural_commands(&mut self, phase_commands: &[Option<TieCommands>]) {
-        let mut endpoint_indices = vec![(usize::MAX, usize::MAX); self.ties.len()];
-        let mut endpoint_counts = vec![0usize; self.slots.len()];
-        for (tie_index, tie) in self.ties.iter().enumerate() {
-            let first = tie.first.slot() as usize;
-            let second = tie.second.slot() as usize;
-            if first >= self.slots.len() || second >= self.slots.len() {
-                continue;
-            }
-            endpoint_indices[tie_index] = (endpoint_counts[first], endpoint_counts[second]);
-            endpoint_counts[first] += 1;
-            endpoint_counts[second] += 1;
-        }
-        for (slot, commands) in phase_commands.iter().enumerate() {
-            let Some(commands) = commands else {
-                continue;
-            };
+    fn apply_tie_structural_commands(&mut self, phase_commands: &BTreeMap<usize, TieCommands>) {
+        for (&slot, commands) in phase_commands.iter() {
             let Some(robot) = self.slots[slot].organism.as_ref() else {
                 continue;
             };
@@ -6948,14 +7011,10 @@ impl Engine {
                 .ok()
                 .map(|source| source.heading())
                 .unwrap_or(0.0);
-            for (tie_index, tie) in self.ties.iter_mut().enumerate() {
-                let (other_id, source_is_first, source_endpoint_index) = if tie.first == source_id {
-                    (tie.second, true, endpoint_indices[tie_index].0)
-                } else if tie.second == source_id {
-                    (tie.first, false, endpoint_indices[tie_index].1)
-                } else {
-                    continue;
-                };
+            for (source_endpoint_index, tie_index) in self.tie_indices_for(source_id).into_iter().enumerate() {
+                let tie = &mut self.ties[tie_index];
+                let source_is_first = tie.first == source_id;
+                let other_id = if source_is_first { tie.second } else { tie.first };
                 if !tie.hardened {
                     continue;
                 }
@@ -7368,13 +7427,17 @@ impl Engine {
 
     fn tie_fire_phase(&mut self, trace: &mut CycleRecorder) {
         let runtime = SysvarRuntime::new();
-        let phase_commands = self.capture_tie_commands();
+        let phase_commands: Vec<_> = self.phase_slot_range().filter_map(|slot| {
+            let robot = self.slots[slot].organism.as_mut()?;
+            if robot.flags.corpse || !robot.flags.can_execute_dna { return None; }
+            let Some(PhaseCommands::Tie(commands)) = runtime.consume(CyclePhase::Tie, &mut robot.program.memory) else {
+                unreachable!("tie phase must return tie commands")
+            };
+            Some((slot, commands))
+        }).collect();
         let mut tie_requests = Vec::new();
         let mut newly_created = HashMap::new();
-        for (attacker_slot, commands) in phase_commands.iter().copied().enumerate() {
-            let Some(commands) = commands else {
-                continue;
-            };
+        for (attacker_slot, commands) in phase_commands.iter().copied() {
             if commands.create == 0 {
                 continue;
             }
@@ -7389,13 +7452,9 @@ impl Engine {
                 tie_requests.push((attacker_slot, target, commands.create));
             }
         }
-        for (slot, commands) in phase_commands.iter().enumerate() {
-            let Some(organism) = self.slots[slot].organism.as_mut() else {
-                continue;
-            };
-            if commands.is_some() {
-                runtime.finish_command(330, CommandOutcome::Consumed, &mut organism.program.memory);
-            }
+        for &(slot, _) in &phase_commands {
+            let organism = self.slots[slot].organism.as_mut().unwrap();
+            runtime.finish_command(330, CommandOutcome::Consumed, &mut organism.program.memory);
         }
         for (first_slot, second_slot, first_port) in tie_requests {
             if !self.ties_enabled {
@@ -7458,6 +7517,7 @@ impl Engine {
                 second_port,
             ));
             newly_created.insert(first, first_port);
+            self.native_disqualify_action(first, DisqualificationAction::Tie);
             let tie_cost = self.active_dna_costs().action_cost_for(
                 SimulationCostAction::TieFormation,
                 1.0,
@@ -7474,19 +7534,26 @@ impl Engine {
                 trace.effect(CyclePhase::TieFire, Some(first), second, "tie_created");
             }
         }
-        self.refresh_tie_projections_with_references(false, &newly_created);
+        if !newly_created.is_empty() {
+            self.rebuild_native_tie_index();
+            self.refresh_tie_projections_with_references(false, &newly_created);
+        }
     }
 
     fn virtual_body_for(&self, id: OrganismId) -> f32 {
+        if self.native_random.is_some() && let Ok(robot) = self.slots.get(id)
+            && let Some(body) = robot.native_virtual_body { return body; }
+        self.calculate_virtual_body(id)
+    }
+
+    fn calculate_virtual_body(&self, id: OrganismId) -> f32 {
         let Ok(owner) = self.slots.get(id) else {
             return 0.0;
         };
         let mut body = owner.materials.body.max(0.0);
-        for tie in self
-            .ties
-            .iter()
-            .filter(|tie| tie.hardened && tie.contains(id))
-        {
+        for index in self.tie_indices_for(id) {
+            let tie = &self.ties[index];
+            if !tie.hardened && !(self.native_random.is_some() && owner.counters.multibot) { continue; }
             let other = if tie.first == id {
                 tie.second
             } else {
@@ -7501,6 +7568,7 @@ impl Engine {
 
     fn prepare_projectile_requests_phase(&mut self) {
         self.pending_projectile_requests.clear();
+        let mut disqualified = Vec::new();
         let mode_restrictions = self
             .local_mode_config()
             .filter(|_| self.local_mode.status == LocalModeStatus::Running)
@@ -7508,7 +7576,7 @@ impl Engine {
         let runtime = SysvarRuntime::new();
         let costs = self.active_dna_costs();
         let population = self.cost_population();
-        for attacker_slot in 0..self.slots.len() {
+        for attacker_slot in self.phase_slot_range() {
             let attacker_id =
                 OrganismId::new(attacker_slot as u32, self.slots[attacker_slot].generation);
             let tie_count = self
@@ -7665,7 +7733,9 @@ impl Engine {
                     angle,
                 });
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
+            if commands.kind > 0 { disqualified.push(attacker_id); }
         }
+        for id in disqualified { self.native_disqualify_action(id, DisqualificationAction::InformationShot); }
     }
 
     fn border_collision_phase(&mut self) {
@@ -7707,7 +7777,9 @@ impl Engine {
                     if robot.kinematics.position[axis] + radius > world_size[axis] {
                         robot.kinematics.position[axis] = world_size[axis] - radius;
                     }
-                    robot.kinematics.velocity[axis] *= 0.95;
+                    if self.native_random.is_some() {
+                        robot.kinematics.resistive_impulse[axis] += robot.kinematics.velocity[axis] * 0.05;
+                    } else { robot.kinematics.velocity[axis] *= 0.95; }
                     robot.program.memory.write(MEM_EDGE, 1);
                 }
             }
@@ -7777,7 +7849,18 @@ impl Engine {
     }
 
     fn physics_phase(&mut self) -> Result<(), EngineError> {
+        let keyed_batch = self.prepare_physics_step()?;
+        let ids = keyed_batch.ids.clone();
+        self.slots.apply_physics_batch(keyed_batch)?;
+        if self.native_random.is_some() {
+            for id in ids { self.finish_native_integration(id)?; }
+        }
+        Ok(())
+    }
+
+    fn prepare_physics_step(&mut self) -> Result<RobotPhysicsBatch, EngineError> {
         let mut keyed_batch = self.physics_batch();
+        if self.native_random.is_some() { self.native_integration_velocities(&mut keyed_batch); }
         let fixed: Vec<_> = keyed_batch
             .ids
             .iter()
@@ -7802,8 +7885,7 @@ impl Engine {
                 keyed_batch.batch.velocities[index] = [0.0; 2];
             }
         }
-        self.slots.apply_physics_batch(keyed_batch)?;
-        Ok(())
+        Ok(keyed_batch)
     }
 
     fn projectile_spawn_phase(&mut self) {
@@ -9028,12 +9110,12 @@ impl Engine {
         let settings = &self.config.physics;
         for (slot, (velocity, mass)) in velocities.iter_mut().zip(&masses).enumerate() {
             if let Some(robot) = self.slots[slot].organism.as_mut() {
-                apply_static_friction(
+                if self.native_random.is_none() { apply_static_friction(
                     velocity,
                     &mut robot.kinematics.angular_momentum,
                     *mass,
                     settings,
-                );
+                ); }
             }
         }
         for (first, second, first_position, second_position) in touch_events {
@@ -9181,6 +9263,7 @@ impl Engine {
             &mut self.config.vegetation,
             total_energy,
             weather_seed,
+            self.native_random.as_mut(),
         );
         let daytime = daylight.feed_this_cycle;
         let world_area = self.config.world_width.max(0.0) * self.config.world_height.max(0.0);
@@ -9299,13 +9382,7 @@ impl Engine {
     }
 
     fn vegetation_repopulation_phase(&mut self) -> Result<(), EngineError> {
-        let total_chloroplasts: i64 = self
-            .slots
-            .iter()
-            .filter_map(|slot| slot.organism.as_ref())
-            .map(|robot| robot.materials.chloroplasts.max(0.0) as i64)
-            .sum();
-        let equivalents = (total_chloroplasts / 16_000).max(0) as usize;
+        let equivalents = self.refresh_native_chloroplast_population();
         if !self
             .vegetation_runtime
             .advance_repopulation(equivalents, &self.config.vegetation)
@@ -9331,10 +9408,10 @@ impl Engine {
             return Ok(());
         }
         let capacity = self.available_robot_capacity();
-        let vegetable_capacity = self
+        let vegetable_capacity = if self.native_random.is_some() { usize::MAX } else { self
             .config
             .vegetable_population_cap
-            .saturating_sub(self.vegetable_population());
+            .saturating_sub(self.vegetable_population()) };
         let amount = self
             .config
             .vegetation
@@ -9345,22 +9422,27 @@ impl Engine {
             let random = advance_random(
                 self.config.seed ^ self.tick.rotate_left(23) ^ (ordinal as u64).rotate_left(41),
             );
-            let species_index = eligible[random as usize % eligible.len()];
+            let species_index = if let Some(source) = self.native_random.as_mut() {
+                // VegsRepopulate consumes its two initial Random calls even
+                // though aggiungirob replaces those coordinates afterwards.
+                source.integer(60, (self.config.world_width - 60.0).round_ties_even() as i32);
+                source.integer(60, (self.config.world_height - 60.0).round_ties_even() as i32);
+                loop {
+                    let index = source.integer(0, self.species.len() as i32 - 1) as usize;
+                    if eligible.contains(&index) { break index; }
+                }
+            } else { eligible[random as usize % eligible.len()] };
             let template = self.species_templates[species_index]
                 .as_ref()
                 .unwrap()
                 .clone();
-            let x_random = advance_random(random);
-            let y_random = advance_random(x_random);
-            let position = [
-                unit_coordinate(x_random, self.config.world_width),
-                unit_coordinate(y_random, self.config.world_height),
-            ];
+            let position = self.native_placement_position(SpeciesId(species_index as u32), advance_random(random));
             let id = self.spawn_species_at_unpublished(
                 template.dna,
                 SpeciesId(species_index as u32),
                 position,
             )?;
+            self.native_placement_heading(id)?;
             let robot = self.slots.get_mut(id)?;
             robot.materials.energy = template.initial_energy as f32;
             robot.materials.synchronize_energy();
@@ -9397,103 +9479,38 @@ impl Engine {
     fn prepare_lifecycle_queues(&mut self, trace: &mut CycleRecorder) -> LifecycleQueues {
         let mut queues = LifecycleQueues::default();
         let runtime = SysvarRuntime::new();
-        let total_chloroplasts: i64 = self
-            .slots
-            .iter()
-            .filter_map(|slot| slot.organism.as_ref())
-            .map(|robot| robot.materials.chloroplasts.max(0.0) as i64)
-            .sum();
-        let chloroplast_equivalents = (total_chloroplasts / 16_000).max(0) as usize;
-        for (slot_index, slot) in self.slots.iter_mut().enumerate() {
-            let Some(organism) = slot.organism.as_mut() else {
-                continue;
-            };
-            if organism.flags.corpse || !organism.flags.can_execute_dna {
-                continue;
-            }
-            let Some(PhaseCommands::Reproduction(reproduction_commands)) =
-                runtime.consume(CyclePhase::Reproduction, &mut organism.program.memory)
-            else {
+        let native = self.native_random.is_some();
+        let chloroplast_equivalents = (self.phase_chloroplast_total() / 16_000.0).round_ties_even().max(0.0) as usize;
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
+            let Some(organism) = slot.organism.as_mut() else { continue };
+            if organism.flags.corpse || !organism.flags.can_execute_dna || !organism.flags.can_reproduce { continue; }
+            let Some(PhaseCommands::Reproduction(commands)) = runtime.consume(CyclePhase::Reproduction, &mut organism.program.memory) else {
                 unreachable!("reproduction phase must return reproduction commands")
             };
-            let asexual_reproduction = reproduction_commands
-                .asexual
-                .max(reproduction_commands.mutated);
-            let sexual_reproduction = if reproduction_commands.sexual > 0
-                && organism.effects.fertilization_timer > 0
-                && organism
-                    .effects
-                    .stored_sperm
-                    .as_ref()
-                    .is_some_and(|stored| {
-                        organism.program.dna.genetic_distance(&stored.dna)
-                            <= MAX_SEXUAL_GENETIC_DISTANCE
-                    }) {
-                reproduction_commands.sexual
-            } else {
-                0
-            };
-            let sexual = sexual_reproduction > 0;
-            let reproduction = sexual_reproduction.max(asexual_reproduction);
-            let percentage = reproduction % 100;
-            let species_repopulates = self
-                .species
-                .get(organism.identity.species.0 as usize)
-                .is_some_and(|value| value.reseed);
-            let vegetable = self
-                .species
-                .get(organism.identity.species.0 as usize)
-                .is_some_and(|value| value.vegetable);
-            if percentage > 0
-                && organism.materials.energy > 0.0
-                && organism.materials.body >= 5.0
-                && organism.flags.can_reproduce
-                && (sexual || self.asexual_reproduction_allowed || species_repopulates)
-                && vegetable_reproduction_passes_population_throttle(
-                    vegetable,
-                    sexual,
-                    chloroplast_equivalents,
-                    self.config.vegetable_population_cap,
-                    self.config.seed,
-                    self.tick,
-                    slot_index,
-                )
-            {
-                if self.config.greedy_reproduction && percentage < 3 {
-                    organism.flags.dead = true;
-                    continue;
-                }
-                let parent = OrganismId::new(slot_index as u32, slot.generation);
-                trace.queue_change(
-                    CyclePhase::Reproduction,
-                    parent,
-                    QueueChangeKind::BirthQueued,
-                );
+            let parent = OrganismId::new(slot_index as u32, slot.generation);
+            let species_repopulates = self.species.get(organism.identity.species.0 as usize).is_some_and(|s| s.reseed);
+            let asexual = commands.asexual.max(commands.mutated);
+            let sexual = commands.sexual > 0 && organism.effects.fertilization_timer >= 0
+                && organism.effects.stored_sperm.is_some();
+            // Native queues asexual first, then sexual. Both may be attempted;
+            // legal placement and resource checks occur when the queue commits.
+            for is_sexual in [false, true] {
+                let requested = if is_sexual { if sexual { commands.sexual } else { 0 } } else { asexual };
+                if requested <= 0 || (!is_sexual && !self.asexual_reproduction_allowed && !species_repopulates) { continue; }
+                if !native && (organism.materials.energy <= 0.0 || organism.materials.body < 5.0
+                    || !vegetable_reproduction_passes_population_throttle(
+                        organism.flags.vegetable, is_sexual, chloroplast_equivalents,
+                        self.config.vegetable_population_cap, self.config.seed, self.tick, slot_index)) { continue; }
+                trace.queue_change(CyclePhase::Reproduction, parent, QueueChangeKind::BirthQueued);
                 queues.births.push(PendingBirth {
-                    parent,
-                    percentage,
-                    mutation_reproduction: !sexual && reproduction_commands.mutated > 0,
+                    parent, percentage: requested % 100,
+                    asexual_command: commands.asexual, mutated_command: commands.mutated,
+                    mutation_reproduction: !is_sexual && commands.mutated > 0,
                     assisted: organism.effects.reproduction_assistance
-                        & (if sexual {
-                            4
-                        } else if reproduction_commands.mutated > 0
-                            && reproduction_commands.mutated >= reproduction_commands.asexual
-                        {
-                            2
-                        } else {
-                            1
-                        })
-                        != 0,
-                    sexual,
-                    sperm_source: sexual
-                        .then(|| {
-                            organism
-                                .effects
-                                .stored_sperm
-                                .as_ref()
-                                .and_then(|stored| stored.source)
-                        })
-                        .flatten(),
+                        & (if is_sexual { 4 } else if commands.mutated >= commands.asexual && commands.mutated > 0 { 2 } else { 1 }) != 0,
+                    sexual: is_sexual,
+                    sperm_source: if is_sexual { organism.effects.stored_sperm.as_ref().and_then(|stored| stored.source) } else { None },
                 });
             }
         }
@@ -9501,7 +9518,8 @@ impl Engine {
     }
 
     fn shock_phase(&mut self) {
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
@@ -9519,7 +9537,8 @@ impl Engine {
     }
 
     fn queue_deaths(&self, queues: &mut LifecycleQueues, trace: &mut CycleRecorder) {
-        for (slot_index, slot) in self.slots.iter().enumerate() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &self.slots[slot_index];
             let Some(robot) = slot.organism.as_ref() else {
                 continue;
             };
@@ -9573,7 +9592,11 @@ impl Engine {
         }
         let mut available_births = self.available_robot_capacity();
         let mut vegetable_population = self.vegetable_population();
-        for birth in queues.births {
+        for mut birth in queues.births {
+            if self.native_random.is_some() && !birth.sexual && birth.asexual_command > 0 && birth.mutated_command > 0 {
+                let chosen = if self.native_random.as_mut().unwrap().unit() > 0.5 { birth.asexual_command } else { birth.mutated_command };
+                birth.percentage = chosen % 100;
+            }
             let Ok(parent_state) = self.slots.get(birth.parent).cloned() else {
                 continue;
             };
@@ -9582,11 +9605,24 @@ impl Engine {
                 .species
                 .get(species.0 as usize)
                 .is_some_and(|value| value.vegetable);
-            if available_births == 0
-                || (vegetable_birth && vegetable_population >= self.config.vegetable_population_cap)
-            {
+            let native = self.native_random.is_some();
+            if available_births == 0 || parent_state.flags.corpse || parent_state.flags.dead
+                || !parent_state.flags.can_reproduce || parent_state.materials.energy <= 0.0
+                || if birth.sexual { parent_state.materials.body <= 2.0 } else { parent_state.materials.body < 5.0 }
+                || (!native && vegetable_birth && vegetable_population >= self.config.vegetable_population_cap) {
                 continue;
             }
+            if native {
+                let equivalents = self.vegetation_runtime.native_chloroplast_population();
+                if vegetable_birth && equivalents > self.config.vegetable_population_cap { continue; }
+                // VB6 And is eager: every eligible animal also consumes this draw.
+                let draw = self.native_random.as_mut().unwrap().integer(0, if birth.sexual { 9 } else { 10 });
+                if vegetable_birth && draw != 5 && equivalents.saturating_mul(10) > self.config.vegetable_population_cap.saturating_mul(9) { continue; }
+            }
+            if self.config.greedy_reproduction && birth.percentage < 3 {
+                self.slots.get_mut(birth.parent)?.flags.dead = true;
+            }
+            if birth.percentage <= 0 { continue; }
 
             // Reproduce evaluates FindRadius on the unsplit stores, then assigns
             // their Single sum to the Long sondist before computing absx/absy.
@@ -9614,10 +9650,24 @@ impl Engine {
             if !self.birth_position_is_clear(birth.parent, candidate) {
                 continue;
             }
+            if birth.sexual && parent_state.effects.stored_sperm.as_ref().is_none_or(|stored| {
+                parent_state.program.dna.genetic_distance(&stored.dna) > MAX_SEXUAL_GENETIC_DISTANCE
+            }) {
+                let parent = self.slots.get_mut(birth.parent)?;
+                parent.effects.fertilization_timer = -18;
+                publish_reproductive_readbacks(parent);
+                continue;
+            }
+            if birth.sexual {
+                self.native_disqualify_action(birth.parent, DisqualificationAction::SexualReproduction);
+                self.flush_native_disqualifications()?;
+                if self.slots.get(birth.parent).map_or(true, |robot| robot.flags.dead) { continue; }
+            }
             let mut parent_materials = parent_state.materials.clone();
             let mut child_materials = parent_materials.split_for_offspring(birth.percentage);
 
-            let next_rng = advance_random(parent_state.program.rng_state);
+            let next_rng = self.native_random.as_ref().map_or_else(
+                || advance_random(parent_state.program.rng_state), |random| u64::from(random.state()));
             let configured_rate = if self.mutations_enabled {
                 self.species.get(species.0 as usize).map_or(0.0, |value| {
                     (value.mutation_rate * self.global_mutation_multiplier).clamp(0.0, 100.0)
@@ -9625,8 +9675,9 @@ impl Engine {
             } else {
                 0.0
             };
-            let mutate = birth.mutation_reproduction
-                || ((next_rng % 10_000) as f32) < configured_rate * 100.0;
+            let mutate = if native { self.mutations_enabled || birth.mutation_reproduction } else {
+                birth.mutation_reproduction || ((next_rng % 10_000) as f32) < configured_rate * 100.0
+            };
             let child_dna = if birth.sexual {
                 parent_state.effects.stored_sperm.as_ref().map_or_else(
                     || parent_state.program.dna.clone(),
@@ -9778,8 +9829,7 @@ impl Engine {
                 parent_organism.effects.forced_reproduction = false;
                 parent_organism.effects.reproduction_assistance = 0;
                 if birth.sexual {
-                    parent_organism.effects.stored_sperm = None;
-                    parent_organism.effects.fertilization_timer = 0;
+                    parent_organism.effects.fertilization_timer = -1;
                     publish_reproductive_readbacks(parent_organism);
                 }
             }
@@ -9895,6 +9945,7 @@ impl Engine {
         let slots = &self.slots;
         self.ties
             .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
+        self.rebuild_native_tie_index();
         self.refresh_tie_projections();
         Ok(())
     }
@@ -9911,7 +9962,8 @@ impl Engine {
         };
         if matches!(context, MutationContext::Lifelong) {
             let mut events = Vec::new();
-            for (slot, entry) in self.slots.iter_mut().enumerate() {
+            for slot in self.phase_slot_range() {
+                let entry = &mut self.slots[slot];
                 let Some(organism) = entry.organism.as_mut() else {
                     continue;
                 };
@@ -10053,6 +10105,7 @@ impl Engine {
                 |(_, _, policy)| policy,
             );
             if matches!(context, MutationContext::Reproduction { forced: false })
+                && self.native_random.is_none()
                 && configured_reproductive_rate > 0.0
             {
                 policy.effective_one_in =
@@ -10105,11 +10158,13 @@ impl Engine {
                 graph.mutations_remaining = (graph.mutations_remaining
                     - organism.program.mutation_metadata.native_last_mutations as f32)
                     .max(0.0);
-                organism.phenotype.apply_color_mutation(
-                    report.changes,
-                    vegetable,
-                    &mut organism.program.rng_state,
-                );
+                if let Some(random) = self.native_random.as_mut() {
+                    organism.phenotype.apply_native_color_mutation(report.changes, random);
+                    organism.program.rng_state = u64::from(random.state());
+                } else {
+                    organism.phenotype.apply_color_mutation(
+                        report.changes, vegetable, &mut organism.program.rng_state);
+                }
                 organism.phenotype.accumulated_mutations = organism
                     .phenotype
                     .accumulated_mutations
@@ -11221,12 +11276,12 @@ fn zerobot_seed_score(robot: &RobotState) -> i64 {
         .round_ties_even() as i64
 }
 
-fn is_in_sun_band(x: f32, world_width: f32, sun_position: f32, sun_range: f32) -> bool {
-    let width = world_width.max(1.0);
+fn is_in_sun_band(x: f32, world_width: f32, sun_position: f64, sun_range: f64) -> bool {
+    let width = f64::from(world_width.max(1.0));
     let band_fraction = (0.25 + sun_range.clamp(0.0, 1.0).powi(3) * 0.75).clamp(0.0, 1.0);
     let start = (sun_position - band_fraction / 2.0) * width;
     let stop = (sun_position + band_fraction / 2.0) * width;
-    let x = x.rem_euclid(width);
+    let x = f64::from(x).rem_euclid(width);
     if start < 0.0 {
         x >= width + start || x <= stop
     } else if stop > width {

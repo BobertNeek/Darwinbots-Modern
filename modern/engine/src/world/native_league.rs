@@ -3,18 +3,17 @@ use super::*;
 
 impl Engine {
     pub(super) fn update_multibot_requirements(&mut self) {
-        let tied: HashSet<_> = self.ties.iter().filter(|tie| tie.hardened).flat_map(|tie| {
-            let same_name = self.slots.get(tie.first).ok().zip(self.slots.get(tie.second).ok())
-                .is_some_and(|(a, b)| a.identity.species_file == b.identity.species_file);
-            if same_name { vec![tie.first, tie.second] } else { Vec::new() }
-        }).collect();
-        for id in self.slots.ids_in_slot_order() {
-            let robot = self.slots.get_mut(id).unwrap();
+        for id in self.phase_robot_ids() {
+            let robot = self.slots.get(id).unwrap();
             let timer = robot.counters.multibot_time;
             if timer == 0 { continue; }
-            robot.counters.multibot_time = if robot.counters.multibot && tied.contains(&id) {
-                timer.saturating_add(1).min(210)
-            } else { timer.saturating_sub(1) };
+            let tied = robot.counters.multibot && self.tie_indices_for(id).into_iter().any(|index| {
+                let tie = &self.ties[index];
+                let other = if tie.first == id { tie.second } else { tie.first };
+                self.slots.get(other).is_ok_and(|other| other.identity.species_file == robot.identity.species_file)
+            });
+            let robot = self.slots.get_mut(id).unwrap();
+            robot.counters.multibot_time = if tied { timer.saturating_add(1).min(210) } else { timer.saturating_sub(1) };
             if robot.counters.multibot_time < 10 { robot.flags.dead = true; }
         }
     }

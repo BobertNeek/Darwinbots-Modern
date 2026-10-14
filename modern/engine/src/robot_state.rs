@@ -335,6 +335,8 @@ pub struct RobotState {
     #[serde(default)]
     pub buoyancy: f32,
     #[serde(default)]
+    pub native_virtual_body: Option<f32>,
+    #[serde(default)]
     pub heredity: RobotHeredityState,
     pub ties: [Option<TieEndpointState>; 10],
     pub phenotype: VisualPhenotype,
@@ -377,6 +379,7 @@ impl RobotState {
             senses: RobotSenseState::default(),
             effects: RobotEffectState::default(),
             buoyancy: 0.0,
+            native_virtual_body: None,
             heredity: RobotHeredityState::default(),
             ties: [None; 10],
             phenotype,

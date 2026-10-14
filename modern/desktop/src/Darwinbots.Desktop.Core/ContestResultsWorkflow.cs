@@ -9,7 +9,8 @@ public sealed record ContestCompetitorResult(
     string Name,
     int Wins,
     int Population,
-    bool IsDisqualified = false);
+    bool IsDisqualified = false,
+    string DisqualificationReason = "");
 
 public sealed record ContestResultSnapshot(
     string ContestName,
@@ -23,22 +24,26 @@ public sealed record ContestResultSnapshot(
     public static ContestResultSnapshot FromSnapshot(EngineSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        if (snapshot.LocalMode.Status == LocalModeStatus.Idle || snapshot.LocalMode.MaximumRounds == 0)
+        if (snapshot.LocalMode.Status == LocalModeStatus.Idle)
             return Empty;
 
         var winsBySpecies = snapshot.LocalMode.Results
             .Where(value => value.Winner is not null)
             .GroupBy(value => value.Winner!.Value)
             .ToDictionary(group => group.Key, group => group.Count());
-        var competitors = snapshot.Species
-            .Select((species, index) => new ContestCompetitorResult(
-                $"species-{index}",
-                species.Name,
-                winsBySpecies.GetValueOrDefault((uint)index),
-                snapshot.Organisms.Count(value => value.Species == index),
-                false))
-            .Where(value => value.Population > 0)
-            .Take(5)
+        var disqualifications = snapshot.LocalMode.Disqualifications
+            .Where(value => value.Round == snapshot.LocalMode.CurrentRound)
+            .GroupBy(value => value.Species)
+            .ToDictionary(group => group.Key, group => group.Last());
+        var entrants = snapshot.Species.Select((species, index) => (Species: species, Index: (uint)index))
+            .Where(value => !value.Species.Vegetable);
+        var competitors = entrants.Select(value => new ContestCompetitorResult(
+                $"species-{value.Index}", value.Species.Name,
+                winsBySpecies.GetValueOrDefault(value.Index),
+                snapshot.Organisms.Count(robot => robot.Species == value.Index && !robot.IsCorpse),
+                disqualifications.ContainsKey(value.Index),
+                disqualifications.GetValueOrDefault(value.Index)?.Reason ?? string.Empty))
+            .Where(value => value.Population > 0 || value.Wins > 0 || value.IsDisqualified)
             .ToArray();
         return competitors.Length == 0
             ? Empty
@@ -76,7 +81,7 @@ public sealed class ContestCompetitorViewModel : INotifyPropertyChanged
         _wins = result.Wins;
         Population = result.Population;
         IsDisqualified = result.IsDisqualified;
-        _status = result.IsDisqualified ? "DISQUALIFIED" : "READY";
+        _status = result.IsDisqualified ? $"DISQUALIFIED: {result.DisqualificationReason}" : "READY";
     }
 
     public string Id { get; }

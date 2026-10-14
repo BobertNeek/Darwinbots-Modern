@@ -16,7 +16,7 @@ impl Engine {
     pub(super) fn waste_phase(&mut self) {
         let settings = self.config.waste;
         let mut packets = Vec::new();
-        for id in self.slots.ids_in_slot_order() {
+        for id in self.phase_robot_ids() {
             let robot = self.slots.get_mut(id).unwrap();
             if robot.flags.corpse || !robot.flags.can_execute_dna {
                 continue;

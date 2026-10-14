@@ -26,6 +26,8 @@ pub struct SpeciesDefinition {
     pub restrictions: Option<RestrictionColumn>,
     #[serde(default)]
     pub custom_skin: bool,
+    #[serde(default = "default_placement_bounds")]
+    pub placement_bounds: [f32; 4],
 }
 
 impl Default for SpeciesDefinition {
@@ -42,6 +44,20 @@ impl Default for SpeciesDefinition {
             lineage_id: 0,
             restrictions: None,
             custom_skin: false,
+            placement_bounds: default_placement_bounds(),
         }
+    }
+}
+
+fn default_placement_bounds() -> [f32; 4] { [0.0, 1.0, 0.0, 1.0] }
+
+impl SpeciesDefinition {
+    pub(crate) fn validate_placement_bounds(&self) -> Result<(), String> {
+        let [left, right, top, bottom] = self.placement_bounds;
+        if self.placement_bounds.iter().any(|value| !value.is_finite() || !(0.0..=1.0).contains(value))
+            || left > right || top > bottom {
+            return Err("species placement bounds must be ordered and within 0..1".into());
+        }
+        Ok(())
     }
 }

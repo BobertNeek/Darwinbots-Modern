@@ -54,13 +54,14 @@ impl Engine {
     }
 
     pub(super) fn virus_commands_phase(&mut self) {
+        let mut disqualified = Vec::new();
         let costs = self.active_dna_costs();
         let multiplier = costs.dynamic_multiplier(self.cost_population());
         let prohibited = self
             .local_mode_config()
             .filter(|_| self.local_mode.status == LocalModeStatus::Running)
             .is_some_and(|config| config.restrictions.prohibit_viruses);
-        for index in 0..self.slots.len() {
+        for index in self.phase_slot_range() {
             let owner = OrganismId::new(index as u32, self.slots[index].generation);
             let virtual_body = self.virtual_body_for(owner);
             let Some(robot) = self.slots[index].organism.as_mut() else {
@@ -83,6 +84,9 @@ impl Engine {
                 .get(robot.identity.species.0 as usize)
                 .map(|species| species.name.clone());
             if !prohibited && make > 0 && robot.effects.virus_build_timer == 0 {
+                if robot.materials.chloroplasts == 0.0 {
+                    disqualified.push((owner, DisqualificationAction::Virus));
+                }
                 if robot.materials.chloroplasts != 0.0 {
                     // Native plants first discard chloroplasts, then retry next cycle.
                     robot.materials.chloroplasts = 0.0;
@@ -196,12 +200,14 @@ impl Engine {
                 if let Some(dna) = robot.program.dna.delete_gene(delete) {
                     robot.program.dna = dna;
                     robot.refresh_occurrence_census();
+                    disqualified.push((owner, DisqualificationAction::GeneDeletion));
                 }
                 robot.program.memory.write(340, 0);
             }
             robot.materials.publish(&mut robot.program.memory);
             publish_reproductive_readbacks(robot);
         }
+        for (id, action) in disqualified { self.native_disqualify_action(id, action); }
     }
 }
 

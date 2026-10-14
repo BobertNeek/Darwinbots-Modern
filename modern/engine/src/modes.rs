@@ -142,6 +142,16 @@ pub struct LocalModeAdjudication {
     pub automatic: bool,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DisqualificationRecord {
+    pub tick: u64,
+    pub round: u32,
+    pub species: SpeciesId,
+    pub file_name: String,
+    pub tag: String,
+    pub reason: String,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ContestRuntime {
@@ -161,6 +171,7 @@ pub struct LocalModeState {
     pub cycle_in_round: u64,
     pub restart_count: u32,
     pub results: Vec<LocalModeResult>,
+    pub disqualifications: Vec<DisqualificationRecord>,
     pub adjudication: Option<LocalModeAdjudication>,
 }
 
@@ -174,6 +185,7 @@ impl Default for LocalModeState {
             cycle_in_round: 0,
             restart_count: 0,
             results: Vec::new(),
+            disqualifications: Vec::new(),
             adjudication: None,
         }
     }

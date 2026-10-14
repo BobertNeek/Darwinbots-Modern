@@ -105,10 +105,10 @@ enum EngineCommand {
         #[serde(default)]
         mutation_profile: Option<crate::StandardMutationProfile>,
         initial_energy: i32,
-        #[serde(default, rename = "initial_count")]
-        _initial_count: usize,
-        #[serde(default, rename = "placement")]
-        _placement: Option<serde_json::Value>,
+        #[serde(default)]
+        initial_count: usize,
+        #[serde(default)]
+        placement: Option<serde_json::Value>,
         #[serde(default)]
         skin: Option<[crate::SkinPoint; 4]>,
         #[serde(default)]
@@ -611,8 +611,8 @@ fn db_engine_command_batch_impl(
                 mutation_rate,
                 mutation_profile,
                 initial_energy,
-                _initial_count: _,
-                _placement: _,
+                initial_count,
+                placement,
                 skin,
                 restrictions,
                 positions,
@@ -636,10 +636,25 @@ fn db_engine_command_batch_impl(
                     definition.custom_skin = true;
                 }
                 definition.restrictions = restrictions;
+                let mode = placement.as_ref().and_then(|value| value.get("mode")).and_then(serde_json::Value::as_str).unwrap_or("random");
+                if !matches!(mode, "random" | "center" | "fixed") {
+                    return Err(EngineError::Invariant("species placement mode must be random, center or fixed".into()));
+                }
+                if let Some(value) = placement.as_ref() {
+                    definition.placement_bounds = [
+                        value.get("left").and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                        value.get("right").and_then(serde_json::Value::as_f64).unwrap_or(1.0) as f32,
+                        value.get("top").and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
+                        value.get("bottom").and_then(serde_json::Value::as_f64).unwrap_or(1.0) as f32,
+                    ];
+                }
+                definition.validate_placement_bounds().map_err(EngineError::Invariant)?;
                 let species = engine.register_species(definition);
-                engine
-                    .spawn_species_batch(dna, species, positions, initial_energy)
-                    .map(|ids| {
+                let ids = if placement.is_some() && engine.has_native_random() {
+                    let positions = if mode == "random" && initial_count > 0 { vec![[0.0; 2]; initial_count] } else { positions };
+                    engine.spawn_species_batch_with_native_placement(dna, species, positions, initial_energy, mode == "random")
+                } else { engine.spawn_species_batch(dna, species, positions, initial_energy) };
+                ids.map(|ids| {
                         serde_json::json!({
                             "species": species.0,
                             "count": ids.len(),

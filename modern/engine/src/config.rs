@@ -281,6 +281,9 @@ pub struct EngineConfig {
     pub greedy_reproduction: bool,
     #[serde(default)]
     pub body_cutoff: i32,
+    /// Original global Disqualify: 0 unrestricted, 1 F2, 2 F3.
+    #[serde(default)]
+    pub disqualification: u8,
     #[serde(skip)]
     pub force_gpu_unavailable_for_tests: bool,
 }
@@ -319,6 +322,7 @@ impl Default for EngineConfig {
             low_memory_detail_limit: default_low_memory_detail_limit(),
             greedy_reproduction: false,
             body_cutoff: 0,
+            disqualification: 0,
             force_gpu_unavailable_for_tests: false,
         }
     }

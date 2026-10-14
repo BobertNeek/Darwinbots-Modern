@@ -4,7 +4,8 @@ impl Engine {
     // Robots.bas: Shooting, ManageChlr, ManageBody, then ManageBouyancy.
     pub(super) fn body_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
@@ -44,15 +45,11 @@ impl Engine {
         let runtime = SysvarRuntime::new();
         let costs = self.active_dna_costs();
         let multiplier = costs.dynamic_multiplier(self.cost_population());
-        let total_chloroplasts: f64 = self
-            .slots
-            .iter()
-            .filter_map(|slot| slot.organism.as_ref())
-            .map(|robot| f64::from(robot.materials.chloroplasts))
-            .sum();
+        let total_chloroplasts = self.phase_chloroplast_total();
         let pressure_refusal = (total_chloroplasts / 16_000.0).round_ties_even()
             > self.config.vegetable_population_cap as f64;
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };
@@ -95,7 +92,8 @@ impl Engine {
 
     pub(super) fn buoyancy_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
-        for slot in self.slots.iter_mut() {
+        for slot_index in self.phase_slot_range() {
+            let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
                 continue;
             };

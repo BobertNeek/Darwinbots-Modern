@@ -36,6 +36,7 @@ public static class NativeSnapshotParser
             organism.Poisoned,
             organism.Parents?.Select(parent => parent is null ? (OrganismKey?)null : new OrganismKey(parent.Slot, parent.Generation)).ToArray())
         {
+            IsCorpse = organism.Flags?.Corpse ?? false,
             Phenotype = ParsePhenotype(organism.Phenotype),
             Vision = ParseVision(organism.Vision),
             CurrentGene = organism.CurrentGene,
@@ -326,6 +327,9 @@ public static class NativeSnapshotParser
             MinimumRounds = parsedConfig.MinimumRounds,
             EnergyHandicap = parsedConfig.EnergyHandicap,
             Configuration = parsedConfig,
+            Disqualifications = (native.Disqualifications ?? []).Select(value => new DisqualificationRecord(
+                value.Tick, value.Round, value.Species, value.FileName ?? string.Empty,
+                value.Tag ?? string.Empty, value.Reason ?? string.Empty)).ToArray(),
         };
     }
 
@@ -498,7 +502,16 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("restart_count")] uint RestartCount,
         [property: JsonPropertyName("results")] NativeLocalModeResult[]? Results,
         [property: JsonPropertyName("adjudication")] NativeLocalModeAdjudication? Adjudication,
-        [property: JsonPropertyName("contest_runtime")] NativeContestRuntime? ContestRuntime);
+        [property: JsonPropertyName("contest_runtime")] NativeContestRuntime? ContestRuntime,
+        [property: JsonPropertyName("disqualifications")] NativeDisqualification[]? Disqualifications);
+
+    private sealed record NativeDisqualification(
+        [property: JsonPropertyName("tick")] ulong Tick,
+        [property: JsonPropertyName("round")] uint Round,
+        [property: JsonPropertyName("species")] uint Species,
+        [property: JsonPropertyName("file_name")] string? FileName,
+        [property: JsonPropertyName("tag")] string? Tag,
+        [property: JsonPropertyName("reason")] string? Reason);
 
     private sealed record NativeContestRuntime([property: JsonPropertyName("effective_cycle_limit")] ulong EffectiveCycleLimit);
 
@@ -762,7 +775,10 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("subspecies")] int Subspecies,
         [property: JsonPropertyName("mutation_profile")] NativeMutationProfile? MutationProfile,
         [property: JsonPropertyName("dna_length")] uint DnaLength,
-        [property: JsonPropertyName("gene_count")] uint GeneCount);
+        [property: JsonPropertyName("gene_count")] uint GeneCount,
+        [property: JsonPropertyName("flags")] NativeOrganismFlags? Flags);
+
+    private sealed record NativeOrganismFlags([property: JsonPropertyName("corpse")] bool Corpse);
 
     private sealed record NativeMutationProfile(
         [property: JsonPropertyName("point")] NativeMutationRate? Point,

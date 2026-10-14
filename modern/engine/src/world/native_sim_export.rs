@@ -189,6 +189,8 @@ impl Engine {
             ] {
                 flag(&mut tail, &(p.clone() + name), value)?;
             }
+            let placement: Vec<u8> = species.placement_bounds.iter().flat_map(|value| value.to_le_bytes()).collect();
+            tail.set_value(&(p.clone() + "placement"), NativeValue::Bytes(placement))?;
             let template = self.species_templates.get(i).and_then(Option::as_ref);
             number(
                 &mut tail,

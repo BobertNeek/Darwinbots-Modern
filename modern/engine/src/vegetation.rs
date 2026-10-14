@@ -26,8 +26,8 @@ pub(crate) struct PlantFeeding {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct DaylightState {
     pub feed_this_cycle: bool,
-    pub sun_position: f32,
-    pub sun_range: f32,
+    pub sun_position: f64,
+    pub sun_range: f64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -35,9 +35,10 @@ pub(crate) struct DaylightState {
 pub(crate) struct VegetationRuntime {
     repopulation_counter: u64,
     day_night_counter: u64,
-    sun_position: f32,
-    sun_range: f32,
+    sun_position: f64,
+    sun_range: f64,
     sun_change: u8,
+    native_chloroplast_population: usize,
 }
 
 impl Default for VegetationRuntime {
@@ -48,6 +49,7 @@ impl Default for VegetationRuntime {
             sun_position: 0.5,
             sun_range: 1.0,
             sun_change: 10,
+            native_chloroplast_population: 0,
         }
     }
 }
@@ -79,11 +81,12 @@ impl VegetationRuntime {
         settings: &mut VegetationSettings,
         total_energy: i64,
         weather_seed: u64,
+        native_random: Option<&mut crate::native_random::NativeRandom>,
     ) -> DaylightState {
-        self.advance_weather(
-            settings.weather_enabled || settings.sun_on_random,
-            weather_seed,
-        );
+        let weather = settings.weather_enabled || settings.sun_on_random;
+        if let Some(random) = native_random {
+            if weather { self.advance_native_weather(random); }
+        } else { self.advance_weather(weather, weather_seed); }
 
         let mut feed_this_cycle = settings.daytime;
         let mut override_day_night = false;
@@ -192,6 +195,24 @@ impl VegetationRuntime {
         self.sun_change = position_mode + range_mode * 10;
     }
 
+    fn advance_native_weather(&mut self, random: &mut crate::native_random::NativeRandom) {
+        let mut position = self.sun_change % 10;
+        let mut range = self.sun_change / 10;
+        if (random.unit() * 2000.0).floor() == 0.0 { range = u8::from(range == 0); }
+        if (random.unit() * 2000.0).floor() == 0.0 { position = (random.unit() * 3.0).floor() as u8; }
+        self.sun_range += if range == 1 { 0.0005 } else { -0.0005 };
+        if self.sun_range >= 1.0 { range = 0; }
+        if self.sun_range <= 0.0 { range = 1; }
+        if position == 0 { self.sun_position -= 0.0005; }
+        if position == 2 { self.sun_position += 0.0005; }
+        if self.sun_position >= 1.0 { position = 0; }
+        if self.sun_position <= 0.0 { position = 2; }
+        self.sun_change = position + range * 10;
+    }
+
+    pub(crate) fn native_chloroplast_population(&self) -> usize { self.native_chloroplast_population }
+    pub(crate) fn set_native_chloroplast_population(&mut self, population: usize) { self.native_chloroplast_population = population; }
+
     pub(crate) fn advance_repopulation(
         &mut self,
         chloroplast_equivalents: usize,
@@ -240,4 +261,26 @@ fn weather_random(mut value: u64) -> u64 {
     value ^= value >> 7;
     value ^= value << 17;
     value.max(1)
+}
+
+#[cfg(test)]
+mod native_weather_tests {
+    use super::*;
+    #[test]
+    fn native_weather_draws_change_later_random_values_and_survive_resume() {
+        let mut runtime = VegetationRuntime::default();
+        let mut random = crate::native_random::NativeRandom::default();
+        let prior = random.state();
+        runtime.advance_native_weather(&mut random);
+        assert_ne!(random.state(), prior);
+        assert_eq!(runtime.sun_range, 1.0005);
+        let mut resumed: VegetationRuntime = serde_json::from_str(&serde_json::to_string(&runtime).unwrap()).unwrap();
+        let mut resumed_random = random.clone();
+        for _ in 0..100 {
+            runtime.advance_native_weather(&mut random); resumed.advance_native_weather(&mut resumed_random);
+            assert_eq!(runtime.sun_position.to_bits(), resumed.sun_position.to_bits());
+            assert_eq!(runtime.sun_range.to_bits(), resumed.sun_range.to_bits());
+            assert_eq!(random, resumed_random);
+        }
+    }
 }

@@ -59,6 +59,21 @@ impl VisualPhenotype {
         self.color = alpha | ((rgb[0] as u32) << 16) | ((rgb[1] as u32) << 8) | rgb[2] as u32;
     }
 
+    pub(crate) fn apply_native_color_mutation(
+        &mut self, changes: u32, random: &mut crate::native_random::NativeRandom,
+    ) {
+        let alpha = self.color & 0xff00_0000;
+        let mut rgb = self.rgb();
+        for _ in 0..changes {
+            // NeoMutations selects VB's blue, green, red channels in that order.
+            let channel = 3 - random.integer(1, 3) as usize;
+            let increase = random.integer(0, 1) == 1;
+            rgb[channel] = if increase { rgb[channel].saturating_add(20) }
+                else { rgb[channel].saturating_sub(20) };
+        }
+        self.color = alpha | ((rgb[0] as u32) << 16) | ((rgb[1] as u32) << 8) | rgb[2] as u32;
+    }
+
     pub fn apply_speciation(&mut self, lineage_id: u64, random_state: &mut u64) {
         let point_index = (next_random(random_state) % self.skin.len() as u64) as usize;
         let original = self.skin[point_index].radius;

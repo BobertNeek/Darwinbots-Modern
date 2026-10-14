@@ -321,12 +321,16 @@ impl Engine {
                 tail.integer(&(p.clone() + "point_policy"))?,
                 tail.integer(&(p.clone() + "copy_error_policy"))?,
             )?;
+            let placement = tail.bytes(&(p.clone() + "placement"))?;
             engine.species.push(SpeciesDefinition {
                 name: text(tail.bytes(&(p.clone() + "name"))?),
                 vegetable: b("vegetable")?,
                 color: color(tail.integer(&(p.clone() + "color"))?),
                 skin: skin(tail.bytes(&(p.clone() + "skin"))?),
                 custom_skin: true,
+                placement_bounds: std::array::from_fn(|index| {
+                    f32::from_le_bytes(placement[index * 4..index * 4 + 4].try_into().unwrap())
+                }),
                 lineage_id: i as u64 + 1,
                 reseed: b("native")?,
                 minimum_population: nonnegative(
@@ -380,6 +384,7 @@ impl Engine {
         engine.native_ties(&file, &old_slots)?;
         engine.native_shots(&tail, &old_slots)?;
         engine.native_environment(&tail)?;
+        engine.refresh_native_chloroplast_population();
         engine.native_origin = Some(file);
         Self::restore(engine)
     }
