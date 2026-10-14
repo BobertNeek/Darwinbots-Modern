@@ -68,6 +68,9 @@ mod native_corpses;
 #[path = "world/native_feeding.rs"]
 mod native_feeding;
 
+#[path = "world/native_waste.rs"]
+mod native_waste;
+
 #[path = "world/native_aim.rs"]
 mod native_aim;
 
@@ -5683,7 +5686,8 @@ impl Engine {
     fn store_clamps_phase(&mut self) {
         for slot in self.slots.iter_mut() {
             if let Some(robot) = slot.organism.as_mut() {
-                robot.materials.energy = robot.materials.energy.min(32_000.0);
+                robot.materials.energy = robot.materials.energy.clamp(-32_000.0, 32_000.0);
+                robot.materials.waste = robot.materials.waste.clamp(0.0, 32_000.0);
                 robot.materials.shell = robot.materials.shell.clamp(0.0, 32_000.0);
                 robot.materials.slime = robot.materials.slime.clamp(0.0, 32_000.0);
                 robot.materials.venom = robot.materials.venom.clamp(0.0, 32_000.0);
@@ -5727,76 +5731,6 @@ impl Engine {
                 multibot_divisor,
             );
             robot.materials.publish(&mut robot.program.memory);
-        }
-    }
-
-    fn waste_phase(&mut self) {
-        let settings = self.config.waste;
-        let mut packets = Vec::new();
-        for (slot_index, slot) in self.slots.iter_mut().enumerate() {
-            let Some(robot) = slot.organism.as_mut() else {
-                continue;
-            };
-            if robot.flags.corpse || !robot.flags.can_execute_dna {
-                continue;
-            }
-            robot.materials.waste = robot.materials.waste.max(0.0);
-            robot.materials.permanent_waste = robot.materials.permanent_waste.max(0.0);
-
-            let total_waste = robot.materials.waste + robot.materials.permanent_waste;
-            let alzheimer_threshold = if settings.alzheimer_threshold == 0 {
-                400
-            } else {
-                settings.alzheimer_threshold
-            };
-            let alzheimer_writes = if alzheimer_threshold > 0 {
-                ((total_waste - alzheimer_threshold as f32).max(0.0) / 4.0).floor() as i32
-            } else {
-                0
-            };
-            if alzheimer_writes > 0 {
-                let mut random = robot.program.rng_state;
-                for _ in 0..alzheimer_writes {
-                    random = advance_random(random);
-                    let address = (random % 1_000 + 1) as i32;
-                    if matches!(address, 921 | 922) {
-                        continue;
-                    }
-                    random = advance_random(random);
-                    let value = (random % 64_001) as i32 - 32_000;
-                    robot.program.memory.write(address, value);
-                }
-                robot.program.rng_state = random;
-            }
-
-            if robot.materials.waste > settings.defecation_threshold.max(0) as f32 {
-                let overflow = robot.materials.waste > 32_000.0;
-                let amount = if overflow {
-                    robot.materials.waste = 31_500.0;
-                    500.0
-                } else {
-                    robot.materials.waste.min(200.0)
-                };
-                if amount > 0.0 {
-                    robot.materials.waste -= amount;
-                    robot.materials.permanent_waste =
-                        (robot.materials.permanent_waste + amount * 0.01).min(32_000.0);
-                    robot.materials.publish(&mut robot.program.memory);
-                    packets.push((
-                        OrganismId::new(slot_index as u32, slot.generation),
-                        robot.kinematics.position,
-                        robot.kinematics.actual_velocity,
-                        amount,
-                    ));
-                }
-            } else {
-                robot.materials.publish(&mut robot.program.memory);
-            }
-        }
-        for (owner, position, velocity, value) in packets {
-            self.projectiles
-                .spawn_waste_packet(owner, position, velocity, value);
-            self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
     }
 
@@ -5917,6 +5851,9 @@ impl Engine {
             let address = binding.memory_address;
             let before = robot.program.memory.read(address as i32);
             robot.program.memory.write(address as i32, binding.value);
+            robot
+                .effects
+                .mark_reproduction_input(address as i32, binding.value);
             trace.memory_write(
                 CyclePhase::PlayerBot,
                 focus,

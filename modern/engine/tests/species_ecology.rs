@@ -265,17 +265,28 @@ fn negative_alzheimer_threshold_disables_memory_mutation() {
 fn automatic_overflow_defecation_subtracts_the_emitted_waste_packet() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
+        dna_costs: darwinbots_engine::DnaCosts {
+            shell: 1.0,
+            ..Default::default()
+        },
+        waste: WasteSettings {
+            alzheimer_threshold: 0,
+            defecation_threshold: 32_000,
+        },
         ..EngineConfig::testing()
     })
     .unwrap();
     let owner = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .spawn_at(
+            LegacyDna::parse("start\n100 .mkshell store\nstop").unwrap(),
+            [100.0, 100.0],
+        )
         .unwrap();
 
     let encoded = SaveFile::encode(&engine).unwrap();
     let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
     let robot = &mut payload["slots"][owner.slot() as usize]["organism"];
-    robot["materials"]["waste"] = serde_json::json!(32_001);
+    robot["materials"]["waste"] = serde_json::json!(32_000);
     robot["materials"]["permanent_waste"] = serde_json::json!(7);
     let payload = serde_json::to_vec(&payload).unwrap();
     let mut save = Vec::with_capacity(10 + payload.len());
@@ -288,7 +299,7 @@ fn automatic_overflow_defecation_subtracts_the_emitted_waste_packet() {
 
     let after = engine.robot_state(owner).unwrap();
     assert_eq!(after.materials.waste, 31_000.0);
-    assert_eq!(after.materials.permanent_waste, 12.0);
+    assert_eq!(after.materials.permanent_waste, 7.5);
     assert_eq!(engine.snapshot().tick, 1);
     let packet = engine
         .snapshot()

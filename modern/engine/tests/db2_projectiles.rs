@@ -45,7 +45,8 @@ fn db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn() {
         .find(|shot| shot.owner == range_shooter)
         .unwrap();
 
-    assert_eq!(power_shot.value, 291);
+    // newshot uses Int(220 * Log(5 / 2) / Log(2)).
+    assert_eq!(power_shot.value, 290);
     assert_eq!(power_shot.range, 11);
     assert_eq!(range_shot.value, 220);
     assert_eq!(range_shot.range, 21);
@@ -835,7 +836,7 @@ fn shot_formation_spends_the_original_flat_boost_and_ammunition_costs() {
     for (kind, requested, expected_energy, expected_value) in [
         (500, -37, 998, -37),
         (500, 0, 998, 0),
-        (-1, 5, 990, 291),
+        (-1, 5, 990, 290),
         (-1, -8, 984, 220),
         (-2, 100, 898, 100),
         (-2, 0, 988, 10),

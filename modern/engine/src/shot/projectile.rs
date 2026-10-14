@@ -247,9 +247,11 @@ impl ProjectilePool {
             request.owner_actual_velocity[1] + direction[1] * settings.speed,
         ];
         let range_multiplier = (request.range_multiplier * settings.range_multiplier).max(1.0);
-        let raw_energy = request.owner_virtual_body.abs().max(1.0).ln() * 60.0 * range_multiplier;
+        let raw_energy = (f64::from(request.owner_virtual_body.abs().max(1.0)).ln()
+            * 60.0
+            * f64::from(range_multiplier)) as f32;
         let range = if request.owner_virtual_body > 10.0 {
-            ((raw_energy + 41.0) / 40.0).floor().max(1.0)
+            (((raw_energy + 40.0 + 1.0).round_ties_even() as u64 / 40) as f32).max(1.0)
         } else {
             range_multiplier.floor()
         };
@@ -270,7 +272,7 @@ impl ProjectilePool {
             self.energies.push(energy);
             self.kinds.push(Self::normalized_kind(request.kind));
             self.values
-                .push(request.value.round_ties_even().clamp(-32_000.0, 32_000.0) as i32);
+                .push(request.value.floor().clamp(-32_000.0, 32_000.0) as i32);
             self.alive.push(true);
             self.impact_flash.push(false);
             self.payloads.push(request.payload);
@@ -292,7 +294,7 @@ impl ProjectilePool {
             self.ranges[slot] = range;
             self.energies[slot] = energy;
             self.kinds[slot] = Self::normalized_kind(request.kind);
-            self.values[slot] = request.value.round_ties_even().clamp(-32_000.0, 32_000.0) as i32;
+            self.values[slot] = request.value.floor().clamp(-32_000.0, 32_000.0) as i32;
             self.alive[slot] = true;
             self.impact_flash[slot] = false;
             self.payloads[slot] = request.payload;
@@ -336,16 +338,6 @@ impl ProjectilePool {
     ) -> u32 {
         let range = range.max(1.0);
         self.spawn_fixed_packet(owner, position, velocity, range, value, -2, value)
-    }
-
-    pub(crate) fn spawn_waste_packet(
-        &mut self,
-        owner: OrganismId,
-        position: [f32; 2],
-        velocity: [f32; 2],
-        value: f32,
-    ) -> u32 {
-        self.spawn_fixed_packet(owner, position, velocity, 1.0, 40.0, -4, value)
     }
 
     #[allow(clippy::too_many_arguments)] // Fixed wire packet fields are kept explicit at call sites.
@@ -745,6 +737,26 @@ mod tests {
             dna_length: 0,
         };
         let settings = ShotSettings::default();
+
+        // newshot floors its value and VB integer division rounds the Single
+        // numerator first. createshot separately uses CInt for its value.
+        let fractional = ProjectileSpawn {
+            owner_virtual_body: 770.0,
+            kind: -2,
+            value: 5.75,
+            ..request.clone()
+        };
+        let slot = pool.spawn(fractional.clone(), &settings);
+        assert_eq!(pool.values[slot as usize], 5);
+        assert_eq!(pool.ranges[slot as usize], 11.0);
+        assert_eq!(pool.energies[slot as usize], 5.75);
+        pool.deactivate(slot);
+        assert_eq!(pool.spawn(fractional, &settings), slot);
+        assert_eq!(pool.values[slot as usize], 5);
+        let fixed =
+            pool.spawn_fixed_packet(request.owner, [0.0; 2], [0.0; 2], 11.0, 5.75, -2, 5.75);
+        assert_eq!(pool.values[fixed as usize], 6);
+        pool = ProjectilePool::default();
 
         let moving = ProjectileSpawn {
             owner_position: [200.25, 300.75],
