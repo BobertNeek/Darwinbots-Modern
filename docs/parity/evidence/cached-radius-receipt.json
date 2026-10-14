@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-13",
+  "code_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+  "radius_revision": "4795f2380cbd53fefaa56f79c45c877a5ae9ceeb",
+  "source_basis": [
+    "Darwinbots2/Robots.bas:716-741 FindRadius and cached radius",
+    "Darwinbots2/Robots.bas:1698-1714 storebody/feedbody",
+    "Darwinbots2/Robots.bas:2218-2223 birth radius order",
+    "Darwinbots2/Robots.bas:2868-2909 simplecoll reads cached radii",
+    "Darwinbots2/HDRoutines.bas:1693 radius before later chloroplast load",
+    "Darwinbots2/Shots.bas:486,589,660,707,754 decay and feeding radius updates",
+    "Darwinbots2/Vegs.bas:264 radius update for chloroplast feeding"
+  ],
+  "repairs": [
+    "Physics, sensing, shots, ties, borders, robot transfer, snapshots and rendering read the stored radius.",
+    "New bots initialize radius from native body/chloroplast stores.",
+    "Death clears chloroplasts without shrinking the cached radius; decay and actual body updates recalculate it.",
+    "Body management with no command does not fabricate a radius update.",
+    "Native loading calculates radius before the saved chloroplast field, matching HDRoutines.",
+    "Older saves missing a radius reconstruct it; present cache values survive save/resume.",
+    "Windows publication now copies the historical and league bot tree.",
+    "The published desktop supports --smoke-test without starting a GUI window."
+  ],
+  "checks": {
+    "engine_debug": {
+      "passed": 571,
+      "failed": 0,
+      "filtered": 2,
+      "log": "completion-checks/parity-cached-radius-engine-final.log"
+    },
+    "strict_clippy": {
+      "status": "passed",
+      "log": "completion-checks/parity-cached-radius-clippy.log"
+    },
+    "desktop_release": {
+      "passed": 105,
+      "failed": 0,
+      "code_revision": "4795f2380cbd53fefaa56f79c45c877a5ae9ceeb",
+      "log": "completion-checks/parity-cached-radius-desktop-release.log"
+    },
+    "focused_followup": {
+      "passed": 195,
+      "failed": 0,
+      "log": "completion-checks/parity-cached-radius-fixture-followup.log"
+    },
+    "native_cache_cases": {
+      "passed": 7,
+      "gpu_cpu": "large corpse collision and rendering verified with GPU active and no fallback; remaining cache cases include save/resume and native load"
+    },
+    "windows_package": {
+      "status": "published and smoke passed",
+      "source_revision": "ab5673db814ae225aeee958354c7769fd8264507",
+      "publish_log": "completion-checks/parity-cached-radius-publish-win-complete.log",
+      "smoke": "cached-radius-package-smoke.json",
+      "assets": "cached-radius-package-assets.json",
+      "verified_bot_files": 48,
+      "native_dll_sha256": "2b64885af8c9bd7df0f725b55047dc1d67cfaebe9c31a5294e60528aea7bf0d8",
+      "application_sha256": "347527d6ad12fd89f4dc78f7321ed24bd018de61da958d68435d86144935babe"
+    }
+  },
+  "limits": [
+    "Complete Rust workspace Release and both long ecology scenarios are running again for this physics change. The previous 562/0 workspace and two passed CPU soaks refer to earlier source states.",
+    "Linux packaging could not run locally: Ubuntu is registered but WSL reports virtualization unavailable. macOS packaging is unverified. No host virtualization settings were changed.",
+    "Windows smoke checks packaged bot presence, native library loading, movement and matching continuous/save-resumed state through tick 13; graphical workflow tests were run separately.",
+    "Older complete archived-corpse migration, relative velocity/reference details, adaptive costs, per-robot phase order/global RNG, evolution and league requirements, and original trajectory comparisons remain open.",
+    "Internet Mode is excluded."
+  ]
+}
