@@ -89,41 +89,75 @@ impl NativeContacts {
         self.cells.entry(cell).or_default().insert(id);
     }
 
-    fn next_contact(&self, world: &Engine, actor: OrganismId, neighborhood: &[[i32; 2]],
-        after: Option<(usize, u64)>) -> Option<((usize, u64), OrganismId)> {
-        let robot = world.slots.get(actor).ok()?;
+    fn extend_candidates(&self, world: &Engine, actor: OrganismId, walk: &mut ContactWalk) {
+        let Ok(robot) = world.slots.get(actor) else { return };
         let position = robot.kinematics.position;
         let radius = robot.materials.radius + self.max_radius;
         let low = position.map(|value| ((value - radius) / CONTACT_CELL).floor() as i32);
         let high = position.map(|value| ((value + radius) / CONTACT_CELL).floor() as i32);
-        let mut next = None;
-        for y in low[1]..=high[1] {
-            for x in low[0]..=high[0] {
-                let Some(cell) = self.cells.get(&[x, y]) else { continue };
-                for &other in cell {
-                    if other.slot() <= actor.slot() { continue; }
-                    let member = world.native_buckets.members[other.slot() as usize].as_ref()?;
-                    let Some(bucket) = neighborhood.iter().position(|cell| *cell == member.cell) else { continue };
-                    let key = (bucket, member.order);
-                    if after.is_some_and(|previous| key <= previous) || next.as_ref().is_some_and(|(best, _)| key >= *best) { continue; }
-                    let Ok(target) = world.slots.get(other) else { continue };
-                    if target.flags.hidden { continue; }
-                    let delta = std::array::from_fn::<_, 2, _>(|axis| target.kinematics.position[axis] - position[axis]);
-                    let distance = robot.materials.radius + target.materials.radius;
-                    if delta[0] * delta[0] + delta[1] * delta[1] < distance * distance { next = Some((key, other)); }
-                }
+        if walk.bounds == Some((low, high)) { return; }
+        walk.bounds = Some((low, high));
+        let width = (i64::from(high[0]) - i64::from(low[0]) + 1).max(0) as u64;
+        let height = (i64::from(high[1]) - i64::from(low[1]) + 1).max(0) as u64;
+        // A malformed/imported giant radius must not enumerate billions of empty cells.
+        let query: Vec<_> = if width.saturating_mul(height) > self.cells.len() as u64 * 4 {
+            self.cells.keys().copied().filter(|cell| cell[0] >= low[0] && cell[0] <= high[0]
+                && cell[1] >= low[1] && cell[1] <= high[1]).collect()
+        } else { (low[1]..=high[1]).flat_map(|y| (low[0]..=high[0]).map(move |x| [x, y])).collect() };
+        for key in query {
+            if !walk.cells.insert(key) { continue; }
+            let Some(cell) = self.cells.get(&key) else { continue };
+            for &other in cell {
+                if other.slot() <= actor.slot() { continue; }
+                let Some(member) = world.native_buckets.members.get(other.slot() as usize).and_then(Option::as_ref) else { continue };
+                let Some(bucket) = walk.neighborhood.iter().position(|cell| *cell == member.cell) else { continue };
+                let key = (bucket, member.order);
+                if walk.after.is_none_or(|previous| key > previous) { walk.pending.insert(key, other); }
             }
         }
-        next
     }
+
+    #[cfg(test)]
+    fn next_contact(&self, world: &Engine, actor: OrganismId, neighborhood: &[[i32; 2]],
+        after: Option<(usize, u64)>) -> Option<((usize, u64), OrganismId)> {
+        let mut walk = ContactWalk::new(neighborhood.to_vec());
+        walk.after = after;
+        self.extend_candidates(world, actor, &mut walk);
+        walk.pending.into_iter().find(|(_, other)| overlapping(world, actor, *other))
+    }
+
+}
+
+struct ContactWalk {
+    neighborhood: Vec<[i32; 2]>,
+    after: Option<(usize, u64)>,
+    cells: HashSet<[i32; 2]>,
+    pending: BTreeMap<(usize, u64), OrganismId>,
+    bounds: Option<([i32; 2], [i32; 2])>,
+}
+
+impl ContactWalk {
+    fn new(neighborhood: Vec<[i32; 2]>) -> Self {
+        Self { neighborhood, after: None, cells: HashSet::new(), pending: BTreeMap::new(), bounds: None }
+    }
+}
+
+fn overlapping(world: &Engine, first: OrganismId, second: OrganismId) -> bool {
+    let (Ok(first), Ok(second)) = (world.slots.get(first), world.slots.get(second)) else { return false };
+    if second.flags.hidden { return false; }
+    let delta = std::array::from_fn::<_, 2, _>(|axis| first.kinematics.position[axis] - second.kinematics.position[axis]);
+    let distance = first.materials.radius + second.materials.radius;
+    delta[0] * delta[0] + delta[1] * delta[1] < distance * distance
 }
 
 impl Engine {
     pub(super) fn native_collisions_for(&mut self, actor: OrganismId, contacts: &mut NativeContacts) {
-        let neighborhood = self.native_buckets.neighborhood(actor);
-        let mut cursor = None;
-        while let Some((key, other)) = contacts.next_contact(self, actor, &neighborhood, cursor) {
-            cursor = Some(key);
+        let mut walk = ContactWalk::new(self.native_buckets.neighborhood(actor));
+        loop {
+            contacts.extend_candidates(self, actor, &mut walk);
+            let Some((key, other)) = walk.pending.pop_first() else { break };
+            walk.after = Some(key);
+            if !overlapping(self, actor, other) { continue; }
             let first = self.slots.get(actor).unwrap();
             let second = self.slots.get(other).unwrap();
             let before = [first.kinematics.position, second.kinematics.position];
@@ -194,5 +228,30 @@ mod tests {
         assert!(world.slots.get(second).unwrap().kinematics.position[0] > 4_000.0);
         assert_eq!(world.native_buckets.members[second.slot() as usize].as_ref().unwrap().cell, [0, 0]);
         assert_eq!(contacts.locations[&second], [4, 0]);
+    }
+
+    #[test]
+    fn separation_discovers_later_contact_in_a_new_fine_cell() {
+        let mut world = Engine::new(EngineConfig { world_width: 12_000.0, world_height: 12_000.0,
+            ..EngineConfig::testing() }).unwrap();
+        let positions = [[990.0, 2_000.0], [950.0, 2_000.0], [2_010.0, 2_000.0]];
+        let mut ids = Vec::new();
+        for position in positions {
+            let id = world.spawn_at(LegacyDna::parse("start stop").unwrap(), position).unwrap();
+            world.slots.get_mut(id).unwrap().materials.radius = 350.0;
+            ids.push(id);
+        }
+        world.native_buckets.synchronize([12_000.0; 2], &world.slots);
+        let mut contacts = NativeContacts::new(&world.slots);
+        let mut expected = positions;
+        let mut velocity = [[0.0; 2]; 3];
+        // Exhaustive Quads order checks both later slots, after each separation.
+        crate::physics::resolve_collisions(&mut expected, &mut velocity, &[350.0; 3], &[1.0; 3],
+            &[false; 3], &[(0, 1), (0, 2)], world.config.physics.elasticity);
+        world.native_collisions_for(ids[0], &mut contacts);
+        assert!(expected[2][0] > positions[2][0]);
+        for (index, id) in ids.into_iter().enumerate() {
+            assert_eq!(world.slots.get(id).unwrap().kinematics.position, expected[index]);
+        }
     }
 }
