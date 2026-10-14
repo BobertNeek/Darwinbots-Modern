@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-13",
+  "code_revision": "020642950a66e259851bb31633a7ff3b32daada8",
+  "source_basis": [
+    "Darwinbots2/Physics.bas:844-974 Repel3",
+    "Darwinbots2/Common.bas:106-169 vector operations",
+    "Darwinbots2/Robots.bas:982-1000 altzheimer",
+    "Darwinbots2/Robots.bas:1180-1194 HandleWaste",
+    "Darwinbots2/Shots.bas:88-177 newshot",
+    "Darwinbots2/Shots.bas:492-509 defacate"
+  ],
+  "numeric_documentation": [
+    "https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/backslash-operator",
+    "https://learn.microsoft.com/en-us/office/vba/language/reference/user-interface-help/int-fix-functions"
+  ],
+  "engine_debug": {
+    "passed": 556,
+    "failed": 0,
+    "ignored": 0,
+    "filtered": 2,
+    "log": "completion-checks/parity-native-waste-complete-engine-debug.log"
+  },
+  "historical_engine_debug": {
+    "revision": "7656597",
+    "passed": 546,
+    "failed": 6,
+    "filtered": 2,
+    "followup_at": "316ff88",
+    "followup_passed": 77,
+    "followup_failed": 0
+  },
+  "repairs": [
+    "Native Repel3 moving compression, stationary separation, projection damping, finite fixed mass and VectorScalar clamps",
+    "Source-backed feeding, toxin, reproduction capacity and movement fixtures",
+    "Zero Alzheimer threshold disables memory writes; Single loop count uses Integer rounding; protected addresses are resampled",
+    "Defecation fee, one-thousandth permanent waste, radial shot and inherited velocity",
+    "Early native energy/waste clamps",
+    "PlayerBot and Alzheimer reproduction commands retain assistance provenance",
+    "newshot Int value conversion and rounded numerator for integer range division; createshot retains CInt behavior"
+  ],
+  "strict_clippy": "passed",
+  "desktop_debug": {
+    "status": "passed",
+    "passed": 104,
+    "failed": 0,
+    "log": "completion-checks/parity-native-waste-desktop.log",
+    "native_dll_sha256": "a72dbf2b6ce8f8f1500a1de9e58916f41d1ad443c85842178271b7aa53323ac8"
+  },
+  "latest_complete_release": {
+    "revision": "e751707",
+    "passed": 495,
+    "failed": 44,
+    "filtered": 2
+  },
+  "limits": [
+    "Engine-only Debug gate excludes the two long ecology tests; full workspace Release qualification is still historical.",
+    "Original per-robot phase order and global RNG, cached radii, older corpse migration and matching original trajectories remain open.",
+    "Graph/evolution/league requirements and supported-platform package smoke remain open.",
+    "Internet Mode is excluded."
+  ],
+  "logs": [
+    "parity-native-repel3-source-final.log",
+    "parity-native-feeding-fixture-final.log",
+    "parity-native-repel3-clippy.log",
+    "parity-native-repel3-complete-engine-debug.log",
+    "parity-native-bearing-fullgate-fixtures.log",
+    "parity-native-waste-shot-source.log",
+    "parity-native-newshot-floor-final.log",
+    "parity-native-waste-clippy.log",
+    "parity-native-waste-complete-engine-debug.log",
+    "parity-native-waste-desktop.log"
+  ]
+}
