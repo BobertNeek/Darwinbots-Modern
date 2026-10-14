@@ -239,7 +239,7 @@ impl StandardMutationProfile {
         }
     }
 
-    fn rate_mut(&mut self, kind: StandardMutationKind) -> &mut MutationRate {
+    pub(crate) fn rate_mut(&mut self, kind: StandardMutationKind) -> &mut MutationRate {
         match kind {
             StandardMutationKind::Point => &mut self.point,
             StandardMutationKind::Point2 => &mut self.point2,

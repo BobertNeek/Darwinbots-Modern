@@ -12,6 +12,7 @@ mod id;
 mod legacy;
 mod modes;
 mod league;
+mod evolution;
 mod mutation;
 mod native_random;
 pub mod native_binary;
@@ -63,6 +64,7 @@ pub use modes::{
     LocalModeResult, LocalModeState, LocalModeStatus,
 };
 pub use league::{LeagueMatch, LeagueSeries};
+pub use evolution::{EvolutionConfig, EvolutionGenome, EvolutionMode, EvolutionPhase, EvolutionState};
 pub use mutation::{
     AdvancedMutationSettings, Delta2Settings, EpigeneticPolicyAction, EpigeneticSettings,
     GenomeMutator, MutationCategoryDistribution, MutationContext, MutationKind,
