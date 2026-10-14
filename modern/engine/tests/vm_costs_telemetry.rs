@@ -25,6 +25,23 @@ fn run_report(
 }
 
 #[test]
+fn reproduction_writes_track_executed_normalized_addresses_without_false_condition_writes() {
+    let (memory, report) = run_report(
+        "start 50 1300 store 301 inc 302 dec stop",
+        &DnaCosts::default(),
+        false,
+    );
+    assert_eq!(report.reproduction_writes, 7);
+    assert_eq!(memory.read(300), 50);
+    let (_, report) = run_report(
+        "cond 0 1 > start 50 .repro store stop",
+        &DnaCosts::default(),
+        false,
+    );
+    assert_eq!(report.reproduction_writes, 0);
+}
+
+#[test]
 fn gene_numbers_conditions_and_activations_match_flow() {
     let source = "cond 1 0 > start 11 100 store stop\ncond 0 1 > start 22 101 store stop\ncond 0 1 > start 33 102 store else 44 103 store stop\nstart 55 104 store stop";
     let (memory, report) = run_report(source, &DnaCosts::default(), true);

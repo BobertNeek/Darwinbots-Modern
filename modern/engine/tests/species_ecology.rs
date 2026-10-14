@@ -475,14 +475,21 @@ fn animal_minimalis_recognizes_and_moves_toward_non_family_targets() {
     let animal = LegacyDna::parse("cond\n*.eye5 0 >\n*.refeye *.myeye !=\nstart\n*.refveldx .dx store\n*.refvelup 30 add .up store\nstop\nend").unwrap();
     let alga = LegacyDna::parse("start\nstop\nend").unwrap();
     let animal_id = engine.spawn_at(animal, [500.0, 500.0]).unwrap();
-    engine.spawn_at(alga, [500.0, 800.0]).unwrap();
+    engine.spawn_at(alga, [800.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
+    assert!(
+        engine.memory_at(animal_id, 505).unwrap() > 0,
+        "actor {:?}, eye {:?}, flags {:?}",
+        engine.organism(animal_id).unwrap().position,
+        engine.memory_at(animal_id, 505),
+        engine.robot_state(animal_id).unwrap().flags
+    );
     assert_eq!(engine.memory_at(animal_id, 728).unwrap(), 1);
     assert_eq!(engine.memory_at(animal_id, 708).unwrap(), 0);
     engine.tick().unwrap();
 
-    assert!(engine.organism(animal_id).unwrap().position[1] > 500.0);
+    assert!(engine.organism(animal_id).unwrap().position[0] > 500.0);
 }
 
 #[test]
@@ -543,12 +550,12 @@ fn minus_two_shots_donate_energy_to_zerobots() {
 }
 
 #[test]
-fn shot_302_forces_target_reproduction_for_zerobot_feeding() {
+fn shot_300_forces_target_reproduction_for_zerobot_feeding() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    let feeder = LegacyDna::parse("start\n302 .shoot store\n50 .shootval store\nstop").unwrap();
+    let feeder = LegacyDna::parse("start\n300 .shoot store\n50 .shootval store\nstop").unwrap();
     let zerobot = LegacyDna::parse("0 0 0 0 0").unwrap();
-    engine.spawn_at(feeder, [100.0, 100.0]).unwrap();
-    engine.spawn_at(zerobot, [350.0, 100.0]).unwrap();
+    engine.spawn_at(feeder, [300.0, 500.0]).unwrap();
+    engine.spawn_at(zerobot, [550.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
     engine.tick().unwrap();

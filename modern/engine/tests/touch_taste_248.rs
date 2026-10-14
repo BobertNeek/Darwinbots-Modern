@@ -1,4 +1,6 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SpeciesId};
+use darwinbots_engine::{
+    CorpseDecaySettings, Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SpeciesId,
+};
 
 const HIT: i32 = 201;
 const HIT_UP: i32 = 205;
@@ -56,7 +58,7 @@ fn impact_from_known_previous_point(
         "cond\n*.robage 1 <\nstart\n{requested_kind} .shoot store\n{value} .shootval store\nstop"
     ))
     .unwrap();
-    engine.spawn_at(fire_once, [100.0, 100.0]).unwrap();
+    engine.spawn_at(fire_once, [300.0, 500.0]).unwrap();
     let target = engine.spawn_at(inert_dna(), [900.0, 800.0]).unwrap();
     engine.set_organism_aim(target, 0).unwrap();
 
@@ -124,8 +126,8 @@ fn vertical_overlap_writes_right_and_left_runtime_touch_cells() {
 }
 
 #[test]
-fn shot_taste_uses_previous_position_normalized_kind_and_vb6_angle_rounding() {
-    let (engine, target) = impact_from_known_previous_point(-14, 50);
+fn shot_taste_uses_previous_position_and_vb6_angle_rounding() {
+    let (engine, target) = impact_from_known_previous_point(-6, 50);
 
     assert_eq!(taste_cells(&engine, target), [-6, 764, 0, -6, 0, 0]);
 }
@@ -150,6 +152,11 @@ fn confirmed_organism_hit_tastes_even_when_effect_returns_false() {
 fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
     let mut corpse_engine = Engine::new(EngineConfig {
         metabolism_cost: 1,
+        corpse_decay: CorpseDecaySettings {
+            enabled: true,
+            packet_size: 0,
+            ..Default::default()
+        },
         physics: PhysicsSettings {
             density: 0.0,
             ..PhysicsSettings::default()
@@ -158,7 +165,7 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
     })
     .unwrap();
     corpse_engine
-        .spawn_species_batch(inert_dna(), SpeciesId::default(), [[350.0, 100.0]], 1)
+        .spawn_species_batch(inert_dna(), SpeciesId::default(), [[550.0, 500.0]], 1)
         .unwrap();
     corpse_engine.tick().unwrap();
     assert_eq!(corpse_engine.snapshot().corpses.len(), 1);
@@ -168,10 +175,10 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
                 "cond\n*.robage 1 <\nstart\n-1 .shoot store\n40 .shootval store\nstop",
             )
             .unwrap(),
-            [100.0, 100.0],
+            [300.0, 500.0],
         )
         .unwrap();
-    let corpse_bystander = corpse_engine.spawn_at(inert_dna(), [600.0, 100.0]).unwrap();
+    let corpse_bystander = corpse_engine.spawn_at(inert_dna(), [800.0, 500.0]).unwrap();
     corpse_engine.tick().unwrap();
     corpse_engine.tick().unwrap();
     assert_eq!(corpse_engine.snapshot().stats.projectile_impacts, 1);
@@ -182,7 +189,7 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
 
     let mut obstacle_engine = projectile_engine();
     obstacle_engine
-        .add_obstacle(Obstacle::new(1, [220.0, 100.0], [230.0, 120.0]))
+        .add_obstacle(Obstacle::new(1, [420.0, 490.0], [430.0, 520.0]))
         .unwrap();
     obstacle_engine
         .spawn_at(
@@ -190,19 +197,19 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
                 "cond\n*.robage 1 <\nstart\n-1 .shoot store\n40 .shootval store\nstop",
             )
             .unwrap(),
-            [100.0, 100.0],
+            [300.0, 500.0],
         )
         .unwrap();
     let obstacle_bystander = obstacle_engine
-        .spawn_at(inert_dna(), [350.0, 100.0])
+        .spawn_at(inert_dna(), [550.0, 500.0])
         .unwrap();
     obstacle_engine.tick().unwrap();
     obstacle_engine.tick().unwrap();
     assert_eq!(obstacle_engine.snapshot().stats.projectile_impacts, 1);
     let obstacle_impact = obstacle_engine.snapshot().shots[0].end;
     assert!(
-        (220.0..=230.0).contains(&obstacle_impact[0])
-            && (100.0..=120.0).contains(&obstacle_impact[1]),
+        (420.0..=430.0).contains(&obstacle_impact[0])
+            && (490.0..=520.0).contains(&obstacle_impact[1]),
         "projectile did not impact the obstacle AABB: {obstacle_impact:?}"
     );
     assert_eq!(

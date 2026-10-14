@@ -225,8 +225,8 @@ fn depleted_organisms_die_and_increment_death_statistics() {
     .unwrap();
     let attacker = LegacyDna::parse("start\n-1 .shoot store\n2000 .shootval store\nstop").unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
-    engine.spawn_at(attacker, [100.0, 100.0]).unwrap();
-    let target = engine.spawn_at(idle, [350.0, 100.0]).unwrap();
+    engine.spawn_at(attacker, [300.0, 500.0]).unwrap();
+    let target = engine.spawn_at(idle, [550.0, 500.0]).unwrap();
 
     engine.tick().unwrap();
     engine.tick().unwrap();

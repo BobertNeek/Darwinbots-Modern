@@ -270,6 +270,23 @@ pub struct RobotEffectState {
     pub stored_sperm: Option<StoredGeneticMaterial>,
     pub fertilization_timer: i32,
     pub forced_reproduction: bool,
+    #[serde(default)]
+    pub reproduction_assistance: u8,
+}
+
+impl RobotEffectState {
+    pub(crate) fn mark_reproduction_input(&mut self, address: i32, value: i32) {
+        if !(300..=302).contains(&address) {
+            return;
+        }
+        let bit = 1 << (address - 300);
+        if value > 0 {
+            self.reproduction_assistance |= bit;
+        } else {
+            self.reproduction_assistance &= !bit;
+        }
+        self.forced_reproduction = self.reproduction_assistance != 0;
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

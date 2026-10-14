@@ -73,9 +73,9 @@ fn movement_command_adds_impulse_and_bot_coasts_without_new_thrust() {
     engine.tick().unwrap();
     let second = engine.organism(id).unwrap();
 
-    assert!(first.velocity[1] > 0.0);
+    assert!(first.velocity[0] > 0.0);
     assert_eq!(second.velocity, first.velocity);
-    assert!(second.position[1] > first.position[1]);
+    assert!(second.position[0] > first.position[0]);
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn voluntary_acceleration_is_clamped_before_efficiency_multiplier() {
     engine.tick().unwrap();
 
     let expected = DEFAULT_MAX_VELOCITY * DEFAULT_MOVEMENT_EFFICIENCY;
-    assert!((engine.organism(id).unwrap().velocity[1] - expected).abs() < 0.01);
+    assert!((engine.organism(id).unwrap().velocity[0] - expected).abs() < 0.01);
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn voluntary_motion_cost_uses_the_clipped_acceleration_magnitude() {
     engine.tick().unwrap();
 
     assert_eq!(engine.organism(id).unwrap().energy, 31_820);
-    assert!((engine.organism(id).unwrap().velocity[1] - 180.0).abs() < 0.01);
+    assert!((engine.organism(id).unwrap().velocity[0] - 180.0).abs() < 0.01);
 }
 
 #[test]
@@ -237,9 +237,9 @@ fn drag_reduces_retained_momentum_instead_of_replacing_it() {
     let id = engine.spawn_at(dna, [100.0, 100.0]).unwrap();
 
     engine.tick().unwrap();
-    let first = engine.organism(id).unwrap().velocity[1];
+    let first = engine.organism(id).unwrap().velocity[0];
     engine.tick().unwrap();
-    let second = engine.organism(id).unwrap().velocity[1];
+    let second = engine.organism(id).unwrap().velocity[0];
 
     assert!(second > 0.0);
     assert!(second < first);
@@ -283,11 +283,11 @@ fn elasticity_rebounds_colliding_bots_with_finite_velocity() {
     engine
         .spawn_batch([
             (
-                LegacyDna::parse("start\n10 .sx store\nstop").unwrap(),
+                LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
                 [490.0, 500.0],
             ),
             (
-                LegacyDna::parse("start\n10 .dx store\nstop").unwrap(),
+                LegacyDna::parse("start\n10 .dn store\nstop").unwrap(),
                 [510.0, 500.0],
             ),
         ])
@@ -364,11 +364,11 @@ fn static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impuls
     engine
         .spawn_batch([
             (
-                LegacyDna::parse("start\n100 .dx store\nstop").unwrap(),
+                LegacyDna::parse("start\n100 .up store\nstop").unwrap(),
                 [500.0, 500.0],
             ),
             (
-                LegacyDna::parse("start\n100 .sx store\nstop").unwrap(),
+                LegacyDna::parse("start\n100 .dn store\nstop").unwrap(),
                 [700.0, 500.0],
             ),
         ])
@@ -850,8 +850,8 @@ fn phy04_cpu_engine_physics_contract() {
                 settings(180.0, 2.0, 0.6, 0.25),
             ),
             position: center,
-            expected_position: [500.0, 503.5],
-            expected_velocity: [0.0, 3.5],
+            expected_position: [503.5, 500.0],
+            expected_velocity: [3.5, 0.0],
         },
         Case {
             name: "solid surface disabled",
@@ -863,8 +863,8 @@ fn phy04_cpu_engine_physics_contract() {
                 settings(180.0, 0.0, 0.6, 0.4),
             ),
             position: center,
-            expected_position: [500.0, 504.0],
-            expected_velocity: [0.0, 4.0],
+            expected_position: [504.0, 500.0],
+            expected_velocity: [4.0, 0.0],
         },
         Case {
             name: "zero and negative coefficients",
@@ -876,8 +876,8 @@ fn phy04_cpu_engine_physics_contract() {
                 settings(180.0, -2.0, -1.0, -1.0),
             ),
             position: center,
-            expected_position: [500.0, 504.0],
-            expected_velocity: [0.0, 4.0],
+            expected_position: [504.0, 500.0],
+            expected_velocity: [4.0, 0.0],
         },
         Case {
             name: "extreme kinetic coefficient",
@@ -902,12 +902,12 @@ fn phy04_cpu_engine_physics_contract() {
                 settings(3.0, 0.0, 0.0, 0.0),
             ),
             position: center,
-            expected_position: [500.0, 503.0],
-            expected_velocity: [0.0, 3.0],
+            expected_position: [503.0, 500.0],
+            expected_velocity: [3.0, 0.0],
         },
         Case {
             name: "bounded axes",
-            command: "dx",
+            command: "up",
             input: 100,
             config: config(
                 [200.0, 200.0],
@@ -920,7 +920,7 @@ fn phy04_cpu_engine_physics_contract() {
         },
         Case {
             name: "toroidal axes",
-            command: "dx",
+            command: "up",
             input: 100,
             config: config([200.0, 200.0], [true, true], settings(100.0, 0.0, 0.0, 0.0)),
             position: [100.0, 100.0],

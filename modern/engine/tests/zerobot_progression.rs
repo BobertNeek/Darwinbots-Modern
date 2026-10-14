@@ -5,12 +5,12 @@ fn progression_counters_distinguish_evolved_behavior_from_forced_assistance() {
     let mut forced = Engine::new(EngineConfig::testing()).unwrap();
     forced
         .spawn_at(
-            LegacyDna::parse("start\n302 .shoot store\n50 .shootval store\nstop").unwrap(),
-            [100.0, 100.0],
+            LegacyDna::parse("start\n300 .shoot store\n50 .shootval store\nstop").unwrap(),
+            [300.0, 500.0],
         )
         .unwrap();
     forced
-        .spawn_at(LegacyDna::parse("0 0 0 0 0").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("0 0 0 0 0").unwrap(), [550.0, 500.0])
         .unwrap();
     forced.tick().unwrap();
     forced.tick().unwrap();
@@ -21,7 +21,7 @@ fn progression_counters_distinguish_evolved_behavior_from_forced_assistance() {
     evolved
         .spawn_at(
             LegacyDna::parse("start\n50 .repro store\nstop").unwrap(),
-            [100.0, 100.0],
+            [300.0, 500.0],
         )
         .unwrap();
     evolved.tick().unwrap();
@@ -32,14 +32,19 @@ fn progression_counters_distinguish_evolved_behavior_from_forced_assistance() {
         .spawn_at(
             LegacyDna::parse("start\n10 .up store\n-1 .shoot store\n40 .shootval store\nstop")
                 .unwrap(),
-            [100.0, 100.0],
+            [300.0, 500.0],
         )
         .unwrap();
     behavior
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [350.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [550.0, 500.0])
         .unwrap();
-    behavior.tick().unwrap();
-    behavior.tick().unwrap();
+    // Feeding is counted when the return packet arrives, after the request hits.
+    for _ in 0..16 {
+        behavior.tick().unwrap();
+        if behavior.snapshot().stats.feeding_events > 0 {
+            break;
+        }
+    }
     assert!(behavior.snapshot().stats.feeding_events > 0);
     assert!(behavior.snapshot().stats.intentional_movement_events > 0);
 }

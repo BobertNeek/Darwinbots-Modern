@@ -139,7 +139,7 @@ fn cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn() {
         ..config
     })
     .unwrap();
-    let dna = LegacyDna::parse("cond *.robage 1 < start 200 .dx store stop").unwrap();
+    let dna = LegacyDna::parse("cond *.robage 1 < start 200 .up store stop").unwrap();
     let cpu_id = cpu.spawn_at(dna.clone(), [930.0, 500.0]).unwrap();
     let gpu_id = gpu.spawn_at(dna, [930.0, 500.0]).unwrap();
     for expected in [[1_130.0, 500.0], [311.0, 500.0]] {

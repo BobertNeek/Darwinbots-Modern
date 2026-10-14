@@ -64,9 +64,13 @@ fn assert_untouched_starter_animal_moves(backend: BackendPreference) {
         .organism(animal_id)
         .expect("animal should be present")
         .position;
-    engine.tick().expect("first starter tick should succeed");
-    engine.tick().expect("second starter tick should succeed");
-    engine.tick().expect("third starter tick should succeed");
+    // The untouched DNA must first search and sense food before it can thrust.
+    for _ in 0..64 {
+        engine.tick().expect("starter tick should succeed");
+        if engine.snapshot().stats.intentional_movement_events > 0 {
+            break;
+        }
+    }
     let snapshot = engine.snapshot();
     let after = snapshot
         .organisms

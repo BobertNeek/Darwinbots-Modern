@@ -105,6 +105,8 @@ pub enum VmTermination {
 pub struct VmReport {
     pub blocks_executed: u32,
     pub stores_applied: u32,
+    /// Bits for DNA writes to repro, mrepro and sexrepro, including same-value writes.
+    pub reproduction_writes: u8,
     pub conditions_evaluated: u32,
     pub current_gene: u16,
     pub activations: Vec<bool>,
@@ -169,6 +171,7 @@ impl DnaVm {
         let mut report = VmReport {
             blocks_executed: 0,
             stores_applied: 0,
+            reproduction_writes: 0,
             conditions_evaluated: 0,
             current_gene: 0,
             activations: Vec::new(),
@@ -247,9 +250,13 @@ impl DnaVm {
                     if matches!(flow, Flow::Body | Flow::ElseBody)
                         && booleans.last().copied().unwrap_or(true) =>
                 {
-                    if let Some(relative_cost) =
-                        execute_store(block.value, &mut integers, memory, &mut self.random_state)
-                    {
+                    if let Some(relative_cost) = execute_store(
+                        block.value,
+                        &mut integers,
+                        memory,
+                        &mut self.random_state,
+                        &mut report.reproduction_writes,
+                    ) {
                         report.stores_applied = report.stores_applied.saturating_add(1);
                         charge(
                             &mut report,
@@ -608,6 +615,7 @@ fn execute_store(
     stack: &mut IntegerStack,
     memory: &mut VmMemory,
     random_state: &mut u64,
+    reproduction_writes: &mut u8,
 ) -> Option<f64> {
     if !(1..=14).contains(&command) {
         return None;
@@ -616,6 +624,10 @@ fn execute_store(
     let binary_value = (7..=9).contains(&command).then(|| pop(stack));
     if address == 0 {
         return None;
+    }
+    let normalized = normalize_address(address);
+    if (300..=302).contains(&normalized) {
+        *reproduction_writes |= 1 << (normalized - 300);
     }
 
     let relative_cost = match command {

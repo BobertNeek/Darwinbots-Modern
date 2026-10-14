@@ -244,14 +244,20 @@ fn sensor_value(value: f32) -> i32 {
 }
 
 fn velocity_readbacks(velocity: [f32; 2], aim: f32) -> [i32; 5] {
-    let forward = velocity[0] * aim.sin() + velocity[1] * aim.cos();
-    let lateral = velocity[0] * aim.cos() - velocity[1] * aim.sin();
+    // WriteSenses evaluates Double trig before the Single iceil parameter.
+    let angle = f64::from(aim);
+    let forward =
+        (f64::from(velocity[0]) * angle.cos() - f64::from(velocity[1]) * angle.sin()) as f32;
+    let lateral =
+        (f64::from(velocity[1]) * angle.cos() + f64::from(velocity[0]) * angle.sin()) as f32;
+    let forward = resource_readback(forward.clamp(-32_000.0, 32_000.0));
+    let lateral = resource_readback(lateral.clamp(-32_000.0, 32_000.0));
     [
-        sensor_value(velocity[0].hypot(velocity[1]).max(0.0)),
-        sensor_value((-lateral).max(0.0)),
-        sensor_value(lateral.max(0.0)),
-        sensor_value((-forward).max(0.0)),
-        sensor_value(forward.max(0.0)),
+        resource_readback(velocity[0].hypot(velocity[1]).min(32_000.0)),
+        -lateral,
+        lateral,
+        -forward,
+        forward,
     ]
 }
 
@@ -3799,11 +3805,11 @@ impl Engine {
                 "organism memory values must be between -32000 and 32000".to_owned(),
             ));
         }
-        self.slots
-            .get_mut(id)?
-            .program
-            .memory
-            .write(address as i32, value);
+        let organism = self.slots.get_mut(id)?;
+        organism.program.memory.write(address as i32, value);
+        organism
+            .effects
+            .mark_reproduction_input(address as i32, value);
         self.publish_snapshot();
         Ok(())
     }
@@ -5421,6 +5427,10 @@ impl Engine {
                 organism.program.memory.read(487),
             ];
             let mut vm = DnaVm::new(organism.program.rng_state);
+            if organism.effects.forced_reproduction && organism.effects.reproduction_assistance == 0
+            {
+                organism.effects.reproduction_assistance = 7;
+            }
             let report = vm.execute_with_energy(
                 &organism.program.dna,
                 &mut organism.program.memory,
@@ -5435,6 +5445,8 @@ impl Engine {
                 &mut organism.materials.energy,
             )?;
             organism.program.rng_state = vm.random_state();
+            organism.effects.reproduction_assistance &= !report.reproduction_writes;
+            organism.effects.forced_reproduction = organism.effects.reproduction_assistance != 0;
             organism.program.debug_text = report.debug_text;
             organism.program.current_gene = u32::from(report.current_gene);
             organism.program.condition_count = report.conditions_evaluated;
@@ -5520,6 +5532,10 @@ impl Engine {
                         robot.effects.paralysis_location,
                         robot.effects.paralysis_value,
                     );
+                    robot.effects.mark_reproduction_input(
+                        robot.effects.paralysis_location,
+                        robot.effects.paralysis_value,
+                    );
                 }
                 robot.effects.paralysis_countdown -= 1.0;
                 if robot.effects.paralysis_countdown < 1.0 {
@@ -5532,6 +5548,10 @@ impl Engine {
             if robot.effects.poisoning_active {
                 if robot.effects.poisoning_location != 0 {
                     robot.program.memory.write(
+                        robot.effects.poisoning_location,
+                        robot.effects.poisoning_value,
+                    );
+                    robot.effects.mark_reproduction_input(
                         robot.effects.poisoning_location,
                         robot.effects.poisoning_value,
                     );
@@ -6613,6 +6633,12 @@ impl Engine {
                 .read(location);
             let target_memory = &mut self.slots[target].organism.as_mut().unwrap().program.memory;
             target_memory.write(location, value);
+            self.slots[target]
+                .organism
+                .as_mut()
+                .unwrap()
+                .effects
+                .mark_reproduction_input(location, value);
             self.ties[tie_index].information = true;
             trace.memory_write(
                 CyclePhase::TieData,
@@ -8449,6 +8475,12 @@ impl Engine {
                             .program
                             .memory
                             .write(address, value);
+                        self.slots[target]
+                            .organism
+                            .as_mut()
+                            .unwrap()
+                            .effects
+                            .mark_reproduction_input(address, value);
                         true
                     }
                 }
@@ -9453,7 +9485,17 @@ impl Engine {
                     parent,
                     percentage,
                     mutation_reproduction: !sexual && reproduction_commands.mutated > 0,
-                    assisted: false,
+                    assisted: organism.effects.reproduction_assistance
+                        & (if sexual {
+                            4
+                        } else if reproduction_commands.mutated > 0
+                            && reproduction_commands.mutated >= reproduction_commands.asexual
+                        {
+                            2
+                        } else {
+                            1
+                        })
+                        != 0,
                     sexual,
                     sperm_source: sexual
                         .then(|| {
@@ -9739,6 +9781,7 @@ impl Engine {
                     &mut parent_organism.program.memory,
                 );
                 parent_organism.effects.forced_reproduction = false;
+                parent_organism.effects.reproduction_assistance = 0;
                 if birth.sexual {
                     parent_organism.effects.stored_sperm = None;
                     parent_organism.effects.fertilization_timer = 0;
@@ -11240,6 +11283,70 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_velocity_readbacks_are_signed_and_round_single_halves_to_even() {
+        assert_eq!(velocity_readbacks([10.0, -5.0], 0.0), [11, 5, -5, -10, 10]);
+        assert_eq!(velocity_readbacks([2.5, -3.5], 0.0), [4, 4, -4, -2, 2]);
+        assert_eq!(
+            velocity_readbacks([10.0, -5.0], std::f32::consts::FRAC_PI_2),
+            [11, -10, 10, -5, 5]
+        );
+    }
+
+    #[test]
+    fn assisted_reproduction_survives_blocking_save_resume_and_same_value_dna_replaces_it() {
+        let mut engine = Engine::new(EngineConfig {
+            organism_capacity: 1,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let parent = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        engine.set_organism_memory(parent, 300, 50).unwrap();
+        engine.tick().unwrap();
+        assert_eq!(engine.stats.births, 0);
+        assert_eq!(
+            engine
+                .slots
+                .get(parent)
+                .unwrap()
+                .effects
+                .reproduction_assistance,
+            1
+        );
+        let mut resumed =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
+        resumed.config.organism_capacity = 2;
+        resumed.tick().unwrap();
+        assert_eq!(resumed.stats.births, 1);
+        assert_eq!(resumed.stats.self_reproductions, 0);
+        assert_eq!(
+            resumed
+                .slots
+                .get(parent)
+                .unwrap()
+                .effects
+                .reproduction_assistance,
+            0
+        );
+
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let parent = engine
+            .spawn_at(
+                LegacyDna::parse("start 50 .repro store stop").unwrap(),
+                [500.0; 2],
+            )
+            .unwrap();
+        engine.set_organism_memory(parent, 300, 50).unwrap();
+        engine.tick().unwrap();
+        assert_eq!(engine.stats.births, 1);
+        assert_eq!(
+            engine.stats.self_reproductions, 1,
+            "a same-value DNA store owns the command"
+        );
+    }
 
     #[test]
     fn native_border_respawn_moves_the_whole_multibot_from_its_nearest_cell() {
