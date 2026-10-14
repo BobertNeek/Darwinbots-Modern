@@ -80,6 +80,9 @@ mod native_waste;
 #[path = "world/native_aim.rs"]
 mod native_aim;
 
+#[path = "world/native_reference_velocity.rs"]
+mod native_reference_velocity;
+
 #[path = "world/native_biology.rs"]
 mod native_biology;
 
@@ -122,6 +125,7 @@ const MEM_REF_Y: i32 = 690;
 const MEM_REF_MULTI: i32 = 686;
 const MEM_REF_SHELL: i32 = 687;
 const MEM_REF_BODY: i32 = 688;
+const MEM_REF_VEL_SCALAR: i32 = 695;
 const MEM_REF_VEL_SX: i32 = 696;
 const MEM_REF_VEL_DX: i32 = 697;
 const MEM_REF_VEL_DN: i32 = 698;
@@ -6154,6 +6158,9 @@ impl Engine {
             .into_par_iter()
             .map(|observer_slot| {
                 let observer = self.slots[observer_slot].organism.as_ref()?;
+                if observer.flags.corpse {
+                    return None;
+                }
                 if !observer.flags.can_see {
                     return Some((observer_slot, [0; 9], None));
                 }
@@ -6278,6 +6285,7 @@ impl Engine {
             values.extend([
                 (MEM_REF_X as u16, 0),
                 (MEM_REF_Y as u16, 0),
+                (MEM_REF_VEL_SCALAR as u16, 0),
                 (MEM_REF_VEL_UP as u16, 0),
                 (MEM_REF_VEL_DN as u16, 0),
                 (MEM_REF_VEL_DX as u16, 0),
@@ -6318,20 +6326,21 @@ impl Engine {
             )) = sense.2
             {
                 let observer_angle = observer.heading();
-                let [
-                    _,
-                    target_velocity_sx,
-                    target_velocity_dx,
-                    target_velocity_dn,
-                    target_velocity_up,
-                ] = velocity_readbacks(target_velocity, observer_angle);
+                let [scalar, sx, dx, dn, up] = native_reference_velocity::optical_velocity(
+                    target_velocity,
+                    observer_angle,
+                    observer.program.memory.read(MEM_VEL_UP),
+                    observer.program.memory.read(MEM_VEL_DX),
+                    observer.program.memory.read(MEM_REF_VEL_SX),
+                );
                 values.extend([
                     (MEM_REF_X as u16, target_position[0].round() as i32),
                     (MEM_REF_Y as u16, target_position[1].round() as i32),
-                    (MEM_REF_VEL_UP as u16, target_velocity_up),
-                    (MEM_REF_VEL_DN as u16, target_velocity_dn),
-                    (MEM_REF_VEL_DX as u16, target_velocity_dx),
-                    (MEM_REF_VEL_SX as u16, target_velocity_sx),
+                    (MEM_REF_VEL_SCALAR as u16, scalar),
+                    (MEM_REF_VEL_UP as u16, up),
+                    (MEM_REF_VEL_DN as u16, dn),
+                    (MEM_REF_VEL_DX as u16, dx),
+                    (MEM_REF_VEL_SX as u16, sx),
                     (MEM_REF_EYE as u16, target_eye_references),
                     (MEM_REF_NRG as u16, resource_readback(target_energy)),
                     (MEM_REF_AGE as u16, target_age.min(i32::MAX as u64) as i32),
@@ -6377,10 +6386,21 @@ impl Engine {
                 .copied()
                 .rev()
                 .find(|(address, _)| *address == MEM_REF_MEMORY_VALUE as u16);
+            let native_sx = values
+                .iter()
+                .rev()
+                .find(|(address, _)| *address == MEM_REF_VEL_SX as u16)
+                .map(|(_, value)| *value);
             SysvarRuntime::new().publish(
                 PhaseReadbacks::Vision(VisionReadbacks { values }),
                 &mut observer.program.memory,
             );
+            if let Some(value) = native_sx {
+                observer.program.memory.restore_native_cell(
+                    MEM_REF_VEL_SX,
+                    value.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16,
+                );
+            }
             for (address, value) in incoming_values {
                 observer.program.memory.write(i32::from(address), value);
             }
@@ -7114,20 +7134,35 @@ impl Engine {
             let reference_index = endpoints[slot].iter().position(|endpoint| {
                 endpoint.is_some_and(|endpoint| endpoint.port == reference_port)
             });
+            let source_aim = source.heading();
+            let own_up = source.program.memory.read(MEM_VEL_UP);
+            let own_dx = source.program.memory.read(MEM_VEL_DX);
+            let memory_location = source.program.memory.read(MEM_TIE_MEMORY_LOCATION);
             let reference_values = reference_index
                 .filter(|_| can_read_references)
                 .and_then(|index| endpoints[slot][index].and_then(|endpoint| endpoint.other))
                 .and_then(|other| {
-                    let target = self.slots.get(other).ok()?;
-                    let source_aim = source.heading();
-                    let target_aim = target.heading();
-                    let target_velocity_for_source =
-                        velocity_readbacks(target.kinematics.velocity, source_aim);
-                    let source_velocity =
-                        velocity_readbacks(source.kinematics.velocity, source_aim);
-                    let target_velocity =
-                        velocity_readbacks(target.kinematics.velocity, target_aim);
-                    let memory_location = source.program.memory.read(MEM_TIE_MEMORY_LOCATION);
+                    let target = self.slots.get_mut(other).ok()?;
+                    // ReadTRefVars changes the target's physical velocity, but
+                    // copies the target's already-published own-frame cells.
+                    target.kinematics.velocity = target
+                        .kinematics
+                        .velocity
+                        .map(|value| value.clamp(-16000.0, 16000.0));
+                    let relative = native_reference_velocity::tie_relative_velocity(
+                        target.kinematics.velocity,
+                        source_aim,
+                        own_up,
+                        own_dx,
+                    );
+                    let target_velocity = [
+                        MEM_VEL_SCALAR,
+                        MEM_VEL_SX,
+                        MEM_VEL_DX,
+                        MEM_VEL_DN,
+                        MEM_VEL_UP,
+                    ]
+                    .map(|address| target.program.memory.read(address));
                     let memory_value = if (1..=1_000).contains(&memory_location) {
                         target.program.memory.read(memory_location)
                     } else {
@@ -7144,22 +7179,10 @@ impl Engine {
                         ),
                         (MEM_TREF_XPOS as u16, target.program.memory.read(MEM_XPOS)),
                         (MEM_TREF_YPOS as u16, target.program.memory.read(MEM_YPOS)),
-                        (
-                            MEM_TREF_VEL_MY_SX as u16,
-                            target_velocity_for_source[1] - source_velocity[1],
-                        ),
-                        (
-                            MEM_TREF_VEL_MY_DX as u16,
-                            target_velocity_for_source[2] - source_velocity[2],
-                        ),
-                        (
-                            MEM_TREF_VEL_MY_DN as u16,
-                            target_velocity_for_source[3] - source_velocity[3],
-                        ),
-                        (
-                            MEM_TREF_VEL_MY_UP as u16,
-                            target_velocity_for_source[4] - source_velocity[4],
-                        ),
+                        (MEM_TREF_VEL_MY_SX as u16, relative[0]),
+                        (MEM_TREF_VEL_MY_DX as u16, relative[1]),
+                        (MEM_TREF_VEL_MY_DN as u16, relative[2]),
+                        (MEM_TREF_VEL_MY_UP as u16, relative[3]),
                         (MEM_TREF_VEL_SCALAR as u16, target_velocity[0]),
                         (MEM_TREF_VEL_YOUR_SX as u16, target_velocity[1]),
                         (MEM_TREF_VEL_YOUR_DX as u16, target_velocity[2]),
@@ -7221,6 +7244,13 @@ impl Engine {
                 values.push((480 + index as u16, tie_angles[slot][index]));
                 values.push((484 + index as u16, tie_lengths[slot][index]));
             }
+            let native_velocity_values: Vec<_> = reference_values
+                .as_ref()
+                .into_iter()
+                .flatten()
+                .copied()
+                .filter(|(address, _)| (440..=448).contains(address))
+                .collect();
             if let Some(reference_values) = reference_values {
                 values.extend(reference_values);
             }
@@ -7231,6 +7261,12 @@ impl Engine {
                 PhaseReadbacks::Tie(TieReadbacks { values }),
                 &mut organism.program.memory,
             );
+            for (address, value) in native_velocity_values {
+                organism.program.memory.restore_native_cell(
+                    i32::from(address),
+                    value.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16,
+                );
+            }
             if can_read_references && reference_index.is_none() {
                 for address in TIED_REFERENCE_ADDRESSES {
                     organism.program.memory.write(address, 0);
