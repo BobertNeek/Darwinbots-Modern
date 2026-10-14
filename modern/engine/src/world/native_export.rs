@@ -339,7 +339,7 @@ impl Engine {
         word(
             &mut record,
             "private_variable_count",
-            variables.len() as i64,
+            i64::from(robot.program.private_variable_count),
         )?;
         record.set_value("private_variables", NativeValue::Bytes(private))?;
         record.set_single(
@@ -566,7 +566,7 @@ mod tests {
             &(-712_i16).to_le_bytes()
         );
         assert_eq!(robot.bytes("owner").unwrap(), b"Local \x80");
-        assert_eq!(robot.word("private_variable_count").unwrap(), 1);
+        assert_eq!(robot.word("private_variable_count").unwrap(), 2);
         assert_eq!(
             robot.bytes("dna").unwrap(),
             native_dna(engine.dna(id).unwrap()).unwrap()
@@ -575,6 +575,34 @@ mod tests {
         assert!(engine.export_native_organisms(&[id, id]).is_err());
         assert!(engine.export_native_organisms(&[]).is_err());
         assert!(ansi("unsupported 🐉").is_err());
+    }
+
+    #[test]
+    fn native_private_slots_preserve_order_duplicates_empty_slots_and_next_index() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let id = engine.spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2]).unwrap();
+        let definitions = vec![("Zulu".to_owned(), 901), ("".to_owned(), -7),
+            ("Alpha".to_owned(), 902), ("Zulu".to_owned(), 903)];
+        let robot = engine.slots.get_mut(id).unwrap();
+        robot.program.dna.set_native_context(definitions.clone(), false, DnaMetadata::default());
+        robot.program.private_variable_count = 5;
+        let bytes = engine.export_native_organisms(&[id]).unwrap();
+        let file = NativeRecordFile::decode(&bytes).unwrap();
+        let record = &file.robots[0];
+        assert_eq!(record.word("private_variable_count").unwrap(), 5);
+        let private = record.bytes("private_variables").unwrap();
+        let mut offset = 0;
+        for (name, value) in definitions {
+            let size = i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()) as usize;
+            offset += 2;
+            assert_eq!(&private[offset..offset + size], name.as_bytes());
+            offset += size;
+            assert_eq!(i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()), value as i16);
+            offset += 2;
+        }
+        let restored: LegacyDna = serde_json::from_slice(&serde_json::to_vec(engine.dna(id).unwrap()).unwrap()).unwrap();
+        assert_eq!(restored.native_user_variables(), engine.dna(id).unwrap().native_user_variables());
+        assert_eq!(restored.user_variable("Zulu"), Some(903));
     }
 
     #[test]

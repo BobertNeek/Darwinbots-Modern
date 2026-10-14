@@ -512,7 +512,7 @@ impl Engine {
             .map(str::to_owned)
             .collect();
         robot.program.private_variable_count = r.word("private_variable_count")? as u16;
-        let mut variables = BTreeMap::new();
+        let mut variables = Vec::new();
         let private = r.bytes("private_variables")?;
         let mut offset = 0;
         for address in 1..=50 {
@@ -520,9 +520,7 @@ impl Engine {
             offset += 2;
             let name = text(&private[offset..offset + length]);
             offset += length;
-            if !name.is_empty() {
-                variables.insert(name.to_ascii_lowercase(), word(private, offset));
-            }
+            variables.push((name, word(private, offset)));
             robot
                 .program
                 .private_variables

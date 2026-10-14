@@ -94,6 +94,8 @@ impl LegacyDna {
         let mut blocks: Vec<_> = output.into_iter().skip(1).take(MAX_DNA_BLOCKS - 1).collect();
         normalize_master_end(&mut blocks);
         let mut child = self.with_blocks(blocks);
+        child.ordered_user_variables.extend(other.ordered_user_variables.iter()
+            .filter(|(name, _)| !self.user_variables.contains_key(&name.to_ascii_lowercase())).cloned());
         for (name, address) in &other.user_variables { child.user_variables.entry(name.clone()).or_insert(*address); }
         child.new_move |= other.new_move;
         child.compatibility_warnings.extend(other.compatibility_warnings.iter().cloned());
@@ -105,6 +107,19 @@ impl LegacyDna {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn private_definitions_keep_source_order_case_and_duplicate_slots_through_save_and_source() {
+        let dna = LegacyDna::parse("def Zulu 901\ndef Alpha 902\ndef Zulu 903\nstart .Zulu stop").unwrap();
+        let expected = vec![("Zulu".to_owned(), 901), ("Alpha".to_owned(), 902), ("Zulu".to_owned(), 903)];
+        assert_eq!(dna.native_user_variables(), expected.as_slice());
+        assert_eq!(dna.user_variable("Zulu"), Some(903));
+        let saved: LegacyDna = serde_json::from_slice(&serde_json::to_vec(&dna).unwrap()).unwrap();
+        assert_eq!(saved.native_user_variables(), expected.as_slice());
+        let text = LegacyDna::parse(&dna.to_source()).unwrap();
+        assert_eq!(text.native_user_variables(), expected.as_slice());
+        assert_eq!(text.blocks(), dna.blocks());
+    }
 
     #[test]
     fn identical_parent_crossover_keeps_dna_but_consumes_eager_per_block_draws() {

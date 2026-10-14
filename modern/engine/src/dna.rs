@@ -75,6 +75,7 @@ impl Default for DnaMetadata {
 pub struct LegacyDna {
     blocks: Vec<DnaBlock>,
     user_variables: BTreeMap<String, i32>,
+    ordered_user_variables: Vec<(String, i32)>,
     new_move: bool,
     compatibility_warnings: Vec<String>,
     metadata: DnaMetadata,
@@ -84,6 +85,7 @@ pub struct LegacyDna {
 struct LegacyDnaSerialize<'a> {
     instructions: Vec<Instruction>,
     user_variables: &'a BTreeMap<String, i32>,
+    ordered_user_variables: &'a [(String, i32)],
     new_move: bool,
     compatibility_warnings: &'a [String],
     #[serde(skip_serializing_if = "metadata_is_default")]
@@ -95,6 +97,8 @@ struct LegacyDnaDeserialize {
     instructions: Vec<Instruction>,
     #[serde(default)]
     user_variables: BTreeMap<String, i32>,
+    #[serde(default)]
+    ordered_user_variables: Option<Vec<(String, i32)>>,
     #[serde(default)]
     new_move: bool,
     #[serde(default)]
@@ -111,6 +115,7 @@ impl Serialize for LegacyDna {
         LegacyDnaSerialize {
             instructions: self.instructions(),
             user_variables: &self.user_variables,
+            ordered_user_variables: &self.ordered_user_variables,
             new_move: self.new_move,
             compatibility_warnings: &self.compatibility_warnings,
             metadata: &self.metadata,
@@ -139,6 +144,7 @@ impl<'de> Deserialize<'de> for LegacyDna {
         normalize_master_end(&mut blocks);
         Ok(Self {
             blocks,
+            ordered_user_variables: decoded.ordered_user_variables.unwrap_or_else(|| decoded.user_variables.iter().map(|(name, value)| (name.clone(), *value)).collect()),
             user_variables: decoded.user_variables,
             new_move: decoded.new_move,
             compatibility_warnings: warnings.into_iter().collect(),
@@ -154,6 +160,7 @@ impl LegacyDna {
         Self {
             blocks,
             user_variables: BTreeMap::new(),
+            ordered_user_variables: Vec::new(),
             new_move: false,
             compatibility_warnings: Vec::new(),
             metadata: DnaMetadata::default(),
@@ -162,11 +169,13 @@ impl LegacyDna {
 
     pub(crate) fn set_native_context(
         &mut self,
-        user_variables: BTreeMap<String, i32>,
+        ordered_user_variables: Vec<(String, i32)>,
         new_move: bool,
         metadata: DnaMetadata,
     ) {
-        self.user_variables = user_variables;
+        self.user_variables = ordered_user_variables.iter().filter(|(name, _)| !name.is_empty())
+            .map(|(name, value)| (name.to_ascii_lowercase(), *value)).collect();
+        self.ordered_user_variables = ordered_user_variables;
         self.new_move = new_move;
         self.metadata = metadata;
     }
@@ -186,6 +195,7 @@ impl LegacyDna {
         normalize_master_end(&mut blocks);
         Self {
             blocks,
+            ordered_user_variables: user_variables.iter().map(|(name, value)| (name.clone(), *value)).collect(),
             user_variables,
             new_move,
             compatibility_warnings: warnings.into_iter().collect(),
@@ -195,6 +205,7 @@ impl LegacyDna {
 
     pub fn parse(source: &str) -> Result<Self, EngineError> {
         let mut user_variables = BTreeMap::new();
+        let mut ordered_user_variables = Vec::new();
         let mut metadata = DnaMetadata::default();
         let mut saw_metadata = false;
         let mut hash_validation = None;
@@ -243,6 +254,7 @@ impl LegacyDna {
                 .is_some_and(|token| token.eq_ignore_ascii_case("def"))
             {
                 parse_definition(&tokens, line_number, &mut user_variables)?;
+                ordered_user_variables.push((tokens[1].to_owned(), user_variables[&tokens[1].to_ascii_lowercase()]));
             }
             hash_prefix.push_str(logical_line);
             hash_prefix.push_str("\r\n");
@@ -294,6 +306,7 @@ impl LegacyDna {
         Ok(Self {
             blocks,
             user_variables,
+            ordered_user_variables,
             new_move,
             compatibility_warnings: compatibility_warnings.into_iter().collect(),
             metadata,
@@ -312,8 +325,13 @@ impl LegacyDna {
         self.user_variables.get(&name.to_ascii_lowercase()).copied()
     }
 
-    pub(crate) fn native_user_variables(&self) -> &BTreeMap<String, i32> {
-        &self.user_variables
+    pub(crate) fn native_user_variables(&self) -> &[(String, i32)] {
+        &self.ordered_user_variables
+    }
+
+    pub(crate) fn clear_native_user_variables(&mut self) {
+        self.user_variables.clear();
+        self.ordered_user_variables.clear();
     }
 
     pub fn compatibility_warnings(&self) -> &[String] {
@@ -488,6 +506,7 @@ impl LegacyDna {
         Self {
             blocks,
             user_variables: self.user_variables.clone(),
+            ordered_user_variables: self.ordered_user_variables.clone(),
             new_move: self.new_move,
             compatibility_warnings: self.compatibility_warnings.clone(),
             metadata: self.metadata.clone(),
@@ -510,6 +529,9 @@ impl LegacyDna {
         compatibility_warnings.dedup();
         Self {
             blocks,
+            ordered_user_variables: self.ordered_user_variables.iter()
+                .chain(other.ordered_user_variables.iter().filter(|(name, _)| !self.user_variables.contains_key(&name.to_ascii_lowercase())))
+                .cloned().collect(),
             user_variables,
             new_move: self.new_move || other.new_move,
             compatibility_warnings,
@@ -525,6 +547,8 @@ impl LegacyDna {
         if self.new_move {
             lines.push("NewMove".to_owned());
         }
+        lines.extend(self.ordered_user_variables.iter().filter(|(name, _)| !name.is_empty())
+            .map(|(name, value)| format!("def {name} {value}")));
         lines.push(
             self.blocks
                 .iter()

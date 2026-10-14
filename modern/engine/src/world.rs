@@ -9698,13 +9698,14 @@ impl Engine {
             let mutate = if native { self.mutations_enabled || birth.mutation_reproduction } else {
                 birth.mutation_reproduction || ((next_rng % 10_000) as f32) < configured_rate * 100.0
             };
-            let child_dna = if birth.sexual {
+            let mut child_dna = if birth.sexual {
                 if let Some(stored) = parent_state.effects.stored_sperm.as_ref() {
                     if let Some(random) = self.native_random.as_mut() {
                         parent_state.program.dna.crossover_native(&stored.dna, random)
                     } else { parent_state.program.dna.crossover(&stored.dna) }
                 } else { parent_state.program.dna.clone() }
             } else { parent_state.program.dna.clone() };
+            if self.native_random.is_some() { child_dna.clear_native_user_variables(); }
             let child = self.spawn_species_at_unpublished(child_dna, species, position)?;
             let absolute_id = self.slots.get(child)?.identity.absolute_id;
             available_births -= 1;

@@ -193,11 +193,16 @@ pub struct RobotProgramState {
 impl RobotProgramState {
     fn new(dna: LegacyDna, memory: VmMemory, rng_state: u64) -> Self {
         let genetic_graph = Some(crate::GeneticGraphState::for_dna(&dna));
+        let mut private_variables = VmMemory::default();
+        for (index, (_, value)) in dna.native_user_variables().iter().take(50).enumerate() {
+            private_variables.write(index as i32 + 1, *value);
+        }
+        let private_variable_count = dna.native_user_variables().len().min(50) as u16 + 1;
         Self {
             dna,
             memory,
-            private_variables: VmMemory::default(),
-            private_variable_count: 0,
+            private_variables,
+            private_variable_count,
             used_variables: Vec::new(),
             rng_state: rng_state.max(1),
             mutation_profile: StandardMutationProfile::default(),
