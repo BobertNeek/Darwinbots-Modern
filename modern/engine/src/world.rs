@@ -2262,6 +2262,9 @@ pub struct Engine {
     capabilities: BackendCapabilities,
     #[serde(skip, default)]
     physics: RuntimePhysics,
+    #[cfg(test)]
+    #[serde(skip)]
+    forced_sensing_error_for_tests: Option<String>,
     #[serde(skip, default)]
     spatial: SpatialIndex,
     #[serde(skip, default)]
@@ -2482,6 +2485,8 @@ impl Engine {
             stats: legacy.stats.into(),
             capabilities: default_capabilities(),
             physics: RuntimePhysics::default(),
+            #[cfg(test)]
+            forced_sensing_error_for_tests: None,
             spatial: SpatialIndex::default(),
             sensing_spatial: SpatialIndex::default(),
             pending_mutations: legacy
@@ -2691,6 +2696,8 @@ impl Engine {
             stats: SimulationStats::default(),
             capabilities,
             physics,
+            #[cfg(test)]
+            forced_sensing_error_for_tests: None,
             spatial: SpatialIndex::default(),
             sensing_spatial: SpatialIndex::default(),
             pending_mutations: Vec::new(),
@@ -6817,6 +6824,11 @@ impl Engine {
         } else {
             None
         };
+        #[cfg(test)]
+        let gpu_result = self
+            .forced_sensing_error_for_tests
+            .take()
+            .map_or(gpu_result, |message| Some(Err(EngineError::Gpu(message))));
         let gpu_targets = match gpu_result {
             Some(Ok((targets, render_instances))) => {
                 if let Some(instances) = render_instances {
@@ -13199,6 +13211,17 @@ mod tests {
         let RuntimePhysics::Gpu(backend) = &engine.physics else {
             panic!("the physical GPU is required for this test");
         };
+        let receipt = backend.adapter_receipt();
+        assert!(
+            matches!(
+                receipt.device_type.as_str(),
+                "DiscreteGpu" | "IntegratedGpu"
+            ),
+            "a physical adapter is required for submission-failure qualification: {receipt:?}"
+        );
+        assert!(!receipt.name.trim().is_empty());
+        assert!(!receipt.backend.trim().is_empty());
+        println!("physical submission-failure adapter: {receipt:?}");
         backend.fail_next_sensing_after_submit_for_tests();
     }
 
@@ -13290,10 +13313,86 @@ mod tests {
     }
 
     #[test]
+    fn fallback_policy_records_sensing_failure_without_an_adapter() {
+        // Policy-only coverage: physical submission and recovery have separate gates.
+        let mut engine = Engine::new(EngineConfig {
+            allow_cpu_fallback: true,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine.spawn(LegacyDna::parse("stop").unwrap()).unwrap();
+        let before = crate::SaveFile::encode(&engine).unwrap();
+        let publications_before = engine.snapshot_publication_count();
+        let message = "injected sensing failure for CPU-only fallback policy";
+        let expected_reason = EngineError::Gpu(message.to_owned()).to_string();
+        engine.pending_gpu_render_instances = Some(Vec::new());
+        engine.pending_gpu_collision_pairs = Some(vec![(0, 0)]);
+        engine.forced_sensing_error_for_tests = Some(message.to_owned());
+
+        assert!(engine.config.allow_cpu_fallback);
+        assert!(matches!(engine.physics, RuntimePhysics::Cpu(_)));
+        assert!(engine.gpu_adapter_receipt().is_none());
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+
+        engine.sensing_gpu_publication_phase().unwrap();
+
+        assert_eq!(engine.backend(), BackendKind::Cpu);
+        assert!(!engine.capabilities().gpu_available);
+        assert_eq!(
+            engine.capabilities().fallback_reason.as_deref(),
+            Some(expected_reason.as_str())
+        );
+        assert!(engine.pending_gpu_render_instances.is_none());
+        assert!(engine.pending_gpu_collision_pairs.is_none());
+        assert!(engine.forced_sensing_error_for_tests.is_none());
+        assert_eq!(engine.snapshot_publication_count(), publications_before);
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+
+        engine.sensing_gpu_publication_phase().unwrap();
+        assert_eq!(
+            engine.capabilities().fallback_reason.as_deref(),
+            Some(expected_reason.as_str())
+        );
+    }
+
+    #[test]
+    fn fallback_policy_rejects_sensing_failure_without_an_adapter() {
+        // Policy-only coverage: this does not claim a GPU submission or tick rollback.
+        let mut engine = Engine::new(EngineConfig {
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        engine.spawn(LegacyDna::parse("stop").unwrap()).unwrap();
+        let before = crate::SaveFile::encode(&engine).unwrap();
+        let capabilities_before = engine.capabilities().clone();
+        let publications_before = engine.snapshot_publication_count();
+        let message = "injected sensing failure for CPU-only rejection policy";
+        engine.pending_gpu_render_instances = Some(Vec::new());
+        engine.pending_gpu_collision_pairs = Some(vec![(0, 0)]);
+        engine.forced_sensing_error_for_tests = Some(message.to_owned());
+
+        assert!(matches!(engine.physics, RuntimePhysics::Cpu(_)));
+        assert!(engine.gpu_adapter_receipt().is_none());
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+
+        let error = engine.sensing_gpu_publication_phase().unwrap_err();
+
+        assert!(matches!(error, EngineError::Gpu(ref reason) if reason == message));
+        assert_eq!(engine.capabilities(), &capabilities_before);
+        assert!(engine.pending_gpu_render_instances.is_none());
+        assert!(engine.pending_gpu_collision_pairs.is_none());
+        assert!(engine.forced_sensing_error_for_tests.is_none());
+        assert_eq!(engine.snapshot_publication_count(), publications_before);
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), before);
+
+        engine.sensing_gpu_publication_phase().unwrap();
+        assert_eq!(engine.capabilities(), &capabilities_before);
+    }
+
+    #[test]
+    #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
     fn runtime_gpu_failure_retries_on_cpu_and_records_reason() {
-        if GpuPhysicsBackend::new().is_err() {
-            return;
-        }
         let mut engine = Engine::new(EngineConfig {
             backend: BackendPreference::Gpu,
             allow_cpu_fallback: true,
@@ -13320,10 +13419,8 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
     fn runtime_gpu_failure_is_fatal_when_fallback_is_disabled() {
-        if GpuPhysicsBackend::new().is_err() {
-            return;
-        }
         let mut engine = Engine::new(EngineConfig {
             backend: BackendPreference::Gpu,
             allow_cpu_fallback: false,

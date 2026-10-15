@@ -1,6 +1,6 @@
 use darwinbots_engine::{
-    BackendPreference, Engine, EngineConfig, LegacyDna, OrganismId, Snapshot, SpeciesDefinition,
-    SpeciesId,
+    BackendPreference, Engine, EngineConfig, LegacyDna, MAX_ROBOTS, OrganismId, Snapshot,
+    SpeciesDefinition, SpeciesId,
 };
 use serde_json::{Value, json};
 use std::{
@@ -39,6 +39,10 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
         .checked_mul(options.population)
         .and_then(|value| value.checked_add(options.vegetable_population))
         .ok_or("starting population overflow")?;
+    // Reject oversized totals before allocating the grid or initializing a backend.
+    if starting_population > MAX_ROBOTS {
+        return Err(format!("starting population cannot exceed {MAX_ROBOTS} robots").into());
+    }
     let candidate_starting_population = options
         .bot
         .len()
@@ -50,7 +54,11 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
     let mut candidate_species = Vec::with_capacity(options.bot.len());
     let mut engine = Engine::new(EngineConfig {
         seed: options.seed,
-        organism_capacity: 25_000usize.max(starting_population.saturating_add(1)),
+        // Preserve reproduction headroom where possible without rejecting a
+        // starting population that already occupies every native robot slot.
+        organism_capacity: starting_population
+            .saturating_add(1)
+            .clamp(25_000, MAX_ROBOTS),
         vegetable_population_cap: 500usize.max(options.vegetable_population),
         world_width: 16_000.0,
         world_height: 12_000.0,
@@ -136,6 +144,11 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
         "total_energy": stats.total_energy,
         "compatibility_warnings": warnings,
         "backend": format!("{:?}", engine.backend()),
+        "gpu_adapter": engine.gpu_adapter_receipt().map(|adapter| json!({
+            "name": &adapter.name,
+            "backend": &adapter.backend,
+            "device_type": &adapter.device_type,
+        })),
         "elapsed_seconds": elapsed_seconds,
     }))
 }
@@ -233,6 +246,180 @@ fn candidate_ids(snapshot: &Snapshot, species: &HashSet<SpeciesId>) -> HashSet<O
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn run_accepts_full_native_robot_capacity_without_an_extra_birth_slot() {
+        let directory = tempfile::tempdir().unwrap();
+        let bot = directory.path().join("capacity.txt");
+        fs::write(&bot, "start stop").unwrap();
+        let mut output = Vec::new();
+        crate::run_from(
+            [
+                "darwinbots",
+                "run",
+                "--bot",
+                bot.to_str().unwrap(),
+                "--population",
+                "32000",
+                "--ticks",
+                "0",
+                "--backend",
+                "cpu",
+            ],
+            &mut output,
+        )
+        .unwrap();
+        let report: Value = serde_json::from_slice(&output).unwrap();
+        assert_eq!(report["loaded"], true);
+        assert_eq!(report["backend"], "Cpu");
+        assert_eq!(report.get("gpu_adapter"), Some(&Value::Null));
+        assert_eq!(report["tick"], 0);
+        assert_eq!(report["ticks"], 0);
+        for field in [
+            "starting_population",
+            "candidate_starting_population",
+            "final_population",
+            "candidate_final_population",
+            "population",
+        ] {
+            assert_eq!(report[field], MAX_ROBOTS, "{field}");
+        }
+        for field in [
+            "vegetable_starting_population",
+            "vegetable_final_population",
+            "births",
+            "deaths",
+            "candidate_births",
+            "candidate_deaths",
+        ] {
+            assert_eq!(report[field], 0, "{field}");
+        }
+    }
+
+    #[test]
+    #[ignore = "requires an idle physical GPU; run with --ignored on the GPU qualification host"]
+    fn physical_gpu_run_reports_same_process_hardware_adapter() {
+        // Initialization and same-run identity only; sustained throughput has separate gates.
+        let directory = tempfile::tempdir().unwrap();
+        let bot = directory.path().join("physical-adapter.txt");
+        fs::write(&bot, "start stop").unwrap();
+        let mut output = Vec::new();
+        crate::run_from(
+            [
+                "darwinbots",
+                "run",
+                "--bot",
+                bot.to_str().unwrap(),
+                "--population",
+                "1",
+                "--ticks",
+                "0",
+                "--backend",
+                "gpu",
+            ],
+            &mut output,
+        )
+        .expect("the CLI must initialize the requested physical GPU");
+        let report: Value = serde_json::from_slice(&output).unwrap();
+        assert_eq!(report["loaded"], true);
+        assert_eq!(
+            report["backend"], "Gpu",
+            "CPU fallback cannot satisfy this gate"
+        );
+        assert_eq!(report["tick"], 0);
+        assert_eq!(report["ticks"], 0);
+        for field in [
+            "starting_population",
+            "candidate_starting_population",
+            "final_population",
+            "candidate_final_population",
+            "population",
+        ] {
+            assert_eq!(report[field], 1, "{field}");
+        }
+        for field in [
+            "vegetable_starting_population",
+            "vegetable_final_population",
+            "births",
+            "deaths",
+            "candidate_births",
+            "candidate_deaths",
+        ] {
+            assert_eq!(report[field], 0, "{field}");
+        }
+        let adapter = report
+            .get("gpu_adapter")
+            .and_then(Value::as_object)
+            .expect("the same CLI run must report its active GPU adapter");
+        for field in ["name", "backend"] {
+            let value = adapter
+                .get(field)
+                .and_then(Value::as_str)
+                .expect("adapter name and backend must be strings");
+            assert!(!value.trim().is_empty(), "empty adapter {field}");
+        }
+        let device_type = adapter
+            .get("device_type")
+            .and_then(Value::as_str)
+            .expect("the adapter must identify its device type");
+        assert!(
+            matches!(device_type, "DiscreteGpu" | "IntegratedGpu"),
+            "a software adapter cannot satisfy this physical gate: {adapter:?}"
+        );
+        println!("physical CLI adapter: {}", report["gpu_adapter"]);
+    }
+
+    #[test]
+    fn oversized_combined_populations_fail_before_loading_bot_files() {
+        // Cover one oversized species, repeated candidate species, and plants
+        // pushing an otherwise valid candidate population over the native cap.
+        for (species, population, vegetable_population) in [
+            (1, MAX_ROBOTS + 1, 0),
+            (2, MAX_ROBOTS / 2 + 1, 0),
+            (2, MAX_ROBOTS / 2, 1),
+            (1, 1, MAX_ROBOTS),
+        ] {
+            let options = Options {
+                bot: vec![PathBuf::from("missing-capacity-candidate.txt"); species],
+                population,
+                vegetable_bot: (vegetable_population > 0)
+                    .then(|| PathBuf::from("missing-capacity-vegetable.txt")),
+                vegetable_population,
+                initial_energy: 1000,
+                ticks: 0,
+                seed: 24832,
+                backend: BackendPreference::Cpu,
+            };
+            assert_eq!(
+                execute(options).unwrap_err().to_string(),
+                "starting population cannot exceed 32000 robots",
+                "{species} species, {population} candidates each, {vegetable_population} plants"
+            );
+        }
+    }
+
+    #[test]
+    fn population_arithmetic_overflow_fails_before_loading_bot_files() {
+        // Exercise multiplication and addition overflow before the capacity
+        // comparison so extreme inputs cannot wrap into a small valid total.
+        for (species, vegetable_population) in [(2, 0), (1, 1)] {
+            let options = Options {
+                bot: vec![PathBuf::from("missing-capacity-candidate.txt"); species],
+                population: usize::MAX,
+                vegetable_bot: (vegetable_population > 0)
+                    .then(|| PathBuf::from("missing-capacity-vegetable.txt")),
+                vegetable_population,
+                initial_energy: 1000,
+                ticks: 0,
+                seed: 24832,
+                backend: BackendPreference::Cpu,
+            };
+            assert_eq!(
+                execute(options).unwrap_err().to_string(),
+                "starting population overflow"
+            );
+        }
+    }
 
     #[test]
     fn extinction_compaction_does_not_turn_unrelated_plants_into_candidates() {

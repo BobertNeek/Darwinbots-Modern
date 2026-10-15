@@ -17,25 +17,22 @@ public sealed class DnaExportRenderedTests
     [Fact]
     public async Task MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert()
     {
-        var engine = new RecordingEngineClient();
-        await using var simulation = new SimulationSession(engine);
-        await simulation.StepAsync(0);
-        var storage = new DnaExportStorage { AcceptDnaSave = true };
-        MainWindow window = null!;
-        MainWindowViewModel viewModel = null!;
-        DnaEditorWindow? editor = null;
-
-        try
+        await DesktopTestApplication.Session.Dispatch(async () =>
         {
-            await DesktopTestApplication.Session.Dispatch(() =>
+            var engine = new RecordingEngineClient();
+            await using var simulation = new SimulationSession(engine);
+            await simulation.StepAsync(0);
+            var storage = new DnaExportStorage { AcceptDnaSave = true };
+            var window = new MainWindow(
+                [],
+                new WorldSetupOptions(),
+                new FixedEngineFactory(engine),
+                storage);
+            DnaEditorWindow? editor = null;
+            try
             {
-                window = new MainWindow(
-                    [],
-                    new WorldSetupOptions(),
-                    new FixedEngineFactory(engine),
-                    storage);
                 DesktopTestApplication.UseSession(window, simulation);
-                viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 window.Show();
                 viewModel.Status = "READY";
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -47,69 +44,66 @@ public sealed class DnaExportRenderedTests
                 viewModel.ClearSelection();
                 Invoke(window, "EditDna_Click");
                 Assert.Equal(0, storage.DnaSaveRequests);
+                Assert.Empty(engine.DnaExports);
 
                 viewModel.Update(RecordingEngineClient.CreateSnapshot());
                 viewModel.Select(RecordingEngineClient.Organism.Slot);
                 Assert.True(window.FindControl<Button>("EditDnaButton")!.IsEffectivelyEnabled);
-            }, CancellationToken.None);
 
-            await DesktopTestApplication.Session.Dispatch(() => Invoke(window, "EditDna_Click"), CancellationToken.None);
-            await WaitForAsync(() =>
-            {
-                editor = window.OwnedWindows.OfType<DnaEditorWindow>().SingleOrDefault();
-                // Export invocation is not completion of the editor Opened route.
-                return editor is not null && engine.DnaExports.Count == 1
-                    && editor.FindControl<TextBox>("Editor")!.Text == "start\nstop";
-            });
+                Invoke(window, "EditDna_Click");
+                await WaitForAsync(() =>
+                {
+                    editor = window.OwnedWindows.OfType<DnaEditorWindow>().SingleOrDefault();
+                    // Keep Opened and its awaited export inside this application scope.
+                    return editor is not null && engine.DnaExports.Count == 1
+                        && editor.FindControl<TextBox>("Editor")!.Text == "start\nstop";
+                }, () => $"Owned windows: {string.Join(", ", window.OwnedWindows.Select(owned => owned.GetType().Name))}; "
+                    + $"exports: {engine.DnaExports.Count}; editor visible: {editor?.IsVisible}; "
+                    + $"text: {editor?.FindControl<TextBox>("Editor")?.Text ?? "<null>"}; "
+                    + $"status: {editor?.FindControl<TextBlock>("Status")?.Text ?? "<null>"}.");
 
-            await DesktopTestApplication.Session.Dispatch(() =>
-            {
-                Assert.Equal("start\nstop", editor!.FindControl<TextBox>("Editor")!.Text);
-                Invoke(editor, "Save_Click");
-            }, CancellationToken.None);
-            await WaitForAsync(() => storage.DnaSaveRequests == 1
-                && storage.SuccessfulDnaSaves == 1
-                && editor!.FindControl<TextBlock>("Status")!.Text == "BOT EXPORTED");
+                var loadedEditor = Assert.IsType<DnaEditorWindow>(editor);
+                Assert.Equal("start\nstop", loadedEditor.FindControl<TextBox>("Editor")!.Text);
+                Invoke(loadedEditor, "Save_Click");
+                await WaitForAsync(() => storage.DnaSaveRequests == 1
+                    && storage.SuccessfulDnaSaves == 1
+                    && loadedEditor.FindControl<TextBlock>("Status")!.Text == "BOT EXPORTED",
+                    () => $"Save requests: {storage.DnaSaveRequests}; successful writes: {storage.SuccessfulDnaSaves}; "
+                        + $"editor status: {loadedEditor.FindControl<TextBlock>("Status")!.Text}.");
 
-            await DesktopTestApplication.Session.Dispatch(() =>
-            {
                 Assert.Equal((typeof(DnaEditorWindow), "bot-3-2.txt", "start\nstop"),
                     (storage.LastOwnerType, storage.LastSuggestedFileName, storage.LastDna));
                 Assert.Equal(1, storage.SuccessfulDnaSaves);
-                Assert.Equal("BOT EXPORTED", editor!.FindControl<TextBlock>("Status")!.Text);
+                Assert.Equal("BOT EXPORTED", loadedEditor.FindControl<TextBlock>("Status")!.Text);
                 Assert.Equal([(3u, 2u)], engine.DnaExports.ToArray());
-            }, CancellationToken.None);
 
-            storage.AcceptDnaSave = false;
-            await DesktopTestApplication.Session.Dispatch(() => Invoke(editor, "Save_Click"), CancellationToken.None);
-            await WaitForAsync(() => storage.DnaSaveRequests == 2);
-            await DesktopTestApplication.Session.Dispatch(() =>
-            {
+                storage.AcceptDnaSave = false;
+                Invoke(loadedEditor, "Save_Click");
+                await WaitForAsync(() => storage.DnaSaveRequests == 2,
+                    () => $"Cancelled save requests: {storage.DnaSaveRequests}; successful writes: {storage.SuccessfulDnaSaves}; "
+                        + $"editor status: {loadedEditor.FindControl<TextBlock>("Status")!.Text}.");
                 Assert.Equal(1, storage.SuccessfulDnaSaves);
-                Assert.Equal("BOT EXPORTED", editor.FindControl<TextBlock>("Status")!.Text);
-            }, CancellationToken.None);
-        }
-        finally
-        {
-            await DesktopTestApplication.Session.Dispatch(() =>
+                Assert.Equal("BOT EXPORTED", loadedEditor.FindControl<TextBlock>("Status")!.Text);
+            }
+            finally
             {
-                if (editor?.IsVisible == true) editor.Close();
+                foreach (var owned in window.OwnedWindows.ToArray())
+                    if (owned.IsVisible) owned.Close();
                 SetField(window, "_session", null);
                 if (window.IsVisible) window.Close();
-            }, CancellationToken.None);
-        }
+            }
+        }, CancellationToken.None);
     }
 
-    private static async Task WaitForAsync(Func<bool> predicate)
+    private static async Task WaitForAsync(Func<bool> predicate, Func<string> observedState)
     {
         for (var attempt = 0; attempt < 100; attempt++)
         {
-            if (await DesktopTestApplication.Session.Dispatch(predicate, CancellationToken.None)) return;
+            if (predicate()) return;
             await Task.Delay(10);
         }
 
-        Assert.True(await DesktopTestApplication.Session.Dispatch(predicate, CancellationToken.None),
-            "The DNA export route did not reach the expected state.");
+        Assert.True(predicate(), $"The DNA export route did not reach the expected state. {observedState()}");
     }
 
     private static void Invoke(object target, string methodName) =>

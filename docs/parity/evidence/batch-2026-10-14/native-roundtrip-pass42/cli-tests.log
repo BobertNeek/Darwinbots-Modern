@@ -1,0 +1,25 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+   Compiling darwinbots-cli v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\cli)
+    Finished `release` profile [optimized] target(s) in 6m 13s
+     Running unittests src\lib.rs (target\release\deps\darwinbots_cli-19b2f1d2dddc4ec7.exe)
+
+running 7 tests
+test native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields ... ok
+test probe::tests::extinction_compaction_does_not_turn_unrelated_plants_into_candidates ... ok
+test probe::tests::oversized_combined_populations_fail_before_loading_bot_files ... ok
+test probe::tests::physical_gpu_run_reports_same_process_hardware_adapter ... ignored, requires an idle physical GPU; run with --ignored on the GPU qualification host
+test probe::tests::population_arithmetic_overflow_fails_before_loading_bot_files ... ok
+test probe::tests::run_accepts_full_native_robot_capacity_without_an_extra_birth_slot ... ok
+test probe::tests::surviving_candidate_and_its_child_remain_tracked_when_species_indices_shift ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 8.01s
+
+     Running tests\commands.rs (target\release\deps\commands-eec7744335c58eb1.exe)
+
+running 3 tests
+test benchmark_populates_requested_number_of_organisms ... ok
+test run_imports_legacy_bot_advances_ticks_and_emits_json ... ok
+test stress_command_checks_invariants_and_emits_reproducible_hash ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+

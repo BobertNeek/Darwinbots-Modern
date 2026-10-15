@@ -1,6 +1,6 @@
 use darwinbots_engine::{
     BackendKind, BackendPreference, CpuPhysicsBackend, Engine, EngineConfig, GpuPhysicsBackend,
-    LegacyDna, PhysicsBackend, PhysicsBatch, SpeciesDefinition,
+    LegacyDna, OrganismId, PhysicsBackend, PhysicsBatch, SpeciesDefinition,
     ffi::{
         ABI_VERSION, DbBuffer, DbStatus, db_api_version, db_buffer_free, db_engine_backend,
         db_engine_capabilities_json, db_engine_command_batch, db_engine_create, db_engine_destroy,
@@ -364,50 +364,120 @@ fn cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance() {
     assert_eq!(left.chloroplasts, right.chloroplasts);
 }
 
+fn native_tie_lifecycle_fixture(
+    backend: BackendPreference,
+    repeat_request: bool,
+) -> (Engine, OrganismId, OrganismId) {
+    let mut engine = Engine::new(EngineConfig {
+        backend,
+        allow_cpu_fallback: false,
+        world_width: 3_000.0,
+        world_height: 2_000.0,
+        toroidal_world: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    // Isolate the tie commands from mutations of the fixture's DNA.
+    engine.update_mutation_settings(false, 1.0, &[]).unwrap();
+    let dna = if repeat_request {
+        "start\n41 .tie store\nstop"
+    } else {
+        // Robots.FireTies/Ties.maketie replaces an existing pair and resets
+        // both lifetimes to -20. A lifetime test must request this tie once.
+        "cond\n*.numties 0 =\nstart\n41 .tie store\nstop"
+    };
+    let source = engine
+        .spawn_at(LegacyDna::parse(dna).unwrap(), [400.0, 1_000.0])
+        .unwrap();
+    let target = engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 1_000.0])
+        .unwrap();
+    engine.set_organism_aim(source, 0).unwrap();
+    engine.set_organism_aim(target, 0).unwrap();
+    assert!(
+        300.0 > engine.organism(source).unwrap().radius + engine.organism(target).unwrap().radius,
+        "the spring fixture must start without a collision impulse"
+    );
+    engine.tick().unwrap();
+    assert_native_tie_lifecycle(&engine, 1, -20, false);
+    assert_eq!(engine.snapshot().stats.ties_created, 1);
+    (engine, source, target)
+}
+
+fn assert_native_tie_lifecycle(engine: &Engine, cycle: u64, last: i32, hardened: bool) {
+    assert_eq!(engine.snapshot().tick, cycle);
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    let tie = &engine.snapshot().ties[0];
+    assert_eq!(tie.last, last);
+    assert_eq!(tie.hardened, hardened);
+    assert_eq!(tie.b, if hardened { 0.1 } else { 0.02 });
+    assert_eq!(tie.k, if hardened { 0.05 } else { 0.01 });
+}
+
+fn stretch_native_tie_and_advance(engine: &mut Engine, source: OrganismId, target: OrganismId) {
+    // Physics.TieHooke has a 20-unit deformation deadband. Use the captured
+    // natural length so this always tests an actual spring force.
+    let target_x = 400.0 + engine.snapshot().ties[0].rest_length + 30.0;
+    let mut batch = engine.physics_batch();
+    let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
+    let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
+    batch.batch.positions[source_index] = [400.0, 1_000.0];
+    batch.batch.positions[target_index] = [target_x, 1_000.0];
+    batch.batch.velocities[source_index] = [0.0; 2];
+    batch.batch.velocities[target_index] = [0.0; 2];
+    engine.apply_physics_batch(batch).unwrap();
+    engine.tick().unwrap();
+    let source = engine.organism(source).unwrap();
+    let target = engine.organism(target).unwrap();
+    assert!(source.velocity[0] > 0.0);
+    assert!(target.velocity[0] < 0.0);
+    assert!(source.position[0] > 400.0);
+    assert!(target.position[0] < target_x);
+}
+
+#[test]
+fn native_one_shot_tie_has_spring_motion_and_hardens_on_cycle_twenty() {
+    let (mut engine, source, target) = native_tie_lifecycle_fixture(BackendPreference::Cpu, false);
+    stretch_native_tie_and_advance(&mut engine, source, target);
+    assert_native_tie_lifecycle(&engine, 2, -19, false);
+    engine.tick_many(17).unwrap();
+    assert_native_tie_lifecycle(&engine, 19, -2, false);
+    assert_eq!(engine.memory(source, "multi").unwrap(), 0);
+    assert_eq!(engine.memory(target, "multi").unwrap(), 0);
+    engine.tick().unwrap();
+    assert_native_tie_lifecycle(&engine, 20, -1, true);
+    assert_eq!(engine.memory(source, "multi").unwrap(), 1);
+    assert_eq!(engine.memory(target, "multi").unwrap(), 1);
+    assert_eq!(engine.snapshot().stats.ties_created, 1);
+}
+
+#[test]
+fn native_repeated_tie_requests_reset_lifetime_without_premature_hardening() {
+    let (mut engine, source, target) = native_tie_lifecycle_fixture(BackendPreference::Cpu, true);
+    for cycle in 2..=21 {
+        engine.tick().unwrap();
+        // TieHooke advances the old bond, then FireTies replaces it with a
+        // fresh -20 bond later in the same original DB2 robot pipeline.
+        assert_native_tie_lifecycle(&engine, cycle, -20, false);
+        assert_eq!(engine.snapshot().stats.ties_created, cycle);
+        assert_eq!(engine.memory(source, "multi").unwrap(), 0);
+        assert_eq!(engine.memory(target, "multi").unwrap(), 0);
+    }
+}
+
 #[test]
 fn cpu_and_gpu_match_tie_lifecycle_spring_and_hardening() {
     if GpuPhysicsBackend::new().is_err() {
         return;
     }
-    let config = EngineConfig {
-        world_width: 3_000.0,
-        world_height: 2_000.0,
-        toroidal_world: false,
-        ..EngineConfig::testing()
-    };
-    let mut cpu = Engine::new(EngineConfig {
-        backend: BackendPreference::Cpu,
-        ..config.clone()
-    })
-    .unwrap();
-    let mut gpu = Engine::new(EngineConfig {
-        backend: BackendPreference::Gpu,
-        allow_cpu_fallback: false,
-        ..config
-    })
-    .unwrap();
-
-    for engine in [&mut cpu, &mut gpu] {
-        let source = engine
-            .spawn_at(
-                LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
-                [400.0, 1_000.0],
-            )
-            .unwrap();
-        let target = engine
-            .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 1_000.0])
-            .unwrap();
-        engine.tick().unwrap();
-        let mut batch = engine.physics_batch();
-        let source_index = batch.ids.iter().position(|id| *id == source).unwrap();
-        let target_index = batch.ids.iter().position(|id| *id == target).unwrap();
-        batch.batch.positions[source_index] = [400.0, 1_000.0];
-        batch.batch.positions[target_index] = [730.0, 1_000.0];
-        batch.batch.velocities[source_index] = [0.0; 2];
-        batch.batch.velocities[target_index] = [0.0; 2];
-        engine.apply_physics_batch(batch).unwrap();
-        engine.tick().unwrap();
-    }
+    let (mut cpu, cpu_source, cpu_target) =
+        native_tie_lifecycle_fixture(BackendPreference::Cpu, false);
+    let (mut gpu, gpu_source, gpu_target) =
+        native_tie_lifecycle_fixture(BackendPreference::Gpu, false);
+    stretch_native_tie_and_advance(&mut cpu, cpu_source, cpu_target);
+    stretch_native_tie_and_advance(&mut gpu, gpu_source, gpu_target);
+    assert_native_tie_lifecycle(&cpu, 2, -19, false);
+    assert_native_tie_lifecycle(&gpu, 2, -19, false);
 
     for index in 0..2 {
         let left = &cpu.snapshot().organisms[index];
@@ -422,6 +492,10 @@ fn cpu_and_gpu_match_tie_lifecycle_spring_and_hardening() {
 
     cpu.tick_many(18).unwrap();
     gpu.tick_many(18).unwrap();
+    assert_native_tie_lifecycle(&cpu, 20, -1, true);
+    assert_native_tie_lifecycle(&gpu, 20, -1, true);
+    assert_eq!(cpu.snapshot().stats.ties_created, 1);
+    assert_eq!(gpu.snapshot().stats.ties_created, 1);
 
     let left_tie = &cpu.snapshot().ties[0];
     let right_tie = &gpu.snapshot().ties[0];

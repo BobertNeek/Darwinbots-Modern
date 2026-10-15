@@ -1,0 +1,19 @@
+{
+  "baseline": "../native-roundtrip-pass41/summary.json",
+  "unchanged_source_files": [
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs",
+      "sha256": "7A736B76B5018CF411AED897A67A4F948DFB32485C6A3978EF7278E2C128448A"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "D60FF1B4004C5D1203B27F82EB75D867C5B675397C2422239BFDDDF4811347A7"
+    },
+    {
+      "file": "modern/engine/tests/gpu_ffi.rs",
+      "sha256": "FAA4EB1541F5AFF913160C95BB125A0A1A8458DEBB540E9E04E9D8492DB25E05"
+    }
+  ],
+  "retained": "engine 303, CLI corpus/native comparison, Core181, rebuilt package and desktop133",
+  "not_retained": "edited CLI library/commands/binary; physical GPU and original-runtime"
+}

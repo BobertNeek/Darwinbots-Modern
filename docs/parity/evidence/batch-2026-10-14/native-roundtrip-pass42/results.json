@@ -1,0 +1,32 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 2.8780897,
+    "log": "format-check.log"
+  },
+  {
+    "step": "strict-cli-clippy",
+    "exit_code": 0,
+    "seconds": 6.5622354,
+    "log": "strict-cli-clippy.log"
+  },
+  {
+    "step": "cli-tests",
+    "exit_code": 0,
+    "seconds": 383.308921,
+    "log": "cli-tests.log"
+  },
+  {
+    "step": "cli-build",
+    "exit_code": 0,
+    "seconds": 1.1585413,
+    "log": "cli-build.log"
+  },
+  {
+    "step": "binary-cpu-adapter-smoke",
+    "exit_code": 0,
+    "seconds": 1.3111944,
+    "log": "binary-cpu-adapter-smoke.log"
+  }
+]

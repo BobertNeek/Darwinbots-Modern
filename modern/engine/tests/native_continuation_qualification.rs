@@ -112,27 +112,63 @@ fn original_world_cpu_continuation_preserves_complete_state_across_repeated_save
     }
 }
 
+fn assert_physical_gpu(engine: &Engine, role: &str) {
+    assert_eq!(
+        engine.backend(),
+        BackendKind::Gpu,
+        "{role} must remain on GPU at cycle {}",
+        engine.snapshot().tick
+    );
+    let capabilities = engine.capabilities();
+    assert!(
+        capabilities.gpu_available,
+        "{role} lost GPU availability at cycle {}: {capabilities:?}",
+        engine.snapshot().tick
+    );
+    assert!(
+        capabilities.fallback_reason.is_none(),
+        "{role} fell back at cycle {}: {capabilities:?}",
+        engine.snapshot().tick
+    );
+    let receipt = engine
+        .gpu_adapter_receipt()
+        .unwrap_or_else(|| panic!("{role} must expose its active physical adapter"));
+    assert!(
+        !receipt.name.trim().is_empty(),
+        "{role} adapter name is empty"
+    );
+    assert!(
+        !receipt.backend.trim().is_empty(),
+        "{role} adapter backend is empty"
+    );
+    assert!(
+        matches!(
+            receipt.device_type.as_str(),
+            "DiscreteGpu" | "IntegratedGpu"
+        ),
+        "{role} must use a physical adapter: {receipt:?}"
+    );
+    println!(
+        "native long GPU role={role} cycle={} adapter={receipt:?}",
+        engine.snapshot().tick
+    );
+}
+
 #[test]
 #[ignore = "requires an idle physical GPU; run with --ignored on the qualification host"]
 fn physical_gpu_original_world_long_continuation_matches_cpu_and_repeated_save_resume() {
     let mut cpu = Engine::from_native_sim(ORIGINAL_WORLD).unwrap();
     let mut gpu = Engine::from_native_sim(ORIGINAL_WORLD).unwrap();
     gpu.switch_backend(BackendPreference::Gpu).unwrap();
-    assert_eq!(gpu.backend(), BackendKind::Gpu);
-    assert!(gpu.capabilities().fallback_reason.is_none());
-    let receipt = gpu
-        .gpu_adapter_receipt()
-        .expect("physical adapter required");
-    assert!(matches!(
-        receipt.device_type.as_str(),
-        "DiscreteGpu" | "IntegratedGpu"
-    ));
-    println!("native long GPU adapter={receipt:?}");
+    assert_physical_gpu(&gpu, "continuous initialization");
     let mut resumed = SaveFile::decode(&SaveFile::encode(&gpu).unwrap()).unwrap();
+    assert_physical_gpu(&resumed, "resumed initialization");
     for checkpoint in 1..=10 {
         cpu.tick_many(1_000).unwrap();
         gpu.tick_many(1_000).unwrap();
+        assert_physical_gpu(&gpu, "continuous checkpoint");
         resumed.tick_many(1_000).unwrap();
+        assert_physical_gpu(&resumed, "resumed checkpoint");
         for engine in [&cpu, &gpu, &resumed] {
             engine.validate_invariants().unwrap();
         }
@@ -158,5 +194,6 @@ fn physical_gpu_original_world_long_continuation_matches_cpu_and_repeated_save_r
             continuous.len()
         );
         resumed = SaveFile::decode(&restarted).unwrap();
+        assert_physical_gpu(&resumed, "resumed reload");
     }
 }
