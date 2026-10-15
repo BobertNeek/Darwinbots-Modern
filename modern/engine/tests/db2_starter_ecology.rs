@@ -46,7 +46,22 @@ fn starter_world_sustains_moving_predators_finite_shots_and_bounded_plants() {
         )
         .unwrap();
 
-    engine.tick_many(20_000).unwrap();
+    for _ in 0..20 {
+        engine.tick_many(1_000).unwrap();
+        engine.validate_invariants().unwrap();
+        assert!(engine.vegetable_population() <= 500);
+        let snapshot = engine.snapshot();
+        println!(
+            "DB2 ecology cycle={} robots={} plants={} shots={} births={} feeding={} harvested={}",
+            snapshot.tick,
+            snapshot.organisms.len(),
+            engine.vegetable_population(),
+            snapshot.shots.len(),
+            snapshot.stats.births,
+            snapshot.stats.feeding_events,
+            snapshot.stats.energy_harvested
+        );
+    }
 
     let snapshot = engine.snapshot();
     let animals: Vec<_> = snapshot

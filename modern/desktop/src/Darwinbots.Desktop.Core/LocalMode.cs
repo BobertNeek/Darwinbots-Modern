@@ -16,6 +16,7 @@ public enum LeaguePreset
     F3,
     Multibot,
     ShortBot,
+    // Retained save/API name for SG, the short bot alias with a six-gene limit.
     SingleGene,
     SingleStore,
 }

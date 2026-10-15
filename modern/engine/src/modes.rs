@@ -22,6 +22,7 @@ pub enum LeaguePreset {
     F3,
     Multibot,
     ShortBot,
+    /// Retained save token for SG, the community short-bot alias (at most six genes).
     SingleGene,
     SingleStore,
 }

@@ -3147,7 +3147,10 @@ impl Engine {
 
     fn apply_league_preset(&mut self, preset: crate::LeaguePreset) {
         // OptionsForm.btnSetF1/F2/SB: change the actual world and its costs.
-        let short = preset == crate::LeaguePreset::ShortBot;
+        let short = matches!(
+            preset,
+            crate::LeaguePreset::ShortBot | crate::LeaguePreset::SingleGene
+        );
         self.config.world_width = if short { 16000.0 } else { 9237.0 };
         self.config.world_height = if short { 12000.0 } else { 6928.0 };
         self.config.toroidal_world = true;

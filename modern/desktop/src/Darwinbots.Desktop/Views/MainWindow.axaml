@@ -150,9 +150,9 @@
                     <ComboBoxItem Content="F2" />
                     <ComboBoxItem Content="F3" />
                     <ComboBoxItem Content="MULTIBOT" />
-                    <ComboBoxItem Content="SHORT BOT" />
-                    <ComboBoxItem Content="SINGLE GENE" />
-                    <ComboBoxItem Content="SINGLE STORE" />
+                    <ComboBoxItem Content="SHORT BOT" ToolTip.Tip="Up to six genes per entrant." />
+                    <ComboBoxItem Content="SHORT GENE" ToolTip.Tip="SG uses the short bot rules: up to six genes per entrant." />
+                    <ComboBoxItem Content="SINGLE STORE" ToolTip.Tip="One store instruction per entrant. Inc and dec also count." />
                   </ComboBox>
                 </Grid>
                 <ComboBox x:Name="LocalModeWorkflow" SelectedIndex="0">

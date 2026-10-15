@@ -60,7 +60,81 @@ impl Engine {
                 ));
             }
         }
+        self.validate_community_league_entrants(config, &registered)?;
         crate::LeagueSeries::start(config, registered).map_err(EngineError::Invariant)
+    }
+
+    fn validate_community_league_entrants(
+        &self,
+        config: &LocalModeConfig,
+        registered: &[SpeciesId],
+    ) -> Result<(), EngineError> {
+        use crate::{LeaguePreset, LeagueWorkflow, TokenClass};
+        if !matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest)
+            || !matches!(
+                config.preset,
+                LeaguePreset::ShortBot | LeaguePreset::SingleGene | LeaguePreset::SingleStore
+            )
+        {
+            return Ok(());
+        }
+        // Official wiki: Short_Bot_League (revision 3444), League (4374),
+        // Single_Store_league (4373). SG is another name for short bots,
+        // with at most six genes; SS has one store site, including inc/dec.
+        let mut entrants: std::collections::BTreeSet<_> =
+            if config.workflow == LeagueWorkflow::Direct || config.entrant_order.is_empty() {
+                registered.iter().copied().collect()
+            } else {
+                config.entrant_order.iter().copied().collect()
+            };
+        if config.workflow == LeagueWorkflow::Ladder {
+            entrants.extend(config.initial_ladder.iter().copied());
+        }
+        if config.workflow == LeagueWorkflow::Seeding {
+            entrants.extend(config.seeding_opponent);
+        }
+        for species in entrants {
+            // Inspect the actual startup genome that a round will restart.
+            let dna = self
+                .species_templates
+                .get(species.0 as usize)
+                .and_then(Option::as_ref)
+                .map(|template| &template.dna)
+                .or_else(|| {
+                    self.slots
+                        .iter()
+                        .filter_map(|slot| slot.organism.as_ref())
+                        .find(|robot| robot.identity.species == species && !robot.flags.corpse)
+                        .map(|robot| &robot.program.dna)
+                })
+                .ok_or_else(|| {
+                    EngineError::Invariant("league entrant has no startup genome".into())
+                })?;
+            let name = &self.species[species.0 as usize].name;
+            if matches!(
+                config.preset,
+                LeaguePreset::ShortBot | LeaguePreset::SingleGene
+            ) {
+                let genes = dna.gene_count();
+                if genes > 6 {
+                    return Err(EngineError::Invariant(format!(
+                        "{name} cannot enter the short bot / SG league: at most 6 genes are allowed (found {genes})"
+                    )));
+                }
+            } else {
+                let stores = dna
+                    .blocks()
+                    .iter()
+                    .filter(|block| block.class == TokenClass::Store)
+                    .count();
+                if stores != 1 {
+                    return Err(EngineError::Invariant(format!(
+                        "{name} cannot enter the single store league: exactly 1 store instruction is required, including inc and dec (found {stores})"
+                    )));
+                }
+            }
+        }
+        Ok(())
     }
 
     pub(super) fn advance_league_series(

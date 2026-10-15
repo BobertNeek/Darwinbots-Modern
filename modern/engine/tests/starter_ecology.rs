@@ -47,7 +47,22 @@ fn starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce() {
         )
         .unwrap();
 
-    engine.tick_many(10_000).unwrap();
+    for _ in 0..10 {
+        engine.tick_many(1_000).unwrap();
+        engine.validate_invariants().unwrap();
+        assert!(engine.vegetable_population() <= 500);
+        let snapshot = engine.snapshot();
+        println!(
+            "Starter ecology cycle={} robots={} plants={} shots={} births={} feeding={} harvested={}",
+            snapshot.tick,
+            snapshot.organisms.len(),
+            engine.vegetable_population(),
+            snapshot.shots.len(),
+            snapshot.stats.births,
+            snapshot.stats.feeding_events,
+            snapshot.stats.energy_harvested
+        );
+    }
 
     let snapshot = engine.snapshot();
     assert!(engine.vegetable_population() <= 500);

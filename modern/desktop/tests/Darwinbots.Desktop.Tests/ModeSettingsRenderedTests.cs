@@ -102,7 +102,7 @@ public sealed class ModeSettingsRenderedTests
                 var presets = Named<ComboBox>(main, "LocalModePreset");
                 var presetLabels = presets.Items.Cast<ComboBoxItem>().Select(item => item.Content?.ToString() ?? string.Empty).ToArray();
                 Assert.Equal(
-                    ["F1", "F2", "F3", "MULTIBOT", "SHORT BOT", "SINGLE GENE", "SINGLE STORE"],
+                    ["F1", "F2", "F3", "MULTIBOT", "SHORT BOT", "SHORT GENE", "SINGLE STORE"],
                     presetLabels);
                 Assert.Equal(0, kinds.SelectedIndex);
                 Assert.Equal("LEAGUE", (kinds.SelectedItem as ComboBoxItem)?.Content?.ToString());
