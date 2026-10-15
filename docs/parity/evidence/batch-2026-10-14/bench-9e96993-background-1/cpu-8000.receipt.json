@@ -1,0 +1,40 @@
+{
+  "source_head": "9e9699360ad5f117c43a6af9ba6b1576682747d2",
+  "cli_sha256": "AE3640D967B644F4FBE3E936DA589BDF76477F2D3FAACAE99A3AF000BD4A7481",
+  "backend": "CPU",
+  "requested_population": 8000,
+  "requested_ticks": 10,
+  "warmup_ticks": 0,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "exit_code": 0,
+  "elapsed_process_seconds": 12.157888,
+  "priority": "BelowNormal",
+  "rayon_threads": 1,
+  "context": "background while computer may be in use",
+  "result": {
+    "backend": "Cpu",
+    "elapsed_seconds": 11.4833635,
+    "layout": "uniform-grid",
+    "phase_ms": {
+      "cycle": 1173.6387,
+      "dna": 28.168,
+      "intent": 5.5223000000006275,
+      "interactions": 36.669800000002596,
+      "lifecycle": 4.8990000000001634,
+      "mutation": 15.916799999999698,
+      "physics": 1.6859,
+      "projectiles": 0.8428,
+      "sensing": 795.6396000000017,
+      "snapshot": 45.7401,
+      "spatial": 102.6042000000008,
+      "vegetation": 10.2886
+    },
+    "population": 8000,
+    "ticks": 10,
+    "ticks_per_second": 0.8708249982681469,
+    "warmup_ticks": 0
+  },
+  "stdout": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\bench-9e96993-background-1\\cpu-8000.stdout.json",
+  "stderr": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\bench-9e96993-background-1\\cpu-8000.stderr.log"
+}

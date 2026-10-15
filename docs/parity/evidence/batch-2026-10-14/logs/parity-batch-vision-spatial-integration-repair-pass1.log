@@ -1,0 +1,29 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 3m 11s
+     Running tests\db2_vision.rs (target\release\deps\db2_vision-3cca7ae466213a5a.exe)
+
+running 4 tests
+test eye_direction_moves_detection_into_eye_five ... ok
+test eye_snapshot_contains_width_range_and_default_focus ... ok
+test focus_eye_selects_reference_target ... ok
+test native_vision_uses_actual_positions_and_resets_references_when_target_leaves_focus ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\world_systems.rs (target\release\deps\world_systems-abd3f03c573f078b.exe)
+
+running 12 tests
+test late_internal_senses_publish_full_velocity_body_change_daytime_fixed_and_max_velocity ... ok
+test negative_shot_damages_nearest_target_and_records_event ... ok
+test reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descendant ... ok
+test reproduction_creates_child_with_stable_id_and_birth_statistics ... ok
+test sensing_projects_direction_and_aim_occurrence_references ... ok
+test sensing_projects_focus_reference_occurrences_materials_and_addressed_memory ... ok
+test sensing_projects_shoot_occurrence_reference ... ok
+test sensing_projects_tie_occurrence_reference ... ok
+test sensing_writes_nearest_organism_reference_sysvars ... ok
+test tie_commands_create_multibot_link_and_share_energy ... ok
+test tie_readback_publishes_the_selected_partner_reference_state ... ok
+test uniform_spatial_index_returns_sorted_nearby_slots ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s

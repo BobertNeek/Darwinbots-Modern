@@ -1,0 +1,157 @@
+{
+  "source_head": "9e9699360ad5f117c43a6af9ba6b1576682747d2",
+  "cli_sha256": "AE3640D967B644F4FBE3E936DA589BDF76477F2D3FAACAE99A3AF000BD4A7481",
+  "original_exe": "C:\\Users\\PC\\Downloads\\Darwinbots-Reference-2.48.32\\oracle-run\\Darwin2.48.32.exe",
+  "original_exe_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "state": "21 Rust checkpoints prepared; no genuine original checkpoint comparison has run",
+  "checkpoints": [
+    {
+      "case": "movement",
+      "cycle": 1,
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "rust_output_sha256": "664BFB655B35F094D8EC76F8D2B5773761919CE91CF08F1B3C9D18A970995A37",
+      "random_sensitive": false
+    },
+    {
+      "case": "movement",
+      "cycle": 10,
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "rust_output_sha256": "12B920B021F171A92109B32CF351E50B9243BDF2EB4117BFE9EDF85E68B1B069",
+      "random_sensitive": false
+    },
+    {
+      "case": "movement",
+      "cycle": 100,
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "rust_output_sha256": "10BB4366F8070C6FC90FA94519F8FE38A14FB58FCA93F797D052F17FA8FC4679",
+      "random_sensitive": false
+    },
+    {
+      "case": "fixed",
+      "cycle": 1,
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "rust_output_sha256": "DE6227E09A991273E75B801CEF530E5B34442C6EC9FCE85D8E3518623066C471",
+      "random_sensitive": false
+    },
+    {
+      "case": "fixed",
+      "cycle": 10,
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "rust_output_sha256": "092BD23B907C28F7365DD9CEA95241D9D8BB0C475BFC9916ABF242401BA7FCF4",
+      "random_sensitive": false
+    },
+    {
+      "case": "fixed",
+      "cycle": 100,
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "rust_output_sha256": "255E1E89B6DBBF4A5DBCC1B84391D09485D7542A7F470FD1C9FC04DB55B3D982",
+      "random_sensitive": false
+    },
+    {
+      "case": "contacts",
+      "cycle": 1,
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "rust_output_sha256": "C5730CDA03D486B15988B4E9C9D19CD75D4023488D4BB49E7BD5DF6D83D49921",
+      "random_sensitive": false
+    },
+    {
+      "case": "contacts",
+      "cycle": 10,
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "rust_output_sha256": "11ED91007A0AA23CA6F0BD5998F4AB2F67E5409AF2948E3DC1E7EF12ECA01A45",
+      "random_sensitive": false
+    },
+    {
+      "case": "contacts",
+      "cycle": 100,
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "rust_output_sha256": "39E5CFF6FA06596244B9CCC91F3D012E3AC812E219751C5925EF8BFBEEF47EB9",
+      "random_sensitive": false
+    },
+    {
+      "case": "body",
+      "cycle": 1,
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "rust_output_sha256": "D24C00E4D3EB614317701CC067ED0C435DA14C4FBDCE80D2A27AB72C028E8A2A",
+      "random_sensitive": false
+    },
+    {
+      "case": "body",
+      "cycle": 10,
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "rust_output_sha256": "F97FEC1C0A8C1BEACB169B7A4A57D0577E8E9206B9E8660769E818F5BEF8F2BD",
+      "random_sensitive": false
+    },
+    {
+      "case": "body",
+      "cycle": 100,
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "rust_output_sha256": "9C6DFF272C8A718A4282224600F4A5814F8513B3F58588283B5BB552DE8DDBEF",
+      "random_sensitive": false
+    },
+    {
+      "case": "ties",
+      "cycle": 1,
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "rust_output_sha256": "8A9DB0BD74CF901CA610459EA211AA9E724186CBB76B642C4ABF192E167BF201",
+      "random_sensitive": false
+    },
+    {
+      "case": "ties",
+      "cycle": 10,
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "rust_output_sha256": "3E7858815D84F1A675D28E44889D65A1AFEB88A6D38651887739E8069F3EC4EF",
+      "random_sensitive": false
+    },
+    {
+      "case": "ties",
+      "cycle": 100,
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "rust_output_sha256": "8AEE0378BF448316CE3CB4712A6E7DCD65A8A471444FDB27E3BA5DCE3CC45704",
+      "random_sensitive": false
+    },
+    {
+      "case": "feeding",
+      "cycle": 1,
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "rust_output_sha256": "72EF343031D074701A773B58BC836D7C066D9E04655CC603E9F940CCE5E19F04",
+      "random_sensitive": true
+    },
+    {
+      "case": "feeding",
+      "cycle": 10,
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "rust_output_sha256": "17DF901C79C4E5757BA04151293B32C25D69EB567AF1D17FEEAB37353B1491E2",
+      "random_sensitive": true
+    },
+    {
+      "case": "feeding",
+      "cycle": 100,
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "rust_output_sha256": "07019FCCFFE16B6F104C79E676895A436D2555BBA6CE6B51730FEE7EAF3AF55F",
+      "random_sensitive": true
+    },
+    {
+      "case": "reproduction",
+      "cycle": 1,
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "rust_output_sha256": "CC591894EBD642B666BCE8C80A8CCE827A9ED0A6447A2C1EF4692F3421CCD4F4",
+      "random_sensitive": true
+    },
+    {
+      "case": "reproduction",
+      "cycle": 10,
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "rust_output_sha256": "50E74FFAE430D1DF5561F04B73A9BC53A26641C2435B6A63B919C0CAA26251C1",
+      "random_sensitive": true
+    },
+    {
+      "case": "reproduction",
+      "cycle": 100,
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "rust_output_sha256": "4CA0294D25DE26202C711D70D27E05140651EA049D5A01B0AFE100898568104D",
+      "random_sensitive": true
+    }
+  ],
+  "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state."
+}

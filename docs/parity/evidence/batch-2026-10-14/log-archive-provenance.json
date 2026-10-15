@@ -1,0 +1,54 @@
+{
+  "source_head": "9e9699360ad5f117c43a6af9ba6b1576682747d2",
+  "logs": [
+    {
+      "original": "parity-batch-cpu-workspace-vision-pass6.log",
+      "original_sha256": "9a9e22e7d861d737fc48d5e35ce7fab5d7b55e0fc5ec4d62426b52f378cc7466",
+      "archive": "logs/parity-batch-cpu-workspace-vision-pass6.log",
+      "archive_sha256": "1ca5f34ab52e9ed968a3b78e43abc2d9240c6d1595c7bfe65185acc149c136ed",
+      "normalization": "Trailing blank lines removed for Git whitespace checks; original root log retained"
+    },
+    {
+      "original": "parity-batch-vision-spatial-library-repair-pass7.log",
+      "original_sha256": "4ead424a8b6b5a012d7cc4f0ae53c2488feca4439572f3d5ec3b467efd1a55ff",
+      "archive": "logs/parity-batch-vision-spatial-library-repair-pass7.log",
+      "archive_sha256": "d6c9aa4e1498a905548dab633ff356e9f829816a9e4d6200712330a38b3cb901",
+      "normalization": "Trailing blank lines removed for Git whitespace checks; original root log retained"
+    },
+    {
+      "original": "parity-batch-vision-spatial-integration-repair-pass1.log",
+      "original_sha256": "c44807f0b0b9dd29c6ccc1554714a1d740cabe1402a03178865799b3f9934fe5",
+      "archive": "logs/parity-batch-vision-spatial-integration-repair-pass1.log",
+      "archive_sha256": "58fc90ab76c5274ba9c31e745723bf69147561da75955297212131de4165391d",
+      "normalization": "Trailing blank lines removed for Git whitespace checks; original root log retained"
+    },
+    {
+      "original": "parity-batch-manual-insertion-clippy-pass22.log",
+      "original_sha256": "f3a641549129cc598b2dea126ada15d87d29f144ead04057e3d23958c5cf1522",
+      "archive": "logs/parity-batch-manual-insertion-clippy-pass22.log",
+      "archive_sha256": "cb9d78ad9804bafa107c83eec91b746704bcfdcbcebd5fc920c4d02a89248d94",
+      "normalization": "Trailing blank lines removed for Git whitespace checks; original root log retained"
+    },
+    {
+      "original": "parity-batch-manual-insertion-rust-pass22.log",
+      "original_sha256": "3dffa2a62b2430012f5ca2275b0c351b8bb65b1ae977961ba55605df0ef05be4",
+      "archive": "logs/parity-batch-manual-insertion-rust-pass22.log",
+      "archive_sha256": "86fc9d5db274e9a884acdee406bd36e6b606c4b11f5fc90cae0d5a3053113e11",
+      "normalization": "Trailing blank lines removed for Git whitespace checks; original root log retained"
+    },
+    {
+      "original": "parity-batch-final-cli-build-9e96993.log",
+      "original_sha256": "9adaf8f843aceb5f18208ef15ffeb65f586665ab37d31c88a3a05a8e97c7454d",
+      "archive": "logs/parity-batch-final-cli-build-9e96993.log",
+      "archive_sha256": "b0e77005efc6995183c2a63a9ccdff566668bb25107ac25ed6f0e6f52e1eeaf5",
+      "normalization": "Trailing blank lines removed for Git whitespace checks; original root log retained"
+    },
+    {
+      "original": "parity-batch-final-windows-publish-9e96993.log",
+      "original_sha256": "d1f419af1731ebc619550d412b0d2f37e2ec11781411c554de259540d83db99b",
+      "archive": "logs/parity-batch-final-windows-publish-9e96993.log",
+      "archive_sha256": "02bdb8f603e30d54940af408843d5d7d4a5dc72e094312dcea9479c84ad7ccae",
+      "normalization": "Trailing blank lines removed for Git whitespace checks; original root log retained"
+    }
+  ]
+}
