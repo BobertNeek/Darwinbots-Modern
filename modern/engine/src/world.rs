@@ -5678,9 +5678,10 @@ impl Engine {
         genetic_distance_percent: Option<f32>,
     ) -> Result<(), EngineError> {
         if let Some(percent) = genetic_distance_percent {
-            if !percent.is_finite() || percent <= 0.0 {
+            if !percent.is_finite() || percent < 0.0 {
                 return Err(EngineError::Invariant(
-                    "speciation genetic distance must be a finite positive percentage".to_owned(),
+                    "speciation genetic distance must be a finite nonnegative percentage"
+                        .to_owned(),
                 ));
             }
             self.config.speciation_genetic_distance_percent = percent;

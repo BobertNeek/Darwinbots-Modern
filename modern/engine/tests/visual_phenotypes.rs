@@ -169,3 +169,26 @@ fn phenotype_round_trips_through_version_four_save() {
     };
     assert_eq!(phenotypes(&restored), phenotypes(&engine));
 }
+
+#[test]
+fn zero_native_speciation_threshold_survives_updates_and_save_resume() {
+    // DB2 permits zero: any accumulated mutation can cross the threshold.
+    let mut engine = phenotype_engine(false, 0.0);
+    engine
+        .update_speciation_settings(Some(true), Some(0.0))
+        .unwrap();
+    let bytes = SaveFile::encode(&engine).unwrap();
+    let mut restored = SaveFile::decode(&bytes).unwrap();
+    restored
+        .update_speciation_settings(None, Some(0.0))
+        .unwrap();
+    assert_eq!(SaveFile::encode(&restored).unwrap(), bytes);
+    for invalid in [-1.0, f32::NAN, f32::INFINITY] {
+        assert!(
+            restored
+                .update_speciation_settings(Some(false), Some(invalid))
+                .is_err()
+        );
+        assert_eq!(SaveFile::encode(&restored).unwrap(), bytes);
+    }
+}
