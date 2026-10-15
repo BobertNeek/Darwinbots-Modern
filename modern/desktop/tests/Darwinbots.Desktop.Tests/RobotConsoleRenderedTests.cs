@@ -94,7 +94,7 @@ public sealed class RobotConsoleRenderedTests
                 Assert.Contains("Memory:3:2:310:123", engine.Calls);
 
                 var callsBeforeInvalid = engine.Calls.ToArray();
-                await RunAndWaitAsync(command, buttons["RUN"], transcript, "set nope 42", "ERROR: Invalid memory address 'nope'.");
+                await RunAndWaitAsync(command, buttons["RUN"], transcript, "set nope 42", "ERROR: Unknown memory address 'nope'.");
                 Assert.Contains("> set nope 42", transcript.Text, StringComparison.Ordinal);
                 Assert.Equal(callsBeforeInvalid, engine.Calls.ToArray());
 

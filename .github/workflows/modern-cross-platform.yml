@@ -44,9 +44,19 @@ jobs:
       - name: Test desktop core
         run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release
       - name: Test rendered desktop controls
+        timeout-minutes: 30
         env:
           DARWINBOTS_GUI_AUDIT_DIR: ${{ github.workspace }}/artifacts/gui-audit/${{ matrix.rid }}
-        run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release
+        run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release --blame-hang-timeout 10m --blame-hang-dump-type none --logger "trx;LogFileName=rendered-controls.trx" --results-directory artifacts/test-results/${{ matrix.rid }}
+      - name: Preserve rendered control receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwinbots-gui-audit-${{ matrix.rid }}
+          path: |
+            artifacts/gui-audit/${{ matrix.rid }}
+            artifacts/test-results/${{ matrix.rid }}
+          if-no-files-found: ignore
       - name: Publish desktop package
         run: dotnet publish modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj -c Release -r ${{ matrix.rid }} --self-contained false -o artifacts/${{ matrix.rid }}
       - name: Smoke test published desktop package

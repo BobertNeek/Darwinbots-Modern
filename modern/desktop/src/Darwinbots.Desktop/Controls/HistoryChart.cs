@@ -22,7 +22,7 @@ public sealed class HistoryChart : Control
     {
         base.Render(context);
         var area = new Rect(0, 0, Math.Max(1, Bounds.Width), Math.Max(1, Bounds.Height));
-        var gridPen = new Pen(new SolidColorBrush(Color.Parse("#DDDAD1")), 0.6);
+        var gridPen = new Pen(new SolidColorBrush(Color.Parse("#DDDAD1")), 1);
         for (var row = 1; row < 4; row++)
         {
             var y = area.Height * row / 4;

@@ -27,6 +27,9 @@ public sealed class SimulationSession : IAsyncDisposable
 
     public event Action<EngineSnapshot>? SnapshotPublished;
 
+    public Task RefreshSnapshotAsync(CancellationToken cancellationToken = default) =>
+        Enqueue(_ => { }, cancellationToken);
+
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.Tick(count), cancellationToken);
 

@@ -64,7 +64,7 @@ public sealed class Io04LivingDeadSnapshotRenderedTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var window = new MainWindow([], new WorldSetupOptions());
-            SetField(window, "_session", session);
+            DesktopTestApplication.UseSession(window, session);
             var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
             var viewport = window.FindControl<WorldViewport>("Viewport")!;
             viewModel.Update(session.LatestSnapshot);
@@ -75,6 +75,8 @@ public sealed class Io04LivingDeadSnapshotRenderedTests
             try
             {
                 window.WindowState = WindowState.Normal;
+                window.Width = 1280;
+                window.Height = 900;
                 window.Show();
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 
@@ -99,6 +101,9 @@ public sealed class Io04LivingDeadSnapshotRenderedTests
                 Assert.True(inspectorFrame.PixelSize.Width >= 900);
                 Assert.True(inspectorFrame.PixelSize.Height >= 560);
 
+                inspector.SelectTab(RobotDetailsTab.Memory);
+                inspector.UpdateLayout();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 var inspectorText = string.Join(
                     "\n",
                     inspector.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text)

@@ -19,7 +19,7 @@ public sealed class World05ObstaclesMazeRenderedTests
     [Fact]
     public async Task RealObstaclePlacementEditorApplyAndMazeCommandProduceCanonicalSnapshotsAndReceipt()
     {
-        var factory = new AuditEngineClientFactory();
+        var factory = new AuditEngineClientFactory(includeWorldObjects: false);
         var setup = new WorldSetupOptions
         {
             WorldWidth = 16_000,
@@ -37,6 +37,7 @@ public sealed class World05ObstaclesMazeRenderedTests
             player.Show();
             try
             {
+                await WaitFor(() => Session(player) is { LatestSnapshot.Population: 1 });
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 await WaitFor(() => Session(player) is not null);
                 var engine = factory.Clients.Single();
@@ -69,6 +70,8 @@ public sealed class World05ObstaclesMazeRenderedTests
                 editor.FindControl<ComboBox>("ShotPolicy")!.SelectedIndex = 1;
                 Click(editor, editor.GetVisualDescendants().OfType<Button>().Single(button => button.Content?.ToString() == "APPLY"));
                 await WaitFor(() => engine.Calls.Contains("UpdateObstacle"));
+                await WaitFor(() => ((Darwinbots.Desktop.ViewModels.MainWindowViewModel)player.DataContext!).Status.StartsWith("SHAPE ", StringComparison.Ordinal)
+                    && ((Darwinbots.Desktop.ViewModels.MainWindowViewModel)player.DataContext!).Status.EndsWith(" UPDATED", StringComparison.Ordinal));
 
                 var edited = Session(player)!.LatestSnapshot.Obstacles.Single();
                 Assert.Equal([125f, 135f], edited.Minimum);

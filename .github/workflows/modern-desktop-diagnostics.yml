@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - ".github/workflows/modern-desktop-diagnostics.yml"
+      - "modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestApplication.cs"
+      - "modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestSessionTests.cs"
+      - "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs"
+      - "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml"
   workflow_dispatch:
 
 permissions:

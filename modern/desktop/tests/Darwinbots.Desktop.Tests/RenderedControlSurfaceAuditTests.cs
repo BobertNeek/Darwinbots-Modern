@@ -289,7 +289,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.True(panel.IsVisible);
                     Assert.Equal("SAFE MODE RECOVERY READY", title.Text);
                     Assert.Contains("FAULT WINDOW", faultWindow.Text, StringComparison.Ordinal);
-                    Assert.Equal($"RECOVERY ARTIFACT Â· {Path.GetFileName(artifactPath)}", artifact.Text);
+                    Assert.Equal($"RECOVERY ARTIFACT · {Path.GetFileName(artifactPath)}", artifact.Text);
                     Assert.True(recover.IsVisible);
                     Assert.True(ignore.IsVisible);
                     Assert.Contains("RECOVERY READY", viewModel.Status, StringComparison.Ordinal);
@@ -306,9 +306,9 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes.Take(8));
 
                     Click(window, recover);
-                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED Â·", StringComparison.Ordinal));
+                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED ·", StringComparison.Ordinal));
                     Assert.False(panel.IsVisible);
-                    Assert.Equal($"RECOVERED Â· {Path.GetFileName(artifactPath)}", viewModel.Status);
+                    Assert.Equal($"RECOVERED · {Path.GetFileName(artifactPath)}", viewModel.Status);
                 }
                 finally
                 {
@@ -449,6 +449,38 @@ public sealed class RenderedControlSurfaceAuditTests
             return 0;
         }, CancellationToken.None);
 
+    }
+
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(1500)]
+    public async Task RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(int width)
+    {
+        var factory = new AuditEngineClientFactory();
+        var storage = new AuditStorageService { OpenedSimulation = [9, 8, 7, 6] };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), factory, storage);
+            try
+            {
+                ShowForInteraction(window, width, 900);
+                await WaitFor(() => !factory.Clients.IsEmpty);
+                var load = Named<Button>(window, "LoadButton");
+                var header = load.GetVisualAncestors().OfType<Viewbox>().First();
+                foreach (var button in header.GetVisualDescendants().OfType<Button>())
+                    button.FontSize = 16;
+                Named<Button>(window, "BackendButton").Content = "GPU · INTEGRATED / METAL";
+                Capture(window, $"runtime-header-wide-{width}.png");
+                Click(window, load);
+                await WaitFor(() => factory.Clients.Any(client => client.Calls.Contains("Load")));
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
+            return 0;
+        }, CancellationToken.None);
     }
 
     [Fact]
@@ -752,7 +784,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 var statusBefore = viewModel.Status;
                 var callsBefore = engine.Calls.ToArray();
                 onlineButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Click(window, onlineButton);
+                ClickAt(window, onlineButton, 0.5, 0.5);
                 onlineButton.Focus();
                 window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
                 window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
@@ -777,7 +809,6 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.True(internetTab.IsVisible);
                 Assert.Contains("disabled", string.Join(" ", setupWindow.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text)), StringComparison.OrdinalIgnoreCase);
                 var setupStateBefore = setupWindow.Species.Select(species => species.Name).ToArray();
-                internetTab.RaiseEvent(new RoutedEventArgs(TabItem.PointerPressedEvent));
                 Click(setupWindow, internetTab);
                 internetTab.Focus();
                 setupWindow.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
@@ -861,14 +892,14 @@ public sealed class RenderedControlSurfaceAuditTests
 
                 Assert.True(surface.IsVisible);
                 Assert.True(dashboard.IsVisible);
-                Assert.Contains("WORLD READY", viewModel.Status, StringComparison.Ordinal);
+                await WaitFor(() => viewModel.Status.Contains("WORLD READY", StringComparison.Ordinal), () => viewModel.Status);
                 Assert.True(Named<Border>(window, "InternetOfflineOverlay").IsVisible);
 
                 var onlineButton = Named<Button>(window, "InternetButton");
                 var statusBeforeOnlineInput = viewModel.Status;
                 var callsBeforeOnlineInput = engine.Calls.ToArray();
                 Assert.False(onlineButton.IsEnabled);
-                Click(window, onlineButton);
+                ClickAt(window, onlineButton, 0.5, 0.5);
                 Assert.Equal(statusBeforeOnlineInput, viewModel.Status);
                 Assert.Equal(callsBeforeOnlineInput, engine.Calls.ToArray());
                 var onlineCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!;
@@ -887,23 +918,30 @@ public sealed class RenderedControlSurfaceAuditTests
                 var appliedEnvironment = generalSettings.Update;
                 Click(generalSettings, Named<Button>(generalSettings, "ApplyButton"));
                 await WaitFor(() => engine.EnvironmentUpdates.Count >= 1);
-                Assert.Equal(appliedEnvironment, engine.EnvironmentUpdates.Single());
-                Assert.Equal(appliedEnvironment, Field<EnvironmentUpdate>(window, "_liveEnvironment"));
+                Assert.Equal(System.Text.Json.JsonSerializer.Serialize(appliedEnvironment), System.Text.Json.JsonSerializer.Serialize(engine.EnvironmentUpdates.Single()));
+                Assert.Equal(System.Text.Json.JsonSerializer.Serialize(appliedEnvironment), System.Text.Json.JsonSerializer.Serialize(Field<EnvironmentUpdate>(window, "_liveEnvironment")));
                 Assert.Contains("LIVE SETTINGS APPLIED", viewModel.Status, StringComparison.Ordinal);
+                Assert.Equal("SUN OFF", Named<Button>(window, "SunButton").Content);
+                Assert.Equal(7m, Named<NumericUpDown>(window, "LiveMetabolism").Value);
+                Assert.Equal(100m, Named<NumericUpDown>(window, "LivePlantEnergy").Value);
 
-                var mutationSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGlobalMutationRates)!;
+                var mutationSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
                 ActivateMenu(mutationSettingsCommand);
                 var mutationSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(mutationSettings.IsVisible);
+                Named<TabControl>(mutationSettings, "SettingsTabs").SelectedIndex = 0;
+                mutationSettings.UpdateLayout();
                 Named<CheckBox>(mutationSettings, "MutationsEnabled").IsChecked = true;
                 Named<NumericUpDown>(mutationSettings, "GlobalMutationRate").Value = 1.75m;
                 var appliedMutation = mutationSettings.MutationUpdate;
+                var previousMutationUpdates = engine.MutationUpdates.Count;
                 Click(mutationSettings, Named<Button>(mutationSettings, "ApplyButton"));
-                await WaitFor(() => engine.MutationUpdates.Count >= 1);
-                Assert.Equal(appliedMutation, engine.MutationUpdates.Single());
+                await WaitFor(() => engine.MutationUpdates.Count == previousMutationUpdates + 1);
+                Assert.Equal(System.Text.Json.JsonSerializer.Serialize(appliedMutation),
+                    System.Text.Json.JsonSerializer.Serialize(engine.MutationUpdates.Last()));
                 Assert.Contains("LIVE SETTINGS APPLIED", viewModel.Status, StringComparison.Ordinal);
 
-                AssertComboSelection(window, Named<ComboBox>(window, "RuntimeSpeed"), 2);
+                AssertComboSelection(window, Named<ComboBox>(window, "RuntimeSpeed"), 1);
                 Assert.Contains("5 TICKS/FRAME", viewModel.Status, StringComparison.Ordinal);
                 AssertComboSelection(window, Named<ComboBox>(window, "RuntimeSpeed"), 3);
                 Assert.Contains("MAXIMUM", viewModel.Status, StringComparison.Ordinal);
@@ -920,11 +958,14 @@ public sealed class RenderedControlSurfaceAuditTests
                 Click(window, turbo);
                 Assert.True(Named<WorldViewport>(window, "Viewport").IsVisible);
 
+                ClickExpander(window, Named<Expander>(window, "EnergyExpander"));
                 Named<NumericUpDown>(window, "LiveMetabolism").Value = 6;
                 Named<NumericUpDown>(window, "LivePlantEnergy").Value = 250;
                 Named<NumericUpDown>(window, "LiveFeedingToBody").Value = 0.75m;
+                var previousEnergyUpdates = engine.EnvironmentUpdates.Count;
                 Click(window, Named<Button>(window, "ApplyEnergyButton"));
-                await WaitFor(() => engine.EnvironmentUpdates.Count >= 2);
+                await WaitFor(() => engine.EnvironmentUpdates.Count == previousEnergyUpdates + 1
+                    && viewModel.Status.Contains("ENERGY APPLIED", StringComparison.Ordinal));
                 Assert.Contains("ENERGY APPLIED", viewModel.Status, StringComparison.Ordinal);
 
                 var sun = Named<Button>(window, "SunButton");
@@ -944,6 +985,26 @@ public sealed class RenderedControlSurfaceAuditTests
                 foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
                 window.Close();
             }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdvancedMutationRowsPreserveNativeSpeciesZeroAndSkipOnlyAnEmptySentinel(bool nativeFirstSpecies)
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var snapshot = RecordingEngineClient.CreateSnapshot();
+            if (nativeFirstSpecies)
+                snapshot = snapshot with
+                {
+                    Species = [snapshot.Species[0] with { Name = "Native first species" }, snapshot.Species[1]],
+                    Organisms = [snapshot.Organisms[0] with { Species = 0 }],
+                };
+            var settings = new AdvancedSettingsWindow(EnvironmentUpdate.Default, snapshot);
+            var speciesIds = settings.MutationUpdate.SpeciesRates.Select(rate => rate.Species).ToArray();
+            Assert.Equal(nativeFirstSpecies ? new uint[] { 0, 1 } : new uint[] { 1 }, speciesIds);
         }, CancellationToken.None);
     }
 
@@ -969,13 +1030,18 @@ public sealed class RenderedControlSurfaceAuditTests
 
                 var engine = factory.Clients.Single();
                 var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+                await WaitFor(() => Field<MainWindowViewModel>(window, "_viewModel").Population == 1
+                    && menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!.IsEnabled,
+                    () => Field<MainWindowViewModel>(window, "_viewModel").Status);
                 ActivateMenu(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!);
                 await WaitFor(
                     () => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any(),
-                    () => "MainWindow did not open the live settings surface.");
+                    () => "MainWindow did not open the live settings surface. " + Field<MainWindowViewModel>(window, "_viewModel").Status);
 
                 var settings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Named<TabControl>(settings, "SettingsTabs").SelectedIndex = 0;
+                settings.UpdateLayout();
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Loaded);
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 Assert.True(settings.IsVisible);
                 Assert.True(Named<CheckBox>(settings, "MutationsEnabled").IsChecked);
@@ -986,7 +1052,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Contains("GLOBAL MUTATION PRESSURE", settings.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
                 Assert.Equal(
                     Avalonia.Media.Color.Parse("#F4F0E6"),
-                    Assert.IsType<Avalonia.Media.SolidColorBrush>(settings.Background).Color);
+                    Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(settings.Background).Color);
 
                 using var frame = settings.CaptureRenderedFrame();
                 Assert.True(frame.PixelSize.Width >= 760);
@@ -1267,13 +1333,13 @@ internal sealed class AuditStorageService : IDesktopStorageService
     }
 }
 
-internal sealed class AuditEngineClientFactory : IEngineClientFactory
+internal sealed class AuditEngineClientFactory(bool includeWorldObjects = true) : IEngineClientFactory
 {
     public ConcurrentQueue<AuditEngineClient> Clients { get; } = [];
 
     public IEngineClient Create(WorldSetupOptions setup)
     {
-        var client = new AuditEngineClient();
+        var client = new AuditEngineClient(includeWorldObjects);
         Clients.Enqueue(client);
         return client;
     }
@@ -1286,7 +1352,7 @@ internal sealed class AuditEngineClient : IEngineClient
     private EngineSnapshot _snapshot;
     private LocalModeConfig _localModeConfig = LocalModeConfig.Default;
 
-    public AuditEngineClient()
+    public AuditEngineClient(bool includeWorldObjects = true)
     {
         Organism = new OrganismSnapshot(3, 2, [8_000f, 6_000f], [0f, 0f], 1_000, 10, Species: 1);
         _snapshot = new EngineSnapshot(0, 1, _backend, [Organism])
@@ -1303,6 +1369,7 @@ internal sealed class AuditEngineClient : IEngineClient
             Obstacles = [new ObstacleSnapshot(7, [1_000f, 1_000f], [2_000f, 2_000f])],
             Teleporters = [new TeleporterSnapshot(8, [14_000f, 10_000f], 180f, [2_000f, 2_000f])],
         };
+        if (!includeWorldObjects) _snapshot = _snapshot with { Obstacles = [], Teleporters = [] };
     }
 
     public OrganismSnapshot Organism { get; }

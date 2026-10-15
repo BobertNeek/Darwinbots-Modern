@@ -171,7 +171,6 @@ public sealed partial class MainWindow : Window
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
         _liveEnvironment = setup.ToEnvironmentUpdate();
-        SunButton.Content = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
         ToolbarSlot24.Content = "IGNORE OFF";
         AutomationProperties.SetName(ToolbarSlot24, "IGNORE ERRORS OFF");
         LocalModeKindSelector.SelectedIndex = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables ? 4 : 0;
@@ -180,10 +179,7 @@ public sealed partial class MainWindow : Window
         CultureSelector.SelectedIndex = UiResources.Cultures
             .Select((option, index) => (option, index))
             .FirstOrDefault(value => string.Equals(value.option.Name, DesktopUiPreferences.Culture.Name, StringComparison.OrdinalIgnoreCase)).index;
-        ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
-        LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
-        LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
-        LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
+        RefreshEnvironmentControls();
         WorldParametersText.Text = $"{setup.WorldWidth:N0} × {setup.WorldHeight:N0}\nCapacity {setup.PopulationCapacity:N0}\nVegetables {setup.VegetablePopulationCap:N0}";
         Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
         Viewport.WrapX = _liveEnvironment.WrapX;
@@ -424,6 +420,26 @@ public sealed partial class MainWindow : Window
         _syncingSpeciesSelection = true;
         try { InsertionSpeciesSelector.SelectedItem = species; }
         finally { _syncingSpeciesSelection = false; }
+    }
+
+    private void RefreshEnvironmentControls()
+    {
+        var controlsReady = _controlsReady;
+        _controlsReady = false;
+        try
+        {
+            ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
+            LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
+            LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
+            LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
+            var sunLabel = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
+            SunButton.Content = sunLabel;
+            AutomationProperties.SetName(SunButton, sunLabel);
+            Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
+            Viewport.WrapX = _liveEnvironment.WrapX;
+            Viewport.WrapY = _liveEnvironment.WrapY;
+        }
+        finally { _controlsReady = controlsReady; }
     }
 
     private async void Sun_Click(object? sender, RoutedEventArgs e)
@@ -1316,8 +1332,7 @@ public sealed partial class MainWindow : Window
         await _session.UpdateEnvironmentAsync(dialog.Update);
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = dialog.Update;
-        Viewport.WrapX = dialog.Update.WrapX;
-        Viewport.WrapY = dialog.Update.WrapY;
+        RefreshEnvironmentControls();
         return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
     }
 
@@ -1539,9 +1554,11 @@ public sealed partial class MainWindow : Window
     {
         var group = SelectedOrganismGroup();
         if (_session is null || group.Count == 0) return LegacyCommandResult.Failure("NO ORGANISM SELECTED");
-        var members = group.Select(value => new OrganismKey(value.Slot, value.Generation)).ToArray();
+        var selected = SelectedRobotKey();
+        var members = group.Select(value => new OrganismKey(value.Slot, value.Generation))
+            .OrderBy(key => key == selected ? 0 : 1).ToArray();
         var bytes = await _session.ExportOrganismGroupAsync(members);
-        var saved = await _storage.SaveOrganismAsync(this, $"organism-{group[0].Slot}.dbo",
+        var saved = await _storage.SaveOrganismAsync(this, $"organism-{members[0].Slot}.dbo",
             async stream => await stream.WriteAsync(bytes));
         return saved
             ? LegacyCommandResult.Success($"ORGANISM SAVED · {group.Count:N0} BOT(S)")
@@ -1820,6 +1837,7 @@ public sealed partial class MainWindow : Window
                     _ = ApplyZerobotTransitionAsync(transition);
             });
             _viewModel.Status = "ENGINE READY — IMPORT A LEGACY BOT";
+            await _session.RefreshSnapshotAsync();
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
@@ -1898,14 +1916,7 @@ public sealed partial class MainWindow : Window
                     TemporaryGeneData = false,
                 },
             };
-            ToroidalWorldToggle.IsChecked = _liveEnvironment.ToroidalWorld;
-            LiveMetabolism.Value = _liveEnvironment.MetabolismCost;
-            LivePlantEnergy.Value = _liveEnvironment.Vegetation.MaxEnergyPerTick;
-            LiveFeedingToBody.Value = (decimal)_liveEnvironment.Vegetation.FeedingToBody;
-            SunButton.Content = _liveEnvironment.Vegetation.Daytime ? "SUN ON" : "SUN OFF";
-            Viewport.ToroidalWorld = _liveEnvironment.ToroidalWorld;
-            Viewport.WrapX = _liveEnvironment.WrapX;
-            Viewport.WrapY = _liveEnvironment.WrapY;
+            RefreshEnvironmentControls();
             var size = _session.LatestSnapshot.WorldSize;
             WorldParametersText.Text = $"{size[0]:N0} × {size[1]:N0}\nCapacity {configuration.PopulationCapacity:N0}\nVegetables {configuration.VegetablePopulationCap:N0}";
             _insertionSpecies.Clear();
@@ -2207,10 +2218,12 @@ public sealed partial class MainWindow : Window
         if (obstacle is null) return;
         var dialog = new ShapeEditorWindow(obstacle, _liveEnvironment.ShapesVisible ?? false);
         await dialog.ShowDialog(this);
-        if (dialog.Result is not { } result) return;
-        await _session.UpdateObstacleAsync(result);
+        if (dialog.Result is not { } result || !IsVisible) return;
+        var session = _session;
+        await session.UpdateObstacleAsync(result);
+        if (!IsVisible || !ReferenceEquals(_session, session)) return;
         _liveEnvironment = _liveEnvironment with { ShapesVisible = dialog.ShapesVisible };
-        await _session.UpdateEnvironmentAsync(_liveEnvironment);
+        await session.UpdateEnvironmentAsync(_liveEnvironment);
         _viewModel.Status = $"SHAPE {result.Id} UPDATED";
     }
 
@@ -2454,8 +2467,7 @@ public sealed partial class MainWindow : Window
         await _session.UpdateEnvironmentAsync(update);
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = update;
-        Viewport.WrapX = update.WrapX;
-        Viewport.WrapY = update.WrapY;
+        RefreshEnvironmentControls();
         _viewModel.Status = "LIVE SETTINGS APPLIED";
     }
 

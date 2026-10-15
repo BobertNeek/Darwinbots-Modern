@@ -8,6 +8,16 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class MazePresetBuilderTests
 {
     [Fact]
+    public void TrashCompactorUsesVb6DoubleLiteralsBeforeSingleStorage()
+    {
+        var shapes = MazePresetBuilder.Build(MazePreset.TrashCompactor, 16_000f, 12_000f);
+        Assert.Equal([-999f, -1200f], shapes[0].Minimum);
+        Assert.Equal([1f, 13200f], shapes[0].Maximum);
+        Assert.Equal([15999f, -1200f], shapes[1].Minimum);
+        Assert.Equal([16999f, 13200f], shapes[1].Maximum);
+    }
+
+    [Fact]
     public void BuildsAllSixHistoricalMazePresetsWithRustObstacleGeometry()
     {
         var assembly = typeof(ObstacleSnapshot).Assembly;

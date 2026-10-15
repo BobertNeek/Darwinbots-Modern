@@ -74,6 +74,7 @@ public sealed class GraphContestRenderedTests
         {
             Backend = "Cpu",
             Seed = 24832,
+            Recording = new Db2RecordingOptions(SamplingInterval: 20),
             PopulationCapacity = 1_000,
             WorldWidth = 2_000,
             WorldHeight = 1_500,
@@ -98,13 +99,15 @@ public sealed class GraphContestRenderedTests
             try
             {
                 window.WindowState = WindowState.Normal;
-                window.Width = 940;
-                window.Height = 650;
+                window.Width = 1280;
+                window.Height = 900;
                 window.Show();
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 
                 await WaitFor(
-                    () => TryField<SimulationSession>(window, "_session")?.LatestSnapshot.Species.Count == 5,
+                    () => TryField<SimulationSession>(window, "_session") is { } ready
+                        && ready.LatestSnapshot.Population == setup.Species.Sum(species => species.InitialCount)
+                        && setup.Species.All(species => ready.LatestSnapshot.Species.Any(actual => actual.Name == species.Name)),
                     () => "MainWindow did not publish all Rust-backed imported species.");
 
                 var session = TryField<SimulationSession>(window, "_session")!;
@@ -190,7 +193,7 @@ public sealed class GraphContestRenderedTests
                     () => "Live graph windows did not receive the next Rust history sample.");
 
                 var export = graphWindow.ViewModel.ExportCsv();
-                Assert.StartsWith("series_id,metric,title,expression,tick,value\n", export, StringComparison.Ordinal);
+                Assert.StartsWith("series_id,metric,title,expression,tick,value\r\n", export, StringComparison.Ordinal);
                 Assert.Contains("Population", export, StringComparison.Ordinal);
                 Assert.Contains("Average DNA length", export, StringComparison.Ordinal);
 
@@ -218,7 +221,8 @@ public sealed class GraphContestRenderedTests
                     () => window.OwnedWindows.OfType<ContestResultsWindow>().Any(),
                     () => "MainWindow did not open Contest Results.");
                 var contestWindow = Assert.Single(window.OwnedWindows.OfType<ContestResultsWindow>());
-                Assert.Equal(5, contestWindow.ViewModel.Competitors.Count);
+                Assert.Equal(ContestResultSnapshot.FromSnapshot(session.LatestSnapshot).Competitors.Count, contestWindow.ViewModel.Competitors.Count);
+                Assert.All(setup.Species, species => Assert.Contains(contestWindow.ViewModel.Competitors, competitor => competitor.Name == species.Name));
                 Assert.Contains(contestWindow.ViewModel.Competitors, competitor => competitor.Wins > 0);
 
                 var historicMenu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;

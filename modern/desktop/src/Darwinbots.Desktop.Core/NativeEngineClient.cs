@@ -115,7 +115,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         var result = ExecuteBatchForResult(new
         {
             version = 1,
-            commands = new[] { new { type = "import_organism", payload = payload.ToArray() } },
+            // System.Text.Json encodes byte[] as base64. The native Vec<u8>
+            // command contract requires a JSON sequence of byte values.
+            commands = new[] { new { type = "import_organism", payload = payload.ToArray().Select(value => (int)value).ToArray() } },
         }, "import organism");
         return result.GetProperty("results")[0].GetProperty("count").GetInt32();
     }

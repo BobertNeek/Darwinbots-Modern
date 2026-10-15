@@ -41,7 +41,7 @@ public sealed class ModeSettingsRenderedTests
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     Assert.Equal("LEAGUE", Assert.IsType<TabItem>(globalTabs.Items[2]).Header?.ToString());
                     var offlineOwned = Named<CheckBox>(global, "LeagueOfflineOwned");
-                    Assert.Equal("Owned by offline modes", offlineOwned.Content?.ToString());
+                    Assert.Equal("Offline league and contest controls", offlineOwned.Content?.ToString());
                     Assert.True(offlineOwned.IsChecked);
                     Assert.False(offlineOwned.IsEnabled);
 
@@ -50,14 +50,14 @@ public sealed class ModeSettingsRenderedTests
                     var evolutionMode = Named<ComboBox>(global, "EvolutionMode");
                     var evolutionNames = evolutionMode.Items.Cast<object>().Select(item => item?.ToString()).ToArray();
                     Assert.Contains("SimpleSurvival", evolutionNames);
-                    Assert.Contains("EcoSurvival", evolutionNames);
+                    Assert.Contains("Eco", evolutionNames);
                     Assert.Equal("EVOLUTION", Assert.IsType<TabItem>(globalTabs.Items[3]).Header?.ToString());
                     evolutionMode.SelectedIndex = Array.IndexOf(evolutionNames, "SimpleSurvival");
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     Assert.Equal("SimpleSurvival", evolutionMode.SelectedItem?.ToString());
-                    evolutionMode.SelectedIndex = Array.IndexOf(evolutionNames, "EcoSurvival");
+                    evolutionMode.SelectedIndex = Array.IndexOf(evolutionNames, "Eco");
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                    Assert.Equal("EcoSurvival", evolutionMode.SelectedItem?.ToString());
+                    Assert.Equal("Eco", evolutionMode.SelectedItem?.ToString());
                 }
                 finally
                 {

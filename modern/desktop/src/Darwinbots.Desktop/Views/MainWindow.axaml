@@ -13,7 +13,7 @@
   <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,Auto,*,170,62,40" ColumnDefinitions="250,*,280">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
       <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-      <Grid Width="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
+      <Grid MinWidth="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="25" VerticalAlignment="Center" />
         <Button x:Name="RunButton" Grid.Column="1" Classes="transport" Content="▶  RUN" Background="#3F8E34" Foreground="White" Click="Run_Click" />
         <Button x:Name="PauseButton" Grid.Column="2" Classes="transport" Content="Ⅱ  PAUSE" Margin="4,0,0,0" Click="Pause_Click" />
@@ -200,7 +200,7 @@
               </StackPanel>
             </Expander>
             <Expander x:Name="HistoryExpander" Header="History" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="Population and energy history are shown below." TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>
-            <Expander x:Name="StatisticsExpander" Header="Statistics" HorizontalContentAlignment="Stretch">
+            <Expander x:Name="StatisticsExpander" Header="Statistics" IsExpanded="True" HorizontalContentAlignment="Stretch">
               <StackPanel Margin="4,5" Spacing="3">
                 <TextBlock Text="{Binding LifecycleSummary}" TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/>
                 <TextBlock Text="{Binding CombatSummary}" TextWrapping="Wrap" Foreground="#A65A23" FontSize="11"/>

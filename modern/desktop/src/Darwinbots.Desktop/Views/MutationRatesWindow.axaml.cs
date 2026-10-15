@@ -14,6 +14,10 @@ public sealed partial class MutationRatesWindow : Window
 
     private MutationProfileUpdate _profile;
     private bool _loading;
+    private int _loadedClass;
+    private readonly HashSet<NumericUpDown> _editedNumbers = [];
+    private bool _enabledEdited;
+    private bool _preferenceEdited;
 
     public bool Accepted { get; private set; }
     public MutationProfileUpdate Profile => _profile;
@@ -34,9 +38,22 @@ public sealed partial class MutationRatesWindow : Window
     private void WireChanges()
     {
         foreach (var numeric in new[] { OneIn, Mean, StdDev, NumberCategory, DereferenceCategory, OperatorCategory, LogicCategory, ComparisonCategory, FlowCategory })
-            numeric.ValueChanged += (_, _) => UpdateSummary();
-        Preference.PropertyChanged += (_, _) => UpdateSummary();
-        Enabled.IsCheckedChanged += (_, _) => UpdateSummary();
+            numeric.ValueChanged += (_, _) =>
+            {
+                if (!_loading) _editedNumbers.Add(numeric);
+                UpdateSummary();
+            };
+        Preference.PropertyChanged += (_, e) =>
+        {
+            if (e.Property != Slider.ValueProperty) return;
+            if (!_loading) _preferenceEdited = true;
+            UpdateSummary();
+        };
+        Enabled.IsCheckedChanged += (_, _) =>
+        {
+            if (!_loading) _enabledEdited = true;
+            UpdateSummary();
+        };
     }
 
     private void ClassSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -52,6 +69,7 @@ public sealed partial class MutationRatesWindow : Window
     {
         _loading = true;
         var index = Math.Clamp(ClassSelector.SelectedIndex, 0, ClassNames.Length - 1);
+        _loadedClass = index;
         var rate = Rate(index);
         Enabled.IsChecked = rate.OneIn > 0 && rate.OneIn < 1e300;
         OneIn.Value = (decimal)Math.Min(rate.OneIn, 1e18);
@@ -86,6 +104,9 @@ public sealed partial class MutationRatesWindow : Window
             9 => "Reproduction mutation. Amplifies a sampled DNA segment.",
             _ => "Reproduction mutation. Moves a sampled DNA segment.",
         };
+        _editedNumbers.Clear();
+        _enabledEdited = false;
+        _preferenceEdited = false;
         _loading = false;
         UpdateSummary();
     }
@@ -93,22 +114,36 @@ public sealed partial class MutationRatesWindow : Window
     private void SaveClass()
     {
         if (_loading) return;
-        var index = Math.Clamp(ClassSelector.SelectedIndex, 0, ClassNames.Length - 1);
-        var oneIn = Enabled.IsChecked == true ? Math.Max((double)(OneIn.Value ?? 1m), 1) : 0;
-        var rate = new MutationRateUpdate(oneIn, (double)(Mean.Value ?? 0m), Math.Max((double)(StdDev.Value ?? 0m), 0));
+        // SelectionChanged already points at the next class. These controls still
+        // belong to the class last loaded. Preserve fields that were only viewed,
+        // including native rates outside the display's decimal range.
+        var index = _loadedClass;
+        var previous = Rate(index);
+        var oneIn = _enabledEdited || _editedNumbers.Contains(OneIn)
+            ? Enabled.IsChecked == true ? Math.Max((double)(OneIn.Value ?? 1m), 1) : 0
+            : previous.OneIn;
+        var rate = previous with
+        {
+            OneIn = oneIn,
+            Mean = _editedNumbers.Contains(Mean) ? (double)(Mean.Value ?? 0m) : previous.Mean,
+            StdDev = _editedNumbers.Contains(StdDev) ? Math.Max((double)(StdDev.Value ?? 0m), 0) : previous.StdDev,
+        };
         _profile = SetRate(index, rate);
         var preference = (byte)Math.Clamp(Preference.Value, 0, 100);
-        if (index is 0 or 1)
+        if (_preferenceEdited && index is 0 or 1)
             _profile = _profile with { PointValueChangePercent = preference };
-        else if (index is 3 or 4)
+        else if (_preferenceEdited && index is 3 or 4)
             _profile = _profile with { CopyErrorValueChangePercent = preference };
+        var previousCategories = index is 0 or 1 ? _profile.PointCategoryDistribution : _profile.CopyErrorCategoryDistribution;
+        double Edited(NumericUpDown control, double original) =>
+            _editedNumbers.Contains(control) ? Math.Max((double)(control.Value ?? 0m), 0) : original;
         var categories = new MutationCategoryDistributionUpdate(
-            Math.Max((double)(NumberCategory.Value ?? 0m), 0),
-            Math.Max((double)(DereferenceCategory.Value ?? 0m), 0),
-            Math.Max((double)(OperatorCategory.Value ?? 0m), 0),
-            Math.Max((double)(LogicCategory.Value ?? 0m), 0),
-            Math.Max((double)(ComparisonCategory.Value ?? 0m), 0),
-            Math.Max((double)(FlowCategory.Value ?? 0m), 0));
+            Edited(NumberCategory, previousCategories.Number),
+            Edited(DereferenceCategory, previousCategories.Dereference),
+            Edited(OperatorCategory, previousCategories.Operator),
+            Edited(LogicCategory, previousCategories.Logic),
+            Edited(ComparisonCategory, previousCategories.Comparison),
+            Edited(FlowCategory, previousCategories.Flow));
         if (index is 0 or 1)
             _profile = _profile with { PointCategoryDistribution = categories };
         else if (index is 3 or 4)

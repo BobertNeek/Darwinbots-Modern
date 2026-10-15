@@ -21,6 +21,7 @@ public sealed class RenderedWorldToolsCausalTests
         {
             Backend = "Cpu",
             Seed = 95,
+            Recording = new Db2RecordingOptions(SamplingInterval: 20),
             PopulationCapacity = 64,
             WorldWidth = 1_000,
             WorldHeight = 800,
@@ -79,6 +80,10 @@ public sealed class RenderedWorldToolsCausalTests
                 Assert.True(backgroundRemove.IsVisible);
                 Assert.False(backgroundRemove.IsEnabled);
 
+                if (vectors.IsChecked) vectors.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                if (impacts.IsChecked) impacts.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                if (gauges.IsChecked) gauges.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.False(viewport.ShowMovementVectors || viewport.ShowShotImpacts || viewport.ShowResourceGauges);
                 vectors.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 impacts.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 gauges.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -109,35 +114,26 @@ public sealed class RenderedWorldToolsCausalTests
                     () => menu.FindCommandItem(LegacyCommandId.RobotMutationRates)?.IsEnabled == true,
                     () => "The real Robot > Mutation Rates command did not follow viewport selection.");
 
-                var mutationBefore = ReadMutationSettings(session.LatestSnapshot);
-                Assert.NotNull(mutationBefore);
+                var mutationBefore = selected.MutationProfile;
+                var globalMutationBefore = session.LatestSnapshot.MutationSettings;
                 menu.FindCommandItem(LegacyCommandId.RobotMutationRates)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(
                     () => window.OwnedWindows.OfType<Window>().Any(IsMutationWindow),
                     () => "Robot > Mutation Rates did not open its player-reachable tool window.");
-                var mutationWindow = Assert.Single(window.OwnedWindows.OfType<Window>().Where(IsMutationWindow));
+                var mutationWindow = Assert.IsType<MutationRatesWindow>(Assert.Single(window.OwnedWindows.Where(IsMutationWindow)));
                 Assert.True(mutationWindow.IsVisible);
-
-                var mutationTab = mutationWindow.GetVisualDescendants()
-                    .OfType<TabItem>()
-                    .FirstOrDefault(tab => tab.Header?.ToString()?.Contains("MUTATION", StringComparison.OrdinalIgnoreCase) == true);
-                if (mutationTab is not null) mutationTab.IsSelected = true;
-                var mutationInput = mutationWindow.GetVisualDescendants()
-                    .OfType<NumericUpDown>()
-                    .FirstOrDefault(input => input.IsEnabled && input.Maximum > input.Minimum);
-                Assert.NotNull(mutationInput);
-                var oldMutationValue = mutationInput.Value ?? mutationInput.Minimum;
-                mutationInput.Value = oldMutationValue >= mutationInput.Maximum
-                    ? Math.Max(mutationInput.Minimum, oldMutationValue - mutationInput.Increment)
-                    : Math.Min(mutationInput.Maximum, oldMutationValue + mutationInput.Increment);
-                var applyMutation = mutationWindow.GetVisualDescendants()
-                    .OfType<Button>()
-                    .FirstOrDefault(button => button.Content?.ToString()?.Contains("APPLY", StringComparison.OrdinalIgnoreCase) == true);
-                Assert.NotNull(applyMutation);
+                mutationWindow.FindControl<ComboBox>("ClassSelector")!.SelectedIndex = 0;
+                mutationWindow.FindControl<CheckBox>("Enabled")!.IsChecked = true;
+                mutationWindow.FindControl<NumericUpDown>("OneIn")!.Value = 2;
+                var expectedProfile = mutationBefore with { Point = mutationBefore.Point with { OneIn = 2 } };
+                var applyMutation = mutationWindow.GetVisualDescendants().OfType<Button>()
+                    .Single(button => button.Content?.ToString() == "APPLY");
                 applyMutation.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(
-                    () => !mutationWindow.IsVisible && !Equals(mutationBefore, ReadMutationSettings(session.LatestSnapshot)),
-                    () => "Mutation tool did not publish its applied values through the authoritative session snapshot.");
+                    () => !mutationWindow.IsVisible && session.LatestSnapshot.Organisms.Any(robot =>
+                        robot.Slot == selected.Slot && robot.Generation == selected.Generation && robot.MutationProfile == expectedProfile),
+                    () => "Robot mutation rates did not update the selected robot's authoritative profile.");
+                Assert.Equal(globalMutationBefore, session.LatestSnapshot.MutationSettings);
 
                 var graphsButton = window.FindControl<Button>("GraphsButton")!;
                 graphsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -186,9 +182,6 @@ public sealed class RenderedWorldToolsCausalTests
 
     private static bool IsMutationWindow(Window window) =>
         window.Title?.Contains("mutation", StringComparison.OrdinalIgnoreCase) == true;
-
-    private static object? ReadMutationSettings(EngineSnapshot snapshot) =>
-        snapshot.GetType().GetProperty("MutationSettings", BindingFlags.Instance | BindingFlags.Public)?.GetValue(snapshot);
 
     private static T? TryField<T>(object target, string name) where T : class =>
         target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(target) as T;

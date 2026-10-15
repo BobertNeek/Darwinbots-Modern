@@ -35,7 +35,7 @@ public sealed class PlayerBotRenderedTests
                 await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null);
                 var session = Field<SimulationSession>(window, "_session");
                 await session.StepAsync(0);
-                await WaitFor(() => session.LatestSnapshot.Organisms.Count == 1);
+                await WaitFor(() => Field<MainWindowViewModel>(window, "_viewModel").Population == 1);
 
                 var focus = factory.Client.Focus;
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");

@@ -113,9 +113,12 @@ public static class MazePresetBuilder
             case MazePreset.TrashCompactor:
             {
                 const float blockWidth = 1_000f;
-                var blockHeight = height * 1.2f;
-                Add(-blockWidth + 1f, height * -0.1f, blockWidth, blockHeight, 2f);
-                Add(width - 1f, height * -0.1f, blockWidth, blockHeight, -2f);
+                // VB6 evaluates these unsuffixed literals as Double, then
+                // stores the dimensions/coordinates as Single.
+                var blockHeight = (float)(height * 1.2);
+                var y = (float)(height * -0.1);
+                Add(-blockWidth + 1f, y, blockWidth, blockHeight, 2f);
+                Add(width - 1f, y, blockWidth, blockHeight, -2f);
                 break;
             }
         }

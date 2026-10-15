@@ -34,7 +34,7 @@ public sealed class DnaExportRenderedTests
                     new WorldSetupOptions(),
                     new FixedEngineFactory(engine),
                     storage);
-                SetField(window, "_session", simulation);
+                DesktopTestApplication.UseSession(window, simulation);
                 viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 window.Show();
                 viewModel.Status = "READY";
@@ -44,6 +44,7 @@ public sealed class DnaExportRenderedTests
                 Assert.True(frame.PixelSize.Width >= 900, $"Rendered width was {frame.PixelSize.Width}.");
                 Assert.True(window.FindControl<Button>("EditDnaButton")!.Bounds.Width > 0);
 
+                viewModel.ClearSelection();
                 Invoke(window, "EditDna_Click");
                 Assert.Equal(0, storage.DnaSaveRequests);
 

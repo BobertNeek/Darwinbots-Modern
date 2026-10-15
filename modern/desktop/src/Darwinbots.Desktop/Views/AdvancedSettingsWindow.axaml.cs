@@ -157,7 +157,11 @@ public sealed partial class AdvancedSettingsWindow : Window
         PopulateMutationProfile(snapshot.MutationSettings.Profile);
         GlobalMutationSlider.PropertyChanged += (_, e) => { if (e.Property == Slider.ValueProperty) GlobalMutationRate.Value = (decimal)GlobalMutationSlider.Value; };
         GlobalMutationRate.ValueChanged += (_, _) => GlobalMutationSlider.Value = (double)(GlobalMutationRate.Value ?? 1m);
-        foreach (var entry in snapshot.Species.Select((species, index) => (species, index)).Where(value => value.index > 0)) AddSpeciesRow((uint)entry.index, entry.species);
+        var emptySentinel = snapshot.Species.FirstOrDefault()?.Name == "Unassigned"
+            && snapshot.Organisms.All(robot => robot.Species != 0);
+        foreach (var entry in snapshot.Species.Select((species, index) => (species, index))
+                     .Where(value => !emptySentinel || value.index > 0))
+            AddSpeciesRow((uint)entry.index, entry.species);
         if (_speciesRates.Count == 0) SpeciesMutationRows.Children.Add(new TextBlock { Text = "No imported species yet.", Foreground = Brushes.DimGray });
     }
 

@@ -308,6 +308,7 @@ public sealed class SetupControlSurfaceTests
     {
         var profile = MutationProfileUpdate.Default with
         {
+            Point = new(1e30, 3.123456789, 1.234567891),
             CopyError = new(17, 7.5, 2.25),
             Delta = new(123, 600, 180),
             PointValueChangePercent = 23,
@@ -349,6 +350,7 @@ public sealed class SetupControlSurfaceTests
                 Invoke(rates, "Apply_Click");
                 await WaitFor(() => row.MutationProfile!.CopyError.OneIn == 29);
                 Assert.Equal(profile.CopyError with { OneIn = 29 }, row.MutationProfile!.CopyError);
+                Assert.Equal(profile with { CopyError = profile.CopyError with { OneIn = 29 } }, row.MutationProfile);
                 Assert.Equal(profile, window.Species[1].MutationProfile);
                 Invoke(window, "Advanced_Click");
                 await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());

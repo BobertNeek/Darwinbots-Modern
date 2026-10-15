@@ -6,6 +6,23 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class SimulationSessionTests
 {
     [Fact]
+    public async Task RefreshPublishesExistingWorldWithoutAdvancingIt()
+    {
+        var engine = new FakeEngineClient();
+        engine.Tick(42);
+        await using var session = new SimulationSession(engine);
+        EngineSnapshot? published = null;
+        session.SnapshotPublished += snapshot => published = snapshot;
+
+        await session.RefreshSnapshotAsync();
+
+        Assert.NotNull(published);
+        Assert.Equal(42UL, published.Tick);
+        Assert.Same(published, session.LatestSnapshot);
+        Assert.Equal(42UL, engine.Snapshot().Tick);
+    }
+
+    [Fact]
     public async Task StepPublishesTheImmutableSnapshotReturnedByTheEngine()
     {
         var engine = new FakeEngineClient();

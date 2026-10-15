@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Controls;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Core.LegacyMenus;
@@ -25,15 +26,15 @@ public sealed class StartupMazeColorRenderedTests
         {
             var setup = new WorldSetupOptions
             {
-                Backend = "Auto",
+                Backend = "Cpu",
                 WorldWidth = 16_000,
                 WorldHeight = 12_000,
             };
-            var factory = new AuditEngineClientFactory();
+            var factory = NativeEngineClientFactory.Instance;
 
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
-                var player = new MainWindow([dnaPath], setup, factory, new AuditStorageService())
+                var player = new MainWindow(["--bot", dnaPath], setup, factory, new AuditStorageService())
                 {
                     WindowState = WindowState.Normal,
                     Width = 1_200,
@@ -44,6 +45,7 @@ public sealed class StartupMazeColorRenderedTests
                 {
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     await WaitFor(() => Session(player) is not null
+                        && ViewModel(player).Population == 1
                         && ViewModel(player).Status.Contains("IMPORTED 1 STARTUP BOT", StringComparison.OrdinalIgnoreCase));
 
                     var session = Session(player)!;
@@ -79,17 +81,18 @@ public sealed class StartupMazeColorRenderedTests
 
                     Assert.True(session.LatestSnapshot.Obstacles.Count > 0);
 
-                    var colorResult = await router.ExecuteAsync(LegacyCommandId.RobotChangeColor);
-                    Assert.False(string.IsNullOrWhiteSpace(colorResult.Status));
+                    var colorCommand = router.ExecuteAsync(LegacyCommandId.RobotChangeColor);
                     await WaitFor(() => player.OwnedWindows.OfType<RobotColorEditorWindow>().Any());
 
                     var editor = player.OwnedWindows.OfType<RobotColorEditorWindow>().Single();
-                    editor.FindControl<Slider>("RedSlider")!.Value = 0x12;
-                    editor.FindControl<Slider>("GreenSlider")!.Value = 0x34;
-                    editor.FindControl<Slider>("BlueSlider")!.Value = 0x56;
+                    editor.GetVisualDescendants().OfType<Slider>().Single(control => control.Name == "RedSlider").Value = 0x12;
+                    editor.GetVisualDescendants().OfType<Slider>().Single(control => control.Name == "GreenSlider").Value = 0x34;
+                    editor.GetVisualDescendants().OfType<Slider>().Single(control => control.Name == "BlueSlider").Value = 0x56;
                     Assert.Equal("#123456", editor.PreviewHex);
-                    Click(editor, editor.FindControl<Button>("UseColorButton")!);
+                    Click(editor, editor.GetVisualDescendants().OfType<Button>().Single(control => control.Name == "UseColorButton"));
                     await WaitFor(() => editor.Accepted);
+                    var colorResult = await colorCommand;
+                    Assert.False(string.IsNullOrWhiteSpace(colorResult.Status));
                     await WaitFor(() => Session(player)!.LatestSnapshot.Species.Any(species => species.Color == 0xff123456u));
                     Assert.Contains(Session(player)!.LatestSnapshot.Species, species => species.Color == 0xff123456u);
 

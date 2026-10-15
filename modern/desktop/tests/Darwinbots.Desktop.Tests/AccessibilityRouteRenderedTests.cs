@@ -111,6 +111,8 @@ public sealed class AccessibilityRouteRenderedTests
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
                 var robotMenu = menu.TopLevelItems.Single(item => Equals(item.Header, "Robot"));
                 var findBest = menu.FindCommandItem(LegacyCommandId.RobotFindBest)!;
+                for (var attempt = 0; attempt < 500 && !findBest.IsEnabled; attempt++)
+                    await Task.Delay(10);
                 Assert.True(robotMenu.IsVisible);
                 Assert.Equal("Find Best", AutomationProperties.GetName(findBest));
                 Assert.True(findBest.IsEnabled);
@@ -127,7 +129,7 @@ public sealed class AccessibilityRouteRenderedTests
                         .OfType<TextBlock>()
                         .Select(block => block.Text)
                         .FirstOrDefault(text => text is not null &&
-                            (text.Contains("BEST ENERGY", StringComparison.Ordinal) ||
+                            (text.Contains("BEST FAMILY", StringComparison.Ordinal) ||
                              text.Contains("NO LIVING ROBOTS", StringComparison.Ordinal)));
                     if (status is null) await Task.Delay(10);
                 }

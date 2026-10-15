@@ -81,7 +81,11 @@ public partial class LegacyMenuBar : UserControl
                 LegacyMenuCheckKind.Radio => MenuItemToggleType.Radio,
                 _ => MenuItemToggleType.None,
             };
-            item.Click += (_, _) => CommandInvoked?.Invoke(this, new LegacyCommandInvokedEventArgs(command));
+            item.Click += (_, _) =>
+            {
+                if (item.IsEnabled && item.IsVisible)
+                    CommandInvoked?.Invoke(this, new LegacyCommandInvokedEventArgs(command));
+            };
             _commandItems.Add(command, item);
         }
 

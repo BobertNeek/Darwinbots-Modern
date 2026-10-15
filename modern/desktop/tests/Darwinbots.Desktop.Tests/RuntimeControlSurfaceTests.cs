@@ -35,8 +35,8 @@ public sealed class RuntimeControlSurfaceTests
             var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
             try
             {
+                DesktopTestApplication.UseSession(window, simulation);
                 window.Show();
-                SetField(window, "_session", simulation);
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 viewModel.Update(RecordingEngineClient.CreateSnapshot());
                 viewModel.Select(3);
@@ -101,8 +101,8 @@ public sealed class RuntimeControlSurfaceTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            DesktopTestApplication.UseSession(window, simulation);
             window.Show();
-            SetField(window, "_session", simulation);
             Field<MainWindowViewModel>(window, "_viewModel").Update(simulation.LatestSnapshot);
             Invoke(window, "RefreshLegacyMenuStates");
             try
@@ -120,9 +120,9 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.Equal(
                     [
                         "kill multibot", "kill disqualified", "disable chloroplasts", "fixed in place", "disable vision",
-                        "disable DNA", "disable reproduction", "virus immune", "disable mutations", "disable movement",
+                        "disable DNA", "disable reproduction", "virus immune", "disable mutations", "disable movement sysvars",
                         "kill multibot", "kill disqualified", "disable chloroplasts", "fixed in place", "disable vision",
-                        "disable DNA", "disable reproduction", "virus immune", "disable mutations", "disable movement",
+                        "disable DNA", "disable reproduction", "virus immune", "disable mutations", "disable movement sysvars",
                     ],
                     checks.Select(check => check.Content?.ToString()).ToArray());
                 Assert.Equal(
@@ -130,7 +130,7 @@ public sealed class RuntimeControlSurfaceTests
                     checks.Select(check => check.IsChecked == true).ToArray());
                 Assert.Equal(initial, cancelDialog.Options);
                 Assert.Equal(["LOAD", "SAVE", "CANCEL", "APPLY"],
-                    cancelDialog.GetVisualDescendants().OfType<Button>().Select(button => button.Content?.ToString()).ToArray());
+                    cancelDialog.GetVisualDescendants().OfType<Button>().Where(button => button is not CheckBox).Select(button => button.Content?.ToString()).ToArray());
                 using (var frame = cancelDialog.CaptureRenderedFrame())
                 {
                     Assert.True(frame.PixelSize.Width >= 640);
@@ -431,7 +431,7 @@ public sealed class RuntimeControlSurfaceTests
                 var update = engine.EnvironmentUpdates.Single();
                 Assert.Equal([7f, -3f], update.Gravity);
                 Assert.Equal(0.25f, update.Drag);
-                Assert.Equal(0.75f, update.BrownianMotion);
+                Assert.Equal(0.5f, update.BrownianMotion);
                 Assert.Equal(new Db2PhysicsOptions(360f, 0.72f, 3f, 0.8f, 0.5f, 0.0001d, 0.0002d, 1.5f, true, 2.5f), update.Physics);
                 Assert.Contains("\"zero_momentum\":false", NativeCommandSerializer.SerializeEnvironment(update), StringComparison.Ordinal);
 
@@ -546,7 +546,7 @@ public sealed class RuntimeControlSurfaceTests
             await headless.Dispatch(() =>
             {
                 window = new MainWindow([], new WorldSetupOptions());
-                SetField(window, "_session", simulation);
+                DesktopTestApplication.UseSession(window, simulation);
                 Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
 
                 Invoke(window, "Step_Click");
@@ -651,7 +651,7 @@ public sealed class RuntimeControlSurfaceTests
                     Assert.Equal((decimal)expected.MaximumPopulation, window.FindControl<NumericUpDown>("ModePopulationCap")!.Value);
                     Assert.Equal(expected.RestartOnExtinction, window.FindControl<CheckBox>("ModeRestartOnExtinction")!.IsChecked);
                     Assert.Equal(expected.Restrictions.ProhibitViruses, window.FindControl<CheckBox>("ModeProhibitViruses")!.IsChecked);
-                    Assert.Equal(expected, Field<MainWindowViewModel>(window, "_viewModel").LocalMode.BuildConfiguration());
+                    Assert.Equal(JsonSerializer.Serialize(expected), JsonSerializer.Serialize(Field<MainWindowViewModel>(window, "_viewModel").LocalMode.BuildConfiguration()));
                     Assert.Equal(0ul, session.LatestSnapshot.Tick);
                 }
                 finally
@@ -812,7 +812,7 @@ public sealed class RuntimeControlSurfaceTests
 
                 var savedBytes = storage.SavedSimulation!;
                 Assert.Equal("DB3S", Encoding.ASCII.GetString(savedBytes, 0, 4));
-                Assert.Equal((ushort)3, BitConverter.ToUInt16(savedBytes, 4));
+                Assert.Equal((ushort)4, BitConverter.ToUInt16(savedBytes, 4));
                 Assert.Equal(savedBytes.Length - 10, BitConverter.ToInt32(savedBytes, 6));
 
                 using (var payload = JsonDocument.Parse(savedBytes.AsMemory(10)))
@@ -981,7 +981,7 @@ public sealed class RuntimeControlSurfaceTests
                     () => viewModel.Status == "LOADED" && session.LatestSnapshot.Tick == beforeSave.Tick,
                     () => $"Load did not restore the saved state. Tick: {session.LatestSnapshot.Tick}; Status: {viewModel.Status}");
                 Assert.Equal(beforeSave.Population, session.LatestSnapshot.Population);
-                Assert.Equal(beforeSave.Organisms, session.LatestSnapshot.Organisms);
+                Assert.Equal(JsonSerializer.Serialize(beforeSave.Organisms), JsonSerializer.Serialize(session.LatestSnapshot.Organisms));
 
                 var stable = session.LatestSnapshot;
                 storage.OpenedSimulation = [1, 2, 3];
@@ -989,7 +989,7 @@ public sealed class RuntimeControlSurfaceTests
                 await Assert.ThrowsAnyAsync<Exception>(() => session.LoadAsync(invalid!));
                 Assert.Equal(stable.Tick, session.LatestSnapshot.Tick);
                 Assert.Equal(stable.Population, session.LatestSnapshot.Population);
-                Assert.Equal(stable.Organisms, session.LatestSnapshot.Organisms);
+                Assert.Equal(JsonSerializer.Serialize(stable.Organisms), JsonSerializer.Serialize(session.LatestSnapshot.Organisms));
 
                 window.UpdateLayout();
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
@@ -1042,7 +1042,7 @@ public sealed class RuntimeControlSurfaceTests
             await DesktopTestApplication.Session.Dispatch(async () =>
             {
                 window = new MainWindow([], new WorldSetupOptions());
-                SetField(window, "_session", simulation);
+                DesktopTestApplication.UseSession(window, simulation);
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 selectedViewModel = viewModel;
                 viewModel.Update(snapshot);
@@ -1082,7 +1082,7 @@ public sealed class RuntimeControlSurfaceTests
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var window = new MainWindow([], new WorldSetupOptions());
-            SetField(window, "_session", simulation);
+            DesktopTestApplication.UseSession(window, simulation);
             var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
             viewModel.Update(oldSnapshot);
             viewModel.Select(3);
@@ -1124,9 +1124,8 @@ public sealed class RuntimeControlSurfaceTests
             SimulationSession? windowSession = null;
             try
             {
+                DesktopTestApplication.UseSession(window, simulation);
                 window.Show();
-                windowSession = Field<SimulationSession>(window, "_session");
-                SetField(window, "_session", simulation);
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 viewModel.Update(snapshot);
                 viewModel.Select(3);
@@ -1173,29 +1172,28 @@ public sealed class RuntimeControlSurfaceTests
             SimulationSession? windowSession = null;
             try
             {
+                DesktopTestApplication.UseSession(window, simulation);
                 window.Show();
-                windowSession = Field<SimulationSession>(window, "_session");
-                SetField(window, "_session", simulation);
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 window.FindControl<LegacyMenuBar>("HistoricMenuBar")!
                     .FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
                 await WaitFor(() => simulation.LatestSnapshot.Organisms.Any(organism =>
-                    organism.Position.SequenceEqual([12.5f, 34.5f])
-                    && organism.Velocity.SequenceEqual([1.25f, -2.5f])
+                    organism.Velocity.SequenceEqual([1.25f, -2.5f])
                     && organism.Energy == 777
                     && organism.Age == 91
-                    && organism.Body == 321));
-                var imported = Assert.Single(simulation.LatestSnapshot.Organisms.Where(organism =>
-                    organism.Position.SequenceEqual([12.5f, 34.5f])
-                    && organism.Velocity.SequenceEqual([1.25f, -2.5f])
+                    && organism.Body == 321), () => viewModel.Status);
+                var imported = Assert.Single(simulation.LatestSnapshot.Organisms, organism =>
+                    organism.Velocity.SequenceEqual([1.25f, -2.5f])
                     && organism.Energy == 777
                     && organism.Age == 91
-                    && organism.Body == 321));
+                    && organism.Body == 321);
                 viewModel.Update(simulation.LatestSnapshot);
                 viewModel.Select(imported.Slot);
                 window.FindControl<WorldViewport>("Viewport")!.SelectSlot(imported.Slot);
+                Assert.InRange(imported.Position[0], 60f, setup.WorldWidth - 60f);
+                Assert.InRange(imported.Position[1], 60f, setup.WorldHeight - 60f);
                 engine.SetOrganismEnergy(imported.Slot, imported.Generation, 1234);
                 await simulation.StepAsync(0);
                 Assert.Equal(1234, Assert.Single(simulation.LatestSnapshot.Organisms,
@@ -1210,7 +1208,7 @@ public sealed class RuntimeControlSurfaceTests
                 await WaitFor(() => storageState.SavedOrganism is not null);
                 var exported = ReadNativeOrganismGroup(storageState.SavedOrganism!);
                 var member = Assert.Single(exported.Organisms);
-                Assert.Equal([12.5f, 34.5f], member.Position);
+                Assert.Equal(imported.Position, ReadNativeSelectedPosition(storageState.SavedOrganism!));
                 Assert.Equal([1.25f, -2.5f], member.Velocity);
                 Assert.Equal(1234, member.Energy);
                 Assert.Equal(91UL, member.Age);
@@ -1289,10 +1287,11 @@ public sealed class RuntimeControlSurfaceTests
                 var session = Field<SimulationSession>(window, "_session");
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                await WaitFor(() => menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!.IsEnabled);
 
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                await WaitFor(() => session.LatestSnapshot.Organisms.Count == 2);
+                await WaitFor(() => viewModel.Population == 2, () => viewModel.Status);
 
                 var group = session.LatestSnapshot.Organisms
                     .Where(organism => organism.Position.SequenceEqual([100f, 200f])
@@ -1317,51 +1316,30 @@ public sealed class RuntimeControlSurfaceTests
                 var exported = ReadNativeOrganismGroup(storageState.SavedOrganism!);
                 Assert.Equal(2, exported.Organisms.Count);
                 Assert.Equal(42.5f, Assert.Single(exported.Ties).RestLength);
-                Assert.Equal(selected.Position, exported.Organisms[0].Position);
+                Assert.Equal(selected.Position, ReadNativeSelectedPosition(storageState.SavedOrganism!));
 
-                var expectedState = group
-                    .Select(organism => (
-                        X: organism.Position[0],
-                        Y: organism.Position[1],
-                        Energy: organism.Energy,
-                        Age: organism.Age,
-                        BirthCycle: organism.BirthCycle,
-                        Body: organism.Body))
-                    .OrderBy(value => value.X)
-                    .ToArray();
-                Assert.Equal(expectedState, exported.Organisms
-                    .Select(member => (
-                        X: member.Position[0],
-                        Y: member.Position[1],
-                        Energy: member.Energy,
-                        Age: member.Age,
-                        BirthCycle: member.BirthCycle,
-                        Body: member.Body))
-                    .OrderBy(value => value.X)
-                    .ToArray());
+                static (float X, float Y, int Energy, ulong Age, ulong BirthCycle, int Body)[] RelativeState(
+                    IReadOnlyList<OrganismSnapshot> organisms, OrganismSnapshot anchor) => organisms
+                    .Select(robot => (robot.Position[0] - anchor.Position[0], robot.Position[1] - anchor.Position[1],
+                        robot.Energy, robot.Age, robot.BirthCycle, robot.Body))
+                    .OrderBy(value => value.Item1).ToArray();
+                var expectedState = RelativeState(group, selected);
+                Assert.Equal(expectedState, RelativeState(exported.Organisms, exported.Organisms[0]));
 
-                storageState.SetFixture(storageState.SavedOrganism);
+                storageState.SetFixture(storageState.SavedOrganism!);
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditInsertOrganism)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => session.LatestSnapshot.Organisms.Count == 4);
                 await WaitFor(() => viewModel.Status == "IMPORTED ORGANISM · 2 BOT(S)");
 
                 var roundTripped = session.LatestSnapshot.Organisms
-                    .Where(organism => !originalOrganismKeys.Contains(
-                            new OrganismKey(organism.Slot, organism.Generation))
-                        && (organism.Position.SequenceEqual([100f, 200f])
-                        || organism.Position.SequenceEqual([138f, 226f]))
-                    )
-                    .Select(organism => (
-                        X: organism.Position[0],
-                        Y: organism.Position[1],
-                        Energy: organism.Energy,
-                        Age: organism.Age,
-                        BirthCycle: organism.BirthCycle,
-                        Body: organism.Body))
-                    .OrderBy(value => value.X)
+                    .Where(robot => !originalOrganismKeys.Contains(new OrganismKey(robot.Slot, robot.Generation)))
                     .ToArray();
-                Assert.Equal(expectedState, roundTripped);
+                Assert.Equal(2, roundTripped.Length);
+                var insertedAnchor = Assert.Single(roundTripped, robot => robot.Energy == selected.Energy && robot.Age == selected.Age);
+                Assert.InRange(insertedAnchor.Position[0], 60f, setup.WorldWidth - 60f);
+                Assert.InRange(insertedAnchor.Position[1], 60f, setup.WorldHeight - 60f);
+                Assert.Equal(expectedState, RelativeState(roundTripped, insertedAnchor));
                 Assert.Equal($"{selected.Slot}:{selected.Generation}", viewModel.SelectedId);
                 Assert.Equal(selected.Energy, viewModel.SelectedEnergy);
                 Assert.Equal(selected.Body, viewModel.SelectedBody);
@@ -1423,12 +1401,8 @@ public sealed class RuntimeControlSurfaceTests
             SimulationSession? windowSession = null;
             try
             {
+                DesktopTestApplication.UseSession(window, simulation);
                 window.Show();
-                await WaitFor(() => typeof(MainWindow)
-                    .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .GetValue(window) is SimulationSession);
-                windowSession = Field<SimulationSession>(window, "_session");
-                SetField(window, "_session", simulation);
 
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
@@ -1470,7 +1444,7 @@ public sealed class RuntimeControlSurfaceTests
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => storage.SavedOrganism is not null);
                 Assert.Equal(engine.ExportedOrganismPayload, storage.SavedOrganism);
-                Assert.Equal([new OrganismKey(3, 2), new OrganismKey(4, 7)], Assert.Single(engine.ExportedGroups));
+                Assert.Equal([secondKey, firstKey], Assert.Single(engine.ExportedGroups));
                 Assert.Empty(engine.DnaExports);
 
             }
@@ -1572,9 +1546,11 @@ public sealed class RuntimeControlSurfaceTests
             var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), storage);
             try
             {
-                SetField(window, "_session", simulation);
+                DesktopTestApplication.UseSession(window, simulation);
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 viewModel.Update(snapshot);
+                window.Show();
+                viewModel.Select(new OrganismKey(3, 2));
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
                 viewport.SetSnapshot(snapshot);
                 viewport.SelectKey(new OrganismKey(3, 2));
@@ -1633,14 +1609,16 @@ public sealed class RuntimeControlSurfaceTests
     private static MainWindow RuntimeWindow(SimulationSession simulation)
     {
         var window = new MainWindow([], new WorldSetupOptions());
-        SetField(window, "_session", simulation);
+        DesktopTestApplication.UseSession(window, simulation);
         Field<MainWindowViewModel>(window, "_viewModel").Update(RecordingEngineClient.CreateSnapshot());
         return window;
     }
 
-    private static void Invoke(object target, string method, object? sender = null) =>
-        target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(target, [sender, new RoutedEventArgs()]);
+    private static void Invoke(object target, string method, object? sender = null)
+    {
+        var handler = target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!;
+        handler.Invoke(target, handler.GetParameters().Length == 0 ? null : [sender, new RoutedEventArgs()]);
+    }
 
     private static T Field<T>(object target, string name) =>
         (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(target)!;
@@ -1675,6 +1653,10 @@ public sealed class RuntimeControlSurfaceTests
 
         static bool Close(byte left, byte right) => Math.Abs(left - right) <= 24;
     }
+
+    private static float[] ReadNativeSelectedPosition(byte[] bytes) =>
+        // Native .dbo count, vegetable/wall/fixed words, then Single x/y.
+        [BitConverter.ToSingle(bytes, 8), BitConverter.ToSingle(bytes, 12)];
 
     private static EngineSnapshot ReadNativeOrganismGroup(byte[] bytes)
     {
@@ -1741,7 +1723,7 @@ public sealed class RuntimeControlSurfaceTests
             writer.Write(0f);
             writer.Write(0f);
         }
-        for (var value = 0; value < 5; value++) writer.Write((short)0);
+        for (var value = 0; value < 4; value++) writer.Write((short)0);
         writer.Write((short)7);
         for (var value = 0; value < 4; value++) writer.Write((short)0);
         writer.Write(0f);

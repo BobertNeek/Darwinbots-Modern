@@ -55,7 +55,7 @@ public sealed class TeleporterRenderedTests
     [Fact]
     public async Task PlayerRouteRendersOfflineFileTeleporterEditorAndCommitsThroughSession()
     {
-        var factory = new AuditEngineClientFactory();
+        var factory = new AuditEngineClientFactory(includeWorldObjects: false);
         await DesktopTestApplication.Session.Dispatch(async () =>
         {
             var player = new MainWindow(
@@ -72,7 +72,7 @@ public sealed class TeleporterRenderedTests
             try
             {
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                await WaitFor(() => Session(player) is not null);
+                await WaitFor(() => ((Darwinbots.Desktop.ViewModels.MainWindowViewModel)player.DataContext!).Population == 1);
                 var engine = factory.Clients.Single();
 
                 var viewport = player.FindControl<Control>("Viewport")!;
@@ -81,7 +81,7 @@ public sealed class TeleporterRenderedTests
                 Click(player, player.FindControl<Button>("AddTeleporterButton")!);
                 ClickAt(player, viewport, source);
                 ClickAt(player, viewport, destination);
-                await WaitFor(() => Session(player)?.LatestSnapshot.Teleporters.Count > 0);
+                await WaitFor(() => Session(player)?.LatestSnapshot.Teleporters.Count == 1);
 
                 ClickAt(player, viewport, source);
                 await WaitFor(() => player.FindControl<Button>("EditTeleporterButton")!.IsEnabled);
