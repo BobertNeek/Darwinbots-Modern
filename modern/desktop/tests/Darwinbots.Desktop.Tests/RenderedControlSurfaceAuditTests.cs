@@ -1121,11 +1121,15 @@ public sealed class RenderedControlSurfaceAuditTests
     private static void Click(Window window, Control control)
     {
         StabilizeForInput(window, control);
-        var local = new Point(Math.Max(1, control.Bounds.Width / 2), Math.Max(1, control.Bounds.Height / 2));
+        // A stretched checkbox can have empty, non-hit-testable space beyond
+        // its label under a platform's fallback font. Target its square.
+        var local = new Point(control is CheckBox ? Math.Min(10, control.Bounds.Width / 2) : Math.Max(1, control.Bounds.Width / 2), Math.Max(1, control.Bounds.Height / 2));
         var point = control.TranslatePoint(local, window);
         Assert.True(point.HasValue, $"{control.Name ?? control.GetType().Name} was not attached to the rendered window.");
         AssertPointInsideWindow(window, point.Value, control);
         var hit = window.InputHitTest(point.Value) as Control;
+        if (hit is null || !(ReferenceEquals(hit, control) || hit.GetVisualAncestors().Contains(control)))
+            Capture(window, $"input-obscured-{control.Name ?? control.GetType().Name}.png");
         Assert.True(hit is not null && (ReferenceEquals(hit, control) || hit.GetVisualAncestors().Contains(control)),
             $"{control.Name} was obscured at {point.Value}; input hit {hit?.Name ?? hit?.GetType().Name ?? "nothing"}.");
         window.MouseDown(point.Value, MouseButton.Left, RawInputModifiers.None);

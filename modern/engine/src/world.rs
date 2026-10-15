@@ -55,6 +55,9 @@ mod native_sim_export;
 #[path = "world/native_organism_io.rs"]
 mod native_organism_io;
 
+#[path = "world/player_insertion.rs"]
+mod player_insertion;
+
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
 

@@ -175,26 +175,11 @@ public sealed partial class NativeEngineClient : IEngineClient
             {
                 new
                 {
-                    type = "import_species",
-                    dna = species.Dna,
+                    type = "insert_species",
                     name = species.Name,
-                    vegetable = species.Vegetable,
-                    color = species.Color,
-                    initial_count = species.InitialCount,
-                    minimum_population = species.MinimumPopulation,
-                    reseed = species.Reseed,
-                    mutation_rate = species.MutationRate,
-                    mutation_profile = species.MutationProfile is null ? null : NativeCommandSerializer.MutationProfile(species.MutationProfile),
+                    dna = species.Dna,
+                    position,
                     initial_energy = species.InitialEnergy,
-                    placement = new
-                    {
-                        mode = species.Placement.Mode.ToString().ToLowerInvariant(),
-                        x = species.Placement.X,
-                        y = species.Placement.Y,
-                    },
-                    skin = species.Skin.Select(point => new { radius = point.Radius, angle = point.Angle }).ToArray(),
-                    restrictions = SpeciesRestrictions(species.Restrictions),
-                    positions = new[] { position },
                 },
             },
         }, "insert species");

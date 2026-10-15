@@ -123,6 +123,12 @@ enum EngineCommand {
         restrictions: Option<crate::RestrictionColumn>,
         positions: Vec<[f32; 2]>,
     },
+    InsertSpecies {
+        name: String,
+        dna: String,
+        position: [f32; 2],
+        initial_energy: i32,
+    },
     MoveOrganism {
         slot: u32,
         generation: u32,
@@ -707,6 +713,23 @@ fn db_engine_command_batch_impl(
                         "compatibility_warnings": compatibility_warnings,
                     })
                 })
+            }),
+            EngineCommand::InsertSpecies {
+                name,
+                dna,
+                position,
+                initial_energy,
+            } => LegacyDna::parse(&dna).and_then(|dna| {
+                let warnings = dna.compatibility_warnings().to_vec();
+                engine
+                    .insert_registered_species_at(&name, dna, position, initial_energy)
+                    .map(|(species, _)| {
+                        serde_json::json!({
+                            "species": species.0,
+                            "count": 1,
+                            "compatibility_warnings": warnings,
+                        })
+                    })
             }),
             EngineCommand::MoveOrganism {
                 slot,

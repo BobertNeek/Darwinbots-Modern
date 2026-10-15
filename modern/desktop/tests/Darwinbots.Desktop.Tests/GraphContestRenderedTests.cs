@@ -130,6 +130,9 @@ public sealed class GraphContestRenderedTests
                     () => session.LatestSnapshot.History.Count > 0 && session.LatestSnapshot.LocalMode.Results.Count > 0,
                     () => "Rust-backed history or local contest result was not published.");
 
+                var populationBeforeInsert = session.LatestSnapshot.Population;
+                var speciesBeforeInsert = session.LatestSnapshot.Species.Count;
+                var insertionKeys = session.LatestSnapshot.Organisms.Select(robot => new OrganismKey(robot.Slot, robot.Generation)).ToHashSet();
                 var insertButton = window.FindControl<Button>("InsertSpeciesButton")!;
                 insertButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
@@ -139,8 +142,13 @@ public sealed class GraphContestRenderedTests
                 window.MouseDown(insertPoint.Value, MouseButton.Left, RawInputModifiers.None);
                 window.MouseUp(insertPoint.Value, MouseButton.Left, RawInputModifiers.None);
                 await WaitFor(
-                    () => session.LatestSnapshot.Population > 10,
-                    () => "The public player insertion workflow did not add a population sample.");
+                    () => session.LatestSnapshot.Population == populationBeforeInsert + 1,
+                    () => "The player insertion workflow must add exactly one robot.");
+                Assert.Equal(speciesBeforeInsert, session.LatestSnapshot.Species.Count);
+                var inserted = Assert.Single(session.LatestSnapshot.Organisms, robot => !insertionKeys.Contains(new OrganismKey(robot.Slot, robot.Generation)));
+                var worldSize = session.LatestSnapshot.WorldSize;
+                Assert.InRange(inserted.Position[0], worldSize[0] * 0.82f - 1, worldSize[0] * 0.82f + 1);
+                Assert.InRange(inserted.Position[1], worldSize[1] * 0.78f - 1, worldSize[1] * 0.78f + 1);
                 insertButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await session.StepAsync(100);
                 await WaitFor(
