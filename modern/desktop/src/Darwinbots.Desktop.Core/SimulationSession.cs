@@ -10,7 +10,7 @@ public sealed class SimulationSession : IAsyncDisposable
     private readonly Thread _worker;
     private bool _disposed;
     private readonly Stopwatch _performanceClock = Stopwatch.StartNew();
-    private ulong _lastPublishedTick;
+    private ulong? _lastPublishedTick;
 
     public SimulationSession(IEngineClient engine)
     {
@@ -31,7 +31,7 @@ public sealed class SimulationSession : IAsyncDisposable
         Enqueue(_ => { }, cancellationToken);
 
     public Task StepAsync(uint count = 1, CancellationToken cancellationToken = default) =>
-        Enqueue(engine => engine.Tick(count), cancellationToken);
+        Enqueue(engine => engine.Tick(count), cancellationToken, measureTicks: true);
 
     public async Task<OrganismKey?> FindBestRobotAsync(bool energyWeighting, CancellationToken cancellationToken = default)
         => await FindBestRobotAsync(energyWeighting ? 100 : 0, cancellationToken).ConfigureAwait(false);
@@ -326,12 +326,12 @@ public sealed class SimulationSession : IAsyncDisposable
         return Enqueue(engine => engine.Load(save), cancellationToken);
     }
 
-    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken)
+    private Task Enqueue(Action<IEngineClient> action, CancellationToken cancellationToken, bool measureTicks = false)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var command = new SessionCommand(action, completion, cancellationToken);
+        var command = new SessionCommand(action, completion, cancellationToken, measureTicks);
         _commands.Add(command, cancellationToken);
         return completion.Task;
     }
@@ -358,7 +358,9 @@ public sealed class SimulationSession : IAsyncDisposable
                 command.Action(_engine);
                 var snapshot = _engine.Snapshot();
                 var elapsed = _performanceClock.Elapsed.TotalSeconds;
-                var advanced = snapshot.Tick - _lastPublishedTick;
+                var advanced = command.MeasureTicks && _lastPublishedTick is { } previous && snapshot.Tick >= previous
+                    ? snapshot.Tick - previous
+                    : 0;
                 if (elapsed > 0)
                     snapshot = snapshot with {
                         TicksPerSecond = advanced / elapsed,
@@ -395,5 +397,6 @@ public sealed class SimulationSession : IAsyncDisposable
     private sealed record SessionCommand(
         Action<IEngineClient> Action,
         TaskCompletionSource Completion,
-        CancellationToken CancellationToken);
+        CancellationToken CancellationToken,
+        bool MeasureTicks);
 }

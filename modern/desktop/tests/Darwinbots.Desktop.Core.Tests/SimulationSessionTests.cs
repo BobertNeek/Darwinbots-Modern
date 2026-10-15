@@ -20,6 +20,19 @@ public sealed class SimulationSessionTests
         Assert.Equal(42UL, published.Tick);
         Assert.Same(published, session.LatestSnapshot);
         Assert.Equal(42UL, engine.Snapshot().Tick);
+        Assert.Equal(0, session.LatestSnapshot.TicksPerSecond);
+
+        await session.StepAsync();
+        Assert.Equal(43UL, session.LatestSnapshot.Tick);
+        Assert.True(session.LatestSnapshot.TicksPerSecond > 0);
+
+        await session.LoadAsync(BitConverter.GetBytes(10UL));
+        Assert.Equal(10UL, session.LatestSnapshot.Tick);
+        Assert.Equal(0, session.LatestSnapshot.TicksPerSecond);
+
+        await session.StepAsync();
+        Assert.Equal(11UL, session.LatestSnapshot.Tick);
+        Assert.True(session.LatestSnapshot.TicksPerSecond > 0);
     }
 
     [Fact]
