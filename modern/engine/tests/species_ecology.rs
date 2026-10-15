@@ -373,11 +373,21 @@ fn configured_species_reseed_after_extinction() {
 }
 
 #[test]
-fn species_mutation_rate_applies_to_ordinary_reproduction() {
+fn species_native_copy_error_profile_applies_to_ordinary_reproduction() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut profile = darwinbots_engine::StandardMutationProfile::default();
+    profile.point.one_in = 0.0;
+    profile.delta.one_in = 0.0;
+    profile.copy_error.one_in = 1.0;
+    profile.copy_error.mean = 1.0;
+    profile.copy_error.std_dev = 0.0;
+    profile.insertion.one_in = 0.0;
+    profile.reversal.one_in = 0.0;
+    profile.major_deletion.one_in = 0.0;
+    profile.minor_deletion.one_in = 0.0;
     let species = engine.register_species(SpeciesDefinition {
         name: "Rapid evolution".to_owned(),
-        mutation_rate: 100.0,
+        mutation_profile: Some(profile),
         ..SpeciesDefinition::default()
     });
     let dna = LegacyDna::parse("start\n10 .up store\n50 .repro store\nstop").unwrap();
@@ -395,7 +405,16 @@ fn species_mutation_rate_applies_to_ordinary_reproduction() {
         .unwrap()
         .id;
     assert_ne!(engine.dna(parent).unwrap(), engine.dna(child).unwrap());
-    assert_eq!(engine.snapshot().stats.mutations, 1);
+    assert!(engine.snapshot().stats.mutations > 0);
+    assert_eq!(
+        engine
+            .organism(child)
+            .unwrap()
+            .mutation_class_counts
+            .values()
+            .sum::<u64>(),
+        engine.snapshot().stats.mutations
+    );
 }
 
 #[test]

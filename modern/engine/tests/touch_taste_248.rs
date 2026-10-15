@@ -81,7 +81,9 @@ fn actual_overlap_touches_both_participants_but_not_a_nearby_non_overlap() {
         .spawn_batch([
             (inert_dna(), [500.0, 500.0]),
             (inert_dna(), [600.0, 500.0]),
-            (inert_dna(), [850.0, 500.0]),
+            // The original sequential separation can move the middle robot
+            // into a formerly clear neighbor. Keep this control out of that reach.
+            (inert_dna(), [950.0, 500.0]),
         ])
         .unwrap();
     engine.set_organism_aim(ids[0], 0).unwrap();

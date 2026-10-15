@@ -122,16 +122,35 @@ impl TieState {
 
     pub(crate) fn native_end_states(&self) -> [NativeTieEnd; 2] {
         self.native_ends.unwrap_or_else(|| {
-            let first = NativeTieEnd { rest_length: self.rest_length, last: self.last,
-                b: self.b, k: self.k, hardened: self.hardened, angle: self.requested_angle,
-                angle_fixed: self.angle_fixed, angle_initialized: self.angle_initialized, bend: 0.0,
-                shrink: 0, kind: if self.hardened { 3 } else { 0 } };
-            [first, NativeTieEnd { angle: 0.0, angle_fixed: false, angle_initialized: true, ..first }]
+            let first = NativeTieEnd {
+                rest_length: self.rest_length,
+                last: self.last,
+                b: self.b,
+                k: self.k,
+                hardened: self.hardened,
+                angle: self.requested_angle,
+                angle_fixed: self.angle_fixed,
+                angle_initialized: self.angle_initialized,
+                bend: 0.0,
+                shrink: 0,
+                kind: if self.hardened { 3 } else { 0 },
+            };
+            [
+                first,
+                NativeTieEnd {
+                    angle: 0.0,
+                    angle_fixed: false,
+                    angle_initialized: true,
+                    ..first
+                },
+            ]
         })
     }
 
     pub(crate) fn sync_native_primary(&mut self) {
-        let Some([first, _]) = self.native_ends else { return };
+        let Some([first, _]) = self.native_ends else {
+            return;
+        };
         self.rest_length = first.rest_length;
         self.last = first.last;
         self.b = first.b;

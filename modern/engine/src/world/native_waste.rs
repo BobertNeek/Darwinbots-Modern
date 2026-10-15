@@ -26,12 +26,22 @@ impl Engine {
             let total = robot.materials.waste + robot.materials.permanent_waste;
             for _ in 0..alzheimer_write_count(total, settings.alzheimer_threshold) {
                 let address = loop {
-                    let address = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, 1, 1000);
+                    let address = world_random_integer(
+                        &mut self.native_random,
+                        &mut robot.program.rng_state,
+                        1,
+                        1000,
+                    );
                     if !matches!(address, 921 | 922) {
                         break address;
                     }
                 };
-                let value = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -32000, 32000);
+                let value = world_random_integer(
+                    &mut self.native_random,
+                    &mut robot.program.rng_state,
+                    -32000,
+                    32000,
+                );
                 robot.program.memory.write(address, value);
                 robot.effects.mark_reproduction_input(address, value);
             }
@@ -75,7 +85,12 @@ impl Engine {
             }
             // newshot's unused range draw precedes its angle scatter.
             world_random_unit(&mut self.native_random, &mut robot.program.rng_state);
-            let scatter = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -20, 20);
+            let scatter = world_random_integer(
+                &mut self.native_random,
+                &mut robot.program.rng_state,
+                -20,
+                20,
+            );
             angle = (f64::from(angle) + f64::from(scatter) / 200.0) as f32;
             let name = self.species[robot.identity.species.0 as usize].name.clone();
             self.projectiles.spawn(

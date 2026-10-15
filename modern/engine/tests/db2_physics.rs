@@ -283,16 +283,15 @@ fn elasticity_rebounds_colliding_bots_with_finite_velocity() {
     .unwrap();
     engine
         .spawn_batch([
-            (
-                LegacyDna::parse("start\n10 .up store\nstop").unwrap(),
-                [490.0, 500.0],
-            ),
-            (
-                LegacyDna::parse("start\n10 .dn store\nstop").unwrap(),
-                [510.0, 500.0],
-            ),
+            (LegacyDna::parse("start stop").unwrap(), [490.0, 500.0]),
+            (LegacyDna::parse("start stop").unwrap(), [510.0, 500.0]),
         ])
         .unwrap();
+
+    // Repel3 sees retained velocity, before new voluntary force is integrated.
+    let mut incoming = engine.physics_batch();
+    incoming.batch.velocities = vec![[10.0, 0.0], [-10.0, 0.0]];
+    engine.apply_physics_batch(incoming).unwrap();
 
     engine.tick().unwrap();
 
@@ -343,7 +342,7 @@ fn static_friction_blocks_impulses_below_the_breakaway_threshold() {
 }
 
 #[test]
-fn static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impulse() {
+fn static_friction_after_collisions_keeps_force_above_the_breakaway_threshold() {
     let mut engine = Engine::new(EngineConfig {
         metabolism_cost: 0,
         gravity: [0.0, 0.0],
@@ -384,8 +383,8 @@ fn static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impuls
         .map(|organism| organism.velocity)
         .collect();
     assert!(
-        velocities.iter().all(|velocity| *velocity == [0.0, 0.0]),
-        "post-collision static friction must cancel the residual contact impulse; actual velocities: {velocities:?}"
+        velocities == [[100.0, 0.0], [-100.0, 0.0]],
+        "force 100 exceeds mass*gravity*friction=60; actual velocities: {velocities:?}"
     );
 }
 
@@ -786,7 +785,18 @@ fn fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick(
     wet_rotation.tick().unwrap();
 
     assert_ne!(dry_rotation.organism(dry_rotation_id).unwrap().aim, 0);
-    assert_eq!(wet_rotation.organism(wet_rotation_id).unwrap().aim, 0);
+    // SphereDrag precedes BrownianForces. It damps old momentum, but the new
+    // Brownian turning impulse survives and can rotate even a dense-fluid bot.
+    assert_ne!(wet_rotation.organism(wet_rotation_id).unwrap().aim, 0);
+    assert!(
+        wet_rotation
+            .robot_state(wet_rotation_id)
+            .unwrap()
+            .kinematics
+            .angular_momentum
+            .abs()
+            <= std::f32::consts::FRAC_PI_4
+    );
 }
 
 #[test]
@@ -851,8 +861,9 @@ fn phy04_cpu_engine_physics_contract() {
                 settings(180.0, 2.0, 0.6, 0.25),
             ),
             position: center,
-            expected_position: [503.5, 500.0],
-            expected_velocity: [3.5, 0.0],
+            // Friction acts on old velocity, before this tick's new force.
+            expected_position: [504.0, 500.0],
+            expected_velocity: [4.0, 0.0],
         },
         Case {
             name: "solid surface disabled",
@@ -890,8 +901,8 @@ fn phy04_cpu_engine_physics_contract() {
                 settings(180.0, 2.0, 0.0, f32::MAX),
             ),
             position: center,
-            expected_position: center,
-            expected_velocity: [0.0, 0.0],
+            expected_position: [504.0, 500.0],
+            expected_velocity: [4.0, 0.0],
         },
         Case {
             name: "maximum velocity clamp",

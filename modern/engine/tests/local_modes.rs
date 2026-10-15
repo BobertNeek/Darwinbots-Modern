@@ -65,6 +65,7 @@ fn local_modes_transition_through_adjudication_and_survival_restart_authority() 
                     prohibit_sexual_reproduction: true,
                     ..LocalModeRestrictions::default()
                 },
+                ..LocalModeConfig::default()
             })
             .unwrap();
         assert_eq!(

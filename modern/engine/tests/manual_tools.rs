@@ -59,7 +59,7 @@ fn manual_two_parent_reproduction_records_parentage() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let left_dna = LegacyDna::parse("start\n10 .up store\n20 .dx store\nstop").unwrap();
     let right_dna = LegacyDna::parse("start\n30 .sx store\n40 .down store\nstop").unwrap();
-    let expected_child = LegacyDna::parse("start\n10 .up store\n20\n40 .down store\nstop").unwrap();
+    let expected_child = LegacyDna::parse("start\n10 .up store\n40 .down store\nstop").unwrap();
     let left = engine.spawn_at(left_dna, [100.0, 100.0]).unwrap();
     let right = engine.spawn_at(right_dna, [200.0, 100.0]).unwrap();
 

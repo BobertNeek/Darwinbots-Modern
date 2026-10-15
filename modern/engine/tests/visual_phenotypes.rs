@@ -14,6 +14,16 @@ fn phenotype_engine(auto_speciation: bool, threshold: f32) -> Engine {
 }
 
 fn spawn_mutating_parent(engine: &mut Engine, vegetable: bool) -> OrganismId {
+    let mut profile = darwinbots_engine::StandardMutationProfile::default();
+    profile.point.one_in = 0.0;
+    profile.delta.one_in = 0.0;
+    profile.copy_error.one_in = 1.0;
+    profile.copy_error.mean = 1.0;
+    profile.copy_error.std_dev = 0.0;
+    profile.insertion.one_in = 0.0;
+    profile.reversal.one_in = 0.0;
+    profile.minor_deletion.one_in = 0.0;
+    profile.major_deletion.one_in = 0.0;
     let species = engine.register_species(SpeciesDefinition {
         name: if vegetable {
             "Visual Alga"
@@ -23,7 +33,7 @@ fn spawn_mutating_parent(engine: &mut Engine, vegetable: bool) -> OrganismId {
         .to_owned(),
         vegetable,
         color: if vegetable { 0xff4c_963b } else { 0xff23_9ac0 },
-        mutation_rate: 100.0,
+        mutation_profile: Some(profile),
         ..SpeciesDefinition::default()
     });
     engine
@@ -119,7 +129,7 @@ fn child_inherits_phenotype_then_mutation_drifts_only_the_child() {
 }
 
 #[test]
-fn crossing_speciation_threshold_changes_skin_once() {
+fn native_speciation_preserves_the_inherited_skin_and_resets_the_counter() {
     let mut engine = phenotype_engine(true, 1.0);
     let parent = spawn_mutating_parent(&mut engine, false);
     let parent_skin = engine.organism(parent).unwrap().phenotype.skin;
@@ -133,7 +143,7 @@ fn crossing_speciation_threshold_changes_skin_once() {
         .find(|organism| organism.id != parent)
         .unwrap();
     assert_ne!(child.phenotype.lineage_id, 0);
-    assert_ne!(child.phenotype.skin, parent_skin);
+    assert_eq!(child.phenotype.skin, parent_skin);
     assert_eq!(child.phenotype.accumulated_mutations, 0);
 }
 

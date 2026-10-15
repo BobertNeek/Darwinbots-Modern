@@ -624,7 +624,7 @@ fn sperm_shot_fertilizes_without_forcing_reproduction() {
             .unwrap()
             .effects
             .fertilization_timer,
-        10
+        9
     );
     assert!(
         engine
@@ -697,7 +697,7 @@ fn reproductive_projectiles_use_staged_virus_and_sperm_gates() {
     assert_ne!(infected, engine.dna(virus_owner).unwrap());
 
     let sperm_state = engine.robot_state(mother).unwrap();
-    assert_eq!(sperm_state.effects.fertilization_timer, 10);
+    assert_eq!(sperm_state.effects.fertilization_timer, 9);
     assert_eq!(
         sperm_state
             .effects

@@ -22,7 +22,12 @@ impl Engine {
         let gene = dna.gene(1).unwrap_or(dna);
         let target_dna = robot.program.dna.clone();
         let boundaries = target_dna.gene_count().max(0) as usize;
-        let boundary = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, 0, boundaries as i32) as usize;
+        let boundary = world_random_integer(
+            &mut self.native_random,
+            &mut robot.program.rng_state,
+            0,
+            boundaries as i32,
+        ) as usize;
         robot.program.dna = target_dna.insert_gene(&gene, boundary);
         robot.refresh_occurrence_census();
         let metadata = &mut robot.program.mutation_metadata;
@@ -79,13 +84,24 @@ impl Engine {
                 .write(MEM_VIRUS_TIMER, robot.effects.virus_build_timer);
             let make = robot.program.memory.read(335);
             let shoot = robot.program.memory.read(338);
-            let build_angle = if !prohibited && make > 0 && robot.effects.virus_build_timer == 0
-                && robot.materials.chloroplasts == 0.0 && self.native_random.is_some() {
+            let build_angle = if !prohibited
+                && make > 0
+                && robot.effects.virus_build_timer == 0
+                && robot.materials.chloroplasts == 0.0
+                && self.native_random.is_some()
+            {
                 // newshot consumes both draws before copygene can reject the gene.
                 world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -2, 2);
-                let scatter = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -20, 20);
+                let scatter = world_random_integer(
+                    &mut self.native_random,
+                    &mut robot.program.rng_state,
+                    -20,
+                    20,
+                );
                 (f64::from(robot.heading()) + f64::from(scatter) / 200.0) as f32
-            } else { robot.heading() };
+            } else {
+                robot.heading()
+            };
             let source_name = self
                 .species
                 .get(robot.identity.species.0 as usize)
@@ -191,7 +207,12 @@ impl Engine {
                         (f64::from(robot.materials.energy) - f64::from(power) / 20.0 - fee) as f32;
                     robot.materials.energy =
                         (f64::from(robot.materials.energy) - f64::from(command) - fee) as f32;
-                    let angle = (f64::from(world_random_integer(&mut self.native_random, &mut robot.program.rng_state, 1, 1256)) / 200.0) as f32;
+                    let angle = (f64::from(world_random_integer(
+                        &mut self.native_random,
+                        &mut robot.program.rng_state,
+                        1,
+                        1256,
+                    )) / 200.0) as f32;
                     self.projectiles
                         .fire_stored_virus(shot, robot, command, power, angle);
                     self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
@@ -214,7 +235,9 @@ impl Engine {
             robot.materials.publish(&mut robot.program.memory);
             publish_reproductive_readbacks(robot);
         }
-        for (id, action) in disqualified { self.native_disqualify_action(id, action); }
+        for (id, action) in disqualified {
+            self.native_disqualify_action(id, action);
+        }
     }
 }
 
@@ -257,7 +280,13 @@ mod tests {
     #[test]
     fn invalid_virus_gene_still_consumes_newshot_draws() {
         let (mut world, id) = maker();
-        world.slots.get_mut(id).unwrap().program.memory.write(335, 32000);
+        world
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .program
+            .memory
+            .write(335, 32000);
         let mut expected = world.native_random.clone().unwrap();
         expected.integer(-2, 2);
         expected.integer(-20, 20);

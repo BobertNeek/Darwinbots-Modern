@@ -14,6 +14,8 @@ public sealed partial class SetupWindow : Window
     private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
     private GlobalSettings _globalSettings = new();
+    private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
+    private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
     private const string FeederReproducerDna = "cond\nstart\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
@@ -93,6 +95,16 @@ public sealed partial class SetupWindow : Window
         if (sender is Button { Tag: SetupSpeciesRow row }) Species.Remove(row);
     }
 
+    private async void SpeciesMutationRates_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: SetupSpeciesRow row }) return;
+        var dialog = new MutationRatesWindow(row.MutationProfile ?? _mutationSettings.Profile ?? MutationProfileUpdate.Default);
+        await dialog.ShowDialog(this);
+        if (!dialog.Accepted) return;
+        row.MutationProfile = dialog.Profile;
+        SetupStatus.Text = $"MUTATION RATES SAVED FOR {row.Name.ToUpperInvariant()}";
+    }
+
     private void CreateWorld_Click(object? sender, RoutedEventArgs e)
     {
         StartNew_Click(sender, e);
@@ -165,6 +177,8 @@ public sealed partial class SetupWindow : Window
             TicksPerUpdate = speed,
             Species = species,
             GlobalSettings = _globalSettings,
+            MutationSettings = _mutationSettings,
+            LegacySettingsFields = _legacySettingsFields,
         };
     }
 
@@ -172,10 +186,28 @@ public sealed partial class SetupWindow : Window
     {
         try
         {
-            var dialog = new AdvancedSettingsWindow(_environment);
+            var snapshot = EngineSnapshot.Empty with
+            {
+                MutationSettings = new(_mutationSettings.Enabled, _mutationSettings.GlobalMultiplier)
+                {
+                    Profile = _mutationSettings.Profile ?? MutationProfileUpdate.Default,
+                },
+                Species = new[] { new SpeciesSnapshot("Default", false, 0, 0, false) }
+                    .Concat(Species.Select(row => new SpeciesSnapshot(row.Name, row.Vegetable,
+                        row.Color, row.MinimumPopulation, row.Reseed, (float)row.MutationRate))).ToArray(),
+            };
+            var dialog = new AdvancedSettingsWindow(_environment, snapshot);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
             _environment = dialog.Update;
+            var mutationUpdate = dialog.MutationUpdate;
+            // Species do not have engine IDs until startup imports them. Keep
+            // their percentages on the startup definitions rather than sending
+            // live-world IDs to an engine that has not registered them yet.
+            _mutationSettings = mutationUpdate with { SpeciesRates = [] };
+            foreach (var rate in mutationUpdate.SpeciesRates)
+                if (rate.Species > 0 && rate.Species <= Species.Count)
+                    Species[(int)rate.Species - 1].MutationRate = rate.Rate;
             SetupStatus.Text = "ADVANCED SETTINGS APPLIED";
         }
         catch (Exception error)
@@ -273,6 +305,8 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
         _environment = setup.ToEnvironmentUpdate();
         _globalSettings = setup.GlobalSettings;
+        _mutationSettings = setup.MutationSettings;
+        _legacySettingsFields = setup.LegacySettingsFields;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
         ZerobotVegetableMode.IsChecked = setup.StartingMode == StartingMode.ZerobotsAndVegetables;
@@ -283,7 +317,8 @@ public sealed partial class SetupWindow : Window
             foreach (var species in setup.Species)
                 Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
                     species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed,
-                    species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions));
+                    species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions,
+                    species.MutationProfile, species.DnaPath));
         }
         _controlsReady = true;
     }

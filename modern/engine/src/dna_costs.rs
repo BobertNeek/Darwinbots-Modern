@@ -179,7 +179,11 @@ impl DnaCosts {
     // The world controller advances the multiplier once per cycle. Cost
     // evaluation must not apply another instantaneous population formula.
     pub fn dynamic_multiplier(&self, _population: usize) -> f64 {
-        if self.global_multiplier.is_finite() { self.global_multiplier } else { 1.0 }
+        if self.global_multiplier.is_finite() {
+            self.global_multiplier
+        } else {
+            1.0
+        }
     }
 
     fn action_cost(&self, action: SimulationCostAction) -> f64 {

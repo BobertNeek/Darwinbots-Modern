@@ -448,7 +448,7 @@ fn deleting_tie_still_applies_first_pass_spring_before_second_pass_delete() {
     engine
         .replace_dna(
             source,
-            LegacyDna::parse("start\n1 .deltie store\nstop").unwrap(),
+            LegacyDna::parse("start\n41 .deltie store\nstop").unwrap(),
         )
         .unwrap();
 
@@ -643,7 +643,7 @@ fn births_and_deaths_commit_only_after_the_final_robot_pass() {
         .spawn_species_batch(
             LegacyDna::parse("start\nstop").unwrap(),
             SpeciesId::default(),
-            [[700.0, 500.0]],
+            [[800.0, 800.0]],
             1,
         )
         .unwrap()[0];

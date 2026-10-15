@@ -31,7 +31,9 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         string? comment = null,
         SpeciesPlacement? placement = null,
         SkinPointSnapshot[]? skin = null,
-        SpeciesRestrictionSettings? restrictions = null)
+        SpeciesRestrictionSettings? restrictions = null,
+        MutationProfileUpdate? mutationProfile = null,
+        string? dnaPath = null)
     {
         _name = name;
         Dna = dna;
@@ -46,12 +48,16 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         _placement = placement ?? new SpeciesPlacement();
         _skin = skin?.ToArray() ?? DefaultSkin();
         _restrictions = restrictions ?? new SpeciesRestrictionSettings();
+        MutationProfile = mutationProfile;
+        DnaPath = dnaPath;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public string Name { get => _name; set => Set(ref _name, value); }
     public string Comment { get => _comment; set => Set(ref _comment, value); }
     public string Dna { get; }
+    public string? DnaPath { get; }
+    public MutationProfileUpdate? MutationProfile { get; set; }
     public bool Vegetable { get => _vegetable; set => Set(ref _vegetable, value); }
     public uint Color { get; set; }
     public int InitialCount { get => _initialCount; set => Set(ref _initialCount, value); }
@@ -102,11 +108,14 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         Placement = _placement,
         Skin = _skin.ToArray(),
         Restrictions = _restrictions,
+        MutationProfile = MutationProfile,
+        DnaPath = DnaPath,
     };
 
     public SetupSpeciesRow Duplicate() => new(
         $"{Name} Copy", Dna, Vegetable, Color, InitialCount, InitialEnergy,
-        MutationRate, Reseed, MinimumPopulation, Comment, _placement, _skin, _restrictions);
+        MutationRate, Reseed, MinimumPopulation, Comment, _placement, _skin, _restrictions,
+        MutationProfile, DnaPath);
 
     private void SetPlacement(SpeciesPlacement value)
     {

@@ -11,6 +11,8 @@ public sealed partial class AdvancedSettingsWindow : Window
     private readonly List<(uint Species, Slider Slider)> _speciesRates = [];
     private bool _initializing = true;
     private bool _updatingTopology;
+    private MutationProfileUpdate _mutationProfile = MutationProfileUpdate.Default;
+    private readonly HashSet<NumericUpDown> _editedMutationRates = [];
 
     public bool Accepted { get; private set; }
     public MutationSettingsUpdate MutationUpdate => new(
@@ -161,22 +163,33 @@ public sealed partial class AdvancedSettingsWindow : Window
 
     private void PopulateMutationProfile(MutationProfileUpdate profile)
     {
-        PointOneIn.Value = (decimal)profile.Point.OneIn;
-        Point2OneIn.Value = (decimal)profile.Point2.OneIn;
-        DeltaOneIn.Value = (decimal)profile.Delta.OneIn;
-        CopyErrorOneIn.Value = (decimal)profile.CopyError.OneIn;
-        CopyError2OneIn.Value = (decimal)profile.CopyError2.OneIn;
-        InsertionOneIn.Value = (decimal)profile.Insertion.OneIn;
-        ReversalOneIn.Value = (decimal)profile.Reversal.OneIn;
-        MinorDeletionOneIn.Value = (decimal)profile.MinorDeletion.OneIn;
-        MajorDeletionOneIn.Value = (decimal)profile.MajorDeletion.OneIn;
-        AmplificationOneIn.Value = (decimal)profile.Amplification.OneIn;
-        TranslocationOneIn.Value = (decimal)profile.Translocation.OneIn;
+        _mutationProfile = profile;
+        PopulateRate(PointOneIn, profile.Point);
+        PopulateRate(Point2OneIn, profile.Point2);
+        PopulateRate(DeltaOneIn, profile.Delta);
+        PopulateRate(CopyErrorOneIn, profile.CopyError);
+        PopulateRate(CopyError2OneIn, profile.CopyError2);
+        PopulateRate(InsertionOneIn, profile.Insertion);
+        PopulateRate(ReversalOneIn, profile.Reversal);
+        PopulateRate(MinorDeletionOneIn, profile.MinorDeletion);
+        PopulateRate(MajorDeletionOneIn, profile.MajorDeletion);
+        PopulateRate(AmplificationOneIn, profile.Amplification);
+        PopulateRate(TranslocationOneIn, profile.Translocation);
+    }
+
+    private void PopulateRate(NumericUpDown control, MutationRateUpdate rate)
+    {
+        control.Value = (decimal)Math.Clamp(rate.OneIn, (double)control.Minimum, (double)control.Maximum);
+        control.ValueChanged += (_, _) =>
+        {
+            if (!_initializing) _editedMutationRates.Add(control);
+        };
+        ToolTip.SetTip(control, $"Loaded one-in rate: {rate.OneIn:G}. Zero disables this mutation class.");
     }
 
     private MutationProfileUpdate ReadMutationProfile()
     {
-        var profile = MutationProfileUpdate.Default;
+        var profile = _mutationProfile;
         return profile with
         {
             Point = ReadRate(PointOneIn, profile.Point),
@@ -193,8 +206,10 @@ public sealed partial class AdvancedSettingsWindow : Window
         };
     }
 
-    private static MutationRateUpdate ReadRate(NumericUpDown control, MutationRateUpdate current) =>
-        current with { OneIn = (double)(control.Value ?? (decimal)current.OneIn) };
+    private MutationRateUpdate ReadRate(NumericUpDown control, MutationRateUpdate current) =>
+        !_editedMutationRates.Contains(control)
+            ? current
+            : current with { OneIn = (double)(control.Value ?? 0m) };
 
     private void AddSpeciesRow(uint index, SpeciesSnapshot species)
     {

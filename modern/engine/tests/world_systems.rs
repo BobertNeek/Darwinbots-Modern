@@ -281,6 +281,13 @@ fn reproduction_cluster_defers_mode_blocked_birth_then_rolls_back_greedy_descend
     engine.update_legacy_restrictions(true, true);
     engine.tick().unwrap();
 
+    // Reproduce marks a greedy parent Dead after ManageDeath already queued
+    // this cycle's kills. The actual kill occurs at the end of the next cycle.
+    assert_eq!(engine.population(), 2);
+    assert!(engine.robot_state(child).unwrap().flags.dead);
+    assert_eq!(engine.snapshot().stats.deaths, 0);
+    engine.tick().unwrap();
+
     assert_eq!(engine.population(), 1);
     assert_eq!(engine.snapshot().stats.births, 1);
     assert_eq!(engine.snapshot().stats.deaths, 1);

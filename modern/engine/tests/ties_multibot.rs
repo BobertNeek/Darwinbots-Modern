@@ -1004,7 +1004,7 @@ fn fixang_command_applies_canonical_tie_torque() {
 }
 
 #[test]
-fn structural_tie_torque_rotates_both_members_in_opposite_directions() {
+fn structural_tie_torque_rotates_the_angle_fixed_forward_endpoint() {
     let (mut engine, source, target) = spawn_soft_tie();
     engine.tick_many(19).unwrap();
 
@@ -1033,8 +1033,9 @@ fn structural_tie_torque_rotates_both_members_in_opposite_directions() {
         .kinematics
         .angular_momentum;
     assert_ne!(source_aim, 0);
-    assert_ne!(target_aim, 0);
-    assert!(source_angular * target_angular < 0.0);
+    assert_eq!(target_aim, 0);
+    assert!(source_angular.abs() > 0.0);
+    assert_eq!(target_angular, 0.0);
 }
 
 #[test]
@@ -1059,7 +1060,7 @@ fn legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clam
             initial_angle: -0.5,
             fixang: 0,
             stifftie: 99,
-            expected_angular_momentum: -0.41273355,
+            expected_angular_momentum: 0.41273355,
             expected_b: 0.495,
             expected_k: 0.2475,
         },
@@ -1068,7 +1069,7 @@ fn legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clam
             initial_angle: 0.5,
             fixang: 0,
             stifftie: 100,
-            expected_angular_momentum: 0.41273355,
+            expected_angular_momentum: -0.41273355,
             expected_b: 0.5,
             expected_k: 0.25,
         },
@@ -1147,7 +1148,7 @@ fn legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clam
                 .unwrap()
                 .kinematics
                 .angular_momentum,
-            -case.expected_angular_momentum,
+            0.0, // The backward endpoint has no regang constraint.
         );
     }
 }
@@ -1292,8 +1293,9 @@ fn tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage
         .kinematics
         .angular_momentum;
     assert_ne!(engine.organism(source).unwrap().aim, 0);
-    assert_ne!(engine.organism(target).unwrap().aim, 0);
-    assert!(source_angular * target_angular < 0.0);
+    assert_eq!(engine.organism(target).unwrap().aim, 0);
+    assert!(source_angular.abs() > 0.0);
+    assert_eq!(target_angular, 0.0);
 
     let source_endpoint = engine.robot_state(source).unwrap().ties[0].unwrap();
     let target_endpoint = engine.robot_state(target).unwrap().ties[0].unwrap();
@@ -1575,8 +1577,9 @@ fn hardened_shell_share_marks_only_the_forward_tie_endpoint() {
         )
         .unwrap();
     engine.tick().unwrap();
-    assert_eq!(engine.organism(source).unwrap().shell, 75);
-    assert_eq!(engine.organism(target).unwrap().shell, 25);
+    // Update_Ties shares only from the forward endpoint of a multibot tie.
+    assert_eq!(engine.organism(source).unwrap().shell, 50);
+    assert_eq!(engine.organism(target).unwrap().shell, 50);
     assert_eq!(engine.memory(target, "shareshell").unwrap(), 0);
     assert_eq!(
         engine.robot_state(source).unwrap().ties[0]
@@ -1588,7 +1591,7 @@ fn hardened_shell_share_marks_only_the_forward_tie_endpoint() {
         engine.robot_state(target).unwrap().ties[0]
             .unwrap()
             .sharing_marker,
-        1
+        0
     );
 }
 

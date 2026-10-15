@@ -320,12 +320,12 @@ fn contest_detects_a_surviving_species_and_rejects_invalid_winners_atomically() 
     engine
         .spawn_species_batch(dna.clone(), a, [[500.0, 500.0]], 3000)
         .unwrap();
-    let removed = engine
+    engine
         .spawn_species_batch(dna, b, [[900.0, 900.0]], 3000)
-        .unwrap()[0];
+        .unwrap();
     engine
         .configure_local_mode(LocalModeConfig {
-            minimum_rounds: 5,
+            minimum_rounds: 1,
             maximum_rounds: 1,
             ..Default::default()
         })
@@ -338,8 +338,17 @@ fn contest_detects_a_surviving_species_and_rejects_invalid_winners_atomically() 
             .is_err()
     );
     assert_eq!(before, SaveFile::encode(&engine).unwrap());
-    engine.remove(removed).unwrap();
-    engine.tick().unwrap();
+    // Starting a league reloads five competitors per species and retires the
+    // setup IDs. Eliminate the current opponent roster, not a stale setup ID.
+    let opponents: Vec<_> = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .filter(|robot| robot.species == b)
+        .map(|robot| robot.id)
+        .collect();
+    engine.remove_many(&opponents).unwrap();
+    engine.tick_many(10).unwrap(); // Native contest population is sampled every ten cycles.
     assert_eq!(
         engine.snapshot().local_mode.status,
         LocalModeStatus::Completed

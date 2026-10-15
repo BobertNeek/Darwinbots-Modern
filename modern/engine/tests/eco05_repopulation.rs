@@ -83,8 +83,10 @@ fn eco05_seeded_repopulation_caps_vegetables_and_survives_save_load() {
     engine.tick().unwrap();
     loaded.tick().unwrap();
 
-    assert_eq!(engine.population(), 5);
-    assert_eq!(engine.vegetable_population(), 2);
+    // Native repopulation limits chloroplast equivalents. Zero-chloroplast
+    // plants can exceed the raw initial-import bot-count cap.
+    assert_eq!(engine.population(), 7);
+    assert_eq!(engine.vegetable_population(), 4);
     assert_eq!(loaded.snapshot().organisms, engine.snapshot().organisms);
     assert_eq!(loaded.snapshot().stats, engine.snapshot().stats);
     assert!(
@@ -96,5 +98,13 @@ fn eco05_seeded_repopulation_caps_vegetables_and_survives_save_load() {
             // next border phase. Save/resume must retain the finite exact state.
             .all(|organism| organism.position.into_iter().all(f32::is_finite))
     );
-    assert!(engine.vegetable_population() <= 2);
+    let chloroplast_equivalents = engine
+        .snapshot()
+        .organisms
+        .iter()
+        .map(|robot| f64::from(robot.chloroplasts))
+        .sum::<f64>()
+        / 16000.0;
+    assert!(chloroplast_equivalents <= 2.0);
+    assert!(engine.population() <= 8);
 }

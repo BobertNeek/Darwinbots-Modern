@@ -56,10 +56,11 @@
         </Grid>
 
         <TextBlock Classes="section" Text="SPECIES" FontSize="15" Margin="0,8,0,0"/>
+        <TextBlock Text="DB2 mutations use the detailed rates in each species editor. Legacy % is retained for older modern worlds." TextWrapping="Wrap" Foreground="#66706B"/>
         <Border Classes="panel">
           <Grid RowDefinitions="38,*">
             <Grid ColumnDefinitions="2*,90,100,95,135,80,105,44" Background="#EEEAE0" Margin="1">
-              <TextBlock Text="SPECIES" Margin="10"/><TextBlock Grid.Column="1" Text="TYPE" Margin="8"/><TextBlock Grid.Column="2" Text="INITIAL COUNT" Margin="8"/><TextBlock Grid.Column="3" Text="ENERGY" Margin="8"/><TextBlock Grid.Column="4" Text="MUTATION %" Margin="8"/><TextBlock Grid.Column="5" Text="RESEED" Margin="8"/><TextBlock Grid.Column="6" Text="EDITOR" Margin="8"/>
+              <TextBlock Text="SPECIES" Margin="10"/><TextBlock Grid.Column="1" Text="TYPE" Margin="8"/><TextBlock Grid.Column="2" Text="INITIAL COUNT" Margin="8"/><TextBlock Grid.Column="3" Text="ENERGY" Margin="8"/><TextBlock Grid.Column="4" Text="LEGACY %" Margin="8"/><TextBlock Grid.Column="5" Text="RESEED" Margin="8"/><TextBlock Grid.Column="6" Text="EDITOR" Margin="8"/>
             </Grid>
             <ItemsControl x:Name="SpeciesList" Grid.Row="1" ItemsSource="{Binding Species}">
               <ItemsControl.ItemTemplate>
@@ -77,6 +78,7 @@
                     <Expander Grid.Column="6" Header="EDIT" IsExpanded="False" HorizontalAlignment="Stretch">
                       <StackPanel Spacing="5" MinWidth="290">
                         <TextBlock Text="STARTUP POLICY" Classes="section"/>
+                        <Button Content="DB2 mutation rates…" Click="SpeciesMutationRates_Click" Tag="{Binding}"/>
                         <Grid ColumnDefinitions="*,100"><TextBlock Text="Minimum population" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding MinimumPopulation}" Minimum="0" Maximum="100000"/></Grid>
                         <Grid ColumnDefinitions="*,100"><TextBlock Text="Placement" VerticalAlignment="Center"/><ComboBox Grid.Column="1" SelectedIndex="{Binding PlacementIndex, Mode=TwoWay}"><ComboBoxItem Content="Random"/><ComboBoxItem Content="Center"/><ComboBoxItem Content="Fixed"/></ComboBox></Grid>
                         <Grid ColumnDefinitions="*,100"><TextBlock Text="Fixed X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding PlacementX}" Minimum="-1000000" Maximum="1000000"/></Grid>

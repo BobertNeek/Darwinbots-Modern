@@ -303,6 +303,119 @@ public sealed class SetupControlSurfaceTests
         Assert.Equal(imported.ToJson(), roundTripped.ToJson());
     }
 
+    [Fact]
+    public async Task LoadedNativeMutationProfilesSurviveEditingDuplicationSaveAndStart()
+    {
+        var profile = MutationProfileUpdate.Default with
+        {
+            CopyError = new(17, 7.5, 2.25),
+            Delta = new(123, 600, 180),
+            PointValueChangePercent = 23,
+        };
+        var imported = new SpeciesImport("Native rates", "start 1 .up store stop", false,
+            0xff239ac0, 5, 1_000, 0, false, 7)
+        {
+            MutationProfile = profile,
+            DnaPath = "Bots/native-rates.txt",
+        };
+        var mutationSettings = new MutationSettingsUpdate(false, 2.5f, []) { Profile = profile };
+        var storage = new SettingsWorkflowStorage
+        {
+            SettingsToOpen = new DesktopSettings
+            {
+                Species = [imported],
+                MutationSettings = mutationSettings,
+                LegacySettingsFields = ["retained original field"],
+            },
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            window.Show();
+            try
+            {
+                Invoke(window, "LoadSettings_Click");
+                await WaitFor(() => window.Species.Count == 1 && window.Species[0].Name == imported.Name);
+                var row = Assert.Single(window.Species);
+                Assert.Equal(profile, row.ToImport(1).MutationProfile);
+                Assert.Equal(imported.DnaPath, row.ToImport(1).DnaPath);
+                window.Species.Add(row.Duplicate());
+                Assert.Equal(profile, window.Species[1].MutationProfile);
+                Invoke(window, "SpeciesMutationRates_Click", new Button { Tag = row });
+                await WaitFor(() => window.OwnedWindows.OfType<MutationRatesWindow>().Any());
+                var rates = Assert.Single(window.OwnedWindows.OfType<MutationRatesWindow>());
+                rates.FindControl<ComboBox>("ClassSelector")!.SelectedIndex = 3;
+                rates.FindControl<NumericUpDown>("OneIn")!.Value = 29;
+                Invoke(rates, "Apply_Click");
+                await WaitFor(() => row.MutationProfile!.CopyError.OneIn == 29);
+                Assert.Equal(profile.CopyError with { OneIn = 29 }, row.MutationProfile!.CopyError);
+                Assert.Equal(profile, window.Species[1].MutationProfile);
+                Invoke(window, "Advanced_Click");
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                var advanced = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.Equal(profile, advanced.MutationUpdate.Profile);
+                Invoke(advanced, "Apply_Click");
+                await WaitFor(() => !window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                Invoke(window, "SaveSettings_Click");
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.Equal(mutationSettings, storage.SavedSettings!.MutationSettings);
+                Assert.Equal(storage.SettingsToOpen!.LegacySettingsFields, storage.SavedSettings.LegacySettingsFields);
+                Assert.Equal(row.MutationProfile, storage.SavedSettings.Species[0].MutationProfile);
+                WorldSetupOptions? created = null;
+                window.WorldCreated += setup => created = setup;
+                Invoke(window, "StartNew_Click");
+                Assert.NotNull(created);
+                Assert.Equal(mutationSettings, created!.MutationSettings);
+                Assert.Equal(row.MutationProfile, created.Species[0].MutationProfile);
+                Assert.Equal(imported.DnaPath, created.Species[0].DnaPath);
+                using var engine = new NativeEngineClient(created with { Backend = "Cpu" });
+                foreach (var species in created.Species) engine.ImportSpecies(species);
+                var native = engine.Snapshot();
+                Assert.False(native.MutationSettings.Enabled);
+                Assert.Equal(2.5f, native.MutationSettings.GlobalMultiplier);
+                Assert.Equal(profile, native.MutationSettings.Profile);
+                Assert.Equal(10, native.Population);
+                Assert.All(native.Organisms, robot => Assert.Equal(
+                    created.Species[(int)robot.Species - 1].MutationProfile, robot.MutationProfile));
+            }
+            finally
+            {
+                foreach (var child in window.OwnedWindows.ToArray()) child.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task LiveMutationRateEditsPreserveLoadedDistributionsAndPreferences()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var profile = MutationProfileUpdate.Default with
+            {
+                CopyError = new(17, 7.5, 2.25),
+                Delta = new(123, 600, 180),
+                PointValueChangePercent = 23,
+                Point2 = new(0, 9, 2),
+                Amplification = new(1e50, 250, 75),
+            };
+            var snapshot = EngineSnapshot.Empty with
+            {
+                MutationSettings = new(true, 50f) { Profile = profile },
+            };
+            var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default, snapshot);
+            try
+            {
+                Assert.Equal(profile, window.MutationUpdate.Profile);
+                Assert.Equal(50f, window.MutationUpdate.GlobalMultiplier);
+                window.FindControl<NumericUpDown>("CopyErrorOneIn")!.Value = 29;
+                Assert.Equal(profile with { CopyError = profile.CopyError with { OneIn = 29 } },
+                    window.MutationUpdate.Profile);
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
     private static void Select(SetupWindow window, RadioButton radio, string modeName)
     {
         radio.IsChecked = true;

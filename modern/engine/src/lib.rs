@@ -7,15 +7,15 @@ mod dna_costs;
 mod dna_tokens;
 mod environment;
 mod error;
+mod evolution;
 mod history;
 mod id;
+mod league;
 mod legacy;
 mod modes;
-mod league;
-mod evolution;
 mod mutation;
-mod native_random;
 pub mod native_binary;
+mod native_random;
 mod persistence;
 mod physics;
 mod robot_state;
@@ -53,25 +53,28 @@ pub use environment::{
     FileTeleporter, Obstacle, ShapeShotPolicy, ShapeVisionPolicy, Teleporter, TeleporterFilters,
 };
 pub use error::EngineError;
+pub use evolution::{
+    EvolutionConfig, EvolutionGenome, EvolutionMode, EvolutionPhase, EvolutionState,
+};
 pub use history::{GeneticGraphState, GraphSamplingSettings, HistorySample, SpeciesGraphSample};
 pub use id::OrganismId;
+pub use league::{LeagueMatch, LeagueSeries};
 pub use legacy::{
     LegacyOrganism, LegacyOrganismFile, LegacyOrganismKey, LegacyOrganismMember, LegacyOrganismTie,
     LegacySettingsFile, LegacySimulationFile, LegacySpeciesStartup,
 };
 pub use modes::{
-    ContestRuntime, LeaguePreset, LeagueWorkflow, LocalModeAdjudication, LocalModeConfig, LocalModeKind, LocalModeRestrictions,
-    LocalModeResult, LocalModeState, LocalModeStatus,
+    ContestRuntime, LeaguePreset, LeagueWorkflow, LocalModeAdjudication, LocalModeConfig,
+    LocalModeKind, LocalModeRestrictions, LocalModeResult, LocalModeState, LocalModeStatus,
 };
-pub use league::{LeagueMatch, LeagueSeries};
-pub use evolution::{EvolutionConfig, EvolutionGenome, EvolutionMode, EvolutionPhase, EvolutionState};
 pub use mutation::{
     AdvancedMutationSettings, Delta2Settings, EpigeneticPolicyAction, EpigeneticSettings,
     GenomeMutator, MutationCategoryDistribution, MutationContext, MutationKind,
-    MutationOscillationMode, MutationOscillationSettings, MutationPolicyInput, NativeDelta2Settings,
-    MutationPolicyReport, MutationPreference, MutationRate, MutationReport, PointMutationSchedule,
-    PointMutator, StandardMutationEvent, StandardMutationKind, StandardMutationProfile,
-    StandardMutationReport, apply_advanced_mutation_policies, apply_standard_mutation,
+    MutationOscillationMode, MutationOscillationSettings, MutationPolicyInput,
+    MutationPolicyReport, MutationPreference, MutationRate, MutationReport, NativeDelta2Settings,
+    PointMutationSchedule, PointMutator, StandardMutationEvent, StandardMutationKind,
+    StandardMutationProfile, StandardMutationReport, apply_advanced_mutation_policies,
+    apply_standard_mutation,
 };
 pub use persistence::SaveFile;
 pub use physics::{

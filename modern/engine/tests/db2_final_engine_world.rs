@@ -142,22 +142,27 @@ fn phy_08_resolves_every_cluster_pair_and_substitutes_fixed_body_mass() {
         )
         .unwrap();
     let moving_id = fixed
-        .spawn_at(
-            LegacyDna::parse("start\n-10 .up store\nstop").unwrap(),
-            [580.0, 500.0],
-        )
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [580.0, 500.0])
         .unwrap();
     fixed.update_legacy_restrictions(true, true);
     assert_eq!(fixed.memory_at(fixed_id, 216).unwrap(), 1);
+    let mut incoming = fixed.physics_batch();
+    let moving_index = incoming.ids.iter().position(|id| *id == moving_id).unwrap();
+    incoming.batch.velocities[moving_index] = [-10.0, 0.0];
+    fixed.apply_physics_batch(incoming).unwrap();
     fixed.tick().unwrap();
 
     // Repel3 shifts fixed positions too, and damps/clamps its velocity projections.
     let fixed_position = fixed.organism(fixed_id).unwrap().position;
+    // Repel3 uses physical masses for separation, then substitutes fixed mass
+    // for velocity exchange. Giving it incoming velocity selects that branch.
     assert!((fixed_position[0] - 429.95862).abs() < 0.01);
     assert_eq!(fixed_position[1], 500.0);
     let moving_velocity = fixed.organism(moving_id).unwrap().velocity[0];
     assert!(
-        (moving_velocity - 0.9339687).abs() < 0.01,
+        // VectorScalar caps the intermediate 316k component to32000 before
+        // division by32001; the -10 incoming velocity leaves -0.1 residual.
+        (moving_velocity - (32000.0 / 32001.0 - 0.1)).abs() < 0.01,
         "fixed-body elasticity used finite mass: {moving_velocity}"
     );
 }

@@ -207,8 +207,14 @@ fn engine_advanced_mutations_cover_all_four_sunline_operators_deterministically(
                 profile.point2.one_in = 1.0;
             }
             StandardMutationKind::CopyError2 => profile.copy_error2.one_in = 1.0,
-            StandardMutationKind::Amplification => profile.amplification.one_in = 1.0,
-            StandardMutationKind::Translocation => profile.translocation.one_in = 1.0,
+            StandardMutationKind::Amplification => {
+                profile.amplification.one_in = 1.0;
+                profile.amplification.mean = 3.0; // Original centered runs need a nonzero radius.
+            }
+            StandardMutationKind::Translocation => {
+                profile.translocation.one_in = 1.0;
+                profile.translocation.mean = 3.0;
+            }
             _ => unreachable!(),
         }
         engine.set_mutation_profile(parent, profile).unwrap();
@@ -288,18 +294,23 @@ fn engine_advanced_mutations_cover_all_four_sunline_operators_deterministically(
         assert_eq!(observed.1.mutation_log, repeated.1.mutation_log);
         assert_eq!(observed.1.total_mutations, repeated.1.total_mutations);
         assert_eq!(observed.1.last_mutation_kind, Some(kind));
-        assert_eq!(observed.1.mutation_log.len(), 1);
-        assert_eq!(observed.1.total_mutations, 1);
-        assert_eq!(observed.1.mutation_class_counts.get(&kind), Some(&1));
+        // NeoMutations tries each position independently; a single enabled
+        // class can produce several events in one reproductive pass.
+        assert!(!observed.1.mutation_log.is_empty());
+        assert!(observed.1.total_mutations > 0);
+        assert_eq!(
+            observed.1.mutation_class_counts.get(&kind),
+            Some(&observed.1.total_mutations)
+        );
         assert_eq!(observed.2, observed.3);
-        assert_eq!(observed.4, 1);
+        assert_eq!(observed.4, observed.1.total_mutations);
         assert_eq!(observed.0.blocks().last(), Some(&end()));
         match kind {
             StandardMutationKind::CopyError2 => {
                 assert_eq!(observed.0.blocks().len(), observed.2.blocks().len());
             }
             StandardMutationKind::Amplification => {
-                assert_eq!(observed.0.blocks().len(), observed.2.blocks().len() + 1);
+                assert!(observed.0.blocks().len() > observed.2.blocks().len());
             }
             StandardMutationKind::Translocation => {
                 assert_eq!(observed.0.blocks().len(), observed.2.blocks().len());
@@ -345,6 +356,12 @@ fn mrepro_uses_reproductive_mutation_context() {
 #[test]
 fn automatic_named_species_fork_uses_prefix_and_49_species_limit() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    engine
+        .update_advanced_mutation_settings(AdvancedMutationSettings {
+            copy_error2_enabled: true,
+            ..Default::default()
+        })
+        .unwrap();
     let source = engine.register_species(SpeciesDefinition {
         name: "Animal Minimalis".to_owned(),
         minimum_population: 1,
@@ -370,7 +387,7 @@ fn automatic_named_species_fork_uses_prefix_and_49_species_limit() {
     assert!(
         engine.snapshot().species[2]
             .name
-            .starts_with("(5001)Animal Minimalis"),
+            .starts_with("(1)Animal Minimalis"),
         "species: {:?}",
         engine.snapshot().species
     );
@@ -525,10 +542,22 @@ fn mrepro_auto_forked_zerobot_checkpoint_preserves_mutation_lineage_on_rollback(
     let child_species_name = engine.snapshot().species[child_species.0 as usize]
         .name
         .clone();
-    assert!(child.total_mutations > 0);
+    assert!(
+        engine
+            .robot_state(child_id)
+            .unwrap()
+            .program
+            .mutation_metadata
+            .native_last_mutations
+            > 0
+    );
+    assert_eq!(
+        child.total_mutations, 0,
+        "native auto-fork resets Mutations, retaining LastMut"
+    );
     assert!(!child_log.is_empty());
     assert_ne!(child_subspecies, 0);
-    assert!(child_species_name.starts_with("(5001)Animal Minimalis"));
+    assert!(child_species_name.starts_with("(1)Animal Minimalis"));
 
     engine
         .adjudicate_local_round(

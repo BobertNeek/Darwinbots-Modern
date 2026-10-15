@@ -552,7 +552,11 @@ impl RobotArena {
         world_size: [f32; 2],
         wrapped_axes: [bool; 2],
     ) -> RobotPhysicsBatch {
-        let ids = self.ids_in_slot_order().into_iter().filter(|id| !self.get(*id).unwrap().flags.hidden).collect::<Vec<_>>();
+        let ids = self
+            .ids_in_slot_order()
+            .into_iter()
+            .filter(|id| !self.get(*id).unwrap().flags.hidden)
+            .collect::<Vec<_>>();
         let positions = ids
             .iter()
             .map(|id| {

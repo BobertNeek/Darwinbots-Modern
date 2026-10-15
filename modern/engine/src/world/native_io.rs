@@ -178,10 +178,15 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
     let config = EngineConfig {
         advanced_mutation: AdvancedMutationSettings {
             oscillation: crate::MutationOscillationSettings {
-                mode: if !b("mutation_oscillate")? { crate::MutationOscillationMode::Disabled }
-                    else if b("mutation_sine")? { crate::MutationOscillationMode::Sine }
-                    else { crate::MutationOscillationMode::Sawtooth },
-                high_cycles: u("mutation_max")?, low_cycles: u("mutation_min")?,
+                mode: if !b("mutation_oscillate")? {
+                    crate::MutationOscillationMode::Disabled
+                } else if b("mutation_sine")? {
+                    crate::MutationOscillationMode::Sine
+                } else {
+                    crate::MutationOscillationMode::Sawtooth
+                },
+                high_cycles: u("mutation_max")?,
+                low_cycles: u("mutation_min")?,
                 ..Default::default()
             },
             ..Default::default()
@@ -633,21 +638,45 @@ impl Engine {
                     0
                 };
                 let read_end = |core: &[u8], extension: &[u8]| crate::tie::NativeTieEnd {
-                    rest_length: single(extension, 9), last: word(core, 26),
-                    b: single(extension, 1), k: single(extension, 5), hardened: extension[0] == 3, kind: extension[0], shrink: long(core, 20),
-                    angle: single(core, 6), bend: single(core, 10),
-                    angle_fixed: word(core, 14) != 0, angle_initialized: true,
+                    rest_length: single(extension, 9),
+                    last: word(core, 26),
+                    b: single(extension, 1),
+                    k: single(extension, 5),
+                    hardened: extension[0] == 3,
+                    kind: extension[0],
+                    shrink: long(core, 20),
+                    angle: single(core, 6),
+                    bend: single(core, 10),
+                    angle_fixed: word(core, 14) != 0,
+                    angle_initialized: true,
                 };
                 let second_record = source_records[&(word(c, 2) as i16)];
                 let second_core = second_record.bytes("ties_core")?;
                 let second_extension = second_record.bytes("ties_extension")?;
                 let first_end = read_end(c, e);
                 let second_end = if (1..=10).contains(&reciprocal) {
-                    read_end(&second_core[reciprocal * 38..(reciprocal + 1) * 38],
-                        &second_extension[reciprocal * 13..(reciprocal + 1) * 13])
-                } else { crate::tie::NativeTieEnd { angle_fixed: false, ..first_end } };
-                if [second_end.rest_length, second_end.b, second_end.k, second_end.angle, second_end.bend]
-                    .iter().any(|value| !value.is_finite()) { return Err(invalid("nonfinite reciprocal tie state")); }
+                    read_end(
+                        &second_core[reciprocal * 38..(reciprocal + 1) * 38],
+                        &second_extension[reciprocal * 13..(reciprocal + 1) * 13],
+                    )
+                } else {
+                    crate::tie::NativeTieEnd {
+                        angle_fixed: false,
+                        ..first_end
+                    }
+                };
+                if [
+                    second_end.rest_length,
+                    second_end.b,
+                    second_end.k,
+                    second_end.angle,
+                    second_end.bend,
+                ]
+                .iter()
+                .any(|value| !value.is_finite())
+                {
+                    return Err(invalid("nonfinite reciprocal tie state"));
+                }
                 self.ties.push(TieState {
                     native_ends: Some([first_end, second_end]),
                     first,
@@ -779,7 +808,11 @@ impl Engine {
                 [minimum[0] + n("width")?, minimum[1] + n("height")?],
             );
             shape.color = color(t.integer(&(p.clone() + "color"))?);
-            shape.opacity = if t.integer("shapes_transparent")? != 0 { 0.0 } else { 1.0 };
+            shape.opacity = if t.integer("shapes_transparent")? != 0 {
+                0.0
+            } else {
+                1.0
+            };
             shape.drift = [n("vx")?, n("vy")?];
             shape.vision_policy = if t.integer("shapes_see_through")? != 0 {
                 ShapeVisionPolicy::SeeThrough

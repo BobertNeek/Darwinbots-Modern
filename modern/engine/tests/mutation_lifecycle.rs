@@ -167,6 +167,13 @@ fn mutation_reproduction_creates_mutated_child_and_records_change() {
     let dna = LegacyDna::parse("start\n10 .up store\n50 .mrepro store\nstop").unwrap();
     let parent = engine.spawn_at(dna, [500.0, 500.0]).unwrap();
 
+    // MREPRO increases trials; it does not guarantee the old one-change fallback.
+    let mut profile = engine.mutation_profile(parent).unwrap().clone();
+    profile.copy_error.one_in = 1.0;
+    profile.copy_error.mean = 1.0;
+    profile.copy_error.std_dev = 0.0;
+    engine.set_mutation_profile(parent, profile).unwrap();
+
     engine.tick().unwrap();
 
     let child = engine
@@ -177,7 +184,7 @@ fn mutation_reproduction_creates_mutated_child_and_records_change() {
         .unwrap()
         .id;
     assert_ne!(engine.dna(parent).unwrap(), engine.dna(child).unwrap());
-    assert_eq!(engine.snapshot().stats.mutations, 1);
+    assert!(engine.snapshot().stats.mutations > 0);
 }
 
 #[test]

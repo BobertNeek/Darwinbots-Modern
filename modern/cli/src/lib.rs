@@ -1,5 +1,5 @@
-mod probe;
 mod native_comparison;
+mod probe;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use darwinbots_engine::{BackendPreference, Engine, EngineConfig, LegacyDna};
@@ -21,21 +21,33 @@ struct Arguments {
 enum Command {
     /// Replay a genuine DB2 simulation on the Rust CPU engine.
     NativeReplay {
-        #[arg(long)] simulation: PathBuf,
-        #[arg(long, conflicts_with = "until_cycle")] ticks: Option<u64>,
-        #[arg(long, conflicts_with = "ticks")] until_cycle: Option<u64>,
-        #[arg(long)] output_sim: PathBuf,
+        #[arg(long)]
+        simulation: PathBuf,
+        #[arg(long, conflicts_with = "until_cycle")]
+        ticks: Option<u64>,
+        #[arg(long, conflicts_with = "ticks")]
+        until_cycle: Option<u64>,
+        #[arg(long)]
+        output_sim: PathBuf,
     },
     /// Compare live native fields, including every VM memory cell.
     NativeCompare {
-        #[arg(long)] left: PathBuf,
-        #[arg(long)] right: PathBuf,
-        #[arg(long, default_value_t = 0.0001)] absolute_tolerance: f64,
-        #[arg(long, default_value_t = 0.000001)] relative_tolerance: f64,
-        #[arg(long, default_value_t = 100)] max_differences: usize,
+        #[arg(long)]
+        left: PathBuf,
+        #[arg(long)]
+        right: PathBuf,
+        #[arg(long, default_value_t = 0.0001)]
+        absolute_tolerance: f64,
+        #[arg(long, default_value_t = 0.000001)]
+        relative_tolerance: f64,
+        #[arg(long, default_value_t = 100)]
+        max_differences: usize,
     },
     /// Write controlled start simulations for original executable comparisons.
-    NativeSuite { #[arg(long)] directory: PathBuf },
+    NativeSuite {
+        #[arg(long)]
+        directory: PathBuf,
+    },
     Run {
         #[arg(long, required = true)]
         bot: Vec<PathBuf>,
@@ -110,27 +122,53 @@ where
     W: Write,
 {
     match Arguments::try_parse_from(arguments)?.command {
-        Command::NativeReplay { simulation, ticks, until_cycle, output_sim } => {
+        Command::NativeReplay {
+            simulation,
+            ticks,
+            until_cycle,
+            output_sim,
+        } => {
             let mut engine = Engine::from_native_sim(&fs::read(&simulation)?)?;
             let start = engine.snapshot().tick;
             let ticks = match until_cycle {
-                Some(cycle) => cycle.checked_sub(start).ok_or("target cycle precedes simulation cycle")?,
+                Some(cycle) => cycle
+                    .checked_sub(start)
+                    .ok_or("target cycle precedes simulation cycle")?,
                 None => ticks.unwrap_or(1),
             };
             advance(&mut engine, ticks)?;
             engine.validate_invariants()?;
-            if simulation == output_sim { return Err("replay output must not replace its input simulation".into()); }
+            if simulation == output_sim {
+                return Err("replay output must not replace its input simulation".into());
+            }
             native_comparison::write_new(&output_sim, &engine.export_native_sim()?)?;
-            serde_json::to_writer(&mut output, &json!({ "start_cycle": start,
+            serde_json::to_writer(
+                &mut output,
+                &json!({ "start_cycle": start,
                 "end_cycle": engine.snapshot().tick, "ticks": ticks, "backend": "Cpu",
                 "output_sim": output_sim, "population": engine.population(),
-                "rng_boundary": native_comparison::RNG_BOUNDARY }))?;
+                "rng_boundary": native_comparison::RNG_BOUNDARY }),
+            )?;
         }
-        Command::NativeCompare { left, right, absolute_tolerance, relative_tolerance, max_differences } => {
-            let report = native_comparison::compare(&fs::read(left)?, &fs::read(right)?,
-                absolute_tolerance, relative_tolerance, max_differences)?;
+        Command::NativeCompare {
+            left,
+            right,
+            absolute_tolerance,
+            relative_tolerance,
+            max_differences,
+        } => {
+            let report = native_comparison::compare(
+                &fs::read(left)?,
+                &fs::read(right)?,
+                absolute_tolerance,
+                relative_tolerance,
+                max_differences,
+            )?;
             serde_json::to_writer(&mut output, &report)?;
-            if report["passed"] != true { writeln!(output)?; return Err("native state comparison failed; see JSON differences".into()); }
+            if report["passed"] != true {
+                writeln!(output)?;
+                return Err("native state comparison failed; see JSON differences".into());
+            }
         }
         Command::NativeSuite { directory } => {
             serde_json::to_writer(&mut output, &native_comparison::write_suite(&directory)?)?;

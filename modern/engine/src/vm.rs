@@ -132,13 +132,19 @@ impl DnaVm {
         }
     }
 
-    pub fn random_state(&self) -> u64 { self.random_state.state() }
-
-    pub(crate) fn with_native_random(random: crate::native_random::NativeRandom) -> Self {
-        Self { random_state: crate::native_random::RandomStream::Native(random) }
+    pub fn random_state(&self) -> u64 {
+        self.random_state.state()
     }
 
-    pub(crate) fn native_random(&self) -> Option<crate::native_random::NativeRandom> { self.random_state.native() }
+    pub(crate) fn with_native_random(random: crate::native_random::NativeRandom) -> Self {
+        Self {
+            random_state: crate::native_random::RandomStream::Native(random),
+        }
+    }
+
+    pub(crate) fn native_random(&self) -> Option<crate::native_random::NativeRandom> {
+        self.random_state.native()
+    }
 
     pub fn execute(
         &mut self,
@@ -691,7 +697,7 @@ fn execute_store(
             let value = if magnitude == 0 {
                 0
             } else {
-                random_state.from_zero(magnitude.min(i32::MAX as u64) as i32) * current.signum()
+                random_state.below_upper(magnitude.min(i32::MAX as u64) as i32) * current.signum()
             };
             memory.write(address, value);
             1.0 / 7.0
@@ -836,7 +842,7 @@ fn custom_approximate(stack: &mut IntegerStack, invert: bool) -> bool {
 }
 
 fn random_from_zero(state: &mut crate::native_random::RandomStream, upper: i32) -> i32 {
-    state.from_zero(upper)
+    state.below_upper(upper)
 }
 
 fn ensure_activation_slot(report: &mut VmReport, record: bool) {

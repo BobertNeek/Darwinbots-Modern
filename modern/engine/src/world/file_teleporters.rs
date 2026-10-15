@@ -350,6 +350,13 @@ mod tests {
             .unwrap();
         let members = source.slots.ids_in_slot_order();
         source.ties[0].hardened = true;
+        if let Some(ends) = source.ties[0].native_ends.as_mut() {
+            for end in ends {
+                end.hardened = true;
+                end.kind = 3;
+            }
+        }
+        source.refresh_tie_projections();
         for &id in &members {
             source
                 .slots

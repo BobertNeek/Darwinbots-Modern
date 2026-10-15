@@ -20,7 +20,8 @@ fn gravity_and_drag_affect_motion() {
     engine.tick().unwrap();
 
     let position = engine.organism(id).unwrap().position;
-    assert!((position[0] - 303.3).abs() < 0.01);
+    // NetForces applies drag to retained velocity before adding this tick's thrust.
+    assert!((position[0] - 306.6).abs() < 0.01);
     assert!((position[1] - 502.0).abs() < 0.01);
 }
 

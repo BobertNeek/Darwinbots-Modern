@@ -12,18 +12,29 @@ impl Engine {
             let side = usize::from(!forward);
             let other = if forward { tie.second } else { tie.first };
             let (Ok(robot), Ok(target)) = (self.slots.get(actor), self.slots.get(other)) else {
-                remove.push(index); continue;
+                remove.push(index);
+                continue;
             };
-            let delta = std::array::from_fn::<_, 2, _>(|axis| target.kinematics.position[axis] - robot.kinematics.position[axis]);
+            let delta = std::array::from_fn::<_, 2, _>(|axis| {
+                target.kinematics.position[axis] - robot.kinematics.position[axis]
+            });
             let distance = f64::from(delta[0] * delta[0] + delta[1] * delta[1]).sqrt() as f32;
             if distance - robot.materials.radius - target.materials.radius > MAX_TIE_SURFACE_GAP {
-                remove.push(index); continue;
+                remove.push(index);
+                continue;
             }
             let mut ends = tie.native_end_states();
             let end = &mut ends[side];
-            if end.last > 1 { end.last -= 1; }
-            if end.last < 0 { end.last += 1; }
-            if end.last == 1 { remove.push(index); continue; }
+            if end.last > 1 {
+                end.last -= 1;
+            }
+            if end.last < 0 {
+                end.last += 1;
+            }
+            if end.last == 1 {
+                remove.push(index);
+                continue;
+            }
             let angle = (-delta[1]).atan2(delta[0]);
             if end.last == -1 {
                 end.rest_length = distance;
@@ -41,7 +52,9 @@ impl Engine {
             let displacement = end.rest_length - distance;
             if distance != 0.0 && displacement.abs() > TIE_DEADBAND {
                 let unit = delta.map(|value| -value / distance);
-                let relative = std::array::from_fn::<_, 2, _>(|axis| robot.kinematics.velocity[axis] - target.kinematics.velocity[axis]);
+                let relative = std::array::from_fn::<_, 2, _>(|axis| {
+                    robot.kinematics.velocity[axis] - target.kinematics.velocity[axis]
+                });
                 let elastic = end.k * displacement.signum() * (displacement.abs() - TIE_DEADBAND);
                 let damping = (relative[0] * unit[0] + relative[1] * unit[1]) * -end.b;
                 spring = unit.map(|value| value * elastic + value * damping);
@@ -54,9 +67,16 @@ impl Engine {
                     let correction = mismatch.signum() * (mismatch.abs() - TIE_ANGLE_SLACK);
                     torque_sum += correction;
                     torque = [
-                        (-f64::from(angle).sin() * f64::from(correction * 0.1) * f64::from(distance) / 10.0) as f32,
-                        (-f64::from(angle).cos() * f64::from(correction * 0.1) * f64::from(distance) / 10.0) as f32,
-                    ].map(|value| value.clamp(-100.0, 100.0));
+                        (-f64::from(angle).sin()
+                            * f64::from(correction * 0.1)
+                            * f64::from(distance)
+                            / 10.0) as f32,
+                        (-f64::from(angle).cos()
+                            * f64::from(correction * 0.1)
+                            * f64::from(distance)
+                            / 10.0) as f32,
+                    ]
+                    .map(|value| value.clamp(-100.0, 100.0));
                 }
             }
             let robot = self.slots.get_mut(actor).unwrap();
@@ -65,18 +85,26 @@ impl Engine {
                 robot.kinematics.independent_impulse[axis] += torque[axis];
             }
             let target = self.slots.get_mut(other).unwrap();
-            for axis in 0..2 { target.kinematics.independent_impulse[axis] -= torque[axis]; }
+            for (axis, torque) in torque.into_iter().enumerate() {
+                target.kinematics.independent_impulse[axis] -= torque;
+            }
             self.ties[index].native_ends = Some(ends);
             self.ties[index].sync_native_primary();
         }
         if torque_sum != 0.0 && torque_sum.abs() <= std::f32::consts::TAU {
-            self.slots.get_mut(actor).unwrap().kinematics.angular_momentum = torque_sum
-                .clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
+            self.slots
+                .get_mut(actor)
+                .unwrap()
+                .kinematics
+                .angular_momentum =
+                torque_sum.clamp(-std::f32::consts::FRAC_PI_4, std::f32::consts::FRAC_PI_4);
         }
         if !remove.is_empty() {
             remove.sort_unstable();
             remove.dedup();
-            for index in remove.into_iter().rev() { self.ties.remove(index); }
+            for index in remove.into_iter().rev() {
+                self.ties.remove(index);
+            }
             self.rebuild_native_tie_index();
         }
     }
@@ -92,13 +120,39 @@ mod tests {
         let dna = LegacyDna::parse("start stop").unwrap();
         let first = world.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
         let second = world.spawn_at(dna, [700.0, 500.0]).unwrap();
-        world.ties.push(TieState::legacy(first, second, 100.0, 1, 1));
+        world
+            .ties
+            .push(TieState::legacy(first, second, 100.0, 1, 1));
         world.native_tie_forces(first);
-        assert_eq!(world.slots.get(first).unwrap().kinematics.independent_impulse, [4.0, 0.0]);
-        assert_eq!(world.slots.get(second).unwrap().kinematics.independent_impulse, [0.0; 2]);
+        assert_eq!(
+            world
+                .slots
+                .get(first)
+                .unwrap()
+                .kinematics
+                .independent_impulse,
+            [4.0, 0.0]
+        );
+        assert_eq!(
+            world
+                .slots
+                .get(second)
+                .unwrap()
+                .kinematics
+                .independent_impulse,
+            [0.0; 2]
+        );
         world.slots.get_mut(first).unwrap().kinematics.position[0] = 400.0;
         world.native_tie_forces(second);
-        assert_eq!(world.slots.get(second).unwrap().kinematics.independent_impulse, [-9.0, 0.0]);
+        assert_eq!(
+            world
+                .slots
+                .get(second)
+                .unwrap()
+                .kinematics
+                .independent_impulse,
+            [-9.0, 0.0]
+        );
     }
 
     #[test]

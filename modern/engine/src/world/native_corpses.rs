@@ -13,7 +13,11 @@ pub(super) struct NativeCorpseTransfer {
 impl Engine {
     pub(super) fn decay_native_corpses(&mut self) {
         for id in self.slots.ids_in_slot_order() {
-            if !self.slots.get(id).is_ok_and(|robot| robot.flags.corpse && !robot.flags.hidden) {
+            if !self
+                .slots
+                .get(id)
+                .is_ok_and(|robot| robot.flags.corpse && !robot.flags.hidden)
+            {
                 continue;
             }
             let virtual_body = self.virtual_body_for(id);
@@ -23,7 +27,8 @@ impl Engine {
                 continue;
             }
             robot.counters.decay_timer = 0;
-            let unit = world_random_unit(&mut self.native_random, &mut robot.program.rng_state) as f32;
+            let unit =
+                world_random_unit(&mut self.native_random, &mut robot.program.rng_state) as f32;
             robot.set_heading(unit * 2.0 * std::f32::consts::PI);
             let body = robot.materials.body.max(0.0);
             let packet = self.config.corpse_decay.packet_size.max(0) as f32;
@@ -50,7 +55,12 @@ impl Engine {
                 }
                 // newshot consumes the unused range draw before angle scatter.
                 world_random_unit(&mut self.native_random, &mut robot.program.rng_state);
-                let scatter = world_random_integer(&mut self.native_random, &mut robot.program.rng_state, -20, 20);
+                let scatter = world_random_integer(
+                    &mut self.native_random,
+                    &mut robot.program.rng_state,
+                    -20,
+                    20,
+                );
                 angle = (f64::from(angle) + f64::from(scatter) / 200.0) as f32;
                 let slot = self.projectiles.spawn(
                     ProjectileSpawn {
@@ -269,7 +279,13 @@ impl Engine {
                 for parent in robot.identity.parents.iter_mut().flatten() {
                     *parent = remap.get(parent).copied().unwrap_or(*parent);
                 }
-                for opponent in [&mut robot.senses.focused_opponent, &mut robot.senses.console_reference].into_iter().flatten() {
+                for opponent in [
+                    &mut robot.senses.focused_opponent,
+                    &mut robot.senses.console_reference,
+                ]
+                .into_iter()
+                .flatten()
+                {
                     *opponent = remap.get(opponent).copied().unwrap_or(*opponent);
                 }
                 for material in [
@@ -324,6 +340,7 @@ impl Engine {
                 self.ties.push(tie);
             }
         }
+        self.rebuild_native_tie_index();
         Ok(members)
     }
 
@@ -788,7 +805,6 @@ mod tests {
             parent_absolute
         );
     }
-
 
     #[test]
     fn complete_archive_loads_once_and_moves_as_a_physical_corpse() {

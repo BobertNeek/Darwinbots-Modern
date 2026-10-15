@@ -10,19 +10,33 @@ pub(super) struct NativeRobotPhase {
 }
 
 impl Engine {
-    pub(super) fn native_pre_robot_pipeline(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
+    pub(super) fn native_pre_robot_pipeline(
+        &mut self,
+        trace: &mut CycleRecorder,
+    ) -> Result<(), EngineError> {
         self.native_tie_index = Some(HashMap::new());
         self.rebuild_native_tie_index();
-        self.native_buckets.synchronize([self.config.world_width, self.config.world_height], &self.slots);
+        self.native_buckets.synchronize(
+            [self.config.world_width, self.config.world_height],
+            &self.slots,
+        );
         self.pending_gpu_collision_pairs = None;
         let mut contacts = native_collisions::NativeContacts::new(&self.slots);
         let population = self.cost_population();
         let chloroplast_total = self.phase_chloroplast_total();
-        for tie in &mut self.ties { tie.information = false; }
+        for tie in &mut self.ties {
+            tie.information = false;
+        }
         for id in self.slots.ids_in_slot_order() {
-            if self.slots.get(id)?.flags.hidden { continue; }
-            self.native_phase = Some(NativeRobotPhase { actor: id, cost_population: population,
-                chloroplast_total, radius_bound: 415.0 });
+            if self.slots.get(id)?.flags.hidden {
+                continue;
+            }
+            self.native_phase = Some(NativeRobotPhase {
+                actor: id,
+                cost_population: population,
+                chloroplast_total,
+                radius_bound: 415.0,
+            });
             self.trace_robot_phase(trace, CyclePhase::Upkeep);
             self.upkeep_phase();
             self.trace_robot_phase(trace, CyclePhase::PoisonVenom);
@@ -31,12 +45,18 @@ impl Engine {
             self.manage_native_fixed_state();
             self.trace_robot_phase(trace, CyclePhase::Mass);
             let robot = self.slots.get_mut(id)?;
-            robot.materials.mass = derived_mass(robot.materials.body, robot.materials.shell,
-                robot.materials.chloroplasts).clamp(1.0, 32_000.0);
+            robot.materials.mass = derived_mass(
+                robot.materials.body,
+                robot.materials.shell,
+                robot.materials.chloroplasts,
+            )
+            .clamp(1.0, 32_000.0);
             self.trace_robot_phase(trace, CyclePhase::ObstaclesBorders);
             self.apply_environment_features(true, false);
             let relocated = self.border_collision_phase();
-            for member in relocated { contacts.relocate(member, self.slots.get(member)?.kinematics.position); }
+            for member in relocated {
+                contacts.relocate(member, self.slots.get(member)?.kinematics.position);
+            }
             contacts.relocate(id, self.slots.get(id)?.kinematics.position);
             self.trace_robot_phase(trace, CyclePhase::TieSpring);
             self.native_tie_forces(id);
@@ -61,7 +81,9 @@ impl Engine {
     }
 
     pub(super) fn rebuild_native_tie_index(&mut self) {
-        if self.native_tie_index.is_none() { return; }
+        if self.native_tie_index.is_none() {
+            return;
+        }
         let mut index: HashMap<OrganismId, Vec<usize>> = HashMap::new();
         for (ordinal, tie) in self.ties.iter().enumerate() {
             index.entry(tie.first).or_default().push(ordinal);
@@ -71,8 +93,14 @@ impl Engine {
     }
 
     pub(super) fn tie_indices_for(&self, id: OrganismId) -> Vec<usize> {
-        if let Some(index) = &self.native_tie_index { return index.get(&id).cloned().unwrap_or_default(); }
-        self.ties.iter().enumerate().filter_map(|(index, tie)| tie.contains(id).then_some(index)).collect()
+        if let Some(index) = &self.native_tie_index {
+            return index.get(&id).cloned().unwrap_or_default();
+        }
+        self.ties
+            .iter()
+            .enumerate()
+            .filter_map(|(index, tie)| tie.contains(id).then_some(index))
+            .collect()
     }
 
     pub(super) fn phase_tie_indices(&self) -> Vec<usize> {
@@ -82,7 +110,10 @@ impl Engine {
         }
     }
 
-    pub(super) fn native_mid_robot_pipeline(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
+    pub(super) fn native_mid_robot_pipeline(
+        &mut self,
+        trace: &mut CycleRecorder,
+    ) -> Result<(), EngineError> {
         let started = Instant::now();
         // GPU integration computes independent results once. Publish each result
         // at the original robot's UpdatePosition point in the slot-ordered pass.
@@ -94,16 +125,23 @@ impl Engine {
         let chloroplast_total = self.phase_chloroplast_total();
         let result = (|| {
             for (index, &id) in batch.ids.iter().enumerate() {
-                if self.slots.get(id).is_err() { continue; }
+                if self.slots.get(id).is_err() {
+                    continue;
+                }
                 self.native_phase = Some(NativeRobotPhase {
-                    actor: id, cost_population: population, chloroplast_total, radius_bound: 415.0,
+                    actor: id,
+                    cost_population: population,
+                    chloroplast_total,
+                    radius_bound: 415.0,
                 });
                 self.trace_robot_phase(trace, CyclePhase::Tie);
                 let started = Instant::now();
                 self.tie_exchange_phase(trace);
                 self.flush_native_disqualifications()?;
                 self.phase_timings.interactions += elapsed_ms(started);
-                if self.slots.get(id).is_err() { continue; }
+                if self.slots.get(id).is_err() {
+                    continue;
+                }
                 self.trace_robot_phase(trace, CyclePhase::BirthTieHeredity);
                 self.birth_tie_heredity_phase(trace);
                 self.trace_robot_phase(trace, CyclePhase::Aim);
@@ -111,7 +149,9 @@ impl Engine {
                 self.trace_robot_phase(trace, CyclePhase::Virus);
                 self.virus_commands_phase();
                 self.flush_native_disqualifications()?;
-                if self.slots.get(id).is_err() { continue; }
+                if self.slots.get(id).is_err() {
+                    continue;
+                }
                 self.trace_robot_phase(trace, CyclePhase::PositionIntegration);
                 let robot = self.slots.get_mut(id)?;
                 robot.kinematics.position = batch.batch.positions[index];
@@ -147,16 +187,25 @@ impl Engine {
     }
 
     pub(super) fn phase_chloroplast_total(&self) -> f64 {
-        if self.native_random.is_some() { return self.vegetation_runtime.native_chloroplast_population() as f64 * 16_000.0; }
+        if self.native_random.is_some() {
+            return self.vegetation_runtime.native_chloroplast_population() as f64 * 16_000.0;
+        }
         self.native_phase.as_ref().map_or_else(
-            || self.slots.iter().filter_map(|slot| slot.organism.as_ref())
-                .map(|robot| f64::from(robot.materials.chloroplasts.max(0.0))).sum(),
+            || {
+                self.slots
+                    .iter()
+                    .filter_map(|slot| slot.organism.as_ref())
+                    .map(|robot| f64::from(robot.materials.chloroplasts.max(0.0)))
+                    .sum()
+            },
             |phase| phase.chloroplast_total,
         )
     }
 
     fn flush_disqualification_for_actor(
-        &mut self, population: &mut usize, chloroplast_total: &mut f64,
+        &mut self,
+        population: &mut usize,
+        chloroplast_total: &mut f64,
     ) -> Result<bool, EngineError> {
         self.flush_native_disqualifications()?;
         let phase = self.native_phase.as_ref().unwrap();
@@ -175,19 +224,30 @@ impl Engine {
         self.tie_readback_phase();
         let mut population = self.cost_population();
         let mut chloroplast_total = self.phase_chloroplast_total();
-        let radius_bound = self.slots.iter().filter_map(|slot| slot.organism.as_ref())
-            .map(|robot| robot.materials.radius).fold(415.0_f32, f32::max);
+        let radius_bound = self
+            .slots
+            .iter()
+            .filter_map(|slot| slot.organism.as_ref())
+            .map(|robot| robot.materials.radius)
+            .fold(415.0_f32, f32::max);
         let ids = self.slots.ids_in_slot_order();
         let mut births = LifecycleQueues::default();
         let result = (|| {
             for id in ids {
-                let Ok(robot) = self.slots.get(id) else { continue };
-                if robot.flags.hidden { continue; }
+                let Ok(robot) = self.slots.get(id) else {
+                    continue;
+                };
+                if robot.flags.hidden {
+                    continue;
+                }
                 let old_chloroplasts = f64::from(robot.materials.chloroplasts);
                 let counted = !robot.flags.corpse
                     && (self.config.dna_costs.dynamic_all_robots || !robot.flags.vegetable);
                 self.native_phase = Some(NativeRobotPhase {
-                    actor: id, cost_population: population, chloroplast_total, radius_bound,
+                    actor: id,
+                    cost_population: population,
+                    chloroplast_total,
+                    radius_bound,
                 });
                 self.trace_robot_phase(trace, CyclePhase::TieReadback);
                 self.trace_robot_phase(trace, CyclePhase::Mutation);
@@ -196,17 +256,25 @@ impl Engine {
                 self.phase_timings.mutation += elapsed_ms(started);
                 self.trace_robot_phase(trace, CyclePhase::Material);
                 self.material_commands_phase();
-                if !self.flush_disqualification_for_actor(&mut population, &mut chloroplast_total)? { continue; }
+                if !self
+                    .flush_disqualification_for_actor(&mut population, &mut chloroplast_total)?
+                {
+                    continue;
+                }
                 self.trace_robot_phase(trace, CyclePhase::Waste);
                 self.waste_phase();
                 self.trace_robot_phase(trace, CyclePhase::Shot);
                 self.prepare_projectile_requests_phase();
                 self.projectile_spawn_phase();
-                if !self.flush_disqualification_for_actor(&mut population, &mut chloroplast_total)? { continue; }
+                if !self
+                    .flush_disqualification_for_actor(&mut population, &mut chloroplast_total)?
+                {
+                    continue;
+                }
                 self.trace_robot_phase(trace, CyclePhase::Chloroplast);
                 self.chloroplast_phase();
-                chloroplast_total += f64::from(self.slots.get(id)?.materials.chloroplasts)
-                    - old_chloroplasts;
+                chloroplast_total +=
+                    f64::from(self.slots.get(id)?.materials.chloroplasts) - old_chloroplasts;
                 self.native_phase.as_mut().unwrap().chloroplast_total = chloroplast_total;
                 self.trace_robot_phase(trace, CyclePhase::Body);
                 self.body_commands_phase();
@@ -229,20 +297,38 @@ impl Engine {
                 let started = Instant::now();
                 self.tie_fire_phase(trace);
                 self.phase_timings.interactions += elapsed_ms(started);
-                if !self.flush_disqualification_for_actor(&mut population, &mut chloroplast_total)? { continue; }
+                if !self
+                    .flush_disqualification_for_actor(&mut population, &mut chloroplast_total)?
+                {
+                    continue;
+                }
                 self.trace_robot_phase(trace, CyclePhase::AgeTimer);
                 self.age_timer_phase();
                 self.trace_robot_phase(trace, CyclePhase::CorpseRemoval);
                 self.queue_deaths(&mut lifecycle, trace);
                 if !lifecycle.deaths.is_empty() {
+                    let robot = self.slots.get(id)?;
+                    let converts_to_corpse = self.config.corpse_decay.enabled
+                        && !robot.flags.corpse
+                        && !robot.flags.dead
+                        && robot.materials.body >= 0.5;
+                    if !converts_to_corpse {
+                        // ManageDeath queues KillRobot; ReproduceAndKill births
+                        // first, then releases the queued death slots.
+                        self.slots.get_mut(id)?.flags.dead = true;
+                        births.deaths.append(&mut lifecycle.deaths);
+                        self.trace_robot_phase(trace, CyclePhase::TotalEnergy);
+                        continue;
+                    }
                     let before_death = f64::from(self.slots.get(id)?.materials.chloroplasts);
                     self.commit_lifecycle_queues(lifecycle, trace)?;
                     if counted && self.slots.get(id).map_or(true, |robot| robot.flags.corpse) {
                         population = population.saturating_sub(1);
                     }
-                    let current = self.slots.get(id).map_or(0.0, |robot| {
-                        f64::from(robot.materials.chloroplasts)
-                    });
+                    let current = self
+                        .slots
+                        .get(id)
+                        .map_or(0.0, |robot| f64::from(robot.materials.chloroplasts));
                     chloroplast_total += current - before_death;
                     // Removed/corpse robots no longer contribute chloroplasts.
                     chloroplast_total = chloroplast_total.max(0.0);
@@ -260,13 +346,90 @@ impl Engine {
 mod tests {
     use super::*;
 
+    #[test]
+    fn removal_reindexes_remaining_ties_before_the_next_endpoint_visit() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let ids: Vec<_> = [[200.0; 2], [300.0; 2], [600.0; 2], [700.0; 2]]
+            .into_iter()
+            .map(|position| world.spawn_at(dna.clone(), position).unwrap())
+            .collect();
+        world
+            .ties
+            .push(TieState::legacy(ids[0], ids[1], 100.0, 1, 1));
+        world
+            .ties
+            .push(TieState::legacy(ids[2], ids[3], 100.0, 1, 1));
+        world.native_tie_index = Some(HashMap::new());
+        world.rebuild_native_tie_index();
+        world.remove(ids[0]).unwrap();
+        assert_eq!(world.tie_indices_for(ids[2]), vec![0]);
+        world.native_tie_forces(ids[2]);
+        world.refresh_tie_projections();
+        assert_eq!(
+            world.slots.get(ids[2]).unwrap().ties[0].unwrap().other,
+            Some(ids[3])
+        );
+        // Exercise the independent command-deletion path too, which must
+        // rebuild its index before refreshing endpoint projections.
+        world
+            .slots
+            .get_mut(ids[2])
+            .unwrap()
+            .program
+            .memory
+            .write(467, 1);
+        world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+        assert!(world.ties.is_empty());
+        assert!(world.tie_indices_for(ids[3]).is_empty());
+    }
+
+    #[test]
+    fn queued_kill_does_not_release_capacity_until_after_reproduction_attempts() {
+        let mut world = Engine::new(EngineConfig {
+            organism_capacity: 2,
+            metabolism_cost: 1,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let parent = world
+            .spawn_at(
+                LegacyDna::parse("cond *.robage 0 = start 50 .repro store stop").unwrap(),
+                [500.0; 2],
+            )
+            .unwrap();
+        let doomed = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [800.0; 2])
+            .unwrap();
+        world.set_organism_energy(doomed, 1).unwrap();
+        let births = world.stats.births;
+        world.tick().unwrap();
+        assert!(world.slots.get(doomed).is_err());
+        assert_eq!(world.population(), 1);
+        assert_eq!(world.stats.births, births);
+        assert_eq!(world.memory_at(parent, MEM_REPRO).unwrap(), 50);
+        world.tick().unwrap();
+        assert_eq!(world.population(), 2);
+        assert_eq!(world.stats.births, births + 1);
+    }
+
     fn tie_fixed_order(source_first: bool) -> (Engine, OrganismId, OrganismId) {
-        let mut world = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
+        let mut world = Engine::new(EngineConfig {
+            metabolism_cost: 0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
         let dna = LegacyDna::parse("start stop").unwrap();
         let first = world.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
         let second = world.spawn_at(dna, [700.0, 500.0]).unwrap();
-        world.ties.push(TieState::legacy(first, second, 200.0, 1, 1));
-        let (source, target) = if source_first { (first, second) } else { (second, first) };
+        world
+            .ties
+            .push(TieState::legacy(first, second, 200.0, 1, 1));
+        let (source, target) = if source_first {
+            (first, second)
+        } else {
+            (second, first)
+        };
         let robot = world.slots.get_mut(source).unwrap();
         robot.program.memory.write(455, 1);
         robot.program.memory.write(452, MEM_FIXED);
@@ -277,7 +440,9 @@ mod tests {
     #[test]
     fn early_tie_write_fixes_later_robot_in_same_pre_pass() {
         let (mut world, _, target) = tie_fixed_order(true);
-        world.native_pre_robot_pipeline(&mut CycleRecorder::disabled(0)).unwrap();
+        world
+            .native_pre_robot_pipeline(&mut CycleRecorder::disabled(0))
+            .unwrap();
         let robot = world.slots.get(target).unwrap();
         assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
         assert!(robot_is_fixed(robot, true));
@@ -286,11 +451,15 @@ mod tests {
     #[test]
     fn late_tie_write_to_earlier_robot_waits_for_next_pre_pass() {
         let (mut world, _, target) = tie_fixed_order(false);
-        world.native_pre_robot_pipeline(&mut CycleRecorder::disabled(0)).unwrap();
+        world
+            .native_pre_robot_pipeline(&mut CycleRecorder::disabled(0))
+            .unwrap();
         let robot = world.slots.get(target).unwrap();
         assert_eq!(robot.program.memory.read(MEM_FIXED), 1);
         assert!(!robot_is_fixed(robot, true));
-        world.native_pre_robot_pipeline(&mut CycleRecorder::disabled(0)).unwrap();
+        world
+            .native_pre_robot_pipeline(&mut CycleRecorder::disabled(0))
+            .unwrap();
         assert!(robot_is_fixed(world.slots.get(target).unwrap(), true));
     }
 
@@ -298,29 +467,48 @@ mod tests {
     fn native_pre_trace_finishes_tie_data_before_next_robot_upkeep() {
         let (mut world, first, second) = tie_fixed_order(true);
         let trace = world.tick_with_trace().unwrap();
-        let visits: Vec<_> = trace.events.iter().filter_map(|event| match event {
-            crate::CycleEvent::RobotVisited { phase, id, .. } => Some((*phase, *id)), _ => None,
-        }).collect();
-        let first_data = visits.iter().position(|visit| *visit == (CyclePhase::TieData, first)).unwrap();
-        let second_upkeep = visits.iter().position(|visit| *visit == (CyclePhase::Upkeep, second)).unwrap();
+        let visits: Vec<_> = trace
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                crate::CycleEvent::RobotVisited { phase, id, .. } => Some((*phase, *id)),
+                _ => None,
+            })
+            .collect();
+        let first_data = visits
+            .iter()
+            .position(|visit| *visit == (CyclePhase::TieData, first))
+            .unwrap();
+        let second_upkeep = visits
+            .iter()
+            .position(|visit| *visit == (CyclePhase::Upkeep, second))
+            .unwrap();
         assert!(first_data < second_upkeep);
     }
 
     #[test]
     fn later_robot_observes_earlier_body_command_but_not_the_reverse() {
         let mut world = Engine::new(EngineConfig {
-            metabolism_cost: 0, ..EngineConfig::testing()
-        }).unwrap();
+            metabolism_cost: 0,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
         let dna = LegacyDna::parse("start 100 .strbody store stop").unwrap();
         let first = world.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
         let second = world.spawn_at(dna, [700.0, 500.0]).unwrap();
-        world.slots.get_mut(first).unwrap().set_heading(0.0);
-        world.slots.get_mut(second).unwrap().set_heading(std::f32::consts::PI);
+        world.set_organism_aim(first, 0).unwrap();
+        world.set_organism_aim(second, 628).unwrap();
         let first_body = world.slots.get(first).unwrap().materials.body;
         let second_body = world.slots.get(second).unwrap().materials.body;
         world.tick().unwrap();
-        assert_eq!(world.memory_at(first, MEM_REF_BODY).unwrap(), resource_readback(second_body));
-        assert_eq!(world.memory_at(second, MEM_REF_BODY).unwrap(), resource_readback(first_body + 10.0));
+        assert_eq!(
+            world.memory_at(first, MEM_REF_BODY).unwrap(),
+            resource_readback(second_body)
+        );
+        assert_eq!(
+            world.memory_at(second, MEM_REF_BODY).unwrap(),
+            resource_readback(first_body + 10.0)
+        );
         assert!(world.native_phase.is_none());
     }
 
@@ -331,12 +519,22 @@ mod tests {
         let first = world.spawn_at(dna.clone(), [200.0; 2]).unwrap();
         let second = world.spawn_at(dna, [700.0; 2]).unwrap();
         let trace = world.tick_with_trace().unwrap();
-        let visits: Vec<_> = trace.events.iter().filter_map(|event| match event {
-            crate::CycleEvent::RobotVisited { phase, id, .. } => Some((*phase, *id)),
-            _ => None,
-        }).collect();
-        let first_age = visits.iter().position(|visit| *visit == (CyclePhase::AgeTimer, first)).unwrap();
-        let second_material = visits.iter().position(|visit| *visit == (CyclePhase::Material, second)).unwrap();
+        let visits: Vec<_> = trace
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                crate::CycleEvent::RobotVisited { phase, id, .. } => Some((*phase, *id)),
+                _ => None,
+            })
+            .collect();
+        let first_age = visits
+            .iter()
+            .position(|visit| *visit == (CyclePhase::AgeTimer, first))
+            .unwrap();
+        let second_material = visits
+            .iter()
+            .position(|visit| *visit == (CyclePhase::Material, second))
+            .unwrap();
         assert!(first_age < second_material);
     }
 }

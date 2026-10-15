@@ -580,11 +580,20 @@ mod tests {
     #[test]
     fn native_private_slots_preserve_order_duplicates_empty_slots_and_next_index() {
         let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-        let id = engine.spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2]).unwrap();
-        let definitions = vec![("Zulu".to_owned(), 901), ("".to_owned(), -7),
-            ("Alpha".to_owned(), 902), ("Zulu".to_owned(), 903)];
+        let id = engine
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let definitions = vec![
+            ("Zulu".to_owned(), 901),
+            ("".to_owned(), -7),
+            ("Alpha".to_owned(), 902),
+            ("Zulu".to_owned(), 903),
+        ];
         let robot = engine.slots.get_mut(id).unwrap();
-        robot.program.dna.set_native_context(definitions.clone(), false, DnaMetadata::default());
+        robot
+            .program
+            .dna
+            .set_native_context(definitions.clone(), false, DnaMetadata::default());
         robot.program.private_variable_count = 5;
         let bytes = engine.export_native_organisms(&[id]).unwrap();
         let file = NativeRecordFile::decode(&bytes).unwrap();
@@ -597,11 +606,18 @@ mod tests {
             offset += 2;
             assert_eq!(&private[offset..offset + size], name.as_bytes());
             offset += size;
-            assert_eq!(i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()), value as i16);
+            assert_eq!(
+                i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()),
+                value as i16
+            );
             offset += 2;
         }
-        let restored: LegacyDna = serde_json::from_slice(&serde_json::to_vec(engine.dna(id).unwrap()).unwrap()).unwrap();
-        assert_eq!(restored.native_user_variables(), engine.dna(id).unwrap().native_user_variables());
+        let restored: LegacyDna =
+            serde_json::from_slice(&serde_json::to_vec(engine.dna(id).unwrap()).unwrap()).unwrap();
+        assert_eq!(
+            restored.native_user_variables(),
+            engine.dna(id).unwrap().native_user_variables()
+        );
         assert_eq!(restored.user_variable("Zulu"), Some(903));
     }
 
@@ -626,17 +642,38 @@ mod tests {
         tie.native_ends = Some(ends);
         tie.sync_native_primary();
         engine.ties.push(tie);
-        let file = NativeRecordFile { robots: engine.native_robot_records(&[first, second]).unwrap(), tail: vec![] };
+        let file = NativeRecordFile {
+            robots: engine.native_robot_records(&[first, second]).unwrap(),
+            tail: vec![],
+        };
         for (index, end) in ends.into_iter().enumerate() {
             let core = file.robots[index].bytes("ties_core").unwrap();
             let extension = file.robots[index].bytes("ties_extension").unwrap();
-            assert_eq!(f32::from_le_bytes(core[44..48].try_into().unwrap()), end.angle);
-            assert_eq!(f32::from_le_bytes(core[48..52].try_into().unwrap()), end.bend);
-            assert_eq!(i32::from_le_bytes(core[58..62].try_into().unwrap()), end.shrink);
-            assert_eq!(i16::from_le_bytes(core[64..66].try_into().unwrap()), end.last as i16);
+            assert_eq!(
+                f32::from_le_bytes(core[44..48].try_into().unwrap()),
+                end.angle
+            );
+            assert_eq!(
+                f32::from_le_bytes(core[48..52].try_into().unwrap()),
+                end.bend
+            );
+            assert_eq!(
+                i32::from_le_bytes(core[58..62].try_into().unwrap()),
+                end.shrink
+            );
+            assert_eq!(
+                i16::from_le_bytes(core[64..66].try_into().unwrap()),
+                end.last as i16
+            );
             assert_eq!(extension[13], end.kind);
-            assert_eq!(f32::from_le_bytes(extension[14..18].try_into().unwrap()), end.b);
-            assert_eq!(f32::from_le_bytes(extension[22..26].try_into().unwrap()), end.rest_length);
+            assert_eq!(
+                f32::from_le_bytes(extension[14..18].try_into().unwrap()),
+                end.b
+            );
+            assert_eq!(
+                f32::from_le_bytes(extension[22..26].try_into().unwrap()),
+                end.rest_length
+            );
         }
     }
 

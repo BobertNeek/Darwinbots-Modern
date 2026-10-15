@@ -11,7 +11,12 @@ pub(crate) struct NativeRandom {
 }
 
 impl Default for NativeRandom {
-    fn default() -> Self { Self { state: 0x50000, gaussian_spare: None } }
+    fn default() -> Self {
+        Self {
+            state: 0x50000,
+            gaussian_spare: None,
+        }
+    }
 }
 
 impl NativeRandom {
@@ -38,13 +43,21 @@ impl NativeRandom {
         self.state as f32 / 16777216.0
     }
 
-    pub(crate) fn unit(&mut self) -> f32 { self.rnd(1.0) }
-    pub(crate) fn state(&self) -> u32 { self.state }
+    pub(crate) fn unit(&mut self) -> f32 {
+        self.rnd(1.0)
+    }
+    pub(crate) fn state(&self) -> u32 {
+        self.state
+    }
 
     pub(crate) fn integer(&mut self, low: i32, high: i32) -> i32 {
         let draw = self.unit(); // Random still consumes a draw for its special zero case.
-        if high < low && high == 0 { 0 }
-        else { ((f64::from(high) - f64::from(low) + 1.0) * f64::from(draw) + f64::from(low)).floor() as i32 }
+        if high < low && high == 0 {
+            0
+        } else {
+            ((f64::from(high) - f64::from(low) + 1.0) * f64::from(draw) + f64::from(low)).floor()
+                as i32
+        }
     }
 
     pub(crate) fn rounded_integer(&mut self, low: i32, high: i32) -> i32 {
@@ -54,20 +67,27 @@ impl NativeRandom {
     }
 
     pub(crate) fn gaussian(&mut self, std_dev: f32, mean: f32) -> f32 {
-        let normal = if let Some(value) = self.gaussian_spare.take() { value }
-        else {
+        let normal = if let Some(value) = self.gaussian_spare.take() {
+            value
+        } else {
             loop {
                 let first = (2.0 * f64::from(self.unit()) - 1.0) as f32;
                 let second = (2.0 * f64::from(self.unit()) - 1.0) as f32;
                 let radius = first * first + second * second;
-                if radius >= 1.0 || radius == 0.0 { continue; }
+                if radius >= 1.0 || radius == 0.0 {
+                    continue;
+                }
                 let factor = (-2.0 * f64::from(radius).ln() / f64::from(radius)).sqrt() as f32;
                 self.gaussian_spare = Some(first * factor);
                 break second * factor;
             }
         };
         let mean = mean.clamp(-32000.0, 32000.0);
-        let scale = if (std_dev.abs() < 0.0000001 && std_dev != 0.0) || std_dev.abs() > 32000.0 { 1.0 } else { std_dev };
+        let scale = if (std_dev.abs() < 0.0000001 && std_dev != 0.0) || std_dev.abs() > 32000.0 {
+            1.0
+        } else {
+            std_dev
+        };
         (mean + normal * scale).clamp(-32000.0, 32000.0)
     }
 }
@@ -79,23 +99,46 @@ pub(crate) enum RandomStream {
 }
 
 impl RandomStream {
-    pub(crate) fn legacy(seed: u64) -> Self { Self::Legacy(seed.max(1)) }
-    pub(crate) fn state(&self) -> u64 { match self { Self::Legacy(state) => *state, Self::Native(random) => u64::from(random.state()) } }
-    pub(crate) fn native(&self) -> Option<NativeRandom> { match self { Self::Native(random) => Some(random.clone()), _ => None } }
+    pub(crate) fn legacy(seed: u64) -> Self {
+        Self::Legacy(seed.max(1))
+    }
+    pub(crate) fn state(&self) -> u64 {
+        match self {
+            Self::Legacy(state) => *state,
+            Self::Native(random) => u64::from(random.state()),
+        }
+    }
+    pub(crate) fn native(&self) -> Option<NativeRandom> {
+        match self {
+            Self::Native(random) => Some(random.clone()),
+            _ => None,
+        }
+    }
     pub(crate) fn next(&mut self) -> u64 {
         match self {
-            Self::Legacy(state) => { let mut value = *state; value ^= value << 13; value ^= value >> 7; value ^= value << 17; *state = value.max(1); value }
+            Self::Legacy(state) => {
+                let mut value = *state;
+                value ^= value << 13;
+                value ^= value >> 7;
+                value ^= value << 17;
+                *state = value.max(1);
+                value
+            }
             Self::Native(random) => (f64::from(random.unit()) * u64::MAX as f64) as u64,
         }
     }
     pub(crate) fn index(&mut self, upper_exclusive: usize) -> usize {
-        if upper_exclusive == 0 { return 0; }
+        if upper_exclusive == 0 {
+            return 0;
+        }
         match self {
             Self::Legacy(_) => (self.next() as usize) % upper_exclusive,
-            Self::Native(random) => (f64::from(random.unit()) * upper_exclusive as f64).floor() as usize,
+            Self::Native(random) => {
+                (f64::from(random.unit()) * upper_exclusive as f64).floor() as usize
+            }
         }
     }
-    pub(crate) fn from_zero(&mut self, upper: i32) -> i32 {
+    pub(crate) fn below_upper(&mut self, upper: i32) -> i32 {
         match self {
             Self::Native(random) => random.integer(0, upper),
             Self::Legacy(_) if upper >= 0 => (self.next() % (u64::from(upper as u32) + 1)) as i32,
@@ -118,7 +161,8 @@ mod tests {
         let first = random.rnd(-1.0);
         random.unit();
         assert_eq!(random.rnd(-1.0), first);
-        let mut fresh = NativeRandom::default(); fresh.randomize(1234.5);
+        let mut fresh = NativeRandom::default();
+        fresh.randomize(1234.5);
         assert_eq!(fresh.state(), 0x0a9300);
     }
 
@@ -127,7 +171,8 @@ mod tests {
         let mut random = NativeRandom::with_user_seed(1234);
         random.gaussian(0.0, 12.0);
         assert!(random.gaussian_spare.is_some());
-        let mut resumed: NativeRandom = serde_json::from_slice(&serde_json::to_vec(&random).unwrap()).unwrap();
+        let mut resumed: NativeRandom =
+            serde_json::from_slice(&serde_json::to_vec(&random).unwrap()).unwrap();
         assert_eq!(random.gaussian(2.0, 0.0), resumed.gaussian(2.0, 0.0));
         assert_eq!(random.unit(), resumed.unit());
     }

@@ -274,7 +274,10 @@ fn child_inherits_parent_program_profile_species_and_birth_identity() {
     assert_eq!(child_state.counters.generation, 8);
     assert_eq!(parent_state.counters.offspring, 1);
     assert_eq!(child_state.flags.fixed, parent_state.flags.fixed);
-    assert_eq!(engine.memory_at(child, 216).unwrap(), 1);
+    assert_eq!(
+        engine.memory_at(child, 216).unwrap(),
+        i32::from(parent_state.flags.fixed)
+    );
     assert_eq!(child_state.flags.can_see, parent_state.flags.can_see);
     assert_eq!(child_state.flags.can_move, parent_state.flags.can_move);
     assert_eq!(child_state.flags.can_mutate, parent_state.flags.can_mutate);

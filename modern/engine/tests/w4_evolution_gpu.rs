@@ -110,20 +110,24 @@ fn reproduction_scan_applies_configured_structural_mutation_distribution() {
         let child_dna = engine.dna(child.id).unwrap();
         match kind {
             StandardMutationKind::CopyError => {
-                assert_eq!(child.total_mutations, 3);
+                // A length-three copy pass visits each original coding position,
+                // truncating the final two runs at the master end.
+                assert_eq!(child.total_mutations, (3 * (parent_length - 1) - 3) as u64);
                 assert_eq!(child_dna.blocks().len(), parent_length);
             }
             StandardMutationKind::Insertion => {
-                assert_eq!(child.total_mutations, 3);
-                assert_eq!(child_dna.blocks().len(), parent_length + 3);
+                let inserted = 3 * (parent_length - 1);
+                assert_eq!(child.total_mutations, (inserted * 2) as u64);
+                assert_eq!(child_dna.blocks().len(), parent_length + inserted);
             }
             StandardMutationKind::Reversal => {
-                assert_eq!(child.total_mutations, 1);
+                assert_eq!(child.total_mutations, (parent_length - 3) as u64);
                 assert_eq!(child_dna.blocks().len(), parent_length);
             }
             StandardMutationKind::MinorDeletion | StandardMutationKind::MajorDeletion => {
-                assert_eq!(child.total_mutations, 1);
-                assert_eq!(child_dna.blocks().len(), parent_length - 3);
+                let events = (parent_length - 1).div_ceil(4);
+                assert_eq!(child.total_mutations, events as u64);
+                assert_eq!(child_dna.blocks().len(), parent_length - events * 3);
             }
             _ => unreachable!(),
         }

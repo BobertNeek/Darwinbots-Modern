@@ -99,7 +99,8 @@ public sealed class GlobalSettingsTests
     public void FindBestLegacyBooleanMigratesAndInvalidWeightsAreRejected()
     {
         Assert.Equal(100, new GlobalMainSettings { FindBestEnergyWeighting = true }.EffectiveFindBestWeight);
-        Assert.Equal(0, new GlobalMainSettings().EffectiveFindBestWeight);
+        Assert.Equal(100, new GlobalMainSettings().EffectiveFindBestWeight);
+        Assert.Equal(0, new GlobalMainSettings { FindBestEnergyWeighting = false }.EffectiveFindBestWeight);
         var invalid = new GlobalSettings { Main = new GlobalMainSettings { FindBestWeight = 201 } };
         Assert.Throws<InvalidDataException>(() => GlobalSettings.FromJson(invalid.ToJson()));
     }

@@ -1,5 +1,7 @@
 use crate::persistence::SaveFile;
-use crate::{Engine, EngineConfig, LegacyDna, LegacyOrganismFile, OrganismId, SpeciesDefinition};
+use crate::{
+    Engine, EngineConfig, EngineError, LegacyDna, LegacyOrganismFile, OrganismId, SpeciesDefinition,
+};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
 
@@ -64,8 +66,12 @@ enum EngineCommand {
     UpdateCostSettings {
         costs: crate::DnaCosts,
     },
-    UpdateAdvancedMutationSettings { settings: crate::AdvancedMutationSettings },
-    UpdateDisqualificationRules { level: u8 },
+    UpdateAdvancedMutationSettings {
+        settings: crate::AdvancedMutationSettings,
+    },
+    UpdateDisqualificationRules {
+        level: u8,
+    },
     UpdateMainRules {
         body_cutoff: i32,
         greedy_reproduction: bool,
@@ -547,8 +553,12 @@ fn db_engine_command_batch_impl(
             EngineCommand::UpdateCostSettings { costs } => engine
                 .update_cost_settings(costs)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::UpdateAdvancedMutationSettings { settings } => engine.update_advanced_mutation_settings(settings).map(|_| serde_json::Value::Null),
-            EngineCommand::UpdateDisqualificationRules { level } => engine.update_disqualification_rules(level).map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateAdvancedMutationSettings { settings } => engine
+                .update_advanced_mutation_settings(settings)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateDisqualificationRules { level } => engine
+                .update_disqualification_rules(level)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateMainRules {
                 body_cutoff,
                 greedy_reproduction,
@@ -640,31 +650,63 @@ fn db_engine_command_batch_impl(
                     definition.custom_skin = true;
                 }
                 definition.restrictions = restrictions;
-                let mode = placement.as_ref().and_then(|value| value.get("mode")).and_then(serde_json::Value::as_str).unwrap_or("random");
+                let mode = placement
+                    .as_ref()
+                    .and_then(|value| value.get("mode"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("random");
                 if !matches!(mode, "random" | "center" | "fixed") {
-                    return Err(EngineError::Invariant("species placement mode must be random, center or fixed".into()));
+                    return Err(EngineError::Invariant(
+                        "species placement mode must be random, center or fixed".into(),
+                    ));
                 }
                 if let Some(value) = placement.as_ref() {
                     definition.placement_bounds = [
-                        value.get("left").and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                        value.get("right").and_then(serde_json::Value::as_f64).unwrap_or(1.0) as f32,
-                        value.get("top").and_then(serde_json::Value::as_f64).unwrap_or(0.0) as f32,
-                        value.get("bottom").and_then(serde_json::Value::as_f64).unwrap_or(1.0) as f32,
+                        value
+                            .get("left")
+                            .and_then(serde_json::Value::as_f64)
+                            .unwrap_or(0.0) as f32,
+                        value
+                            .get("right")
+                            .and_then(serde_json::Value::as_f64)
+                            .unwrap_or(1.0) as f32,
+                        value
+                            .get("top")
+                            .and_then(serde_json::Value::as_f64)
+                            .unwrap_or(0.0) as f32,
+                        value
+                            .get("bottom")
+                            .and_then(serde_json::Value::as_f64)
+                            .unwrap_or(1.0) as f32,
                     ];
                 }
-                definition.validate_placement_bounds().map_err(EngineError::Invariant)?;
+                definition
+                    .validate_placement_bounds()
+                    .map_err(EngineError::Invariant)?;
                 let species = engine.register_species(definition);
                 let ids = if placement.is_some() && engine.has_native_random() {
-                    let positions = if mode == "random" && initial_count > 0 { vec![[0.0; 2]; initial_count] } else { positions };
-                    engine.spawn_species_batch_with_native_placement(dna, species, positions, initial_energy, mode == "random")
-                } else { engine.spawn_species_batch(dna, species, positions, initial_energy) };
+                    let positions = if mode == "random" && initial_count > 0 {
+                        vec![[0.0; 2]; initial_count]
+                    } else {
+                        positions
+                    };
+                    engine.spawn_species_batch_with_native_placement(
+                        dna,
+                        species,
+                        positions,
+                        initial_energy,
+                        mode == "random",
+                    )
+                } else {
+                    engine.spawn_species_batch(dna, species, positions, initial_energy)
+                };
                 ids.map(|ids| {
-                        serde_json::json!({
-                            "species": species.0,
-                            "count": ids.len(),
-                            "compatibility_warnings": compatibility_warnings,
-                        })
+                    serde_json::json!({
+                        "species": species.0,
+                        "count": ids.len(),
+                        "compatibility_warnings": compatibility_warnings,
                     })
+                })
             }),
             EngineCommand::MoveOrganism {
                 slot,
@@ -953,7 +995,9 @@ fn db_engine_command_batch_impl(
                     if let Some(wrapped_axes) = axis_topology {
                         engine.set_axis_topology(wrapped_axes);
                     }
-                    if let Some(visible) = shapes_visible { engine.set_shapes_visible(visible); }
+                    if let Some(visible) = shapes_visible {
+                        engine.set_shapes_visible(visible);
+                    }
                 })
                 .map(|_| serde_json::Value::Null),
         };

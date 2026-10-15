@@ -189,7 +189,11 @@ impl Engine {
             ] {
                 flag(&mut tail, &(p.clone() + name), value)?;
             }
-            let placement: Vec<u8> = species.placement_bounds.iter().flat_map(|value| value.to_le_bytes()).collect();
+            let placement: Vec<u8> = species
+                .placement_bounds
+                .iter()
+                .flat_map(|value| value.to_le_bytes())
+                .collect();
             tail.set_value(&(p.clone() + "placement"), NativeValue::Bytes(placement))?;
             let template = self.species_templates.get(i).and_then(Option::as_ref);
             number(
@@ -268,8 +272,14 @@ impl Engine {
             ("field_width", f64::from(c.world_width)),
             ("field_height", f64::from(c.world_height)),
             ("total_cycles", self.tick as f64),
-            ("mutation_max", c.advanced_mutation.oscillation.high_cycles as f64),
-            ("mutation_min", c.advanced_mutation.oscillation.low_cycles as f64),
+            (
+                "mutation_max",
+                c.advanced_mutation.oscillation.high_cycles as f64,
+            ),
+            (
+                "mutation_min",
+                c.advanced_mutation.oscillation.low_cycles as f64,
+            ),
             ("old_cost", self.dynamic_cost_state.saved_multiplier),
             ("total_born", self.stats.births as f64),
             ("max_population", c.vegetable_population_cap as f64),
@@ -338,8 +348,14 @@ impl Engine {
             ("disable_fixing", !self.robot_fixing_allowed),
             ("disable_asexual", !self.asexual_reproduction_allowed),
             ("disable_mutations", !self.mutations_enabled),
-            ("mutation_oscillate", c.advanced_mutation.oscillation.mode != crate::MutationOscillationMode::Disabled),
-            ("mutation_sine", c.advanced_mutation.oscillation.mode == crate::MutationOscillationMode::Sine),
+            (
+                "mutation_oscillate",
+                c.advanced_mutation.oscillation.mode != crate::MutationOscillationMode::Disabled,
+            ),
+            (
+                "mutation_sine",
+                c.advanced_mutation.oscillation.mode == crate::MutationOscillationMode::Sine,
+            ),
             ("toroidal", c.toroidal_world),
             ("wrap_x", topology[0]),
             ("wrap_y", topology[1]),

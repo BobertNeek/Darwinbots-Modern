@@ -7,7 +7,7 @@ impl Engine {
         self.graph_sampling = settings;
     }
 
-    fn graph_species_name(&self, robot: &RobotState) -> String {
+    pub(super) fn graph_species_name(&self, robot: &RobotState) -> String {
         if !robot.identity.species_file.is_empty() {
             robot.identity.species_file.clone()
         } else {

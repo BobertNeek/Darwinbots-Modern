@@ -15,7 +15,7 @@ public static class NativeSnapshotParser
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         var native = JsonSerializer.Deserialize<NativeSnapshot>(json, Options)
             ?? throw new InvalidDataException("The native engine returned an empty snapshot.");
-        var organisms = native.Organisms.Select(organism => new OrganismSnapshot(
+        var organisms = (native.Organisms ?? []).Select(organism => new OrganismSnapshot(
             organism.Id.Slot,
             organism.Id.Generation,
             organism.Position,

@@ -10,9 +10,14 @@ impl DynamicCostRuntimeState {
         }
         let mut multiplier = self.active_multiplier.unwrap_or(costs.global_multiplier) as f32;
         if costs.dynamic_cost_multiplier != 0.0 {
-            let amount_off = (f64::from(population) - costs.dynamic_target_population as f64) as f32;
-            let upper = (costs.dynamic_upper_range_percent * 0.01 * costs.dynamic_target_population as f64) as f32;
-            let lower = (costs.dynamic_lower_range_percent * 0.01 * costs.dynamic_target_population as f64) as f32;
+            let amount_off =
+                (f64::from(population) - costs.dynamic_target_population as f64) as f32;
+            let upper = (costs.dynamic_upper_range_percent
+                * 0.01
+                * costs.dynamic_target_population as f64) as f32;
+            let lower = (costs.dynamic_lower_range_percent
+                * 0.01
+                * costs.dynamic_target_population as f64) as f32;
             let old_population = self.population_history[9];
             if population == old_population {
                 self.countdown = (self.countdown - 1).max(-10);
@@ -20,10 +25,18 @@ impl DynamicCostRuntimeState {
                 self.countdown = 10;
             }
             if (amount_off > upper && (old_population < population || self.countdown <= 0))
-                || (amount_off < -lower && (old_population > population || self.countdown <= 0)) {
-                let correction = if amount_off > upper { amount_off - upper } else { amount_off.abs() - lower };
-                multiplier = (f64::from(multiplier) + 0.0000001 * f64::from(correction)
-                    * f64::from(amount_off.signum()) * costs.dynamic_sensitivity) as f32;
+                || (amount_off < -lower && (old_population > population || self.countdown <= 0))
+            {
+                let correction = if amount_off > upper {
+                    amount_off - upper
+                } else {
+                    amount_off.abs() - lower
+                };
+                multiplier = (f64::from(multiplier)
+                    + 0.0000001
+                        * f64::from(correction)
+                        * f64::from(amount_off.signum())
+                        * costs.dynamic_sensitivity) as f32;
                 if !costs.dynamic_allow_negative {
                     multiplier = multiplier.max(0.0);
                 }
@@ -45,7 +58,11 @@ impl DynamicCostRuntimeState {
 impl Engine {
     pub(super) fn update_dynamic_cost_state(&mut self) {
         let population = self.cost_population();
-        self.dynamic_cost_state.advance(&self.config.dna_costs, population, self.tick.saturating_add(1));
+        self.dynamic_cost_state.advance(
+            &self.config.dna_costs,
+            population,
+            self.tick.saturating_add(1),
+        );
     }
 }
 
@@ -54,20 +71,33 @@ mod tests {
     use super::*;
 
     fn costs() -> DnaCosts {
-        DnaCosts { global_multiplier: 1.0, dynamic_cost_multiplier: 1.0,
-            dynamic_target_population: 100, dynamic_upper_range_percent: 10.0,
-            dynamic_lower_range_percent: 20.0, dynamic_sensitivity: 10.0, ..Default::default() }
+        DnaCosts {
+            global_multiplier: 1.0,
+            dynamic_cost_multiplier: 1.0,
+            dynamic_target_population: 100,
+            dynamic_upper_range_percent: 10.0,
+            dynamic_lower_range_percent: 20.0,
+            dynamic_sensitivity: 10.0,
+            ..Default::default()
+        }
     }
 
     #[test]
     fn cost_ratcheting_uses_direction_deadband_and_stagnation() {
         let c = costs();
-        let mut state = DynamicCostRuntimeState { population_history: [100; 10], ..Default::default() };
+        let mut state = DynamicCostRuntimeState {
+            population_history: [100; 10],
+            ..Default::default()
+        };
         state.advance(&c, 120, 1);
         assert_eq!(state.active_multiplier, Some(f64::from(1.00001_f32)));
         state.population_history = [130; 10];
         state.advance(&c, 120, 2);
-        assert_eq!(state.active_multiplier, Some(f64::from(1.00001_f32)), "recovering population does not raise costs");
+        assert_eq!(
+            state.active_multiplier,
+            Some(f64::from(1.00001_f32)),
+            "recovering population does not raise costs"
+        );
         state.population_history = [120; 10];
         state.countdown = 1;
         state.advance(&c, 120, 3);
@@ -81,7 +111,10 @@ mod tests {
     fn lower_band_decreases_costs_and_negative_costs_are_explicit() {
         let mut c = costs();
         c.global_multiplier = 0.000001;
-        let initial = DynamicCostRuntimeState { population_history: [100; 10], ..Default::default() };
+        let initial = DynamicCostRuntimeState {
+            population_history: [100; 10],
+            ..Default::default()
+        };
         let mut state = initial.clone();
         state.advance(&c, 60, 1);
         assert_eq!(state.active_multiplier, Some(0.0));
@@ -112,8 +145,14 @@ mod tests {
 
     #[test]
     fn modern_resume_keeps_cost_history_and_corpses_do_not_enter_the_population() {
-        let mut world = Engine::new(EngineConfig { dna_costs: costs(), ..EngineConfig::testing() }).unwrap();
-        let id = world.spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2]).unwrap();
+        let mut world = Engine::new(EngineConfig {
+            dna_costs: costs(),
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
         world.become_native_corpse(id).unwrap();
         assert_eq!(world.cost_population(), 0);
         world.dynamic_cost_state.population_history = [120; 10];

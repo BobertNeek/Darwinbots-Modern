@@ -557,7 +557,7 @@ fn db3s_v3_configuration_groups_default_missing_fields_round_trip_and_reject_inv
         (
             vec!["config", "advanced_mutation", "delta2", "interval"],
             vec!["config", "advanced_mutation", "delta2", "interval"],
-            serde_json::json!(100),
+            serde_json::json!(3000),
         ),
         (
             vec!["restriction_options"],

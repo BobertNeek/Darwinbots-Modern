@@ -126,9 +126,13 @@ impl LocalModeConfig {
                 crate::EvolutionMode::Eco => LocalModeKind::EcoSurvival,
                 crate::EvolutionMode::Zerobot => LocalModeKind::Zerobot,
             };
-            if self.kind != expected { return Err("evolution settings must match the selected survival mode".into()); }
+            if self.kind != expected {
+                return Err("evolution settings must match the selected survival mode".into());
+            }
         }
-        if self.workflow != LeagueWorkflow::Direct && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest) {
+        if self.workflow != LeagueWorkflow::Direct
+            && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest)
+        {
             return Err("league schedules require League or Contest mode".to_owned());
         }
         if self.workflow == LeagueWorkflow::Seeding && self.seeding_opponent.is_none() {
@@ -142,10 +146,14 @@ impl LocalModeConfig {
         {
             return Err("maximum rounds must be greater than zero".to_owned());
         }
-        if self.maximum_cycles == 0 && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest) {
+        if self.maximum_cycles == 0
+            && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest)
+        {
             return Err("maximum cycles must be greater than zero".to_owned());
         }
-        if self.maximum_population == 0 && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest) {
+        if self.maximum_population == 0
+            && !matches!(self.kind, LocalModeKind::League | LocalModeKind::Contest)
+        {
             return Err("maximum population must be greater than zero".to_owned());
         }
         if !self.selection_population_weight.is_finite()
@@ -232,12 +240,22 @@ impl Default for LocalModeState {
 
 impl LocalModeState {
     pub(crate) fn presentation(&self) -> Self {
-        Self { config: self.config.clone(), series: self.series.clone(),
-            evolution: self.evolution.as_ref().map(crate::EvolutionState::presentation),
-            contest_runtime: self.contest_runtime.clone(), status: self.status,
-            current_round: self.current_round, cycle_in_round: self.cycle_in_round,
-            restart_count: self.restart_count, results: self.results.clone(),
-            disqualifications: self.disqualifications.clone(), adjudication: self.adjudication.clone() }
+        Self {
+            config: self.config.clone(),
+            series: self.series.clone(),
+            evolution: self
+                .evolution
+                .as_ref()
+                .map(crate::EvolutionState::presentation),
+            contest_runtime: self.contest_runtime.clone(),
+            status: self.status,
+            current_round: self.current_round,
+            cycle_in_round: self.cycle_in_round,
+            restart_count: self.restart_count,
+            results: self.results.clone(),
+            disqualifications: self.disqualifications.clone(),
+            adjudication: self.adjudication.clone(),
+        }
     }
 
     pub fn configured(config: LocalModeConfig) -> Self {

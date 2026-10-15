@@ -144,7 +144,13 @@ impl<'de> Deserialize<'de> for LegacyDna {
         normalize_master_end(&mut blocks);
         Ok(Self {
             blocks,
-            ordered_user_variables: decoded.ordered_user_variables.unwrap_or_else(|| decoded.user_variables.iter().map(|(name, value)| (name.clone(), *value)).collect()),
+            ordered_user_variables: decoded.ordered_user_variables.unwrap_or_else(|| {
+                decoded
+                    .user_variables
+                    .iter()
+                    .map(|(name, value)| (name.clone(), *value))
+                    .collect()
+            }),
             user_variables: decoded.user_variables,
             new_move: decoded.new_move,
             compatibility_warnings: warnings.into_iter().collect(),
@@ -173,8 +179,11 @@ impl LegacyDna {
         new_move: bool,
         metadata: DnaMetadata,
     ) {
-        self.user_variables = ordered_user_variables.iter().filter(|(name, _)| !name.is_empty())
-            .map(|(name, value)| (name.to_ascii_lowercase(), *value)).collect();
+        self.user_variables = ordered_user_variables
+            .iter()
+            .filter(|(name, _)| !name.is_empty())
+            .map(|(name, value)| (name.to_ascii_lowercase(), *value))
+            .collect();
         self.ordered_user_variables = ordered_user_variables;
         self.new_move = new_move;
         self.metadata = metadata;
@@ -195,7 +204,10 @@ impl LegacyDna {
         normalize_master_end(&mut blocks);
         Self {
             blocks,
-            ordered_user_variables: user_variables.iter().map(|(name, value)| (name.clone(), *value)).collect(),
+            ordered_user_variables: user_variables
+                .iter()
+                .map(|(name, value)| (name.clone(), *value))
+                .collect(),
             user_variables,
             new_move,
             compatibility_warnings: warnings.into_iter().collect(),
@@ -254,7 +266,10 @@ impl LegacyDna {
                 .is_some_and(|token| token.eq_ignore_ascii_case("def"))
             {
                 parse_definition(&tokens, line_number, &mut user_variables)?;
-                ordered_user_variables.push((tokens[1].to_owned(), user_variables[&tokens[1].to_ascii_lowercase()]));
+                ordered_user_variables.push((
+                    tokens[1].to_owned(),
+                    user_variables[&tokens[1].to_ascii_lowercase()],
+                ));
             }
             hash_prefix.push_str(logical_line);
             hash_prefix.push_str("\r\n");
@@ -321,7 +336,12 @@ impl LegacyDna {
         &self.metadata
     }
 
-    pub(crate) fn synchronize_runtime_metadata(&mut self, generation: u32, mutations: u64, tag: &str) {
+    pub(crate) fn synchronize_runtime_metadata(
+        &mut self,
+        generation: u32,
+        mutations: u64,
+        tag: &str,
+    ) {
         self.metadata.generation = generation;
         self.metadata.mutations = mutations;
         self.metadata.tag = tag.to_owned();
@@ -335,7 +355,9 @@ impl LegacyDna {
         &self.ordered_user_variables
     }
 
-    pub(crate) fn set_native_movement_mode(&mut self, new_move: bool) { self.new_move = new_move; }
+    pub(crate) fn set_native_movement_mode(&mut self, new_move: bool) {
+        self.new_move = new_move;
+    }
 
     pub(crate) fn clear_native_user_variables(&mut self) {
         self.user_variables.clear();
@@ -456,9 +478,15 @@ impl LegacyDna {
 
     /// DB2 `DNAtoInt` and `simplematch`: align insertions before counting unmatched bases.
     pub fn genetic_distance(&self, other: &Self) -> f32 {
-        if self.blocks == other.blocks { return 0.0; }
+        if self.blocks == other.blocks {
+            return 0.0;
+        }
         let (left, right) = native_crossover::match_labels(&self.blocks, &other.blocks);
-        let unmatched = left.iter().chain(&right).filter(|label| **label == 0).count();
+        let unmatched = left
+            .iter()
+            .chain(&right)
+            .filter(|label| **label == 0)
+            .count();
         unmatched as f32 / (left.len() + right.len()) as f32
     }
 
@@ -537,9 +565,14 @@ impl LegacyDna {
         compatibility_warnings.dedup();
         Self {
             blocks,
-            ordered_user_variables: self.ordered_user_variables.iter()
-                .chain(other.ordered_user_variables.iter().filter(|(name, _)| !self.user_variables.contains_key(&name.to_ascii_lowercase())))
-                .cloned().collect(),
+            ordered_user_variables: self
+                .ordered_user_variables
+                .iter()
+                .chain(other.ordered_user_variables.iter().filter(|(name, _)| {
+                    !self.user_variables.contains_key(&name.to_ascii_lowercase())
+                }))
+                .cloned()
+                .collect(),
             user_variables,
             new_move: self.new_move || other.new_move,
             compatibility_warnings,
@@ -555,8 +588,12 @@ impl LegacyDna {
         if self.new_move {
             lines.push("NewMove".to_owned());
         }
-        lines.extend(self.ordered_user_variables.iter().filter(|(name, _)| !name.is_empty())
-            .map(|(name, value)| format!("def {name} {value}")));
+        lines.extend(
+            self.ordered_user_variables
+                .iter()
+                .filter(|(name, _)| !name.is_empty())
+                .map(|(name, value)| format!("def {name} {value}")),
+        );
         lines.push(
             self.blocks
                 .iter()
