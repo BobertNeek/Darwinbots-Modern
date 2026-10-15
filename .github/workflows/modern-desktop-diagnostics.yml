@@ -1,0 +1,46 @@
+name: Desktop platform diagnostics
+
+on:
+  push:
+    paths:
+      - ".github/workflows/modern-desktop-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-platform-diagnostics-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rendered-desktop:
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-15-intel
+            rid: osx-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Diagnose rendered desktop controls
+        timeout-minutes: 25
+        env:
+          CARGO_BUILD_JOBS: 2
+          DARWINBOTS_GUI_AUDIT_DIR: ${{ github.workspace }}/artifacts/gui-audit
+        run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release --blame-hang-timeout 5m --blame-hang-dump-type none --logger "trx;LogFileName=rendered-controls.trx" --results-directory artifacts/test-results
+      - name: Preserve diagnostic receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-diagnostics-${{ matrix.rid }}
+          path: artifacts
+          if-no-files-found: ignore
