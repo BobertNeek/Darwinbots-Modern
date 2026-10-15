@@ -130,6 +130,9 @@ impl SpatialIndex {
         let radius = radius.max(0.0);
         let min = cell([position[0] - radius, position[1] - radius], self.cell_size);
         let max = cell([position[0] + radius, position[1] + radius], self.cell_size);
+        let Some((min, max)) = self.clipped_cells(min, max) else {
+            return Vec::new();
+        };
         let radius_squared = radius * radius;
         let mut neighbors = Vec::new();
         for y in min.1..=max.1 {
@@ -157,22 +160,41 @@ impl SpatialIndex {
         exclude: Option<usize>,
         max_radius: f32,
     ) -> Option<usize> {
-        let center = cell(position, self.cell_size);
-        let max_ring = (max_radius.max(0.0) / self.cell_size).ceil() as i32;
+        let (grid_min, grid_max) = self.occupied_bounds()?;
+        let cell_center = cell(position, self.cell_size);
+        let center = [i64::from(cell_center.0), i64::from(cell_center.1)];
+        let requested_ring = i64::from((max_radius.max(0.0) / self.cell_size).ceil() as i32);
+        let first_ring = (0..2)
+            .map(|axis| {
+                (grid_min[axis] - center[axis])
+                    .max(center[axis] - grid_max[axis])
+                    .max(0)
+            })
+            .max()
+            .unwrap();
+        let max_ring = requested_ring.min(
+            (0..2)
+                .map(|axis| {
+                    (grid_min[axis] - center[axis])
+                        .abs()
+                        .max((grid_max[axis] - center[axis]).abs())
+                })
+                .max()
+                .unwrap(),
+        );
         let max_distance_squared = max_radius * max_radius;
         let mut best: Option<(usize, f32)> = None;
-        for ring in 0..=max_ring {
-            for y in center.1 - ring..=center.1 + ring {
-                for x in center.0 - ring..=center.0 + ring {
-                    if ring > 0
-                        && x != center.0 - ring
-                        && x != center.0 + ring
-                        && y != center.1 - ring
-                        && y != center.1 + ring
-                    {
+        for ring in first_ring..=max_ring {
+            let left = center[0] - ring;
+            let right = center[0] + ring;
+            let top = center[1] - ring;
+            let bottom = center[1] + ring;
+            for y in top.max(grid_min[1])..=bottom.min(grid_max[1]) {
+                for x in left.max(grid_min[0])..=right.min(grid_max[0]) {
+                    if ring > 0 && x != left && x != right && y != top && y != bottom {
                         continue;
                     }
-                    let Some(entries) = self.cell_entries((x, y)) else {
+                    let Some(entries) = self.cell_entries((x as i32, y as i32)) else {
                         continue;
                     };
                     for entry in entries {
@@ -220,6 +242,9 @@ impl SpatialIndex {
         ];
         let min_cell = cell(minimum, self.cell_size);
         let max_cell = cell(maximum, self.cell_size);
+        let Some((min_cell, max_cell)) = self.clipped_cells(min_cell, max_cell) else {
+            return Vec::new();
+        };
         let mut candidates = Vec::new();
         for y in min_cell.1..=max_cell.1 {
             for x in min_cell.0..=max_cell.0 {
@@ -232,6 +257,36 @@ impl SpatialIndex {
         candidates.sort_unstable();
         candidates.dedup();
         candidates
+    }
+
+    fn occupied_bounds(&self) -> Option<([i64; 2], [i64; 2])> {
+        if self.dimensions.0 == 0 || self.dimensions.1 == 0 {
+            return None;
+        }
+        let minimum = [i64::from(self.origin.0), i64::from(self.origin.1)];
+        Some((
+            minimum,
+            [
+                minimum[0] + self.dimensions.0 as i64 - 1,
+                minimum[1] + self.dimensions.1 as i64 - 1,
+            ],
+        ))
+    }
+
+    fn clipped_cells(&self, min: (i32, i32), max: (i32, i32)) -> Option<((i32, i32), (i32, i32))> {
+        let (grid_min, grid_max) = self.occupied_bounds()?;
+        let low = [
+            i64::from(min.0).max(grid_min[0]),
+            i64::from(min.1).max(grid_min[1]),
+        ];
+        let high = [
+            i64::from(max.0).min(grid_max[0]),
+            i64::from(max.1).min(grid_max[1]),
+        ];
+        (low[0] <= high[0] && low[1] <= high[1]).then_some((
+            (low[0] as i32, low[1] as i32),
+            (high[0] as i32, high[1] as i32),
+        ))
     }
 
     fn dense_index(&self, coordinate: (i32, i32)) -> Option<usize> {
@@ -254,4 +309,103 @@ fn cell(position: [f32; 2], cell_size: f32) -> (i32, i32) {
         (position[0] / cell_size).floor() as i32,
         (position[1] / cell_size).floor() as i32,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const POINTS: [(usize, [f32; 2]); 5] = [
+        (9, [-200.0, -100.0]),
+        (7, [0.0, 0.0]),
+        (1, [99.0, 100.0]),
+        (3, [100.0, 101.0]),
+        (5, [400.0, 500.0]),
+    ];
+
+    #[test]
+    fn extreme_queries_on_empty_and_populated_grids_are_bounded() {
+        let empty = SpatialIndex::default();
+        assert!(empty.neighbors([0.0; 2], f32::MAX).is_empty());
+        assert_eq!(empty.nearest([0.0; 2], None, f32::MAX), None);
+        assert!(
+            empty
+                .segment_candidates([-f32::MAX; 2], [f32::MAX; 2], f32::MAX)
+                .is_empty()
+        );
+        let grid = SpatialIndex::build_with_slots(POINTS, 100.0);
+        assert_eq!(grid.neighbors([0.0; 2], f32::MAX), [1, 3, 5, 7, 9]);
+        assert_eq!(grid.nearest([0.0; 2], None, f32::MAX), Some(7));
+        assert_eq!(
+            grid.segment_candidates([-f32::MAX; 2], [f32::MAX; 2], f32::MAX),
+            [1, 3, 5, 7, 9]
+        );
+    }
+
+    #[test]
+    fn bounded_neighbor_and_nearest_queries_match_exhaustive_distances() {
+        let grid = SpatialIndex::build_with_slots(POINTS, 100.0);
+        for position in [[-500.0, 10.0], [0.0; 2], [100.0; 2], [1e9, -1e9]] {
+            for radius in [0.0, 50.0, 100.0, 400.0, 2000.0, f32::MAX] {
+                let mut expected: Vec<_> = POINTS
+                    .into_iter()
+                    .filter_map(|(slot, point)| {
+                        let dx = point[0] - position[0];
+                        let dy = point[1] - position[1];
+                        let distance = dx * dx + dy * dy;
+                        (distance <= radius * radius).then_some((slot, distance))
+                    })
+                    .collect();
+                expected.sort_by_key(|&(slot, _)| slot);
+                assert_eq!(
+                    grid.neighbors(position, radius),
+                    expected.iter().map(|&(slot, _)| slot).collect::<Vec<_>>()
+                );
+                for exclude in [None, Some(7)] {
+                    let nearest = expected
+                        .iter()
+                        .filter(|&&(slot, _)| Some(slot) != exclude)
+                        .min_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)))
+                        .map(|&(slot, _)| slot);
+                    assert_eq!(grid.nearest(position, exclude, radius), nearest);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn clipped_segment_queries_keep_the_same_conservative_cell_candidates() {
+        let grid = SpatialIndex::build_with_slots(POINTS, 100.0);
+        for (start, end, padding) in [
+            ([-150.0; 2], [100.0; 2], 10.0),
+            ([10000.0; 2], [20000.0; 2], 0.0),
+            ([-f32::MAX; 2], [f32::MAX; 2], f32::MAX),
+        ] {
+            let min = cell(
+                [
+                    start[0].min(end[0]) - padding,
+                    start[1].min(end[1]) - padding,
+                ],
+                100.0,
+            );
+            let max = cell(
+                [
+                    start[0].max(end[0]) + padding,
+                    start[1].max(end[1]) + padding,
+                ],
+                100.0,
+            );
+            let mut expected: Vec<_> = POINTS
+                .into_iter()
+                .filter_map(|(slot, point)| {
+                    let coordinate = cell(point, 100.0);
+                    ((min.0..=max.0).contains(&coordinate.0)
+                        && (min.1..=max.1).contains(&coordinate.1))
+                    .then_some(slot)
+                })
+                .collect();
+            expected.sort_unstable();
+            assert_eq!(grid.segment_candidates(start, end, padding), expected);
+        }
+    }
 }

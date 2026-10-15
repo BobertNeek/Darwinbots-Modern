@@ -104,6 +104,28 @@ impl NativeBuckets {
         .filter(|cell| (0..size[0]).contains(&cell[0]) && (0..size[1]).contains(&cell[1]))
         .collect()
     }
+
+    pub(super) fn order_vision_candidates(&self, actor: OrganismId, candidates: &mut Vec<usize>) {
+        let neighborhood = self.neighborhood(actor);
+        candidates.retain(|&slot| {
+            self.members
+                .get(slot)
+                .and_then(Option::as_ref)
+                .is_some_and(|member| neighborhood.contains(&member.cell))
+        });
+        // BucketsProximity visits the current bucket, then adjacent buckets,
+        // preserving each packed array's insertion order.
+        candidates.sort_by_cached_key(|&slot| {
+            let member = self.members[slot].as_ref().unwrap();
+            (
+                neighborhood
+                    .iter()
+                    .position(|cell| *cell == member.cell)
+                    .unwrap(),
+                member.order,
+            )
+        });
+    }
 }
 
 pub(super) struct NativeContacts {

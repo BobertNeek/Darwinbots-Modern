@@ -59,6 +59,21 @@ impl VisionSnapshot {
             .fold(0.0_f32, f32::max)
     }
 
+    pub(crate) fn native_target_range(&self, strength: f32) -> f32 {
+        // CompareRobots3 tests the sum, not whether every width is zero.
+        if self
+            .eyes
+            .iter()
+            .map(|eye| i64::from(eye.width))
+            .sum::<i64>()
+            == 0
+        {
+            STANDARD_SIGHT_DISTANCE * strength
+        } else {
+            self.max_range()
+        }
+    }
+
     pub fn matching_eyes(
         &self,
         observer: [f32; 2],
@@ -121,16 +136,18 @@ pub fn eye_sight_distance(width: i32) -> f32 {
 }
 
 pub fn eye_value(range: f32, edge_distance: f32) -> i32 {
+    raw_eye_value(range, edge_distance).round_ties_even() as i32
+}
+
+pub(crate) fn raw_eye_value(range: f32, edge_distance: f32) -> f32 {
     if edge_distance <= 0.0 {
-        return 32_000;
+        return 32_000.0;
     }
     if !range.is_finite() || range <= 0.0 || edge_distance > range {
-        return 0;
+        return 0.0;
     }
     let percent_distance = (edge_distance + 10.0) / range;
-    (1.0 / (percent_distance * percent_distance))
-        .round_ties_even()
-        .clamp(0.0, 32_000.0) as i32
+    (1.0 / (percent_distance * percent_distance)).clamp(0.0, 32_000.0)
 }
 
 fn eye_center_radians(heading: f32, index: usize, direction: i32) -> f32 {

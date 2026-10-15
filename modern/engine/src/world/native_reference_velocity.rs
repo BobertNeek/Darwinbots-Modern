@@ -55,6 +55,10 @@ mod tests {
             .spawn_at(LegacyDna::parse("stop").unwrap(), [1000.0, 500.0])
             .unwrap();
         world.slots.get_mut(observer).unwrap().set_heading(0.0);
+        world.native_buckets.synchronize(
+            [world.config.world_width, world.config.world_height],
+            &world.slots,
+        );
         (world, observer, target)
     }
 

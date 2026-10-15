@@ -145,6 +145,15 @@ pub(super) fn relative_velocity(
 mod tests {
     use super::*;
 
+    fn sense(world: &mut Engine) {
+        world.native_buckets.synchronize(
+            [world.config.world_width, world.config.world_height],
+            &world.slots,
+        );
+        world.spatial_index_phase();
+        world.sensing_phase().unwrap();
+    }
+
     #[test]
     fn visible_shape_publishes_surface_type_motion_and_zero_robot_materials() {
         let mut world = Engine::new(EngineConfig {
@@ -163,8 +172,7 @@ mod tests {
         let mut shape = Obstacle::new(1, [600.0, 400.0], [650.0, 600.0]);
         shape.drift = [5.51, 3.51];
         world.add_obstacle(shape).unwrap();
-        world.spatial_index_phase();
-        world.sensing_phase().unwrap();
+        sense(&mut world);
         assert!(world.memory_at(id, 505).unwrap() > 0);
         for (address, value) in [
             (685, 1),
@@ -197,11 +205,13 @@ mod tests {
         world
             .spawn_at(LegacyDna::parse("stop").unwrap(), [800.0, 500.0])
             .unwrap();
+        sense(&mut world);
+        assert!(world.memory_at(id, 505).unwrap() > 0);
+        assert_eq!(world.memory_at(id, MEM_REF_X).unwrap(), 800);
         world
             .add_obstacle(Obstacle::new(1, [600.0, 400.0], [650.0, 600.0]))
             .unwrap();
-        world.spatial_index_phase();
-        world.sensing_phase().unwrap();
+        sense(&mut world);
         assert_eq!(world.memory_at(id, 505).unwrap(), 0);
         assert_eq!(world.memory_at(id, 685).unwrap(), 0);
     }

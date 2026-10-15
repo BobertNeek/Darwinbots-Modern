@@ -29,7 +29,7 @@ use crate::{
     StandardMutationProfile, StoredGeneticMaterial, SysvarRuntime, Teleporter, TieCommands,
     TieReadbacks, TieSnapshot, TieState, TokenClass, VegetationRuntime, VegetationSettings,
     VisionReadbacks, VisionSnapshot, VisualPhenotype, VmMemory, WasteSettings,
-    apply_advanced_mutation_policies, eye_value, generated_skin, projectile_effect,
+    apply_advanced_mutation_policies, generated_skin, projectile_effect,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -87,6 +87,9 @@ use native_tie_sharing::{SharedResource, native_share_resource};
 
 #[path = "world/native_physics.rs"]
 mod native_physics;
+
+#[path = "world/native_vision.rs"]
+mod native_vision;
 
 #[path = "world/league_series.rs"]
 mod league_series;
@@ -5112,6 +5115,7 @@ impl Engine {
         transfers: &mut FileTransferTransaction,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         let cycle_started = Instant::now();
+        self.phase_timings = PhaseTimings::default();
         let next_tick = self.tick.saturating_add(1);
         let mut trace = if trace_enabled {
             CycleRecorder::enabled(next_tick)
@@ -5127,9 +5131,7 @@ impl Engine {
         if staged_restart {
             trace.phase(CyclePhase::Restart);
             self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
-            if publish {
-                self.publish_snapshot();
-            }
+            self.finish_cycle_timing(publish, cycle_started);
             return Ok(trace.finish());
         }
         trace.phase(CyclePhase::Bookkeeping);
@@ -5289,15 +5291,22 @@ impl Engine {
         self.native_tie_index = None;
         trace.phase(CyclePhase::Publication);
         self.stats.completed_cycles = self.stats.completed_cycles.saturating_add(1);
+        self.finish_cycle_timing(publish, cycle_started);
+        Ok(trace.finish())
+    }
+
+    fn finish_cycle_timing(&mut self, publish: bool, cycle_started: Instant) {
         if publish {
             let started = Instant::now();
             self.publish_snapshot();
             self.phase_timings.snapshot = elapsed_ms(started);
-        } else {
-            self.phase_timings.snapshot = 0.0;
         }
         self.phase_timings.cycle = elapsed_ms(cycle_started);
-        Ok(trace.finish())
+        if publish {
+            // Include publication itself, rather than exposing the previous
+            // cycle's totals or the unfinished timings copied by publish_snapshot.
+            self.snapshot.phase_timings = self.phase_timings.clone();
+        }
     }
 
     fn trace_robot_phase(&self, trace: &mut CycleRecorder, phase: CyclePhase) {
@@ -6701,6 +6710,7 @@ impl Engine {
         if self.native_phase.is_none() {
             self.sensing_gpu_publication_phase()?;
         }
+        let native = self.native_random.is_some();
         let max_organism_radius = self.native_phase.as_ref().map_or_else(
             || {
                 self.slots
@@ -6723,24 +6733,29 @@ impl Engine {
                     return Some((observer_slot, [0; 9], None, None));
                 }
                 let observer_position = observer.kinematics.position;
+                let sight_strength = crate::vision::native_eye_strength(
+                    observer_position[1],
+                    self.config.world_height,
+                    self.config.vegetation.pond_mode,
+                    self.config.vegetation.gradient,
+                    self.config.vegetation.daytime,
+                );
                 let vision = VisionSnapshot::from_heading(
                     &observer.program.memory,
                     observer.heading(),
-                    crate::vision::native_eye_strength(
-                        observer_position[1],
-                        self.config.world_height,
-                        self.config.vegetation.pond_mode,
-                        self.config.vegetation.gradient,
-                        self.config.vegetation.daytime,
-                    ),
+                    sight_strength,
                 );
                 let observer_radius = observer.materials.radius;
                 let mut nearest_by_eye = [None; 9];
-                let sensing_radius = vision.max_range() + observer_radius + max_organism_radius;
+                let target_range = if native {
+                    vision.native_target_range(sight_strength)
+                } else {
+                    vision.max_range()
+                };
+                let sensing_radius = target_range + observer_radius + max_organism_radius;
                 // Native borders relocate robots; vision uses their actual positions.
-                let target_slots = self
-                    .sensing_spatial
-                    .neighbors(observer_position, sensing_radius);
+                let target_slots =
+                    self.vision_target_slots(observer_slot, observer_position, sensing_radius);
                 for target_slot in target_slots {
                     if target_slot == observer_slot || self.slots[target_slot].organism.is_none() {
                         continue;
@@ -6769,6 +6784,9 @@ impl Engine {
                     let center_distance = target_distance.sqrt();
                     let edge_distance =
                         (center_distance - observer_radius - target_radius).max(0.0);
+                    if edge_distance > target_range {
+                        continue;
+                    }
                     let matching = vision.matching_eyes(
                         observer_position,
                         [
@@ -6782,11 +6800,21 @@ impl Engine {
                         if !matches {
                             continue;
                         }
-                        let strength = eye_value(vision.eyes[eye_index].range, edge_distance);
-                        if strength > 0
-                            && nearest_by_eye[eye_index]
-                                .is_none_or(|(_, best_strength)| strength > best_strength)
-                        {
+                        let raw = crate::vision::raw_eye_value(
+                            vision.eyes[eye_index].range,
+                            edge_distance,
+                        );
+                        let strength = raw.round_ties_even() as i32;
+                        let previous = nearest_by_eye[eye_index].map_or(0, |(_, value)| value);
+                        // VB compares Single eyevalue with Integer memory before
+                        // assigning (and rounding) it. A later weaker target can
+                        // replace a rounded-down reference with the same integer.
+                        let closer = if native {
+                            raw > previous as f32
+                        } else {
+                            strength > previous
+                        };
+                        if closer {
                             nearest_by_eye[eye_index] = Some((target_slot, strength));
                         }
                     }
@@ -12430,6 +12458,45 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cycle_timings_reset_and_publish_the_completed_cycle_for_single_and_batched_ticks() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        engine
+            .spawn_at(
+                LegacyDna::parse("start 1 .up store stop").unwrap(),
+                [500.0; 2],
+            )
+            .unwrap();
+        for ticks in [1, 3] {
+            engine.phase_timings.intent = 1e12;
+            engine.phase_timings.spatial = 1e12;
+            engine.phase_timings.interactions = 1e12;
+            if ticks == 1 {
+                engine.tick().unwrap();
+            } else {
+                engine.tick_many(ticks).unwrap();
+            }
+            let timing = engine.last_phase_timings();
+            assert!(timing.cycle > 0.0);
+            for phase in [
+                timing.dna,
+                timing.intent,
+                timing.spatial,
+                timing.sensing,
+                timing.interactions,
+                timing.physics,
+                timing.projectiles,
+                timing.vegetation,
+                timing.lifecycle,
+                timing.mutation,
+                timing.snapshot,
+            ] {
+                assert!(phase.is_finite() && (0.0..=timing.cycle).contains(&phase));
+            }
+            assert_eq!(&engine.snapshot().phase_timings, timing);
+        }
+    }
 
     #[test]
     fn native_velocity_readbacks_are_signed_and_round_single_halves_to_even() {
