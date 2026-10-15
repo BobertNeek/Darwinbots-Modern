@@ -397,15 +397,15 @@ impl Engine {
         remap: &HashMap<OrganismId, i16>,
     ) -> Result<(), EngineError> {
         let ties = self
-            .ties
-            .iter()
+            .tie_indices_for(id)
+            .into_iter()
+            .map(|ordinal| &self.ties[ordinal])
             .filter(|tie| {
-                tie.contains(id)
-                    && remap.contains_key(&if tie.first == id {
-                        tie.second
-                    } else {
-                        tie.first
-                    })
+                remap.contains_key(&if tie.first == id {
+                    tie.second
+                } else {
+                    tie.first
+                })
             })
             .collect::<Vec<_>>();
         if ties.len() > 10 {
@@ -458,15 +458,30 @@ impl Engine {
                 .flatten()
                 .find(|endpoint| endpoint.other == Some(other));
             let reciprocal = self
-                .ties
-                .iter()
-                .filter(|t| {
-                    t.contains(other)
-                        && remap.contains_key(&if t.first == other { t.second } else { t.first })
+                .tie_indices_for(other)
+                .into_iter()
+                .filter(|&ordinal| {
+                    let t = &self.ties[ordinal];
+                    remap.contains_key(&if t.first == other { t.second } else { t.first })
                 })
-                .position(|t| std::ptr::eq(t, tie))
+                .position(|ordinal| std::ptr::eq(&self.ties[ordinal], tie))
                 .unwrap()
                 + 1;
+            let all_other_ties_exported = self.tie_indices_for(other).into_iter().all(|ordinal| {
+                let t = &self.ties[ordinal];
+                remap.contains_key(&if t.first == other { t.second } else { t.first })
+            });
+            let reciprocal = if self.native_random.is_some() && all_other_ties_exported {
+                end.saved_reciprocal.unwrap_or_else(|| {
+                    if end.length.is_none() {
+                        i32::from(i16::from_le_bytes(c[4..6].try_into().unwrap()))
+                    } else {
+                        reciprocal as i32
+                    }
+                })
+            } else {
+                reciprocal as i32
+            };
             for (offset, value) in [
                 (
                     0,
@@ -477,7 +492,7 @@ impl Engine {
                     },
                 ),
                 (2, i32::from(remap[&other])),
-                (4, reciprocal as i32),
+                (4, reciprocal),
                 (14, if end.angle_fixed { -1 } else { 0 }),
                 (26, end.last),
                 (30, if forward { 0 } else { -1 }),
@@ -503,11 +518,18 @@ impl Engine {
             }
             let angle = end.angle;
             let bend = end.bend;
-            let length = endpoint.map_or(tie.rest_length, |endpoint| endpoint.current_length);
+            let length = if self.native_random.is_some() {
+                end.length
+                    .unwrap_or_else(|| i32::from_le_bytes(c[16..20].try_into().unwrap()))
+            } else {
+                endpoint
+                    .map_or(tie.rest_length, |endpoint| endpoint.current_length)
+                    .round_ties_even() as i32
+            };
             let shrink = end.shrink;
             c[6..10].copy_from_slice(&angle.to_le_bytes());
             c[10..14].copy_from_slice(&bend.to_le_bytes());
-            c[16..20].copy_from_slice(&(length.round_ties_even() as i32).to_le_bytes());
+            c[16..20].copy_from_slice(&length.to_le_bytes());
             c[20..24].copy_from_slice(&shrink.to_le_bytes());
             if let Some(endpoint) = endpoint {
                 c[32..34].copy_from_slice(
@@ -684,6 +706,7 @@ mod tests {
         ))
         .unwrap();
         let ids = engine.slots.ids_in_slot_order();
+        let origin = engine.native_origin.as_ref().unwrap();
         assert!(engine.export_native_organisms(&ids).is_err());
         let file = NativeRecordFile {
             robots: engine.native_robot_records(&ids).unwrap(),
@@ -702,16 +725,14 @@ mod tests {
                     continue;
                 }
                 assert!((1..=196).contains(&pnt));
-                let reciprocal = i16::from_le_bytes(c[4..6].try_into().unwrap()) as usize;
+                let source = origin.robots[i].bytes("ties_core").unwrap();
+                // VB6 DeleteTie shifts arrays but leaves some ptt values stale.
+                // Preserve that saved metadata while remapping the actual pnt.
+                assert_eq!(&c[4..6], &source[index * 38 + 4..index * 38 + 6]);
                 let other = file.robots[pnt as usize - 1].bytes("ties_core").unwrap();
-                assert_eq!(
-                    i16::from_le_bytes(
-                        other[reciprocal * 38 + 2..reciprocal * 38 + 4]
-                            .try_into()
-                            .unwrap()
-                    ),
-                    i as i16 + 1
-                );
+                assert!(other.chunks_exact(38).skip(1).any(|end| {
+                    i16::from_le_bytes(end[2..4].try_into().unwrap()) == i as i16 + 1
+                }));
                 if i16::from_le_bytes(c[30..32].try_into().unwrap()) == 0 {
                     forward += 1;
                 } else {
@@ -722,6 +743,101 @@ mod tests {
         assert!(!engine.ties.is_empty());
         assert_eq!(forward, engine.ties.len());
         assert_eq!(backward, forward);
+    }
+
+    #[test]
+    fn native_tie_commands_survive_console_edits_and_snapshot_publication() {
+        let mut engine = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let id = engine.ties[0].first;
+        for (address, value) in [(450, -712), (451, 39), (480, -111), (484, 222)] {
+            engine.set_organism_memory(id, address, value).unwrap();
+        }
+        engine.publish_snapshot();
+        for (address, value) in [(450, -712), (451, 39), (480, -111), (484, 222)] {
+            assert_eq!(engine.memory_at(id, address).unwrap(), value);
+        }
+        let resumed = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
+        for (address, value) in [(450, -712), (451, 39), (480, -111), (484, 222)] {
+            assert_eq!(resumed.memory_at(id, address).unwrap(), value);
+        }
+    }
+
+    #[test]
+    fn native_saved_tie_length_is_independent_of_current_geometry() {
+        let mut engine = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let tie = &engine.ties[0];
+        let id = tie.first;
+        let other = tie.second;
+        let saved_length = tie.native_end_states()[0].length.unwrap();
+        let other_position = engine.slots.get(other).unwrap().kinematics.position;
+        engine.slots.get_mut(id).unwrap().kinematics.position =
+            [other_position[0] + 123.0, other_position[1]];
+        engine.refresh_tie_projections();
+        let members = engine.slots.ids_in_slot_order();
+        let record_index = members.iter().position(|&member| member == id).unwrap();
+        let tie_index = engine
+            .tie_indices_for(id)
+            .iter()
+            .position(|&i| i == 0)
+            .unwrap()
+            + 1;
+        let records = engine.native_robot_records(&members).unwrap();
+        let core = records[record_index].bytes("ties_core").unwrap();
+        let offset = tie_index * 38 + 16;
+        assert_eq!(
+            i32::from_le_bytes(core[offset..offset + 4].try_into().unwrap()),
+            saved_length
+        );
+        let resumed = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
+        assert_eq!(
+            resumed.ties[0].native_end_states()[0].length,
+            Some(saved_length)
+        );
+    }
+
+    #[test]
+    fn old_modern_tie_metadata_recovers_saved_native_lengths() {
+        let mut origin = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        for record in &mut origin.robots {
+            let mut core = record.bytes("ties_core").unwrap().to_vec();
+            for tie in core.chunks_exact_mut(38).skip(1) {
+                if i16::from_le_bytes(tie[2..4].try_into().unwrap()) != 0 {
+                    tie[16..20].copy_from_slice(&177_i32.to_le_bytes());
+                }
+            }
+            record
+                .set_value("ties_core", NativeValue::Bytes(core))
+                .unwrap();
+        }
+        let mut engine = Engine::from_native_sim(&origin.encode().unwrap()).unwrap();
+        for tie in &mut engine.ties {
+            let mut old = serde_json::to_value(tie.native_end_states()).unwrap();
+            for end in old.as_array_mut().unwrap() {
+                end.as_object_mut().unwrap().remove("length");
+                end.as_object_mut().unwrap().remove("saved_reciprocal");
+            }
+            tie.native_ends = Some(serde_json::from_value(old).unwrap());
+        }
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
+        for record in restored
+            .native_robot_records(&restored.slots.ids_in_slot_order())
+            .unwrap()
+        {
+            for tie in record.bytes("ties_core").unwrap().chunks_exact(38).skip(1) {
+                if i16::from_le_bytes(tie[2..4].try_into().unwrap()) != 0 {
+                    assert_eq!(i32::from_le_bytes(tie[16..20].try_into().unwrap()), 177);
+                }
+            }
+        }
     }
 
     #[test]

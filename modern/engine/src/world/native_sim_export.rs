@@ -253,7 +253,7 @@ impl Engine {
             }
             tail.set_value(&(p.clone() + "skin"), NativeValue::Bytes(skin))?;
         }
-        self.write_native_shots(&mut tail, &remap)?;
+        self.write_native_shots(&mut tail, &remap, origin.as_ref())?;
         self.write_native_objects(&mut tail)?;
         NativeRecordFile {
             robots: self.native_robot_records(&members)?,
@@ -447,10 +447,29 @@ impl Engine {
         &self,
         t: &mut NativeSimulationTail,
         remap: &HashMap<OrganismId, usize>,
+        origin: Option<&NativeSimulationTail>,
     ) -> Result<(), EngineError> {
         let s = &self.projectiles;
         for i in 0..s.owners.len() {
             let p = format!("shot[{i}].");
+            let parent = if let Some(&slot) = remap.get(&s.owners[i]) {
+                slot as f64
+            } else {
+                let was_zero = s.owners[i] == OrganismId::new(u32::MAX, 0)
+                    && origin
+                        .and_then(|tail| tail.integer(&(p.clone() + "parent")).ok())
+                        .is_none_or(|parent| parent == 0);
+                if was_zero {
+                    0.0
+                } else {
+                    // LoadSimulation allocates beyond the packed live count.
+                    // VB6 indexes rob(parent) directly; a negative ID is unsafe.
+                    f64::from(
+                        i16::try_from(remap.len() + 1)
+                            .map_err(|_| invalid("no unused slot for orphan shot parent"))?,
+                    )
+                }
+            };
             for (name, value) in [
                 ("x", f64::from(s.positions[i][0])),
                 ("y", f64::from(s.positions[i][1])),
@@ -458,7 +477,7 @@ impl Engine {
                 ("old_y", f64::from(s.previous_positions[i][1])),
                 ("vx", f64::from(s.velocities[i][0])),
                 ("vy", f64::from(s.velocities[i][1])),
-                ("parent", *remap.get(&s.owners[i]).unwrap_or(&0) as f64),
+                ("parent", parent),
                 ("age", f64::from(s.ages[i])),
                 ("energy", f64::from(s.energies[i])),
                 ("range", f64::from(s.ranges[i])),
@@ -621,6 +640,51 @@ mod tests {
         assert_eq!(imported.config.physics, engine.config.physics);
         imported.tick().unwrap();
         assert_eq!(imported.tick, 283);
+    }
+
+    #[test]
+    fn native_orphan_parent_export_uses_safe_unused_slot_and_preserves_zero() {
+        let engine = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let mut origin = engine.native_origin.clone().unwrap();
+        let mut original_tail = NativeSimulationTail::decode(&origin.tail).unwrap();
+        let index = engine
+            .projectiles
+            .owners
+            .iter()
+            .enumerate()
+            .find_map(|(i, owner)| {
+                (engine.projectiles.alive[i]
+                    && owner.slot() == u32::MAX
+                    && original_tail.integer(&format!("shot[{i}].parent")).unwrap() != 0)
+                    .then_some(i)
+            })
+            .expect("genuine save includes an active orphan shot");
+        let encoded = engine.export_native_sim().unwrap();
+        let exported = NativeRecordFile::decode(&encoded).unwrap();
+        let tail = NativeSimulationTail::decode(&exported.tail).unwrap();
+        let parent = tail.integer(&format!("shot[{index}].parent")).unwrap() as usize;
+        let count = exported.robots.len();
+        assert_eq!(parent, count + 1);
+        assert!(parent <= count + (500 - count % 500));
+        let loaded = Engine::from_native_sim(&encoded).unwrap();
+        assert_eq!(
+            loaded.projectiles.owners[index],
+            engine.projectiles.owners[index]
+        );
+
+        number(&mut original_tail, &format!("shot[{index}].parent"), 0.0).unwrap();
+        origin.tail = original_tail.encode().unwrap();
+        let zero_parent = Engine::from_native_sim(&origin.encode().unwrap()).unwrap();
+        let zero_export =
+            NativeRecordFile::decode(&zero_parent.export_native_sim().unwrap()).unwrap();
+        let zero_tail = NativeSimulationTail::decode(&zero_export.tail).unwrap();
+        assert_eq!(
+            zero_tail.integer(&format!("shot[{index}].parent")).unwrap(),
+            0
+        );
     }
 
     #[test]

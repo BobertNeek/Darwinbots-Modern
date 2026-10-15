@@ -124,7 +124,7 @@ impl Engine {
         for address in 501..=509 {
             robot.program.memory.write(address, 0);
         }
-        robot.publish_occurrence_readbacks();
+        // VB6 erases the reference census but retains the corpse ownvar memory.
         Ok(())
     }
 
@@ -431,7 +431,7 @@ mod tests {
             reseed: false,
             ..Default::default()
         });
-        let dna = LegacyDna::parse("start 7 999 store stop").unwrap();
+        let dna = LegacyDna::parse("start 0 .up store 7 999 store stop").unwrap();
         let dead = world
             .spawn_species_at(dna.clone(), plant, [400.0, 500.0])
             .unwrap();
@@ -440,6 +440,7 @@ mod tests {
             .unwrap();
         let absolute = world.slots.get(dead).unwrap().identity.absolute_id;
         world.set_organism_energy(dead, 14).unwrap();
+        world.set_organism_memory(dead, 731, 712).unwrap();
         world.ties.push(TieState::legacy(dead, living, 200.0, 1, 1));
         world.tick().unwrap();
         let corpse = world.slots.get(dead).unwrap();
@@ -453,6 +454,8 @@ mod tests {
         assert_eq!(corpse.identity.absolute_id, absolute);
         assert_eq!(corpse.identity.species_file, "Corpse");
         assert_eq!(corpse.program.memory.read(999), 7);
+        assert_eq!(corpse.program.memory.read(721), 1);
+        assert_eq!(corpse.program.memory.read(731), 712);
         assert_eq!(corpse.program.dna.blocks(), dna.blocks());
         assert!(
             corpse

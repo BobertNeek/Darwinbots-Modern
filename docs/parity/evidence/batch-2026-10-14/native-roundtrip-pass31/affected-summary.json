@@ -1,0 +1,9 @@
+{
+  "source_manifest": "source.json",
+  "scope": "Affected engine library and ten integration targets; not the complete workspace, physical GPU or original-runtime trajectory proof",
+  "passed": 321,
+  "failed": 0,
+  "ignored": 0,
+  "filtered": 7,
+  "summaries": 11
+}

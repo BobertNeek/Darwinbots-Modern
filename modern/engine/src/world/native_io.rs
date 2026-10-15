@@ -628,17 +628,24 @@ impl Engine {
                 if word(c, 30) != 0 {
                     continue;
                 }
-                let reciprocal = word(c, 4) as usize;
-                let second_port = if reciprocal <= 10 {
-                    word(
-                        source_records[&(word(c, 2) as i16)].bytes("ties_core")?,
-                        reciprocal * 38,
-                    )
+                let second_record = source_records[&(word(c, 2) as i16)];
+                let second_core = second_record.bytes("ties_core")?;
+                let second_extension = second_record.bytes("ties_extension")?;
+                // DeleteTie compacts a local array without repairing every saved
+                // ptt. Read the other robot's actual endpoint independently.
+                let first_old_slot = r.word("old_slot")?;
+                let reciprocal = (1..=10)
+                    .find(|&index| word(second_core, index * 38 + 2) as i16 == first_old_slot)
+                    .unwrap_or(word(c, 4) as usize);
+                let second_port = if (1..=10).contains(&reciprocal) {
+                    word(second_core, reciprocal * 38)
                 } else {
                     0
                 };
                 let read_end = |core: &[u8], extension: &[u8]| crate::tie::NativeTieEnd {
                     rest_length: single(extension, 9),
+                    length: Some(long(core, 16)),
+                    saved_reciprocal: Some(word(core, 4)),
                     last: word(core, 26),
                     b: single(extension, 1),
                     k: single(extension, 5),
@@ -650,9 +657,6 @@ impl Engine {
                     angle_fixed: word(core, 14) != 0,
                     angle_initialized: true,
                 };
-                let second_record = source_records[&(word(c, 2) as i16)];
-                let second_core = second_record.bytes("ties_core")?;
-                let second_extension = second_record.bytes("ties_extension")?;
                 let first_end = read_end(c, e);
                 let second_end = if (1..=10).contains(&reciprocal) {
                     read_end(

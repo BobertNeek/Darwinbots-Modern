@@ -327,3 +327,23 @@ pub(crate) fn write_suite(directory: &Path) -> Result<Value, Box<dyn Error>> {
     )?;
     Ok(report)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_cycle_original_round_trip_preserves_all_compared_live_fields() {
+        let original = include_bytes!("../../engine/tests/fixtures/db24832-original-user.sim");
+        let mut engine = Engine::from_native_sim(original).unwrap();
+        for _ in 0..3 {
+            engine
+                .update_recording_settings(*engine.recording_settings())
+                .unwrap();
+        }
+        let report = compare(original, &engine.export_native_sim().unwrap(), 0.0, 0.0, 30).unwrap();
+        assert!(report["compared_fields"].as_u64().unwrap() > 390_000);
+        assert_eq!(report["difference_count"], 0, "{report}");
+        assert_eq!(report["passed"], true);
+    }
+}

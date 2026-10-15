@@ -89,18 +89,52 @@ impl Engine {
             index.entry(tie.first).or_default().push(ordinal);
             index.entry(tie.second).or_default().push(ordinal);
         }
+        for (&id, indices) in &mut index {
+            self.order_native_tie_indices(id, indices);
+        }
         self.native_tie_index = Some(index);
+    }
+
+    fn order_native_tie_indices(&self, id: OrganismId, indices: &mut [usize]) {
+        if self.native_random.is_none() {
+            return;
+        }
+        let Ok(robot) = self.slots.get(id) else {
+            return;
+        };
+        // VB6 visits each robot's own compact tie array. Global pair order
+        // cannot represent both endpoints' independently saved ordering.
+        indices.sort_by_key(|&ordinal| {
+            let tie = &self.ties[ordinal];
+            let (other, port) = if tie.first == id {
+                (tie.second, tie.first_port)
+            } else {
+                (tie.first, tie.second_port)
+            };
+            robot
+                .ties
+                .iter()
+                .position(|endpoint| {
+                    endpoint.is_some_and(|endpoint| {
+                        endpoint.other == Some(other) && endpoint.port == port
+                    })
+                })
+                .unwrap_or(MAX_TIES_PER_ROBOT)
+        });
     }
 
     pub(super) fn tie_indices_for(&self, id: OrganismId) -> Vec<usize> {
         if let Some(index) = &self.native_tie_index {
             return index.get(&id).cloned().unwrap_or_default();
         }
-        self.ties
+        let mut indices = self
+            .ties
             .iter()
             .enumerate()
             .filter_map(|(index, tie)| tie.contains(id).then_some(index))
-            .collect()
+            .collect::<Vec<_>>();
+        self.order_native_tie_indices(id, &mut indices);
+        indices
     }
 
     pub(super) fn phase_tie_indices(&self) -> Vec<usize> {
@@ -345,6 +379,113 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn disable_ties_gates_dna_requests_while_preserving_existing_bonds() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = world.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+        let second = world.spawn_at(dna.clone(), [700.0, 500.0]).unwrap();
+        let third = world.spawn_at(dna, [900.0, 500.0]).unwrap();
+        world
+            .ties
+            .push(TieState::legacy(first, second, 200.0, 1, 1));
+        world.refresh_tie_projections();
+        world.set_ties_enabled(false);
+        assert_eq!(world.ties.len(), 1);
+        world
+            .slots
+            .get_mut(third)
+            .unwrap()
+            .program
+            .memory
+            .write(330, 7);
+        world.tie_fire_phase(&mut CycleRecorder::disabled(0));
+        assert_eq!(world.ties.len(), 1);
+        assert_eq!(world.memory_at(third, 330).unwrap(), 0);
+        world.set_ties_enabled(true);
+        world
+            .slots
+            .get_mut(third)
+            .unwrap()
+            .program
+            .memory
+            .write(330, 7);
+        world.tie_fire_phase(&mut CycleRecorder::disabled(0));
+        assert_eq!(world.ties.len(), 2);
+    }
+
+    #[test]
+    fn imported_tie_order_survives_index_rebuild_and_compacting_a_deletion() {
+        let mut world = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let id = world
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .find(|&id| world.slots.get(id).unwrap().ties.iter().flatten().count() >= 2)
+            .expect("original fixture has a multi-tie robot");
+        let origin = world.native_origin.as_ref().unwrap();
+        let source = &origin.robots[world.slots.get(id).unwrap().native_record_index.unwrap()];
+        let ids = world.slots.ids_in_slot_order();
+        let expected = source
+            .bytes("ties_core")
+            .unwrap()
+            .chunks_exact(38)
+            .skip(1)
+            .filter_map(|core| {
+                let target = i16::from_le_bytes(core[2..4].try_into().unwrap());
+                let index = origin
+                    .robots
+                    .iter()
+                    .position(|r| r.word("old_slot").unwrap() == target)?;
+                Some((
+                    ids[index],
+                    i32::from(i16::from_le_bytes(core[0..2].try_into().unwrap())),
+                ))
+            })
+            .collect::<Vec<_>>();
+        let visit_order = |world: &Engine| {
+            world
+                .tie_indices_for(id)
+                .into_iter()
+                .map(|i| {
+                    let tie = &world.ties[i];
+                    if tie.first == id {
+                        (tie.second, tie.first_port)
+                    } else {
+                        (tie.first, tie.second_port)
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(visit_order(&world), expected);
+        world.native_tie_index = Some(HashMap::new());
+        world.rebuild_native_tie_index();
+        assert_eq!(visit_order(&world), expected);
+        let removed = world.tie_indices_for(id)[0];
+        world.ties.remove(removed);
+        world.rebuild_native_tie_index();
+        world.refresh_tie_projections();
+        assert_eq!(visit_order(&world), expected[1..]);
+        let ids = world.slots.ids_in_slot_order();
+        let new_target = ids
+            .into_iter()
+            .find(|candidate| {
+                *candidate != id && !expected.iter().any(|(other, _)| other == candidate)
+            })
+            .unwrap();
+        world
+            .ties
+            .push(TieState::legacy(id, new_target, 100.0, 9, 9));
+        world.rebuild_native_tie_index();
+        world.refresh_tie_projections();
+        let mut appended = expected[1..].to_vec();
+        appended.push((new_target, 9));
+        assert_eq!(visit_order(&world), appended);
+    }
 
     #[test]
     fn removal_reindexes_remaining_ties_before_the_next_endpoint_visit() {

@@ -14,6 +14,12 @@ pub(crate) const TIE_ANGLE_SLACK: f32 = 5.0_f32.to_radians();
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct NativeTieEnd {
     pub rest_length: f32,
+    /// Saved VB6 Tie.ln; geometry readbacks are independent of this legacy field.
+    #[serde(default)]
+    pub length: Option<i32>,
+    /// Preserve the saved reciprocal slot, including stale VB6 DeleteTie indices.
+    #[serde(default)]
+    pub saved_reciprocal: Option<i32>,
     pub last: i32,
     pub b: f32,
     pub k: f32,
@@ -124,6 +130,8 @@ impl TieState {
         self.native_ends.unwrap_or_else(|| {
             let first = NativeTieEnd {
                 rest_length: self.rest_length,
+                length: Some(self.rest_length.round_ties_even() as i32),
+                saved_reciprocal: None,
                 last: self.last,
                 b: self.b,
                 k: self.k,

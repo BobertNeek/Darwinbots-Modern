@@ -1,0 +1,114 @@
+{
+  "utc": "2026-10-15T13:53:09.678Z",
+  "source": {
+    "parent_head": "f65a8713c16a49aecfbc36b2ebee5ce2dbca3320",
+    "state": "uncommitted native-roundtrip pass27 source with safe positive orphan slot",
+    "files": [
+      {
+        "file": ".github/workflows/modern-desktop-diagnostics.yml",
+        "sha256": "8A015ADC60FAB8E1A90AB469FAB9890259C7E93367B610116E14D861311AFA91"
+      },
+      {
+        "file": "modern/cli/src/native_comparison.rs",
+        "sha256": "D4EB9FE1F9A07801EDD53355F5AD81A8C3C61E49EE61DFC738ED69C3DA1CB6FF"
+      },
+      {
+        "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "sha256": "D86D1BEC40961A6094E1A8FFEE6A72CB96E2BE7A59BFAB14E34388FB469775B4"
+      },
+      {
+        "file": "modern/engine/src/tie.rs",
+        "sha256": "AC1BAE293E391DA6039B6E7C14AB04D198D8B7D697A3BCBDCEAD87403A81D9AA"
+      },
+      {
+        "file": "modern/engine/src/world.rs",
+        "sha256": "255CB50C285D9C3BDC6CF64E4B3AEC9DA2B237B66CF0A9C2993C10418FF7DF4B"
+      },
+      {
+        "file": "modern/engine/src/world/native_corpses.rs",
+        "sha256": "1FF603D3A2BCE54ACDF4D48C35CB6D18C7DADB4130A1616EB9312EB00074AF56"
+      },
+      {
+        "file": "modern/engine/src/world/native_export.rs",
+        "sha256": "BA6A38FA5C42ABB2EFFF9E10C5C6C9C1B843D82738C09C85A34E9CE52403CED0"
+      },
+      {
+        "file": "modern/engine/src/world/native_io.rs",
+        "sha256": "4C00B660ED4FDCEC12EEC76C44B166D89350C99E5B3172D0EB94CAD8E93E66C7"
+      },
+      {
+        "file": "modern/engine/src/world/native_pipeline.rs",
+        "sha256": "6F94C6BA83268C80014B3BA10A69D675B08520699F1F72AF010E1BEC4C3F823C"
+      },
+      {
+        "file": "modern/engine/src/world/native_sim_export.rs",
+        "sha256": "F974AC1387BF400ADBE7E14F5791EE330E8FAF0791032D73B83750F684C34B9B"
+      },
+      {
+        "file": "modern/engine/tests/occurrence_census_248.rs",
+        "sha256": "F40B431B8B5172076977FAA985E6298EBB7E70D297CC563A00617B820667C97B"
+      },
+      {
+        "file": "modern/engine/tests/reproduction_heredity_248.rs",
+        "sha256": "C65620E18C9A5C1247EF0FA3ACB8556FC94569E074B800EBF40E2694C2DEA75F"
+      }
+    ],
+    "created_utc": "2026-10-15T13:41:30.906Z",
+    "scope": "Native interchange, DisableTies, explicit topology edits and ownvar lifecycle including native myties; complete current repair qualification"
+  },
+  "scope": "Current Windows CPU package qualification; affected CPU continuation, hosted, physical GPU and original-runtime trajectory checks remain separate",
+  "package": "artifacts/win-x64-native-roundtrip-pass31",
+  "native_dll_identity": {
+    "package": "2BBA6C5D0845D50594A75AB9B2656327A17F024F7AEDAB8390C5DB0BAE8CCAE3",
+    "desktop": "2BBA6C5D0845D50594A75AB9B2656327A17F024F7AEDAB8390C5DB0BAE8CCAE3"
+  },
+  "core": {
+    "total": 159,
+    "executed": 159,
+    "passed": 159,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "desktop": {
+    "total": 119,
+    "executed": 119,
+    "passed": 119,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "smoke": {
+    "status": "passed",
+    "backend": "CPU",
+    "ticks": 13,
+    "population": 1,
+    "movement": true,
+    "save_resume": true,
+    "bundled_bots": 48
+  },
+  "assets": {
+    "bots": 48,
+    "asset_mismatches": []
+  }
+}

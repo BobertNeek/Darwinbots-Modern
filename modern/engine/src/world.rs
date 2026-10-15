@@ -2924,7 +2924,8 @@ impl Engine {
 
     pub fn set_ties_enabled(&mut self, enabled: bool) {
         self.ties_enabled = enabled;
-        if !enabled {
+        // VB6 DisableTies gates DNA requests; existing bonds keep working.
+        if !enabled && self.native_random.is_none() {
             self.ties.clear();
             self.rebuild_native_tie_index();
         }
@@ -4434,6 +4435,9 @@ impl Engine {
         self.ties
             .retain(|tie| !ids.contains(&tie.first) && !ids.contains(&tie.second));
         self.rebuild_native_tie_index();
+        // An explicit topology edit publishes new tie counts immediately; a
+        // subsequent view refresh must not be responsible for changing VM state.
+        self.refresh_tie_projections();
         self.publish_snapshot();
         Ok(())
     }
@@ -6359,6 +6363,11 @@ impl Engine {
     }
 
     fn refresh_occurrence_census_readbacks(&mut self) {
+        // Native makeoccurrlist publishes ownvars only at explicit DNA-change
+        // events. Console/DNA writes and loaded VM cells survive ordinary cycles.
+        if self.native_random.is_some() {
+            return;
+        }
         for slot in self.slots.iter_mut() {
             if let Some(robot) = slot.organism.as_mut() {
                 robot.publish_occurrence_readbacks();
@@ -7088,7 +7097,8 @@ impl Engine {
     }
 
     fn create_birth_tie(&mut self, parent: OrganismId, child: OrganismId) -> bool {
-        if !self.ties_enabled {
+        // Reproduction creates its birth tie even when DNA tie creation is disabled.
+        if !self.ties_enabled && self.native_random.is_none() {
             return false;
         }
         let parent_tie_count = self.ties.iter().filter(|tie| tie.contains(parent)).count();
@@ -7814,13 +7824,27 @@ impl Engine {
         read_references: bool,
         newly_created: &HashMap<OrganismId, i32>,
     ) {
+        self.refresh_tie_projections_impl(read_references, newly_created, true);
+    }
+
+    fn refresh_tie_projections_impl(
+        &mut self,
+        read_references: bool,
+        newly_created: &HashMap<OrganismId, i32>,
+        publish_readbacks: bool,
+    ) {
         let temporary_index = self.native_tie_index.is_none();
         if temporary_index {
             self.native_tie_index = Some(HashMap::new());
             self.rebuild_native_tie_index();
         }
         for slot in self.phase_slot_range() {
-            self.refresh_one_tie_projection(slot, read_references, newly_created);
+            self.refresh_one_tie_projection(
+                slot,
+                read_references,
+                newly_created,
+                publish_readbacks,
+            );
         }
         if temporary_index {
             self.native_tie_index = None;
@@ -7832,6 +7856,7 @@ impl Engine {
         slot: usize,
         read_references: bool,
         newly_created: &HashMap<OrganismId, i32>,
+        publish_readbacks: bool,
     ) {
         if self.slots[slot]
             .organism
@@ -8051,9 +8076,13 @@ impl Engine {
             ),
             (MEM_MULTI as u16, i32::from(multibot)),
             (MEM_NUMBER_OF_TIES as u16, count),
-            (MEM_MY_TIES as u16, count),
             (MEM_TIE_PRESENT as u16, latest_port.unwrap_or(0)),
         ];
+        // Native .myties is the DNA occurrence census at cell729, not the
+        // current bond count (cell466). TieData must leave it untouched.
+        if self.native_random.is_none() {
+            values.push((MEM_MY_TIES as u16, count));
+        }
         for index in 0..4 {
             values.push((480 + index as u16, tie_angles[index]));
             values.push((484 + index as u16, tie_lengths[index]));
@@ -8070,6 +8099,9 @@ impl Engine {
         }
         let organism = self.slots[slot].organism.as_mut().unwrap();
         organism.ties = endpoints;
+        if !publish_readbacks {
+            return;
+        }
         organism.counters.multibot = multibot;
         runtime.publish(
             PhaseReadbacks::Tie(TieReadbacks { values }),
@@ -11164,7 +11196,13 @@ impl Engine {
             if self.native_random.is_some() {
                 self.native_random = mutator.native_random();
             }
-            organism.refresh_occurrence_census();
+            // Robots.bas rebuilds the child census after reproductive mutation.
+            // NeoMutations does not rebuild the living parent census each cycle.
+            if self.native_random.is_none()
+                || matches!(context, MutationContext::Reproduction { .. })
+            {
+                organism.refresh_occurrence_census();
+            }
             if report.changes > 0 {
                 if self.native_random.is_some()
                     && settings.epigenetic.reset_enabled
@@ -11488,7 +11526,13 @@ impl Engine {
     }
 
     fn publish_snapshot(&mut self) {
-        self.refresh_tie_projections();
+        if self.native_random.is_some() {
+            // Rendering and editor refreshes must not execute VB6 TieData or
+            // consume/replace the saved duplex tie commands before a cycle.
+            self.refresh_tie_projections_impl(false, &HashMap::new(), false);
+        } else {
+            self.refresh_tie_projections();
+        }
         self.refresh_occurrence_census_readbacks();
         let organisms: Vec<_> = self
             .slots
@@ -11651,7 +11695,9 @@ impl Engine {
                     organism.program.genetic_graph =
                         Some(crate::GeneticGraphState::for_dna(&organism.program.dna));
                 }
-                organism.publish_occurrence_readbacks();
+                if engine.native_random.is_none() {
+                    organism.publish_occurrence_readbacks();
+                }
                 if organism.phenotype.lineage_id == 0
                     && let Some(species) = engine.species.get(organism.identity.species.0 as usize)
                 {
@@ -12462,6 +12508,54 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_lifelong_mutation_retains_own_memory_and_cached_census() {
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("1 2 3 4").unwrap(), [500.0; 2])
+            .unwrap();
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.program.mutation_profile.point.mean = 1.0;
+        robot.program.mutation_profile.point.std_dev = 0.0;
+        robot.senses.occurrence_counts[0] = 17;
+        robot.senses.vision_reference_occurrences[0] = 17;
+        robot.program.memory.write(721, -123);
+        let settings = world.config.advanced_mutation.clone();
+        let policy = crate::MutationPolicyReport {
+            effective_multiplier: 1.0,
+            effective_one_in: 1.0,
+            delta2_applied: false,
+            epigenetic_action: crate::EpigeneticPolicyAction::None,
+            save_as_temporary_gene: false,
+        };
+        for _ in 0..8 {
+            world.apply_mutation_to_organism(
+                id,
+                &settings,
+                1.0,
+                MutationContext::Lifelong,
+                Some((StandardMutationKind::Point, 1, policy)),
+            );
+        }
+        let robot = world.slots.get(id).unwrap();
+        assert!(robot.program.mutation_metadata.total_mutations > 0);
+        assert_eq!(robot.program.memory.read(721), -123);
+        assert_eq!(robot.senses.occurrence_counts[0], 17);
+        assert_eq!(robot.senses.vision_reference_occurrences[0], 17);
+
+        world.apply_mutation_to_organism(
+            id,
+            &settings,
+            1.0,
+            MutationContext::Reproduction { forced: false },
+            Some((StandardMutationKind::Point, 1, policy)),
+        );
+        let robot = world.slots.get(id).unwrap();
+        let census = robot.program.dna.occurrence_census_248();
+        assert_eq!(robot.program.memory.read(721), i32::from(census[0]));
+        assert_eq!(robot.senses.occurrence_counts[0], i32::from(census[0]));
+    }
 
     #[test]
     fn cycle_timings_reset_and_publish_the_completed_cycle_for_single_and_batched_ticks() {

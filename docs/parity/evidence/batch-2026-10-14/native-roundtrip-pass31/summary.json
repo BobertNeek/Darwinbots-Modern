@@ -1,0 +1,113 @@
+{
+  "source_manifest": "source.json",
+  "scope": "Scoped native interchange, tie policy and ownvar repair; remaining native tie/sensing source work is not implemented",
+  "status": "scoped_passed_long_deferred",
+  "rust_affected": {
+    "passed": 321,
+    "failed": 0
+  },
+  "cli": {
+    "passed": 3,
+    "failed": 0
+  },
+  "core": {
+    "passed": 159,
+    "failed": 0
+  },
+  "desktop": {
+    "passed": 119,
+    "failed": 0,
+    "packaged_native_dll": true
+  },
+  "strict_clippy": "passed",
+  "zero_cycle": {
+    "compared_fields": 393316,
+    "differences": 0,
+    "absolute_tolerance": 0,
+    "relative_tolerance": 0
+  },
+  "long_continuation": "deferred until remaining native code is written; partial log is unqualified",
+  "physical_gpu": "not run",
+  "original_runtime_trajectory": "not run",
+  "results": [
+    {
+      "step": "strict-clippy",
+      "exit_code": 0,
+      "seconds": 62.7296831,
+      "log": "strict-clippy.log"
+    },
+    {
+      "step": "cli-build",
+      "exit_code": 0,
+      "seconds": 227.7635308,
+      "log": "cli-build.log"
+    },
+    {
+      "step": "original-zero-cycle-replay",
+      "exit_code": 0,
+      "seconds": 0.8529257,
+      "log": "original-zero-cycle-replay.log"
+    },
+    {
+      "step": "original-zero-cycle-compare",
+      "exit_code": 0,
+      "seconds": 1.2170806,
+      "log": "original-zero-cycle-compare.log"
+    },
+    {
+      "step": "desktop-core",
+      "exit_code": 0,
+      "seconds": 4.8034771,
+      "log": "desktop-core.log"
+    },
+    {
+      "step": "desktop-test-build",
+      "exit_code": 0,
+      "seconds": 201.0864352,
+      "log": "desktop-test-build.log"
+    },
+    {
+      "step": "windows-publish",
+      "exit_code": 0,
+      "seconds": 5.0940087,
+      "log": "windows-publish.log"
+    },
+    {
+      "step": "package-smoke",
+      "exit_code": 0,
+      "log": "package-smoke.json"
+    },
+    {
+      "step": "packaged-native-desktop",
+      "exit_code": 0,
+      "seconds": 82.2713689,
+      "log": "packaged-native-desktop.log"
+    },
+    {
+      "step": "cpu-affected",
+      "exit_code": 0,
+      "seconds": 320.4765377,
+      "log": "cpu-affected.log"
+    },
+    {
+      "step": "cli-unit",
+      "exit_code": 0,
+      "seconds": 211.7609367,
+      "log": "cli-unit.log"
+    }
+  ],
+  "transcripts": [
+    {
+      "file": "cli-unit.log",
+      "normalization": "extra blank lines at EOF removed; all result text retained",
+      "raw_sha256": "ba953d1c0436b81e035681eab67a42c6419ff0e7f4ae43864cb681eff2b4529f",
+      "raw_local_copy": "output/native-roundtrip-pass31-raw-transcripts/cli-unit.log"
+    },
+    {
+      "file": "cpu-affected.log",
+      "normalization": "extra blank lines at EOF removed; all result text retained",
+      "raw_sha256": "d5e4321fa2e48523e5b48bf1f6954d2dd7c5354f815f2e4c9ac7c620daa9fa33",
+      "raw_local_copy": "output/native-roundtrip-pass31-raw-transcripts/cpu-affected.log"
+    }
+  ]
+}

@@ -105,3 +105,62 @@ fn current_dna_census_is_visible_to_the_next_dna_evaluation_after_spawn_and_repl
     );
     assert_eq!(engine.memory_at(id, 721).unwrap(), 3);
 }
+
+#[test]
+fn native_own_memory_survives_editor_refresh_and_both_save_formats() {
+    let mut engine =
+        Engine::from_native_sim(include_bytes!("fixtures/db24832-original-user.sim")).unwrap();
+    let id = engine.snapshot().organisms[0].id;
+    for address in 721..=731 {
+        engine
+            .set_organism_memory(id, address, -i32::from(address))
+            .unwrap();
+    }
+    engine.set_ties_enabled(true);
+    for address in 721..=731 {
+        assert_eq!(engine.memory_at(id, address).unwrap(), -address);
+    }
+    let saved = darwinbots_engine::SaveFile::encode(&engine).unwrap();
+    let resumed = darwinbots_engine::SaveFile::decode(&saved).unwrap();
+    assert_eq!(
+        saved,
+        darwinbots_engine::SaveFile::encode(&resumed).unwrap()
+    );
+    let native = Engine::from_native_sim(&resumed.export_native_sim().unwrap()).unwrap();
+    let imported_id = native.snapshot().organisms[0].id;
+    for address in 721..=731 {
+        assert_eq!(resumed.memory_at(id, address).unwrap(), -address);
+        assert_eq!(native.memory_at(imported_id, address).unwrap(), -address);
+    }
+}
+
+#[test]
+fn native_own_memory_survives_cycles_until_explicit_dna_replacement() {
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let id = engine
+        .spawn_at(
+            LegacyDna::parse("start *721 50 store stop").unwrap(),
+            [500.0; 2],
+        )
+        .unwrap();
+    engine.update_mutation_settings(false, 1.0, &[]).unwrap();
+    engine.set_organism_memory(id, 721, 123).unwrap();
+    engine.set_organism_memory(id, 729, 987).unwrap();
+    engine.tick_many(3).unwrap();
+    assert_eq!(engine.memory_at(id, 50).unwrap(), 123);
+    assert_eq!(engine.memory_at(id, 729).unwrap(), 987);
+    assert_eq!(engine.memory_at(id, 721).unwrap(), 123);
+    engine
+        .replace_dna(
+            id,
+            LegacyDna::parse("start 0 .up store *721 50 store stop").unwrap(),
+        )
+        .unwrap();
+    assert_eq!(engine.memory_at(id, 721).unwrap(), 1);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(id, 50).unwrap(), 1);
+}

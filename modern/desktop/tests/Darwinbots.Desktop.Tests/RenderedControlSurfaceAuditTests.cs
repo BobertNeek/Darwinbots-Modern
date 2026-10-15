@@ -1242,6 +1242,10 @@ public sealed class RenderedControlSurfaceAuditTests
         Dispatcher.UIThread.RunJobs();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Dispatcher.UIThread.RunJobs();
+        // BringIntoView can queue another scroll/layout update. Synchronize
+        // the rendered hit-test tree after those jobs, before choosing a point.
+        window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Assert.True(window.IsVisible, $"{window.Title} was not visible while targeting {control.Name ?? control.GetType().Name}.");
     }
 

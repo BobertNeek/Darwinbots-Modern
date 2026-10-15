@@ -375,16 +375,21 @@ fn birth_tie_transfers_one_staged_cell_per_early_age_without_overwrite() {
 }
 
 #[test]
-fn delayed_heredity_requires_the_surviving_birth_tie() {
+fn disabling_ties_preserves_the_existing_birth_tie_and_delayed_heredity() {
     let (mut engine, parent, _) =
         configured_parent(LegacyDna::parse("start\nstop").unwrap(), 25, 7);
     engine.tick().unwrap();
     let child = child_of(&engine, parent);
     engine.set_ties_enabled(false);
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    let saved = SaveFile::encode(&engine).unwrap();
+    engine = SaveFile::decode(&saved).unwrap();
+    assert!(!engine.snapshot().ties_enabled);
+    assert_eq!(engine.snapshot().ties.len(), 1);
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.memory_at(child, 976).unwrap(), 0);
+    assert_eq!(engine.memory_at(child, 976).unwrap(), 2_976);
     assert_eq!(
         engine
             .robot_state(child)
@@ -895,7 +900,7 @@ fn post_birth_mass_and_previous_energy_match_source_bookkeeping() {
 }
 
 #[test]
-fn ties_disabled_allows_birth_but_gates_staged_transfer() {
+fn ties_disabled_still_allows_birth_ties_and_staged_transfer() {
     let (mut engine, parent, _) =
         configured_parent(LegacyDna::parse("start\nstop").unwrap(), 25, 7);
     engine.set_ties_enabled(false);
@@ -903,9 +908,10 @@ fn ties_disabled_allows_birth_but_gates_staged_transfer() {
     engine.tick().unwrap();
 
     let child = child_of(&engine, parent);
-    assert!(engine.snapshot().ties.is_empty());
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    assert_eq!(engine.snapshot().ties[0].last, 100);
     engine.tick().unwrap();
-    assert_eq!(engine.memory_at(child, 976).unwrap(), 0);
+    assert_eq!(engine.memory_at(child, 976).unwrap(), 2_976);
 }
 
 #[test]
