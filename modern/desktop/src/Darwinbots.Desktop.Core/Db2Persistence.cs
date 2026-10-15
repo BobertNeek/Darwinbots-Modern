@@ -121,7 +121,7 @@ public static class Db2GenomeRecordFile
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(dnaByOrganism);
-        var builder = new StringBuilder().AppendLine(Header);
+        var builder = new StringBuilder().Append(Header).Append("\r\n");
         foreach (var organism in snapshot.Organisms)
         {
             var key = new OrganismKey(organism.Slot, organism.Generation);
@@ -153,7 +153,7 @@ public static class Db2GenomeRecordFile
         ArgumentNullException.ThrowIfNull(corpses);
         ArgumentNullException.ThrowIfNull(species);
         var builder = new StringBuilder();
-        if (includeHeader) builder.AppendLine(Header);
+        if (includeHeader) builder.Append(Header).Append("\r\n");
         foreach (var corpse in corpses)
         {
             if (string.IsNullOrWhiteSpace(corpse.Dna)) continue;
@@ -320,7 +320,7 @@ public static class Db2GenomeRecordFile
 
     private static void Append(StringBuilder builder, Db2GenomeRecord record)
     {
-        builder.AppendLine(string.Join(",", new[]
+        builder.Append(string.Join(",", new[]
         {
             record.Id.ToString(CultureInfo.InvariantCulture),
             record.ParentId.ToString(CultureInfo.InvariantCulture),
@@ -336,7 +336,7 @@ public static class Db2GenomeRecordFile
             record.Fitness.ToString(CultureInfo.InvariantCulture),
             record.Energy.ToString(CultureInfo.InvariantCulture),
             record.Chloroplasts.ToString(CultureInfo.InvariantCulture),
-        }));
+        })).Append("\r\n");
         builder.Append(record.Dna.Replace("\r\n", "\n", StringComparison.Ordinal));
         if (!record.Dna.EndsWith('\n')) builder.Append("\r\n");
     }

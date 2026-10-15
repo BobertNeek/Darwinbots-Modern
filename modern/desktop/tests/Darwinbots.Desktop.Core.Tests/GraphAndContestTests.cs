@@ -339,7 +339,7 @@ public sealed class GraphAndContestTests
         Assert.Equal([16d, 24d], graph.Samples.Select(sample => sample.Value));
 
         var export = suite.ExportCsv();
-        Assert.StartsWith($"series_id,metric,title,expression,tick,value{Environment.NewLine}", export, StringComparison.Ordinal);
+        Assert.StartsWith("series_id,metric,title,expression,tick,value\r\n", export, StringComparison.Ordinal);
         Assert.Contains("CustomizableGraph1", export, StringComparison.Ordinal);
         Assert.Contains("Energy / 5", export, StringComparison.Ordinal);
         Assert.Contains("total_energy / 5", export, StringComparison.Ordinal);
@@ -453,6 +453,11 @@ public sealed class GraphAndContestTests
         var files = LegacyGraphJoin.Serialize([graph], "population");
 
         Assert.Equal(2, files.Count);
+        Assert.All(files, file =>
+        {
+            Assert.StartsWith("population\r\n", file, StringComparison.Ordinal);
+            Assert.DoesNotContain('\n', file.Replace("\r\n", string.Empty, StringComparison.Ordinal));
+        });
         var segments = LegacyGraphJoin.Parse(files);
         Assert.Equal("population", segments[0].Title);
         Assert.Equal(999, segments[0].Robots[0].Values.Count);

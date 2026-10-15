@@ -83,9 +83,10 @@ public static class LegacyGraphJoin
         for (var segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++)
         {
             var builder = new StringBuilder()
-                .AppendLine(title.Trim())
-                .AppendLine(string.Join(',', series.Select(graph =>
-                    $"{unchecked((int)graph.Color)}:{LegacyName(graph.Title)}")));
+                .Append(title.Trim()).Append("\r\n")
+                .Append(string.Join(',', series.Select(graph =>
+                    $"{unchecked((int)graph.Color)}:{LegacyName(graph.Title)}")))
+                .Append("\r\n");
 
             for (var row = 0; row < SamplesPerSegment; row++)
             {
@@ -99,7 +100,7 @@ public static class LegacyGraphJoin
                         : samples[Math.Min(sampleIndex, samples.Count - 1)].Value;
                     builder.Append(value.ToString("R", CultureInfo.InvariantCulture));
                 }
-                builder.AppendLine();
+                builder.Append("\r\n");
             }
 
             files.Add(builder.ToString());
