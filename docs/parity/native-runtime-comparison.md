@@ -5,10 +5,12 @@ The CLI prepares controlled native `.sim` files, advances the Rust engine from t
 Run these commands only after the implementation batch is finished and the CLI is built. Use a new evidence directory for each qualified Git commit. Every output uses exclusive creation so existing inputs, user saves and oracle receipts remain intact.
 
 ```powershell
-darwinbots native-suite --directory D:\Darwinbots-Oracle\qualified-commit
-darwinbots native-replay --simulation D:\Darwinbots-Oracle\qualified-commit\movement-start.sim --until-cycle 10 --output-sim D:\Darwinbots-Oracle\qualified-commit\movement-rust-cycle10.sim
-darwinbots native-compare --left D:\Darwinbots-Oracle\qualified-commit\movement-original-cycle10.sim --right D:\Darwinbots-Oracle\qualified-commit\movement-rust-cycle10.sim
+.\target\release\darwinbots-cli.exe native-suite --directory D:\Darwinbots-Oracle\qualified-commit
+.\target\release\darwinbots-cli.exe native-replay --simulation D:\Darwinbots-Oracle\qualified-commit\movement-start.sim --until-cycle 10 --output-sim D:\Darwinbots-Oracle\qualified-commit\movement-rust-cycle10.sim
+.\target\release\darwinbots-cli.exe native-compare --left D:\Darwinbots-Oracle\qualified-commit\movement-original-cycle10.sim --right D:\Darwinbots-Oracle\qualified-commit\movement-rust-cycle10.sim
 ```
+
+For an interchange check before advancing the world, use `native-replay --ticks 0` and compare its output against the original input with `--absolute-tolerance 0 --relative-tolerance 0`. This checks the compared saved fields at the existing cycle.
 
 For each case, load the start file in the isolated original `Darwin2.48.32.exe`, advance to the exact requested cycle, pause, and save under a new `*-original-cycleN.sim` filename. Retain executable SHA256, Git commit, start-file SHA256, saved-file SHA256 and observed cycle in the receipt. The comparison checks the saved cycle too; saving at a nearby cycle cannot pass. Use the original single-cycle control for the first checkpoint. Start each later comparison from the same initial file. Do not overwrite the user's `test.sim` or alter registry/OCX setup.
 

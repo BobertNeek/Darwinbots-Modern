@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-15T14:06:04.832Z",
+  "source_checkpoint": "416fdf930690dcd1cb90b8e1b65e42791f0f273d",
+  "report_sha256": "bfcd5408e361a7c403604987fe9be4eec186c74f4eb051d87ed7755124817168",
+  "scope": "Fresh report rendering and controls; unfinished code and original/runtime gates remain explicit",
+  "repair_rows": 25,
+  "three_cells_each": true,
+  "filters": {
+    "simulation": 5,
+    "persistence": 5,
+    "manual_insertion": 1,
+    "no_results": 0,
+    "reset": 25
+  },
+  "mobile": {
+    "viewport": 390,
+    "document": 390
+  },
+  "browser_errors": 0,
+  "browser_warnings": 0,
+  "relative_links": 57,
+  "missing_relative_links": [],
+  "screenshots": [
+    "report-pass31-desktop.png",
+    "report-pass31-mobile.png"
+  ],
+  "browser": "Headless Chrome with GPU and GPU compositing disabled"
+}
