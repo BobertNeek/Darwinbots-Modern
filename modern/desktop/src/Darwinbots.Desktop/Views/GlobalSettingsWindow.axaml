@@ -65,6 +65,10 @@
             <ComboBox Grid.Column="1" x:Name="DisqualificationRule"><ComboBoxItem Content="NONE"/><ComboBoxItem Content="F2"/><ComboBoxItem Content="F3"/></ComboBox>
           </Grid>
           <TextBlock Text="Contests remove an animal's whole species and retain the reason. Outside contests, the kill-disqualified species option controls which bots are killed." TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="*,200"><TextBlock Text="F1 recognition fudging" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" x:Name="RecognitionFudging"><ComboBoxItem Content="NONE"/><ComboBoxItem Content="EYES ONLY"/><ComboBoxItem Content="ALL RECOGNITION METHODS"/></ComboBox>
+          </Grid>
+          <TextBlock Text="Changes the information rivals can use to recognize animal species in contests and evolution modes." TextWrapping="Wrap"/>
           <TextBlock Classes="muted" Text="Choose match formats, entrants and rounds in the offline modes panel." TextWrapping="Wrap"/>
           <CheckBox x:Name="LeagueOfflineOwned" Content="Offline league and contest controls" IsChecked="True" IsEnabled="False"/>
         </StackPanel></Border></StackPanel></ScrollViewer>

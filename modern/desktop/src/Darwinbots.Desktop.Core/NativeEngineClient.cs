@@ -498,6 +498,11 @@ public sealed partial class NativeEngineClient : IEngineClient
             .GetProperty("results")[0];
         return value.ValueKind == JsonValueKind.Null ? null : ReadKey(value);
     }
+    public void UpdateRecognitionFudging(int mode)
+    {
+        if (mode is < 0 or > 2) throw new ArgumentOutOfRangeException(nameof(mode));
+        ExecuteBatch(new { version = 1, commands = new[] { new { type = "update_recognition_fudging", mode } } }, "update recognition fudging");
+    }
     public void UpdateDisqualificationRules(int level)
     {
         if (level is < 0 or > 2) throw new ArgumentOutOfRangeException(nameof(level));

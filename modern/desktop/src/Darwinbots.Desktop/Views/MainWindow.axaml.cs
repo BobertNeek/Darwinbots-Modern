@@ -58,7 +58,6 @@ public sealed partial class MainWindow : Window
     private readonly MainWindowViewModel _viewModel = new();
     private SimulationSession? _session;
     private readonly DispatcherTimer _runTimer;
-    private readonly DispatcherTimer _autosaveTimer;
     private readonly IReadOnlyList<string> _startupArguments;
     private readonly IReadOnlyList<StartupDnaImport> _startupBots;
     private readonly WorldSetupOptions _setup;
@@ -68,6 +67,8 @@ public sealed partial class MainWindow : Window
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
+    private readonly SemaphoreSlim _advanceGate = new(1, 1);
+    private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
     private WorldInsertionController? _insertion;
     private bool _turbo;
@@ -89,7 +90,8 @@ public sealed partial class MainWindow : Window
     private EnvironmentUpdate _liveEnvironment;
     private readonly LegacyCommandRouter _legacyCommands;
     private readonly OfflineDiagnosticRecovery _diagnostics = new();
-    private bool _safemodeBackup = true;
+    private bool _safemodeBackup;
+    private ulong? _lastAutomaticSaveTick;
     private bool _hasBackgroundImage;
     private bool _deadRecordingEnabled;
     private bool _excludeRepopulatingDead;
@@ -124,6 +126,7 @@ public sealed partial class MainWindow : Window
         _startupArguments = arguments.ToArray();
         _setup = setup;
         _globalSettings = setup.GlobalSettings;
+        _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
             setup.WorldWidth,
             setup.WorldHeight,
@@ -171,6 +174,8 @@ public sealed partial class MainWindow : Window
         HistoricMenuBar.CommandInvoked += HistoricMenuBar_CommandInvoked;
         _ticksPerUpdate = setup.TicksPerUpdate;
         _liveEnvironment = setup.ToEnvironmentUpdate();
+        SynchronizeSafemodePreference(_safemodeBackup);
+        SynchronizeRecordingPreferences();
         ToolbarSlot24.Content = "IGNORE OFF";
         AutomationProperties.SetName(ToolbarSlot24, "IGNORE ERRORS OFF");
         LocalModeKindSelector.SelectedIndex = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables ? 4 : 0;
@@ -289,11 +294,10 @@ public sealed partial class MainWindow : Window
         DataContext = _viewModel;
         _runTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_maximumSpeed ? 1 : 16) };
         _runTimer.Tick += RunTimer_Tick;
-        _autosaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
-        _autosaveTimer.Tick += AutosaveTimer_Tick;
         Opened += Window_Opened;
         Closed += Window_Closed;
         _controlsReady = true;
+        SetIgnoreErrors(!_safemodeBackup);
         ApplyLocalizedUi();
         UpdateResponsiveLayout(Bounds.Width);
         RefreshLegacyMenuStates();
@@ -753,7 +757,7 @@ public sealed partial class MainWindow : Window
             _ => FindBestRobotAsync());
         handlers[LegacyCommandId.RecordingSafemodeBackup] = Handler(
             () => new LegacyCommandState(true, _safemodeBackup),
-            _ => Task.FromResult(ToggleSafemodeBackup()));
+            async _ => await ToggleSafemodeBackupAsync());
         handlers[LegacyCommandId.RecordingRecoverLatestAutosave] = Handler(
             () => new LegacyCommandState(
                 _session is not null && RecoveryArtifactPath() is not null,
@@ -765,10 +769,10 @@ public sealed partial class MainWindow : Window
             async _ => await SaveLivingSnapshotAsync());
         handlers[LegacyCommandId.RecordingDeadEnable] = Handler(
             () => new LegacyCommandState(_session is not null, _deadRecordingEnabled, _session is null ? "Start a simulation first." : null),
-            _ => Task.FromResult(ToggleDeadRecording()));
+            async _ => await ToggleDeadRecordingAsync());
         handlers[LegacyCommandId.RecordingDeadExcludeRepopulating] = Handler(
             () => new LegacyCommandState(_session is not null, _excludeRepopulatingDead, _session is null ? "Start a simulation first." : null),
-            _ => Task.FromResult(ToggleDeadRecordingFilter()));
+            async _ => await ToggleDeadRecordingFilterAsync());
         handlers[LegacyCommandId.EGridEnable] = ViewportToggle(
             () => Viewport.EnergyGridEnabled,
             value => Viewport.EnergyGridEnabled = value,
@@ -1265,16 +1269,38 @@ public sealed partial class MainWindow : Window
             : LegacyCommandResult.Cancel();
     }
 
-    private LegacyCommandResult ToggleDeadRecording()
+    private void SynchronizeRecordingPreferences(bool resetCorpseCursor = false)
     {
-        _deadRecordingEnabled = !_deadRecordingEnabled;
-        _recordedCorpseCount = _session?.LatestSnapshot.Corpses.Count ?? 0;
+        var recording = _liveEnvironment.Recording ?? new();
+        SynchronizeSafemodePreference(recording.SafeModeBackup);
+        if (resetCorpseCursor || _deadRecordingEnabled != recording.DeadSnapshotEnabled)
+            _recordedCorpseCount = _session?.LatestSnapshot.Corpses.Count ?? 0;
+        _deadRecordingEnabled = recording.DeadSnapshotEnabled;
+        _excludeRepopulatingDead = recording.ExcludeRepopulatingRobots;
+    }
+
+    private async Task ApplyRecordingPreferencesAsync(Db2RecordingOptions recording)
+    {
+        _liveEnvironment = _liveEnvironment with { Recording = recording };
+        SynchronizeRecordingPreferences();
+        if (_session is not null) await _session.UpdateEnvironmentAsync(_liveEnvironment);
+    }
+
+    private async Task<LegacyCommandResult> ToggleDeadRecordingAsync()
+    {
+        await ApplyRecordingPreferencesAsync((_liveEnvironment.Recording ?? new()) with
+        {
+            DeadSnapshotEnabled = !_deadRecordingEnabled,
+        });
         return LegacyCommandResult.Success($"DEAD RECORDING · {(_deadRecordingEnabled ? "ON" : "OFF")}");
     }
 
-    private LegacyCommandResult ToggleDeadRecordingFilter()
+    private async Task<LegacyCommandResult> ToggleDeadRecordingFilterAsync()
     {
-        _excludeRepopulatingDead = !_excludeRepopulatingDead;
+        await ApplyRecordingPreferencesAsync((_liveEnvironment.Recording ?? new()) with
+        {
+            ExcludeRepopulatingRobots = !_excludeRepopulatingDead,
+        });
         return LegacyCommandResult.Success($"REPOPULATING DEAD · {(_excludeRepopulatingDead ? "EXCLUDED" : "INCLUDED")}");
     }
 
@@ -1307,7 +1333,11 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception error)
         {
-            _deadRecordingEnabled = false;
+            try
+            {
+                await ApplyRecordingPreferencesAsync((_liveEnvironment.Recording ?? new()) with { DeadSnapshotEnabled = false });
+            }
+            catch { /* The recording error remains the useful diagnostic when the engine also fails. */ }
             _viewModel.Status = $"DEAD RECORDING FAILED · {error.Message}";
         }
     }
@@ -1332,6 +1362,7 @@ public sealed partial class MainWindow : Window
         await _session.UpdateEnvironmentAsync(dialog.Update);
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = dialog.Update;
+        SynchronizeRecordingPreferences();
         RefreshEnvironmentControls();
         return LegacyCommandResult.Success("LIVE SETTINGS APPLIED");
     }
@@ -1376,6 +1407,7 @@ public sealed partial class MainWindow : Window
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
         _globalSettings = dialog.Settings;
+        SynchronizeSafemodePreference(_globalSettings.Main.SafeMode);
         Viewport.FixedRatio = _globalSettings.Main.FixedRatio;
         Viewport.OldColors = _globalSettings.Main.OldColors;
         if (_globalSettings.Evolution.Enabled) {
@@ -1390,8 +1422,10 @@ public sealed partial class MainWindow : Window
         if (_session is not null) {
             await _session.UpdateMainRulesAsync(_globalSettings.Main);
             await _session.UpdateDisqualificationRulesAsync(_globalSettings.League.DisqualificationRule);
+            await _session.UpdateRecognitionFudgingAsync(_globalSettings.League.RecognitionFudging);
             await _session.UpdateAdvancedMutationSettingsAsync(_globalSettings.AdvancedMutation, _globalSettings.Main);
             await _session.UpdateCostSettingsAsync(_globalSettings.Costs);
+            await _session.UpdateEnvironmentAsync(_liveEnvironment);
             _activeCostMultiplier = _globalSettings.Costs.GlobalMultiplier;
         }
         if (_trayIcon is not null)
@@ -1403,6 +1437,7 @@ public sealed partial class MainWindow : Window
     private WorldSetupOptions CreateNextWorldSetup() => _setup with
     {
         GlobalSettings = _globalSettings,
+        Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
     };
 
@@ -1683,11 +1718,20 @@ public sealed partial class MainWindow : Window
     private Task AddObstaclesAsync(IEnumerable<(float[] Minimum, float[] Maximum)> shapes) =>
         AddObstaclesAsync(shapes.Select(shape => new MazePresetShape(shape.Minimum, shape.Maximum)));
 
-    private LegacyCommandResult ToggleSafemodeBackup()
+    private void SynchronizeSafemodePreference(bool enabled)
     {
-        _safemodeBackup = !_safemodeBackup;
-        if (_safemodeBackup) _autosaveTimer.Start();
-        else _autosaveTimer.Stop();
+        _safemodeBackup = enabled;
+        _globalSettings = _globalSettings with { Main = _globalSettings.Main with { SafeMode = enabled } };
+        _liveEnvironment = _liveEnvironment with
+        {
+            Recording = (_liveEnvironment.Recording ?? new()) with { SafeModeBackup = enabled },
+        };
+    }
+
+    private async Task<LegacyCommandResult> ToggleSafemodeBackupAsync()
+    {
+        SynchronizeSafemodePreference(!_safemodeBackup);
+        if (_session is not null) await _session.UpdateEnvironmentAsync(_liveEnvironment);
         return LegacyCommandResult.Success(_safemodeBackup ? "SAFEMODE BACKUP ON" : "SAFEMODE BACKUP OFF");
     }
 
@@ -1714,8 +1758,7 @@ public sealed partial class MainWindow : Window
                 return LegacyCommandResult.Success(_viewModel.Status);
             }
             _runTimer.Stop();
-            await _session.LoadAsync(await File.ReadAllBytesAsync(path));
-            await SynchronizeLoadedWorldAsync();
+            await LoadSimulationAsync(await File.ReadAllBytesAsync(path));
             _viewModel.Status = $"RECOVERED · {Path.GetFileName(path)}";
             ClearRecoveryPanel();
             return LegacyCommandResult.Success(_viewModel.Status);
@@ -1799,50 +1842,54 @@ public sealed partial class MainWindow : Window
         try
         {
             await _storage.SaveLastStartAsync(
-                System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(_setup));
+                System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(CreateNextWorldSetup()));
             _diagnostics.BeginSession(_storage.FindLastStart());
             _runtimeClock.Restart();
             var worldSetup = CreateNextWorldSetup();
             _activeCostMultiplier = worldSetup.GlobalSettings.Costs.GlobalMultiplier;
             _session = new SimulationSession(_engineFactory.Create(worldSetup));
             _insertion = new WorldInsertionController(_session);
-            _session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(async () =>
+            _session.SnapshotPublished += snapshot =>
             {
-                _playerBotEnabled = snapshot.PlayerBot.Enabled;
-                _playerBotBindings = snapshot.PlayerBot.Bindings;
-                _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
-                if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
-                    _runTimer.Stop();
-                    _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
-                }
-                Viewport.SetSnapshot(snapshot);
-                Viewport.SelectKey(_viewModel.SelectedKey);
-                var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
-                var updateGraphs = _lastGraphRefreshTick is not { } lastTick
-                    || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
-                if (updateGraphs)
+                var loading = _loadingSimulation;
+                Dispatcher.UIThread.Post(async () =>
                 {
-                    PopulationChart.SetSnapshot(snapshot);
-                    EnergyChart.SetSnapshot(snapshot);
-                    _lastGraphRefreshTick = snapshot.Tick;
-                }
-                _toolWindows.PublishSnapshot(snapshot, updateGraphs);
-                BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
-                    && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
-                    && snapshot.Organisms.Any(robot => robot.Memory.Any(cell => cell.Address == 315 && cell.Value > 0));
-                await RecordDeadSnapshotAsync(snapshot);
-                RefreshLegacyMenuStates();
-                if (_zerobotProgression is not null && !_progressionInFlight
-                    && _zerobotProgression.Observe(snapshot) is { } transition)
-                    _ = ApplyZerobotTransitionAsync(transition);
-            });
+                    _playerBotEnabled = snapshot.PlayerBot.Enabled;
+                    _playerBotBindings = snapshot.PlayerBot.Bindings;
+                    _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
+                    if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
+                        _runTimer.Stop();
+                        _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";
+                    }
+                    Viewport.SetSnapshot(snapshot);
+                    Viewport.SelectKey(_viewModel.SelectedKey);
+                    var graphInterval = (ulong)Math.Max(1, _globalSettings.Main.GraphUpdatesPerTick);
+                    var updateGraphs = _lastGraphRefreshTick is not { } lastTick
+                        || snapshot.Tick < lastTick || snapshot.Tick - lastTick >= graphInterval;
+                    if (updateGraphs)
+                    {
+                        PopulationChart.SetSnapshot(snapshot);
+                        EnergyChart.SetSnapshot(snapshot);
+                        _lastGraphRefreshTick = snapshot.Tick;
+                    }
+                    _toolWindows.PublishSnapshot(snapshot, updateGraphs);
+                    BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
+                        && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
+                        && snapshot.Organisms.Any(robot => robot.Memory.Any(cell => cell.Address == 315 && cell.Value > 0));
+                    if (loading) _recordedCorpseCount = snapshot.Corpses.Count;
+                    else await RecordDeadSnapshotAsync(snapshot);
+                    RefreshLegacyMenuStates();
+                    if (_zerobotProgression is not null && !_progressionInFlight
+                        && _zerobotProgression.Observe(snapshot) is { } transition)
+                        _ = ApplyZerobotTransitionAsync(transition);
+                });
+            };
             _viewModel.Status = "ENGINE READY — IMPORT A LEGACY BOT";
             await _session.RefreshSnapshotAsync();
             var compatibilityWarnings = new List<string>();
             if (_setup.LoadSavePath is { } savePath)
             {
-                await _session.LoadAsync(await File.ReadAllBytesAsync(savePath));
-                await SynchronizeLoadedWorldAsync();
+                await LoadSimulationAsync(await File.ReadAllBytesAsync(savePath));
             }
             else
                 foreach (var species in _setup.Species)
@@ -1859,7 +1906,7 @@ public sealed partial class MainWindow : Window
             else if (_setup.LoadSavePath is not null) _viewModel.Status = _setup.IsAutosaveRecovery ? "AUTOSAVE RECOVERED" : "LOADED";
             if (_setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables)
                 await ConfigureZerobotModeAsync();
-            _autosaveTimer.Start();
+            SetIgnoreErrors(!_safemodeBackup);
         }
         catch (Exception error)
         {
@@ -1899,12 +1946,14 @@ public sealed partial class MainWindow : Window
         try
         {
             _liveEnvironment = configuration.Environment;
+            SynchronizeRecordingPreferences(resetCorpseCursor: true);
+            _lastAutomaticSaveTick = _session.LatestSnapshot.Tick;
             _activeCostMultiplier = configuration.GlobalCostMultiplier;
             _globalSettings = _globalSettings with
             {
                 Costs = configuration.Costs,
                 AdvancedMutation = configuration.AdvancedMutation,
-                League = _globalSettings.League with { DisqualificationRule = configuration.DisqualificationRule },
+                League = _globalSettings.League with { DisqualificationRule = configuration.DisqualificationRule, RecognitionFudging = configuration.RecognitionFudging },
                 Main = _globalSettings.Main with
                 {
                     BodyCutoff = configuration.BodyCutoff,
@@ -1977,7 +2026,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return;
         try
         {
-            await _session.StepAsync();
+            await AdvanceSimulationAsync(1);
         }
         catch (Exception error)
         {
@@ -2467,6 +2516,7 @@ public sealed partial class MainWindow : Window
         await _session.UpdateEnvironmentAsync(update);
         await _session.UpdateMutationSettingsAsync(dialog.MutationUpdate);
         _liveEnvironment = update;
+        SynchronizeRecordingPreferences();
         RefreshEnvironmentControls();
         _viewModel.Status = "LIVE SETTINGS APPLIED";
     }
@@ -2583,8 +2633,7 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null) return;
         if (await _storage.OpenSimulationAsync(this) is not { } save) return;
-        await _session.LoadAsync(save);
-        await SynchronizeLoadedWorldAsync();
+        await LoadSimulationAsync(save);
         _viewModel.Status = "LOADED";
     }
 
@@ -2597,7 +2646,7 @@ public sealed partial class MainWindow : Window
         var started = Stopwatch.GetTimestamp();
         try
         {
-            await _session.StepAsync(batch);
+            await AdvanceSimulationAsync(batch);
             if (adaptive)
                 _maximumBatch = DesktopControlRules.AdaptMaximumBatch(batch, Stopwatch.GetElapsedTime(started), _turbo);
         }
@@ -2608,14 +2657,57 @@ public sealed partial class MainWindow : Window
         finally { _tickInFlight = false; }
     }
 
-    private async void AutosaveTimer_Tick(object? sender, EventArgs e)
+    private async Task LoadSimulationAsync(byte[] save)
+    {
+        _runTimer.Stop();
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is null) return;
+            _loadingSimulation = true;
+            await _session.LoadAsync(save);
+            await SynchronizeLoadedWorldAsync();
+        }
+        finally
+        {
+            _loadingSimulation = false;
+            _advanceGate.Release();
+        }
+    }
+
+    private async Task AdvanceSimulationAsync(uint count)
+    {
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is null) return;
+            while (count > 0)
+            {
+                var before = _session.LatestSnapshot;
+                if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
+                    _lastAutomaticSaveTick = null;
+                var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
+                var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode);
+                await _session.StepAsync(batch);
+                count -= batch;
+                var after = _session.LatestSnapshot;
+                if (_lastAutomaticSaveTick != after.Tick
+                    && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode))
+                    await SaveAutomaticCheckpointAsync();
+            }
+        }
+        finally { _advanceGate.Release(); }
+    }
+
+    private async Task SaveAutomaticCheckpointAsync()
     {
         if (_session is null) return;
         try
         {
+            var checkpointTick = _session.LatestSnapshot.Tick;
             await _storage.SaveAutosaveAsync(await _session.SaveAsync());
-            _diagnostics.RecordCheckpoint(_session.LatestSnapshot.Tick, _storage.FindLatestAutosave());
-            _viewModel.Status = "AUTOSAVED";
+            _lastAutomaticSaveTick = checkpointTick;
+            _diagnostics.RecordCheckpoint(checkpointTick, _storage.FindLatestAutosave());
         }
         catch (Exception error) { _viewModel.Status = $"AUTOSAVE ERROR · {error.Message}"; }
     }
@@ -2623,7 +2715,6 @@ public sealed partial class MainWindow : Window
     private async void Window_Closed(object? sender, EventArgs e)
     {
         _runTimer.Stop();
-        _autosaveTimer.Stop();
         _runtimeClock.Stop();
         _toolWindows.CloseAll();
         _trayIcon?.Dispose();

@@ -666,13 +666,16 @@ fn spawn_soft_tie() -> (Engine, OrganismId, OrganismId) {
     let mut engine = Engine::new(tie_test_config()).unwrap();
     let source = engine
         .spawn_at(
-            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            LegacyDna::parse("cond\n*.numties 0 =\nstart\n41 .tie store\nstop").unwrap(),
             [400.0, 1_000.0],
         )
         .unwrap();
     let target = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 1_000.0])
         .unwrap();
+    // Form once: native repeated requests replace the pair and restart -20.
+    engine.set_organism_aim(source, 0).unwrap();
+    engine.set_organism_aim(target, 0).unwrap();
     engine.tick().unwrap();
     assert_eq!(engine.snapshot().ties.len(), 1);
     (engine, source, target)
@@ -718,12 +721,15 @@ fn removed_tie_clears_topology_and_retains_references_until_the_next_read() {
             engine.robot_state(source).unwrap().counters.multibot,
             engine.memory(source, "trefbody").unwrap(),
         ),
-        (0, 0, 0, 0, false, 1000)
+        // DeleteTie publishes counts/tiepres but retains the multibot latch.
+        (0, 0, 0, 1, true, 1000)
     );
 
     // DeleteTie does not erase references; the next eligible readtie does.
     engine.tick().unwrap();
     assert_eq!(engine.memory(source, "trefbody").unwrap(), 0);
+    assert_eq!(engine.memory(source, "multi").unwrap(), 0);
+    assert!(!engine.robot_state(source).unwrap().counters.multibot);
     assert_eq!(
         (
             engine.memory_at(source, 50).unwrap(),
@@ -731,7 +737,8 @@ fn removed_tie_clears_topology_and_retains_references_until_the_next_read() {
             engine.memory_at(source, 52).unwrap(),
             engine.memory_at(source, 53).unwrap(),
         ),
-        (0, 0, 0, 0)
+        // DNA observed the old latch before this cycle's zero-tie Update_Ties.
+        (0, 0, 0, 1)
     );
 }
 
@@ -1632,7 +1639,7 @@ fn tie_breaks_when_surface_gap_exceeds_one_thousand() {
 }
 
 #[test]
-fn eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity() {
+fn tenth_and_later_endpoint_ties_are_rejected_at_native_nine_tie_capacity() {
     let mut engine = Engine::new(tie_test_config()).unwrap();
     let target = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1_000.0, 1_000.0])
@@ -1659,17 +1666,18 @@ fn eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity() {
             };
         }
         engine.apply_physics_batch(batch).unwrap();
+        engine.set_organism_aim(leaf, 0).unwrap();
         engine.tick().unwrap();
         engine
             .replace_dna(leaf, LegacyDna::parse("start\nstop").unwrap())
             .unwrap();
         leaves.push(leaf);
-        assert_eq!(engine.snapshot().ties.len(), (ordinal + 1).min(10));
+        assert_eq!(engine.snapshot().ties.len(), (ordinal + 1).min(9));
     }
 
     let rejected = leaves[10];
     engine.tick().unwrap();
-    assert_eq!(engine.snapshot().ties.len(), 10);
+    assert_eq!(engine.snapshot().ties.len(), 9);
     assert!(
         engine
             .snapshot()
@@ -1677,7 +1685,9 @@ fn eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity() {
             .iter()
             .all(|tie| tie.first != rejected && tie.second != rejected)
     );
-    assert_eq!(engine.memory(target, "numties").unwrap(), 10);
+    // Ties.maketie uses k < MAXTIES: nine creations, ten saved array slots.
+    assert_eq!(engine.memory(target, "numties").unwrap(), 9);
+    assert_eq!(engine.memory(leaves[9], "numties").unwrap(), 0);
     assert_eq!(engine.memory(rejected, "numties").unwrap(), 0);
     assert_eq!(engine.memory(rejected, "tiepres").unwrap(), 0);
     let reciprocal_ports: Vec<_> = engine
@@ -1686,16 +1696,16 @@ fn eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity() {
         .iter()
         .map(|tie| tie.second_port)
         .collect();
-    assert_eq!(reciprocal_ports, (1..=10).collect::<Vec<_>>());
+    assert_eq!(reciprocal_ports, (1..=9).collect::<Vec<_>>());
 }
 
 #[test]
-fn tie_formation_skips_existing_pair_for_next_eligible_target() {
+fn tie_formation_replaces_focused_existing_pair_without_choosing_another_target() {
     let mut engine = Engine::new(tie_test_config()).unwrap();
     let nearest_target = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [900.0, 1_000.0])
         .unwrap();
-    let eligible_target = engine
+    let other_target = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [1_500.0, 1_000.0])
         .unwrap();
     let attacker = engine
@@ -1704,6 +1714,7 @@ fn tie_formation_skips_existing_pair_for_next_eligible_target() {
             [700.0, 1_000.0],
         )
         .unwrap();
+    engine.set_organism_aim(attacker, 0).unwrap();
     engine.tick().unwrap();
     engine
         .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
@@ -1721,7 +1732,7 @@ fn tie_formation_skips_existing_pair_for_next_eligible_target() {
         batch.batch.velocities[index] = [0.0; 2];
         batch.batch.positions[index] = if id == nearest_target {
             [900.0, 1_000.0]
-        } else if id == eligible_target {
+        } else if id == other_target {
             [1_500.0, 1_000.0]
         } else {
             assert_eq!(id, attacker);
@@ -1732,14 +1743,21 @@ fn tie_formation_skips_existing_pair_for_next_eligible_target() {
     engine.tick().unwrap();
 
     let snapshot = engine.snapshot();
-    assert_eq!(snapshot.ties.len(), 2);
+    assert_eq!(snapshot.ties.len(), 1);
+    assert!(
+        snapshot
+            .ties
+            .iter()
+            .all(|tie| tie.first != other_target && tie.second != other_target)
+    );
     let created = snapshot
         .ties
         .iter()
-        .find(|tie| tie.first == attacker && tie.second == eligible_target)
-        .expect("the second attempt should use the next eligible target");
+        .find(|tie| tie.first == attacker && tie.second == nearest_target)
+        .expect("the second attempt should replace the focused existing pair");
     assert_eq!(created.first_port, 42);
     assert_eq!(created.second_port, 1);
+    assert_eq!(created.last, -20);
 }
 
 #[test]

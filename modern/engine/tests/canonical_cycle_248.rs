@@ -328,7 +328,10 @@ fn a_new_tie_exchanges_resources_only_after_hardening() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let source = engine
         .spawn_at(
-            LegacyDna::parse("start\n41 .tie store\n10 .sharenrg store\nstop").unwrap(),
+            LegacyDna::parse(
+                "cond\n*.numties 0 =\nstart\n41 .tie store\nstop\nstart\n10 .sharenrg store\nstop",
+            )
+            .unwrap(),
             [100.0, 100.0],
         )
         .unwrap();
@@ -336,6 +339,9 @@ fn a_new_tie_exchanges_resources_only_after_hardening() {
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [110.0, 100.0])
         .unwrap();
 
+    // Reissuing .tie would replace the pair and restart its soft countdown.
+    engine.set_organism_aim(source, 0).unwrap();
+    engine.set_organism_aim(target, 0).unwrap();
     let first = engine.tick_with_trace().unwrap();
     let source_after_creation = engine.organism(source).unwrap().energy;
     let target_after_creation = engine.organism(target).unwrap().energy;
@@ -467,18 +473,21 @@ fn deleting_tie_still_applies_first_pass_spring_before_second_pass_delete() {
 #[test]
 fn tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    // Keep all centers clear of the native connected-border radius before sensing.
     let source = engine
         .spawn_at(
             LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
-            [100.0, 100.0],
+            [250.0, 250.0],
         )
         .unwrap();
     let target = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [550.0, 250.0])
         .unwrap();
     let third = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 350.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [550.0, 500.0])
         .unwrap();
+    engine.set_organism_aim(source, 0).unwrap();
+    engine.set_organism_aim(target, 942).unwrap(); // Focus the third robot to the south.
     engine.tick().unwrap();
     assert_eq!(engine.snapshot().ties.len(), 1);
     engine

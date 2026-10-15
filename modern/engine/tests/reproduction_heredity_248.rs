@@ -837,7 +837,9 @@ fn buoyancy_command_readback_and_birth_inheritance_round_trip() {
     let child = child_of(&engine, parent);
     assert_eq!(engine.memory_at(parent, 314).unwrap(), 0);
     assert_eq!(engine.memory_at(parent, 315).unwrap(), 16_000);
-    assert_eq!(engine.memory_at(child, 315).unwrap(), 16_000);
+    // Source reproduction copies physical buoyancy, but the child readback
+    // remains zero until its first WriteSenses.
+    assert_eq!(engine.memory_at(child, 315).unwrap(), 0);
     let restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
     let payload = engine_payload(&restored);
     assert_eq!(
@@ -972,4 +974,154 @@ fn full_parent_tie_capacity_allows_birth_without_birth_tie_or_staged_transfer() 
     );
     engine.tick().unwrap();
     assert_eq!(engine.memory_at(child, 976).unwrap(), 0);
+}
+
+#[test]
+fn native_birth_orders_tie_fee_previous_energy_timer_and_copy_fee() {
+    let (mut engine, parent, _) = configured_parent(LegacyDna::parse("start stop").unwrap(), 25, 7);
+    let mut costs = engine.cost_settings().clone();
+    costs.tie_formation = 6.0;
+    costs.dna_copy = 2.0;
+    engine.update_cost_settings(costs).unwrap();
+    engine.set_organism_memory(parent, 12, 1234).unwrap();
+    engine.tick().unwrap();
+    let child = child_of(&engine, parent);
+    let state = engine.robot_state(parent).unwrap();
+    assert_eq!(state.materials.energy, 2990.0);
+    let payload = engine_payload(&engine);
+    assert_eq!(
+        payload["slots"][parent.slot() as usize]["organism"]["materials"]["previous_energy"],
+        json!(2996.0)
+    );
+    assert_eq!(engine.memory_at(parent, 310).unwrap(), 2999);
+    assert_eq!(engine.memory_at(parent, 12).unwrap(), 1235);
+    assert_eq!(engine.memory_at(child, 12).unwrap(), 1235);
+    assert_eq!(engine.robot_state(child).unwrap().counters.age, 0);
+    assert_eq!(engine.snapshot().ties.len(), 1);
+}
+
+#[test]
+fn disabled_tie_policy_does_not_change_reproductive_draws_or_child_state() {
+    let (mut enabled, parent, _) =
+        configured_parent(LegacyDna::parse("start stop").unwrap(), 25, 7);
+    let mut disabled = edit_engine(&enabled, |payload| {
+        payload["ties_enabled"] = json!(false);
+    });
+    enabled.tick().unwrap();
+    disabled.tick().unwrap();
+    let first_child = child_of(&enabled, parent);
+    let second_child = child_of(&disabled, parent);
+    assert_eq!(
+        enabled.robot_state(first_child).unwrap(),
+        disabled.robot_state(second_child).unwrap()
+    );
+    let enabled_payload = engine_payload(&enabled);
+    let disabled_payload = engine_payload(&disabled);
+    assert_eq!(
+        enabled_payload["native_random"],
+        disabled_payload["native_random"]
+    );
+    assert_eq!(enabled_payload["ties"], disabled_payload["ties"]);
+}
+
+#[test]
+fn birth_tref_census_is_copied_after_reproductive_mutation() {
+    let dna = LegacyDna::parse(&format!("start {} stop", "0 .up store ".repeat(32))).unwrap();
+    let (engine, parent, _) = configured_parent(dna, 25, 7);
+    let mut profile = StandardMutationProfile::default();
+    for rate in [
+        &mut profile.point,
+        &mut profile.point2,
+        &mut profile.delta,
+        &mut profile.copy_error,
+        &mut profile.copy_error2,
+        &mut profile.insertion,
+        &mut profile.reversal,
+        &mut profile.minor_deletion,
+        &mut profile.major_deletion,
+        &mut profile.amplification,
+        &mut profile.translocation,
+    ] {
+        rate.one_in = 0.0;
+    }
+    profile.copy_error.one_in = 1.0;
+    profile.copy_error.mean = 1.0;
+    profile.copy_error.std_dev = 0.0;
+    profile.copy_error_value_change_percent = 100;
+    let profile_value = serde_json::to_value(profile).unwrap();
+    let mut engine = edit_engine(&engine, |payload| {
+        payload["mutations_enabled"] = json!(true);
+        payload["global_mutation_multiplier"] = json!(1.0);
+        payload["species"][0]["mutation_rate"] = json!(1.0);
+        let robot = robot_value_mut(payload, parent);
+        robot["flags"]["can_mutate"] = json!(true);
+        robot["program"]["mutation_profile"] = profile_value;
+    });
+    let initial = engine.robot_state(parent).unwrap().senses.occurrence_counts[..8].to_vec();
+    engine.tick().unwrap();
+    let child = child_of(&engine, parent);
+    let census = engine.robot_state(child).unwrap().senses.occurrence_counts[..8].to_vec();
+    assert_ne!(
+        census, initial,
+        "the fixture must change the child's reference census"
+    );
+    assert!(
+        engine
+            .robot_state(child)
+            .unwrap()
+            .program
+            .mutation_metadata
+            .total_mutations
+            > 0
+    );
+    let copied = (456..=463)
+        .map(|address| engine.memory_at(parent, address).unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(copied, census);
+}
+
+#[test]
+fn native_epigenetic_timer_wraps_and_ages_with_dna_disabled() {
+    let mut engine = testing_engine();
+    let id = engine
+        .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+        .unwrap();
+    engine.set_organism_memory(id, 12, 32_000).unwrap();
+    let mut engine = edit_engine(&engine, |payload| {
+        robot_value_mut(payload, id)["flags"]["can_execute_dna"] = json!(false);
+    });
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(id, 12).unwrap(), -32_000);
+    assert_eq!(engine.robot_state(id).unwrap().counters.age, 1);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(id, 12).unwrap(), -31_999);
+}
+
+#[test]
+fn native_newborn_vm_is_erased_then_receives_only_explicit_birth_values() {
+    let (mut engine, parent, _) = configured_parent(LegacyDna::parse("start stop").unwrap(), 25, 7);
+    engine.tick().unwrap();
+    let child = child_of(&engine, parent);
+    assert_eq!(engine.memory_at(child, 310).unwrap(), 999);
+    assert_eq!(engine.memory_at(child, 311).unwrap(), 0);
+    assert_eq!(engine.memory_at(child, 219).unwrap(), 0);
+    assert_eq!(engine.memory_at(child, 217).unwrap(), 0);
+    assert_eq!(engine.memory_at(child, 315).unwrap(), 0);
+    assert_eq!(engine.memory_at(child, 468).unwrap(), 32_000);
+    assert_eq!(engine.memory_at(child, 19).unwrap(), 628);
+    let payload = engine_payload(&engine);
+    assert_eq!(
+        payload["slots"][child.slot() as usize]["organism"]["materials"]["previous_body"],
+        json!(0.0)
+    );
+    let heading = engine
+        .robot_state(child)
+        .unwrap()
+        .kinematics
+        .aim_radians
+        .unwrap();
+    assert_eq!(heading, std::f32::consts::PI);
+    engine.tick().unwrap();
+    assert_eq!(engine.memory_at(child, 311).unwrap(), 100);
+    assert_ne!(engine.memory_at(child, 219).unwrap(), 0);
 }

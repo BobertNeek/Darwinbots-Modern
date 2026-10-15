@@ -1,0 +1,13 @@
+{
+  "status": "needs_repair",
+  "step": "all",
+  "pid": 32240,
+  "utc": "2026-10-15T19:07:48.5000021Z",
+  "source_parent": "e2adeb58c62e66b5796555e83aef92ec36ca2424",
+  "details": {
+    "failed_steps": [
+      "packaged-native-desktop",
+      "cpu-workspace"
+    ]
+  }
+}

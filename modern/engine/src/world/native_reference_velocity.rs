@@ -83,6 +83,8 @@ mod tests {
         assert_eq!(resumed.memory_at(observer, MEM_REF_VEL_SX).unwrap(), 17);
         assert_eq!(resumed.memory_at(observer, MEM_REF_VEL_SCALAR).unwrap(), 2);
         resumed.slots.get_mut(target).unwrap().kinematics.position = [4000.0, 4000.0];
+        // Empty optical lookup retains contact values; DNA owns their clearing.
+        resumed.clear_after_dna_phase();
         resumed.spatial_index_phase();
         resumed.sensing_phase().unwrap();
         for address in 695..=699 {
@@ -106,6 +108,13 @@ mod tests {
         world
             .ties
             .push(TieState::new(observer, target, 500.0, 7, 8));
+        // Reproduce maketie's endpoint publication. readtie selects 471 or
+        // saved 454; constructing a TieState alone does not assign either VM.
+        for (id, port) in [(observer, 7), (target, 8)] {
+            let memory = &mut world.slots.get_mut(id).unwrap().program.memory;
+            memory.write(MEM_TIE_PRESENT, port);
+            memory.write(MEM_NUMBER_OF_TIES, 1);
+        }
         world.refresh_tie_projections_with_references(true, &HashMap::new());
         assert_eq!(
             world.slots.get(target).unwrap().kinematics.velocity,
@@ -136,6 +145,14 @@ mod tests {
         world
             .ties
             .push(TieState::new(observer, target, 500.0, 7, 8));
+        // The original creator/reverse ports are 7/8, with one bond at each
+        // endpoint. Keep that creation state explicit rather than inferring it
+        // from a later readback refresh.
+        for (id, port) in [(observer, 7), (target, 8)] {
+            let memory = &mut world.slots.get_mut(id).unwrap().program.memory;
+            memory.write(MEM_TIE_PRESENT, port);
+            memory.write(MEM_NUMBER_OF_TIES, 1);
+        }
         world.refresh_tie_projections_with_references(true, &HashMap::new());
         assert_eq!(world.memory_at(observer, 443).unwrap(), 32627);
         assert_eq!(world.memory_at(observer, 442).unwrap(), -32627);

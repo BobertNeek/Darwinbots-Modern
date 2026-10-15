@@ -176,15 +176,18 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
         .spawn_at(
             LegacyDna::parse("start\n1 .tie store\n-1 .shoot store\n40 .shootval store\nstop")
                 .expect("source DNA"),
-            [100.0, 100.0],
+            [300.0, 300.0],
         )
         .expect("source robot");
     engine
         .spawn_at(
             LegacyDna::parse("start\nstop").expect("target DNA"),
-            [500.0, 100.0],
+            [700.0, 300.0],
         )
         .expect("target robot");
+    engine
+        .set_organism_aim(source, 0)
+        .expect("focus target to the east");
     engine.tick().expect("shot and tie cycle");
     assert_eq!(engine.snapshot().shots.len(), 1);
     assert_eq!(engine.snapshot().ties.len(), 1);

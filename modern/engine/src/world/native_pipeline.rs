@@ -253,9 +253,6 @@ impl Engine {
         trace: &mut CycleRecorder,
     ) -> Result<LifecycleQueues, EngineError> {
         self.spatial_index_phase();
-        // Angles depend on the completed movement pass. New ties refresh their
-        // projections when created; resource changes do not change geometry.
-        self.tie_readback_phase();
         let mut population = self.cost_population();
         let mut chloroplast_total = self.phase_chloroplast_total();
         let radius_bound = self
@@ -284,6 +281,9 @@ impl Engine {
                     radius_bound,
                 });
                 self.trace_robot_phase(trace, CyclePhase::TieReadback);
+                // UpdateTieAngles precedes this robot's mutate/ManageBody.
+                // Earlier robots may already have changed their radius.
+                self.tie_readback_phase();
                 self.trace_robot_phase(trace, CyclePhase::Mutation);
                 let started = Instant::now();
                 self.mutation_phase(MutationContext::Lifelong);
@@ -393,6 +393,7 @@ mod tests {
         world.refresh_tie_projections();
         world.set_ties_enabled(false);
         assert_eq!(world.ties.len(), 1);
+        world.slots.get_mut(third).unwrap().senses.focused_opponent = Some(second);
         world
             .slots
             .get_mut(third)

@@ -343,7 +343,10 @@ impl Engine {
         // UserSeedNumber is a signed Long containing the seed's low 32 bits.
         number(t, "seed", f64::from(c.seed as u32 as i32))?;
         let topology = c.axis_topology();
+        // SimOpts.F1 marks an actual contest, including league matches and
+        // evolution champion tests (restart 6), but not seeding or restart 9.
         for (name, value) in [
+            ("f1", self.native_f1_enabled()),
             ("disable_ties", !self.ties_enabled),
             ("disable_fixing", !self.robot_fixing_allowed),
             ("disable_asexual", !self.asexual_reproduction_allowed),

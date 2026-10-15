@@ -352,6 +352,13 @@ internal sealed class FakeEngineClient : IEngineClient
     public HashSet<int> ExecutionThreads { get; } = [];
     public bool SavedNormally { get; private set; }
     public bool SavedWithoutMutations { get; private set; }
+    public List<int> RecognitionFudgingUpdates { get; } = [];
+
+    public void UpdateRecognitionFudging(int mode)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        RecognitionFudgingUpdates.Add(mode);
+    }
 
     public EngineSnapshot Snapshot()
     {

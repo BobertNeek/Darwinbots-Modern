@@ -55,6 +55,7 @@ public interface IEngineClient : IDisposable
     void UpdateAdvancedMutationSettings(GlobalAdvancedMutationSettings settings, GlobalMainSettings main) { }
     void UpdateCostSettings(GlobalSimulationCostSettings settings) { }
     void UpdateDisqualificationRules(int level) { }
+    void UpdateRecognitionFudging(int mode) { }
     void SetOrganismEnergy(uint slot, uint generation, int energy);
     void UpdateRestrictionOptions(RestrictionOptions options);
     void ConfigureLocalMode(LocalModeConfig config);

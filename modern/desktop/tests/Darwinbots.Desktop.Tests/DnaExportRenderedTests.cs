@@ -57,7 +57,9 @@ public sealed class DnaExportRenderedTests
             await WaitForAsync(() =>
             {
                 editor = window.OwnedWindows.OfType<DnaEditorWindow>().SingleOrDefault();
-                return editor is not null && engine.DnaExports.Count == 1;
+                // Export invocation is not completion of the editor Opened route.
+                return editor is not null && engine.DnaExports.Count == 1
+                    && editor.FindControl<TextBox>("Editor")!.Text == "start\nstop";
             });
 
             await DesktopTestApplication.Session.Dispatch(() =>
@@ -65,19 +67,27 @@ public sealed class DnaExportRenderedTests
                 Assert.Equal("start\nstop", editor!.FindControl<TextBox>("Editor")!.Text);
                 Invoke(editor, "Save_Click");
             }, CancellationToken.None);
-            await WaitForAsync(() => storage.DnaSaveRequests == 1);
+            await WaitForAsync(() => storage.DnaSaveRequests == 1
+                && storage.SuccessfulDnaSaves == 1
+                && editor!.FindControl<TextBlock>("Status")!.Text == "BOT EXPORTED");
 
-            Assert.Equal((typeof(DnaEditorWindow), "bot-3-2.txt", "start\nstop"),
-                (storage.LastOwnerType, storage.LastSuggestedFileName, storage.LastDna));
-            Assert.Equal(1, storage.SuccessfulDnaSaves);
-            Assert.Equal("BOT EXPORTED", editor!.FindControl<TextBlock>("Status")!.Text);
-            Assert.Equal([(3u, 2u)], engine.DnaExports.ToArray());
+            await DesktopTestApplication.Session.Dispatch(() =>
+            {
+                Assert.Equal((typeof(DnaEditorWindow), "bot-3-2.txt", "start\nstop"),
+                    (storage.LastOwnerType, storage.LastSuggestedFileName, storage.LastDna));
+                Assert.Equal(1, storage.SuccessfulDnaSaves);
+                Assert.Equal("BOT EXPORTED", editor!.FindControl<TextBlock>("Status")!.Text);
+                Assert.Equal([(3u, 2u)], engine.DnaExports.ToArray());
+            }, CancellationToken.None);
 
             storage.AcceptDnaSave = false;
             await DesktopTestApplication.Session.Dispatch(() => Invoke(editor, "Save_Click"), CancellationToken.None);
             await WaitForAsync(() => storage.DnaSaveRequests == 2);
-            Assert.Equal(1, storage.SuccessfulDnaSaves);
-            Assert.Equal("BOT EXPORTED", editor.FindControl<TextBlock>("Status")!.Text);
+            await DesktopTestApplication.Session.Dispatch(() =>
+            {
+                Assert.Equal(1, storage.SuccessfulDnaSaves);
+                Assert.Equal("BOT EXPORTED", editor.FindControl<TextBlock>("Status")!.Text);
+            }, CancellationToken.None);
         }
         finally
         {
@@ -94,11 +104,12 @@ public sealed class DnaExportRenderedTests
     {
         for (var attempt = 0; attempt < 100; attempt++)
         {
-            if (predicate()) return;
+            if (await DesktopTestApplication.Session.Dispatch(predicate, CancellationToken.None)) return;
             await Task.Delay(10);
         }
 
-        Assert.True(predicate(), "The DNA export route did not reach the expected state.");
+        Assert.True(await DesktopTestApplication.Session.Dispatch(predicate, CancellationToken.None),
+            "The DNA export route did not reach the expected state.");
     }
 
     private static void Invoke(object target, string methodName) =>

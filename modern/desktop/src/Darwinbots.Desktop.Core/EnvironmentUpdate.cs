@@ -157,7 +157,7 @@ public sealed record EnvironmentUpdate(
         true,
         new Db2CorpseDecayOptions(),
         new Db2WasteOptions(),
-        new Db2RecordingOptions());
+        new Db2RecordingOptions(SafeModeBackup: true));
 }
 
 public static class NativeCommandSerializer
@@ -238,7 +238,10 @@ public static class NativeCommandSerializer
             corpse_decay = CorpseDecay(options.CorpseDecay),
             waste = Waste(options.Waste),
             vegetation = Vegetation(options.Vegetation),
-            recording = Recording(options.Recording),
+            recording = Recording(options.Recording with
+            {
+                SafeModeBackup = options.Recording.SafeModeBackup || options.GlobalSettings.Main.SafeMode,
+            }),
             species = options.Species.Select(Species).ToArray(),
             auto_speciation = options.AutoSpeciation,
             speciation_genetic_distance_percent = options.SpeciationGeneticDistancePercent,
@@ -248,6 +251,7 @@ public static class NativeCommandSerializer
             dna_costs = DnaCosts(options.GlobalSettings.Costs),
             advanced_mutation = AdvancedMutation(options.GlobalSettings.AdvancedMutation, options.GlobalSettings.Main),
             disqualification = options.GlobalSettings.League.DisqualificationRule,
+            recognition_fudging = options.GlobalSettings.League.RecognitionFudging,
             body_cutoff = options.GlobalSettings.Main.BodyCutoff,
             greedy_reproduction = options.GlobalSettings.Main.GreedyEnforcement,
             axis_topology = AxisTopology(options.ToroidalWorld, options.WrapX, options.WrapY),

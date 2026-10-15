@@ -72,7 +72,7 @@ public sealed class RenderedControlSurfaceAuditTests
             [nameof(GlobalSettingsRenderedSurfaceShowsFourTabs)] =
             [
                 "global.main", "global.advanced_mutation", "global.league", "global.evolution",
-                "global.cancel", "global.apply",
+                "global.recognition_fudging", "global.cancel", "global.apply",
             ],
             [nameof(DnaEditorRenderedControlsDispatchThroughVisualTree)] =
             ["dna.editor", "dna.save", "dna.clone", "dna.apply"],
@@ -83,7 +83,7 @@ public sealed class RenderedControlSurfaceAuditTests
     {
         var ids = Coverage.Values.SelectMany(value => value).ToArray();
 
-        Assert.Equal(134, ids.Length);
+        Assert.Equal(135, ids.Length);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.All(ids, id => Assert.False(string.IsNullOrWhiteSpace(id)));
     }
@@ -258,6 +258,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     new WorldSetupOptions
                     {
                         Species = [new SpeciesImport("IO-05 Recovery Species", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+                        GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { SafeMode = true } },
                     },
                     factory,
                     storage);
@@ -392,6 +393,7 @@ public sealed class RenderedControlSurfaceAuditTests
             {
                 Main = new GlobalMainSettings { NewSeed = true },
                 AdvancedMutation = new GlobalAdvancedMutationSettings { Delta2Enabled = true },
+                League = new GlobalLeagueSettings { RecognitionFudging = 1 },
                 Evolution = new GlobalEvolutionSettings { Mode = EvolutionMode.Zerobot },
             });
             ShowAndCapture(window, 1050, 780, "global-settings-four-tabs.png");
@@ -408,10 +410,75 @@ public sealed class RenderedControlSurfaceAuditTests
             Assert.Equal(200m, weight.Maximum);
             weight.Value = 150m;
             Capture(window, "global-settings-find-best-weight.png");
+            tabs.SelectedIndex = 2;
+            var fudging = Named<ComboBox>(window, "RecognitionFudging");
+            StabilizeForInput(window, fudging);
+            Assert.Equal(1, fudging.SelectedIndex);
+            Assert.Equal(
+                ["NONE", "EYES ONLY", "ALL RECOGNITION METHODS"],
+                fudging.Items.Cast<ComboBoxItem>().Select(item => item.Content?.ToString()).ToArray());
+            AssertComboSelection(window, fudging, 2);
+            Capture(window, "global-settings-recognition-fudging.png");
             Click(window, Named<Button>(window, "ApplyButton"));
             Assert.True(window.Accepted);
             Assert.Equal(150, window.Settings.Main.EffectiveFindBestWeight);
+            Assert.Equal(2, window.Settings.League.RecognitionFudging);
             window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task MainWindowAppliesRecognitionFudgingAndKeepsCancelledChangesOutOfTheEngine()
+    {
+        var factory = new AuditEngineClientFactory();
+        var setup = new WorldSetupOptions
+        {
+            TicksPerUpdate = 1,
+            Species = [new SpeciesImport("Recognition Rival", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], setup, factory, new AuditStorageService());
+            try
+            {
+                ShowForInteraction(window, 1_200, 820);
+                await WaitFor(() => factory.Clients.TryPeek(out var client)
+                    && client.Calls.Contains("ImportSpecies:Recognition Rival"));
+                var engine = factory.Clients.Single();
+                var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                await WaitFor(() => menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGlobalSettings)!.IsEnabled);
+
+                ActivateMenu(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGlobalSettings)!);
+                await WaitFor(() => window.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
+                var settings = Assert.Single(window.OwnedWindows.OfType<GlobalSettingsWindow>());
+                Named<TabControl>(settings, "Tabs").SelectedIndex = 2;
+                AssertComboSelection(settings, Named<ComboBox>(settings, "RecognitionFudging"), 2);
+                Click(settings, Named<Button>(settings, "ApplyButton"));
+                await WaitFor(() => engine.Calls.Contains("RecognitionFudging:2")
+                    && viewModel.Status == "GLOBAL SETTINGS SAVED");
+                Assert.Equal(2, Field<GlobalSettings>(window, "_globalSettings").League.RecognitionFudging);
+
+                ActivateMenu(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGlobalSettings)!);
+                await WaitFor(() => window.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
+                var cancelled = Assert.Single(window.OwnedWindows.OfType<GlobalSettingsWindow>());
+                Named<TabControl>(cancelled, "Tabs").SelectedIndex = 2;
+                var fudging = Named<ComboBox>(cancelled, "RecognitionFudging");
+                StabilizeForInput(cancelled, fudging);
+                Assert.Equal(2, fudging.SelectedIndex);
+                AssertComboSelection(cancelled, fudging, 1);
+                Click(cancelled, Named<Button>(cancelled, "CancelButton"));
+                await WaitFor(() => !cancelled.IsVisible);
+
+                Assert.Equal(new[] { "RecognitionFudging:2" }, engine.Calls
+                    .Where(call => call.StartsWith("RecognitionFudging:", StringComparison.Ordinal)).ToArray());
+                Assert.Equal(2, Field<GlobalSettings>(window, "_globalSettings").League.RecognitionFudging);
+            }
+            finally
+            {
+                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 
@@ -656,6 +723,7 @@ public sealed class RenderedControlSurfaceAuditTests
         {
             Backend = "Cpu",
             Species = [new SpeciesImport("Audit Species", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
+            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { SafeMode = true } },
         };
         var callbackResult = new TaskCompletionSource<Exception?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -909,6 +977,9 @@ public sealed class RenderedControlSurfaceAuditTests
                 ActivateMenu(generalSettingsCommand);
                 var generalSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(generalSettings.IsVisible);
+                // Inflate templates/bindings before editing numeric values; a
+                // first layout must not commit stale initial editor text.
+                StabilizeForInput(generalSettings, Named<TabControl>(generalSettings, "SettingsTabs"));
                 Named<NumericUpDown>(generalSettings, "Metabolism").Value = 7;
                 Named<NumericUpDown>(generalSettings, "VegetableEnergy").Value = 33;
                 Named<NumericUpDown>(generalSettings, "Sunlight").Value = 222;
@@ -929,6 +1000,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 ActivateMenu(mutationSettingsCommand);
                 var mutationSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(mutationSettings.IsVisible);
+                StabilizeForInput(mutationSettings, Named<TabControl>(mutationSettings, "SettingsTabs"));
                 Named<TabControl>(mutationSettings, "SettingsTabs").SelectedIndex = 0;
                 mutationSettings.UpdateLayout();
                 Named<CheckBox>(mutationSettings, "MutationsEnabled").IsChecked = true;
@@ -1281,6 +1353,8 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public string? SavedOrganismSuggestedFileName { get; private set; }
     public byte[]? SavedOrganism { get; private set; }
     public byte[]? Autosave { get; private set; }
+    public List<byte[]> AutosaveWrites { get; } = [];
+    public bool PersistAutosaves { get; init; }
     public DesktopSettings? SavedSettings { get; private set; }
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
@@ -1334,20 +1408,22 @@ internal sealed class AuditStorageService : IDesktopStorageService
 
     public string? FindLatestAutosave() => LatestAutosave;
 
-    public Task SaveAutosaveAsync(ReadOnlyMemory<byte> save)
+    public async Task SaveAutosaveAsync(ReadOnlyMemory<byte> save)
     {
         Autosave = save.ToArray();
-        return Task.CompletedTask;
+        AutosaveWrites.Add(Autosave);
+        if (PersistAutosaves)
+            await File.WriteAllBytesAsync(LatestAutosave ?? throw new InvalidOperationException("Missing test autosave path."), Autosave);
     }
 }
 
-internal sealed class AuditEngineClientFactory(bool includeWorldObjects = true) : IEngineClientFactory
+internal sealed class AuditEngineClientFactory(bool includeWorldObjects = true, bool encodeTickInSave = false) : IEngineClientFactory
 {
     public ConcurrentQueue<AuditEngineClient> Clients { get; } = [];
 
     public IEngineClient Create(WorldSetupOptions setup)
     {
-        var client = new AuditEngineClient(includeWorldObjects);
+        var client = new AuditEngineClient(includeWorldObjects) { EncodeTickInSave = encodeTickInSave };
         Clients.Enqueue(client);
         return client;
     }
@@ -1385,6 +1461,9 @@ internal sealed class AuditEngineClient : IEngineClient
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
     public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
     public string Backend => _backend;
+    public bool EncodeTickInSave { get; init; }
+    public WorldConfiguration? ConfigurationForRead { get; set; }
+    public WorldConfiguration? ReadConfiguration() => ConfigurationForRead;
 
     public EngineCapabilities Capabilities() => new(1, _backend, true, null);
     public void Tick(uint count = 1) { _tick += count; Calls.Enqueue($"Tick:{count}"); }
@@ -1426,6 +1505,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public void ConfigurePlayerBot(PlayerBotConfig config) => Calls.Enqueue("ConfigurePlayerBot");
     public void SetPlayerBotKey(uint slot, uint generation, int keyCode, bool pressed) => Calls.Enqueue($"PlayerBotKey:{slot}:{generation}:{keyCode}:{pressed}");
     public void SetOrganismMemory(uint slot, uint generation, ushort address, int value) => Calls.Enqueue($"Memory:{slot}:{generation}:{address}:{value}");
+    public void UpdateRecognitionFudging(int mode) => Calls.Enqueue($"RecognitionFudging:{mode}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
     public OrganismKey? FindBestRobot(bool energyWeighting) { Calls.Enqueue("FindBestRobot"); return new(3, 2); }
     public void UpdateRestrictionOptions(RestrictionOptions options) => Calls.Enqueue("RestrictionOptions");
@@ -1475,7 +1555,7 @@ internal sealed class AuditEngineClient : IEngineClient
         adjudication,
         config.Restrictions);
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
-    public byte[] Save() { Calls.Enqueue("Save"); return [1, 2, 3, 4]; }
+    public byte[] Save() { Calls.Enqueue("Save"); return EncodeTickInSave ? BitConverter.GetBytes(_tick) : [1, 2, 3, 4]; }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }
     public void Load(byte[] save) => Calls.Enqueue("Load");
     public EngineSnapshot Snapshot() => _snapshot with { Tick = _tick, Backend = _backend };

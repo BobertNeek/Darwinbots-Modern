@@ -97,7 +97,7 @@ fn actual_overlap_touches_both_participants_but_not_a_nearby_non_overlap() {
 }
 
 #[test]
-fn touch_bankers_rounds_the_other_robot_center_before_direction_selection() {
+fn touch_direction_uses_positions_after_overlap_separation() {
     let mut engine = Engine::new(EngineConfig::testing()).unwrap();
     let ids = engine
         .spawn_batch([
@@ -109,7 +109,15 @@ fn touch_bankers_rounds_the_other_robot_center_before_direction_selection() {
 
     engine.tick().unwrap();
 
-    assert_eq!(contact_cells(&engine, ids[0]), [1, 0, 0, 1, 0]);
+    // Physics.Repel3 calls touch after separating both centers. Using the
+    // old centers would round to a diagonal and incorrectly select hitright.
+    let observer = engine.organism(ids[0]).unwrap().position;
+    let target = engine.organism(ids[1]).unwrap().position;
+    assert_ne!(observer, [500.0, 500.0]);
+    assert_ne!(target, [550.49, 549.5]);
+    let event = target.map(f32::round_ties_even);
+    assert!(((event[1] - observer[1]) / (event[0] - observer[0])).atan() < 0.78);
+    assert_eq!(contact_cells(&engine, ids[0]), [1, 1, 0, 0, 0]);
 }
 
 #[test]

@@ -79,5 +79,5 @@ public sealed record WorldSetupOptions
         WrapY,
         CorpseDecay,
         Waste,
-        Recording, ShapesVisible);
+        Recording with { SafeModeBackup = Recording.SafeModeBackup || GlobalSettings.Main.SafeMode }, ShapesVisible);
 }

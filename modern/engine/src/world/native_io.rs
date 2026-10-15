@@ -295,6 +295,9 @@ impl Engine {
             }
         }
         let mut engine = Self::new(configuration(&tail)?)?;
+        // SimOpts.F1 is part of the .sim stream. Global x_restartmode and
+        // x_fudge live in separate .gset files and cannot be inferred here.
+        engine.native_f1 = Some(tail.integer("f1")? != 0);
         engine.dynamic_cost_state.saved_multiplier = tail.number("old_cost")?;
         engine.config.shapes_visible = tail.integer("shapes_visible")? != 0;
         engine.tick = nonnegative(tail.integer("total_cycles")?, "total cycles")?;
@@ -402,6 +405,21 @@ impl Engine {
         engine.refresh_native_chloroplast_population();
         engine.native_origin = Some(file);
         Self::restore(engine)
+    }
+
+    /// Loading a .sim replaces SimOpts, while Global.gset policies stay live.
+    pub(crate) fn retain_native_global_preferences(&mut self, current: &EngineConfig) {
+        self.config.recognition_fudging = current.recognition_fudging;
+        self.config.disqualification = current.disqualification;
+        self.config.body_cutoff = current.body_cutoff;
+        self.config.greedy_reproduction = current.greedy_reproduction;
+        let oscillation = self.config.advanced_mutation.oscillation;
+        self.config.advanced_mutation = current.advanced_mutation.clone();
+        // Oscillate/MutateMax/MutateMin are SimOpts fields saved in .sim.
+        self.config.advanced_mutation.oscillation = oscillation;
+        self.config.vegetation.start_chloroplasts = current.vegetation.start_chloroplasts;
+        self.config.recording.safemode_backup = current.recording.safemode_backup;
+        self.publish_snapshot();
     }
 
     pub(super) fn native_robot(&self, r: &NativeRobotRecord) -> Result<RobotState, EngineError> {
@@ -871,6 +889,281 @@ mod tests {
     use crate::SaveFile;
 
     const ORIGINAL: &[u8] = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+
+    fn original_with_contest_flags(f1: bool, restart: bool) -> Vec<u8> {
+        let mut file = NativeRecordFile::decode(ORIGINAL).unwrap();
+        let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        for (name, enabled) in [("f1", f1), ("restart", restart)] {
+            tail.set_value(name, NativeValue::Word(if enabled { -1 } else { 0 }))
+                .unwrap();
+        }
+        file.tail = tail.encode().unwrap();
+        file.encode().unwrap()
+    }
+
+    fn restore_without_native_f1(engine: &Engine) -> Engine {
+        let bytes = SaveFile::encode(engine).unwrap();
+        let mut payload: serde_json::Value = serde_json::from_slice(&bytes[10..]).unwrap();
+        payload.as_object_mut().unwrap().remove("native_f1");
+        let payload = serde_json::to_vec(&payload).unwrap();
+        let mut framed = bytes[..6].to_vec();
+        framed.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        framed.extend_from_slice(&payload);
+        SaveFile::decode(&framed).unwrap()
+    }
+
+    fn exported_f1(engine: &Engine) -> bool {
+        let file = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+        NativeSimulationTail::decode(&file.tail)
+            .unwrap()
+            .integer("f1")
+            .unwrap()
+            != 0
+    }
+
+    #[test]
+    fn native_f1_import_preserves_contest_flag_without_inventing_global_modes() {
+        for f1 in [false, true] {
+            let input = original_with_contest_flags(f1, !f1);
+            let engine = Engine::from_native_sim(&input).unwrap();
+            assert_eq!(engine.native_f1, Some(f1));
+            assert!(engine.local_mode.config.is_none());
+            assert_eq!(engine.config.recognition_fudging, 0);
+            assert_eq!(
+                engine.native_origin.as_ref().unwrap().encode().unwrap(),
+                input
+            );
+            assert_eq!(exported_f1(&engine), f1);
+            let exported = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&exported.tail).unwrap();
+            // This Boolean is SimOpts.Restart, not the separate restart mode.
+            assert_eq!(tail.integer("restart").unwrap() != 0, !f1);
+        }
+    }
+
+    #[test]
+    fn original_load_retains_global_preferences_and_keeps_saved_simulation_options() {
+        let mut loaded = Engine::from_native_sim(ORIGINAL).unwrap();
+        let native = loaded.config.clone();
+        let native_memory = loaded.slots[0]
+            .organism
+            .as_ref()
+            .unwrap()
+            .program
+            .memory
+            .clone();
+        let publications = loaded.snapshot_publication_count;
+        let mut current = EngineConfig {
+            recognition_fudging: 2,
+            disqualification: 1,
+            body_cutoff: 321,
+            greedy_reproduction: true,
+            ..EngineConfig::testing()
+        };
+        current.advanced_mutation.point2_enabled = true;
+        current.advanced_mutation.copy_error2_enabled = true;
+        current.advanced_mutation.amplification_enabled = true;
+        current.advanced_mutation.translocation_enabled = true;
+        current.advanced_mutation.normalization_enabled = true;
+        current.advanced_mutation.normalization_dna_length = 1234;
+        current.advanced_mutation.native_delta2.preference_step = 7;
+        current.advanced_mutation.delta2.enabled = true;
+        current.advanced_mutation.delta2.interval = 17;
+        current.advanced_mutation.epigenetic.native_exponent = 2.5;
+        current.advanced_mutation.epigenetic.reset_enabled = true;
+        current.advanced_mutation.epigenetic.amplification = 3.0;
+        current.advanced_mutation.epigenetic.overload_threshold = 11;
+        current.advanced_mutation.epigenetic.save_as_temporary_gene = true;
+        current.advanced_mutation.oscillation.mode = crate::MutationOscillationMode::Sine;
+        current.advanced_mutation.oscillation.high_cycles = 2222;
+        current.advanced_mutation.oscillation.low_cycles = 3333;
+        current.vegetation.start_chloroplasts = 1234;
+        current.recording.safemode_backup = !native.recording.safemode_backup;
+        current.recording.sampling_interval = native.recording.sampling_interval + 1;
+        current.recording.dead_snapshot_enabled = !native.recording.dead_snapshot_enabled;
+        current.recording.exclude_repopulating_robots =
+            !native.recording.exclude_repopulating_robots;
+        assert_ne!(
+            native.advanced_mutation.oscillation,
+            current.advanced_mutation.oscillation
+        );
+
+        loaded.retain_native_global_preferences(&current);
+
+        assert_eq!(loaded.config.recognition_fudging, 2);
+        assert_eq!(loaded.config.disqualification, 1);
+        assert_eq!(loaded.config.body_cutoff, 321);
+        assert!(loaded.config.greedy_reproduction);
+        let mut expected_advanced = current.advanced_mutation.clone();
+        expected_advanced.oscillation = native.advanced_mutation.oscillation;
+        assert_eq!(loaded.config.advanced_mutation, expected_advanced);
+        let mut expected_vegetation = native.vegetation.clone();
+        expected_vegetation.start_chloroplasts = 1234;
+        assert_eq!(loaded.config.vegetation, expected_vegetation);
+        let mut expected_recording = native.recording;
+        expected_recording.safemode_backup = current.recording.safemode_backup;
+        assert_eq!(loaded.config.recording, expected_recording);
+        assert_eq!(loaded.config.world_width, native.world_width);
+        assert_eq!(loaded.config.world_height, native.world_height);
+        assert_eq!(loaded.config.dna_costs, native.dna_costs);
+        assert_eq!(loaded.config.physics, native.physics);
+        assert_eq!(loaded.tick, 281);
+        assert_eq!(
+            loaded.slots[0].organism.as_ref().unwrap().program.memory,
+            native_memory
+        );
+        assert_eq!(
+            loaded.native_origin.as_ref().unwrap().encode().unwrap(),
+            ORIGINAL
+        );
+        assert_eq!(loaded.snapshot_publication_count, publications + 1);
+        let resumed = SaveFile::decode(&SaveFile::encode(&loaded).unwrap()).unwrap();
+        assert_eq!(
+            serde_json::to_value(&resumed.config).unwrap(),
+            serde_json::to_value(&loaded.config).unwrap()
+        );
+    }
+
+    #[test]
+    fn native_f1_survives_modern_save_and_migrates_from_an_older_retained_origin() {
+        for f1 in [false, true] {
+            let engine = Engine::from_native_sim(&original_with_contest_flags(f1, false)).unwrap();
+            let save = SaveFile::encode(&engine).unwrap();
+            let resumed = SaveFile::decode(&save).unwrap();
+            assert_eq!(resumed.native_f1, Some(f1));
+            assert_eq!(SaveFile::encode(&resumed).unwrap(), save);
+            let migrated = restore_without_native_f1(&engine);
+            assert_eq!(migrated.native_f1, Some(f1));
+            assert!(migrated.local_mode.config.is_none());
+            assert_eq!(exported_f1(&migrated), f1);
+        }
+        let ordinary = Engine::new(EngineConfig::testing()).unwrap();
+        let migrated = restore_without_native_f1(&ordinary);
+        assert_eq!(migrated.native_f1, None);
+        assert!(!exported_f1(&migrated));
+    }
+
+    #[test]
+    fn explicit_modern_f1_false_is_not_replaced_by_true_in_the_retained_origin() {
+        let mut engine =
+            Engine::from_native_sim(&original_with_contest_flags(true, false)).unwrap();
+        engine.native_f1 = Some(false);
+        let resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        assert_eq!(resumed.native_f1, Some(false));
+        assert!(!exported_f1(&resumed));
+    }
+
+    #[test]
+    fn native_export_projects_current_offline_contest_modes_over_imported_f1() {
+        for (kind, workflow, expected) in [
+            (
+                crate::LocalModeKind::League,
+                crate::LeagueWorkflow::Direct,
+                true,
+            ),
+            (
+                crate::LocalModeKind::League,
+                crate::LeagueWorkflow::Ladder,
+                true,
+            ),
+            (
+                crate::LocalModeKind::League,
+                crate::LeagueWorkflow::Tournament,
+                true,
+            ),
+            (
+                crate::LocalModeKind::League,
+                crate::LeagueWorkflow::Seeding,
+                false,
+            ),
+            (
+                crate::LocalModeKind::Contest,
+                crate::LeagueWorkflow::Direct,
+                true,
+            ),
+            (
+                crate::LocalModeKind::SimpleSurvival,
+                crate::LeagueWorkflow::Direct,
+                false,
+            ),
+            (
+                crate::LocalModeKind::EcoSurvival,
+                crate::LeagueWorkflow::Direct,
+                false,
+            ),
+            (
+                crate::LocalModeKind::Zerobot,
+                crate::LeagueWorkflow::Direct,
+                false,
+            ),
+        ] {
+            for imported in [None, Some(!expected)] {
+                let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+                engine.native_f1 = imported;
+                engine.local_mode.config = Some(crate::LocalModeConfig {
+                    kind,
+                    workflow,
+                    ..crate::LocalModeConfig::default()
+                });
+                assert_eq!(exported_f1(&engine), expected, "{kind:?}/{workflow:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn native_export_marks_evolution_champion_tests_but_not_zerobot_tests_as_f1() {
+        use crate::{
+            EvolutionConfig, EvolutionGenome, EvolutionMode, EvolutionPhase, EvolutionState,
+        };
+
+        // MDIForm1 restart 6 enables F1; restart 9 explicitly disables it.
+        for (kind, mode) in [
+            (
+                crate::LocalModeKind::SimpleSurvival,
+                EvolutionMode::SimpleSurvival,
+            ),
+            (crate::LocalModeKind::EcoSurvival, EvolutionMode::Eco),
+            (crate::LocalModeKind::Zerobot, EvolutionMode::Zerobot),
+        ] {
+            for phase in [
+                EvolutionPhase::Evolving,
+                EvolutionPhase::Testing,
+                EvolutionPhase::ZerobotTesting,
+            ] {
+                let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+                engine.native_f1 = Some(true);
+                engine.local_mode.config = Some(crate::LocalModeConfig {
+                    kind,
+                    ..crate::LocalModeConfig::default()
+                });
+                let mut state = EvolutionState::new(
+                    EvolutionConfig {
+                        mode,
+                        ..EvolutionConfig::default()
+                    },
+                    vec![EvolutionGenome {
+                        dna: LegacyDna::parse("start stop").unwrap(),
+                        mutation_profile: StandardMutationProfile::default(),
+                    }],
+                )
+                .unwrap();
+                state.phase = phase;
+                engine.local_mode.evolution = Some(state);
+                assert_eq!(
+                    exported_f1(&engine),
+                    phase == EvolutionPhase::Testing,
+                    "{kind:?}/{phase:?}"
+                );
+
+                // An explicit league contest supplies SimOpts.F1 even if a
+                // retained evolution state says its restart mode was nine.
+                if phase == EvolutionPhase::ZerobotTesting {
+                    engine.local_mode.config.as_mut().unwrap().kind = crate::LocalModeKind::League;
+                    assert!(exported_f1(&engine));
+                }
+            }
+        }
+    }
 
     #[test]
     fn genuine_native_save_becomes_a_live_world_with_exact_resources_and_shots() {

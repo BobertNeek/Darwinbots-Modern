@@ -281,6 +281,7 @@ impl Engine {
                 }
                 for opponent in [
                     &mut robot.senses.focused_opponent,
+                    &mut robot.senses.touched_opponent,
                     &mut robot.senses.console_reference,
                 ]
                 .into_iter()

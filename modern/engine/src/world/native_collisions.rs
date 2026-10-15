@@ -314,11 +314,16 @@ impl Engine {
             );
             for (index, id) in [actor, other].into_iter().enumerate() {
                 let robot = self.slots.get_mut(id).unwrap();
-                write_robot_touch(robot, before[index], before[1 - index]);
                 robot.kinematics.position = positions[index];
                 robot.kinematics.velocity = velocities[index];
+                write_robot_touch(robot, positions[index], positions[1 - index]);
+                robot.senses.touched_opponent = Some([actor, other][1 - index]);
                 contacts.relocate(id, positions[index]);
             }
+            // Repel3 publishes both contact references in this order, after
+            // separation. The second read can observe the first robot new cells.
+            self.publish_native_contact_reference(actor, other);
+            self.publish_native_contact_reference(other, actor);
             // Repel3 changes physical positions, never coarse bucket membership.
         }
     }

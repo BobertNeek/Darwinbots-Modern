@@ -15,6 +15,7 @@ public sealed record WorldConfiguration(
     public int BodyCutoff { get; init; }
     public bool GreedyReproduction { get; init; }
     public int DisqualificationRule { get; init; }
+    public int RecognitionFudging { get; init; }
 }
 
 internal static class NativeConfigurationParser
@@ -104,6 +105,7 @@ internal static class NativeConfigurationParser
             BodyCutoff = Read<int>("body_cutoff"),
             GreedyReproduction = Read<bool>("greedy_reproduction"),
             DisqualificationRule = config.TryGetProperty("disqualification", out var rule) ? rule.GetInt32() : 0,
+            RecognitionFudging = config.TryGetProperty("recognition_fudging", out var fudging) ? fudging.GetInt32() : 0,
         };
     }
 }

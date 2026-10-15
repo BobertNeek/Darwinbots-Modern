@@ -146,6 +146,7 @@ mod tests {
     use super::*;
 
     fn sense(world: &mut Engine) {
+        world.clear_after_dna_phase();
         world.native_buckets.synchronize(
             [world.config.world_width, world.config.world_height],
             &world.slots,
@@ -179,7 +180,8 @@ mod tests {
             (689, 600),
             (690, 500),
             (695, 2),
-            (696, -17),
+            // The preceding EraseLookOccurr clears the seeded .refvelsx.
+            (696, 0),
             (697, 1),
             (698, -2),
             (699, 2),

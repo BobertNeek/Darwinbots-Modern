@@ -72,6 +72,9 @@ enum EngineCommand {
     UpdateDisqualificationRules {
         level: u8,
     },
+    UpdateRecognitionFudging {
+        mode: u8,
+    },
     UpdateMainRules {
         body_cutoff: i32,
         greedy_reproduction: bool,
@@ -561,6 +564,9 @@ fn db_engine_command_batch_impl(
                 .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateAdvancedMutationSettings { settings } => engine
                 .update_advanced_mutation_settings(settings)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::UpdateRecognitionFudging { mode } => engine
+                .update_recognition_fudging(mode)
                 .map(|_| serde_json::Value::Null),
             EngineCommand::UpdateDisqualificationRules { level } => engine
                 .update_disqualification_rules(level)
@@ -1156,7 +1162,12 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
     }
     let bytes = unsafe { slice::from_raw_parts(save_data, save_len) };
     match SaveFile::decode(bytes) {
-        Ok(loaded) => {
+        Ok(mut loaded) => {
+            // Native .sim omits Global.gset preferences. DB3S instead restores
+            // its complete saved policy; the two load formats stay distinct.
+            if !bytes.starts_with(b"DB3S") {
+                loaded.retain_native_global_preferences(engine.configuration());
+            }
             *engine = loaded;
             DbStatus::Ok
         }

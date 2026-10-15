@@ -100,6 +100,7 @@ public sealed partial class GlobalSettingsWindow : Window
         DynamicUpperReinstateThreshold.Value = (decimal)costs.DynamicUpperReinstateThreshold;
         LeagueOfflineOwned.IsChecked = settings.League.OwnedByOfflineModes;
         DisqualificationRule.SelectedIndex = settings.League.DisqualificationRule;
+        RecognitionFudging.SelectedIndex = settings.League.RecognitionFudging;
 
         var evolution = settings.Evolution;
         EnableStagedEvolution.IsChecked = evolution.Enabled;
@@ -205,7 +206,7 @@ public sealed partial class GlobalSettingsWindow : Window
             DynamicLowerReinstateThreshold = (double)(DynamicLowerReinstateThreshold.Value ?? 0),
             DynamicUpperReinstateThreshold = (double)(DynamicUpperReinstateThreshold.Value ?? 0),
         },
-        League = new GlobalLeagueSettings { OwnedByOfflineModes = true, DisqualificationRule = Math.Max(0, DisqualificationRule.SelectedIndex) },
+        League = new GlobalLeagueSettings { OwnedByOfflineModes = true, DisqualificationRule = Math.Max(0, DisqualificationRule.SelectedIndex), RecognitionFudging = Math.Max(0, RecognitionFudging.SelectedIndex) },
         Evolution = new GlobalEvolutionSettings
         {
             Enabled = EnableStagedEvolution.IsChecked == true,

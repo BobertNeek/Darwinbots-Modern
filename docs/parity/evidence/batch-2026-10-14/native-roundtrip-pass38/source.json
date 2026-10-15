@@ -1,0 +1,187 @@
+{
+  "parent_head": "e2adeb58c62e66b5796555e83aef92ec36ca2424",
+  "scope": "Complete native reference/recognition/F1/global preference/tie/birth/safe-mode/dead-recording integration batch. All code and tests written before this fresh full serial qualification; no inherited production runtime proof.",
+  "created_utc": "2026-10-15T17:46:31.2749719Z",
+  "files": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/CycleAutosavePolicy.cs",
+      "sha256": "94DDDDC7C1D031D60DC4CC995C6E9B6FEC89E284415DA51AD73B8934E560B511"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+      "sha256": "C873365BF073191145BC68A187E65D8AC9B45B6CC22EB9A01E6AAFB5211B716A"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/GlobalSettings.cs",
+      "sha256": "148BFE809F505DA9D5C46367D2359B0EC5E3506DABB58A349E3C2D2583045070"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "sha256": "FD07B7E81D108494B9FEE2E02A7529D9854BC20C09A81D363EA5E6494B58A2B4"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "sha256": "579507C9305EFAAD0BC8D0950A76050B8AB37AB1D3B0EBB201307B310481DB8E"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "sha256": "6B1A1CEA75CBBE4FEBAA3D72E49A4FAE01AF77B5466BA3C59C91B91AC5A541C3"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldConfiguration.cs",
+      "sha256": "C083A11A43C4EA24EBDE77F4A547B2EE8F34E04A73AE3060C5AC21634D2E8769"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+      "sha256": "4774E8CC02FD7FFB79420F5F60EDF2C6B32C2CB8AA514703E704B5ECB1EE1C10"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GlobalSettingsWindow.axaml",
+      "sha256": "6447920FB2ACA83A34163EC51E49A729E905E3748D1CD25C8746A8424D7C8200"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GlobalSettingsWindow.axaml.cs",
+      "sha256": "A9B9793933B0D057C71574CFF0E5FD20CE47BBCF26889B3B2C83468F7A35769B"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "5E375D278C2A8F0551F1AF2F092D145BB0C99BB9E17F720C85C88CC65E3CE33E"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/SetupWindow.axaml.cs",
+      "sha256": "EBF8D0EB6FB58DF6CE5168AD407F5D0988A0C89D7A34E31C694093BECDF59083"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/CycleAutosavePolicyTests.cs",
+      "sha256": "051FBB619905DAD6843A316AD9D22DB919D3C58916F727FC3D06CFF59051BA72"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RecognitionFudgingTests.cs",
+      "sha256": "ED2635CDD318095275D7332827D6C899CE0A4C2C445E31E6EB275D1F212AFE4E"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "sha256": "7EE59404CAA784A2D28EAA072C86078748FECCA65EA1C2E5DBCD579967B9C44E"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs",
+      "sha256": "7C14B61CC5C2865870663E90C26D5BF5C314A0B1C1C15BB3182226F10F3DC50F"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/HelpRecordingRenderedTests.cs",
+      "sha256": "B462D2099B5CD2B6BC467B8082C3BC82A00D0AA4203666C5E0D69304131C6609"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RecognitionFudgingNativeTests.cs",
+      "sha256": "DD5570F8204936FC7F1A00DEA306AAE312F1B40671216320B30D6C4A145171BA"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "A44BAFF34924159A90397ECBE421F5F592F1BBBB8DD87DBE5867B285F6922FD9"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/SafeModeAutosaveRenderedTests.cs",
+      "sha256": "2D518E73E37918F5D6549D346865E003A802F9B10FBF3AD509509AC4A6F2130C"
+    },
+    {
+      "file": "modern/engine/src/config.rs",
+      "sha256": "DAD7833F1C79BB2934512C4BD4F7A7705D01CB91F17906E84FBD7B88E01DFBC0"
+    },
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "sha256": "B6F0859719810B32F77C1C6C8F34479B09C8382B64513D5119FF34A2FD3BD1F8"
+    },
+    {
+      "file": "modern/engine/src/robot_state.rs",
+      "sha256": "C12537CE484F77B5ADE798CD8977CBD96E0BBB2A18CF4EBF16AE83CA9FD48DC3"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "CEB561C1951C298E2C4DB0BF15BD0BA9D83A281CDE5DEBF6D6675B346592842E"
+    },
+    {
+      "file": "modern/engine/src/world/native_collisions.rs",
+      "sha256": "6069036126F269341BE3D3BBD1D5FF334EF3765FB3A6305051A446B0B8925C0F"
+    },
+    {
+      "file": "modern/engine/src/world/native_corpses.rs",
+      "sha256": "E4A3FEE0B959C4054C92394C80036F0B95DB6A5CCB5E7FC22ACE318BA9F1140E"
+    },
+    {
+      "file": "modern/engine/src/world/native_disqualification.rs",
+      "sha256": "F7E01A1D8334FD00C9DACE11C8553E0408FE6B926A3E35366671F4A353E7A0D9"
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "sha256": "9BB2B427B136564EDA974E8C4CBF6AE7A5759CB898EC4F20900D7A3F7FE59A06"
+    },
+    {
+      "file": "modern/engine/src/world/native_pipeline.rs",
+      "sha256": "2FE2CA0EA011272BC90AC3DFAC19EAF881188B599A964ACE6195B756303E78F5"
+    },
+    {
+      "file": "modern/engine/src/world/native_recognition_fudging.rs",
+      "sha256": "C21F01E70A9062B490425ABABBF282C53DFB009AC7CF7D483E505278C9CA168C"
+    },
+    {
+      "file": "modern/engine/src/world/native_reference_velocity.rs",
+      "sha256": "6923DBCCFE91F1198434A4293881AE74FA3E7D839D91DAC96F92B84DBCCAC3E2"
+    },
+    {
+      "file": "modern/engine/src/world/native_sensing.rs",
+      "sha256": "763D95A52283C7467033A06A5C3C19A78EBAFD129726E825A978E38C6AB45CF2"
+    },
+    {
+      "file": "modern/engine/src/world/native_shape_vision.rs",
+      "sha256": "D7518DDE1408D7F76067833CBF8259D68FA1DAE5F3BE1E9D22527DD18516F988"
+    },
+    {
+      "file": "modern/engine/src/world/native_sim_export.rs",
+      "sha256": "9FF14FD7F78E5B2B2FECA2A5C62DF9B6D36B97856246164FF1891CFCB1EBF5F4"
+    },
+    {
+      "file": "modern/engine/src/world/native_tie_creation.rs",
+      "sha256": "3B8F543154FDA14378766F467C7B12496874E7CB3B56A55F61C970EC2751E392"
+    },
+    {
+      "file": "modern/engine/src/world/native_tie_physics.rs",
+      "sha256": "D38029F4A3DD9998D17F219C150C9224F1CAE1B18B8EF1621212FA30F529F22F"
+    },
+    {
+      "file": "modern/engine/src/world/native_vision.rs",
+      "sha256": "BBD299F7B94128ACA1724C17FF8361877E3BDB053E3BF2725CBCA2EFF80327A2"
+    },
+    {
+      "file": "modern/engine/tests/canonical_cycle_248.rs",
+      "sha256": "DFAFDE105863CC3C5D14F063B4F95DBCAF3F0D3F5A245195A5AFBADC0730F4A8"
+    },
+    {
+      "file": "modern/engine/tests/contracts.rs",
+      "sha256": "E7053ADB06233C61D23776A8EA10781AF9764E5516860BD88D7221AAB532114F"
+    },
+    {
+      "file": "modern/engine/tests/final_state_persistence_248.rs",
+      "sha256": "216613DDC74E6B093343B403506A0A6C429D3D3516673EAC4C64ABA6ECDA0C80"
+    },
+    {
+      "file": "modern/engine/tests/native_reference_senses_248.rs",
+      "sha256": "8C292DA387DAF999A9A20EB8611D0D346581AE23129E8176604EECCCA3677C42"
+    },
+    {
+      "file": "modern/engine/tests/reproduction_heredity_248.rs",
+      "sha256": "D5B8086BF9A38255B5222DBBD1C347D9ECA5FFBABAC66C16A6F04AD34EB9146B"
+    },
+    {
+      "file": "modern/engine/tests/sysvar_lifecycle_248.rs",
+      "sha256": "B3E0EAA99D18E58628C8BB158A605E72052AF92726F4C35B793D86C9AFADFCA0"
+    },
+    {
+      "file": "modern/engine/tests/ties_multibot.rs",
+      "sha256": "022642E88ED732AF2F1900B74A4FB00BC3719206914F32664A414626753FEFB4"
+    },
+    {
+      "file": "modern/engine/tests/touch_taste_248.rs",
+      "sha256": "228442951DC2BECD2584071FC9A053C9E95E1BBE81D0175413404A9E1B666A5C"
+    }
+  ]
+}

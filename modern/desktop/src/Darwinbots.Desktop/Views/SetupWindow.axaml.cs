@@ -217,6 +217,10 @@ public sealed partial class SetupWindow : Window
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
             _environment = dialog.Update;
+            _globalSettings = _globalSettings with
+            {
+                Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
+            };
             var mutationUpdate = dialog.MutationUpdate;
             // Species do not have engine IDs until startup imports them. Keep
             // their percentages on the startup definitions rather than sending
@@ -248,6 +252,10 @@ public sealed partial class SetupWindow : Window
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
             _globalSettings = dialog.Settings;
+            _environment = _environment with
+            {
+                Recording = (_environment.Recording ?? new()) with { SafeModeBackup = _globalSettings.Main.SafeMode },
+            };
             SetupStatus.Text = "GLOBAL SETTINGS SAVED";
         }
         catch (Exception error)
@@ -329,6 +337,10 @@ public sealed partial class SetupWindow : Window
         AutomaticProgression.IsChecked = setup.AutomaticZerobotProgression;
         _environment = setup.ToEnvironmentUpdate();
         _globalSettings = setup.GlobalSettings;
+        _globalSettings = _globalSettings with
+        {
+            Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
+        };
         _mutationSettings = setup.MutationSettings;
         _legacySettingsFields = setup.LegacySettingsFields;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;

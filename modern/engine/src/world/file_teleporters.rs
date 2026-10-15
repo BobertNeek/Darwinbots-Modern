@@ -358,14 +358,14 @@ mod tests {
         }
         source.refresh_tie_projections();
         for &id in &members {
-            source
-                .slots
-                .get_mut(id)
-                .unwrap()
-                .program
-                .memory
-                .restore_native_cell(1000, 32767);
+            let robot = source.slots.get_mut(id).unwrap();
+            // regang publishes the independent Multibot latch as it hardens
+            // the endpoint. A projection refresh must not synthesize it.
+            robot.counters.multibot = true;
+            robot.program.memory.write(MEM_MULTI, 1);
+            robot.program.memory.restore_native_cell(1000, 32767);
         }
+        assert_eq!(source.file_transfer_group(members[0]).unwrap(), members);
         let energy = source.slots.get(members[0]).unwrap().materials.energy;
         source
             .add_file_teleporter(

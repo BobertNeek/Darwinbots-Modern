@@ -236,6 +236,10 @@ pub struct RobotSenseState {
     #[serde(default = "default_occurrence_counts")]
     pub occurrence_counts: Vec<i32>,
     pub focused_opponent: Option<OrganismId>,
+    #[serde(default)]
+    pub focused_shape: bool,
+    #[serde(default)]
+    pub touched_opponent: Option<OrganismId>,
     pub touch: i32,
     pub taste: i32,
     pub eye_configuration: [i32; 9],
@@ -249,6 +253,8 @@ impl Default for RobotSenseState {
             vision_reference_occurrences: default_occurrence_census(),
             occurrence_counts: default_occurrence_counts(),
             focused_opponent: None,
+            focused_shape: false,
+            touched_opponent: None,
             touch: 0,
             taste: 0,
             eye_configuration: [0; 9],

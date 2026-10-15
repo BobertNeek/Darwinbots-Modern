@@ -43,6 +43,7 @@ mod tests {
     }
 
     fn sense(world: &mut Engine) {
+        world.clear_after_dna_phase();
         world.native_buckets.synchronize(
             [world.config.world_width, world.config.world_height],
             &world.slots,

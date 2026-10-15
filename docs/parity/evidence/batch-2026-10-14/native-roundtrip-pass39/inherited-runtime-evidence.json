@@ -1,0 +1,5 @@
+{
+  "baseline": "../native-roundtrip-pass38/summary.json",
+  "production_unchanged": true,
+  "excluded": "physical GPU and original-program trajectory"
+}

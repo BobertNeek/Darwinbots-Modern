@@ -1,0 +1,732 @@
+{
+  "source_manifest": "source.json",
+  "source_parent": "e2adeb58c62e66b5796555e83aef92ec36ca2424",
+  "state": "complete; needs combined repairs",
+  "runtime": {
+    "completed_target_summaries": 65,
+    "passed": 746,
+    "failed": 10,
+    "ignored": 0,
+    "filtered": 26,
+    "seconds": 4059.4975433,
+    "command": "cargo test --release --workspace --no-fail-fast -- --skip gpu --skip switch --nocapture --test-threads=1",
+    "failures": [
+      "world::file_teleporters::tests::file_exchange_moves_a_native_multibot_as_one_file_with_memory_stores_and_tie_intact",
+      "world::native_reference_velocity::tests::tie_integer_assignment_preserves_values_above_the_dna_store_limit",
+      "world::native_reference_velocity::tests::tie_reference_copies_published_target_cells_and_clamps_physical_motion",
+      "world::native_sensing::tests::native_contact_copies_published_words_and_preserves_full_integer_cells",
+      "world::native_tie_creation::tests::later_robot_geometry_observes_earlier_body_radius_change_in_the_same_cycle",
+      "tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle",
+      "core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically",
+      "engine_tick_keeps_tie_port_selectors_distinct_from_tie_count",
+      "engine_tick_resets_fixang_to_legacy_sentinel",
+      "removed_tie_clears_topology_and_retains_references_until_the_next_read"
+    ],
+    "targets": [
+      {
+        "target": "unittests src\\lib.rs [darwinbots_cli-19b2f1d2dddc4ec7.exe]",
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 1.41
+      },
+      {
+        "target": "unittests src\\main.rs [darwinbots_cli-669e7ed1c271a6b6.exe]",
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\bundled_bot_corpus.rs [bundled_bot_corpus-64a072572acbe959.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 246.03
+      },
+      {
+        "target": "tests\\commands.rs [commands-eec7744335c58eb1.exe]",
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.07
+      },
+      {
+        "target": "tests\\db245_probes.rs [db245_probes-527613d6923ddfd2.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 437.99
+      },
+      {
+        "target": "tests\\native_comparison.rs [native_comparison-d3c5181653a931bd.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.59
+      },
+      {
+        "target": "unittests src\\lib.rs [darwinbots_engine-92c50bc16611c615.exe]",
+        "result": "FAILED",
+        "passed": 282,
+        "failed": 5,
+        "ignored": 0,
+        "filtered": 7,
+        "seconds": 12.98
+      },
+      {
+        "target": "tests\\advanced_mutation_costs.rs [advanced_mutation_costs-09fdfc0fa41cc905.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\canonical_cycle_248.rs [canonical_cycle_248-650ba62a7c41d570.exe]",
+        "result": "FAILED",
+        "passed": 13,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.03
+      },
+      {
+        "target": "tests\\community_league_admission.rs [community_league_admission-93be0ad716fa77a4.exe]",
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.03
+      },
+      {
+        "target": "tests\\contracts.rs [contracts-179a2d3a76e729ad.exe]",
+        "result": "ok",
+        "passed": 31,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 2,
+        "seconds": 0.1
+      },
+      {
+        "target": "tests\\core_state_contracts.rs [core_state_contracts-6bf5e5eb215ae5d4.exe]",
+        "result": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\corpses_collisions.rs [corpses_collisions-66bd4fced172556a.exe]",
+        "result": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.23
+      },
+      {
+        "target": "tests\\db24832_clean_defaults.rs [db24832_clean_defaults-acb0259715fbf94e.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\db24832_starter_movement.rs [db24832_starter_movement-f888656b7ea57a99.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\db2_final_engine_world.rs [db2_final_engine_world-461d89f488220f53.exe]",
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\db2_mutation_248.rs [db2_mutation_248-46accb0e62919ad8.exe]",
+        "result": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\db2_physics.rs [db2_physics-ce758037a74f4117.exe]",
+        "result": "ok",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\db2_projectiles.rs [db2_projectiles-67673a8dd88d938d.exe]",
+        "result": "ok",
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\db2_starter_ecology.rs [db2_starter_ecology-5e288a6d107e72d3.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 1303.51
+      },
+      {
+        "target": "tests\\db2_vegetation.rs [db2_vegetation-b21a95ff2211a5e6.exe]",
+        "result": "ok",
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\db2_vision.rs [db2_vision-2b2321f6475d537f.exe]",
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\dna_runtime_248.rs [dna_runtime_248-b6816bc5b4e5c92d.exe]",
+        "result": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\eco05_repopulation.rs [eco05_repopulation-5045dda4070ffd93.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\environment_world.rs [environment_world-3854baf0f2ececf1.exe]",
+        "result": "ok",
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\extinct_species.rs [extinct_species-585aba2c31b9ffb2.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\final_state_persistence_248.rs [final_state_persistence_248-35fbe0bce0b29740.exe]",
+        "result": "FAILED",
+        "passed": 3,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\gpu_ffi.rs [gpu_ffi-4c7d162f35e688aa.exe]",
+        "result": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 14,
+        "seconds": 11.65
+      },
+      {
+        "target": "tests\\history_records.rs [history_records-143daf93a80a442e.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\legacy_distribution.rs [legacy_distribution-7bb136b759d1c7de.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.4
+      },
+      {
+        "target": "tests\\legacy_transport.rs [legacy_transport-09aee2bbca8ac8a6.exe]",
+        "result": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.25
+      },
+      {
+        "target": "tests\\live_legacy_menu_settings.rs [live_legacy_menu_settings-b490f410f04c8243.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\local_modes.rs [local_modes-4c38d5ff313600fd.exe]",
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\manual_tools.rs [manual_tools-a429d3ceca6198a2.exe]",
+        "result": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\mutation_advanced_248.rs [mutation_advanced_248-d4b00b11f49281e8.exe]",
+        "result": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.19
+      },
+      {
+        "target": "tests\\mutation_lifecycle.rs [mutation_lifecycle-94f7448b1761426e.exe]",
+        "result": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.03
+      },
+      {
+        "target": "tests\\native_continuation_qualification.rs [native_continuation_qualification-9ff3b2220595958d.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1,
+        "seconds": 254.96
+      },
+      {
+        "target": "tests\\native_mutation_continuation_qualification.rs [native_mutation_continuation_qualification-29af2bf317ca2797.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 76.61
+      },
+      {
+        "target": "tests\\native_reference_senses_248.rs [native_reference_senses_248-e98e55079559ad45.exe]",
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\native_resource_precision.rs [native_resource_precision-d406bdccc810eb07.exe]",
+        "result": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.03
+      },
+      {
+        "target": "tests\\occurrence_census_248.rs [occurrence_census_248-19d42b773440ac55.exe]",
+        "result": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 3.01
+      },
+      {
+        "target": "tests\\parity_completion.rs [parity_completion-900346f89625bb36.exe]",
+        "result": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.06
+      },
+      {
+        "target": "tests\\reproduction_heredity_248.rs [reproduction_heredity_248-66c2c382b759ceec.exe]",
+        "result": "ok",
+        "passed": 30,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.13
+      },
+      {
+        "target": "tests\\robot_state_248.rs [robot_state_248-09c3c6f377e9f9c0.exe]",
+        "result": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\robot_tools.rs [robot_tools-d87531d73e3fa458.exe]",
+        "result": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 1.8
+      },
+      {
+        "target": "tests\\scheduler_housekeeping.rs [scheduler_housekeeping-34a83c41b6c94c9d.exe]",
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\scheduler_shock.rs [scheduler_shock-02bcae018107ad24.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\sensing_compatibility.rs [sensing_compatibility-7a9674124e31a7ee.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\shot_state.rs [shot_state-1724e844b71cb858.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\spawn_placement.rs [spawn_placement-6758035783c655f8.exe]",
+        "result": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\species_ecology.rs [species_ecology-f257e733aa9efc30.exe]",
+        "result": "ok",
+        "passed": 41,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.09
+      },
+      {
+        "target": "tests\\starter_ecology.rs [starter_ecology-4f04f24d61d6a506.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 607.22
+      },
+      {
+        "target": "tests\\sysvar_lifecycle_248.rs [sysvar_lifecycle_248-a6463d22e029177f.exe]",
+        "result": "FAILED",
+        "passed": 22,
+        "failed": 2,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\ties_multibot.rs [ties_multibot-88c93c24b9c68278.exe]",
+        "result": "FAILED",
+        "passed": 20,
+        "failed": 1,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.14
+      },
+      {
+        "target": "tests\\toroidal_world.rs [toroidal_world-64814961e5b6b04a.exe]",
+        "result": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\touch_taste_248.rs [touch_taste_248-b519518bac9ec43d.exe]",
+        "result": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\visual_phenotypes.rs [visual_phenotypes-079c0d150cbd6f2c.exe]",
+        "result": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\vm.rs [vm-1b6c01cf0a4bd8e1.exe]",
+        "result": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\vm_costs_telemetry.rs [vm_costs_telemetry-35be8fcf35537edb.exe]",
+        "result": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.01
+      },
+      {
+        "target": "tests\\vm_implicit_conditions.rs [vm_implicit_conditions-992cbe6a6064bda8.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\w4_evolution_gpu.rs [w4_evolution_gpu-3e196d79f9dd6aa4.exe]",
+        "result": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 1,
+        "seconds": 0
+      },
+      {
+        "target": "tests\\world_systems.rs [world_systems-3482d82d394d1951.exe]",
+        "result": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0.02
+      },
+      {
+        "target": "tests\\zerobot_progression.rs [zerobot_progression-cafef9c9e3e52765.exe]",
+        "result": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "doc-tests darwinbots_cli",
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      },
+      {
+        "target": "doc-tests darwinbots_engine",
+        "result": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered": 0,
+        "seconds": 0
+      }
+    ]
+  },
+  "desktop": {
+    "passed": 132,
+    "failed": 1,
+    "total": 133,
+    "receipt": "desktop.trx",
+    "queued_production_repair": "Successful background backup overwrites player Turbo status"
+  },
+  "core": {
+    "passed": 181,
+    "failed": 0,
+    "skipped": 0,
+    "receipt": "core.trx"
+  },
+  "corpus": {
+    "bots": 48,
+    "cycles_each": 1000,
+    "passed_targets": 2,
+    "failed": 0
+  },
+  "long_cpu": {
+    "ecology_ticks": [
+      20000,
+      10000
+    ],
+    "state": "both passed; see runtime targets",
+    "continuation_checkpoints": [
+      {
+        "mutation_enabled": false,
+        "cycle": 781,
+        "robots": 671,
+        "shots": 106,
+        "births": 724,
+        "mutations": 0,
+        "save_bytes": 13266754
+      },
+      {
+        "mutation_enabled": false,
+        "cycle": 1281,
+        "robots": 1019,
+        "shots": 192,
+        "births": 1149,
+        "mutations": 0,
+        "save_bytes": 17606570
+      },
+      {
+        "mutation_enabled": false,
+        "cycle": 1781,
+        "robots": 1309,
+        "shots": 286,
+        "births": 1541,
+        "mutations": 0,
+        "save_bytes": 21258505
+      },
+      {
+        "mutation_enabled": false,
+        "cycle": 2281,
+        "robots": 1514,
+        "shots": 331,
+        "births": 1920,
+        "mutations": 0,
+        "save_bytes": 23818292
+      },
+      {
+        "mutation_enabled": true,
+        "cycle": 531,
+        "robots": 437,
+        "shots": null,
+        "births": 494,
+        "mutations": 1146,
+        "save_bytes": 10419906
+      },
+      {
+        "mutation_enabled": true,
+        "cycle": 781,
+        "robots": 588,
+        "shots": null,
+        "births": 781,
+        "mutations": 2432,
+        "save_bytes": 12488855
+      },
+      {
+        "mutation_enabled": true,
+        "cycle": 1031,
+        "robots": 687,
+        "shots": null,
+        "births": 1143,
+        "mutations": 4196,
+        "save_bytes": 13915018
+      },
+      {
+        "mutation_enabled": true,
+        "cycle": 1281,
+        "robots": 772,
+        "shots": null,
+        "births": 1694,
+        "mutations": 6523,
+        "save_bytes": 15316230
+      }
+    ],
+    "comparison": "complete DB3S bytes across repeated Rust continuations; separate from original executable"
+  },
+  "exact_interchange": {
+    "compared_fields": 393316,
+    "differences": 0,
+    "absolute_tolerance": 0,
+    "relative_tolerance": 0,
+    "receipt": "original-zero-cycle-compare.log"
+  },
+  "package": {
+    "backend": "CPU",
+    "ticks": 13,
+    "movement": true,
+    "save_resume": true,
+    "bots": 48,
+    "asset_mismatches": 0
+  },
+  "physical_gpu": "not run",
+  "original_runtime_trajectories": "not run",
+  "repairs_started_only_after_full_collection": true
+}

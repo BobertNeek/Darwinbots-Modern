@@ -37,7 +37,7 @@ public sealed record GlobalMainSettings
     public bool GreedyEnforcement { get; init; }
     public bool NewSeed { get; init; }
     public string MainDirectory { get; init; } = string.Empty;
-    public bool SafeMode { get; init; }
+    public bool SafeMode { get; init; } = true;
     public bool FindBestEnergyWeighting { get; init; } = true;
     public int? FindBestWeight { get; init; }
     [JsonIgnore]
@@ -142,6 +142,7 @@ public sealed record GlobalLeagueSettings
 {
     public bool OwnedByOfflineModes { get; init; } = true;
     public int DisqualificationRule { get; init; }
+    public int RecognitionFudging { get; init; }
 }
 
 public sealed record GlobalEvolutionSettings
@@ -181,6 +182,7 @@ public sealed record GlobalSettings
 
     private void Validate()
     {
+        if (League.RecognitionFudging is < 0 or > 2) throw new InvalidDataException("Recognition fudging must be None, Eyes only or All recognition methods.");
         if (League.DisqualificationRule is < 0 or > 2) throw new InvalidDataException("Disqualification rule must be None, F2 or F3.");
         if (Main.EffectiveFindBestWeight is < 0 or > 200)
             throw new InvalidDataException("Find Best weighting must be between 0 and 200.");

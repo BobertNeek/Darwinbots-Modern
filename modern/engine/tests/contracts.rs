@@ -75,13 +75,15 @@ fn review_projection_db3s_v3_resumes_exact_mid_soft_tie_lifecycle() {
     .unwrap();
     let source = engine
         .spawn_at(
-            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            LegacyDna::parse("cond\n*.numties 0 =\nstart\n41 .tie store\nstop").unwrap(),
             [400.0, 1_000.0],
         )
         .unwrap();
     let target = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [700.0, 1_000.0])
         .unwrap();
+    engine.set_organism_aim(source, 0).unwrap();
+    engine.set_organism_aim(target, 0).unwrap();
     engine.tick().unwrap();
     engine.tick_many(7).unwrap();
 

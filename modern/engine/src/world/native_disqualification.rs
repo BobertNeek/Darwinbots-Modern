@@ -45,6 +45,23 @@ impl DisqualificationAction {
 }
 
 impl Engine {
+    /// Effective SimOpts.F1, independent of the external x_restartmode byte.
+    pub(super) fn native_f1_enabled(&self) -> bool {
+        self.local_mode.config.as_ref().map_or_else(
+            || self.native_f1.unwrap_or(false),
+            |config| {
+                let staged_test = self
+                    .local_mode
+                    .evolution
+                    .as_ref()
+                    .is_some_and(|state| state.phase == crate::EvolutionPhase::Testing);
+                staged_test
+                    || matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest)
+                        && config.workflow != crate::LeagueWorkflow::Seeding
+            },
+        )
+    }
+
     pub fn update_disqualification_rules(&mut self, level: u8) -> Result<(), EngineError> {
         if level > 2 {
             return Err(EngineError::Invariant(
@@ -81,15 +98,20 @@ impl Engine {
         let Ok(robot) = self.slots.get(id) else {
             return;
         };
-        if robot.flags.corpse
+        if !robot.flags.exists
+            || robot.flags.corpse
             || (matches!(action, DisqualificationAction::Slime) && robot.flags.vegetable)
         {
             return;
         }
-        let contest = self.local_mode.status == LocalModeStatus::Running
-            && self.local_mode.config.as_ref().is_some_and(|config| {
-                matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest)
-            });
+        // Original action gates use F1 OR x_restartmode=1. Seeding is allowed
+        // to disqualify a file even though its SimOpts.F1 is explicitly false.
+        let contest = self.native_f1_enabled()
+            || self
+                .local_mode
+                .config
+                .as_ref()
+                .is_some_and(|config| config.workflow == crate::LeagueWorkflow::Seeding);
         if !contest {
             // Outside a contest only robots opted into dq_kill are killed.
             if robot.counters.disqualification == 1 {
@@ -98,24 +120,31 @@ impl Engine {
             return;
         }
         let file_name = self.graph_species_name(robot);
-        if self.local_mode.disqualifications.iter().any(|record| {
+        if !self.local_mode.disqualifications.iter().any(|record| {
             record.round == self.local_mode.current_round && record.file_name == file_name
         }) {
-            return;
+            let record = crate::modes::DisqualificationRecord {
+                tick: self.tick,
+                round: self.local_mode.current_round,
+                species: robot.identity.species,
+                file_name: file_name.clone(),
+                tag: robot.identity.tag.clone(),
+                reason: action.reason().into(),
+            };
+            self.local_mode.disqualifications.push(record);
         }
-        let record = crate::modes::DisqualificationRecord {
-            tick: self.tick,
-            round: self.local_mode.current_round,
-            species: robot.identity.species,
-            file_name: file_name.clone(),
-            tag: robot.identity.tag.clone(),
-            reason: action.reason().into(),
-        };
-        self.local_mode.disqualifications.push(record);
+        // dreason removes current animals on every call. A prior reason does
+        // not grant later arrivals immunity; queue each pending removal once.
+        let mut pending: HashSet<_> = self.pending_disqualifications.iter().copied().collect();
         for member in self.slots.ids_in_slot_order() {
             let same_file = self.graph_species_name(self.slots.get(member).unwrap()) == file_name;
             let robot = self.slots.get_mut(member).unwrap();
-            if !robot.flags.vegetable && !robot.flags.corpse && same_file {
+            if robot.flags.exists
+                && !robot.flags.vegetable
+                && !robot.flags.corpse
+                && same_file
+                && pending.insert(member)
+            {
                 robot.flags.dead = true;
                 self.pending_disqualifications.push(member);
             }
@@ -146,6 +175,218 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn named_bot(world: &mut Engine, species: SpeciesId, file: &str) -> OrganismId {
+        let x = 500.0 + world.slots.len() as f32 * 200.0;
+        let id = world
+            .spawn_species_batch(
+                LegacyDna::parse("start stop").unwrap(),
+                species,
+                [[x, 500.0]],
+                3000,
+            )
+            .unwrap()[0];
+        world.slots.get_mut(id).unwrap().identity.species_file = file.into();
+        id
+    }
+
+    fn file_world() -> (Engine, SpeciesId, SpeciesId) {
+        let mut world = Engine::new(EngineConfig {
+            world_width: 5000.0,
+            world_height: 4000.0,
+            disqualification: 2,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let a = world.register_species(SpeciesDefinition {
+            name: "registry-a.txt".into(),
+            ..Default::default()
+        });
+        let b = world.register_species(SpeciesDefinition {
+            name: "registry-b.txt".into(),
+            ..Default::default()
+        });
+        (world, a, b)
+    }
+
+    fn evolution(phase: crate::EvolutionPhase) -> crate::EvolutionState {
+        let mut state = crate::EvolutionState::new(
+            crate::EvolutionConfig::default(),
+            vec![crate::EvolutionGenome {
+                dna: LegacyDna::parse("start stop").unwrap(),
+                mutation_profile: StandardMutationProfile::default(),
+            }],
+        )
+        .unwrap();
+        state.phase = phase;
+        state
+    }
+
+    #[test]
+    fn imported_f1_disqualifies_live_animals_by_file_not_numeric_species() {
+        let (mut world, a, b) = file_world();
+        world.native_f1 = Some(true);
+        let actor = named_bot(&mut world, a, "shared.txt");
+        let same_file_other_species = named_bot(&mut world, b, "shared.txt");
+        let same_species_other_file = named_bot(&mut world, a, "other.txt");
+        let vegetable = named_bot(&mut world, b, "shared.txt");
+        world.slots.get_mut(vegetable).unwrap().flags.vegetable = true;
+        let corpse = named_bot(&mut world, b, "shared.txt");
+        world.slots.get_mut(corpse).unwrap().flags.corpse = true;
+        let absent = named_bot(&mut world, b, "shared.txt");
+        world.slots.get_mut(absent).unwrap().flags.exists = false;
+        let hidden = named_bot(&mut world, b, "shared.txt");
+        world.slots.get_mut(hidden).unwrap().flags.hidden = true;
+        assert!(world.local_mode.config.is_none());
+
+        world.native_disqualify_action(actor, DisqualificationAction::Shell);
+
+        assert_eq!(
+            world.pending_disqualifications,
+            [actor, same_file_other_species, hidden]
+        );
+        for id in [same_species_other_file, vegetable, corpse, absent] {
+            assert!(!world.slots.get(id).unwrap().flags.dead);
+        }
+        assert_eq!(world.local_mode.disqualifications.len(), 1);
+        assert_eq!(
+            world.local_mode.disqualifications[0].file_name,
+            "shared.txt"
+        );
+        world.flush_native_disqualifications().unwrap();
+        for id in [actor, same_file_other_species, hidden] {
+            assert!(world.slots.get(id).is_err());
+        }
+        for id in [same_species_other_file, vegetable, corpse, absent] {
+            assert!(world.slots.get(id).is_ok());
+        }
+    }
+
+    #[test]
+    fn source_seeding_disqualifies_files_while_exporting_f1_false() {
+        let (mut world, a, b) = file_world();
+        let actor = named_bot(&mut world, a, "seed.txt");
+        let same_file = named_bot(&mut world, b, "seed.txt");
+        world.local_mode.config = Some(LocalModeConfig {
+            workflow: crate::LeagueWorkflow::Seeding,
+            ..Default::default()
+        });
+        world.local_mode.status = LocalModeStatus::Running;
+        assert!(!world.native_f1_enabled());
+
+        world.native_disqualify_action(actor, DisqualificationAction::Shell);
+        assert_eq!(world.pending_disqualifications, [actor, same_file]);
+        world.flush_native_disqualifications().unwrap();
+        assert_eq!(world.population(), 0);
+    }
+
+    #[test]
+    fn champion_testing_disqualifies_files_while_other_evolution_phases_use_dq_kill() {
+        for phase in [
+            crate::EvolutionPhase::Evolving,
+            crate::EvolutionPhase::Testing,
+            crate::EvolutionPhase::ZerobotTesting,
+        ] {
+            let (mut world, a, b) = file_world();
+            let actor = named_bot(&mut world, a, "candidate.txt");
+            let same_file = named_bot(&mut world, b, "candidate.txt");
+            world
+                .slots
+                .get_mut(actor)
+                .unwrap()
+                .counters
+                .disqualification = 1;
+            world.native_f1 = Some(true);
+            world.local_mode.config = Some(LocalModeConfig {
+                kind: LocalModeKind::SimpleSurvival,
+                ..Default::default()
+            });
+            world.local_mode.status = LocalModeStatus::Running;
+            world.local_mode.evolution = Some(evolution(phase));
+            assert_eq!(
+                world.native_f1_enabled(),
+                phase == crate::EvolutionPhase::Testing
+            );
+
+            world.native_disqualify_action(actor, DisqualificationAction::Shell);
+            assert!(world.slots.get(actor).unwrap().flags.dead);
+            if phase == crate::EvolutionPhase::Testing {
+                assert_eq!(world.pending_disqualifications, [actor, same_file]);
+                world.flush_native_disqualifications().unwrap();
+                assert_eq!(world.population(), 0);
+            } else {
+                assert!(!world.slots.get(same_file).unwrap().flags.dead);
+                assert!(world.pending_disqualifications.is_empty());
+                assert!(world.local_mode.disqualifications.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn repeated_forbidden_actions_and_later_arrivals_do_not_duplicate_or_evade_removal() {
+        let (mut world, a, b) = file_world();
+        world.native_f1 = Some(true);
+        let actor = named_bot(&mut world, a, "repeat.txt");
+        let same_file = named_bot(&mut world, b, "repeat.txt");
+        world.native_disqualify_action(actor, DisqualificationAction::Shell);
+        world.native_disqualify_action(actor, DisqualificationAction::Venom);
+        world.native_disqualify_action(same_file, DisqualificationAction::Poison);
+        assert_eq!(world.pending_disqualifications, [actor, same_file]);
+        assert_eq!(world.local_mode.disqualifications.len(), 1);
+        world.flush_native_disqualifications().unwrap();
+
+        let newcomer = named_bot(&mut world, b, "repeat.txt");
+        world.native_disqualify_action(newcomer, DisqualificationAction::Shell);
+        assert_eq!(world.pending_disqualifications, [newcomer]);
+        assert_eq!(world.local_mode.disqualifications.len(), 1);
+        world.flush_native_disqualifications().unwrap();
+        assert_eq!(world.population(), 0);
+    }
+
+    #[test]
+    fn source_slime_vegetable_and_corpse_actor_exceptions_remain_in_force() {
+        let (mut world, a, b) = file_world();
+        world.native_f1 = Some(true);
+        let vegetable = named_bot(&mut world, a, "shared.txt");
+        world.slots.get_mut(vegetable).unwrap().flags.vegetable = true;
+        let animal = named_bot(&mut world, b, "shared.txt");
+        let corpse = named_bot(&mut world, b, "shared.txt");
+        world.slots.get_mut(corpse).unwrap().flags.corpse = true;
+
+        world.native_disqualify_action(vegetable, DisqualificationAction::Slime);
+        world.native_disqualify_action(corpse, DisqualificationAction::Shell);
+        assert!(world.pending_disqualifications.is_empty());
+        assert!(world.local_mode.disqualifications.is_empty());
+
+        // Source makeshell has no vegetable exemption, but dreason still
+        // excludes vegetables and corpses when removing the matching file.
+        world.native_disqualify_action(vegetable, DisqualificationAction::Shell);
+        assert_eq!(world.pending_disqualifications, [animal]);
+        world.flush_native_disqualifications().unwrap();
+        assert!(world.slots.get(vegetable).is_ok());
+        assert!(world.slots.get(corpse).is_ok());
+    }
+
+    #[test]
+    fn imported_f1_uses_the_global_disqualification_preference_and_modern_save_keeps_it() {
+        let (mut world, a, b) = file_world();
+        world.native_f1 = Some(true);
+        let actor = named_bot(&mut world, a, "global.txt");
+        let same_file = named_bot(&mut world, b, "global.txt");
+        world.update_disqualification_rules(0).unwrap();
+        world.native_disqualify_action(actor, DisqualificationAction::Shell);
+        assert!(world.pending_disqualifications.is_empty());
+
+        world.update_disqualification_rules(2).unwrap();
+        let mut resumed =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(resumed.config.disqualification, 2);
+        assert!(resumed.native_f1_enabled());
+        resumed.native_disqualify_action(actor, DisqualificationAction::Shell);
+        assert_eq!(resumed.pending_disqualifications, [actor, same_file]);
+        resumed.flush_native_disqualifications().unwrap();
+        assert_eq!(resumed.population(), 0);
+    }
 
     fn contest(preset: crate::LeaguePreset) -> (Engine, SpeciesId, SpeciesId) {
         let mut world = Engine::new(EngineConfig::testing()).unwrap();

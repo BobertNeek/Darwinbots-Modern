@@ -91,6 +91,12 @@ use native_tie_sharing::{SharedResource, native_share_resource};
 #[path = "world/native_physics.rs"]
 mod native_physics;
 
+#[path = "world/native_recognition_fudging.rs"]
+mod native_recognition_fudging;
+#[path = "world/native_sensing.rs"]
+mod native_sensing;
+#[path = "world/native_tie_creation.rs"]
+mod native_tie_creation;
 #[path = "world/native_vision.rs"]
 mod native_vision;
 
@@ -244,6 +250,9 @@ const MEM_DAYTIME: i32 = 218;
 const MEM_EDGE: i32 = 214;
 const MEM_LIGHT: i32 = 923;
 const BIRTH_BORDER_SMUDGE: f32 = 50.0;
+// Robots.Reproduce compares Single aim with this exact Double literal, not TAU.
+#[allow(clippy::approx_constant)]
+const NATIVE_BIRTH_AIM_WRAP: f64 = 6.28;
 const FERTILIZATION_WINDOW: i32 = 10;
 const MAX_SEXUAL_GENETIC_DISTANCE: f32 = 0.6;
 const TIED_REFERENCE_ADDRESSES: [i32; 36] = [
@@ -955,6 +964,7 @@ impl From<Db3sV2DnaCosts> for DnaCosts {
 impl From<Db3sV2EngineConfig> for EngineConfig {
     fn from(value: Db3sV2EngineConfig) -> Self {
         Self {
+            recognition_fudging: 0,
             disqualification: 0,
             shapes_visible: false,
             greedy_reproduction: false,
@@ -2238,6 +2248,9 @@ pub struct Engine {
     dynamic_cost_state: DynamicCostRuntimeState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_origin: Option<crate::native_binary::NativeRecordFile>,
+    /// Imported SimOpts.F1; global restart modes and x_fudge are separate files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_f1: Option<bool>,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2519,6 +2532,7 @@ impl Engine {
             native_random: None,
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
+            native_f1: None,
         })
     }
 
@@ -2626,6 +2640,11 @@ impl Engine {
                 "invalid epigenetic mutation dose exponent".into(),
             ));
         }
+        if config.recognition_fudging > 2 {
+            return Err(EngineError::Invariant(
+                "recognition fudging must be 0, 1 or 2".into(),
+            ));
+        }
         if config.disqualification > 2 {
             return Err(EngineError::Invariant(
                 "disqualification level must be 0, 1 or 2".into(),
@@ -2714,6 +2733,7 @@ impl Engine {
             native_random: Some(native_random),
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
+            native_f1: None,
         })
     }
 
@@ -4015,14 +4035,22 @@ impl Engine {
                     organism.materials.energy = organism.materials.energy.max(1.0);
                     organism.materials.synchronize_energy();
                     organism.materials.publish(&mut organism.program.memory);
-                    organism
-                        .program
-                        .memory
-                        .write(MEM_XPOS, organism.kinematics.position[0].round() as i32);
-                    organism
-                        .program
-                        .memory
-                        .write(MEM_YPOS, organism.kinematics.position[1].round() as i32);
+                    organism.program.memory.write(
+                        MEM_XPOS,
+                        native_sensing::position_word(
+                            organism.kinematics.position[0],
+                            self.config.world_width,
+                            self.native_random.is_some(),
+                        ),
+                    );
+                    organism.program.memory.write(
+                        MEM_YPOS,
+                        native_sensing::position_word(
+                            organism.kinematics.position[1],
+                            self.config.world_height,
+                            self.native_random.is_some(),
+                        ),
+                    );
                     organism
                         .program
                         .memory
@@ -4370,8 +4398,22 @@ impl Engine {
         let mut memory = VmMemory::default();
         memory.write(MEM_NRG, 1_000);
         memory.write(468, 32_000);
-        memory.write(MEM_XPOS, position[0].round() as i32);
-        memory.write(MEM_YPOS, position[1].round() as i32);
+        memory.write(
+            MEM_XPOS,
+            native_sensing::position_word(
+                position[0],
+                self.config.world_width,
+                self.native_random.is_some(),
+            ),
+        );
+        memory.write(
+            MEM_YPOS,
+            native_sensing::position_word(
+                position[1],
+                self.config.world_height,
+                self.native_random.is_some(),
+            ),
+        );
         initial_biology.publish(&mut memory);
         let mut state = RobotState::new(
             dna,
@@ -4424,6 +4466,27 @@ impl Engine {
             self.valid_slot(id)?;
         }
 
+        if self.native_random.is_some() {
+            // KillRobot calls delallties while both endpoint records still
+            // exist. DeleteTie updates each endpoint's saved .tiepres.
+            for &id in ids {
+                let others = self
+                    .tie_indices_for(id)
+                    .into_iter()
+                    .map(|index| {
+                        let tie = &self.ties[index];
+                        if tie.first == id {
+                            tie.second
+                        } else {
+                            tie.first
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                for other in others {
+                    self.native_delete_pair(id, other);
+                }
+            }
+        }
         for &id in ids {
             self.slots.remove(id)?;
         }
@@ -4437,7 +4500,11 @@ impl Engine {
         self.rebuild_native_tie_index();
         // An explicit topology edit publishes new tie counts immediately; a
         // subsequent view refresh must not be responsible for changing VM state.
-        self.refresh_tie_projections();
+        if self.native_random.is_some() {
+            self.refresh_tie_projections_impl(false, &HashMap::new(), false);
+        } else {
+            self.refresh_tie_projections();
+        }
         self.publish_snapshot();
         Ok(())
     }
@@ -4672,14 +4739,22 @@ impl Engine {
             organism.kinematics.velocity = [0.0; 2];
             organism.kinematics.actual_velocity = [0.0; 2];
             organism.kinematics.pending_velocity = [0.0; 2];
-            organism
-                .program
-                .memory
-                .write(MEM_XPOS, organism.kinematics.position[0].round() as i32);
-            organism
-                .program
-                .memory
-                .write(MEM_YPOS, organism.kinematics.position[1].round() as i32);
+            organism.program.memory.write(
+                MEM_XPOS,
+                native_sensing::position_word(
+                    organism.kinematics.position[0],
+                    self.config.world_width,
+                    self.native_random.is_some(),
+                ),
+            );
+            organism.program.memory.write(
+                MEM_YPOS,
+                native_sensing::position_word(
+                    organism.kinematics.position[1],
+                    self.config.world_height,
+                    self.native_random.is_some(),
+                ),
+            );
         }
         self.publish_snapshot();
         Ok(())
@@ -4707,14 +4782,22 @@ impl Engine {
         cloned_organism.counters.descendants = 0;
         cloned_organism.kinematics.position = position;
         cloned_organism.kinematics.previous_position = position;
-        cloned_organism
-            .program
-            .memory
-            .write(MEM_XPOS, position[0].round() as i32);
-        cloned_organism
-            .program
-            .memory
-            .write(MEM_YPOS, position[1].round() as i32);
+        cloned_organism.program.memory.write(
+            MEM_XPOS,
+            native_sensing::position_word(
+                position[0],
+                self.config.world_width,
+                self.native_random.is_some(),
+            ),
+        );
+        cloned_organism.program.memory.write(
+            MEM_YPOS,
+            native_sensing::position_word(
+                position[1],
+                self.config.world_height,
+                self.native_random.is_some(),
+            ),
+        );
         let clone = self.slots.spawn(cloned_organism);
         self.record_offspring([Some(id), None]);
         self.propagate_descendant_count([Some(id), None]);
@@ -5792,6 +5875,11 @@ impl Engine {
                 "league result cursor exceeds saved results".into(),
             ));
         }
+        if self.config.recognition_fudging > 2 {
+            return Err(EngineError::Invariant(
+                "recognition fudging must be 0, 1 or 2".into(),
+            ));
+        }
         if self.config.disqualification > 2 {
             return Err(EngineError::Invariant(
                 "disqualification level must be 0, 1 or 2".into(),
@@ -6287,6 +6375,7 @@ impl Engine {
 
     fn age_timer_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let native = self.native_random.is_some();
         for slot_index in self.phase_slot_range() {
             let slot = &mut self.slots[slot_index];
             let Some(robot) = slot.organism.as_mut() else {
@@ -6297,7 +6386,15 @@ impl Engine {
             }
             robot.counters.age = robot.counters.age.saturating_add(1);
             robot.counters.simulation_age = robot.counters.simulation_age.saturating_add(1);
-            robot.materials.publish(&mut robot.program.memory);
+            if native {
+                let timer = robot.program.memory.read(12) + 1;
+                robot
+                    .program
+                    .memory
+                    .write(12, if timer > 32_000 { -32_000 } else { timer });
+            } else {
+                robot.materials.publish(&mut robot.program.memory);
+            }
             runtime.publish(
                 PhaseReadbacks::Core(CoreReadbacks {
                     values: vec![(
@@ -6322,6 +6419,11 @@ impl Engine {
             };
             if robot.flags.corpse || !robot.flags.can_execute_dna {
                 continue;
+            }
+            if self.native_random.is_some() {
+                // WriteSenses changes the physical coordinates as well as
+                // publishing zero when collision separation left them negative.
+                robot.kinematics.position = robot.kinematics.position.map(|value| value.max(0.0));
             }
             robot.materials.energy = robot.materials.energy.clamp(0.0, 32_000.0);
             let prior = robot.materials.previous_energy.max(0.0);
@@ -6351,8 +6453,22 @@ impl Engine {
                             MEM_FIXED_READBACK as u16,
                             i32::from(robot_is_fixed(robot, robot_fixing_allowed)),
                         ),
-                        (MEM_XPOS as u16, robot.kinematics.position[0].round() as i32),
-                        (MEM_YPOS as u16, robot.kinematics.position[1].round() as i32),
+                        (
+                            MEM_XPOS as u16,
+                            native_sensing::position_word(
+                                robot.kinematics.position[0],
+                                self.config.world_width,
+                                self.native_random.is_some(),
+                            ),
+                        ),
+                        (
+                            MEM_YPOS as u16,
+                            native_sensing::position_word(
+                                robot.kinematics.position[1],
+                                self.config.world_height,
+                                self.native_random.is_some(),
+                            ),
+                        ),
                         (MEM_DAYTIME as u16, daytime),
                         (MEM_MAX_VELOCITY as u16, max_velocity),
                     ],
@@ -6377,9 +6493,20 @@ impl Engine {
 
     fn clear_after_dna_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let native = self.native_random.is_some();
         self.slots.par_iter_mut().for_each(|slot| {
             if let Some(organism) = &mut slot.organism {
+                // Master.EraseSenses runs only for DNA-enabled robots.
+                if native && !organism.flags.can_execute_dna {
+                    return;
+                }
                 runtime.clear_transients_after_dna(&mut organism.program.memory);
+                if native {
+                    organism.senses.touched_opponent = None;
+                    if !organism.flags.corpse {
+                        native_sensing::clear_reference_values(&mut organism.program.memory);
+                    }
+                }
             }
         });
     }
@@ -6739,11 +6866,15 @@ impl Engine {
             .into_par_iter()
             .map(|observer_slot| {
                 let observer = self.slots[observer_slot].organism.as_ref()?;
-                if observer.flags.corpse {
+                if observer.flags.corpse || (native && !observer.flags.can_execute_dna) {
                     return None;
                 }
                 if !observer.flags.can_see {
-                    return Some((observer_slot, [0; 9], None, None));
+                    // Native CantSee leaves the old eyes/focus untouched.
+                    if native {
+                        return None;
+                    }
+                    return Some((observer_slot, [0; 9], None, None, None));
                 }
                 let observer_position = observer.kinematics.position;
                 let sight_strength = crate::vision::native_eye_strength(
@@ -6848,46 +6979,41 @@ impl Engine {
                 } else {
                     (eye_values, None)
                 };
-                let reference = shape_reference
+                let focused_slot = shape_reference
                     .is_none()
                     .then_some(nearest_by_eye[vision.focus_eye as usize])
                     .flatten()
-                    .and_then(|(target_slot, _)| {
-                        let target = self.slots[target_slot].organism.as_ref()?;
-                        let target_memory_location =
-                            observer.program.memory.read(MEM_REF_MEMORY_LOCATION);
-                        let target_memory_value = if (1..=1_000).contains(&target_memory_location) {
-                            target.program.memory.read(target_memory_location)
-                        } else {
-                            0
-                        };
-                        let outgoing: [i32; 10] = std::array::from_fn(|index| {
-                            target.program.memory.read(MEM_OUT_BASE + index as i32)
-                        });
-                        Some((
-                            target.kinematics.position,
-                            target.kinematics.velocity,
-                            target.materials.energy,
-                            target.counters.age,
-                            target.program.memory.read(MEM_MY_EYE),
-                            target.senses.occurrence_counts.clone(),
-                            target.materials.aim,
-                            target.materials.body,
-                            target.materials.shell,
-                            target.materials.poison,
-                            target.materials.venom,
-                            target.counters.kills,
-                            target.counters.multibot,
-                            robot_is_fixed(target, self.robot_fixing_allowed),
-                            target_memory_value,
-                            outgoing,
-                        ))
-                    });
-                Some((observer_slot, eye_values, reference, shape_reference))
+                    .map(|(slot, _)| slot);
+                let focused_id = focused_slot
+                    .map(|slot| OrganismId::new(slot as u32, self.slots[slot].generation));
+                let reference = focused_slot.and_then(|slot| {
+                    let target = self.slots[slot].organism.as_ref()?;
+                    Some(native_sensing::robot_reference_values(
+                        observer,
+                        target,
+                        self.robot_fixing_allowed,
+                        native,
+                    ))
+                });
+                Some((
+                    observer_slot,
+                    eye_values,
+                    reference,
+                    shape_reference,
+                    focused_id,
+                ))
             })
             .collect();
-        for sense in senses.into_iter().flatten() {
+        for mut sense in senses.into_iter().flatten() {
+            if native && let (Some(target), Some(values)) = (sense.4, sense.2.as_mut()) {
+                let observer = OrganismId::new(sense.0 as u32, self.slots[sense.0].generation);
+                self.prepare_native_reference_values(observer, target, values, false);
+            }
             let observer = self.slots[sense.0].organism.as_mut().unwrap();
+            if native {
+                observer.senses.focused_opponent = sense.4;
+                observer.senses.focused_shape = sense.3.is_some();
+            }
             let mut values: Vec<_> = sense
                 .1
                 .into_iter()
@@ -6896,99 +7022,38 @@ impl Engine {
                 .collect();
             let focus =
                 (i64::from(observer.program.memory.read(511)) + 4).unsigned_abs() as usize % 9;
-            values.extend([
-                (510, sense.1[focus]),
-                (MEM_REF_TYPE as u16, 0),
-                (MEM_REF_X as u16, 0),
-                (MEM_REF_Y as u16, 0),
-                (MEM_REF_VEL_SCALAR as u16, 0),
-                (MEM_REF_VEL_UP as u16, 0),
-                (MEM_REF_VEL_DN as u16, 0),
-                (MEM_REF_VEL_DX as u16, 0),
-                (MEM_REF_VEL_SX as u16, 0),
-                (MEM_REF_EYE as u16, 0),
-                (MEM_REF_NRG as u16, 0),
-                (MEM_REF_AGE as u16, 0),
-                (MEM_REF_MULTI as u16, 0),
-                (MEM_REF_SHELL as u16, 0),
-                (MEM_REF_BODY as u16, 0),
-                (MEM_REF_AIM as u16, 0),
-                (MEM_REF_TIE as u16, 0),
-                (MEM_REF_POISON as u16, 0),
-                (MEM_REF_VENOM as u16, 0),
-                (MEM_REF_KILLS as u16, 0),
-                (MEM_REF_MEMORY_VALUE as u16, 0),
-                (MEM_REF_FIXED as u16, 0),
-            ]);
-            values.extend((0..7).map(|index| ((MEM_REF_OCCURRENCE_BASE + index) as u16, 0)));
-            values.extend((0..10).map(|index| ((MEM_IN_BASE + index) as u16, 0)));
-            if let Some((
-                target_position,
-                target_velocity,
-                target_energy,
-                target_age,
-                target_eye_references,
-                target_occurrences,
-                target_aim,
-                target_body,
-                target_shell,
-                target_poison,
-                target_venom,
-                target_kills,
-                target_multibot,
-                target_fixed,
-                target_memory_value,
-                target_outgoing,
-            )) = sense.2
-            {
-                let observer_angle = observer.heading();
-                let [scalar, sx, dx, dn, up] = native_reference_velocity::optical_velocity(
-                    target_velocity,
-                    observer_angle,
-                    observer.program.memory.read(MEM_VEL_UP),
-                    observer.program.memory.read(MEM_VEL_DX),
-                    observer.program.memory.read(MEM_REF_VEL_SX),
-                );
+            values.push((510, sense.1[focus]));
+            // EraseSenses already cleared native references before collisions.
+            // An empty optical focus must retain the subsequent contact read.
+            if !native || sense.3.is_some() {
                 values.extend([
-                    (MEM_REF_X as u16, target_position[0].round() as i32),
-                    (MEM_REF_Y as u16, target_position[1].round() as i32),
-                    (MEM_REF_VEL_SCALAR as u16, scalar),
-                    (MEM_REF_VEL_UP as u16, up),
-                    (MEM_REF_VEL_DN as u16, dn),
-                    (MEM_REF_VEL_DX as u16, dx),
-                    (MEM_REF_VEL_SX as u16, sx),
-                    (MEM_REF_EYE as u16, target_eye_references),
-                    (MEM_REF_NRG as u16, resource_readback(target_energy)),
-                    (MEM_REF_AGE as u16, target_age.min(i32::MAX as u64) as i32),
-                    (MEM_REF_MULTI as u16, i32::from(target_multibot)),
-                    (MEM_REF_SHELL as u16, resource_readback(target_shell)),
-                    (MEM_REF_BODY as u16, resource_readback(target_body)),
-                    (MEM_REF_AIM as u16, target_aim),
-                    (
-                        MEM_REF_TIE as u16,
-                        target_occurrences.get(8).copied().unwrap_or(0),
-                    ),
-                    (MEM_REF_POISON as u16, resource_readback(target_poison)),
-                    (MEM_REF_VENOM as u16, resource_readback(target_venom)),
-                    (
-                        MEM_REF_KILLS as u16,
-                        target_kills.min(i32::MAX as u64) as i32,
-                    ),
-                    (MEM_REF_MEMORY_VALUE as u16, target_memory_value),
-                    (MEM_REF_FIXED as u16, i32::from(target_fixed)),
+                    (MEM_REF_TYPE as u16, 0),
+                    (MEM_REF_X as u16, 0),
+                    (MEM_REF_Y as u16, 0),
+                    (MEM_REF_VEL_SCALAR as u16, 0),
+                    (MEM_REF_VEL_UP as u16, 0),
+                    (MEM_REF_VEL_DN as u16, 0),
+                    (MEM_REF_VEL_DX as u16, 0),
+                    (MEM_REF_VEL_SX as u16, 0),
+                    (MEM_REF_EYE as u16, 0),
+                    (MEM_REF_NRG as u16, 0),
+                    (MEM_REF_AGE as u16, 0),
+                    (MEM_REF_MULTI as u16, 0),
+                    (MEM_REF_SHELL as u16, 0),
+                    (MEM_REF_BODY as u16, 0),
+                    (MEM_REF_AIM as u16, 0),
+                    (MEM_REF_TIE as u16, 0),
+                    (MEM_REF_POISON as u16, 0),
+                    (MEM_REF_VENOM as u16, 0),
+                    (MEM_REF_KILLS as u16, 0),
+                    (MEM_REF_MEMORY_VALUE as u16, 0),
+                    (MEM_REF_FIXED as u16, 0),
                 ]);
-                values.extend((0..7).map(|index| {
-                    (
-                        (MEM_REF_OCCURRENCE_BASE + index) as u16,
-                        target_occurrences.get(index as usize).copied().unwrap_or(0),
-                    )
-                }));
-                values.extend((0..10).map(|index| {
-                    (
-                        (MEM_IN_BASE + index) as u16,
-                        target_outgoing[index as usize],
-                    )
-                }));
+                values.extend((0..7).map(|index| ((MEM_REF_OCCURRENCE_BASE + index) as u16, 0)));
+                values.extend((0..10).map(|index| ((MEM_IN_BASE + index) as u16, 0)));
+            }
+            if let Some(reference_values) = sense.2 {
+                values.extend(reference_values);
             }
             if let Some(shape) = sense.3 {
                 let [scalar, sx, dx, dn, up] = native_shape_vision::relative_velocity(
@@ -7002,11 +7067,19 @@ impl Engine {
                     (MEM_REF_TYPE as u16, 1),
                     (
                         MEM_REF_X as u16,
-                        resource_readback(shape.position[0] % 32000.0),
+                        native_sensing::shape_position_word(
+                            shape.position[0],
+                            self.config.world_width,
+                            native,
+                        ),
                     ),
                     (
                         MEM_REF_Y as u16,
-                        resource_readback(shape.position[1] % 32000.0),
+                        native_sensing::shape_position_word(
+                            shape.position[1],
+                            self.config.world_height,
+                            native,
+                        ),
                     ),
                     (MEM_REF_VEL_SCALAR as u16, scalar),
                     (MEM_REF_VEL_SX as u16, sx),
@@ -7015,6 +7088,12 @@ impl Engine {
                     (MEM_REF_VEL_UP as u16, up),
                     (MEM_REF_FIXED as u16, i32::from(shape.velocity == [0.0; 2])),
                 ]);
+            }
+            if native {
+                for (address, value) in values {
+                    native_sensing::publish_integer(&mut observer.program.memory, address, value);
+                }
+                continue;
             }
             let incoming_values: Vec<_> = values
                 .iter()
@@ -7097,6 +7176,15 @@ impl Engine {
     }
 
     fn create_birth_tie(&mut self, parent: OrganismId, child: OrganismId) -> bool {
+        if self.native_random.is_some() {
+            let (Ok(first), Ok(second)) = (self.slots.get(parent), self.slots.get(child)) else {
+                return false;
+            };
+            let range = distance_squared(first.kinematics.position, second.kinematics.position)
+                .sqrt()
+                .round_ties_even() as i32;
+            return self.native_make_tie(parent, child, range, 100, 0);
+        }
         // Reproduction creates its birth tie even when DNA tie creation is disabled.
         if !self.ties_enabled && self.native_random.is_none() {
             return false;
@@ -7526,26 +7614,73 @@ impl Engine {
             }
         }
 
+        let mut native_had_ties = HashSet::new();
         if native {
             self.update_multibot_requirements();
-        }
-        let prior_ties = self.ties.len();
-        self.ties.retain(|tie| {
-            for (id, port) in [(tie.first, tie.first_port), (tie.second, tie.second_port)] {
-                if let Some(commands) = phase_commands.get(&(id.slot() as usize))
-                    && commands.delete != 0
-                    && (!native || commands.delete == port)
-                {
-                    return false;
+            for &slot in phase_commands.keys() {
+                let id = OrganismId::new(slot as u32, self.slots[slot].generation);
+                let count = self.tie_indices_for(id).len();
+                let robot = self.slots.get_mut(id).unwrap();
+                robot.program.memory.write(MEM_NUMBER_OF_TIES, count as i32);
+                if count == 0 {
+                    // Update_Ties does not clear multibot merely because the
+                    // remaining bonds are soft; only a zero count clears it.
+                    robot.counters.multibot = false;
+                    robot.program.memory.write(MEM_MULTI, 0);
+                } else {
+                    native_had_ties.insert(slot);
                 }
             }
-            true
-        });
-        if self.native_phase.is_none() || prior_ties != self.ties.len() {
-            self.rebuild_native_tie_index();
-            self.refresh_tie_projections();
         }
-        self.apply_tie_structural_commands(&phase_commands);
+        let prior_ties = self.ties.len();
+        if native {
+            for (&slot, commands) in &phase_commands {
+                if commands.delete == 0 || !native_had_ties.contains(&slot) {
+                    continue;
+                }
+                let id = OrganismId::new(slot as u32, self.slots[slot].generation);
+                let count = self.tie_indices_for(id).len();
+                // VB's For bound is captured before deletion. DeleteTie
+                // compacts the array and the loop still advances its ordinal.
+                for ordinal in 0..count {
+                    let indices = self.tie_indices_for(id);
+                    let Some(&index) = indices.get(ordinal) else {
+                        continue;
+                    };
+                    let tie = &self.ties[index];
+                    let (other, port) = if tie.first == id {
+                        (tie.second, tie.first_port)
+                    } else {
+                        (tie.first, tie.second_port)
+                    };
+                    if port == commands.delete {
+                        self.native_delete_pair(id, other);
+                    }
+                }
+            }
+        } else {
+            self.ties.retain(|tie| {
+                for id in [tie.first, tie.second] {
+                    if phase_commands
+                        .get(&(id.slot() as usize))
+                        .is_some_and(|commands| commands.delete != 0)
+                    {
+                        return false;
+                    }
+                }
+                true
+            });
+            if self.native_phase.is_none() || prior_ties != self.ties.len() {
+                self.rebuild_native_tie_index();
+                self.refresh_tie_projections();
+            }
+        }
+        let native_controls_reached = if native {
+            self.apply_native_tie_structural_commands(&phase_commands, &native_had_ties)
+        } else {
+            self.apply_tie_structural_commands(&phase_commands);
+            HashSet::new()
+        };
         let mut resource_channels = Vec::new();
         for tie_index in self.phase_tie_indices() {
             let tie = &self.ties[tie_index];
@@ -7568,8 +7703,20 @@ impl Engine {
                     .get(&source_slot)
                     .copied()
                     .unwrap_or_default();
-                if commands.number != 0
-                    && commands.number == source_port
+                let selected = if native && commands.number == 0 {
+                    self.slots[source_slot]
+                        .organism
+                        .as_ref()
+                        .unwrap()
+                        .program
+                        .memory
+                        .read(MEM_TIE_PRESENT)
+                } else {
+                    commands.number
+                };
+                if selected != 0
+                    && selected == source_port
+                    && (!native || native_controls_reached.contains(&source_slot))
                     && matches!(commands.location, -1 | -3 | -4 | -6)
                     && commands.value != 0
                 {
@@ -7621,13 +7768,24 @@ impl Engine {
                 continue;
             };
             for address in [455, 467, 468, 830, 831, 832, 833, 924] {
+                if native
+                    && ((matches!(address, 455 | 468) && !native_controls_reached.contains(&slot))
+                        || (address == 467 && !native_had_ties.contains(&slot)))
+                {
+                    continue;
+                }
                 runtime.finish_command(
                     address,
                     CommandOutcome::Consumed,
                     &mut organism.program.memory,
                 );
             }
-            if matches!(commands.location, -1 | -3 | -4 | -6) {
+            let clear_resource_command = if native {
+                commands.location < 0 && native_controls_reached.contains(&slot)
+            } else {
+                matches!(commands.location, -1 | -3 | -4 | -6)
+            };
+            if clear_resource_command {
                 for address in [452, 453] {
                     runtime.finish_command(
                         address,
@@ -7637,22 +7795,143 @@ impl Engine {
                 }
             }
             for address in [331, 469] {
+                if native && !native_controls_reached.contains(&slot) {
+                    continue;
+                }
                 runtime.finish_command(
                     address,
                     CommandOutcome::Consumed,
                     &mut organism.program.memory,
                 );
             }
-            for address in [480, 481, 482, 483, 484, 485, 486, 487] {
-                runtime.finish_command(
-                    address,
-                    CommandOutcome::Consumed,
-                    &mut organism.program.memory,
-                );
+            if !native {
+                for address in [480, 481, 482, 483, 484, 485, 486, 487] {
+                    runtime.finish_command(
+                        address,
+                        CommandOutcome::Consumed,
+                        &mut organism.program.memory,
+                    );
+                }
+                organism.program.tie_angle_overwrites = [false; 4];
+                organism.program.tie_length_overwrites = [false; 4];
             }
-            organism.program.tie_angle_overwrites = [false; 4];
-            organism.program.tie_length_overwrites = [false; 4];
         }
+    }
+
+    fn apply_native_tie_structural_commands(
+        &mut self,
+        phase_commands: &BTreeMap<usize, TieCommands>,
+        had_ties: &HashSet<usize>,
+    ) -> HashSet<usize> {
+        let mut reached = HashSet::new();
+        for (&slot, commands) in phase_commands {
+            if !had_ties.contains(&slot) {
+                continue;
+            }
+            let id = OrganismId::new(slot as u32, self.slots[slot].generation);
+            let source = self.slots.get(id).unwrap();
+            let selected = match commands.number {
+                0 => source.program.memory.read(MEM_TIE_PRESENT),
+                port => port,
+            };
+            if selected == 0 {
+                continue;
+            }
+            reached.insert(slot);
+            if !source.counters.multibot {
+                continue;
+            }
+            let source_radius = source.materials.radius;
+            let angle_overwrites = source.program.tie_angle_overwrites;
+            let length_overwrites = source.program.tie_length_overwrites;
+            let mut indexed_values = Vec::new();
+            let mut clear_overwrites = [false; 4];
+            for (ordinal, index) in self.tie_indices_for(id).into_iter().enumerate() {
+                let tie = &self.ties[index];
+                let first = tie.first == id;
+                let side = usize::from(!first);
+                let other = if first { tie.second } else { tie.first };
+                let port = if first {
+                    tie.first_port
+                } else {
+                    tie.second_port
+                };
+                let mut ends = tie.native_end_states();
+                if ends[side].kind != 3 {
+                    continue;
+                }
+                let target = self.slots.get(other).unwrap();
+                let other_radius = target.materials.radius;
+                let geometry = Self::native_tie_geometry(self.slots.get(id).unwrap(), target);
+                if port == selected {
+                    if commands.fix_angle != 32000 {
+                        if commands.fix_angle >= 0 {
+                            ends[side].angle = (commands.fix_angle % 1256) as f32 / 200.0;
+                            ends[side].angle_fixed = true;
+                            ends[side].angle_initialized = true;
+                        } else {
+                            ends[side].angle_fixed = false;
+                        }
+                    }
+                    if commands.fix_length != 0 {
+                        let length = (commands.fix_length.unsigned_abs() as f32
+                            + source_radius
+                            + other_radius)
+                            .round_ties_even()
+                            .min(32000.0);
+                        for end in &mut ends {
+                            end.rest_length = length;
+                        }
+                    }
+                    if commands.stiffness != 0 {
+                        let mut stiffness = commands.stiffness % 100;
+                        if stiffness == 0 {
+                            stiffness = 100;
+                        } else if stiffness < 0 {
+                            stiffness = 1;
+                        }
+                        for end in &mut ends {
+                            end.b = (f64::from(stiffness) * 0.005) as f32;
+                            end.k = (f64::from(stiffness) * 0.0025) as f32;
+                        }
+                    }
+                }
+                if ordinal < 4 {
+                    if length_overwrites[ordinal] {
+                        let length =
+                            (commands.lengths[ordinal] as f32 + source_radius + other_radius)
+                                .round_ties_even()
+                                .min(32000.0);
+                        for end in &mut ends {
+                            end.rest_length = length;
+                        }
+                    }
+                    if angle_overwrites[ordinal] {
+                        ends[side].angle = Self::native_normalize_tie_angle(
+                            commands.angles[ordinal] as f32 / 200.0,
+                        );
+                        ends[side].angle_fixed = true;
+                        ends[side].angle_initialized = true;
+                    }
+                    clear_overwrites[ordinal] = true;
+                    indexed_values.push((480 + ordinal as u16, geometry[1]));
+                    indexed_values.push((484 + ordinal as u16, geometry[2]));
+                }
+                self.ties[index].native_ends = Some(ends);
+                self.ties[index].sync_native_primary();
+            }
+            let source = self.slots.get_mut(id).unwrap();
+            for (address, value) in indexed_values {
+                native_sensing::publish_integer(&mut source.program.memory, address, value);
+            }
+            for (ordinal, clear) in clear_overwrites.into_iter().enumerate() {
+                if clear {
+                    source.program.tie_angle_overwrites[ordinal] = false;
+                    source.program.tie_length_overwrites[ordinal] = false;
+                }
+            }
+        }
+        reached
     }
 
     fn apply_tie_structural_commands(&mut self, phase_commands: &BTreeMap<usize, TieCommands>) {
@@ -7815,6 +8094,56 @@ impl Engine {
         self.refresh_tie_projections();
     }
 
+    fn native_normalize_tie_angle(mut angle: f32) -> f32 {
+        // Physics.angnorm retains 2*PI rather than mapping it to zero.
+        while angle < 0.0 {
+            angle += std::f32::consts::TAU;
+        }
+        while angle > std::f32::consts::TAU {
+            angle -= std::f32::consts::TAU;
+        }
+        angle
+    }
+
+    fn native_tie_geometry(source: &RobotState, target: &RobotState) -> [i32; 3] {
+        // Physics.angle evaluates the Single ratio before Double Atn, then
+        // assigns its Single result. atan2 changes the source rounding points.
+        let dx = target.kinematics.position[0] - source.kinematics.position[0];
+        let dy = source.kinematics.position[1] - target.kinematics.position[1];
+        let angle = if dx == 0.0 {
+            if dy < 0.0 {
+                std::f32::consts::FRAC_PI_2 * 3.0
+            } else {
+                std::f32::consts::FRAC_PI_2
+            }
+        } else {
+            let angle = f64::from(dy / dx).atan() as f32;
+            if dx < 0.0 {
+                angle + std::f32::consts::PI
+            } else {
+                angle
+            }
+        };
+        let angle = Self::native_normalize_tie_angle(angle);
+        let heading = Self::native_normalize_tie_angle(source.heading());
+        let mut difference = angle - heading;
+        if difference > std::f32::consts::PI {
+            difference = -(std::f32::consts::TAU - difference);
+        }
+        if difference < -std::f32::consts::PI {
+            difference += std::f32::consts::TAU;
+        }
+        let selected_angle = -((difference * 200.0).round_ties_even() as i32);
+        let indexed_angle =
+            (Self::native_normalize_tie_angle(angle - heading) * 200.0).round_ties_even() as i32;
+        let distance = (f64::from(dx).powi(2) + f64::from(dy).powi(2)).sqrt() as f32;
+        // UpdateTieAngles/Update_Ties clamp CENTER distance before subtracting
+        // radii. Overlapping robots therefore publish negative surface length.
+        let length = (distance.min(32000.0) - source.materials.radius - target.materials.radius)
+            .round_ties_even() as i32;
+        [selected_angle, indexed_angle, length]
+    }
+
     fn refresh_tie_projections(&mut self) {
         self.refresh_tie_projections_with_references(false, &HashMap::new());
     }
@@ -7946,10 +8275,17 @@ impl Engine {
                 spring_velocity,
                 ..TieEndpointState::default()
             });
-            tie_angles[tie_count] = (relative * 200.0).round_ties_even() as i32;
-            tie_lengths[tie_count] = (length - source.materials.radius - target.materials.radius)
-                .clamp(0.0, 32_000.0)
-                .round_ties_even() as i32;
+            if native {
+                let [angle, _, length] = Self::native_tie_geometry(source, target);
+                tie_angles[tie_count] = angle;
+                tie_lengths[tie_count] = length;
+            } else {
+                tie_angles[tie_count] = (relative * 200.0).round_ties_even() as i32;
+                tie_lengths[tie_count] =
+                    (length - source.materials.radius - target.materials.radius)
+                        .clamp(0.0, 32_000.0)
+                        .round_ties_even() as i32;
+            }
             multibot |= if native { end.hardened } else { tie.hardened };
             latest_port = Some(port);
             tie_count += 1;
@@ -7958,13 +8294,35 @@ impl Engine {
             return;
         };
         let count = tie_count as i32;
-        let selected_port = match source.program.memory.read(MEM_READ_TIE) {
-            0 => latest_port.unwrap_or(0),
+        let native = self.native_random.is_some();
+        let present_port = if native {
+            source.program.memory.read(MEM_TIE_PRESENT)
+        } else {
+            latest_port.unwrap_or(0)
+        };
+        let read_port = match source.program.memory.read(MEM_READ_TIE) {
+            0 => present_port,
             selected => selected,
         };
-        let selected_index = endpoints
-            .iter()
-            .position(|endpoint| endpoint.is_some_and(|endpoint| endpoint.port == selected_port));
+        let selected_index = if native {
+            let port = match source.program.memory.read(455) {
+                0 => present_port,
+                selected => selected,
+            };
+            // Geometry selects the LAST duplicate; readtie below selects the
+            // FIRST. A zero geometry selector exits even for a port-zero bond.
+            if port != 0 {
+                endpoints
+                    .iter()
+                    .rposition(|endpoint| endpoint.is_some_and(|endpoint| endpoint.port == port))
+            } else {
+                None
+            }
+        } else {
+            endpoints
+                .iter()
+                .position(|endpoint| endpoint.is_some_and(|endpoint| endpoint.port == read_port))
+        };
         let id = OrganismId::new(slot as u32, self.slots[slot].generation);
         let forced_port = newly_created.get(&id).copied();
         let can_read_references = forced_port.is_some()
@@ -7972,127 +8330,47 @@ impl Engine {
                 && source.counters.simulation_age >= 2
                 && !source.flags.corpse
                 && source.flags.can_execute_dna);
-        let reference_port = forced_port.unwrap_or(selected_port);
+        let reference_port = forced_port.unwrap_or(read_port);
         let reference_index = endpoints
             .iter()
             .position(|endpoint| endpoint.is_some_and(|endpoint| endpoint.port == reference_port));
-        let source_aim = source.heading();
-        let own_up = source.program.memory.read(MEM_VEL_UP);
-        let own_dx = source.program.memory.read(MEM_VEL_DX);
-        let memory_location = source.program.memory.read(MEM_TIE_MEMORY_LOCATION);
         let reference_values = reference_index
             .filter(|_| can_read_references)
             .and_then(|index| endpoints[index].and_then(|endpoint| endpoint.other))
-            .and_then(|other| {
-                let target = self.slots.get_mut(other).ok()?;
-                // ReadTRefVars changes the target's physical velocity, but
-                // copies the target's already-published own-frame cells.
-                target.kinematics.velocity = target
-                    .kinematics
-                    .velocity
-                    .map(|value| value.clamp(-16000.0, 16000.0));
-                let relative = native_reference_velocity::tie_relative_velocity(
-                    target.kinematics.velocity,
-                    source_aim,
-                    own_up,
-                    own_dx,
-                );
-                let target_velocity = [
-                    MEM_VEL_SCALAR,
-                    MEM_VEL_SX,
-                    MEM_VEL_DX,
-                    MEM_VEL_DN,
-                    MEM_VEL_UP,
-                ]
-                .map(|address| target.program.memory.read(address));
-                let memory_value = if (1..=1_000).contains(&memory_location) {
-                    target.program.memory.read(memory_location)
-                } else {
-                    0
-                };
-                let mut values = Vec::with_capacity(36);
-                values
-                    .extend((0..10).map(|index| {
-                        (420 + index as u16, target.program.memory.read(410 + index))
-                    }));
-                values.extend([
-                    (
-                        MEM_TREF_BODY as u16,
-                        resource_readback(target.materials.body),
-                    ),
-                    (MEM_TREF_XPOS as u16, target.program.memory.read(MEM_XPOS)),
-                    (MEM_TREF_YPOS as u16, target.program.memory.read(MEM_YPOS)),
-                    (MEM_TREF_VEL_MY_SX as u16, relative[0]),
-                    (MEM_TREF_VEL_MY_DX as u16, relative[1]),
-                    (MEM_TREF_VEL_MY_DN as u16, relative[2]),
-                    (MEM_TREF_VEL_MY_UP as u16, relative[3]),
-                    (MEM_TREF_VEL_SCALAR as u16, target_velocity[0]),
-                    (MEM_TREF_VEL_YOUR_SX as u16, target_velocity[1]),
-                    (MEM_TREF_VEL_YOUR_DX as u16, target_velocity[2]),
-                    (MEM_TREF_VEL_YOUR_DN as u16, target_velocity[3]),
-                    (MEM_TREF_VEL_YOUR_UP as u16, target_velocity[4]),
-                    (
-                        MEM_TREF_SHELL as u16,
-                        resource_readback(target.materials.shell),
-                    ),
-                ]);
-                for index in 0..8 {
-                    values.push((
-                        MEM_TREF_UP as u16 + index as u16,
-                        target
-                            .senses
-                            .occurrence_counts
-                            .get(index)
-                            .copied()
-                            .unwrap_or(0),
-                    ));
-                }
-                values.extend([
-                    (
-                        MEM_TREF_NRG as u16,
-                        resource_readback(target.materials.energy),
-                    ),
-                    (
-                        MEM_TREF_AGE as u16,
-                        target.counters.age.saturating_add(1).min(i32::MAX as u64) as i32,
-                    ),
-                    (MEM_TIE_MEMORY_VALUE as u16, memory_value),
-                    (
-                        MEM_TREF_FIXED as u16,
-                        i32::from(robot_is_fixed(target, self.robot_fixing_allowed)),
-                    ),
-                    (MEM_TREF_AIM as u16, target.materials.aim),
-                ]);
-                Some(values)
-            });
-        let mut values = vec![
-            (
-                MEM_TIE_ANGLE as u16,
-                selected_index.map(|index| tie_angles[index]).unwrap_or(0),
-            ),
-            (
-                MEM_TIE_LENGTH as u16,
-                selected_index.map(|index| tie_lengths[index]).unwrap_or(0),
-            ),
-            (MEM_MULTI as u16, i32::from(multibot)),
-            (MEM_NUMBER_OF_TIES as u16, count),
-            (MEM_TIE_PRESENT as u16, latest_port.unwrap_or(0)),
-        ];
+            .and_then(|other| self.tie_reference_values(id, other));
+        let mut values = Vec::new();
+        // Native readtie precedes movement; it must not also run the later
+        // UpdateTieAngles publication. Tied memory reads can observe450/451.
+        if !native || !read_references {
+            values.extend([
+                (
+                    MEM_TIE_ANGLE as u16,
+                    selected_index.map(|index| tie_angles[index]).unwrap_or(0),
+                ),
+                (
+                    MEM_TIE_LENGTH as u16,
+                    selected_index.map(|index| tie_lengths[index]).unwrap_or(0),
+                ),
+            ]);
+        }
         // Native .myties is the DNA occurrence census at cell729, not the
         // current bond count (cell466). TieData must leave it untouched.
-        if self.native_random.is_none() {
+        if !native {
+            values.push((MEM_NUMBER_OF_TIES as u16, count));
+            values.push((MEM_MULTI as u16, i32::from(multibot)));
+            values.push((MEM_TIE_PRESENT as u16, latest_port.unwrap_or(0)));
             values.push((MEM_MY_TIES as u16, count));
+            for index in 0..4 {
+                values.push((480 + index as u16, tie_angles[index]));
+                values.push((484 + index as u16, tie_lengths[index]));
+            }
         }
-        for index in 0..4 {
-            values.push((480 + index as u16, tie_angles[index]));
-            values.push((484 + index as u16, tie_lengths[index]));
-        }
-        let native_velocity_values: Vec<_> = reference_values
+        let native_reference_cells: Vec<_> = reference_values
             .as_ref()
             .into_iter()
             .flatten()
             .copied()
-            .filter(|(address, _)| (440..=448).contains(address))
+            .filter(|(address, _)| self.native_random.is_some() || (440..=448).contains(address))
             .collect();
         if let Some(reference_values) = reference_values {
             values.extend(reference_values);
@@ -8102,12 +8380,14 @@ impl Engine {
         if !publish_readbacks {
             return;
         }
-        organism.counters.multibot = multibot;
+        if !native {
+            organism.counters.multibot = multibot;
+        }
         runtime.publish(
             PhaseReadbacks::Tie(TieReadbacks { values }),
             &mut organism.program.memory,
         );
-        for (address, value) in native_velocity_values {
+        for (address, value) in native_reference_cells {
             organism.program.memory.restore_native_cell(
                 i32::from(address),
                 value.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16,
@@ -8115,6 +8395,10 @@ impl Engine {
         }
         if can_read_references && reference_index.is_none() {
             for address in TIED_REFERENCE_ADDRESSES {
+                // EraseTRefVars clears438..448, leaving .trefshell449 stale.
+                if native && address == MEM_TREF_SHELL {
+                    continue;
+                }
                 organism.program.memory.write(address, 0);
             }
         }
@@ -8177,6 +8461,10 @@ impl Engine {
     }
 
     fn tie_fire_phase(&mut self, trace: &mut CycleRecorder) {
+        if self.native_random.is_some() {
+            self.native_fire_ties(trace);
+            return;
+        }
         let runtime = SysvarRuntime::new();
         let phase_commands: Vec<_> = self
             .phase_slot_range()
@@ -9584,14 +9872,22 @@ impl Engine {
             .program
             .memory
             .write(MEM_NRG, resource_readback(state.materials.energy));
-        state
-            .program
-            .memory
-            .write(MEM_XPOS, organism.position[0].round() as i32);
-        state
-            .program
-            .memory
-            .write(MEM_YPOS, organism.position[1].round() as i32);
+        state.program.memory.write(
+            MEM_XPOS,
+            native_sensing::position_word(
+                organism.position[0],
+                self.config.world_width,
+                self.native_random.is_some(),
+            ),
+        );
+        state.program.memory.write(
+            MEM_YPOS,
+            native_sensing::position_word(
+                organism.position[1],
+                self.config.world_height,
+                self.native_random.is_some(),
+            ),
+        );
         self.publish_snapshot();
         Ok(Some(id))
     }
@@ -10498,6 +10794,23 @@ impl Engine {
                 {
                     self.become_native_corpse(id)?;
                 } else {
+                    if self.native_random.is_some() {
+                        let partners = self
+                            .tie_indices_for(id)
+                            .into_iter()
+                            .map(|index| {
+                                let tie = &self.ties[index];
+                                if tie.first == id {
+                                    tie.second
+                                } else {
+                                    tie.first
+                                }
+                            })
+                            .collect::<Vec<_>>();
+                        for partner in partners {
+                            self.native_delete_pair(id, partner);
+                        }
+                    }
                     self.slots.remove(id)?;
                 }
                 if was_living {
@@ -10683,6 +10996,17 @@ impl Engine {
             }
 
             child_materials.aim = (parent_state.materials.aim + 628).rem_euclid(1_257);
+            let native_child_heading = if native {
+                let mut heading = parent_state.heading() + std::f32::consts::PI;
+                if f64::from(heading) > NATIVE_BIRTH_AIM_WRAP {
+                    heading -= 2.0 * std::f32::consts::PI;
+                }
+                child_materials.aim = resource_readback(heading * 200.0);
+                child_materials.previous_body = 0.0;
+                Some(heading)
+            } else {
+                None
+            };
             child_materials.mass =
                 child_materials.body.max(0.0) / 1_000.0 + child_materials.shell.max(0.0) / 200.0;
             child_materials.radius = crate::physics::organism_radius(
@@ -10691,8 +11015,14 @@ impl Engine {
                 self.config.fixed_bot_radii,
             );
             child_materials.synchronize_energy();
+            let native_birth = native;
             {
                 let child_organism = self.slots.get_mut(child)?;
+                if native_birth {
+                    // Reproduce erases the new robot VM before its explicit
+                    // birth readbacks and epigenetic cells are assigned.
+                    child_organism.program.memory = VmMemory::default();
+                }
                 child_organism.identity = parent_state.identity.clone();
                 child_organism.identity.parents = [
                     Some(birth.parent),
@@ -10710,6 +11040,13 @@ impl Engine {
                 let child_angle = child_materials.aim as f32 / 200.0;
                 child_organism.kinematics.aim_vector = [child_angle.cos(), child_angle.sin()];
                 child_organism.materials = child_materials;
+                if let Some(heading) = native_child_heading {
+                    child_organism.set_heading(heading);
+                    child_organism.kinematics.aim_vector = [
+                        f64::from(heading).cos() as f32,
+                        f64::from(heading).sin() as f32,
+                    ];
+                }
                 child_organism.counters.generation = parent_state
                     .counters
                     .generation
@@ -10746,13 +11083,25 @@ impl Engine {
                     child_organism.heredity.epigenetic_staging[offset as usize] =
                         parent_state.program.memory.read(976 + offset);
                 }
-                child_organism
-                    .materials
-                    .publish(&mut child_organism.program.memory);
-                child_organism.program.memory.write(
-                    MEM_READ_BUOYANCY,
-                    (child_organism.buoyancy * 32_000.0).round_ties_even() as i32,
-                );
+                if native_birth {
+                    child_organism
+                        .program
+                        .memory
+                        .write(MEM_NRG, resource_readback(child_organism.materials.energy));
+                    child_organism
+                        .program
+                        .memory
+                        .write(19, child_organism.materials.aim);
+                    child_organism.program.memory.write(468, 32_000);
+                } else {
+                    child_organism
+                        .materials
+                        .publish(&mut child_organism.program.memory);
+                    child_organism.program.memory.write(
+                        MEM_READ_BUOYANCY,
+                        (child_organism.buoyancy * 32_000.0).round_ties_even() as i32,
+                    );
+                }
             }
 
             let child_parents = [
@@ -10787,6 +11136,23 @@ impl Engine {
                 child,
                 "birth_resources_transferred",
             );
+            if native_birth {
+                let parent = self.slots.get_mut(birth.parent)?;
+                parent
+                    .program
+                    .memory
+                    .write(MEM_NRG, resource_readback(parent.materials.energy));
+                parent
+                    .program
+                    .memory
+                    .write(311, resource_readback(parent.materials.body));
+                // Reproduce mutates the child, rebuilds ownvars and publishes
+                // DNA length/genes before maketie can read the new partner.
+                self.native_birth_mutations(child, birth.mutation_reproduction);
+                let child_state = self.slots.get_mut(child)?;
+                child_state.refresh_occurrence_census();
+                publish_reproductive_readbacks(child_state);
+            }
             if self.create_birth_tie(birth.parent, child) {
                 trace.effect(
                     CyclePhase::CommitBirthsDeaths,
@@ -10794,6 +11160,14 @@ impl Engine {
                     child,
                     "birth_tie_created",
                 );
+            }
+            if native_birth {
+                // The source captures onrg after the tie fee, before DNA copy
+                // cost, then transfers the epigenetic timer (cell12).
+                let parent = self.slots.get_mut(birth.parent)?;
+                parent.materials.previous_energy = parent.materials.energy;
+                let timer = parent.program.memory.read(12);
+                self.slots.get_mut(child)?.program.memory.write(12, timer);
             }
 
             if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
@@ -10829,6 +11203,12 @@ impl Engine {
                 child,
                 "reproduction_action_consumed",
             );
+            if native_birth {
+                self.native_inherit_epigenetic_dose(
+                    child,
+                    parent_state.heredity.native_mutation_dose,
+                );
+            }
 
             let mut charged_copy_cost = false;
             let copy_cost = self
@@ -10844,13 +11224,19 @@ impl Engine {
                 .unwrap_or(0.0);
             if let Ok(parent_organism) = self.slots.get_mut(birth.parent) {
                 if copy_cost != 0.0 {
-                    parent_organism.materials.energy =
-                        (parent_organism.materials.energy - copy_cost as f32).max(0.0);
+                    parent_organism.materials.energy = if native_birth {
+                        (f64::from(parent_organism.materials.energy) - copy_cost) as f32
+                    } else {
+                        parent_organism.materials.energy - copy_cost as f32
+                    }
+                    .max(0.0);
                     charged_copy_cost = true;
                 }
-                parent_organism
-                    .materials
-                    .publish(&mut parent_organism.program.memory);
+                if !native_birth {
+                    parent_organism
+                        .materials
+                        .publish(&mut parent_organism.program.memory);
+                }
             }
             if charged_copy_cost {
                 trace.effect(
@@ -10860,13 +11246,7 @@ impl Engine {
                     "birth_dna_copy_cost_charged",
                 );
             }
-            if self.native_random.is_some() {
-                self.native_birth_mutations(child, birth.mutation_reproduction);
-                self.native_inherit_epigenetic_dose(
-                    child,
-                    parent_state.heredity.native_mutation_dose,
-                );
-            } else if mutate {
+            if !native_birth && mutate {
                 self.pending_mutations.push(child);
                 self.mutation_phase(MutationContext::Reproduction {
                     forced: birth.mutation_reproduction,
@@ -10951,7 +11331,14 @@ impl Engine {
         self.ties
             .retain(|tie| slot_id_valid(slots, tie.first) && slot_id_valid(slots, tie.second));
         self.rebuild_native_tie_index();
-        self.refresh_tie_projections();
+        if self.native_random.is_some() {
+            // ReproduceAndKill updates topology, not another UpdateTieAngles.
+            // Birth/fire commands after the source angle pass retain their VM
+            // geometry values until the next cycle.
+            self.refresh_tie_projections_impl(false, &HashMap::new(), false);
+        } else {
+            self.refresh_tie_projections();
+        }
         Ok(())
     }
 
@@ -11641,6 +12028,18 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        // Older DB3S files retained the original tail before F1 was projected.
+        if engine.native_f1.is_none()
+            && let Some(origin) = engine
+                .native_origin
+                .as_ref()
+                .filter(|file| !file.tail.is_empty())
+        {
+            engine.native_f1 = Some(
+                crate::native_binary::NativeSimulationTail::decode(&origin.tail)?.integer("f1")?
+                    != 0,
+            );
+        }
         engine.migrate_complete_archived_corpses()?;
         for (index, slot) in engine.slots.iter().enumerate() {
             if let Some(organism) = &slot.organism {
@@ -11774,7 +12173,9 @@ fn apply_tie_resource(
         source_slot.organism.as_mut()?,
         target_slot.organism.as_mut()?,
     );
-    if source.counters.age == 0 {
+    // Update_Ties applies its newborn restriction to energy/body exchange.
+    // Venom and waste commands have no age check in the original routines.
+    if source.counters.age == 0 && (native.is_none() || matches!(location, -1 | -6)) {
         return None;
     }
 

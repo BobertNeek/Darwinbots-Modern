@@ -292,10 +292,43 @@ fn testing_engine() -> Engine {
 }
 
 #[test]
-fn engine_tick_resets_fixang_to_legacy_sentinel() {
+fn engine_tick_keeps_fixang_pending_without_any_ties() {
     let mut engine = testing_engine();
     let robot = engine
         .spawn(LegacyDna::parse("start\n123 .fixang store\nstop").unwrap())
+        .unwrap();
+
+    engine.tick().unwrap();
+
+    // Update_Ties jumps to getout before the selected-control sentinel reset.
+    assert!(engine.snapshot().ties.is_empty());
+    assert_eq!(engine.memory(robot, "numties").unwrap(), 0);
+    assert_eq!(engine.memory(robot, "fixang").unwrap(), 123);
+}
+
+#[test]
+fn engine_tick_resets_fixang_to_legacy_sentinel() {
+    let mut engine = testing_engine();
+    // Update_Ties reaches its sentinel reset only with a selected existing tie.
+    // With zero ties it exits early and retains the pending fixang command.
+    let robot = engine
+        .spawn_at(
+            LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
+            [300.0, 500.0],
+        )
+        .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [600.0, 500.0])
+        .unwrap();
+    engine.set_organism_aim(robot, 0).unwrap();
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().ties.len(), 1);
+    assert_eq!(engine.memory(robot, "tiepres").unwrap(), 41);
+    engine
+        .replace_dna(
+            robot,
+            LegacyDna::parse("start\n123 .fixang store\nstop").unwrap(),
+        )
         .unwrap();
 
     engine.tick().unwrap();
@@ -424,18 +457,21 @@ fn engine_tick_executes_delgene_in_the_authoritative_virus_phase() {
 #[test]
 fn engine_tick_keeps_tie_port_selectors_distinct_from_tie_count() {
     let mut engine = testing_engine();
+    // Translate every placement by [50,150]. The relative geometry and aims
+    // stay fixed while original bordercolls no longer relocates these robots.
     let first = engine
         .spawn_at(
             LegacyDna::parse("start\n41 .tie store\nstop").unwrap(),
-            [100.0, 100.0],
+            [150.0, 250.0],
         )
         .unwrap();
     let _second = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [400.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [450.0, 250.0])
         .unwrap();
     let third = engine
-        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [800.0, 100.0])
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [850.0, 250.0])
         .unwrap();
+    engine.set_organism_aim(first, 0).unwrap();
     engine.tick().unwrap();
 
     engine
@@ -444,7 +480,8 @@ fn engine_tick_keeps_tie_port_selectors_distinct_from_tie_count() {
             LegacyDna::parse("start\n77 .tie store\n41 .readtie store\nstop").unwrap(),
         )
         .unwrap();
-    engine.move_organism(third, [100.0, 350.0]).unwrap();
+    engine.move_organism(third, [150.0, 500.0]).unwrap();
+    engine.set_organism_aim(first, 942).unwrap();
     engine.tick().unwrap();
     engine.tick().unwrap();
 
@@ -480,13 +517,13 @@ fn engine_tick_preserves_tied_references_only_for_a_valid_selected_port() {
     engine
         .replace_dna(
             first,
-            LegacyDna::parse("start\n999 .readtie store\nstop").unwrap(),
+            LegacyDna::parse("start\n999 .readtie store\n123 .trefshell store\nstop").unwrap(),
         )
         .unwrap();
     engine.tick().unwrap();
     for address in [
-        437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 456, 457, 458, 459, 460,
-        461, 462, 463, 464, 465, 475, 478, 479,
+        437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 456, 457, 458, 459, 460, 461,
+        462, 463, 464, 465, 475, 478, 479,
     ] {
         assert_eq!(
             engine.memory_at(first, address).unwrap(),
@@ -494,6 +531,8 @@ fn engine_tick_preserves_tied_references_only_for_a_valid_selected_port() {
             "address {address}"
         );
     }
+    // EraseTRefVars clears438..448; its original loop does not include449.
+    assert_eq!(engine.memory(first, "trefshell").unwrap(), 123);
 }
 
 fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId) {
@@ -511,6 +550,7 @@ fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId)
     let port_77_partner = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [800.0, 800.0])
         .unwrap();
+    engine.set_organism_aim(source, 0).unwrap();
     engine.tick().unwrap();
 
     engine
@@ -522,6 +562,7 @@ fn engine_with_two_source_ties() -> (Engine, OrganismId, OrganismId, OrganismId)
     engine
         .move_organism(port_77_partner, [300.0, 550.0])
         .unwrap();
+    engine.set_organism_aim(source, 942).unwrap();
     engine.tick().unwrap();
     assert_eq!(
         engine.snapshot().ties.len(),
