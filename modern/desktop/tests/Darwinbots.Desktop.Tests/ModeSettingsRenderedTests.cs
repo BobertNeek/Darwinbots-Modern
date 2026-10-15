@@ -32,7 +32,6 @@ public sealed class ModeSettingsRenderedTests
                     Assert.IsType<TextBlock>(restartLeagueTab.Content).Text,
                     StringComparison.Ordinal);
 
-                Click(setup, Named<Button>(setup, "GlobalSettingsButton"));
                 await WaitFor(() => setup.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
                 var global = Assert.Single(setup.OwnedWindows.OfType<GlobalSettingsWindow>());
                 try

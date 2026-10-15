@@ -54,7 +54,7 @@ public sealed class ToolsRenderedRouteTests
                 Assert.Equal(40m, Named<NumericUpDown>(shape, "MaximumX").Value);
                 Assert.Equal(50m, Named<NumericUpDown>(shape, "MaximumY").Value);
                 Assert.Contains("SHAPE PROPERTIES", VisibleText(shape), StringComparison.Ordinal);
-                Assert.Contains("Rust owns collision, vision, shot, and drift behavior.", VisibleText(shape), StringComparison.Ordinal);
+                Assert.Contains("Edit shape movement, appearance and how bots see it.", VisibleText(shape), StringComparison.Ordinal);
 
                 using var frame = shape.CaptureRenderedFrame();
                 Assert.NotNull(frame);

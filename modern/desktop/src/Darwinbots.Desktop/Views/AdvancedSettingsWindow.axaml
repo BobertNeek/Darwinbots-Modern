@@ -31,7 +31,7 @@
         <Border Classes="card"><StackPanel Spacing="8">
           <TextBlock Classes="section" Text="DETAILED MUTATION CLASSES"/>
           <TextBlock Text="One-in rates feed the native Gaussian mutation profile. Point, delta, copy error, indel, reversal, amplification, and translocation remain distinct." TextWrapping="Wrap" Foreground="#66706B"/>
-          <Grid ColumnDefinitions="*,105,*,105" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+          <Grid ColumnDefinitions="*,155,*,155" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
             <TextBlock Text="Point" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="PointOneIn" Minimum="0" Maximum="100000000" Value="5000"/>
             <TextBlock Grid.Column="2" Text="Point2" VerticalAlignment="Center"/><NumericUpDown Grid.Column="3" x:Name="Point2OneIn" Minimum="0" Maximum="100000000" Value="5000"/>
             <TextBlock Grid.Row="1" Text="Delta" VerticalAlignment="Center"/><NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="DeltaOneIn" Minimum="0" Maximum="100000000" Value="5000"/>

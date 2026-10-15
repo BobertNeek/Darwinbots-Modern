@@ -1,5 +1,5 @@
 use darwinbots_cli::run_from;
-use std::{fs, io::Cursor, path::Path};
+use std::{fs, io::Cursor, path::Path, time::Instant};
 
 #[test]
 fn every_db245_bot_completes_the_standard_probe() {
@@ -13,6 +13,8 @@ fn every_db245_bot_completes_the_standard_probe() {
     for line in manifest.lines().filter(|line| !line.trim().is_empty()) {
         let (_, name) = line.split_once('|').unwrap();
         let bot = bots_root.join(name);
+        eprintln!("DB2 probe starting: {name}");
+        let started = Instant::now();
         let mut output = Cursor::new(Vec::new());
         let arguments = vec![
             "darwinbots".to_owned(),
@@ -68,6 +70,10 @@ fn every_db245_bot_completes_the_standard_probe() {
             }
             Err(error) => failures.push(format!("{name}: {error}")),
         }
+        eprintln!(
+            "DB2 probe finished: {name} in {:.2}s",
+            started.elapsed().as_secs_f64()
+        );
     }
 
     assert!(

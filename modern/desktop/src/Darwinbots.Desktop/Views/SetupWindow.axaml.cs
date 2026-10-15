@@ -182,7 +182,24 @@ public sealed partial class SetupWindow : Window
         };
     }
 
-    private async void Advanced_Click(object? sender, RoutedEventArgs e)
+    private async void SimulationSettingsTab_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_controlsReady || !ReferenceEquals(e.Source, SimulationSettingsTabs)) return;
+        var section = SimulationSettingsTabs.SelectedIndex;
+        if (section == 1) { WorldWidth.BringIntoView(); WorldWidth.Focus(); return; }
+        if (section == 5) return; // Internet Mode remains inert.
+        if (section == 2) await EditAdvancedSettingsAsync(2);
+        else if (section == 3) await EditAdvancedSettingsAsync(0);
+        else if (section == 4) await EditGlobalSettingsAsync(2);
+        else return;
+        _controlsReady = false;
+        SimulationSettingsTabs.SelectedIndex = 0;
+        _controlsReady = true;
+    }
+
+    private async void Advanced_Click(object? sender, RoutedEventArgs e) => await EditAdvancedSettingsAsync(0);
+
+    private async Task EditAdvancedSettingsAsync(int selectedTab)
     {
         try
         {
@@ -196,7 +213,7 @@ public sealed partial class SetupWindow : Window
                     .Concat(Species.Select(row => new SpeciesSnapshot(row.Name, row.Vegetable,
                         row.Color, row.MinimumPopulation, row.Reseed, (float)row.MutationRate))).ToArray(),
             };
-            var dialog = new AdvancedSettingsWindow(_environment, snapshot);
+            var dialog = new AdvancedSettingsWindow(_environment, snapshot, selectedTab);
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
             _environment = dialog.Update;
@@ -204,7 +221,11 @@ public sealed partial class SetupWindow : Window
             // Species do not have engine IDs until startup imports them. Keep
             // their percentages on the startup definitions rather than sending
             // live-world IDs to an engine that has not registered them yet.
-            _mutationSettings = mutationUpdate with { SpeciesRates = [] };
+            _mutationSettings = mutationUpdate with
+            {
+                SpeciesRates = [],
+                Profile = mutationUpdate.Profile ?? _mutationSettings.Profile,
+            };
             foreach (var rate in mutationUpdate.SpeciesRates)
                 if (rate.Species > 0 && rate.Species <= Species.Count)
                     Species[(int)rate.Species - 1].MutationRate = rate.Rate;
@@ -216,11 +237,14 @@ public sealed partial class SetupWindow : Window
         }
     }
 
-    private async void GlobalSettings_Click(object? sender, RoutedEventArgs e)
+    private async void GlobalSettings_Click(object? sender, RoutedEventArgs e) => await EditGlobalSettingsAsync(0);
+
+    private async Task EditGlobalSettingsAsync(int selectedTab)
     {
         try
         {
             var dialog = new GlobalSettingsWindow(_globalSettings);
+            dialog.FindControl<TabControl>("Tabs")!.SelectedIndex = selectedTab;
             await dialog.ShowDialog(this);
             if (!dialog.Accepted) return;
             _globalSettings = dialog.Settings;

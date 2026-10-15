@@ -20,7 +20,7 @@ public sealed partial class AdvancedSettingsWindow : Window
         (float)(GlobalMutationRate.Value ?? 1m),
         _speciesRates.Select(value => new SpeciesMutationRateUpdate(value.Species, (float)value.Slider.Value)).ToArray())
     {
-        Profile = ReadMutationProfile(),
+        Profile = _editedMutationRates.Count == 0 ? null : ReadMutationProfile(),
     };
     public EnvironmentUpdate Update => new(
         (int)(Metabolism.Value ?? 1), (int)(VegetableEnergy.Value ?? 0), (int)(Sunlight.Value ?? 100), [(float)(GravityX.Value ?? 0), (float)(GravityY.Value ?? 0)], (float)(Drag.Value ?? 0), Db2BrownianScale.FromPercent(Brownian.Value ?? 0),

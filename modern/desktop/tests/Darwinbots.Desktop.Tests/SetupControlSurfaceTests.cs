@@ -353,7 +353,7 @@ public sealed class SetupControlSurfaceTests
                 Invoke(window, "Advanced_Click");
                 await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
                 var advanced = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
-                Assert.Equal(profile, advanced.MutationUpdate.Profile);
+                Assert.Null(advanced.MutationUpdate.Profile);
                 Invoke(advanced, "Apply_Click");
                 await WaitFor(() => !window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
                 Invoke(window, "SaveSettings_Click");
@@ -406,13 +406,64 @@ public sealed class SetupControlSurfaceTests
             var window = new AdvancedSettingsWindow(EnvironmentUpdate.Default, snapshot);
             try
             {
-                Assert.Equal(profile, window.MutationUpdate.Profile);
+                // Environment-only edits must not replace evolved per-robot rates.
+                Assert.Null(window.MutationUpdate.Profile);
                 Assert.Equal(50f, window.MutationUpdate.GlobalMultiplier);
                 window.FindControl<NumericUpDown>("CopyErrorOneIn")!.Value = 29;
                 Assert.Equal(profile with { CopyError = profile.CopyError with { OneIn = 29 } },
                     window.MutationUpdate.Profile);
             }
             finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task SetupCategoriesOpenRealEditorsAndCommitTheirValuesToTheNewWorld()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(new SettingsWorkflowStorage());
+            window.Show();
+            try
+            {
+                var categories = window.FindControl<TabControl>("SimulationSettingsTabs")!;
+                categories.SelectedIndex = 3;
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                var mutation = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.Equal(0, mutation.FindControl<TabControl>("SettingsTabs")!.SelectedIndex);
+                mutation.FindControl<NumericUpDown>("GlobalMutationRate")!.Value = 2.75m;
+                mutation.FindControl<CheckBox>("MutationsEnabled")!.IsChecked = false;
+                Invoke(mutation, "Apply_Click");
+                await WaitFor(() => categories.SelectedIndex == 0);
+                categories.SelectedIndex = 2;
+                await WaitFor(() => window.OwnedWindows.OfType<AdvancedSettingsWindow>().Any());
+                var physics = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.Equal(2, physics.FindControl<TabControl>("SettingsTabs")!.SelectedIndex);
+                physics.FindControl<NumericUpDown>("GravityY")!.Value = 0.125m;
+                Invoke(physics, "Apply_Click");
+                await WaitFor(() => categories.SelectedIndex == 0);
+                categories.SelectedIndex = 4;
+                await WaitFor(() => window.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
+                var evolution = Assert.Single(window.OwnedWindows.OfType<GlobalSettingsWindow>());
+                Assert.Equal(2, evolution.FindControl<TabControl>("Tabs")!.SelectedIndex);
+                evolution.FindControl<TabControl>("Tabs")!.SelectedIndex = 0;
+                evolution.FindControl<NumericUpDown>("BodyCutoff")!.Value = 12345;
+                Invoke(evolution, "Apply_Click");
+                await WaitFor(() => categories.SelectedIndex == 0);
+                WorldSetupOptions? created = null;
+                window.WorldCreated += setup => created = setup;
+                Invoke(window, "StartNew_Click");
+                Assert.NotNull(created);
+                Assert.False(created!.MutationSettings.Enabled);
+                Assert.Equal(2.75f, created.MutationSettings.GlobalMultiplier);
+                Assert.Equal(0.125f, created.Gravity[1]);
+                Assert.Equal(12345, created.GlobalSettings.Main.BodyCutoff);
+            }
+            finally
+            {
+                foreach (var child in window.OwnedWindows.ToArray()) child.Close();
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 

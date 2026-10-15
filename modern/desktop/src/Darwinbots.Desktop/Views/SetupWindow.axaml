@@ -30,7 +30,8 @@
     </Border>
 
     <Border Grid.Row="1" Grid.Column="0" Background="#F7F4EC" BorderBrush="#C8C5BB" BorderThickness="0,0,1,0">
-      <TabControl x:Name="SimulationSettingsTabs" TabStripPlacement="Left" Margin="8,20">
+      <TabControl x:Name="SimulationSettingsTabs" TabStripPlacement="Left" Margin="8,20" SelectionChanged="SimulationSettingsTab_SelectionChanged">
+        <TabControl.Styles><Style Selector="TabItem"><Setter Property="FontSize" Value="14"/><Setter Property="Padding" Value="8,12"/></Style></TabControl.Styles>
         <TabItem Header="SPECIES"><TextBlock Text="Species and DNA" TextWrapping="Wrap" Margin="8"/></TabItem>
         <TabItem Header="GENERAL"><TextBlock Text="World size, backend, and runtime defaults" TextWrapping="Wrap" Margin="8"/></TabItem>
         <TabItem Header="PHYSICS AND COSTS"><TextBlock Text="Physics, energy, and shot costs" TextWrapping="Wrap" Margin="8"/></TabItem>
@@ -45,7 +46,7 @@
         <TextBlock Classes="section" Text="STARTING MODE" FontSize="15"/>
         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
           <RadioButton x:Name="StarterMode" GroupName="Mode" IsChecked="True" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
-            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#3E7336"/><TextBlock Text="STARTER BOTS + VEGETABLES" FontWeight="Bold"/></StackPanel>
+            <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#3E7336"/><TextBlock Text="STARTER BOTS + VEGETABLES" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
           </RadioButton>
           <RadioButton x:Name="ZerobotMode" Grid.Column="1" GroupName="Mode" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
             <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉" FontSize="30" HorizontalAlignment="Center"/><TextBlock Text="ZEROBOTS" FontWeight="Bold"/></StackPanel>
@@ -57,15 +58,16 @@
 
         <TextBlock Classes="section" Text="SPECIES" FontSize="15" Margin="0,8,0,0"/>
         <TextBlock Text="DB2 mutations use the detailed rates in each species editor. Legacy % is retained for older modern worlds." TextWrapping="Wrap" Foreground="#66706B"/>
-        <Border Classes="panel">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <Border Classes="panel" MinWidth="1060">
           <Grid RowDefinitions="38,*">
-            <Grid ColumnDefinitions="2*,90,100,95,135,80,105,44" Background="#EEEAE0" Margin="1">
+            <Grid ColumnDefinitions="2*,90,135,145,135,80,105,44" Background="#EEEAE0" Margin="1">
               <TextBlock Text="SPECIES" Margin="10"/><TextBlock Grid.Column="1" Text="TYPE" Margin="8"/><TextBlock Grid.Column="2" Text="INITIAL COUNT" Margin="8"/><TextBlock Grid.Column="3" Text="ENERGY" Margin="8"/><TextBlock Grid.Column="4" Text="LEGACY %" Margin="8"/><TextBlock Grid.Column="5" Text="RESEED" Margin="8"/><TextBlock Grid.Column="6" Text="EDITOR" Margin="8"/>
             </Grid>
             <ItemsControl x:Name="SpeciesList" Grid.Row="1" ItemsSource="{Binding Species}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="2*,90,100,95,135,80,105,44" Margin="6,5">
+                  <Grid ColumnDefinitions="2*,90,135,145,135,80,105,44" Margin="6,5">
                     <TextBox Text="{Binding Name}"/>
                     <CheckBox Grid.Column="1" IsChecked="{Binding Vegetable}" Content="VEG" VerticalAlignment="Center"/>
                     <NumericUpDown Grid.Column="2" Value="{Binding InitialCount}" Minimum="1" Maximum="100000"/>
@@ -112,6 +114,7 @@
             </ItemsControl>
           </Grid>
         </Border>
+        </ScrollViewer>
         <StackPanel Orientation="Horizontal" Spacing="10"><Button x:Name="AddDnaButton" Content="＋ ADD DNA FILE" Click="AddDna_Click"/><Button x:Name="DuplicateSpeciesButton" Content="DUPLICATE SPECIES" Click="DuplicateSpecies_Click"/><TextBlock x:Name="SetupStatus" VerticalAlignment="Center" Foreground="#A65A23"/></StackPanel>
       </StackPanel>
     </ScrollViewer>
