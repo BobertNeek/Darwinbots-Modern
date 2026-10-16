@@ -103,7 +103,7 @@ public sealed class NativeLeagueSeriesTests
             var bytes = await File.ReadAllBytesAsync(Assert.Single(paths));
             Assert.Equal((byte)0xe9, bytes[2]);
             Assert.Equal((byte)0x80, bytes[4]);
-            Assert.Equal(raw + Environment.NewLine + "'#tag:Café.txt" + Environment.NewLine, LegacyDnaText.Decode(bytes));
+            Assert.Equal(raw + "\r\n" + "'#tag:Café.txt" + "\r\n", LegacyDnaText.Decode(bytes));
             var rejected = Path.Combine(directory, "rejected");
             await Assert.ThrowsAsync<InvalidDataException>(() => PopulationSeedingExport.WriteAsync(rejected, [
                 new(new(1, 0, 2000), "Safe.txt", "start stop"),
@@ -123,7 +123,7 @@ public sealed class NativeLeagueSeriesTests
                 new(new(1, 0, 2000), "Legacy.txt", "start stop"),
                 new(new(2, 0, 2000) { FileName = "0.txt" }, "Exact.txt", "start stop")]);
             Assert.Equal(new[] { "0a.txt", "0.txt" }, paths.Select(Path.GetFileName));
-            Assert.EndsWith("'#tag:Exact.txt" + Environment.NewLine, await File.ReadAllTextAsync(paths[1]));
+            Assert.EndsWith("'#tag:Exact.txt" + "\r\n", await File.ReadAllTextAsync(paths[1]));
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
@@ -161,7 +161,7 @@ public sealed class NativeLeagueSeriesTests
             {
                 Assert.Equal((byte)0xe9, before[index][2]);
                 Assert.Equal((byte)0x80, before[index][4]);
-                Assert.Equal(raw + Environment.NewLine + $"'#tag:Original {index}.txt" + Environment.NewLine,
+                Assert.Equal(raw + "\r\n" + $"'#tag:Original {index}.txt" + "\r\n",
                     LegacyDnaText.Decode(before[index]));
             }
 
@@ -211,7 +211,7 @@ public sealed class NativeLeagueSeriesTests
             Assert.False(File.Exists(Path.Combine(directory, "seeded", "0aaa.txt")));
             Assert.Equal(new byte[] { 0x27, 0x20, 0x6f, 0x6c, 0x64 },
                 await File.ReadAllBytesAsync(Path.Combine(target, "0zy.txt")));
-            Assert.EndsWith("'#tag:BraceZ.txt" + Environment.NewLine, await File.ReadAllTextAsync(last[0]));
+            Assert.EndsWith("'#tag:BraceZ.txt" + "\r\n", await File.ReadAllTextAsync(last[0]));
 
             var exact = Path.Combine(directory, "exact");
             var exactPaths = await PopulationSeedingExport.WriteAsync(exact, [
@@ -305,9 +305,9 @@ public sealed class NativeLeagueSeriesTests
             ]);
             Assert.Equal(new[] { "0a.txt", "0b.txt", "27.txt" }, paths.Select(Path.GetFileName));
             Assert.Equal("irreplaceable seed", await File.ReadAllTextAsync(existing));
-            Assert.Equal(original + Environment.NewLine + "'#tag:Gone.txt" + Environment.NewLine,
+            Assert.Equal(original + "\r\n" + "'#tag:Gone.txt" + "\r\n",
                 await File.ReadAllTextAsync(paths[0]));
-            Assert.EndsWith("'#tag:Other.txt" + Environment.NewLine, await File.ReadAllTextAsync(paths[1]));
+            Assert.EndsWith("'#tag:Other.txt" + "\r\n", await File.ReadAllTextAsync(paths[1]));
             Assert.Equal(4, Directory.GetFiles(Path.Combine(directory, "seeded")).Length);
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }

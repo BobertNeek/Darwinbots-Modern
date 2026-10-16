@@ -8,12 +8,16 @@ on:
   push:
     paths:
       - "modern/**"
+      - "Installer/bots/**"
+      - ".gitattributes"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/modern-cross-platform.yml"
   pull_request:
     paths:
       - "modern/**"
+      - "Installer/bots/**"
+      - ".gitattributes"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/modern-cross-platform.yml"

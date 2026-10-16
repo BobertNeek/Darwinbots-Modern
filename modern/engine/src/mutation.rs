@@ -1,6 +1,8 @@
 use crate::dna::normalize_master_end;
 use crate::{DnaBlock, EngineError, LegacyDna, MAX_DNA_BLOCKS, TokenClass};
 use serde::{Deserialize, Serialize};
+#[path = "mutation/legacy_mrate.rs"]
+mod legacy_mrate;
 #[path = "mutation/native_reproduction.rs"]
 mod native_reproduction;
 #[path = "mutation/native_sysvars.rs"]

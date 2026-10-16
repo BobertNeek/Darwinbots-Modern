@@ -97,6 +97,52 @@ function Get-TestBinaryHashes([string]$testText) {
         }
     }
 }
+function Read-SealedGpuLog([string]$path, [int]$timeoutMilliseconds = 10000) {
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $attempts = 0
+    $lastError = $null
+    do {
+        $attempts++
+        $stream = $null
+        $memory = $null
+        $capture = $null
+        $readError = $null
+        try {
+            # Allow other readers, but require every inherited writer to close.
+            # Read, decode and hash the same bytes while this handle excludes writers.
+            $stream = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            $memory = [IO.MemoryStream]::new()
+            $stream.CopyTo($memory)
+            $bytes = $memory.ToArray()
+            $text = [Text.UTF8Encoding]::new($false, $true).GetString($bytes)
+            $capture = [ordered]@{
+                status='captured';text=$text;sha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))
+                bytes=$bytes.Length;writer_quiescent=$true;error=$null
+            }
+        } catch { $readError = $_.Exception.GetBaseException() } finally {
+            foreach ($resource in @($memory, $stream)) {
+                if ($null -ne $resource) {
+                    try { $resource.Dispose() } catch {
+                        if ($null -eq $readError) { $readError = $_.Exception.GetBaseException() }
+                    }
+                }
+            }
+        }
+        if ($null -eq $readError) {
+            $capture['attempts'] = $attempts
+            $capture['elapsed_milliseconds'] = $clock.ElapsedMilliseconds
+            return $capture
+        }
+        $lastError = $readError.Message
+        $nativeError = $readError.HResult -band 0xffff
+        if ($nativeError -notin @(32, 33)) {
+            $captureStatus = if ($nativeError -in @(2, 3)) { 'not_created' } else { 'unavailable' }
+            return [ordered]@{status=$captureStatus;text=$null;sha256=$null;bytes=$null;writer_quiescent=$false;error=$lastError;attempts=$attempts;elapsed_milliseconds=$clock.ElapsedMilliseconds}
+        }
+        if ($clock.ElapsedMilliseconds -lt $timeoutMilliseconds) { Start-Sleep -Milliseconds 100 }
+    } while ($clock.ElapsedMilliseconds -lt $timeoutMilliseconds)
+    return [ordered]@{status='still_locked';text=$null;sha256=$null;bytes=$null;writer_quiescent=$false;error=$lastError;attempts=$attempts;elapsed_milliseconds=$clock.ElapsedMilliseconds}
+}
 function Run-GpuTask($label, [string[]]$arguments, [int]$minimumPasses, [int]$timeoutSeconds) {
     # A fresh invocation never accepts cached qualification receipts.
     Check-Guards
@@ -121,9 +167,22 @@ function Run-GpuTask($label, [string[]]$arguments, [int]$minimumPasses, [int]$ti
         $process = $null
         $exitCode = $null
         $ownedPid = $null
-        $failure = $null
+        $executionError = $null
+        $guardErrors = [Collections.Generic.List[string]]::new()
+        $cleanupErrors = [Collections.Generic.List[string]]::new()
+        $logErrors = [Collections.Generic.List[string]]::new()
+        $observationErrors = [Collections.Generic.List[string]]::new()
+        $stateErrors = [Collections.Generic.List[string]]::new()
+        $binaryError = $null
         $interrupted = $false
         $timedOut = $false
+        $stopReason = $null
+        $stopObservedUtc = $null
+        $inputTickAtStop = $null
+        $inputObservedUtc = $null
+        $finalInputTick = $null
+        $idleAfter = $null
+        $operation = 'launch'
         try {
             $process = Start-Process -FilePath $cargo -ArgumentList $arguments -WorkingDirectory $repo -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
             $null = $process.Handle
@@ -133,57 +192,129 @@ function Run-GpuTask($label, [string[]]$arguments, [int]$minimumPasses, [int]$ti
             }
             Save-State 'running' $label @{owned_cargo_pid=$ownedPid;input_tick=$inputTick;idle_before_ms=$idleBefore;executable=$cargo;arguments=$arguments;minimum_passes=$minimumPasses;stdout=$stdout;stderr=$stderr}
             while (!$process.HasExited) {
+                $operation = 'guard'
                 Check-Guards
-                if ([DbParityGpuInput]::Tick() -ne $inputTick) { $interrupted=$true; break }
-                if ($clock.Elapsed.TotalSeconds -gt $timeoutSeconds) { $timedOut=$true; break }
+                $operation = 'input_observation'
+                $observedInputTick = [DbParityGpuInput]::Tick()
+                if ($observedInputTick -ne $inputTick) {
+                    $interrupted = $true
+                    $inputTickAtStop = $observedInputTick
+                    $stopReason = 'input'
+                    $inputObservedUtc = [DateTime]::UtcNow.ToString('o')
+                    $stopObservedUtc = $inputObservedUtc
+                    try { Save-State 'stopping_for_input' $label @{owned_cargo_pid=$ownedPid;input_tick_before=$inputTick;input_tick_at_stop=$inputTickAtStop;observed_utc=$inputObservedUtc;stdout=$stdout;stderr=$stderr} }
+                        catch { $stateErrors.Add($_.Exception.Message) }
+                    break
+                }
+                if ($clock.Elapsed.TotalSeconds -gt $timeoutSeconds) {
+                    $timedOut = $true
+                    $stopReason = 'timeout'
+                    $stopObservedUtc = [DateTime]::UtcNow.ToString('o')
+                    try { Save-State 'stopping_for_timeout' $label @{owned_cargo_pid=$ownedPid;observed_utc=$stopObservedUtc;stdout=$stdout;stderr=$stderr} }
+                        catch { $stateErrors.Add($_.Exception.Message) }
+                    break
+                }
                 Start-Sleep -Milliseconds 500
+                $operation = 'process_observation'
                 $process.Refresh()
             }
-        } catch { $failure = $_.Exception.Message } finally {
+        } catch {
+            if ($operation -eq 'guard') { $guardErrors.Add($_.Exception.Message) }
+            else { $executionError = $_.Exception.Message }
+            if (!$stopReason) {
+                $stopReason = if ($operation -eq 'guard') { 'guard' } else { 'runner' }
+                $stopObservedUtc = [DateTime]::UtcNow.ToString('o')
+            }
+            try { Save-State 'stopping_for_error' $label @{owned_cargo_pid=$ownedPid;stop_reason=$stopReason;observed_utc=$stopObservedUtc;guard_errors=$guardErrors.ToArray();execution_error=$executionError;stdout=$stdout;stderr=$stderr} }
+                catch { $stateErrors.Add($_.Exception.Message) }
+        } finally {
+            # Capture input before cleanup or log I/O can obscure the stop reason.
+            try {
+                $finalInputTick = [DbParityGpuInput]::Tick()
+                $idleAfter = [DbParityGpuInput]::IdleMs()
+                if ($finalInputTick -ne $inputTick -or $idleAfter -lt $IdleSeconds*1000) {
+                    $interrupted = $true
+                    if ($null -eq $inputTickAtStop) { $inputTickAtStop = $finalInputTick }
+                    if ($null -eq $inputObservedUtc) { $inputObservedUtc = [DateTime]::UtcNow.ToString('o') }
+                    if (!$stopReason) { $stopReason='input'; $stopObservedUtc=[DateTime]::UtcNow.ToString('o') }
+                    try { Save-State 'stopping_for_input' $label @{owned_cargo_pid=$ownedPid;input_tick_before=$inputTick;input_tick_at_stop=$inputTickAtStop;stop_reason=$stopReason;observed_utc=$inputObservedUtc;stdout=$stdout;stderr=$stderr} }
+                        catch { $stateErrors.Add($_.Exception.Message) }
+                }
+            } catch { $observationErrors.Add($_.Exception.Message) }
             if ($null -ne $process) {
-                Stop-Owned $process
-                $exitCode = $process.ExitCode
-                $process.Dispose()
+                try { Stop-Owned $process } catch { $cleanupErrors.Add($_.Exception.Message) }
+                try { $exitCode = $process.ExitCode } catch { $cleanupErrors.Add($_.Exception.Message) }
+                try { $process.Dispose() } catch { $cleanupErrors.Add($_.Exception.Message) }
             }
             $clock.Stop()
         }
-        $testText = if (Test-Path -LiteralPath $stdout) { Get-Content -LiteralPath $stdout -Raw } else { '' }
-        $errorText = if (Test-Path -LiteralPath $stderr) { Get-Content -LiteralPath $stderr -Raw } else { '' }
+        # Native Windows inherited writers can outlive Cargo's process handle.
+        # A capture timeout is evidence loss, never permission to hash an active log.
+        $stdoutCapture = Read-SealedGpuLog $stdout
+        $stderrCapture = Read-SealedGpuLog $stderr
+        foreach ($capture in @(@{name='stdout';value=$stdoutCapture}, @{name='stderr';value=$stderrCapture})) {
+            if ($capture.value.status -ne 'captured') { $logErrors.Add($capture.name+': '+$capture.value.error) }
+        }
+        $testText = if ($null -ne $stdoutCapture.text) { $stdoutCapture.text } else { '' }
+        $errorText = if ($null -ne $stderrCapture.text) { $stderrCapture.text } else { '' }
         $passes = 0
         foreach ($match in [regex]::Matches($testText, 'test result: ok\. (\d+) passed;')) { $passes += [int]$match.Groups[1].Value }
+        $terminalSummaries = [regex]::Matches($testText, '(?m)^\s*test result: (?:ok|FAILED)\. \d+ passed;').Count
         $binaries = @()
         try { $binaries = @(Get-TestBinaryHashes ($testText + [Environment]::NewLine + $errorText)) }
-            catch { $failure = $_.Exception.Message }
-        $stdoutHash = if (Test-Path -LiteralPath $stdout) { (Get-FileHash -LiteralPath $stdout -Algorithm SHA256).Hash } else { $null }
-        $stderrHash = if (Test-Path -LiteralPath $stderr) { (Get-FileHash -LiteralPath $stderr -Algorithm SHA256).Hash } else { $null }
-        # The final poll also covers input/source/STOP changes after the child
-        # exits during its final sleep or during evidence collection.
-        try { Check-Guards } catch { $failure = $_.Exception.Message }
-        $finalInputTick = [DbParityGpuInput]::Tick()
-        $idleAfter = [DbParityGpuInput]::IdleMs()
-        if ($finalInputTick -ne $inputTick -or $idleAfter -lt $IdleSeconds*1000) { $interrupted = $true }
+            catch { $binaryError = $_.Exception.Message }
+        # Always perform final guards/input observation even if no logs were readable.
+        try { Check-Guards } catch { $guardErrors.Add($_.Exception.Message) }
+        try {
+            $finalInputTick = [DbParityGpuInput]::Tick()
+            $idleAfter = [DbParityGpuInput]::IdleMs()
+            if ($finalInputTick -ne $inputTick -or $idleAfter -lt $IdleSeconds*1000) {
+                $interrupted = $true
+                if ($null -eq $inputTickAtStop) { $inputTickAtStop = $finalInputTick }
+                if ($null -eq $inputObservedUtc) { $inputObservedUtc = [DateTime]::UtcNow.ToString('o') }
+                if (!$stopReason) { $stopReason='input'; $stopObservedUtc=[DateTime]::UtcNow.ToString('o') }
+            }
+        } catch { $observationErrors.Add($_.Exception.Message) }
         if ($clock.Elapsed.TotalSeconds -gt $timeoutSeconds) { $timedOut = $true }
+        $errors = @($guardErrors.ToArray()) + @($cleanupErrors.ToArray()) + @($logErrors.ToArray()) + @($observationErrors.ToArray()) + @($stateErrors.ToArray())
+        if ($executionError) { $errors += $executionError }
+        if ($binaryError) { $errors += $binaryError }
+        $failure = if ($errors.Count) { $errors -join '; ' } else { $null }
         $passed = !$failure -and !$interrupted -and !$timedOut -and $exitCode -eq 0 -and
-            $passes -ge $minimumPasses -and $binaries.Count -gt 0 -and $stdoutHash -and $stderrHash
-        $status = if ($failure) { 'guard_or_provenance_failed' } elseif ($interrupted) { 'interrupted_by_input' }
-            elseif ($passed) { 'passed' } else { 'failed' }
+            $passes -ge $minimumPasses -and $terminalSummaries -gt 0 -and $binaries.Count -gt 0 -and
+            $stdoutCapture.status -eq 'captured' -and $stderrCapture.status -eq 'captured'
+        $status = if ($interrupted) { 'interrupted_by_input' } elseif ($guardErrors.Count) { 'guard_or_provenance_failed' }
+            elseif ($failure) { 'runner_or_evidence_failed' } elseif ($passed) { 'passed' } else { 'failed' }
+        if (!$stopReason) {
+            $stopReason = if ($guardErrors.Count) { 'guard' } elseif ($failure) { 'runner_or_evidence' }
+                elseif ($timedOut) { 'timeout' } else { 'process_exit' }
+            $stopObservedUtc = [DateTime]::UtcNow.ToString('o')
+        }
         $result = [ordered]@{
             source_head=$source;status=$status;task=$label;attempt=$attempt;exit_code=$exitCode
             executable=$cargo;executable_sha256=$cargoHash;arguments=$arguments;minimum_passes=$minimumPasses
             timed_out=$timedOut;timeout_seconds=$timeoutSeconds;elapsed_process_seconds=$clock.Elapsed.TotalSeconds
-            passed_cases=$passes;test_binaries=$binaries;stdout=$stdout;stdout_sha256=$stdoutHash;stderr=$stderr;stderr_sha256=$stderrHash
-            input_tick_before=$inputTick;input_tick_after=$finalInputTick;idle_before_ms=$idleBefore;idle_after_ms=$idleAfter
+            passed_cases=$passes;terminal_harness_summary_present=($terminalSummaries -gt 0);terminal_harness_summary_count=$terminalSummaries
+            test_binaries=$binaries;stdout=$stdout;stdout_sha256=$stdoutCapture.sha256;stderr=$stderr;stderr_sha256=$stderrCapture.sha256
+            stdout_capture=[ordered]@{status=$stdoutCapture.status;bytes=$stdoutCapture.bytes;writer_quiescent=$stdoutCapture.writer_quiescent;error=$stdoutCapture.error;attempts=$stdoutCapture.attempts;elapsed_milliseconds=$stdoutCapture.elapsed_milliseconds}
+            stderr_capture=[ordered]@{status=$stderrCapture.status;bytes=$stderrCapture.bytes;writer_quiescent=$stderrCapture.writer_quiescent;error=$stderrCapture.error;attempts=$stderrCapture.attempts;elapsed_milliseconds=$stderrCapture.elapsed_milliseconds}
+            interrupted_by_input=$interrupted;input_tick_before=$inputTick;input_tick_at_stop=$inputTickAtStop;input_observed_utc=$inputObservedUtc;input_tick_after=$finalInputTick;idle_before_ms=$idleBefore;idle_after_ms=$idleAfter
+            stop_reason=$stopReason;stop_observed_utc=$stopObservedUtc
+            guard_error=($guardErrors.ToArray() -join '; ');cleanup_errors=$cleanupErrors.ToArray();log_errors=$logErrors.ToArray()
+            execution_error=$executionError;binary_error=$binaryError;input_observation_errors=$observationErrors.ToArray();state_errors=$stateErrors.ToArray()
             required_idle_seconds=$IdleSeconds;priority='BelowNormal';rayon_threads=1;owned_cargo_pid=$ownedPid
             error=$failure;started_utc=$started.ToString('o');finished_utc=[DateTime]::UtcNow.ToString('o')
+            log_provenance='Writer-quiescent read handle excludes writers; text and SHA256 from the same captured bytes. Missing/locked/error captures have no immutable hash. A killed or summary-less log is partial evidence only.'
             binary_provenance='Fresh Cargo test invocation at the verified exact source; SHA256 of Cargo-reported executed test binaries after exit; no cached receipt reuse'
         }
         $attemptReceipt = Join-Path $evidence ($base+'.receipt.json')
+        # Log/cleanup failures cannot bypass this receipt attempt or erase input.
         Write-NewReceipt $attemptReceipt $result
-        if ($failure) { throw $failure }
         if ($interrupted) {
-            Save-State 'interrupted_by_input' $label @{receipt=$attemptReceipt;stdout=$stdout;stderr=$stderr}
+            Save-State 'interrupted_by_input' $label @{receipt=$attemptReceipt;stdout=$stdout;stderr=$stderr;stop_reason=$stopReason;secondary_errors=$errors}
             throw ('New Windows input interrupted GPU qualification: ' + $label)
         }
+        if ($failure) { throw $failure }
         Write-NewReceipt (Join-Path $evidence ($label+'.json')) $result
         # Ordinary test failure, insufficient passes, or timeout is a collected
         # outcome. Source/input/STOP/provenance failures above stop the run.

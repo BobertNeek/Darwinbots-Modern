@@ -38,6 +38,7 @@ public sealed record StagedEvolutionConfiguration(EvolutionMode Mode, string Sou
     bool AutoGraphs)
 {
     public ushort FitnessWeight { get; init; } = 100;
+    public MutationProfileUpdate? SourceMutationProfile { get; init; }
 }
 
 public sealed record StagedEvolutionSnapshot(uint Stage, string Phase, bool Hidden,

@@ -74,6 +74,7 @@ public sealed class DnaExportRenderedTests
                 Assert.Equal((typeof(DnaEditorWindow), "bot-3-2.txt", "start\nstop"),
                     (storage.LastOwnerType, storage.LastSuggestedFileName, storage.LastDna));
                 Assert.Equal(1, storage.SuccessfulDnaSaves);
+                Assert.Equal(RecordingEngineClient.Organism.MutationProfile, storage.LastMutationProfile);
                 Assert.Equal("BOT EXPORTED", loadedEditor.FindControl<TextBlock>("Status")!.Text);
                 Assert.Equal([(3u, 2u)], engine.DnaExports.ToArray());
 
@@ -83,7 +84,17 @@ public sealed class DnaExportRenderedTests
                     () => $"Cancelled save requests: {storage.DnaSaveRequests}; successful writes: {storage.SuccessfulDnaSaves}; "
                         + $"editor status: {loadedEditor.FindControl<TextBlock>("Status")!.Text}.");
                 Assert.Equal(1, storage.SuccessfulDnaSaves);
-                Assert.Equal("BOT EXPORTED", loadedEditor.FindControl<TextBlock>("Status")!.Text);
+                await WaitForAsync(() => loadedEditor.FindControl<TextBlock>("Status")!.Text == "EXPORT CANCELLED",
+                    () => loadedEditor.FindControl<TextBlock>("Status")!.Text ?? string.Empty);
+                storage.SaveError = new IOException("sidecar destination is read-only");
+                loadedEditor.FindControl<TextBox>("Editor")!.Text = "start\n12 .up store\nstop";
+                Invoke(loadedEditor, "Save_Click");
+                await WaitForAsync(() => loadedEditor.FindControl<TextBlock>("Status")!.Text!.Contains("read-only"),
+                    () => loadedEditor.FindControl<TextBlock>("Status")!.Text ?? string.Empty);
+                Assert.Equal("start\n12 .up store\nstop", storage.LastDna);
+                Assert.Equal("start\n12 .up store\nstop", loadedEditor.FindControl<TextBox>("Editor")!.Text);
+                Assert.Equal(RecordingEngineClient.Organism.MutationProfile, storage.LastMutationProfile);
+                Assert.Equal(1, storage.SuccessfulDnaSaves);
             }
             finally
             {
@@ -129,6 +140,8 @@ public sealed class DnaExportRenderedTests
         public Type? LastOwnerType { get; private set; }
         public string? LastSuggestedFileName { get; private set; }
         public string? LastDna { get; private set; }
+        public MutationProfileUpdate? LastMutationProfile { get; private set; }
+        public Exception? SaveError { get; set; }
 
         public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) =>
             Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
@@ -148,12 +161,14 @@ public sealed class DnaExportRenderedTests
         public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) =>
             Task.FromResult(false);
 
-        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna)
+        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
         {
             DnaSaveRequests++;
             LastOwnerType = owner.GetType();
             LastSuggestedFileName = suggestedFileName;
             LastDna = dna;
+            LastMutationProfile = mutationProfile;
+            if (SaveError is { } error) return Task.FromException<bool>(error);
             if (AcceptDnaSave) SuccessfulDnaSaves++;
             return Task.FromResult(AcceptDnaSave);
         }

@@ -233,13 +233,10 @@ public sealed class ToolsRenderedRouteTests
 
     private static string ReceiptPath()
     {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
-        {
-            var gitPath = Path.Combine(directory.FullName, ".git");
-            if (File.Exists(gitPath) || Directory.Exists(gitPath))
-                return Path.Combine(directory.FullName, "docs", "parity", "receipts", "db24832-world06-shape-editor.png");
-        }
-
-        throw new DirectoryNotFoundException("Could not locate the worktree root for the WORLD-06 receipt.");
+        // Automated output must not overwrite manually maintained comparison images.
+        var directory = Environment.GetEnvironmentVariable("DARWINBOTS_GUI_AUDIT_DIR");
+        if (string.IsNullOrWhiteSpace(directory))
+            directory = Path.Combine(AppContext.BaseDirectory, "artifacts", "gui-audit");
+        return Path.Combine(directory, "db24832-world06-shape-editor.png");
     }
 }

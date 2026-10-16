@@ -1519,6 +1519,7 @@ public sealed class RuntimeControlSurfaceTests
         var snapshot = RecordingEngineClient.CreateSnapshot() with
         {
             Tick = 42,
+            Species = [new("Unassigned", false, 0xff112233, 0, false), new("Café", false, 0xff445566, 0, false)],
             Corpses =
             [
                 new CorpseSnapshot([4f, 5f], [0f, 0f], 0, 12, 3, 1)
@@ -1569,7 +1570,8 @@ public sealed class RuntimeControlSurfaceTests
                 menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RecordingSnapshotLiving)!
                     .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => storage.SavedLivingSnapshot is not null);
-                var living = Encoding.UTF8.GetString(storage.SavedLivingSnapshot!);
+                Assert.Contains((byte)0xe9, storage.SavedLivingSnapshot!);
+                var living = LegacyDnaText.Decode(storage.SavedLivingSnapshot!);
                 Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", living);
                 Assert.Contains("start\nstop", living, StringComparison.Ordinal);
 
@@ -1592,7 +1594,8 @@ public sealed class RuntimeControlSurfaceTests
                 SetField(window, "_excludeRepopulatingDead", true);
                 var recorder = typeof(MainWindow).GetMethod("RecordDeadSnapshotAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 await (Task)recorder.Invoke(window, [snapshot])!;
-                var dead = Encoding.UTF8.GetString(storage.DeadSnapshotWrites.Single());
+                Assert.Contains((byte)0xe9, storage.DeadSnapshotWrites.Single());
+                var dead = LegacyDnaText.Decode(storage.DeadSnapshotWrites.Single());
                 Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", dead);
                 Assert.Contains("9001", dead, StringComparison.Ordinal);
                 Assert.DoesNotContain("9002", dead, StringComparison.Ordinal);
@@ -1845,8 +1848,12 @@ public sealed class RuntimeControlSurfaceTests
             return Task.FromResult(AcceptSave);
         }
 
-        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna) =>
-            Task.FromResult(false);
+        public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
+        public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
+        {
+            SavedDnaMutationProfile = mutationProfile;
+            return Task.FromResult(false);
+        }
 
         public Task<bool> SaveOrganismAsync(
             TopLevel owner,

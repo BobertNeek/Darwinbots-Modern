@@ -413,7 +413,9 @@ public static class NativeSnapshotParser
     private static StagedEvolutionConfiguration? ParseStagedEvolution(NativeEvolutionConfig? value) => value is null ? null : new(
         value.Mode switch { "eco" => EvolutionMode.Eco, "zerobot" => EvolutionMode.Zerobot, _ => EvolutionMode.SimpleSurvival },
         value.SourceDna ?? string.Empty, value.ReductionUnit, value.CycleLength, value.NormalizeDnaSize,
-        value.ZerobotInitialDnaLength, value.AutoGraphs) { FitnessWeight = value.FitnessWeight ?? 100 };
+        value.ZerobotInitialDnaLength, value.AutoGraphs)
+        { FitnessWeight = value.FitnessWeight ?? 100,
+            SourceMutationProfile = value.SourceMutationProfile is null ? null : ParseMutationProfile(value.SourceMutationProfile) };
 
     private static LeagueWorkflow ParseWorkflow(string? value) => value?.ToLowerInvariant() switch
     {
@@ -582,6 +584,7 @@ public static class NativeSnapshotParser
     private sealed record NativeEvolutionConfig(
         [property: JsonPropertyName("mode")] string? Mode,
         [property: JsonPropertyName("source_dna")] string? SourceDna,
+        [property: JsonPropertyName("source_mutation_profile")] NativeMutationProfile? SourceMutationProfile,
         [property: JsonPropertyName("reduction_unit")] float ReductionUnit,
         [property: JsonPropertyName("cycle_length")] uint CycleLength,
         [property: JsonPropertyName("normalize_dna_size")] bool NormalizeDnaSize,

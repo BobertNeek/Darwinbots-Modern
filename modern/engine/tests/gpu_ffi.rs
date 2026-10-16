@@ -266,6 +266,46 @@ fn gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_av
     assert!((instances[1].radius - 57.5).abs() < 0.001);
 }
 
+fn checked_ffi_command_batch(
+    handle: *mut Engine,
+    value: serde_json::Value,
+    expected_status: DbStatus,
+) -> (serde_json::Value, serde_json::Value) {
+    let bytes = serde_json::to_vec(&value).unwrap();
+    let mut output = DbBuffer::default();
+    let status = db_engine_command_batch(handle, bytes.as_ptr(), bytes.len(), &mut output);
+    let output_was_empty = output.data.is_null() && output.len == 0;
+    let result = if output.data.is_null() {
+        Vec::new()
+    } else {
+        unsafe { std::slice::from_raw_parts(output.data, output.len) }.to_vec()
+    };
+    assert_eq!(db_buffer_free(&mut output), DbStatus::Ok);
+    let error = if status == DbStatus::Ok {
+        serde_json::Value::Null
+    } else {
+        let mut error = DbBuffer::default();
+        assert_eq!(db_last_error_json(&mut error), DbStatus::Ok);
+        assert!(!error.data.is_null(), "last-error JSON must be present");
+        let bytes = unsafe { std::slice::from_raw_parts(error.data, error.len) }.to_vec();
+        assert_eq!(db_buffer_free(&mut error), DbStatus::Ok);
+        serde_json::from_slice(&bytes).unwrap()
+    };
+    assert_eq!(
+        status, expected_status,
+        "public command batch failed: command={value}, last_error={error}"
+    );
+    if status == DbStatus::Ok {
+        (serde_json::from_slice(&result).unwrap(), error)
+    } else {
+        assert!(
+            output_was_empty,
+            "rejected command returned partial output: command={value}, last_error={error}"
+        );
+        (serde_json::Value::Null, error)
+    }
+}
+
 #[test]
 #[ignore = "requires a physical GPU; run with --ignored on the GPU qualification host"]
 fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
@@ -328,17 +368,7 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
         DbStatus::Ok
     );
     let command = |handle: *mut Engine, value: serde_json::Value| {
-        let bytes = serde_json::to_vec(&value).unwrap();
-        let mut buffer = DbBuffer::default();
-        assert_eq!(
-            db_engine_command_batch(handle, bytes.as_ptr(), bytes.len(), &mut buffer),
-            DbStatus::Ok
-        );
-        let result: serde_json::Value =
-            serde_json::from_slice(unsafe { std::slice::from_raw_parts(buffer.data, buffer.len) })
-                .unwrap();
-        assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
-        result
+        checked_ffi_command_batch(handle, value, DbStatus::Ok).0
     };
     let startup_dna = "start 7 900 store stop";
     let imported = command(
@@ -349,7 +379,8 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
                 {
                     "type": "import_species", "name": "PopulationCandidate.txt",
                     "dna": startup_dna, "vegetable": false, "color": 0,
-                    "minimum_population": 0, "reseed": false,
+                    // Retain the extinct startup species without repopulating it.
+                    "minimum_population": 0, "reseed": true,
                     "initial_energy": 20_000, "positions": [[300, 500]]
                 },
                 {
@@ -391,6 +422,14 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
         }),
     );
     assert_eq!(unsafe { &*engine }.population(), 1);
+    assert!(
+        unsafe { &*engine }
+            .snapshot()
+            .organisms
+            .iter()
+            .all(|robot| u64::from(robot.species.0) != species),
+        "minimum zero must retain the archive without respawning the candidate"
+    );
     assert_eq!(unsafe { &*engine }.backend(), BackendKind::Gpu);
     let adapter = unsafe { &*engine }.gpu_adapter_receipt().unwrap().clone();
     assert!(!adapter.name.trim().is_empty());
@@ -486,11 +525,204 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
     let organism = continued.organism(live.id).unwrap();
     assert_ne!(organism.position, live.position);
     assert_eq!(continued.snapshot().render_instances.len(), 1);
+    assert!(
+        continued
+            .snapshot()
+            .organisms
+            .iter()
+            .all(|robot| u64::from(robot.species.0) != species),
+        "minimum-zero retained species must remain extinct on the next GPU cycle"
+    );
     let instance = &continued.snapshot().render_instances[0];
     assert_eq!(instance.slot, live.id.slot());
     assert_eq!(instance.generation, live.id.generation());
     assert_eq!(instance.position, organism.position);
     assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
+}
+
+#[test]
+fn native_template_queries_distinguish_pruned_and_retained_species_without_changing_the_world() {
+    for retain_template in [false, true] {
+        let configuration = serde_json::to_vec(&EngineConfig {
+            backend: BackendPreference::Cpu,
+            allow_cpu_fallback: false,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let mut engine = std::ptr::null_mut();
+        assert_eq!(
+            db_engine_create(configuration.as_ptr(), configuration.len(), &mut engine),
+            DbStatus::Ok
+        );
+        let startup_dna = "' exact startup file\r\nstart 7 900 store stop\r\n";
+        let (imported, _) = checked_ffi_command_batch(
+            engine,
+            serde_json::json!({
+                "version": 1,
+                "commands": [
+                    {
+                        "type": "import_species", "name": "PopulationCandidate.txt",
+                        "dna": startup_dna, "vegetable": false, "color": 0,
+                        "minimum_population": 0, "reseed": retain_template,
+                        "initial_energy": 20_000, "positions": [[300, 500]]
+                    },
+                    {
+                        "type": "import_dna", "dna": "start 10 .up store stop",
+                        "position": [700, 500]
+                    },
+                    {
+                        "type": "update_mutation_settings", "enabled": false,
+                        "global_multiplier": 1.0, "species_rates": []
+                    }
+                ]
+            }),
+            DbStatus::Ok,
+        );
+        let species = imported["results"][0]["species"].as_u64().unwrap();
+        let candidate = unsafe { &*engine }
+            .snapshot()
+            .organisms
+            .iter()
+            .find(|robot| u64::from(robot.species.0) == species)
+            .unwrap()
+            .id;
+        checked_ffi_command_batch(
+            engine,
+            serde_json::json!({
+                "version": 1,
+                "commands": [
+                    {
+                        "type": "replace_dna", "slot": candidate.slot(),
+                        "generation": candidate.generation(), "dna": "start 999 900 store stop"
+                    },
+                    {
+                        "type": "remove_many",
+                        "organisms": [{"slot": candidate.slot(), "generation": candidate.generation()}]
+                    },
+                    {"type": "set_native_gaussian_spare", "spare": 1.25},
+                    {"type": "set_native_sun_change", "sun_change": 12},
+                    {"type": "tick", "count": 1}
+                ]
+            }),
+            DbStatus::Ok,
+        );
+        let committed = unsafe { &*engine };
+        assert_eq!(committed.population(), 1);
+        assert_eq!(committed.backend(), BackendKind::Cpu);
+        assert!(committed.gpu_adapter_receipt().is_none());
+        assert_eq!(committed.snapshot().tick, 1);
+        assert_eq!(committed.snapshot().native_cycle, Some(0));
+        assert!(
+            committed
+                .snapshot()
+                .organisms
+                .iter()
+                .all(|robot| u64::from(robot.species.0) != species),
+            "minimum zero must not respawn the extinct candidate"
+        );
+        assert_eq!(
+            committed
+                .snapshot()
+                .species
+                .iter()
+                .any(|entry| entry.name == "PopulationCandidate.txt"),
+            retain_template,
+            "the Direct native lifecycle must retain only the reseed-enabled archive"
+        );
+        let saved = darwinbots_engine::SaveFile::encode(committed).unwrap();
+        let snapshot = serde_json::to_vec(committed.snapshot()).unwrap();
+        let publications = committed.snapshot_publication_count();
+        let assert_unchanged = || {
+            let committed = unsafe { &*engine };
+            assert_eq!(
+                darwinbots_engine::SaveFile::encode(committed).unwrap(),
+                saved
+            );
+            assert_eq!(serde_json::to_vec(committed.snapshot()).unwrap(), snapshot);
+            assert_eq!(committed.snapshot_publication_count(), publications);
+        };
+        for _ in 0..2 {
+            let expected = if retain_template {
+                DbStatus::Ok
+            } else {
+                DbStatus::EngineError
+            };
+            let (result, error) = checked_ffi_command_batch(
+                engine,
+                serde_json::json!({
+                    "version": 1,
+                    "commands": [
+                        {"type": "read_native_gaussian_spare"},
+                        {"type": "export_species_template_dna", "species": species},
+                        {"type": "read_native_sun_change"}
+                    ]
+                }),
+                expected,
+            );
+            if retain_template {
+                assert_eq!(result["backend"], "Cpu");
+                assert_eq!(result["tick"], 1);
+                assert_eq!(result["population"], 1);
+                assert_eq!(result["results"][0], 1.25);
+                assert_eq!(result["results"][1]["dna"], startup_dna);
+                assert_eq!(result["results"][2], 12);
+            } else {
+                assert!(result.is_null());
+                assert!(
+                    error["message"]
+                        .as_str()
+                        .unwrap()
+                        .contains("startup species does not exist")
+                );
+            }
+            assert_unchanged();
+        }
+        // Reject a late pure-query failure and a late mutating-batch failure.
+        // Neither may publish partial output or change the committed world.
+        for rejected in [
+            serde_json::json!({
+                "version": 1,
+                "commands": [
+                    {"type": "read_native_gaussian_spare"},
+                    {"type": "read_native_sun_change"},
+                    {"type": "export_species_template_dna", "species": u32::MAX}
+                ]
+            }),
+            serde_json::json!({
+                "version": 1,
+                "commands": [
+                    {"type": "set_native_gaussian_spare", "spare": 9.5},
+                    {"type": "set_native_sun_change", "sun_change": 99},
+                    {"type": "export_species_template_dna", "species": u32::MAX}
+                ]
+            }),
+        ] {
+            let (result, error) =
+                checked_ffi_command_batch(engine, rejected, DbStatus::EngineError);
+            assert!(result.is_null());
+            assert!(
+                error["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("startup species does not exist")
+            );
+            assert_unchanged();
+        }
+        assert_eq!(db_engine_tick(engine), DbStatus::Ok);
+        let continued = unsafe { &*engine };
+        assert_eq!(continued.population(), 1);
+        assert_eq!(continued.snapshot().tick, 2);
+        assert_eq!(continued.snapshot().native_cycle, Some(1));
+        assert!(
+            continued
+                .snapshot()
+                .organisms
+                .iter()
+                .all(|robot| u64::from(robot.species.0) != species),
+            "a retained minimum-zero template must remain extinct on later cycles"
+        );
+        assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
+    }
 }
 
 #[test]

@@ -32,7 +32,7 @@ public static class ClassicTournamentDnaExport
             if (outputName.Length > 255)
                 throw new ArgumentException("Classic tournament output filename is too long.", nameof(finalists));
             return (Path: Path.Combine(target, outputName),
-                Bytes: LegacyDnaText.Encode(value.Dna + Environment.NewLine + "'#tag:" + value.SourceName + Environment.NewLine));
+                Bytes: LegacyDnaText.Encode(value.Dna + "\r\n" + "'#tag:" + value.SourceName + "\r\n"));
         }).ToArray();
         if (outputs.Select(value => value.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count() != outputs.Length)
             throw new ArgumentException("Final DNA output names must be unique.", nameof(finalists));

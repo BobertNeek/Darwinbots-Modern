@@ -147,6 +147,20 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no DNA.");
     }
 
+    public async Task<Db2RobotFile> ExportRobotFileAsync(
+        uint slot, uint generation, CancellationToken cancellationToken = default)
+    {
+        Db2RobotFile? result = null;
+        await Enqueue(engine =>
+        {
+            var dna = engine.ExportDna(slot, generation);
+            var robot = engine.Snapshot().Organisms.SingleOrDefault(value => value.Slot == slot && value.Generation == generation)
+                ?? throw new InvalidDataException("The selected robot is no longer available.");
+            result = new Db2RobotFile(dna, robot.MutationProfile);
+        }, cancellationToken).ConfigureAwait(false);
+        return result ?? throw new InvalidDataException("Engine returned no robot DNA file.");
+    }
+
     public async Task<string> ExportSpeciesTemplateDnaAsync(uint species, CancellationToken cancellationToken = default)
     {
         string? result = null;

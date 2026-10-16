@@ -16,7 +16,7 @@ public sealed class ClassicTournamentDnaExportTests
             var bytes = await File.ReadAllBytesAsync(Assert.Single(paths));
             Assert.Equal((byte)0xe9, bytes[2]);
             Assert.Equal((byte)0x80, bytes[4]);
-            Assert.Equal(raw + Environment.NewLine + "'#tag:Café.txt" + Environment.NewLine, LegacyDnaText.Decode(bytes));
+            Assert.Equal(raw + "\r\n" + "'#tag:Café.txt" + "\r\n", LegacyDnaText.Decode(bytes));
 
             var rejected = Path.Combine(directory, "rejected");
             await Assert.ThrowsAsync<InvalidDataException>(() => ClassicTournamentDnaExport.WriteAsync(rejected,
@@ -36,7 +36,7 @@ public sealed class ClassicTournamentDnaExportTests
             var paths = await ClassicTournamentDnaExport.WriteAsync(directory, Complete(false, [1]),
                 [new(1, name, "'#tag:An older tag.txt\r\nstart stop")]);
             Assert.Equal(name, Path.GetFileName(Assert.Single(paths)));
-            Assert.EndsWith("'#tag:" + name + Environment.NewLine,
+            Assert.EndsWith("'#tag:" + name + "\r\n",
                 LegacyDnaText.Decode(await File.ReadAllBytesAsync(paths[0])));
         }
         finally { Delete(directory); }
@@ -53,7 +53,7 @@ public sealed class ClassicTournamentDnaExportTests
             const string dna = "' Original comments\r\n'#tag:PreviousName.txt\r\ncond\r\nstart 7 .up store stop\r\n";
             var paths = await ClassicTournamentDnaExport.WriteAsync(directory, mode, [new(4, "Champion.txt", dna)]);
             Assert.Equal(Path.Combine(directory, "Tournament_Results", "Champion.txt"), Assert.Single(paths));
-            Assert.Equal(dna + Environment.NewLine + "'#tag:Champion.txt" + Environment.NewLine,
+            Assert.Equal(dna + "\r\n" + "'#tag:Champion.txt" + "\r\n",
                 await File.ReadAllTextAsync(paths[0]));
             Assert.False(Directory.Exists(Path.Combine(directory, "stepladder")));
             Assert.Equal(new uint[] { 4 }, mode.Series!.Ladder);
@@ -72,10 +72,10 @@ public sealed class ClassicTournamentDnaExportTests
             var paths = await ClassicTournamentDnaExport.WriteAsync(directory, mode, finalists);
             Assert.Equal(new[] { "1-Winner.txt", "2-Second.txt" }, paths.Select(Path.GetFileName));
             Assert.All(paths, path => Assert.Equal("stepladder", Path.GetFileName(Path.GetDirectoryName(path))));
-            Assert.Equal(finalists[1].Dna + Environment.NewLine + "'#tag:Second" + Environment.NewLine,
+            Assert.Equal(finalists[1].Dna + "\r\n" + "'#tag:Second" + "\r\n",
                 await File.ReadAllTextAsync(paths[1]));
             await Assert.ThrowsAsync<IOException>(() => ClassicTournamentDnaExport.WriteAsync(directory, mode, finalists));
-            Assert.Equal(finalists[0].Dna + Environment.NewLine + "'#tag:Winner.txt" + Environment.NewLine,
+            Assert.Equal(finalists[0].Dna + "\r\n" + "'#tag:Winner.txt" + "\r\n",
                 await File.ReadAllTextAsync(paths[0]));
             Assert.Equal(2, Directory.GetFiles(Path.Combine(directory, "stepladder")).Length);
         }

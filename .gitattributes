@@ -1,1 +1,3 @@
 docs/reference/db24832/*.md text eol=lf
+# Original VB6 bot files require Windows line delimiters.
+Installer/bots/**/*.txt text eol=crlf

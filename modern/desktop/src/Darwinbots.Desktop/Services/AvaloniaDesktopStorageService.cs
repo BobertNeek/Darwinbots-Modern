@@ -30,7 +30,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             await using var stream = await file.OpenReadAsync();
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
-            result.Add(new DesktopTextFile(file.Name, LegacyDnaText.Decode(memory.ToArray()), LocalPath(file)));
+            var path = LocalPath(file);
+            var profile = path is null ? null : await Db2RobotFileStorage.ReadMutationProfileAsync(path);
+            result.Add(new DesktopTextFile(file.Name, LegacyDnaText.Decode(memory.ToArray()), path, profile));
         }
         return result;
     }
@@ -130,7 +132,7 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         return true;
     }
 
-    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna)
+    public async Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
     {
         var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -139,11 +141,27 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
             FileTypeChoices = [RobotFileType()],
         });
         if (file is null) return false;
+        await WriteDnaFileAsync(file, dna, mutationProfile);
+        return true;
+    }
+
+    public static async Task WriteDnaFileAsync(
+        IStorageFile file, string dna, MutationProfileUpdate? mutationProfile, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        cancellationToken.ThrowIfCancellationRequested();
+        var bytes = LegacyDnaText.Encode(dna);
+        if (mutationProfile is not null) _ = Db2MutationRateCodec.Encode(mutationProfile);
+        if (LocalPath(file) is { } path)
+        {
+            await Db2RobotFileStorage.WriteAsync(path, dna, mutationProfile, cancellationToken);
+            return;
+        }
+        if (mutationProfile is not null)
+            throw new NotSupportedException("Saving robot DNA with mutation settings requires a local file.");
         await using var stream = await file.OpenWriteAsync();
         stream.SetLength(0);
-        await using var writer = new StreamWriter(stream);
-        await writer.WriteAsync(dna);
-        return true;
+        await stream.WriteAsync(bytes, cancellationToken);
     }
 
     public async Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner)

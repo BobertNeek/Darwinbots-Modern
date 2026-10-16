@@ -1,4 +1,5 @@
 using Darwinbots.Desktop.Core;
+using System.Text;
 using Xunit;
 
 namespace Darwinbots.Desktop.Core.Tests;
@@ -27,6 +28,9 @@ public sealed class RobotToolsTests
         {
             PlayerBotKeyMapFile.Save(path, bindings);
             Assert.Equal(8, File.ReadAllLines(path).Length);
+            Assert.Equal(
+                Encoding.ASCII.GetBytes("65\r\n50\r\n12\r\nFalse\r\n66\r\n51\r\n-9\r\nTrue\r\n"),
+                File.ReadAllBytes(path));
             Assert.Equal(bindings, PlayerBotKeyMapFile.Load(path));
         }
         finally
@@ -36,7 +40,7 @@ public sealed class RobotToolsTests
     }
 
     [Fact]
-    public void RestrictionPresetRoundTripsBothEditableColumns()
+    public void RestrictionPresetWritesOriginalNineteenNumericFieldsWithCrLf()
     {
         var path = Path.Combine(Path.GetTempPath(), $"darwinbots-{Guid.NewGuid():N}.resp");
         var options = new RestrictionOptions(
@@ -45,8 +49,93 @@ public sealed class RobotToolsTests
         try
         {
             RestrictionPresetFile.Save(path, options);
-            Assert.Equal(20, File.ReadAllLines(path).Length);
+            Assert.Equal(
+                Encoding.ASCII.GetBytes(
+                    "1\r\n0\r\n1\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n"
+                    + "0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n"),
+                File.ReadAllBytes(path));
+            Assert.Equal(19, File.ReadAllLines(path).Length);
             Assert.Equal(options, RestrictionPresetFile.Load(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void OriginalNineteenFieldRestrictionPresetKeepsAsymmetricColumnPositions()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"darwinbots-{Guid.NewGuid():N}.resp");
+        const string original = "1\r\n0\r\n1\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n"
+            + "0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n1\r\n0\r\n";
+        var expected = new RestrictionOptions(
+            new RestrictionColumn(
+                KillMultibot: true, KillDisqualified: false, DisableChloroplasts: true,
+                FixedInPlace: true, DisableVision: false, DisableDna: true,
+                DisableReproduction: false, VirusImmune: true, DisableMutations: false,
+                DisableMovement: true),
+            new RestrictionColumn(
+                KillMultibot: false, KillDisqualified: true, DisableChloroplasts: false,
+                FixedInPlace: false, DisableVision: true, DisableDna: false,
+                DisableReproduction: true, VirusImmune: false, DisableMutations: true,
+                DisableMovement: false));
+        try
+        {
+            File.WriteAllBytes(path, Encoding.ASCII.GetBytes(original));
+
+            Assert.Equal(expected, RestrictionPresetFile.Load(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void HistoricalTwentyBooleanRestrictionPresetRetainsModernOnlyTrueFlag()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"darwinbots-{Guid.NewGuid():N}.resp");
+        const string historical = "True\r\nFalse\r\nTrue\r\nTrue\r\nFalse\r\nTrue\r\nFalse\r\nTrue\r\nFalse\r\nTrue\r\n"
+            + "False\r\nTrue\r\nTrue\r\nFalse\r\nTrue\r\nFalse\r\nTrue\r\nFalse\r\nTrue\r\nFalse\r\n";
+        var expected = new RestrictionOptions(
+            new RestrictionColumn(true, false, true, true, false, true, false, true, false, true),
+            new RestrictionColumn(false, true, true, false, true, false, true, false, true, false));
+        try
+        {
+            File.WriteAllBytes(path, Encoding.ASCII.GetBytes(historical));
+
+            var loaded = RestrictionPresetFile.Load(path);
+            Assert.Equal(expected, loaded);
+            Assert.True(loaded.Repopulating.DisableChloroplasts);
+            Assert.Throws<InvalidDataException>(() => RestrictionPresetFile.Save(path, loaded));
+            Assert.Equal(Encoding.ASCII.GetBytes(historical), File.ReadAllBytes(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeRestrictionPresetRejectsUnrepresentableFlagBeforeTouchingTarget(bool existing)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"darwinbots-{Guid.NewGuid():N}.resp");
+        byte[] priorBytes = [0x00, 0xE9, 0x80, 0x0D, 0x0A];
+        var options = RestrictionOptions.Default with
+        {
+            Repopulating = new RestrictionColumn(DisableChloroplasts: true),
+        };
+        try
+        {
+            if (existing) File.WriteAllBytes(path, priorBytes);
+
+            Assert.Throws<InvalidDataException>(() => RestrictionPresetFile.Save(path, options));
+
+            if (existing) Assert.Equal(priorBytes, File.ReadAllBytes(path));
+            else Assert.False(File.Exists(path));
         }
         finally
         {

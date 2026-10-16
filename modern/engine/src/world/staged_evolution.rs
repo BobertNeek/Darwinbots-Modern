@@ -122,7 +122,7 @@ impl Engine {
                     .min(MAX_DNA_BLOCKS - 1)
             ])
         } else if !settings.source_dna.trim().is_empty() {
-            LegacyDna::parse(&settings.source_dna)?
+            self.load_dna_source(&settings.source_dna)?
         } else {
             let source = config.source_species.map(|id| id.0 as usize).or_else(|| {
                 self.species
@@ -147,10 +147,19 @@ impl Engine {
                     )
                 })?
         };
-        let profile = config
-            .source_species
-            .and_then(|id| self.species.get(id.0 as usize))
-            .and_then(|definition| definition.mutation_profile.clone())
+        let source_profile =
+            if settings.mode != EvolutionMode::Zerobot && !settings.source_dna.trim().is_empty() {
+                settings.source_mutation_profile.clone()
+            } else {
+                None
+            };
+        let profile = source_profile
+            .or_else(|| {
+                config
+                    .source_species
+                    .and_then(|id| self.species.get(id.0 as usize))
+                    .and_then(|definition| definition.mutation_profile.clone())
+            })
             .unwrap_or_else(|| {
                 if self.default_mutation_profile == StandardMutationProfile::default() {
                     self.native_default_mutation_profile(dna.blocks().len())
@@ -699,6 +708,225 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explicit_staged_file_profile_and_native_private_genome_reach_live_bots_and_saves() {
+        let selected = StandardMutationProfile {
+            point: crate::MutationRate {
+                one_in: 37.0,
+                mean: 3.0,
+                std_dev: 0.25,
+            },
+            point_value_change_percent: 13,
+            ..Default::default()
+        };
+        let selected = StandardMutationProfile::from_mrate(&selected.to_mrate().unwrap()).unwrap();
+        let previous = StandardMutationProfile {
+            point_value_change_percent: 97,
+            ..Default::default()
+        };
+        let mut world = Engine::new_native(EngineConfig {
+            organism_capacity: 16,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let source = world.register_species(SpeciesDefinition {
+            name: "Configured.txt".into(),
+            mutation_profile: Some(previous.clone()),
+            ..Default::default()
+        });
+        world
+            .spawn_species_batch(
+                LegacyDna::parse("start stop").unwrap(),
+                source,
+                std::iter::empty::<[f32; 2]>(),
+                1000,
+            )
+            .unwrap();
+        let raw = "def Marker 900\r\ndef marker 901\r\n11 start 17 .Marker store 19 .marker store 1 999 += stop end 123\r\nNewMove\r\n";
+        let expected_dna = world.load_dna_source(raw).unwrap();
+        world
+            .configure_local_mode(LocalModeConfig {
+                kind: LocalModeKind::SimpleSurvival,
+                source_species: Some(source),
+                staged_evolution: Some(crate::EvolutionConfig {
+                    source_dna: raw.into(),
+                    source_mutation_profile: Some(selected.clone()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        world.start_local_mode().unwrap();
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        assert_eq!(state.config.source_mutation_profile, Some(selected.clone()));
+        assert!(
+            state
+                .mutators
+                .iter()
+                .all(|genome| genome.mutation_profile == selected && genome.dna == expected_dna)
+        );
+        let mutator_species = state.mutator_species.clone();
+        let ids: Vec<_> = world
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .filter(|id| mutator_species.contains(&world.slots.get(*id).unwrap().identity.species))
+            .collect();
+        assert!(!ids.is_empty());
+        for &id in &ids {
+            assert_eq!(world.mutation_profile(id).unwrap(), &selected);
+            assert_eq!(world.dna(id).unwrap(), &expected_dna);
+            assert!(!world.dna(id).unwrap().uses_new_move());
+            assert_eq!(
+                world.dna(id).unwrap().blocks()[0],
+                DnaBlock {
+                    class: TokenClass::Flow,
+                    value: 2
+                },
+                "original VM coding excludes the first raw numeric cell"
+            );
+        }
+        assert_eq!(
+            world.species[source.0 as usize].mutation_profile,
+            Some(previous)
+        );
+        // Native startup enables evolution mutations; disable them only for this
+        // deterministic VM check, without changing the imported profile itself.
+        world.update_mutation_settings(false, 1.0, &[]).unwrap();
+        world.tick().unwrap();
+        for &id in &ids {
+            assert_eq!(world.memory_at(id, 900).unwrap(), 17);
+            assert_eq!(world.memory_at(id, 901).unwrap(), 19);
+            assert_eq!(
+                world.memory_at(id, 999).unwrap(),
+                0,
+                "native += is a numeric zero, not an addstore"
+            );
+        }
+        let saved = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(
+            restored
+                .local_mode
+                .evolution
+                .as_ref()
+                .unwrap()
+                .config
+                .source_mutation_profile,
+            Some(selected.clone())
+        );
+        for &id in &ids {
+            assert_eq!(restored.mutation_profile(id).unwrap(), &selected);
+        }
+        world.tick().unwrap();
+        restored.tick().unwrap();
+        assert_eq!(
+            crate::SaveFile::encode(&world).unwrap(),
+            crate::SaveFile::encode(&restored).unwrap()
+        );
+    }
+
+    #[test]
+    fn staged_missing_sidecar_and_registered_source_keep_the_configured_profile() {
+        let configured = StandardMutationProfile {
+            point_value_change_percent: 91,
+            ..Default::default()
+        };
+        let unrelated = StandardMutationProfile {
+            point_value_change_percent: 12,
+            ..Default::default()
+        };
+        for explicit_dna in [false, true] {
+            let mut world = Engine::new_native(EngineConfig {
+                organism_capacity: 16,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            let source = world.register_species(SpeciesDefinition {
+                name: "Settings.txt".into(),
+                mutation_profile: Some(configured.clone()),
+                ..Default::default()
+            });
+            world
+                .spawn_species_batch(
+                    LegacyDna::parse("start 42 900 store stop").unwrap(),
+                    source,
+                    std::iter::empty::<[f32; 2]>(),
+                    1000,
+                )
+                .unwrap();
+            world
+                .configure_local_mode(LocalModeConfig {
+                    kind: LocalModeKind::SimpleSurvival,
+                    source_species: Some(source),
+                    staged_evolution: Some(crate::EvolutionConfig {
+                        source_dna: if explicit_dna {
+                            "start 43 900 store stop".into()
+                        } else {
+                            String::new()
+                        },
+                        source_mutation_profile: if explicit_dna {
+                            None
+                        } else {
+                            Some(unrelated.clone())
+                        },
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .unwrap();
+            world.start_local_mode().unwrap();
+            let state = world.local_mode.evolution.as_ref().unwrap();
+            assert!(
+                state
+                    .mutators
+                    .iter()
+                    .all(|genome| genome.mutation_profile == configured)
+            );
+            for bot in world.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+                assert_eq!(bot.program.mutation_profile, configured);
+            }
+            let restored =
+                crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+            assert_eq!(restored.local_mode.evolution, world.local_mode.evolution);
+        }
+    }
+
+    #[test]
+    fn staged_source_profile_defaults_and_invalid_configuration_are_atomic() {
+        let mut legacy = serde_json::to_value(crate::EvolutionConfig::default()).unwrap();
+        legacy
+            .as_object_mut()
+            .unwrap()
+            .remove("source_mutation_profile");
+        let legacy: crate::EvolutionConfig = serde_json::from_value(legacy).unwrap();
+        assert!(legacy.source_mutation_profile.is_none());
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let before = crate::SaveFile::encode(&world).unwrap();
+        let invalid = StandardMutationProfile {
+            point: crate::MutationRate {
+                one_in: 1.0,
+                mean: 1.0,
+                std_dev: -1.0,
+            },
+            ..Default::default()
+        };
+        assert!(
+            world
+                .configure_local_mode(LocalModeConfig {
+                    kind: LocalModeKind::SimpleSurvival,
+                    staged_evolution: Some(crate::EvolutionConfig {
+                        source_dna: "start stop".into(),
+                        source_mutation_profile: Some(invalid),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .is_err()
+        );
+        assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+    }
 
     #[test]
     fn zerobot_stage_weight_does_not_replace_the_seeded_placement_stream() {

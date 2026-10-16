@@ -80,9 +80,9 @@ public sealed class Db2PersistenceTests
     {
         var corpse = new CorpseSnapshot([2f, 3f], [0f, 0f], 42, 4, 9, 0, false)
         {
-            Dna = "stop",
+            Dna = "start\r\nstop",
             UniqueId = 99,
-            DnaLength = 1,
+            DnaLength = 2,
         };
         var empty = corpse with { Dna = string.Empty, UniqueId = 100 };
 
@@ -92,7 +92,7 @@ public sealed class Db2PersistenceTests
             includeHeader: true);
 
         Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", text);
-        Assert.Contains("99,0,Fixture,0,0,9,0,0,1,0,0,82,82,0\r\nstop\r\n", text);
+        Assert.Contains("99,0,Fixture,0,0,9,0,0,2,0,0,82,82,0\r\nstart\r\nstop\r\n", text);
         Assert.DoesNotContain("100,", text);
     }
 
@@ -115,10 +115,10 @@ public sealed class Db2PersistenceTests
 
         var text = Db2GenomeRecordFile.EncodeLiving(
             snapshot,
-            new Dictionary<OrganismKey, string> { [new OrganismKey(7, 3)] = "start\nstop" });
+            new Dictionary<OrganismKey, string> { [new OrganismKey(7, 3)] = "start\r\nstop" });
 
         Assert.StartsWith(Db2GenomeRecordFile.Header + "\r\n", text);
-        Assert.Contains("7003,0,Fixture,3,0,19,4,1,2,5,0,885,885,12\r\nstart\nstop\r\n", text);
+        Assert.Contains("7003,0,Fixture,3,0,19,4,1,2,5,0,885,885,12\r\nstart\r\nstop\r\n", text);
     }
 
     [Fact]

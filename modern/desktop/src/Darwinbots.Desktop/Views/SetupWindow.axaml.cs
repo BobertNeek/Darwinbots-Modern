@@ -19,8 +19,8 @@ public sealed partial class SetupWindow : Window
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
     private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
-    private const string FeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
-    private const string FeederReproducerDna = "cond\nstart\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
+    private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
+    private const string FeederReproducerDna = "cond\r\nstart\r\n-2 302 1 rnd rnd rnd rnd rnd rnd mult add .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
 
     public ObservableCollection<SetupSpeciesRow> Species { get; } = [];
     public event Action<WorldSetupOptions>? WorldCreated;
@@ -75,8 +75,13 @@ public sealed partial class SetupWindow : Window
 
     private async void AddDna_Click(object? sender, RoutedEventArgs e)
     {
-        foreach (var file in await _storage.OpenDnaFilesAsync(this))
-            Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false));
+        try
+        {
+            foreach (var file in await _storage.OpenDnaFilesAsync(this))
+                Species.Add(new(Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d, 50, 1_000, 1.0, false,
+                    mutationProfile: file.MutationProfile, dnaPath: file.LocalPath));
+        }
+        catch (Exception error) { SetupStatus.Text = $"IMPORT FAILED · {error.Message}"; }
     }
 
     private void DuplicateSpecies_Click(object? sender, RoutedEventArgs e)

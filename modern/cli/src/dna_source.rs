@@ -1,13 +1,116 @@
 //! Match desktop LegacyDnaText: explicit BOM, strict UTF-8, then CP1252.
 //! BOM-less bytes valid as UTF-8 are interpreted as UTF-8; encoding intent
 //! cannot be recovered from an ambiguous byte sequence. Preserve CR/LF text.
-use darwinbots_engine::{Engine, LegacyDna};
-use std::{error::Error, fs, io, path::Path};
+use darwinbots_engine::{Engine, LegacyDna, StandardMutationProfile};
+use std::{
+    error::Error,
+    ffi::OsStr,
+    fs, io,
+    path::{Path, PathBuf},
+};
 
-pub(crate) fn read(engine: &Engine, path: &Path) -> Result<(LegacyDna, String), Box<dyn Error>> {
+pub(crate) struct BotSource {
+    pub dna: LegacyDna,
+    pub source: String,
+    pub name: String,
+    pub mutation_profile: Option<StandardMutationProfile>,
+}
+
+pub(crate) fn read(engine: &Engine, path: &Path) -> Result<BotSource, Box<dyn Error>> {
     let source = decode(&fs::read(path)?)?;
     let dna = engine.load_dna_source(&source)?;
-    Ok((dna, source))
+    let sidecar = resolve_sidecar(path)?;
+    if sidecar.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "{}: mutation-rate sidecar is a directory",
+                sidecar.display()
+            ),
+        )
+        .into());
+    }
+    let mutation_profile = match fs::read(&sidecar) {
+        Ok(bytes) => Some(
+            StandardMutationProfile::from_mrate(&decode(&bytes)?)
+                .map_err(|error| format!("{}: {error}", sidecar.display()))?,
+        ),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+        Err(error) => return Err(error.into()),
+    };
+    Ok(BotSource {
+        dna,
+        source,
+        name: path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned(),
+        mutation_profile,
+    })
+}
+
+// Match Windows-style case-insensitive adjacent names on case-sensitive hosts.
+// A single Unicode uppercase scalar covers CP1252 names (Café/CAFÉ) without
+// expanding names such as Straße to STRASSE. This is a simple ordinal policy,
+// not an attempt to reproduce every filesystem's exotic Unicode collation.
+fn filename_eq_ignore_case(left: &OsStr, right: &OsStr) -> bool {
+    fn uppercase(character: char) -> char {
+        let mut upper = character.to_uppercase();
+        match (upper.next(), upper.next()) {
+            (Some(character), None) => character,
+            _ => character,
+        }
+    }
+    match (left.to_str(), right.to_str()) {
+        (Some(left), Some(right)) => left.chars().map(uppercase).eq(right.chars().map(uppercase)),
+        _ => left == right,
+    }
+}
+
+fn sidecar_directory(path: &Path) -> &Path {
+    path.parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or(Path::new("."))
+}
+
+fn resolve_sidecar(dna: &Path) -> io::Result<PathBuf> {
+    let expected = dna.with_extension("mrate");
+    let name = expected
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "DNA path has no filename"))?;
+    if dna
+        .file_name()
+        .is_some_and(|dna_name| filename_eq_ignore_case(dna_name, name))
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "DNA and mutation-rate sidecar must have distinct filenames",
+        ));
+    }
+    let directory = sidecar_directory(&expected);
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(expected),
+        Err(error) => return Err(error),
+    };
+    let mut found = None;
+    for entry in entries {
+        let entry = entry?;
+        if filename_eq_ignore_case(&entry.file_name(), name) {
+            if found.is_some() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "{}: ambiguous mutation-rate sidecars differing only by case",
+                        expected.display()
+                    ),
+                ));
+            }
+            found = Some(entry.path());
+        }
+    }
+    Ok(found.unwrap_or(expected))
 }
 
 fn invalid_unicode() -> io::Error {
@@ -82,6 +185,98 @@ mod tests {
     use super::*;
     use darwinbots_engine::{EngineConfig, SaveFile, SpeciesId, TokenClass};
     #[test]
+    fn adjacent_sidecar_uses_windows_case_for_cp1252_names_and_rejects_directories() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("Café.txt");
+        let sidecar = directory.path().join("CAFÉ.MrAtE");
+        let source = "' named DNA source\r\nstart 7 900 store stop\r\n";
+        fs::write(&path, source).unwrap();
+        let profile = StandardMutationProfile {
+            point_value_change_percent: 17,
+            ..Default::default()
+        };
+        fs::write(&sidecar, profile.to_mrate().unwrap()).unwrap();
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let original = SaveFile::encode(&engine).unwrap();
+        let bot = read(&engine, &path).unwrap();
+        assert_eq!(bot.name, "Café.txt");
+        assert_eq!(bot.source, source);
+        assert_eq!(bot.mutation_profile.as_ref(), Some(&profile));
+        assert_eq!(SaveFile::encode(&engine).unwrap(), original);
+        crate::populate(&mut engine, &bot, 2).unwrap();
+        for robot in &engine.snapshot().organisms {
+            assert_eq!(engine.mutation_profile(robot.id).unwrap(), &profile);
+            assert_eq!(
+                engine.export_species_template_dna(robot.species).unwrap(),
+                source
+            );
+        }
+        let published = SaveFile::encode(&engine).unwrap();
+        fs::remove_file(&sidecar).unwrap();
+        fs::create_dir(&sidecar).unwrap();
+        let error = read(&engine, &path).err().unwrap();
+        assert!(error.to_string().contains("directory"));
+        assert_eq!(SaveFile::encode(&engine).unwrap(), published);
+        fs::remove_dir(&sidecar).unwrap();
+        assert!(read(&engine, &path).unwrap().mutation_profile.is_none());
+        // The user-named DNA path itself is never rediscovered by case.
+        #[cfg(not(windows))]
+        assert!(read(&engine, &directory.path().join("CAFÉ.TXT")).is_err());
+        assert_eq!(sidecar_directory(Path::new("bot.mrate")), Path::new("."));
+        assert_eq!(
+            sidecar_directory(Path::new("nested/bot.mrate")),
+            Path::new("nested")
+        );
+        assert!(filename_eq_ignore_case(
+            OsStr::new("Café.mrate"),
+            OsStr::new("CAFÉ.MRATE")
+        ));
+        assert!(!filename_eq_ignore_case(
+            OsStr::new("Straße.mrate"),
+            OsStr::new("STRASSE.MRATE")
+        ));
+        let same_path = directory.path().join("source.MRATE");
+        fs::write(&same_path, "start stop").unwrap();
+        assert!(
+            read(&engine, &same_path)
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("distinct")
+        );
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn adjacent_sidecar_rejects_case_ambiguity_even_when_exact_spelling_exists() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("mixed.txt");
+        let exact = path.with_extension("mrate");
+        let other = directory.path().join("MIXED.MRATE");
+        fs::write(&path, "start stop").unwrap();
+        let first = StandardMutationProfile {
+            point_value_change_percent: 13,
+            ..Default::default()
+        };
+        let second = StandardMutationProfile {
+            point_value_change_percent: 27,
+            ..Default::default()
+        };
+        fs::write(&exact, first.to_mrate().unwrap()).unwrap();
+        fs::write(&other, second.to_mrate().unwrap()).unwrap();
+        let engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let original = SaveFile::encode(&engine).unwrap();
+        let error = read(&engine, &path).err().unwrap();
+        assert!(error.to_string().contains("ambiguous"));
+        assert_eq!(SaveFile::encode(&engine).unwrap(), original);
+        fs::remove_file(exact).unwrap();
+        assert_eq!(
+            read(&engine, &path).unwrap().mutation_profile.as_ref(),
+            Some(&second)
+        );
+    }
+
+    #[test]
     fn original_ansi_and_strict_bom_decoding_preserve_source_without_guessing() {
         assert_eq!(decode(&[0x27, 0xe9, 0x80, 13, 10]).unwrap(), "'é€\r\n");
         for bytes in [
@@ -112,7 +307,7 @@ mod tests {
         bytes.extend_from_slice(b"\r\ndef Foo 7\r\ndef foo 9\r\n11 start .Foo .foo 1 999 += stop end 123\r\nNewMove\r\n");
         fs::write(&path, &bytes).unwrap();
         let mut native = Engine::new_native(EngineConfig::testing()).unwrap();
-        let (dna, source) = read(&native, &path).unwrap();
+        let BotSource { dna, source, .. } = read(&native, &path).unwrap();
         assert!(source.starts_with("'é€\r\n"));
         assert_eq!(
             dna.blocks()
@@ -153,7 +348,11 @@ mod tests {
             serde_json::to_value(Engine::new(EngineConfig::testing()).unwrap()).unwrap();
         legacy_state["native_random"] = serde_json::Value::Null;
         let legacy: Engine = serde_json::from_value(legacy_state).unwrap();
-        let (dna, retained) = read(&legacy, &path).unwrap();
+        let BotSource {
+            dna,
+            source: retained,
+            ..
+        } = read(&legacy, &path).unwrap();
         assert_eq!(retained, source);
         assert_eq!(
             dna.blocks()

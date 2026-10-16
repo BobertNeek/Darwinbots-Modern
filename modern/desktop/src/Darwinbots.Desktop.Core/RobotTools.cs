@@ -60,13 +60,14 @@ public static class PlayerBotKeyMapFile
         ArgumentNullException.ThrowIfNull(bindings);
         var values = bindings.ToArray();
         foreach (var binding in values) binding.Validate();
-        File.WriteAllLines(path, values.SelectMany(binding => new[]
+        var lines = values.SelectMany(binding => new[]
         {
             binding.KeyCode.ToString(System.Globalization.CultureInfo.InvariantCulture),
             binding.MemoryAddress.ToString(System.Globalization.CultureInfo.InvariantCulture),
             binding.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
             binding.Invert ? "True" : "False",
-        }));
+        });
+        File.WriteAllText(path, string.Concat(lines.Select(line => line + "\r\n")));
     }
 
     public static IReadOnlyList<PlayerBotBinding> Load(string path)
@@ -109,7 +110,14 @@ public static class RestrictionPresetFile
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(options);
-        File.WriteAllLines(path, Values(options).Select(value => value ? "True" : "False"));
+        if (options.Repopulating.DisableChloroplasts)
+            throw new InvalidDataException(
+                "Original restriction presets cannot represent DisableChloroplasts for repopulating species.");
+        // Original .resp files omit only the repopulating chloroplast switch.
+        var text = string.Concat(Values(options)
+            .Where((_, index) => index != 12)
+            .Select(value => value ? "1\r\n" : "0\r\n"));
+        File.WriteAllText(path, text);
     }
 
     public static RestrictionOptions Load(string path)
@@ -119,9 +127,11 @@ public static class RestrictionPresetFile
             .Select(line => line.Trim())
             .Where(line => line.Length > 0)
             .ToArray();
-        if (lines.Length != 20)
-            throw new InvalidDataException("Restriction preset files must contain twenty lines.");
+        if (lines.Length is not (19 or 20))
+            throw new InvalidDataException("Restriction preset files must contain nineteen original or twenty modern lines.");
         var values = lines.Select(ParseBoolean).ToArray();
+        if (values.Length == 19)
+            values = [.. values[..12], false, .. values[12..]];
         return new RestrictionOptions(Column(values, 0), Column(values, 10));
     }
 

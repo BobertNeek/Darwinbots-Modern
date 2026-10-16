@@ -409,6 +409,8 @@ internal sealed class FakeEngineClient : IEngineClient
     public bool SavedWithoutMutations { get; private set; }
     public List<int> RecognitionFudgingUpdates { get; } = [];
     public Action? BeforeTick { get; set; }
+    public Action? BeforeDnaExport { get; set; }
+    public OrganismSnapshot[] SnapshotOrganisms { get; set; } = [];
     public float? NativeGaussianSpare { get; set; }
     public byte NativeSunChange { get; set; }
     public byte ReadNativeSunChange()
@@ -431,7 +433,7 @@ internal sealed class FakeEngineClient : IEngineClient
     public EngineSnapshot Snapshot()
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
-        return new EngineSnapshot(_tick, _population, Backend, []);
+        return new EngineSnapshot(_tick, _population, Backend, SnapshotOrganisms);
     }
 
     public EngineCapabilities Capabilities() => new(1, Backend, false, null);
@@ -514,7 +516,19 @@ internal sealed class FakeEngineClient : IEngineClient
         LastDnaReplacement = (slot, generation, dna);
     }
 
-    public string ExportDna(uint slot, uint generation) => _dna;
+    public string ExportDna(uint slot, uint generation)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        BeforeDnaExport?.Invoke();
+        return _dna;
+    }
+
+    public void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        SnapshotOrganisms = SnapshotOrganisms.Select(value => value.Slot == slot && value.Generation == generation
+            ? value with { MutationProfile = profile } : value).ToArray();
+    }
 
     public string ExportSpeciesTemplateDna(uint species)
     {

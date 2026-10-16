@@ -337,7 +337,7 @@ public static class Db2GenomeRecordFile
             record.Energy.ToString(CultureInfo.InvariantCulture),
             record.Chloroplasts.ToString(CultureInfo.InvariantCulture),
         })).Append("\r\n");
-        builder.Append(record.Dna.Replace("\r\n", "\n", StringComparison.Ordinal));
+        builder.Append(record.Dna);
         if (!record.Dna.EndsWith('\n')) builder.Append("\r\n");
     }
 

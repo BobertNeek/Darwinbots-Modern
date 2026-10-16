@@ -85,7 +85,7 @@ public sealed partial class MainWindow : Window
     private WorldFeatureSelection? _selectedFeature;
     private readonly ZerobotProgressionController? _zerobotProgression;
     private bool _progressionInFlight;
-    private const string EnergyOnlyFeederDna = "cond\nstart\n-2 .shoot store\n50 .shootval store\n314 rnd .aimdx store\nstop";
+    private const string EnergyOnlyFeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
     private uint _ticksPerUpdate;
     private uint _maximumBatch = 100;
     private bool _maximumSpeed;
@@ -1091,7 +1091,7 @@ public sealed partial class MainWindow : Window
         {
             var species = new SpeciesImport(
                 Path.GetFileNameWithoutExtension(file.Name), file.Content, false, 0xffd07a2d,
-                1, 1_000, 0, false, 1f);
+                1, 1_000, 0, false, 1f) { MutationProfile = file.MutationProfile, DnaPath = file.LocalPath };
             var report = await _session.ImportSpeciesAsync(species);
             RegisterInsertionSpecies(species);
             warnings.AddRange(report.CompatibilityWarnings);
@@ -1313,16 +1313,14 @@ public sealed partial class MainWindow : Window
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         var snapshot = _session.LatestSnapshot;
         var suggestedFileName = $"darwinbots-living-{snapshot.Tick}.snp";
+        var dna = new Dictionary<OrganismKey, string>();
+        foreach (var organism in snapshot.Organisms)
+            dna[new OrganismKey(organism.Slot, organism.Generation)] =
+                await _session.ExportDnaAsync(organism.Slot, organism.Generation);
+        var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingSnapshotLiving).Format;
+        var bytes = LegacyDnaText.Encode(LegacyRecordingSerializer.SerializeLiving(snapshot, dna, format));
         var saved = await _storage.SaveLivingSnapshotAsync(this, suggestedFileName, async stream =>
-        {
-            var dna = new Dictionary<OrganismKey, string>();
-            foreach (var organism in snapshot.Organisms)
-                dna[new OrganismKey(organism.Slot, organism.Generation)] =
-                    await _session.ExportDnaAsync(organism.Slot, organism.Generation);
-            var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingSnapshotLiving).Format;
-            var bytes = System.Text.Encoding.UTF8.GetBytes(LegacyRecordingSerializer.SerializeLiving(snapshot, dna, format));
-            await stream.WriteAsync(bytes);
-        });
+            await stream.WriteAsync(bytes));
         return saved
             ? LegacyCommandResult.Success($"LIVING SNAPSHOT · {suggestedFileName}")
             : LegacyCommandResult.Cancel();
@@ -1386,7 +1384,7 @@ public sealed partial class MainWindow : Window
             {
                 var format = LegacyRecordingSerializer.Select(LegacyCommandId.RecordingDeadEnable).Format;
                 var text = LegacyRecordingSerializer.SerializeDead(corpses, snapshot.Species, stream.Length == 0, format);
-                await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes(text));
+                await stream.WriteAsync(LegacyDnaText.Encode(text));
             });
             if (appended) _recordedCorpseCount = snapshot.Corpses.Count;
         }
@@ -1663,12 +1661,12 @@ public sealed partial class MainWindow : Window
     {
         if (_session is null || _viewModel.SelectedOrganism is not { } organism)
             return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
-        var dna = await _session.ExportDnaAsync(organism.Slot, organism.Generation);
+        var file = await _session.ExportRobotFileAsync(organism.Slot, organism.Generation);
         var species = organism.Species < _session.LatestSnapshot.Species.Count
             ? _session.LatestSnapshot.Species[(int)organism.Species].Name
             : $"Robot-{organism.Slot}-{organism.Generation}";
         var suggestedName = _automaticTagByName ? $"{species}.txt" : $"Robot-{organism.Slot}-{organism.Generation}.txt";
-        return await _storage.SaveDnaAsync(this, suggestedName, dna)
+        return await _storage.SaveDnaAsync(this, suggestedName, file.Dna, file.MutationProfile)
             ? LegacyCommandResult.Success("ROBOT DNA SAVED")
             : LegacyCommandResult.Cancel();
     }
@@ -2609,11 +2607,17 @@ public sealed partial class MainWindow : Window
             _ => EvolutionMode.SimpleSurvival,
         };
         var source = config.StagedEvolution?.SourceDna ?? string.Empty;
+        var profile = config.StagedEvolution?.SourceMutationProfile;
         if (mode != EvolutionMode.Zerobot && !string.IsNullOrWhiteSpace(settings.SourceBot))
-            source = LegacyDnaText.Decode(await File.ReadAllBytesAsync(Path.GetFullPath(settings.SourceBot)));
+        {
+            var file = await Db2RobotFileStorage.ReadAsync(Path.GetFullPath(settings.SourceBot));
+            source = file.Dna;
+            profile = file.MutationProfile;
+        }
         var evolution = new StagedEvolutionConfiguration(mode, source, (float)settings.StageLength,
             (uint)settings.CycleLength, settings.NormalizeDnaSize, settings.ZerobotInitialDnaLength,
-            settings.AutoGraphs) { FitnessWeight = (ushort)_globalSettings.Main.EffectiveFindBestWeight };
+            settings.AutoGraphs) { FitnessWeight = (ushort)_globalSettings.Main.EffectiveFindBestWeight,
+                SourceMutationProfile = mode == EvolutionMode.Zerobot ? null : profile };
         _viewModel.LocalMode.StagedEvolution = evolution;
         return config with { StagedEvolution = evolution };
     }
@@ -2761,24 +2765,28 @@ public sealed partial class MainWindow : Window
     private async void Import_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null) return;
-        foreach (var file in await _storage.OpenDnaFilesAsync(this))
+        try
         {
-            var species = new SpeciesImport(
-                Path.GetFileNameWithoutExtension(file.Name),
-                file.Content,
-                false,
-                0xffd07a2d,
-                1,
-                1_000,
-                0,
-                false,
-                1f);
-            var report = await _session.ImportSpeciesAsync(species);
-            RegisterInsertionSpecies(species);
-            _viewModel.Status = report.CompatibilityWarnings.Count == 0
-                ? $"IMPORTED {file.Name}"
-                : $"DNA COMPATIBILITY · {string.Join(" · ", report.CompatibilityWarnings)}";
+            foreach (var file in await _storage.OpenDnaFilesAsync(this))
+            {
+                var species = new SpeciesImport(
+                    Path.GetFileNameWithoutExtension(file.Name),
+                    file.Content,
+                    false,
+                    0xffd07a2d,
+                    1,
+                    1_000,
+                    0,
+                    false,
+                    1f) { MutationProfile = file.MutationProfile, DnaPath = file.LocalPath };
+                var report = await _session.ImportSpeciesAsync(species);
+                RegisterInsertionSpecies(species);
+                _viewModel.Status = report.CompatibilityWarnings.Count == 0
+                    ? $"IMPORTED {file.Name}"
+                    : $"DNA COMPATIBILITY · {string.Join(" · ", report.CompatibilityWarnings)}";
+            }
         }
+        catch (Exception error) { _viewModel.Status = $"IMPORT FAILED · {error.Message}"; }
     }
 
     private async void Save_Click(object? sender, RoutedEventArgs e)

@@ -34,6 +34,8 @@ pub struct EvolutionConfig {
     pub mode: EvolutionMode,
     pub fitness_weight: u16,
     pub source_dna: String,
+    #[serde(default)]
+    pub source_mutation_profile: Option<StandardMutationProfile>,
     pub reduction_unit: f32,
     pub cycle_length: u32,
     pub normalize_dna_size: bool,
@@ -48,6 +50,7 @@ impl Default for EvolutionConfig {
             mode: EvolutionMode::SimpleSurvival,
             fitness_weight: 100,
             source_dna: String::new(),
+            source_mutation_profile: None,
             reduction_unit: 10.0,
             cycle_length: 100,
             normalize_dna_size: false,
@@ -60,6 +63,11 @@ impl Default for EvolutionConfig {
 
 impl EvolutionConfig {
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(profile) = &self.source_mutation_profile {
+            profile
+                .validate()
+                .map_err(|error| format!("evolution source mutation profile: {error}"))?;
+        }
         if self.fitness_weight > 200 {
             return Err("evolution fitness weight must be 0..200".into());
         }

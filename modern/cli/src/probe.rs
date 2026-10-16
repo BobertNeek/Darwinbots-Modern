@@ -1,6 +1,6 @@
 use darwinbots_engine::{
-    BackendPreference, Engine, EngineConfig, LegacyDna, MAX_ROBOTS, OrganismId, Snapshot,
-    SpeciesDefinition, SpeciesId,
+    BackendPreference, Engine, EngineConfig, MAX_ROBOTS, OrganismId, Snapshot, SpeciesDefinition,
+    SpeciesId,
 };
 use serde_json::{Value, json};
 use std::{
@@ -21,7 +21,15 @@ pub(crate) struct Options {
     pub backend: BackendPreference,
 }
 
-pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
+struct PreparedRun {
+    engine: Engine,
+    candidate_species: Vec<SpeciesId>,
+    warnings: Vec<String>,
+    starting_population: usize,
+    candidate_starting_population: usize,
+}
+
+fn prepare(options: &Options) -> Result<PreparedRun, Box<dyn Error>> {
     if options.population == 0 {
         return Err("population must be positive".into());
     }
@@ -68,7 +76,12 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
     })?;
 
     for path in &options.bot {
-        let (dna, source) = read_dna(&engine, path)?;
+        let crate::dna_source::BotSource {
+            dna,
+            source,
+            mutation_profile,
+            ..
+        } = read_dna(&engine, path)?;
         warnings.extend(dna.compatibility_warnings().iter().cloned());
         let species = engine.register_species(SpeciesDefinition {
             name: file_name(path),
@@ -76,6 +89,7 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
             minimum_population: 0,
             reseed: false,
             mutation_rate: 0.0,
+            mutation_profile,
             ..SpeciesDefinition::default()
         });
         candidate_species.push(species);
@@ -91,7 +105,12 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
     }
 
     if let Some(path) = &options.vegetable_bot {
-        let (dna, source) = read_dna(&engine, path)?;
+        let crate::dna_source::BotSource {
+            dna,
+            source,
+            mutation_profile,
+            ..
+        } = read_dna(&engine, path)?;
         warnings.extend(dna.compatibility_warnings().iter().cloned());
         let species = engine.register_species(SpeciesDefinition {
             name: file_name(path),
@@ -99,6 +118,7 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
             minimum_population: 0,
             reseed: false,
             mutation_rate: 0.0,
+            mutation_profile,
             ..SpeciesDefinition::default()
         });
         engine.spawn_species_batch(
@@ -112,6 +132,23 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
 
     warnings.sort();
     warnings.dedup();
+    Ok(PreparedRun {
+        engine,
+        candidate_species,
+        warnings,
+        starting_population,
+        candidate_starting_population,
+    })
+}
+
+pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
+    let PreparedRun {
+        mut engine,
+        candidate_species,
+        warnings,
+        starting_population,
+        candidate_starting_population,
+    } = prepare(&options)?;
     let mut candidate_tracker = CandidateTracker::new(engine.snapshot(), &candidate_species);
     let started = Instant::now();
     advance(&mut engine, options.ticks, &mut candidate_tracker)?;
@@ -154,7 +191,7 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
     }))
 }
 
-fn read_dna(engine: &Engine, path: &Path) -> Result<(LegacyDna, String), Box<dyn Error>> {
+fn read_dna(engine: &Engine, path: &Path) -> Result<crate::dna_source::BotSource, Box<dyn Error>> {
     crate::dna_source::read(engine, path)
 }
 
@@ -247,7 +284,94 @@ fn candidate_ids(snapshot: &Snapshot, species: &HashSet<SpeciesId>) -> HashSet<O
 #[cfg(test)]
 mod tests {
     use super::*;
+    use darwinbots_engine::LegacyDna;
     use std::fs;
+
+    #[test]
+    fn standalone_profiles_reach_only_their_candidate_or_plant_and_survive_save_reload() {
+        use darwinbots_engine::{MutationRate, SaveFile, StandardMutationProfile};
+        let directory = tempfile::tempdir().unwrap();
+        let animal = directory.path().join("animal.txt");
+        let plain = directory.path().join("plain.txt");
+        let plant = directory.path().join("plant.txt");
+        for path in [&animal, &plain, &plant] {
+            fs::write(path, "start stop\r\n").unwrap();
+        }
+        let animal_profile = StandardMutationProfile {
+            point_value_change_percent: 13,
+            point: MutationRate {
+                one_in: 37.25,
+                mean: 3.0,
+                std_dev: 0.25,
+            },
+            ..Default::default()
+        };
+        let plant_profile = StandardMutationProfile {
+            point_value_change_percent: 79,
+            ..Default::default()
+        };
+        fs::write(
+            animal.with_extension("mrate"),
+            animal_profile.to_mrate().unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            plant.with_extension("mrate"),
+            plant_profile.to_mrate().unwrap(),
+        )
+        .unwrap();
+        let prepared = prepare(&Options {
+            bot: vec![animal.clone(), plain.clone()],
+            population: 1,
+            vegetable_bot: Some(plant.clone()),
+            vegetable_population: 1,
+            initial_energy: 2000,
+            ticks: 0,
+            seed: 7,
+            backend: BackendPreference::Cpu,
+        })
+        .unwrap();
+        assert_eq!(prepared.engine.population(), 3);
+        assert_eq!(
+            prepared.engine.default_mutation_profile(),
+            &StandardMutationProfile::default()
+        );
+        let mut original_profiles = Vec::new();
+        for robot in &prepared.engine.snapshot().organisms {
+            let profile = prepared.engine.mutation_profile(robot.id).unwrap().clone();
+            let species_name = &prepared.engine.snapshot().species[robot.species.0 as usize].name;
+            if species_name == "animal.txt" {
+                assert_eq!(profile, animal_profile);
+            } else if species_name == "plant.txt" {
+                assert_eq!(profile, plant_profile);
+            } else {
+                assert_eq!(species_name, "plain.txt");
+                assert_ne!(profile.point_value_change_percent, 13);
+                assert_ne!(profile.point_value_change_percent, 79);
+            }
+            original_profiles.push((robot.id, profile));
+        }
+        let state = serde_json::to_value(&prepared.engine).unwrap();
+        assert_eq!(
+            state["species"][prepared.candidate_species[0].0 as usize]["mutation_profile"],
+            serde_json::to_value(&animal_profile).unwrap()
+        );
+        assert!(
+            state["species"][prepared.candidate_species[1].0 as usize]["mutation_profile"]
+                .is_null()
+        );
+        let saved = SaveFile::encode(&prepared.engine).unwrap();
+        fs::remove_file(animal.with_extension("mrate")).unwrap();
+        fs::remove_file(plant.with_extension("mrate")).unwrap();
+        for path in [&animal, &plain, &plant] {
+            fs::remove_file(path).unwrap();
+        }
+        let restored = SaveFile::decode(&saved).unwrap();
+        for (id, profile) in original_profiles {
+            assert_eq!(restored.mutation_profile(id).unwrap(), &profile);
+        }
+        assert_eq!(SaveFile::encode(&restored).unwrap(), saved);
+    }
 
     #[test]
     fn run_accepts_full_native_robot_capacity_without_an_extra_birth_slot() {

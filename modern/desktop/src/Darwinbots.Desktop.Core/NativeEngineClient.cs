@@ -681,6 +681,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                         staged_evolution = config.StagedEvolution is { } evolution ? new {
                             mode = evolution.Mode switch { EvolutionMode.Eco => "eco", EvolutionMode.Zerobot => "zerobot", _ => "simple_survival" },
                             source_dna = evolution.SourceDna, reduction_unit = evolution.ReductionUnit,
+                            source_mutation_profile = evolution.SourceMutationProfile is null ? null : NativeCommandSerializer.MutationProfile(evolution.SourceMutationProfile),
                             cycle_length = evolution.CycleLength, normalize_dna_size = evolution.NormalizeDnaSize,
                             zerobot_initial_dna_length = evolution.ZerobotInitialDnaLength,
                             auto_graphs = evolution.AutoGraphs, fitness_weight = evolution.FitnessWeight,

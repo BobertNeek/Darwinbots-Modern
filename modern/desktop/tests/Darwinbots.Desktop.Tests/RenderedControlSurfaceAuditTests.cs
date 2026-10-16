@@ -1925,9 +1925,12 @@ internal sealed class AuditStorageService : IDesktopStorageService
         return Task.FromResult(true);
     }
 
-    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna)
+    public MutationProfileUpdate? SavedDnaMutationProfile { get; private set; }
+
+    public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna, MutationProfileUpdate? mutationProfile)
     {
         SavedDna = dna;
+        SavedDnaMutationProfile = mutationProfile;
         return Task.FromResult(true);
     }
 

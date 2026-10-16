@@ -90,7 +90,7 @@ public sealed class CommunityLeagueNativeTests
             var paths = await ClassicTournamentDnaExport.WriteAsync(directory, complete,
                 [new(next, resumed.Snapshot().Species[(int)next].Name, resumed.ExportSpeciesTemplateDna(next))]);
             Assert.Equal("Next.txt", Path.GetFileName(Assert.Single(paths)));
-            Assert.Equal("start stop" + Environment.NewLine + "'#tag:Next.txt" + Environment.NewLine,
+            Assert.Equal("start stop" + "\r\n" + "'#tag:Next.txt" + "\r\n",
                 await File.ReadAllTextAsync(paths[0]));
             Assert.Equal(original, resumed.ExportSpeciesTemplateDna(gone));
         }
@@ -149,7 +149,7 @@ public sealed class CommunityLeagueNativeTests
             var paths = await ClassicTournamentDnaExport.WriteAsync(directory, complete, finalists);
             Assert.Equal(finalists.Select((value, index) => $"{index + 1}-{value.SourceName}"), paths.Select(Path.GetFileName));
             for (var index = 0; index < paths.Count; index++)
-                Assert.Equal(finalists[index].Dna + Environment.NewLine + "'#tag:" + finalists[index].SourceName + Environment.NewLine,
+                Assert.Equal(finalists[index].Dna + "\r\n" + "'#tag:" + finalists[index].SourceName + "\r\n",
                     await File.ReadAllTextAsync(paths[index]));
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }

@@ -27,8 +27,8 @@ public static class PopulationSeedingExport
                     || !IsNativeSuffix(name[validName.Length..^4]))
                     throw new ArgumentException("Population seed filename must contain its score and original collision suffix.", nameof(seeds));
             }
-            encoded.Add(LegacyDnaText.Encode(seed.Dna + Environment.NewLine + "'#tag:"
-                + seed.SourceName.Replace('\\', '/').Split('/')[^1] + Environment.NewLine));
+            encoded.Add(LegacyDnaText.Encode(seed.Dna + "\r\n" + "'#tag:"
+                + seed.SourceName.Replace('\\', '/').Split('/')[^1] + "\r\n"));
         }
         if (seeds.Count == 0) return [];
         var target = Path.Combine(Path.GetFullPath(directory), "seeded");
