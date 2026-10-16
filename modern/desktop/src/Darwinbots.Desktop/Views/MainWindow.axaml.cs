@@ -1959,9 +1959,23 @@ public sealed partial class MainWindow : Window
                     compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
             foreach (var bot in _startupBots)
             {
-                compatibilityWarnings.AddRange((await _session.ImportDnaAsync(
-                    LegacyDnaText.Decode(await File.ReadAllBytesAsync(bot.Path)),
-                    bot.Position)).CompatibilityWarnings);
+                var file = await Db2RobotFileStorage.ReadAsync(bot.Path);
+                if (file.MutationProfile is null)
+                {
+                    compatibilityWarnings.AddRange((await _session.ImportDnaAsync(
+                        file.Dna, bot.Position)).CompatibilityWarnings);
+                    continue;
+                }
+                var species = new SpeciesImport(
+                    Path.GetFileNameWithoutExtension(bot.Path), file.Dna, false, 0xffd07a2d,
+                    1, 1_000, 0, false, 1f)
+                {
+                    DnaPath = bot.Path,
+                    MutationProfile = file.MutationProfile,
+                    Placement = new(SpeciesPlacementMode.Fixed, bot.Position[0], bot.Position[1]),
+                };
+                compatibilityWarnings.AddRange((await _session.ImportSpeciesAsync(species)).CompatibilityWarnings);
+                RegisterInsertionSpecies(species);
             }
             // Worker completion means the snapshot was queued for presentation.
             // Do not announce readiness ahead of those normal-priority UI posts.

@@ -150,16 +150,25 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
     {
         ArgumentNullException.ThrowIfNull(file);
         cancellationToken.ThrowIfCancellationRequested();
+        await WriteDnaFileAsync(LocalPath(file), file.OpenWriteAsync, dna, mutationProfile, cancellationToken);
+    }
+
+    public static async Task WriteDnaFileAsync(
+        string? localPath, Func<Task<Stream>> openWriteAsync, string dna,
+        MutationProfileUpdate? mutationProfile, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(openWriteAsync);
+        cancellationToken.ThrowIfCancellationRequested();
         var bytes = LegacyDnaText.Encode(dna);
         if (mutationProfile is not null) _ = Db2MutationRateCodec.Encode(mutationProfile);
-        if (LocalPath(file) is { } path)
+        if (localPath is not null)
         {
-            await Db2RobotFileStorage.WriteAsync(path, dna, mutationProfile, cancellationToken);
+            await Db2RobotFileStorage.WriteAsync(localPath, dna, mutationProfile, cancellationToken);
             return;
         }
         if (mutationProfile is not null)
             throw new NotSupportedException("Saving robot DNA with mutation settings requires a local file.");
-        await using var stream = await file.OpenWriteAsync();
+        await using var stream = await openWriteAsync();
         stream.SetLength(0);
         await stream.WriteAsync(bytes, cancellationToken);
     }

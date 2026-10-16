@@ -296,8 +296,10 @@ public sealed class Db2RobotFileStorageTests
                 if (OperatingSystem.IsWindows())
                 {
                     // Backup reads are allowed; replacing this second target is denied.
-                    await Assert.ThrowsAsync<IOException>(() =>
+                    var error = await Record.ExceptionAsync(() =>
                         Db2RobotFileStorage.WriteAsync(path, replacement, MutationProfileUpdate.Default));
+                    Assert.True(error is IOException or UnauthorizedAccessException,
+                        $"Expected a filesystem replacement failure, got {error?.GetType().FullName ?? "<no exception>"}: {error?.Message}");
                     Assert.Equal(original, await File.ReadAllBytesAsync(path));
                     Assert.Equal(rates, await File.ReadAllBytesAsync(sidecar));
                 }

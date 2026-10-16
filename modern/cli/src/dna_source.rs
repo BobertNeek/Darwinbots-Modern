@@ -219,9 +219,23 @@ mod tests {
         assert_eq!(SaveFile::encode(&engine).unwrap(), published);
         fs::remove_dir(&sidecar).unwrap();
         assert!(read(&engine, &path).unwrap().mutation_profile.is_none());
-        // The user-named DNA path itself is never rediscovered by case.
-        #[cfg(not(windows))]
-        assert!(read(&engine, &directory.path().join("CAFÉ.TXT")).is_err());
+        // Follow the exact named path using the host filesystem's semantics.
+        // Non-Windows filesystems can also resolve case aliases (for example APFS).
+        let named_alias = directory.path().join("CAFÉ.TXT");
+        match fs::read(&named_alias) {
+            Ok(bytes) => {
+                let named = read(&engine, &named_alias).unwrap();
+                assert_eq!(named.name, "CAFÉ.TXT");
+                assert_eq!(named.source, decode(&bytes).unwrap());
+                assert_eq!(named.source, source);
+                assert!(named.mutation_profile.is_none());
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                assert!(read(&engine, &named_alias).is_err());
+            }
+            Err(error) => panic!("cannot inspect named DNA path: {error}"),
+        }
+        assert_eq!(SaveFile::encode(&engine).unwrap(), published);
         assert_eq!(sidecar_directory(Path::new("bot.mrate")), Path::new("."));
         assert_eq!(
             sidecar_directory(Path::new("nested/bot.mrate")),
@@ -246,9 +260,8 @@ mod tests {
         );
     }
 
-    #[cfg(not(windows))]
     #[test]
-    fn adjacent_sidecar_rejects_case_ambiguity_even_when_exact_spelling_exists() {
+    fn adjacent_sidecar_distinguishes_case_alias_from_real_ambiguity() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("mixed.txt");
         let exact = path.with_extension("mrate");
@@ -263,17 +276,44 @@ mod tests {
             ..Default::default()
         };
         fs::write(&exact, first.to_mrate().unwrap()).unwrap();
-        fs::write(&other, second.to_mrate().unwrap()).unwrap();
+        // create_new must not replace the first profile on a case-insensitive
+        // volume. A successful create proves that two distinct entries exist.
+        let distinct_entries = match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&other)
+        {
+            Ok(mut file) => {
+                std::io::Write::write_all(&mut file, second.to_mrate().unwrap().as_bytes())
+                    .unwrap();
+                true
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => false,
+            Err(error) => panic!("cannot create second sidecar spelling: {error}"),
+        };
         let engine = Engine::new_native(EngineConfig::testing()).unwrap();
         let original = SaveFile::encode(&engine).unwrap();
-        let error = read(&engine, &path).err().unwrap();
-        assert!(error.to_string().contains("ambiguous"));
+        if distinct_entries {
+            let error = read(&engine, &path).err().unwrap();
+            assert!(error.to_string().contains("ambiguous"));
+            assert_eq!(SaveFile::encode(&engine).unwrap(), original);
+            fs::remove_file(exact).unwrap();
+            assert_eq!(
+                read(&engine, &path).unwrap().mutation_profile.as_ref(),
+                Some(&second)
+            );
+        } else {
+            // The two spellings identify one file; create_new preserved it.
+            assert_eq!(
+                fs::read_to_string(&exact).unwrap(),
+                first.to_mrate().unwrap()
+            );
+            assert_eq!(
+                read(&engine, &path).unwrap().mutation_profile.as_ref(),
+                Some(&first)
+            );
+        }
         assert_eq!(SaveFile::encode(&engine).unwrap(), original);
-        fs::remove_file(exact).unwrap();
-        assert_eq!(
-            read(&engine, &path).unwrap().mutation_profile.as_ref(),
-            Some(&second)
-        );
     }
 
     #[test]

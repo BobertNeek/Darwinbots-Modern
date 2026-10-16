@@ -1,4 +1,3 @@
-using Avalonia.Platform.Storage;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Services;
 using Xunit;
@@ -10,27 +9,36 @@ public sealed class NativeDnaStorageBoundaryTests
     [Fact]
     public async Task DefaultStorageWritesNativeBytesAndRejectsInvalidTextBeforeOpeningTheStream()
     {
-        var file = new MemoryStorageFile(new Uri("memory://robot/export.txt"), [1, 2, 3]);
+        using var destination = new MemoryStream();
+        destination.Write(new byte[] { 1, 2, 3 });
+        var opens = 0;
+        Func<Task<Stream>> open = () => { opens++; return Task.FromResult<Stream>(destination); };
         const string dna = "' é €\r\nstart stop\n";
-        await AvaloniaDesktopStorageService.WriteDnaFileAsync(file, dna, null);
-        Assert.Equal(new byte[] { 39, 32, 0xe9, 32, 0x80, 13, 10, 115, 116, 97, 114, 116, 32, 115, 116, 111, 112, 10 }, file.Bytes);
-        Assert.Equal(1, file.OpenWrites);
+        await AvaloniaDesktopStorageService.WriteDnaFileAsync(null, open, dna, null);
+        Assert.Equal(new byte[] { 39, 32, 0xe9, 32, 0x80, 13, 10, 115, 116, 97, 114, 116, 32, 115, 116, 111, 112, 10 }, destination.ToArray());
+        Assert.Equal(1, opens);
 
-        var invalid = new MemoryStorageFile(new Uri("memory://robot/unchanged.txt"), [4, 5, 6]);
+        using var unchanged = new MemoryStream();
+        unchanged.Write(new byte[] { 4, 5, 6 });
+        var invalidOpens = 0;
+        Func<Task<Stream>> invalidOpen = () => { invalidOpens++; return Task.FromResult<Stream>(unchanged); };
         await Assert.ThrowsAsync<InvalidDataException>(() =>
-            AvaloniaDesktopStorageService.WriteDnaFileAsync(invalid, "' 🙂\r\nstart stop", null));
-        Assert.Equal(0, invalid.OpenWrites);
-        Assert.Equal(new byte[] { 4, 5, 6 }, invalid.Bytes);
+            AvaloniaDesktopStorageService.WriteDnaFileAsync(null, invalidOpen, "' 🙂\r\nstart stop", null));
+        Assert.Equal(0, invalidOpens);
+        Assert.Equal(new byte[] { 4, 5, 6 }, unchanged.ToArray());
     }
 
     [Fact]
     public async Task NonlocalDestinationsCannotSilentlyDropTheMutationSidecar()
     {
-        var file = new MemoryStorageFile(new Uri("memory://robot/export.txt"), [4, 5, 6]);
+        using var destination = new MemoryStream();
+        destination.Write(new byte[] { 4, 5, 6 });
+        var opens = 0;
+        Func<Task<Stream>> open = () => { opens++; return Task.FromResult<Stream>(destination); };
         await Assert.ThrowsAsync<NotSupportedException>(() =>
-            AvaloniaDesktopStorageService.WriteDnaFileAsync(file, "start stop", MutationProfileUpdate.Default));
-        Assert.Equal(0, file.OpenWrites);
-        Assert.Equal(new byte[] { 4, 5, 6 }, file.Bytes);
+            AvaloniaDesktopStorageService.WriteDnaFileAsync(null, open, "start stop", MutationProfileUpdate.Default));
+        Assert.Equal(0, opens);
+        Assert.Equal(new byte[] { 4, 5, 6 }, destination.ToArray());
     }
 
     [Fact]
@@ -41,47 +49,55 @@ public sealed class NativeDnaStorageBoundaryTests
         {
             Directory.CreateDirectory(directory);
             var path = Path.Combine(directory, "Café.txt");
-            var file = new MemoryStorageFile(new Uri(path), []);
+            var opens = 0;
+            Func<Task<Stream>> open = () =>
+            {
+                opens++;
+                return Task.FromResult<Stream>(new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write));
+            };
             const string raw = "' é\nstart stop\r\n";
             var profile = MutationProfileUpdate.Default with { Point = new(123.5, 7, 0.5), CopyErrorValueChangePercent = 17 };
-            await AvaloniaDesktopStorageService.WriteDnaFileAsync(file, raw, profile);
+            await AvaloniaDesktopStorageService.WriteDnaFileAsync(path, open, raw, profile);
             Assert.Equal(raw, LegacyDnaText.Decode(await File.ReadAllBytesAsync(path)));
             Assert.Equal(profile, Db2MutationRateCodec.Decode(await File.ReadAllBytesAsync(Path.ChangeExtension(path, ".mrate"))));
-            Assert.Equal(0, file.OpenWrites);
+            Assert.Equal(0, opens);
             var dnaBefore = await File.ReadAllBytesAsync(path);
             var profileBefore = await File.ReadAllBytesAsync(Path.ChangeExtension(path, ".mrate"));
             await Assert.ThrowsAsync<InvalidDataException>(() =>
-                AvaloniaDesktopStorageService.WriteDnaFileAsync(file, "start stop", profile with { PointValueChangePercent = 101 }));
+                AvaloniaDesktopStorageService.WriteDnaFileAsync(path, open, "start stop", profile with { PointValueChangePercent = 101 }));
             await Assert.ThrowsAsync<InvalidDataException>(() =>
-                AvaloniaDesktopStorageService.WriteDnaFileAsync(file, "' 🙂\nstart stop", profile));
+                AvaloniaDesktopStorageService.WriteDnaFileAsync(path, open, "' 🙂\nstart stop", profile));
             Assert.Equal(dnaBefore, await File.ReadAllBytesAsync(path));
             Assert.Equal(profileBefore, await File.ReadAllBytesAsync(Path.ChangeExtension(path, ".mrate")));
+            Assert.Equal(0, opens);
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
 
-    private sealed class MemoryStorageFile(Uri path, byte[] initial) : IStorageFile
+    [Fact]
+    public async Task CancellationIsObservedBeforeOpeningOrTruncatingTheDestination()
     {
-        private readonly MemoryStream _stream = Create(initial);
-        public int OpenWrites { get; private set; }
-        public byte[] Bytes => _stream.ToArray();
-        public string Name => Path.IsFile ? System.IO.Path.GetFileName(Path.LocalPath) : "export.txt";
-        public Uri Path => path;
-        public bool CanBookmark => false;
-        public Task<Stream> OpenReadAsync() => Task.FromResult<Stream>(new MemoryStream(Bytes));
-        public Task<Stream> OpenWriteAsync() { OpenWrites++; return Task.FromResult<Stream>(_stream); }
-        public Task<StorageItemProperties> GetBasicPropertiesAsync() => Task.FromResult(new StorageItemProperties());
-        public Task<string?> SaveBookmarkAsync() => Task.FromResult<string?>(null);
-        public Task<IStorageFolder?> GetParentAsync() => Task.FromResult<IStorageFolder?>(null);
-        public Task DeleteAsync() => Task.CompletedTask;
-        public Task<IStorageItem?> MoveAsync(IStorageFolder destination) => Task.FromResult<IStorageItem?>(null);
-        public void Dispose() { }
-        private static MemoryStream Create(byte[] bytes)
-        {
-            var stream = new MemoryStream();
-            stream.Write(bytes);
-            stream.Position = 0;
-            return stream;
-        }
+        using var destination = new MemoryStream();
+        destination.Write(new byte[] { 4, 5, 6 });
+        var opens = 0;
+        Func<Task<Stream>> open = () => { opens++; return Task.FromResult<Stream>(destination); };
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            AvaloniaDesktopStorageService.WriteDnaFileAsync(null, open, "start stop", null, new CancellationToken(true)));
+        Assert.Equal(0, opens);
+        Assert.Equal(new byte[] { 4, 5, 6 }, destination.ToArray());
+    }
+
+    [Fact]
+    public async Task NullArgumentsAreRejectedWithoutOpeningTheDestination()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            AvaloniaDesktopStorageService.WriteDnaFileAsync((Avalonia.Platform.Storage.IStorageFile)null!, "start stop", null));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            AvaloniaDesktopStorageService.WriteDnaFileAsync(null, null!, "start stop", null));
+        var opens = 0;
+        Func<Task<Stream>> open = () => { opens++; return Task.FromResult<Stream>(new MemoryStream()); };
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            AvaloniaDesktopStorageService.WriteDnaFileAsync(null, open, null!, null));
+        Assert.Equal(0, opens);
     }
 }
