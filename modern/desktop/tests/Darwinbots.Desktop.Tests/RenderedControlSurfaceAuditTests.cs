@@ -106,8 +106,8 @@ public sealed class RenderedControlSurfaceAuditTests
                     storage.PickedPopulationSeedDirectory = Path.Combine(directory, "exact");
                     Click(window, Named<Button>(window, "ExportPopulationSeedsButton"));
                     await WaitFor(() => model.Status == "EXPORTED 1 POPULATION SEEDS", () => model.Status);
-                    Assert.Equal(template + Environment.NewLine + "'#tag:Audit Species" + Environment.NewLine,
-                        await File.ReadAllTextAsync(Path.Combine(directory, "exact", "seeded", "0.txt")));
+                    Assert.Equal(System.Text.Encoding.ASCII.GetBytes(template + "\r\n'#tag:Audit Species\r\n"),
+                        await File.ReadAllBytesAsync(Path.Combine(directory, "exact", "seeded", "0.txt")));
                     Assert.Equal("existing seed", await File.ReadAllTextAsync(existing));
                     Assert.Equal(3, storage.PopulationSeedPickerOwners.Count);
                     Assert.All(storage.PopulationSeedPickerOwners, owner => Assert.Same(window, owner));
@@ -197,8 +197,8 @@ public sealed class RenderedControlSurfaceAuditTests
                     storage.PickedPopulationSeedDirectory = clean;
                     Click(window, button);
                     await WaitFor(() => model.Status == "EXPORTED 1 CLASSIC TOURNAMENT DNA FILE(S)");
-                    Assert.Equal(engine.SpeciesTemplateDna[1] + Environment.NewLine + "'#tag:Audit Species" + Environment.NewLine,
-                        await File.ReadAllTextAsync(Path.Combine(clean, "Tournament_Results", "Audit Species.txt")));
+                    Assert.Equal(System.Text.Encoding.ASCII.GetBytes(engine.SpeciesTemplateDna[1] + "\r\n'#tag:Audit Species\r\n"),
+                        await File.ReadAllBytesAsync(Path.Combine(clean, "Tournament_Results", "Audit Species.txt")));
                     Assert.False(Directory.Exists(Path.Combine(clean, "stepladder")));
 
                     engine.LocalModeForRead = complete with { Series = complete.Series! with { EnteredLadder = true, Ladder = [1, 0] } };
@@ -206,10 +206,10 @@ public sealed class RenderedControlSurfaceAuditTests
                     await WaitFor(() => model.LocalMode.Series?.EnteredLadder == true);
                     Click(window, button);
                     await WaitFor(() => model.Status == "EXPORTED 2 CLASSIC TOURNAMENT DNA FILE(S)");
-                    Assert.Equal(engine.SpeciesTemplateDna[1] + Environment.NewLine + "'#tag:Audit Species" + Environment.NewLine,
-                        await File.ReadAllTextAsync(Path.Combine(clean, "stepladder", "1-Audit Species.txt")));
-                    Assert.Equal(engine.SpeciesTemplateDna[0] + Environment.NewLine + "'#tag:Unassigned" + Environment.NewLine,
-                        await File.ReadAllTextAsync(Path.Combine(clean, "stepladder", "2-Unassigned.txt")));
+                    Assert.Equal(System.Text.Encoding.ASCII.GetBytes(engine.SpeciesTemplateDna[1] + "\r\n'#tag:Audit Species\r\n"),
+                        await File.ReadAllBytesAsync(Path.Combine(clean, "stepladder", "1-Audit Species.txt")));
+                    Assert.Equal(System.Text.Encoding.ASCII.GetBytes(engine.SpeciesTemplateDna[0] + "\r\n'#tag:Unassigned\r\n"),
+                        await File.ReadAllBytesAsync(Path.Combine(clean, "stepladder", "2-Unassigned.txt")));
                     Assert.All(storage.PopulationSeedPickerOwners, owner => Assert.Same(window, owner));
                     Assert.DoesNotContain("ExportDna", engine.Calls);
                 }
@@ -1514,18 +1514,27 @@ public sealed class RenderedControlSurfaceAuditTests
                 ActivateMenu(generalSettingsCommand);
                 var generalSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(generalSettings.IsVisible);
-                // Inflate templates/bindings before editing numeric values; a
-                // first layout must not commit stale initial editor text.
-                StabilizeForInput(generalSettings, Named<TabControl>(generalSettings, "SettingsTabs"));
+                // Render the actual Energy tab before editing its numeric text
+                // templates; the default Mutation tab does not inflate them.
+                Named<TabControl>(generalSettings, "SettingsTabs").SelectedIndex = 1;
+                StabilizeForInput(generalSettings, Named<NumericUpDown>(generalSettings, "Metabolism"));
                 Named<NumericUpDown>(generalSettings, "Metabolism").Value = 7;
                 Named<NumericUpDown>(generalSettings, "VegetableEnergy").Value = 33;
                 Named<NumericUpDown>(generalSettings, "Sunlight").Value = 222;
                 Named<CheckBox>(generalSettings, "Daytime").IsChecked = false;
                 Named<CheckBox>(generalSettings, "DayNightEnabled").IsChecked = true;
                 Named<NumericUpDown>(generalSettings, "CycleLength").Value = 240;
+                StabilizeForInput(generalSettings, Named<Button>(generalSettings, "ApplyButton"));
+                Assert.Equal(7m, Named<NumericUpDown>(generalSettings, "Metabolism").Value);
+                Assert.Equal(7, generalSettings.Update.MetabolismCost);
                 var appliedEnvironment = generalSettings.Update;
+                var previousEnvironmentUpdates = engine.EnvironmentUpdates.Count;
+                var previousSettingsMutationUpdates = engine.MutationUpdates.Count;
                 Click(generalSettings, Named<Button>(generalSettings, "ApplyButton"));
-                await WaitFor(() => engine.EnvironmentUpdates.Count >= 1);
+                await WaitFor(() => engine.EnvironmentUpdates.Count == previousEnvironmentUpdates + 1
+                    && engine.MutationUpdates.Count == previousSettingsMutationUpdates + 1
+                    && viewModel.Status.Contains("LIVE SETTINGS APPLIED", StringComparison.Ordinal),
+                    () => viewModel.Status);
                 Assert.Equal(System.Text.Json.JsonSerializer.Serialize(appliedEnvironment), System.Text.Json.JsonSerializer.Serialize(engine.EnvironmentUpdates.Single()));
                 Assert.Equal(System.Text.Json.JsonSerializer.Serialize(appliedEnvironment), System.Text.Json.JsonSerializer.Serialize(Field<EnvironmentUpdate>(window, "_liveEnvironment")));
                 Assert.Contains("LIVE SETTINGS APPLIED", viewModel.Status, StringComparison.Ordinal);
@@ -1537,15 +1546,21 @@ public sealed class RenderedControlSurfaceAuditTests
                 ActivateMenu(mutationSettingsCommand);
                 var mutationSettings = Assert.Single(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
                 Assert.True(mutationSettings.IsVisible);
-                StabilizeForInput(mutationSettings, Named<TabControl>(mutationSettings, "SettingsTabs"));
                 Named<TabControl>(mutationSettings, "SettingsTabs").SelectedIndex = 0;
-                mutationSettings.UpdateLayout();
+                StabilizeForInput(mutationSettings, Named<NumericUpDown>(mutationSettings, "GlobalMutationRate"));
                 Named<CheckBox>(mutationSettings, "MutationsEnabled").IsChecked = true;
                 Named<NumericUpDown>(mutationSettings, "GlobalMutationRate").Value = 1.75m;
+                StabilizeForInput(mutationSettings, Named<Button>(mutationSettings, "ApplyButton"));
+                Assert.Equal(1.75m, Named<NumericUpDown>(mutationSettings, "GlobalMutationRate").Value);
+                Assert.Equal(1.75f, mutationSettings.MutationUpdate.GlobalMultiplier);
                 var appliedMutation = mutationSettings.MutationUpdate;
+                var previousMutationEnvironmentUpdates = engine.EnvironmentUpdates.Count;
                 var previousMutationUpdates = engine.MutationUpdates.Count;
                 Click(mutationSettings, Named<Button>(mutationSettings, "ApplyButton"));
-                await WaitFor(() => engine.MutationUpdates.Count == previousMutationUpdates + 1);
+                await WaitFor(() => engine.EnvironmentUpdates.Count == previousMutationEnvironmentUpdates + 1
+                    && engine.MutationUpdates.Count == previousMutationUpdates + 1
+                    && viewModel.Status.Contains("LIVE SETTINGS APPLIED", StringComparison.Ordinal),
+                    () => viewModel.Status);
                 Assert.Equal(System.Text.Json.JsonSerializer.Serialize(appliedMutation),
                     System.Text.Json.JsonSerializer.Serialize(engine.MutationUpdates.Last()));
                 Assert.Contains("LIVE SETTINGS APPLIED", viewModel.Status, StringComparison.Ordinal);
@@ -1568,6 +1583,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.True(Named<WorldViewport>(window, "Viewport").IsVisible);
 
                 ClickExpander(window, Named<Expander>(window, "EnergyExpander"));
+                StabilizeForInput(window, Named<NumericUpDown>(window, "LiveMetabolism"));
                 Named<NumericUpDown>(window, "LiveMetabolism").Value = 6;
                 Named<NumericUpDown>(window, "LivePlantEnergy").Value = 250;
                 Named<NumericUpDown>(window, "LiveFeedingToBody").Value = 0.75m;
@@ -1851,8 +1867,14 @@ public sealed class RenderedControlSurfaceAuditTests
         Dispatcher.UIThread.RunJobs();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Dispatcher.UIThread.RunJobs();
-        // BringIntoView can queue another scroll/layout update. Synchronize
-        // the rendered hit-test tree after those jobs, before choosing a point.
+        // Snapshot labels and expanded sections can reflow after the first
+        // bring request. Recompute layout, then bring the actual target into
+        // its ScrollViewer again using those current bounds before hit testing.
+        window.UpdateLayout();
+        control.BringIntoView();
+        Dispatcher.UIThread.RunJobs();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         Assert.True(window.IsVisible, $"{window.Title} was not visible while targeting {control.Name ?? control.GetType().Name}.");

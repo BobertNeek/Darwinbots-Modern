@@ -14,12 +14,13 @@ function Read-NativeCpuAdmission53([string]$Repo, [string]$Source) {
         throw 'Schema4 exact-final-source CPU52 plus fresh CLI53 qualification is required.'
     }
     foreach ($flag in @('cpu_workspace_passed', 'core_passed', 'desktop_passed', 'package_passed',
-            'source_qualification_passed', 'core_fresh_invocation', 'desktop_fresh_invocation',
+            'source_qualification_passed', 'desktop_fresh_invocation',
             'package_fresh_invocation', 'source_qualification_fresh_invocation')) {
         if ($marker.$flag -isnot [bool] -or $marker.$flag -ne $true) {
-            throw ('Fresh Core/Desktop/package/source checks and a qualified projected Rust result are required: ' + $flag)
+            throw ('Qualified Core and fresh Desktop/package/source checks with a projected Rust result are required: ' + $flag)
         }
     }
+    if ($marker.core_fresh_invocation -isnot [bool]) { throw 'Core fresh-invocation flag must be Boolean.' }
     function Assert-NativeCounts53($Counts, [string]$Label, [bool]$RequirePass) {
         foreach ($field in @('passed', 'failed', 'ignored', 'filtered_out')) {
             $value = $Counts.$field
@@ -77,6 +78,117 @@ function Read-NativeCpuAdmission53([string]$Repo, [string]$Source) {
     foreach ($pin in @($marker.source_files)) {
         $absolute = Resolve-NativePin53 $pin
         if (!$allPins.Add($absolute)) { throw 'Duplicate source/evidence paths cannot qualify the required pin count.' }
+    }
+    if (!$marker.core_fresh_invocation) {
+        $coreOrigin = 'e0300ca1391e0028b39aef2b61031a98934f00db'
+        if ($marker.core_source_equivalent -isnot [bool] -or $marker.core_source_equivalent -ne $true) {
+            throw 'Retained Core requires typed core_source_equivalent=true.'
+        }
+        $retainedCore = $marker.retained_core
+        if ($retainedCore.source_head -cne $coreOrigin -or
+            $retainedCore.basis.file -cne 'output/pass54-core-basis53.json' -or
+            $retainedCore.summary.file -cne 'docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass53/summary.json' -or
+            $retainedCore.trx.file -cne 'docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass53/core.trx') {
+            throw 'Retained Core requires the exact fresh Core53 origin e0300ca and canonical basis/summary/TRX.'
+        }
+        $coreBytes = @{}
+        foreach ($entry in @(@{name='basis';pin=$retainedCore.basis}, @{name='summary';pin=$retainedCore.summary},
+                @{name='trx';pin=$retainedCore.trx}, @{name='equivalence';pin=$retainedCore.equivalence})) {
+            $absolute = Resolve-NativePin53 $entry.pin
+            if (!$evidencePins.ContainsKey($absolute) -or $evidencePins[$absolute] -ne $entry.pin.sha256) {
+                throw ('Retained Core evidence must be pinned explicitly: ' + $entry.name)
+            }
+            $bytes = [IO.File]::ReadAllBytes($absolute)
+            if ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)) -ne $entry.pin.sha256) {
+                throw ('Retained Core evidence changed while being read: ' + $entry.name)
+            }
+            $coreBytes[$entry.name] = $bytes
+        }
+        $coreBasis = [Text.UTF8Encoding]::new($false, $true).GetString($coreBytes['basis']) | ConvertFrom-Json
+        $coreSummary = [Text.UTF8Encoding]::new($false, $true).GetString($coreBytes['summary']) | ConvertFrom-Json
+        $coreEquivalence = [Text.UTF8Encoding]::new($false, $true).GetString($coreBytes['equivalence']) | ConvertFrom-Json
+        if ($coreBasis.schema_version -ne 1 -or $coreBasis.source_head -cne $coreOrigin -or
+            $coreBasis.projects_have_only_local_Core_project_reference -isnot [bool] -or
+            $coreBasis.projects_have_only_local_Core_project_reference -ne $true -or
+            $coreBasis.trx.file -cne $retainedCore.trx.file -or $coreBasis.trx.sha256 -ne $retainedCore.trx.sha256 -or
+            $coreBasis.summary.file -cne $retainedCore.summary.file -or $coreBasis.summary.sha256 -ne $retainedCore.summary.sha256 -or
+            $coreSummary.schema_version -ne 1 -or $coreSummary.batch -ne 53 -or $coreSummary.source_head -cne $coreOrigin -or
+            $coreSummary.core.fresh_invocation -isnot [bool] -or $coreSummary.core.fresh_invocation -ne $true) {
+            throw 'Retained Core basis and summary must identify the actual fresh Core53 result and its pinned TRX.'
+        }
+        foreach ($counts in @($coreBasis.runtime_counts, $coreSummary.core)) {
+            foreach ($field in @('passed', 'failed', 'skipped', 'total')) {
+                $value = $counts.$field
+                $expected = if ($field -in @('passed', 'total')) { 285 } else { 0 }
+                if ($null -eq $value -or $value -is [bool] -or $value -isnot [ValueType] -or
+                    ![double]::IsFinite([double]$value) -or $value -ne $expected) {
+                    throw 'Retained Core53 summary/basis must record actual 285 passed, zero failed/skipped, 285 total.'
+                }
+            }
+        }
+        if ($coreEquivalence.schema_version -ne 1 -or $coreEquivalence.source_head -cne $Source -or
+            $coreEquivalence.base_source_head -cne $coreOrigin -or
+            $coreEquivalence.core_basis.file -cne $retainedCore.basis.file -or
+            $coreEquivalence.core_basis.sha256 -ne $retainedCore.basis.sha256) {
+            throw 'Retained Core equivalence must link the pinned Core53 basis to the exact final source.'
+        }
+        foreach ($flag in @('all_core_inputs_unchanged', 'git_source_delta_audited', 'projection_passed')) {
+            if ($coreEquivalence.$flag -isnot [bool] -or $coreEquivalence.$flag -ne $true) {
+                throw ('Retained Core source equivalence is not accepted: ' + $flag)
+            }
+        }
+        $basisInputs = @($coreBasis.core_inputs)
+        $currentInputs = @($coreEquivalence.core_inputs)
+        if ($coreBasis.core_input_count -is [bool] -or $coreBasis.core_input_count -isnot [ValueType] -or
+            $coreBasis.core_input_count -le 0 -or $coreBasis.core_input_count -ne $basisInputs.Count -or
+            $coreEquivalence.core_input_count -is [bool] -or $coreEquivalence.core_input_count -isnot [ValueType] -or
+            $coreEquivalence.core_input_count -ne $basisInputs.Count -or $currentInputs.Count -ne $basisInputs.Count) {
+            throw 'Retained Core equivalence requires the complete nonempty captured input set.'
+        }
+        $basisPins = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($pin in $basisInputs) {
+            $absolute = Resolve-NativePin53 $pin
+            if ($basisPins.ContainsKey($absolute)) { throw 'Retained Core basis has duplicate canonical input paths.' }
+            $basisPins.Add($absolute, $pin.sha256.ToUpperInvariant())
+        }
+        $currentPins = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($pin in $currentInputs) {
+            $absolute = Resolve-NativePin53 $pin
+            if (!$currentPins.Add($absolute) -or !$basisPins.ContainsKey($absolute) -or
+                $basisPins[$absolute] -ne $pin.sha256) {
+                throw 'Retained Core input paths/hashes differ from the captured Core53 basis.'
+            }
+        }
+        $trxStream = [IO.MemoryStream]::new($coreBytes['trx'], $false)
+        $trxSettings = [Xml.XmlReaderSettings]::new()
+        $trxSettings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
+        $trxSettings.XmlResolver = $null
+        $trxReader = $null
+        try {
+            $trxReader = [Xml.XmlReader]::Create($trxStream, $trxSettings)
+            $trxDocument = [Xml.XmlDocument]::new()
+            $trxDocument.XmlResolver = $null
+            $trxDocument.Load($trxReader)
+        } finally {
+            if ($null -ne $trxReader) { $trxReader.Dispose() }
+            $trxStream.Dispose()
+        }
+        $trxSummary = $trxDocument.SelectSingleNode("/*[local-name()='TestRun']/*[local-name()='ResultSummary']")
+        $trxCounts = if ($null -ne $trxSummary) { $trxSummary.SelectSingleNode("*[local-name()='Counters']")
+        } else { $null }
+        $trxResults = $trxDocument.SelectNodes("/*[local-name()='TestRun']/*[local-name()='Results']/*[local-name()='UnitTestResult']")
+        if ($null -eq $trxSummary -or $null -eq $trxCounts -or $trxSummary.GetAttribute('outcome') -cnotin @('Completed', 'Passed') -or
+            $trxResults.Count -ne 285 -or @($trxResults | Where-Object { $_.GetAttribute('outcome') -cne 'Passed' }).Count) {
+            throw 'Retained Core TRX must contain exactly 285 executed passing tests with no skipped or failed outcomes.'
+        }
+        foreach ($field in @('total', 'executed', 'passed', 'failed', 'error', 'timeout', 'aborted', 'inconclusive',
+                'passedButRunAborted', 'notRunnable', 'notExecuted', 'disconnected', 'warning', 'completed', 'inProgress', 'pending')) {
+            $value = $trxCounts.GetAttribute($field)
+            $expected = if ($field -in @('total', 'executed', 'passed')) { 285 } else { 0 }
+            if ($value -notmatch '^\d+$' -or [long]$value -ne $expected) {
+                throw 'Retained Core TRX must contain exactly 285 executed passing tests with no skipped or failed outcomes.'
+            }
+        }
     }
     $projectionPath = Resolve-NativePin53 $marker.projection
     if (!$evidencePins.ContainsKey($projectionPath) -or $evidencePins[$projectionPath] -ne $marker.projection.sha256) {
