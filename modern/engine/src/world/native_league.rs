@@ -54,11 +54,14 @@ impl Engine {
             return;
         }
         let current: Vec<_> = counts.iter().map(|(id, n)| (*id, *n)).collect();
+        let cycle = self
+            .native_cycle
+            .map_or(self.local_mode.cycle_in_round, |cycle| cycle.max(0) as u64);
         let state = &mut self.local_mode.contest_runtime;
         if state.effective_cycle_limit == 0 {
             state.effective_cycle_limit = config.maximum_cycles;
         }
-        if state.previous_population.is_empty() && self.local_mode.cycle_in_round < 500 {
+        if state.previous_population.is_empty() && cycle < 500 {
             state.previous_population = counts.clone();
         }
         state.cycles_since_population_sample =

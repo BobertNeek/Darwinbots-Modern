@@ -58,11 +58,9 @@ impl DynamicCostRuntimeState {
 impl Engine {
     pub(super) fn update_dynamic_cost_state(&mut self) {
         let population = self.cost_population();
-        self.dynamic_cost_state.advance(
-            &self.config.dna_costs,
-            population,
-            self.tick.saturating_add(1),
-        );
+        let cycle = self.next_native_cycle_or_tick();
+        self.dynamic_cost_state
+            .advance(&self.config.dna_costs, population, cycle);
     }
 }
 

@@ -12,7 +12,10 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
     private string _entrantOrderText = string.Empty;
     private string _initialLadderText = string.Empty;
     private uint? _seedingOpponent;
+    private bool _finishWithLadder;
     private LeagueSeriesSnapshot? _series;
+    private IReadOnlyList<SpeciesSnapshot> _species = [];
+    private int? _nativeCycle;
     private StagedEvolutionSnapshot? _evolution;
     public StagedEvolutionConfiguration? StagedEvolution { get; set; }
     public StagedEvolutionSnapshot? Evolution { get => _evolution; private set => Set(ref _evolution, value); }
@@ -46,16 +49,46 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
     public string EntrantOrderText { get => _entrantOrderText; set => Set(ref _entrantOrderText, value); }
     public string InitialLadderText { get => _initialLadderText; set => Set(ref _initialLadderText, value); }
     public uint? SeedingOpponent { get => _seedingOpponent; set => Set(ref _seedingOpponent, value); }
+    public bool FinishWithLadder { get => _finishWithLadder; set => Set(ref _finishWithLadder, value); }
     public LeagueSeriesSnapshot? Series { get => _series; private set => Set(ref _series, value); }
     public string SeriesLabel => Evolution is { } evolution
         ? evolution.Phase == "testing" ? $"TEST AGAINST STAGE {evolution.OpponentStage}"
             : evolution.Hidden ? "BASELINE HIDDEN" : "BASELINE ACTIVE"
+        : Series is { Workflow: LeagueWorkflow.PopulationSeeding } population
+        ? population.PopulationSeedingPhase switch
+        {
+            ClassicTournamentPhase.Tournament => $"CLASSIC TOURNAMENT · ROUND {population.TournamentRound} · {ActivePair(population)}",
+            ClassicTournamentPhase.Ladder => $"CLASSIC STEP LADDER · {ActivePair(population)}",
+            ClassicTournamentPhase.Complete => population.EnteredLadder ? "CLASSIC STEP LADDER COMPLETE" : "CLASSIC TOURNAMENT COMPLETE",
+            _ => population.ActiveSeed is { } seed ? $"POPULATION SEED · {SpeciesName(seed)}" : "POPULATION SEEDING COMPLETE",
+        }
         : Series?.ActiveMatch is { Count: 2 } pair
         ? $"MATCH {Series.MatchNumber} · SPECIES {pair[0]} vs {pair[1]}"
         : Series is { Workflow: not LeagueWorkflow.Direct } ? "SCHEDULE COMPLETE" : "DIRECT MATCH";
-    public string RankingLabel => Series is { Workflow: LeagueWorkflow.Seeding } series
+    public string RankingLabel => Series is { Workflow: LeagueWorkflow.PopulationSeeding } population
+        ? "POPULATION SCORES · " + string.Join(", ", population.PopulationSeeds.Select(seed => $"{SpeciesName(seed.Species)}: {seed.Population}"))
+        : Series is { Workflow: LeagueWorkflow.Seeding } series
         ? $"SEEDED · {string.Join(", ", series.Seeded)}"
         : Series is { Ladder.Count: > 0 } ranked ? $"RANKING · {string.Join(", ", ranked.Ladder)}" : string.Empty;
+    public bool IsPopulationSeeding => Workflow == LeagueWorkflow.PopulationSeeding;
+    // Classic match settings apply after its fixed population census.
+    public bool UsesCompetitiveSettings => true;
+    public bool UsesInitialLadder => Workflow == LeagueWorkflow.Ladder;
+    public bool UsesSeedFilter => Workflow == LeagueWorkflow.Seeding;
+    public bool CanAdjudicate => !IsPopulationSeeding
+        || Status == LocalModeStatus.Running && Series?.IsClassicCompetitive == true;
+    public bool CanExportPopulationSeeds => Series is { Workflow: LeagueWorkflow.PopulationSeeding, PopulationSeeds.Count: > 0 };
+    public bool CanExportClassicTournament => IsPopulationSeeding && Status == LocalModeStatus.Completed
+        && Series is { Workflow: LeagueWorkflow.PopulationSeeding, PopulationSeedingPhase: ClassicTournamentPhase.Complete,
+            Ladder.Count: > 0 } series && (series.EnteredLadder || series.Ladder.Count == 1);
+    public string ScheduleLabel => Series is not { Workflow: LeagueWorkflow.PopulationSeeding } series ? string.Empty
+        : series.PopulationSeedingPhase == ClassicTournamentPhase.Complete
+            ? "FINAL RANKING · " + Names(series.Ladder)
+        : series.PopulationSeedingPhase == ClassicTournamentPhase.Ladder
+            ? "RANKING · " + Names(series.Ladder) + " · QUEUED · " + Names(series.Pending)
+        : series.PopulationSeedingPhase == ClassicTournamentPhase.Tournament
+            ? "CURRENT · " + Names(series.Pending) + " · NEXT · " + Names(series.RoundWinners) + " · RESERVE · " + Names(series.Seeded)
+        : string.Empty;
 
     public LeaguePreset Preset { get => _preset; set => Set(ref _preset, value); }
     public uint MinimumRounds { get => _minimumRounds; set => Set(ref _minimumRounds, value); }
@@ -91,17 +124,23 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
 
     public string RoundLabel => Evolution is { } evolution
         ? evolution.Phase == "testing" ? $"CHAMPION TEST WINS {evolution.TestWins}" : $"ATTEMPT {RestartCount}"
+        : Series is { IsPopulationCensus: true } population
+        ? $"CANDIDATES SCORED · {population.PopulationSeeds.Count}"
         : CurrentRound == 0
         ? "NOT STARTED"
         : $"ROUND {CurrentRound} / {MaximumRounds}";
 
-    public string CycleLabel => Evolution is { Phase: not "testing" }
+    public string CycleLabel => Series is { IsPopulationCensus: true }
+        ? $"CYCLE {(_nativeCycle is { } cycle ? cycle.ToString("N0") : CycleInRound.ToString("N0"))} / 2,000"
+        : Evolution is { Phase: not "testing" }
         ? $"CYCLE {CycleInRound:N0}"
         : MaximumCycles == 0
         ? "CYCLE —"
         : $"CYCLE {CycleInRound:N0} / {MaximumCycles:N0}";
 
-    public string AdjudicationLabel => Adjudication?.Winner is { } winner
+    public string AdjudicationLabel => IsPopulationSeeding && (Series is null || Series.IsPopulationCensus)
+        ? "SCORE = NON-PLANT POPULATION AT CYCLE 2,000"
+        : Adjudication?.Winner is { } winner
         ? $"WINNER · SPECIES {winner}"
         : Adjudication is not null
             ? "NO WINNER"
@@ -138,8 +177,9 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         StagedEvolution = StagedEvolution,
         Workflow = Workflow,
         EntrantOrder = ParseSpeciesOrder(EntrantOrderText),
-        InitialLadder = ParseSpeciesOrder(InitialLadderText),
-        SeedingOpponent = SeedingOpponent,
+        InitialLadder = IsPopulationSeeding ? [] : ParseSpeciesOrder(InitialLadderText),
+        SeedingOpponent = Workflow == LeagueWorkflow.PopulationSeeding ? null : SeedingOpponent,
+        FinishWithLadder = IsPopulationSeeding && FinishWithLadder,
     };
 
     public static IReadOnlyList<uint> ParseSpeciesOrder(string text)
@@ -152,9 +192,11 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
 
     public void MarkConfigured() => Status = LocalModeStatus.Configured;
 
-    public void Observe(LocalModeSnapshot snapshot)
+    public void Observe(LocalModeSnapshot snapshot, int? nativeCycle = null, IReadOnlyList<SpeciesSnapshot>? species = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        _nativeCycle = nativeCycle;
+        _species = species ?? [];
         Kind = snapshot.Kind;
         Preset = snapshot.Preset;
         Status = snapshot.Status;
@@ -171,6 +213,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             EntrantOrderText = string.Join(", ", configuration.EntrantOrder);
             InitialLadderText = string.Join(", ", configuration.InitialLadder);
             SeedingOpponent = configuration.SeedingOpponent;
+            FinishWithLadder = configuration.FinishWithLadder;
             MinimumRounds = configuration.MinimumRounds;
             MaximumPopulation = configuration.MaximumPopulation;
             RestartOnExtinction = configuration.RestartOnExtinction;
@@ -192,7 +235,15 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         Raise(nameof(RoundLabel));
         Raise(nameof(CycleLabel));
         Raise(nameof(AdjudicationLabel));
+        Raise(nameof(SeriesLabel));
+        Raise(nameof(RankingLabel));
     }
+
+    private string SpeciesName(uint species) => species < _species.Count
+        ? _species[(int)species].Name : $"SPECIES {species}";
+    private string Names(IReadOnlyList<uint> species) => species.Count == 0 ? "—" : string.Join(", ", species.Select(SpeciesName));
+    private string ActivePair(LeagueSeriesSnapshot series) => series.ActiveMatch.Count == 2
+        ? $"{SpeciesName(series.ActiveMatch[0])} vs {SpeciesName(series.ActiveMatch[1])}" : "NO ACTIVE MATCH";
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {
@@ -202,7 +253,17 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         if (name == nameof(Evolution)) {
             Raise(nameof(EvolutionLabel)); Raise(nameof(SeriesLabel)); Raise(nameof(RoundLabel)); Raise(nameof(CycleLabel));
         }
-        if (name == nameof(Series)) { Raise(nameof(SeriesLabel)); Raise(nameof(RankingLabel)); }
+        if (name == nameof(Series)) {
+            Raise(nameof(SeriesLabel)); Raise(nameof(RankingLabel)); Raise(nameof(RoundLabel));
+            Raise(nameof(CycleLabel)); Raise(nameof(CanExportPopulationSeeds));
+            Raise(nameof(CanAdjudicate)); Raise(nameof(CanExportClassicTournament)); Raise(nameof(ScheduleLabel)); Raise(nameof(AdjudicationLabel));
+        }
+        if (name == nameof(Workflow)) {
+            Raise(nameof(CanAdjudicate)); Raise(nameof(AdjudicationLabel)); Raise(nameof(IsPopulationSeeding));
+            Raise(nameof(UsesCompetitiveSettings)); Raise(nameof(UsesSeedFilter));
+            Raise(nameof(UsesInitialLadder));
+            Raise(nameof(CanExportClassicTournament));
+        }
         if (name is nameof(Status) or nameof(CurrentRound) or nameof(MaximumRounds)
             or nameof(CycleInRound) or nameof(MaximumCycles) or nameof(Adjudication))
         {
@@ -210,6 +271,8 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             Raise(nameof(RoundLabel));
             Raise(nameof(CycleLabel));
             Raise(nameof(AdjudicationLabel));
+            Raise(nameof(CanExportClassicTournament));
+            Raise(nameof(CanAdjudicate));
         }
     }
 

@@ -28,8 +28,9 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         foreach (var file in files)
         {
             await using var stream = await file.OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            result.Add(new DesktopTextFile(file.Name, await reader.ReadToEndAsync(), LocalPath(file)));
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            result.Add(new DesktopTextFile(file.Name, LegacyDnaText.Decode(memory.ToArray()), LocalPath(file)));
         }
         return result;
     }
@@ -143,6 +144,18 @@ public sealed class AvaloniaDesktopStorageService : IDesktopStorageService
         await using var writer = new StreamWriter(stream);
         await writer.WriteAsync(dna);
         return true;
+    }
+
+    public async Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner)
+    {
+        var folders = await owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Choose a directory for DNA export",
+            AllowMultiple = false,
+        });
+        if (folders.FirstOrDefault() is not { } folder) return null;
+        return LocalPath(folder)
+            ?? throw new NotSupportedException("Population seed export requires a local directory.");
     }
 
     public async Task<bool> SaveOrganismAsync(

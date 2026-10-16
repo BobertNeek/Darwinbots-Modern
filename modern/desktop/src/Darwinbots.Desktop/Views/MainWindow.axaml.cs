@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -61,12 +62,15 @@ public sealed partial class MainWindow : Window
     private readonly IReadOnlyList<string> _startupArguments;
     private readonly IReadOnlyList<StartupDnaImport> _startupBots;
     private readonly WorldSetupOptions _setup;
+    private float? _initialNativeGaussianSpare;
+    private byte? _initialNativeSunChange;
     private readonly ObservableCollection<SpeciesImport> _insertionSpecies = [];
     private GlobalSettings _globalSettings;
     private ulong? _lastGraphRefreshTick;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
+    private bool _navigationInFlight;
     private readonly SemaphoreSlim _advanceGate = new(1, 1);
     private volatile bool _loadingSimulation;
     private OrganismKey? _moveOrganism;
@@ -124,7 +128,9 @@ public sealed partial class MainWindow : Window
         IDesktopStorageService storage)
     {
         _startupArguments = arguments.ToArray();
-        _setup = setup;
+        _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null };
+        _initialNativeGaussianSpare = setup.NativeGaussianSpare;
+        _initialNativeSunChange = setup.NativeSunChange;
         _globalSettings = setup.GlobalSettings;
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
@@ -412,9 +418,9 @@ public sealed partial class MainWindow : Window
             SetIgnoreErrors(IgnoreErrorsToggle.IsChecked == true);
     }
 
-    private void ToolbarNew_Click(object? sender, RoutedEventArgs e)
+    private async void ToolbarNew_Click(object? sender, RoutedEventArgs e)
     {
-        _viewModel.Status = OpenNewSimulationSetup().Status;
+        _viewModel.Status = (await OpenNewSimulationSetupAsync()).Status;
     }
 
     private void ToolbarSpecies_Changed(object? sender, SelectionChangedEventArgs e)
@@ -580,7 +586,7 @@ public sealed partial class MainWindow : Window
             _ => Task.FromResult(ToggleIgnoreErrors()));
         handlers[LegacyCommandId.FileNewSimulation] = Handler(
             () => LegacyCommandState.Available,
-            _ => Task.FromResult(OpenNewSimulationSetup()));
+            _ => OpenNewSimulationSetupAsync());
         handlers[LegacyCommandId.FileLoadSimulation] = Handler(
             EngineState,
             async _ => await LoadSimulationCommandAsync());
@@ -950,11 +956,64 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
     }
 
-    private LegacyCommandResult OpenNewSimulationSetup()
+    private Task<LegacyCommandResult> OpenNewSimulationSetupAsync() => ReplaceSimulationAsync(openSetup: true);
+
+    private async Task<LegacyCommandResult> ReplaceSimulationAsync(bool openSetup)
     {
-        new SetupWindow(_storage).Show();
-        Close();
-        return LegacyCommandResult.Success("NEW SIMULATION SETUP");
+        if (_navigationInFlight) return LegacyCommandResult.Failure("NEW SIMULATION ALREADY OPENING");
+        _navigationInFlight = true;
+        _runTimer.Stop();
+        await _advanceGate.WaitAsync();
+        try
+        {
+            // gasdev's spare and SunChange belong to the original process.
+            // Capture both after earlier queued work, before disposing this world.
+            var spare = _initialNativeGaussianSpare;
+            var sunChange = _initialNativeSunChange;
+            if (_session is not null)
+            {
+                var context = await _session.ReadNativeProcessContextAsync();
+                spare = context.GaussianSpare;
+                sunChange = context.SunChange;
+            }
+            if (openSetup)
+            {
+                var setupWindow = new SetupWindow(_storage, spare, sunChange);
+                setupWindow.WorldCreated += options =>
+                {
+                    var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
+                    SetApplicationMainWindow(replacement);
+                    replacement.Show();
+                    setupWindow.Close();
+                };
+                SetApplicationMainWindow(setupWindow);
+                setupWindow.Show();
+            }
+            else
+            {
+                var replacement = new MainWindow(_startupArguments,
+                    CreateNextWorldSetup() with { NativeGaussianSpare = spare, NativeSunChange = sunChange }, _engineFactory, _storage);
+                SetApplicationMainWindow(replacement);
+                replacement.Show();
+            }
+            Close();
+            return LegacyCommandResult.Success(openSetup ? "NEW SIMULATION SETUP" : "WORLD RESET");
+        }
+        catch (Exception error)
+        {
+            return LegacyCommandResult.Failure($"NEW SIMULATION ERROR · {error.Message}");
+        }
+        finally
+        {
+            _advanceGate.Release();
+            _navigationInFlight = false;
+        }
+    }
+
+    private static void SetApplicationMainWindow(Window window)
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.MainWindow = window;
     }
 
     private LegacyCommandResult OpenLeagueTab()
@@ -1845,9 +1904,15 @@ public sealed partial class MainWindow : Window
                 System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(CreateNextWorldSetup()));
             _diagnostics.BeginSession(_storage.FindLastStart());
             _runtimeClock.Restart();
-            var worldSetup = CreateNextWorldSetup();
+            var worldSetup = CreateNextWorldSetup() with
+            {
+                NativeGaussianSpare = _initialNativeGaussianSpare,
+                NativeSunChange = _initialNativeSunChange,
+            };
             _activeCostMultiplier = worldSetup.GlobalSettings.Costs.GlobalMultiplier;
             _session = new SimulationSession(_engineFactory.Create(worldSetup));
+            _initialNativeGaussianSpare = null;
+            _initialNativeSunChange = null;
             _insertion = new WorldInsertionController(_session);
             _session.SnapshotPublished += snapshot =>
             {
@@ -1897,9 +1962,12 @@ public sealed partial class MainWindow : Window
             foreach (var bot in _startupBots)
             {
                 compatibilityWarnings.AddRange((await _session.ImportDnaAsync(
-                    await File.ReadAllTextAsync(bot.Path),
+                    LegacyDnaText.Decode(await File.ReadAllBytesAsync(bot.Path)),
                     bot.Position)).CompatibilityWarnings);
             }
+            // Worker completion means the snapshot was queued for presentation.
+            // Do not announce readiness ahead of those normal-priority UI posts.
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
             if (compatibilityWarnings.Count > 0) _viewModel.Status = $"DNA COMPATIBILITY · {string.Join(" · ", compatibilityWarnings.Distinct())}";
             else if (_startupBots.Count > 0) _viewModel.Status = $"IMPORTED {_startupBots.Count} STARTUP BOT(S)";
             else if (_setup.Species.Count > 0) _viewModel.Status = $"WORLD READY · {_setup.Species.Count} SPECIES";
@@ -1974,13 +2042,15 @@ public sealed partial class MainWindow : Window
             ToolbarSlot17.SelectedIndex = InsertionSpeciesSelector.SelectedIndex;
             if (_session.LatestSnapshot.LocalMode.Configuration is { } localMode)
             {
-                _viewModel.LocalMode.Observe(_session.LatestSnapshot.LocalMode);
+                _viewModel.LocalMode.Observe(_session.LatestSnapshot.LocalMode,
+                    _session.LatestSnapshot.NativeCycle, _session.LatestSnapshot.Species);
                 LocalModeKindSelector.SelectedIndex = (int)localMode.Kind;
                 LocalModePreset.SelectedIndex = (int)localMode.Preset;
                 LocalModeWorkflow.SelectedIndex = (int)localMode.Workflow;
                 ModeEntrantOrder.Text = string.Join(", ", localMode.EntrantOrder);
                 ModeInitialLadder.Text = string.Join(", ", localMode.InitialLadder);
                 ModeSeedingOpponent.Value = localMode.SeedingOpponent;
+                ModeFinishWithLadder.IsChecked = localMode.FinishWithLadder;
                 if (localMode.StagedEvolution is { } evolution) {
                     _globalSettings = _globalSettings with { Evolution = _globalSettings.Evolution with {
                         Enabled = true, Mode = evolution.Mode, SourceBot = string.Empty,
@@ -2149,12 +2219,9 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = PauseSimulation().Status;
     }
 
-    private void Reset_Click(object? sender, RoutedEventArgs e)
+    private async void Reset_Click(object? sender, RoutedEventArgs e)
     {
-        _runTimer.Stop();
-        var replacement = new MainWindow(_startupArguments, CreateNextWorldSetup(), _engineFactory, _storage);
-        replacement.Show();
-        Close();
+        _viewModel.Status = (await ReplaceSimulationAsync(openSetup: false)).Status;
     }
 
     private void Speed_Changed(object? sender, SelectionChangedEventArgs e)
@@ -2375,6 +2442,13 @@ public sealed partial class MainWindow : Window
         _viewModel.LocalMode.MarkConfigured();
     }
 
+    private void LocalModeWorkflow_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_controlsReady) return;
+        _viewModel.LocalMode.Workflow = (LeagueWorkflow)Math.Clamp(LocalModeWorkflow.SelectedIndex, 0, 4);
+        _viewModel.LocalMode.MarkConfigured();
+    }
+
     private async void ConfigureLocalMode_Click(object? sender, RoutedEventArgs e)
     {
         if (_session is null)
@@ -2425,8 +2499,19 @@ public sealed partial class MainWindow : Window
         try
         {
             var snapshot = _session.LatestSnapshot;
-            var winner = snapshot.LocalMode.Results.LastOrDefault()?.Winner
-                ?? snapshot.Organisms.Where(organism => !organism.Vegetable)
+            if (snapshot.LocalMode.Configuration?.Workflow == LeagueWorkflow.PopulationSeeding
+                && (snapshot.LocalMode.Status != LocalModeStatus.Running || snapshot.LocalMode.Series?.IsClassicCompetitive != true))
+            {
+                _viewModel.Status = "POPULATION SEEDING IS SCORED AT CYCLE 2,000";
+                return;
+            }
+            var pair = snapshot.LocalMode.Series?.ActiveMatch;
+            var resultStart = snapshot.LocalMode.Evolution?.TestResultCursor
+                ?? snapshot.LocalMode.Series?.MatchStartResult ?? 0;
+            var winner = snapshot.LocalMode.Results.Skip(Math.Max(0, resultStart)).LastOrDefault()?.Winner;
+            if (winner is { } id && pair is { Count: 2 } && !pair.Contains(id)) winner = null;
+            winner ??= snapshot.Organisms.Where(organism => !organism.Vegetable && !organism.IsCorpse
+                    && (pair is not { Count: 2 } || pair.Contains(organism.Species)))
                     .GroupBy(organism => organism.Species)
                     .OrderByDescending(group => group.Count())
                     .Select(group => (uint?)group.Key)
@@ -2438,6 +2523,79 @@ public sealed partial class MainWindow : Window
             _viewModel.Status = "LOCAL ROUND ADJUDICATED";
         }
         catch (Exception error) { _viewModel.Status = $"LOCAL ADJUDICATION FAILED · {error.Message}"; }
+    }
+
+    private async void ExportPopulationSeeds_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null) return;
+        _runTimer.Stop();
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is null) return;
+            var snapshot = _session.LatestSnapshot;
+            if (snapshot.LocalMode.Series is not { Workflow: LeagueWorkflow.PopulationSeeding } series
+                || series.PopulationSeeds.Count == 0)
+            {
+                _viewModel.Status = "NO POPULATION SEEDS TO EXPORT";
+                return;
+            }
+            if (await _storage.PickPopulationSeedDirectoryAsync(this) is not { } directory)
+            {
+                _viewModel.Status = "POPULATION SEED EXPORT CANCELLED";
+                return;
+            }
+            var seeds = new List<PopulationSeedDna>(series.PopulationSeeds.Count);
+            var scores = series.SeedFileOrder.Count == 0 ? series.PopulationSeeds
+                : series.SeedFileOrder.Select(id => series.PopulationSeeds.Single(score => score.Species == id)).ToArray();
+            if (scores.Count != series.PopulationSeeds.Count)
+                throw new InvalidDataException("Population seed file order is incomplete.");
+            foreach (var score in scores)
+            {
+                if (score.Species >= snapshot.Species.Count)
+                    throw new InvalidDataException("Population seed source species is missing.");
+                var dna = await _session.ExportSpeciesTemplateDnaAsync(score.Species);
+                seeds.Add(new PopulationSeedDna(score, snapshot.Species[(int)score.Species].Name, dna));
+            }
+            var paths = await PopulationSeedingExport.WriteAsync(directory, seeds);
+            _viewModel.Status = $"EXPORTED {paths.Count} POPULATION SEEDS";
+        }
+        catch (Exception error) { _viewModel.Status = $"POPULATION SEED EXPORT FAILED · {error.Message}"; }
+        finally { _advanceGate.Release(); }
+    }
+
+    private async void ExportClassicTournament_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_session is null) return;
+        _runTimer.Stop();
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is null) return;
+            var snapshot = _session.LatestSnapshot;
+            if (!ClassicTournamentDnaExport.IsEligible(snapshot.LocalMode))
+            {
+                _viewModel.Status = "CLASSIC TOURNAMENT IS NOT COMPLETE";
+                return;
+            }
+            if (await _storage.PickPopulationSeedDirectoryAsync(this) is not { } directory)
+            {
+                _viewModel.Status = "CLASSIC TOURNAMENT DNA EXPORT CANCELLED";
+                return;
+            }
+            var finalists = new List<ClassicTournamentDna>();
+            foreach (var id in snapshot.LocalMode.Series!.Ladder)
+            {
+                if (id >= snapshot.Species.Count)
+                    throw new InvalidDataException("Classic tournament source species is missing.");
+                finalists.Add(new(id, snapshot.Species[(int)id].Name,
+                    await _session.ExportSpeciesTemplateDnaAsync(id)));
+            }
+            var paths = await ClassicTournamentDnaExport.WriteAsync(directory, snapshot.LocalMode, finalists);
+            _viewModel.Status = $"EXPORTED {paths.Count} CLASSIC TOURNAMENT DNA FILE(S)";
+        }
+        catch (Exception error) { _viewModel.Status = $"CLASSIC TOURNAMENT DNA EXPORT FAILED · {error.Message}"; }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LocalModeConfig> ResolveStagedEvolutionAsync(LocalModeConfig config)
@@ -2452,7 +2610,7 @@ public sealed partial class MainWindow : Window
         };
         var source = config.StagedEvolution?.SourceDna ?? string.Empty;
         if (mode != EvolutionMode.Zerobot && !string.IsNullOrWhiteSpace(settings.SourceBot))
-            source = await File.ReadAllTextAsync(Path.GetFullPath(settings.SourceBot));
+            source = LegacyDnaText.Decode(await File.ReadAllBytesAsync(Path.GetFullPath(settings.SourceBot)));
         var evolution = new StagedEvolutionConfiguration(mode, source, (float)settings.StageLength,
             (uint)settings.CycleLength, settings.NormalizeDnaSize, settings.ZerobotInitialDnaLength,
             settings.AutoGraphs) { FitnessWeight = (ushort)_globalSettings.Main.EffectiveFindBestWeight };
@@ -2464,11 +2622,12 @@ public sealed partial class MainWindow : Window
     {
         _viewModel.LocalMode.SelectKind(LocalModeKindFromIndex(LocalModeKindSelector.SelectedIndex));
         _viewModel.LocalMode.Preset = PresetFromIndex(LocalModePreset.SelectedIndex);
-        _viewModel.LocalMode.Workflow = (LeagueWorkflow)Math.Clamp(LocalModeWorkflow.SelectedIndex, 0, 3);
+        _viewModel.LocalMode.Workflow = (LeagueWorkflow)Math.Clamp(LocalModeWorkflow.SelectedIndex, 0, 4);
         _viewModel.LocalMode.EntrantOrderText = ModeEntrantOrder.Text ?? string.Empty;
         _viewModel.LocalMode.InitialLadderText = ModeInitialLadder.Text ?? string.Empty;
         _viewModel.LocalMode.SeedingOpponent = _viewModel.LocalMode.Workflow == LeagueWorkflow.Seeding
             ? (uint)Math.Clamp(ModeSeedingOpponent.Value ?? 0m, 0m, uint.MaxValue) : null;
+        _viewModel.LocalMode.FinishWithLadder = ModeFinishWithLadder.IsChecked == true;
         _viewModel.LocalMode.MinimumRounds = ReadUInt(ModeMinimumRounds.Value, 5);
         _viewModel.LocalMode.MaximumRounds = ReadUInt(ModeMaximumRounds.Value, 1);
         _viewModel.LocalMode.MaximumCycles = ReadULong(ModeMaximumCycles.Value, 15_000);
@@ -2687,12 +2846,12 @@ public sealed partial class MainWindow : Window
                 if (_lastAutomaticSaveTick is { } savedTick && before.Tick < savedTick)
                     _lastAutomaticSaveTick = null;
                 var interval = _liveEnvironment.Recording?.AutosaveInterval ?? 0;
-                var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode);
+                var batch = CycleAutosavePolicy.LimitBatch(before.Tick, count, _safemodeBackup, interval, before.LocalMode, before.NativeCycle);
                 await _session.StepAsync(batch);
                 count -= batch;
                 var after = _session.LatestSnapshot;
                 if (_lastAutomaticSaveTick != after.Tick
-                    && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode))
+                    && CycleAutosavePolicy.IsDue(after.Tick, _safemodeBackup, interval, after.LocalMode, after.NativeCycle))
                     await SaveAutomaticCheckpointAsync();
             }
         }

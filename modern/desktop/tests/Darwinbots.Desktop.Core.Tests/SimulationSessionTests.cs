@@ -6,6 +6,21 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class SimulationSessionTests
 {
     [Fact]
+    public async Task StartupTemplateExportIsQueuedBehindEarlierCommandsWithoutAdvancingTheWorld()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        await session.ImportDnaAsync("start 1 .up store stop");
+        await session.ReplaceDnaAsync(0, 0, "start 2 .up store stop");
+
+        Assert.Equal("start 1 .up store stop", await session.ExportSpeciesTemplateDnaAsync(7));
+        Assert.Equal("start 2 .up store stop", await session.ExportDnaAsync(0, 0));
+        Assert.Equal(7u, engine.LastTemplateSpecies);
+        Assert.Equal(0ul, session.LatestSnapshot.Tick);
+        Assert.Single(engine.ExecutionThreads);
+    }
+
+    [Fact]
     public async Task RefreshPublishesExistingWorldWithoutAdvancingIt()
     {
         var engine = new FakeEngineClient();
@@ -72,6 +87,44 @@ public sealed class SimulationSessionTests
 
         Assert.Equal("start\nstop", engine.LastDna);
         Assert.Equal(1, session.LatestSnapshot.Population);
+    }
+
+    [Fact]
+    public async Task NativeProcessContextReadWaitsForEarlierWorkOnTheSameEngineThread()
+    {
+        using var release = new ManualResetEventSlim();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeEngineClient { NativeGaussianSpare = 1.25f };
+        engine.BeforeTick = () =>
+        {
+            started.SetResult();
+            if (!release.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Gated engine tick was not released.");
+            engine.NativeGaussianSpare = 2.5f;
+            engine.NativeSunChange = 12;
+        };
+        await using var session = new SimulationSession(engine);
+        var step = session.StepAsync();
+        Task<(float? GaussianSpare, byte SunChange)> read;
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            read = session.ReadNativeProcessContextAsync();
+            Assert.False(read.IsCompleted);
+        }
+        finally { release.Set(); }
+        await step;
+
+        var context = await read;
+        Assert.Equal(2.5f, context.GaussianSpare);
+        Assert.Equal((byte)12, context.SunChange);
+        Assert.Equal(1ul, session.LatestSnapshot.Tick);
+        Assert.Single(engine.ExecutionThreads);
+        Assert.NotEqual(Environment.CurrentManagedThreadId, engine.ExecutionThreads.Single());
+        Assert.Equal(2.5f, await session.ReadNativeGaussianSpareAsync());
+        Assert.Single(engine.ExecutionThreads);
+        engine.NativeGaussianSpare = null;
+        Assert.Null(await session.ReadNativeGaussianSpareAsync());
+        Assert.Equal(1ul, session.LatestSnapshot.Tick);
     }
 
     [Fact]
@@ -327,6 +380,8 @@ internal sealed class FakeEngineClient : IEngineClient
 
     public string Backend { get; private set; } = "CPU";
     public string? LastDna { get; private set; }
+    public string? StartupDna { get; private set; }
+    public uint? LastTemplateSpecies { get; private set; }
     public float[]? LastImportPosition { get; private set; }
     public SpeciesImport? LastSpeciesImport { get; private set; }
     public SpeciesImport? LastInsertedSpecies { get; private set; }
@@ -353,6 +408,19 @@ internal sealed class FakeEngineClient : IEngineClient
     public bool SavedNormally { get; private set; }
     public bool SavedWithoutMutations { get; private set; }
     public List<int> RecognitionFudgingUpdates { get; } = [];
+    public Action? BeforeTick { get; set; }
+    public float? NativeGaussianSpare { get; set; }
+    public byte NativeSunChange { get; set; }
+    public byte ReadNativeSunChange()
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        return NativeSunChange;
+    }
+    public float? ReadNativeGaussianSpare()
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        return NativeGaussianSpare;
+    }
 
     public void UpdateRecognitionFudging(int mode)
     {
@@ -387,6 +455,7 @@ internal sealed class FakeEngineClient : IEngineClient
     public void Tick(uint count = 1)
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        BeforeTick?.Invoke();
         _tick += count;
     }
 
@@ -394,6 +463,7 @@ internal sealed class FakeEngineClient : IEngineClient
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         LastDna = dna;
+        StartupDna ??= dna;
         LastImportPosition = position;
         _population++;
         return new DnaImportReport(["legacy warning"]);
@@ -445,6 +515,13 @@ internal sealed class FakeEngineClient : IEngineClient
     }
 
     public string ExportDna(uint slot, uint generation) => _dna;
+
+    public string ExportSpeciesTemplateDna(uint species)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastTemplateSpecies = species;
+        return StartupDna ?? throw new InvalidOperationException("No startup template.");
+    }
 
     public OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position)
     {

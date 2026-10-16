@@ -7,6 +7,43 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class MainWindowViewModelTests
 {
     [Fact]
+    public void OriginalCycleDisplayCanResetWhileSchedulingTicksAndDeltasKeepAdvancing()
+    {
+        var viewModel = new MainWindowViewModel();
+        var notifications = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+        var snapshot = new EngineSnapshot(20, 0, "CPU", [])
+        {
+            NativeCycle = -1,
+            Stats = SimulationStatsSnapshot.Empty with { TotalEnergy = 100, ShotsFired = 2 },
+            TicksPerSecond = 12.5,
+        };
+        viewModel.Update(snapshot);
+        Assert.Equal(20ul, viewModel.Tick);
+        Assert.Equal(-1, viewModel.NativeCycle);
+        Assert.Equal("-1", viewModel.CycleLabel);
+        Assert.Equal("Cycles -1", viewModel.StatusPanels[5].Display);
+        Assert.Contains(nameof(MainWindowViewModel.CycleLabel), notifications);
+
+        viewModel.Update(snapshot with
+        {
+            Tick = 21, NativeCycle = 0,
+            Stats = snapshot.Stats with { TotalEnergy = 150, ShotsFired = 5 },
+        });
+        Assert.Equal(21ul, viewModel.Tick);
+        Assert.Equal("0", viewModel.CycleLabel);
+        Assert.Equal("Cycles 0", viewModel.StatusPanels[5].Display);
+        Assert.Equal("Shots 3", viewModel.StatusPanels[9].Display);
+        Assert.Equal("Delta 50", viewModel.StatusPanels[11].Display);
+        Assert.Equal(12.5, viewModel.TicksPerSecond);
+
+        viewModel.Update(snapshot with { Tick = ulong.MaxValue, NativeCycle = null });
+        Assert.Null(viewModel.NativeCycle);
+        Assert.Equal(ulong.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture), viewModel.CycleLabel);
+        Assert.Equal($"Cycles {viewModel.CycleLabel}", viewModel.StatusPanels[5].Display);
+    }
+
+    [Fact]
     public void SnapshotUpdateExposesAutomaticSelectionAndPhenotypeColor()
     {
         var organism = new OrganismSnapshot(

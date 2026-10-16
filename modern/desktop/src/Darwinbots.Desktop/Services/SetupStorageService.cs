@@ -14,17 +14,25 @@ public static class SetupStorageService
         if (IsModernJson(path)) return Encoding.UTF8.GetBytes(settings.ToJson());
         if (Path.IsPathRooted(path) && settings.Species.Count > 0)
         {
+            var originals = settings.Species.Select(value => (Species: value, Bytes: LegacyDnaText.Encode(value.Dna))).ToArray();
             var directory = Path.ChangeExtension(path, ".robots");
-            Directory.CreateDirectory(directory);
             var species = new List<SpeciesImport>();
-            foreach (var value in settings.Species)
+            foreach (var original in originals)
             {
-                var data = Encoding.UTF8.GetBytes(value.Dna);
+                var value = original.Species;
+                var data = original.Bytes;
                 var dnaPath = Path.Combine(directory, Convert.ToHexString(SHA256.HashData(data)) + ".txt");
-                if (!File.Exists(dnaPath)) File.WriteAllBytes(dnaPath, data);
                 species.Add(value with { DnaPath = dnaPath });
             }
             settings = settings with { Species = species };
+            var encoded = Db2SettingsCodec.Encode(settings);
+            Directory.CreateDirectory(directory);
+            foreach (var original in originals)
+            {
+                var dnaPath = Path.Combine(directory, Convert.ToHexString(SHA256.HashData(original.Bytes)) + ".txt");
+                if (!File.Exists(dnaPath)) File.WriteAllBytes(dnaPath, original.Bytes);
+            }
+            return encoded;
         }
         return Db2SettingsCodec.Encode(settings);
     }
@@ -51,7 +59,7 @@ public static class SetupStorageService
         };
         var source = candidates.FirstOrDefault(File.Exists)
             ?? throw new FileNotFoundException($"DNA file for legacy species '{species.Name}' was not found.", species.DnaPath);
-        return species with { Dna = File.ReadAllText(source), DnaPath = Path.GetFullPath(source) };
+        return species with { Dna = LegacyDnaText.Decode(File.ReadAllBytes(source)), DnaPath = Path.GetFullPath(source) };
     }
 
     private static bool IsModernJson(string path) =>

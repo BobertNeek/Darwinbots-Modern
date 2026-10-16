@@ -226,6 +226,10 @@ impl Default for VegetationSettings {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EngineConfig {
     pub seed: u64,
+    /// Host-supplied seed for original process-style restarts (Timer * 100).
+    /// Headless callers may omit this to keep their configured seed reproducible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_restart_seed: Option<u64>,
     pub organism_capacity: usize,
     #[serde(default = "default_vegetable_population_cap")]
     pub vegetable_population_cap: usize,
@@ -295,6 +299,7 @@ impl Default for EngineConfig {
     fn default() -> Self {
         Self {
             seed: 1,
+            native_restart_seed: None,
             organism_capacity: MAX_ROBOTS,
             vegetable_population_cap: default_vegetable_population_cap(),
             world_width: 16_000.0,

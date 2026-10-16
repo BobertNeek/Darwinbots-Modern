@@ -35,8 +35,8 @@
           <Button x:Name="TrayButton" Height="34" Content="TRAY" Click="HideToTray_Click" />
         </StackPanel>
         <StackPanel Grid.Column="8" Margin="8,0,0,0" VerticalAlignment="Center">
-          <TextBlock Classes="section" Text="TICK" />
-          <TextBlock Text="{Binding Tick}" FontWeight="Bold" FontSize="16" />
+          <TextBlock Classes="section" Text="CYCLE" />
+          <TextBlock x:Name="CycleValue" Text="{Binding CycleLabel}" FontWeight="Bold" FontSize="16" AutomationProperties.Name="Simulation cycle" />
           <TextBlock Text="{Binding TicksPerSecond, StringFormat='{}{0:0.0} t/s'}" FontSize="11" Foreground="#69716D"/>
           <TextBlock Text="{Binding SnapshotsPerSecond, StringFormat='{}{0:0.0} snap/s'}" FontSize="10" Foreground="#69716D"/>
         </StackPanel>
@@ -155,27 +155,30 @@
                     <ComboBoxItem Content="SINGLE STORE" ToolTip.Tip="One store instruction per entrant. Inc and dec also count." />
                   </ComboBox>
                 </Grid>
-                <ComboBox x:Name="LocalModeWorkflow" SelectedIndex="0">
+                <ComboBox x:Name="LocalModeWorkflow" SelectedIndex="0" SelectionChanged="LocalModeWorkflow_Changed">
                   <ComboBoxItem Content="DIRECT MATCH" />
                   <ComboBoxItem Content="STEP LADDER" />
-                  <ComboBoxItem Content="KNOCKOUT TOURNAMENT" />
+                  <ComboBoxItem Content="MODERN KNOCKOUT BRACKET" />
                   <ComboBoxItem Content="SEED FILTER" />
+                  <ComboBoxItem Content="CLASSIC TOURNAMENT" ToolTip.Tip="Population seeding at original cycle 2000, then the original tournament schedule." />
                 </ComboBox>
+                <TextBlock x:Name="PopulationSeedHelp" IsVisible="{Binding LocalMode.IsPopulationSeeding}" Text="Each candidate runs alone with plants to original cycle 2,000, including extinction. The original tournament then starts automatically. Match settings below apply after seeding." FontSize="10" TextWrapping="Wrap" />
+                <CheckBox x:Name="ModeFinishWithLadder" IsVisible="{Binding LocalMode.IsPopulationSeeding}" IsChecked="{Binding LocalMode.FinishWithLadder, Mode=TwoWay}" Content="FINISH AS STEP LADDER BELOW 32 ENTRANTS" FontSize="10" />
                 <TextBox x:Name="ModeEntrantOrder" Watermark="Entrant species IDs (blank: registered order)" FontSize="10" />
-                <TextBox x:Name="ModeInitialLadder" Watermark="Existing ladder, best species ID first (optional)" FontSize="10" />
-                <StackPanel Spacing="2"><TextBlock Text="Seed filter reference species ID" FontSize="10"/>
+                <TextBox x:Name="ModeInitialLadder" IsEnabled="{Binding LocalMode.UsesInitialLadder}" Watermark="Existing ladder, best species ID first (optional)" FontSize="10" />
+                <StackPanel Spacing="2" IsEnabled="{Binding LocalMode.UsesSeedFilter}"><TextBlock Text="Seed filter reference species ID" FontSize="10"/>
                   <NumericUpDown x:Name="ModeSeedingOpponent" Minimum="0" Maximum="1000000" Value="0" />
                 </StackPanel>
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="5" IsEnabled="{Binding LocalMode.UsesCompetitiveSettings}">
                   <StackPanel Spacing="2"><TextBlock Text="Rounds" FontSize="10"/><NumericUpDown x:Name="ModeMinimumRounds" Minimum="1" Maximum="100" Value="5" /></StackPanel>
                   <StackPanel Grid.Column="1" Spacing="2"><TextBlock Text="Round cap" FontSize="10"/><NumericUpDown x:Name="ModeMaximumRounds" Minimum="1" Maximum="100" Value="1" /></StackPanel>
                 </Grid>
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="5">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="5" IsEnabled="{Binding LocalMode.UsesCompetitiveSettings}">
                   <StackPanel Spacing="2"><TextBlock Text="Cycles" FontSize="10"/><NumericUpDown x:Name="ModeMaximumCycles" Minimum="1" Maximum="1000000000" Value="15000" /></StackPanel>
                   <StackPanel Grid.Column="1" Spacing="2"><TextBlock Text="Population cap" FontSize="10"/><NumericUpDown x:Name="ModePopulationCap" Minimum="1" Maximum="1000000" Value="700" /></StackPanel>
                 </Grid>
                 <StackPanel Spacing="2"><TextBlock Text="Energy handicap" FontSize="10"/><NumericUpDown x:Name="ModeEnergyHandicap" Minimum="-100000" Maximum="100000" Value="0" /></StackPanel>
-                <CheckBox x:Name="ModeRestartOnExtinction" Content="RESTART AFTER EXTINCTION" IsChecked="True" FontSize="10" />
+                <CheckBox x:Name="ModeRestartOnExtinction" IsEnabled="{Binding LocalMode.UsesCompetitiveSettings}" Content="RESTART AFTER EXTINCTION" IsChecked="True" FontSize="10" />
                 <CheckBox x:Name="ModeProhibitInformation" Content="PROHIBIT INFORMATION SHOTS" FontSize="10" />
                 <CheckBox x:Name="ModeProhibitViruses" Content="PROHIBIT VIRUSES" FontSize="10" />
                 <CheckBox x:Name="ModeProhibitSexual" Content="PROHIBIT SEXUAL REPRODUCTION" FontSize="10" />
@@ -183,7 +186,7 @@
                   <Button x:Name="ConfigureModeButton" Content="CONFIGURE" Click="ConfigureLocalMode_Click" />
                   <Button x:Name="StartModeButton" Grid.Column="1" Content="START" Click="StartLocalMode_Click" />
                   <Button x:Name="RestartModeButton" Grid.Row="1" Content="RESTART" Click="RestartLocalMode_Click" />
-                  <Button x:Name="AdjudicateModeButton" Grid.Row="1" Grid.Column="1" Content="ADJUDICATE" Click="AdjudicateLocalMode_Click" />
+                  <Button x:Name="AdjudicateModeButton" Grid.Row="1" Grid.Column="1" Content="ADJUDICATE" IsEnabled="{Binding LocalMode.CanAdjudicate}" Click="AdjudicateLocalMode_Click" />
                 </Grid>
                 <TextBox x:Name="LocalModeReason" PlaceholderText="Adjudication reason" FontSize="10" />
                 <Border Background="#E5ECD9" Padding="6">
@@ -191,12 +194,15 @@
                     <TextBlock Text="{Binding LocalMode.StatusLabel}" FontWeight="Bold" />
                     <TextBlock Text="{Binding LocalMode.EvolutionLabel}" FontSize="10" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding LocalMode.SeriesLabel}" FontSize="10" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding LocalMode.RankingLabel}" FontSize="10" TextWrapping="Wrap" />
+                    <TextBlock x:Name="PopulationSeedScores" Text="{Binding LocalMode.RankingLabel}" FontSize="10" TextWrapping="Wrap" />
+                    <TextBlock x:Name="ClassicTournamentSchedule" Text="{Binding LocalMode.ScheduleLabel}" FontSize="10" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding LocalMode.RoundLabel}" FontSize="10" />
                     <TextBlock Text="{Binding LocalMode.CycleLabel}" FontSize="10" />
                     <TextBlock Text="{Binding LocalMode.AdjudicationLabel}" FontSize="10" Foreground="#2D826F" />
                   </StackPanel>
                 </Border>
+                <Button x:Name="ExportPopulationSeedsButton" Content="EXPORT POPULATION SEEDS" IsEnabled="{Binding LocalMode.CanExportPopulationSeeds}" Click="ExportPopulationSeeds_Click" ToolTip.Tip="Choose a directory for seeded population-score DNA files. Existing files are preserved." />
+                <Button x:Name="ExportClassicTournamentButton" Content="Export classic tournament DNA…" IsEnabled="{Binding LocalMode.CanExportClassicTournament}" Click="ExportClassicTournament_Click" ToolTip.Tip="Export the completed champion or actual step ladder using original filenames and startup DNA." />
               </StackPanel>
             </Expander>
             <Expander x:Name="HistoryExpander" Header="History" HorizontalContentAlignment="Stretch"><TextBlock Margin="4,5" Text="Population and energy history are shown below." TextWrapping="Wrap" Foreground="#69716D" FontSize="11"/></Expander>

@@ -11,7 +11,7 @@ impl Engine {
         if settings.mode == crate::MutationOscillationMode::Disabled || period == 0 {
             return;
         }
-        let phase = self.tick.saturating_add(1) % period;
+        let phase = self.next_native_cycle_or_tick() % period;
         self.global_mutation_multiplier = if settings.mode == crate::MutationOscillationMode::Sine {
             let angle = if phase < settings.high_cycles {
                 phase as f64 / settings.high_cycles as f64 * std::f64::consts::PI

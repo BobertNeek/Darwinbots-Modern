@@ -147,6 +147,13 @@ public sealed class SimulationSession : IAsyncDisposable
         return result ?? throw new InvalidDataException("Engine returned no DNA.");
     }
 
+    public async Task<string> ExportSpeciesTemplateDnaAsync(uint species, CancellationToken cancellationToken = default)
+    {
+        string? result = null;
+        await Enqueue(engine => result = engine.ExportSpeciesTemplateDna(species), cancellationToken).ConfigureAwait(false);
+        return result ?? throw new InvalidDataException("Engine returned no startup species DNA.");
+    }
+
     public async Task<byte[]> ExportOrganismGroupAsync(IReadOnlyList<OrganismKey> organisms, CancellationToken cancellationToken = default)
     {
         var captured = organisms.ToArray();
@@ -307,6 +314,20 @@ public sealed class SimulationSession : IAsyncDisposable
         byte[]? save = null;
         await Enqueue(engine => save = engine.Save(), cancellationToken).ConfigureAwait(false);
         return save ?? throw new InvalidDataException("Engine returned no save data.");
+    }
+
+    public async Task<float?> ReadNativeGaussianSpareAsync(CancellationToken cancellationToken = default)
+    {
+        float? spare = null;
+        await Enqueue(engine => spare = engine.ReadNativeGaussianSpare(), cancellationToken).ConfigureAwait(false);
+        return spare;
+    }
+
+    public async Task<(float? GaussianSpare, byte SunChange)> ReadNativeProcessContextAsync(CancellationToken cancellationToken = default)
+    {
+        (float? GaussianSpare, byte SunChange) context = default;
+        await Enqueue(engine => context = (engine.ReadNativeGaussianSpare(), engine.ReadNativeSunChange()), cancellationToken).ConfigureAwait(false);
+        return context;
     }
 
     public async Task<byte[]> SaveLegacyAsync(CancellationToken cancellationToken = default)

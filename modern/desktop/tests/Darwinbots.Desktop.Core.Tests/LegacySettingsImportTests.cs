@@ -8,6 +8,32 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class LegacySettingsImportTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NativeSunOnRndExportsEitherWeatherAliasAndModernExtensionKeepsBoth(bool weatherEnabled, bool sunOnRandom)
+    {
+        var expected = new DesktopSettings
+        {
+            Vegetation = Db2VegetationOptions.Default with { WeatherEnabled = weatherEnabled, SunOnRandom = sunOnRandom },
+        };
+        byte[] complete = Db2SettingsCodec.Encode(expected);
+        string native = Encoding.UTF8.GetString(complete).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+        // Zero species/walls: global2 +90+8+71+18+9 reaches the native footer.
+        int footer = 2 + 90 + 8 + 71 + 18 + 9;
+        Assert.Equal(weatherEnabled || sunOnRandom ? "#TRUE#" : "#FALSE#", native.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n')[footer + 4]);
+
+        var imported = Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(native));
+        Assert.Equal(weatherEnabled || sunOnRandom, imported.Vegetation.WeatherEnabled || imported.Vegetation.SunOnRandom);
+        string reexported = Encoding.UTF8.GetString(Db2SettingsCodec.Encode(imported)).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+        Assert.Equal(weatherEnabled || sunOnRandom ? "#TRUE#" : "#FALSE#", reexported.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n')[footer + 4]);
+        var modern = Db2SettingsCodec.Decode(complete);
+        Assert.Equal(weatherEnabled, modern.Vegetation.WeatherEnabled);
+        Assert.Equal(sunOnRandom, modern.Vegetation.SunOnRandom);
+    }
+
+    [Theory]
     [InlineData("Chloroplast Ecosystem.set", 1, 25)]
     [InlineData("Complex Simulation.set", 6, 300)]
     [InlineData("Large Sex Simulation.set", 2, 5000)]
@@ -69,6 +95,61 @@ public sealed class LegacySettingsImportTests
         Assert.Equal(0, actual.Species[0].MutationProfile!.Point.OneIn);
         Assert.Equal(25, actual.Species[0].MutationProfile!.Delta.OneIn);
         Assert.Equal(expected.Species[0].Color, actual.Species[0].Color);
+    }
+
+    [Theory]
+    [InlineData("-2147483648", 0x80000000UL)]
+    [InlineData("-42", 0xffffffd6UL)]
+    [InlineData("-1", 0xffffffffUL)]
+    [InlineData("0", 0UL)]
+    [InlineData("2147483647", 0x7fffffffUL)]
+    public void NativeSignedLongSeedKeepsItsLow32BitsThroughImportAndExport(string nativeSeed, ulong expectedSeed)
+    {
+        var lines = File.ReadAllLines(Path.Combine(RepositoryRoot(), "Installer", "sets", "Simple Simulation.set"));
+        int count = int.Parse(lines[1], CultureInfo.InvariantCulture) + 1;
+        int seedField = 2 + 40 * count + 89;
+        lines[seedField] = nativeSeed;
+
+        var settings = Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(string.Join("\r\n", lines)));
+
+        Assert.Equal(expectedSeed, settings.Seed);
+        Assert.Equal(expectedSeed, settings.ToWorldSetup().Seed);
+        string native = Encoding.UTF8.GetString(Db2SettingsCodec.Encode(settings)).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+        Assert.Equal(nativeSeed, native.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n')[seedField]);
+        Assert.Equal(expectedSeed, Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(native)).Seed);
+    }
+
+    [Theory]
+    [InlineData(0xffffffffUL, "-1", 0xffffffffUL)]
+    [InlineData(0x100000000UL, "0", 0UL)]
+    [InlineData(0x1234567880000000UL, "-2147483648", 0x80000000UL)]
+    [InlineData(ulong.MaxValue, "-1", 0xffffffffUL)]
+    public void ModernExtensionKeepsFullSeedWhileNativeFieldUsesSignedLow32Bits(ulong seed, string nativeSeed, ulong expectedNativeSeed)
+    {
+        var settings = new DesktopSettings { Seed = seed };
+        byte[] encoded = Db2SettingsCodec.Encode(settings);
+        string native = Encoding.UTF8.GetString(encoded).Split("#DARWINBOTS_MODERN_SETTINGS_V1#")[0];
+
+        Assert.Equal(nativeSeed, native.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n')[2 + 89]);
+        Assert.Equal(expectedNativeSeed, Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(native)).Seed);
+        Assert.Equal(seed, Db2SettingsCodec.Decode(encoded).Seed);
+        Assert.Equal(seed, DesktopSettings.FromJson(settings.ToJson()).Seed);
+    }
+
+    [Theory]
+    [InlineData("-2147483649")]
+    [InlineData("2147483648")]
+    public void NativeSeedOutsideSignedLongRangeIsRejected(string nativeSeed)
+    {
+        var lines = File.ReadAllLines(Path.Combine(RepositoryRoot(), "Installer", "sets", "Simple Simulation.set"));
+        int count = int.Parse(lines[1], CultureInfo.InvariantCulture) + 1;
+        lines[2 + 40 * count + 89] = nativeSeed;
+
+        var error = Assert.Throws<InvalidDataException>(() =>
+            Db2SettingsCodec.Decode(Encoding.UTF8.GetBytes(string.Join("\r\n", lines))));
+
+        Assert.Contains("seed", error.Message);
+        Assert.Contains("signed 32-bit", error.Message);
     }
 
     [Fact]

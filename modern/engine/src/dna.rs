@@ -8,6 +8,10 @@ pub use crate::dna_tokens::{DnaBlock, MAX_DNA_BLOCKS, TokenClass};
 #[path = "dna/native_crossover.rs"]
 mod native_crossover;
 
+#[path = "dna/native_load.rs"]
+mod native_load;
+pub(crate) use native_load::{native_load_image, native_load_robot_dna};
+
 pub(crate) const LEGACY_OCCURRENCE_CENSUS_SLOTS: usize = 11;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

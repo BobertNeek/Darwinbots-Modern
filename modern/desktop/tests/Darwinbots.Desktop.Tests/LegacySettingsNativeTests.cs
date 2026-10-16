@@ -8,6 +8,50 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class LegacySettingsNativeTests
 {
     [Fact]
+    public void OriginalSettingsSidecarsDecodeAnsiDnaAndModernJsonKeepsUnicode()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "db-ansi-settings-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "Café.set");
+            const string dna = "' é €\r\nstart stop\r\n";
+            var settings = new DesktopSettings {
+                Species = [new("Café.txt", dna, false, 0xff123456, 1, 1000, 0, false, 0)],
+            };
+            var bytes = SetupStorageService.EncodeSettings(path, settings);
+            Assert.Contains((byte)0xe9, bytes);
+            var restored = SetupStorageService.DecodeSettings(path, bytes);
+            var source = Assert.Single(restored.Species);
+            var dnaBytes = File.ReadAllBytes(source.DnaPath!);
+            Assert.Equal((byte)0xe9, dnaBytes[2]);
+            Assert.Equal((byte)0x80, dnaBytes[4]);
+            Assert.Equal(dna, LegacyDnaText.Decode(dnaBytes));
+
+            // Remove the modern extension so the native path must read its
+            // original sidecar rather than reusing embedded modern source DNA.
+            var text = LegacyDnaText.Decode(bytes);
+            var nativeOnly = LegacyDnaText.Encode(text[..text.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal)]);
+            var native = SetupStorageService.DecodeSettings(path, nativeOnly);
+            Assert.Equal(Path.GetFileName(source.DnaPath), Assert.Single(native.Species).Name);
+            Assert.Contains("Café.robots", native.Species[0].DnaPath);
+            Assert.Equal(dna, native.Species[0].Dna);
+            File.WriteAllBytes(source.DnaPath!, new byte[] { 0xef, 0xbb, 0xbf }
+                .Concat(System.Text.Encoding.UTF8.GetBytes(dna)).ToArray());
+            Assert.Equal(dna, SetupStorageService.DecodeSettings(path, nativeOnly).Species[0].Dna);
+
+            var unicode = settings with { Species = [source with { Dna = "' 🙂\nstart stop" }] };
+            var jsonPath = Path.Combine(directory, "modern.json");
+            Assert.Equal(unicode.ToJson(), SetupStorageService.DecodeSettings(jsonPath,
+                SetupStorageService.EncodeSettings(jsonPath, unicode)).ToJson());
+            var invalidPath = Path.Combine(directory, "invalid.set");
+            Assert.Throws<InvalidDataException>(() => SetupStorageService.EncodeSettings(invalidPath, unicode));
+            Assert.False(Directory.Exists(Path.ChangeExtension(invalidPath, ".robots")));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
     public void ConfigurationRestoresNonDefaultCostMutationAndMainRuleEditorsWithoutTicking()
     {
         var costs = new GlobalSimulationCostSettings

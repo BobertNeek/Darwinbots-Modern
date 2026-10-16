@@ -57,7 +57,10 @@ impl Engine {
                     .is_some_and(|state| state.phase == crate::EvolutionPhase::Testing);
                 staged_test
                     || matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest)
-                        && config.workflow != crate::LeagueWorkflow::Seeding
+                        && (config.workflow != crate::LeagueWorkflow::PopulationSeeding
+                            || self.classic_competitive_world())
+                        && (config.workflow != crate::LeagueWorkflow::Seeding
+                            || self.native_cycle.is_some())
             },
         )
     }
@@ -107,11 +110,12 @@ impl Engine {
         // Original action gates use F1 OR x_restartmode=1. Seeding is allowed
         // to disqualify a file even though its SimOpts.F1 is explicitly false.
         let contest = self.native_f1_enabled()
-            || self
-                .local_mode
-                .config
-                .as_ref()
-                .is_some_and(|config| config.workflow == crate::LeagueWorkflow::Seeding);
+            || self.local_mode.config.as_ref().is_some_and(|config| {
+                matches!(
+                    config.workflow,
+                    crate::LeagueWorkflow::Seeding | crate::LeagueWorkflow::PopulationSeeding
+                )
+            });
         if !contest {
             // Outside a contest only robots opted into dq_kill are killed.
             if robot.counters.disqualification == 1 {
@@ -278,6 +282,27 @@ mod tests {
         assert_eq!(world.pending_disqualifications, [actor, same_file]);
         world.flush_native_disqualifications().unwrap();
         assert_eq!(world.population(), 0);
+    }
+
+    #[test]
+    fn native_filter_is_f1_but_population_seeding_is_not_and_both_disqualify() {
+        for (workflow, f1) in [
+            (crate::LeagueWorkflow::Seeding, true),
+            (crate::LeagueWorkflow::PopulationSeeding, false),
+        ] {
+            let (mut world, a, _) = file_world();
+            world.native_cycle = Some(0);
+            world.native_f1 = Some(!f1);
+            let actor = named_bot(&mut world, a, "seed.txt");
+            world.local_mode.config = Some(LocalModeConfig {
+                workflow,
+                ..Default::default()
+            });
+            world.local_mode.status = LocalModeStatus::Running;
+            assert_eq!(world.native_f1_enabled(), f1);
+            world.native_disqualify_action(actor, DisqualificationAction::Shell);
+            assert_eq!(world.pending_disqualifications, [actor]);
+        }
     }
 
     #[test]

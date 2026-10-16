@@ -21,6 +21,10 @@ fn suite_replay_and_compare_preserve_inputs_and_fail_for_changed_state() {
     assert_eq!(manifest["cases"].as_array().unwrap().len(), 7);
     let start = suite.join("movement-start.sim");
     let input = fs::read(&start).unwrap();
+    let initial_file = darwinbots_engine::native_binary::NativeRecordFile::decode(&input).unwrap();
+    let initial_tail =
+        darwinbots_engine::native_binary::NativeSimulationTail::decode(&initial_file.tail).unwrap();
+    assert_eq!(initial_tail.integer("total_cycles").unwrap(), 0);
     let end = suite.join("movement-rust-cycle1.sim");
     output.get_mut().clear();
     output.set_position(0);
@@ -106,6 +110,71 @@ fn suite_replay_and_compare_preserve_inputs_and_fail_for_changed_state() {
         .is_err()
     );
     assert_eq!(fs::read(end).unwrap(), receipt);
+}
+
+#[test]
+fn replay_uses_signed_original_cycles_and_preserves_the_pending_first_update() {
+    use darwinbots_engine::native_binary::{NativeRecordFile, NativeSimulationTail};
+    use darwinbots_engine::{Engine, EngineConfig, LegacyDna};
+
+    let temp = tempfile::tempdir().unwrap();
+    let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+    world.update_mutation_settings(false, 1.0, &[]).unwrap();
+    world
+        .spawn_at(
+            LegacyDna::parse("start 7 900 store stop").unwrap(),
+            [500.0; 2],
+        )
+        .unwrap();
+    let start = temp.path().join("pending.sim");
+    let input = world.export_native_sim().unwrap();
+    fs::write(&start, &input).unwrap();
+    for (target, updates) in [(-1, 0_u64), (0, 1), (1, 2), (10, 11)] {
+        let end = temp.path().join(format!("cycle-{target}.sim"));
+        let mut output = Vec::new();
+        run_from(
+            [
+                "darwinbots",
+                "native-replay",
+                "--simulation",
+                start.to_str().unwrap(),
+                "--until-cycle",
+                &target.to_string(),
+                "--output-sim",
+                end.to_str().unwrap(),
+            ],
+            &mut output,
+        )
+        .unwrap();
+        let report: Value = serde_json::from_slice(&output).unwrap();
+        assert_eq!(report["start_cycle"], -1);
+        assert_eq!(report["end_cycle"], target);
+        assert_eq!(report["ticks"], updates);
+        assert_eq!(report["processed_tick"], updates);
+        let saved = NativeRecordFile::decode(&fs::read(end).unwrap()).unwrap();
+        let tail = NativeSimulationTail::decode(&saved.tail).unwrap();
+        assert_eq!(tail.integer("total_cycles").unwrap(), target);
+        let memory = saved.robots[0].bytes("memory").unwrap();
+        // The saved array includes cell zero; cycle zero must execute DNA once.
+        let word = i16::from_le_bytes(memory[1800..1802].try_into().unwrap());
+        assert_eq!(word, if updates == 0 { 0 } else { 7 });
+    }
+    assert_eq!(fs::read(&start).unwrap(), input);
+
+    for arguments in [["--until-cycle", "-2"], ["--ticks", "2147483649"]] {
+        let end = temp.path().join("rejected.sim");
+        let mut args = vec![
+            "darwinbots",
+            "native-replay",
+            "--simulation",
+            start.to_str().unwrap(),
+        ];
+        args.extend(arguments);
+        args.extend(["--output-sim", end.to_str().unwrap()]);
+        assert!(run_from(args, Vec::new()).is_err());
+        assert!(!end.exists());
+        assert_eq!(fs::read(&start).unwrap(), input);
+    }
 }
 
 #[test]

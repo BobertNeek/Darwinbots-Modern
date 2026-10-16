@@ -43,7 +43,7 @@ impl Engine {
         result?;
         self.local_mode.current_round = self.local_mode.current_round.saturating_add(1);
         self.local_mode.status = LocalModeStatus::Running;
-        self.restart_staged_world()?;
+        self.restart_staged_world(complete)?;
         self.publish_snapshot();
         Ok(())
     }
@@ -63,16 +63,22 @@ impl Engine {
         }
         let baselines = self.staged_role_count(&state.baseline_species);
         let mutators = self.staged_role_count(&state.mutator_species);
+        if baselines + mutators == 0 && self.native_cycle.is_some() {
+            return self.retry_native_contest_round();
+        }
         let limit = self
             .local_mode
             .config
             .as_ref()
             .map_or(15_000, |config| config.maximum_cycles);
+        let source_cycle = self
+            .native_cycle
+            .map_or(self.local_mode.cycle_in_round, |cycle| cycle.max(0) as u64);
         let winner = if baselines == 0 && mutators > 0 {
             state.mutator_species.first().copied()
         } else if mutators == 0 && baselines > 0 {
             state.baseline_species.first().copied()
-        } else if limit > 0 && self.local_mode.cycle_in_round > limit {
+        } else if limit > 0 && source_cycle > limit {
             if mutators > baselines {
                 state.mutator_species.first().copied()
             } else if baselines > mutators {
@@ -171,7 +177,7 @@ impl Engine {
         .map_err(EngineError::Invariant)
     }
 
-    pub(super) fn restart_staged_world(&mut self) -> Result<(), EngineError> {
+    pub(super) fn restart_staged_world(&mut self, external_start: bool) -> Result<(), EngineError> {
         let Some(mut state) = self.local_mode.evolution.take() else {
             return Ok(());
         };
@@ -186,6 +192,11 @@ impl Engine {
             self.global_mutation_multiplier = self.global_mutation_multiplier.max(1.0);
             self.native_random.get_or_insert_with(|| {
                 crate::native_random::NativeRandom::with_user_seed(self.config.seed)
+            });
+            self.prepare_native_restart(if external_start {
+                NativeStartBoundary::ExternalProcess
+            } else {
+                NativeStartBoundary::SameProcessRound
             });
             self.ties.clear();
             self.native_tie_index = None;
@@ -246,9 +257,9 @@ impl Engine {
             };
             let mut remaining = self.config.organism_capacity;
             if state.config.mode == EvolutionMode::Zerobot && !testing {
-                let random = self.native_random.get_or_insert_with(|| {
-                    crate::native_random::NativeRandom::with_user_seed(self.config.seed)
-                });
+                // MDIForm1 computes this before StartSimul reseeds. Its negative
+                // Rnd must not replace the new simulation's placement stream.
+                let mut random = crate::native_random::NativeRandom::default();
                 state.fitness_weight = (20.0 + random.rnd(-((state.stage + 1) as f32)) * 40.0)
                     .round_ties_even() as u16;
             }
@@ -272,6 +283,7 @@ impl Engine {
                     self.species[species.0 as usize].mutation_profile =
                         Some(genome.mutation_profile.clone());
                     self.species_templates[species.0 as usize] = Some(SpeciesTemplate {
+                        source_text: None,
                         dna: genome.dna.clone(),
                         initial_energy: 3_000,
                         initial_population: quantity,
@@ -281,14 +293,12 @@ impl Engine {
                             break;
                         }
                         remaining -= 1;
-                        let position = self
-                            .native_placement_position(species, self.config.seed ^ ordinal as u64);
-                        let id = self.spawn_species_at_unpublished(
+                        let id = self.spawn_native_start_robot(
                             genome.dna.clone(),
                             species,
-                            position,
+                            self.config.seed ^ ordinal as u64,
+                            None,
                         )?;
-                        self.native_placement_heading(id)?;
                         let robot = self.slots.get_mut(id)?;
                         robot.flags.can_mutate = !baseline && !testing;
                         robot.program.mutation_profile = genome.mutation_profile.clone();
@@ -415,6 +425,9 @@ impl Engine {
         };
         let mut restart = false;
         state.cycle_in_attempt = state.cycle_in_attempt.saturating_add(1);
+        let source_cycle = self
+            .native_cycle
+            .map_or(state.cycle_in_attempt, |cycle| cycle.max(0) as u64);
         let evolving = state.phase == EvolutionPhase::Evolving;
         let baselines = self.staged_role_count(&state.baseline_species);
         let mutators = self.staged_role_count(&state.mutator_species);
@@ -452,7 +465,7 @@ impl Engine {
             if baselines > mutators {
                 state.stagnant = false;
             }
-            if state.cycle_in_attempt == 1_000_000 {
+            if source_cycle == 1_000_000 {
                 state.stagnant = true;
             }
             let threshold = f64::from(state.hide_cycles) / 1.2 + f64::from(state.hide_offset);
@@ -495,6 +508,12 @@ impl Engine {
                 }
             }
         }
+        let handicap = if self.native_cycle.is_some() {
+            (state.handicap - state.inverse_handicap)
+                * (source_cycle as f64 / (f64::from(state.hide_cycles) * 8.0)).min(1.0)
+        } else {
+            state.current_handicap()
+        };
         for robot in self
             .slots
             .iter_mut()
@@ -510,13 +529,13 @@ impl Engine {
                     0.5
                 };
                 robot.materials.energy =
-                    (f64::from(robot.materials.energy) + state.current_handicap() * scale) as f32;
+                    (f64::from(robot.materials.energy) + handicap * scale) as f32;
             }
         }
         let average = self.staged_average_energy(&state.mutator_species);
         self.local_mode.evolution = Some(state);
         if restart {
-            self.restart_staged_world()?;
+            self.restart_staged_world(true)?;
         }
         Ok((restart, average))
     }
@@ -590,13 +609,17 @@ impl Engine {
         let Some(mut state) = self.local_mode.evolution.take() else {
             return Ok(());
         };
+        let source_cycle = self
+            .native_cycle
+            .map_or(state.cycle_in_attempt, |cycle| cycle.max(0) as u64);
         let mut restart = false;
         if state.phase == EvolutionPhase::Evolving {
             if let Some(after) = self.staged_average_energy(&state.mutator_species) {
                 state.energy_delta += after - average_before.unwrap_or(0.0);
             }
             if state.config.mode == EvolutionMode::Zerobot
-                && state.cycle_in_attempt.is_multiple_of(50)
+                && (self.native_cycle.is_none() || source_cycle > 0)
+                && source_cycle.is_multiple_of(50)
                 && let Some(id) = self.find_best_robot_weighted(state.fitness_weight)
             {
                 let robot = self.slots.get(id)?;
@@ -622,9 +645,15 @@ impl Engine {
                     self.slots.get_mut(id)?.program.mutation_profile = genome.mutation_profile;
                 }
             }
-        } else if state.phase == EvolutionPhase::ZerobotTesting && state.cycle_in_attempt == 1 {
+        } else if state.phase == EvolutionPhase::ZerobotTesting && source_cycle == 1 {
             state.test_start_energy = self.staged_role_energy(&state.mutator_species);
-        } else if state.phase == EvolutionPhase::ZerobotTesting && state.cycle_in_attempt >= 8_000 {
+        } else if state.phase == EvolutionPhase::ZerobotTesting
+            && if self.native_cycle.is_some() {
+                source_cycle == 8_000
+            } else {
+                source_cycle >= 8_000
+            }
+        {
             if self.staged_role_count(&state.mutator_species) > 10
                 && self.staged_role_energy(&state.mutator_species) > state.test_start_energy * 2.0
             {
@@ -661,7 +690,7 @@ impl Engine {
         self.local_mode.cycle_in_round = state.cycle_in_attempt;
         self.local_mode.evolution = Some(state);
         if restart {
-            self.restart_staged_world()?;
+            self.restart_staged_world(true)?;
         }
         Ok(())
     }
@@ -670,6 +699,44 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn zerobot_stage_weight_does_not_replace_the_seeded_placement_stream() {
+        let mut world = Engine::new_native(EngineConfig {
+            seed: 0,
+            organism_capacity: 1,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.set_native_restart_seed(42);
+        world.set_native_gaussian_spare(Some(1.25)).unwrap();
+        world
+            .configure_local_mode(LocalModeConfig {
+                kind: LocalModeKind::Zerobot,
+                staged_evolution: Some(crate::EvolutionConfig {
+                    mode: EvolutionMode::Zerobot,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        world.start_local_mode().unwrap();
+        assert_eq!(world.read_native_gaussian_spare(), None);
+        assert_eq!(
+            world.local_mode.evolution.as_ref().unwrap().fitness_weight,
+            29
+        );
+        assert_eq!(world.population(), 1);
+        // Header4 followed by preparerob6, x/y and timer; stage Rnd is separate.
+        assert_eq!(world.native_random.as_ref().unwrap().state(), 0x003ac52d);
+        assert_eq!(world.config.seed, 42);
+        let robot = world
+            .slots
+            .iter()
+            .find_map(|slot| slot.organism.as_ref())
+            .unwrap();
+        assert_eq!(robot.program.rng_state, 0x003ac52d);
+    }
 
     fn simple() -> Engine {
         let mut world = Engine::new(EngineConfig {
@@ -691,6 +758,188 @@ mod tests {
             .unwrap();
         world.start_local_mode().unwrap();
         world
+    }
+
+    #[test]
+    fn native_cycle_staged_handicap_and_stagnancy_do_not_use_attempt_call_count() {
+        let mut world = simple();
+        world.native_cycle = Some(0);
+        world.tick = 500;
+        let mutators = {
+            let state = world.local_mode.evolution.as_mut().unwrap();
+            state.hidden = true;
+            state.hide_cycles = 1000;
+            state.handicap = -8000.0;
+            state.inverse_handicap = 0.0;
+            state.cycle_in_attempt = 10;
+            state.mutator_species.clone()
+        };
+        let id = world
+            .slots
+            .ids_in_slot_order()
+            .into_iter()
+            .find(|id| mutators.contains(&world.slots.get(*id).unwrap().identity.species))
+            .unwrap();
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.materials.energy = 3000.0;
+        robot.program.mutation_metadata.native_last_mutations = 1;
+        world.staged_evolution_before_cycle().unwrap();
+        assert_eq!(world.slots.get(id).unwrap().materials.energy, 3000.0);
+        assert_eq!(
+            world
+                .local_mode
+                .evolution
+                .as_ref()
+                .unwrap()
+                .cycle_in_attempt,
+            11
+        );
+        world.native_cycle = Some(1);
+        world.staged_evolution_before_cycle().unwrap();
+        assert_eq!(world.slots.get(id).unwrap().materials.energy, 2999.0);
+        {
+            let state = world.local_mode.evolution.as_mut().unwrap();
+            state.cycle_in_attempt = 999_999;
+            state.stagnant = false;
+        }
+        world.native_cycle = Some(999_999);
+        world.staged_evolution_before_cycle().unwrap();
+        assert!(!world.local_mode.evolution.as_ref().unwrap().stagnant);
+        world.native_cycle = Some(1_000_000);
+        world.staged_evolution_before_cycle().unwrap();
+        assert!(world.local_mode.evolution.as_ref().unwrap().stagnant);
+    }
+
+    #[test]
+    fn native_cycle_zerobot_test_records_one_and_checks_exactly_eight_thousand() {
+        let mut world = simple();
+        {
+            let state = world.local_mode.evolution.as_mut().unwrap();
+            state.config.mode = EvolutionMode::Zerobot;
+            state.phase = EvolutionPhase::ZerobotTesting;
+            state.test_start_energy = 17.0;
+            state.cycle_in_attempt = 1;
+        }
+        world.native_cycle = Some(0);
+        world.staged_evolution_after_cycle(None).unwrap();
+        assert_eq!(
+            world
+                .local_mode
+                .evolution
+                .as_ref()
+                .unwrap()
+                .test_start_energy,
+            17.0
+        );
+        world.native_cycle = Some(1);
+        world.staged_evolution_after_cycle(None).unwrap();
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        assert_eq!(
+            state.test_start_energy,
+            world.staged_role_energy(&state.mutator_species)
+        );
+        for cycle in [7999, 8001] {
+            world.native_cycle = Some(cycle);
+            world
+                .local_mode
+                .evolution
+                .as_mut()
+                .unwrap()
+                .cycle_in_attempt = 8000;
+            world.staged_evolution_after_cycle(None).unwrap();
+            assert_eq!(
+                world.local_mode.evolution.as_ref().unwrap().phase,
+                EvolutionPhase::ZerobotTesting
+            );
+        }
+        world.native_cycle = Some(8000);
+        world.staged_evolution_after_cycle(None).unwrap();
+        assert_eq!(
+            world.local_mode.evolution.as_ref().unwrap().phase,
+            EvolutionPhase::Evolving
+        );
+        assert_eq!(world.native_cycle, Some(-1));
+    }
+
+    #[test]
+    fn native_cycle_staged_champion_both_dead_retries_without_a_loss_or_round_advance() {
+        let mut world = simple();
+        {
+            let state = world.local_mode.evolution.as_mut().unwrap();
+            state.phase = EvolutionPhase::Testing;
+            state.candidate = state.mutators.clone();
+        }
+        world.native_cycle = Some(29);
+        world.set_native_gaussian_spare(Some(2.5)).unwrap();
+        world.local_mode.cycle_in_round = 9;
+        let round = world.local_mode.current_round;
+        let restart_count = world.local_mode.restart_count;
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        let stage = state.stage;
+        let test_cursor = state.test_result_cursor;
+        let ids = world.slots.ids_in_slot_order();
+        world.remove_many(&ids).unwrap();
+        world.advance_staged_test().unwrap();
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        assert_eq!(state.phase, EvolutionPhase::Testing);
+        assert_eq!(state.stage, stage);
+        assert_eq!(state.test_result_cursor, test_cursor);
+        assert_eq!(world.local_mode.current_round, round);
+        assert_eq!(world.local_mode.restart_count, restart_count);
+        assert!(world.local_mode.results.is_empty());
+        assert_eq!(world.local_mode.adjudication, None);
+        assert_eq!(world.native_cycle, Some(29));
+        assert_eq!(world.read_native_gaussian_spare(), Some(2.5));
+        assert!(world.population() > 0);
+    }
+
+    #[test]
+    fn native_cycle_zerobot_observation_excludes_zero_despite_elapsed_multiple_of_fifty() {
+        let mut world = simple();
+        let mutators = {
+            let state = world.local_mode.evolution.as_mut().unwrap();
+            state.config.mode = EvolutionMode::Zerobot;
+            state.cycle_in_attempt = 50;
+            state.mutator_species.clone()
+        };
+        for robot in world
+            .slots
+            .iter_mut()
+            .filter_map(|slot| slot.organism.as_mut())
+        {
+            if mutators.contains(&robot.identity.species) {
+                robot.program.mutation_metadata.native_last_mutations = 1;
+                robot.materials.energy = 30_000.0;
+            }
+        }
+        world.native_cycle = Some(0);
+        world.staged_evolution_after_cycle(None).unwrap();
+        assert_eq!(
+            world
+                .local_mode
+                .evolution
+                .as_ref()
+                .unwrap()
+                .zerobot_previous_id,
+            0
+        );
+        world.native_cycle = Some(50);
+        world
+            .local_mode
+            .evolution
+            .as_mut()
+            .unwrap()
+            .cycle_in_attempt = 51;
+        world.staged_evolution_after_cycle(None).unwrap();
+        assert_ne!(
+            world
+                .local_mode
+                .evolution
+                .as_ref()
+                .unwrap()
+                .zerobot_previous_id,
+            0
+        );
     }
 
     #[test]

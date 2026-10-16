@@ -56,6 +56,21 @@ mod tests {
             }
         );
         assert!(engine.capabilities.fallback_reason.is_none());
+        if backend == BackendPreference::Gpu {
+            let receipt = engine
+                .gpu_adapter_receipt()
+                .expect("GPU engine must expose its physical adapter receipt");
+            assert!(
+                matches!(
+                    receipt.device_type.as_str(),
+                    "DiscreteGpu" | "IntegratedGpu"
+                ),
+                "a physical adapter is required for cached-radius qualification: {receipt:?}"
+            );
+            assert!(!receipt.name.is_empty());
+            assert!(!receipt.backend.is_empty());
+            println!("physical gpu adapter={receipt:?}");
+        }
         let robot = engine.slots.get_mut(id).unwrap();
         robot.materials.chloroplasts = 32_000.0;
         robot.materials.radius = 415.0;

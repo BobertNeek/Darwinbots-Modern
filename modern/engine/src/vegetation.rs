@@ -55,6 +55,40 @@ impl Default for VegetationRuntime {
 }
 
 impl VegetationRuntime {
+    pub(crate) fn sun_change(&self) -> u8 {
+        self.sun_change
+    }
+
+    pub(crate) fn set_sun_change(&mut self, sun_change: u8) {
+        self.sun_change = sun_change;
+    }
+
+    pub(crate) fn fresh_native_process() -> Self {
+        Self {
+            sun_change: 0,
+            ..Self::default()
+        }
+    }
+
+    pub(crate) fn initialize_native_start(
+        &mut self,
+        sun_on_random: bool,
+        random: &mut crate::native_random::NativeRandom,
+    ) {
+        // main.frm StartSimul initializes the sun after the three chart-color draws.
+        if sun_on_random {
+            self.sun_range = 0.5;
+            let position = (random.unit() * 3.0).floor() as u8;
+            let range = (random.unit() * 2.0).floor() as u8;
+            self.sun_change = position + range * 10;
+            self.sun_position = f64::from(random.unit());
+        } else {
+            self.sun_position = 0.5;
+            self.sun_range = 1.0;
+            // VB6 leaves SunChange intact when randomized sun is disabled.
+        }
+    }
+
     pub(crate) fn from_legacy_wire_parts(
         repopulation_counter: u64,
         day_night_counter: u64,
@@ -290,6 +324,105 @@ fn weather_random(mut value: u64) -> u64 {
 #[cfg(test)]
 mod native_weather_tests {
     use super::*;
+
+    #[test]
+    fn sun_change_accessors_touch_only_the_existing_process_byte() {
+        let mut runtime = VegetationRuntime {
+            repopulation_counter: 17,
+            day_night_counter: 23,
+            sun_position: 0.125,
+            sun_range: 0.75,
+            sun_change: 22,
+            native_chloroplast_population: 9,
+        };
+        for change in [0_u8, 10, 22, 255] {
+            let mut expected = serde_json::to_value(&runtime).unwrap();
+            expected["sun_change"] = serde_json::json!(change);
+            runtime.set_sun_change(change);
+            assert_eq!(serde_json::to_value(&runtime).unwrap(), expected);
+            let saved = serde_json::to_vec(&runtime).unwrap();
+            assert_eq!(runtime.sun_change(), change);
+            assert_eq!(runtime.sun_change(), change);
+            assert_eq!(serde_json::to_vec(&runtime).unwrap(), saved);
+        }
+    }
+
+    #[test]
+    fn fresh_native_process_starts_with_zero_sun_change_without_changing_legacy_default() {
+        let mut runtime = VegetationRuntime::fresh_native_process();
+        let mut random = crate::native_random::NativeRandom::default();
+        let before = random.clone();
+
+        runtime.initialize_native_start(false, &mut random);
+
+        assert_eq!(runtime.sun_change, 0);
+        assert_eq!(runtime.sun_position, 0.5);
+        assert_eq!(runtime.sun_range, 1.0);
+        assert_eq!(runtime.repopulation_counter, 0);
+        assert_eq!(runtime.day_night_counter, 0);
+        assert_eq!(runtime.native_chloroplast_population, 0);
+        assert_eq!(random, before);
+        assert_eq!(VegetationRuntime::default().sun_change, 10);
+    }
+
+    #[test]
+    fn native_start_initializes_sun_from_the_post_chart_cursor_without_resetting_counters() {
+        let mut runtime = VegetationRuntime {
+            repopulation_counter: 17,
+            day_night_counter: 23,
+            sun_position: 0.125,
+            sun_range: 0.75,
+            sun_change: 22,
+            native_chloroplast_population: 29,
+        };
+        let mut random = crate::native_random::NativeRandom::default();
+        random.reseed_native_start(42);
+        for _ in 0..3 {
+            random.unit();
+        }
+        assert_eq!(random.state(), 0x0097_c633);
+
+        runtime.initialize_native_start(true, &mut random);
+
+        // Literal VB6 Rnd(-1), Randomize(.42), chart3, then sun3 vector.
+        assert_eq!(runtime.sun_range.to_bits(), 0x3fe0_0000_0000_0000);
+        assert_eq!(runtime.sun_change, 10);
+        assert_eq!(runtime.sun_position.to_bits(), 0x3fe7_86fe_8000_0000);
+        assert_eq!(random.state(), 0x00bc_37f4);
+        assert_eq!(runtime.repopulation_counter, 17);
+        assert_eq!(runtime.day_night_counter, 23);
+        assert_eq!(runtime.native_chloroplast_population, 29);
+    }
+
+    #[test]
+    fn native_start_without_random_sun_preserves_change_counters_and_random_cursor() {
+        let mut runtime = VegetationRuntime {
+            repopulation_counter: 17,
+            day_night_counter: 23,
+            sun_position: 0.125,
+            sun_range: 0.75,
+            sun_change: 22,
+            native_chloroplast_population: 29,
+        };
+        let mut random = crate::native_random::NativeRandom::default();
+        random.reseed_native_start(42);
+        for _ in 0..3 {
+            random.unit();
+        }
+        let prior_random = random.clone();
+
+        runtime.initialize_native_start(false, &mut random);
+
+        assert_eq!(runtime.sun_position.to_bits(), 0x3fe0_0000_0000_0000);
+        assert_eq!(runtime.sun_range.to_bits(), 0x3ff0_0000_0000_0000);
+        assert_eq!(runtime.sun_change, 22);
+        assert_eq!(runtime.repopulation_counter, 17);
+        assert_eq!(runtime.day_night_counter, 23);
+        assert_eq!(runtime.native_chloroplast_population, 29);
+        assert_eq!(random, prior_random);
+        assert_eq!(random.state(), 0x0097_c633);
+    }
+
     #[test]
     fn native_weather_draws_change_later_random_values_and_survive_resume() {
         let mut runtime = VegetationRuntime::default();

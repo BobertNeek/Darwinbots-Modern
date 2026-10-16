@@ -1,0 +1,521 @@
+{
+  "created_utc": "2026-10-16T12:11:03.875Z",
+  "state": "isolated files prepared; no executable launched and zero genuine comparisons",
+  "original_exe_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_template": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2/output/native-original-qualification-app39/",
+  "source_files": [
+    {
+      "file": "COMCT232.OCX",
+      "sha256": "45AF0570AC918A57A0E4F868CC4198CBAC02957C6BE35EC131987101683A9F97"
+    },
+    {
+      "file": "COMDLG32.OCX",
+      "sha256": "46F4FDB12C30742FF4607876D2F36CF432CDC7EC3D2C99097011448FC57E997C"
+    },
+    {
+      "file": "Darwin2.48.32.exe",
+      "sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990"
+    },
+    {
+      "file": "Darwin2.48.32.exe.manifest",
+      "sha256": "7A482CADC0C4CEBB96BDEFDF02B924FBB85F549992127F7D55F7F2909191C3C7"
+    },
+    {
+      "file": "MSCOMCTL.OCX",
+      "sha256": "18A83D7A420A17FCB6F56EB3BA5362C975D32E5DED7553C6FD407F07BDB7B006"
+    },
+    {
+      "file": "MSINET.OCX",
+      "sha256": "DD1215F01B484E7842763302D42749D516963D9AC74E2FE8825A5EABA34F6229"
+    },
+    {
+      "file": "RICHTX32.OCX",
+      "sha256": "0FB6EAE2AB36CE6CBEB2DFC45AF5DD0C4BB0DC1E59ABEC84DB4E102C3F2B7249"
+    },
+    {
+      "file": "Robots/Alga_Minimalis.txt",
+      "sha256": "79993974A6CD6A66CD3BCF940502A53E0886E17B40222773E0BF8BAF8A155401"
+    },
+    {
+      "file": "Robots/Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121"
+    },
+    {
+      "file": "Robots/Animal_Minimalis.txt",
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5"
+    },
+    {
+      "file": "Robots/Animal_Minimalis_Connubialis.txt",
+      "sha256": "2E82E517A7D8A33E4B6C3168CBE2E631727642D7C385EA76C6B63232EF3C35E6"
+    },
+    {
+      "file": "Robots/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "sha256": "609270B7EEB6EF92782124EC942EE3160CF9613347BD98662B75B76F5B9B12CF"
+    },
+    {
+      "file": "Robots/Bubbles (F2)(Jez)-21.08.06.txt",
+      "sha256": "C575AB27AB498A075DDD6439CEFC7BF470A169C6EFE1CC16CA68098D0EAE3AC8"
+    },
+    {
+      "file": "Robots/Callidus(F1)(Shen)-05.04.05.txt",
+      "sha256": "B447D333E6D2C5D3C416FEBB6766E326D5DF11B4C022BBA92769EDA39BF1E3C8"
+    },
+    {
+      "file": "Robots/Catapiller(MB)(Peter).txt",
+      "sha256": "F112B9789159E6AC5FF839F9D33A1D0BC778624831E34B2BD81B9D684AF16DF9"
+    },
+    {
+      "file": "Robots/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "sha256": "CED8DF58B4FE9AE29C6D03D8F64EC3AFDE5867FE2CBE08D90CD20D3A32EFD3E6"
+    },
+    {
+      "file": "Robots/Ebola (F1Vir) (Moonfisher).txt",
+      "sha256": "D0B3437F9ED37F77D904DED4F0BC1F5B68A2AB70E3FB787625A97099BA58F345"
+    },
+    {
+      "file": "Robots/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "sha256": "1D881243C720F04EC81EF098D841E5292311E76087F3925F7C9FB6A171D10A9F"
+    },
+    {
+      "file": "Robots/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "sha256": "51852363CAC2FDA2F3BC9392DCDC297580A30B7AB3447DFD1E1C3DBB2DF3835C"
+    },
+    {
+      "file": "Robots/Fruit_Fliesv0.21.txt",
+      "sha256": "5D554A6585E63A29B603FC1D5D93652AFDDAA1103FBE9FAA9ABEC7FAC3D9DF86"
+    },
+    {
+      "file": "Robots/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281"
+    },
+    {
+      "file": "Robots/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "sha256": "174E36A48F478E30DA3D940A3540C2760D1B9C07E8F6A9C5697E3E010EB131E7"
+    },
+    {
+      "file": "Robots/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "sha256": "7FD0DD03A77F10C8A26F3B2D26E84071463F173F75240F9355C82E9B81F86208"
+    },
+    {
+      "file": "Robots/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "sha256": "58CDFBE2202705F0B99BF9A863AEAF066E2DC206FB5E3E1905FA44F3FDB45775"
+    },
+    {
+      "file": "Robots/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "sha256": "3BFB6EC260D72D165C497F3CABCA28156B2A1D2A6DB3EB877E04C2A7FF7B98C8"
+    },
+    {
+      "file": "Robots/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "sha256": "5D0B6636AEC6E80730474C684D606B5C6A76E6B66D4105FDBD30AC2C71A0D588"
+    },
+    {
+      "file": "Robots/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "sha256": "773BD3EA3B270E854E53C739B298A70A40684242E1A0A67A8E725B3E84ED9932"
+    },
+    {
+      "file": "Robots/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "sha256": "76E70B9C9F29F38577172F04910D7C8846E858135CF46D3E0A2A3032C34B510B"
+    },
+    {
+      "file": "Robots/league/17-D. Blinder (F2)-01.03.04.txt",
+      "sha256": "823A557E42B05D2626DD28C2785696557FA4586710823694C5D27B89F0B6190C"
+    },
+    {
+      "file": "Robots/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "sha256": "D777DD50238C5313AD81719CC14372ECE2C10F7813BA94D186CDAC188FB9A97B"
+    },
+    {
+      "file": "Robots/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "sha256": "0A002084FD8FC9C8DA04E8B8A920A325A8D3A83F02FAC1FBD8797B776C1EEFAC"
+    },
+    {
+      "file": "Robots/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "sha256": "793472C1879F554C09C58A3180AB5673A55E88A861284EE75ACE2BA3A34AFA47"
+    },
+    {
+      "file": "Robots/league/20-Bot v 1.1.txt",
+      "sha256": "E56C73E3F173A14DC842AF742EBD913BE893938BABBA23BD89A14045906B6197"
+    },
+    {
+      "file": "Robots/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "sha256": "C853342E1B8E033BB05911037245A2F6EDA14C6AA0329377D316C8AB8D6EA881"
+    },
+    {
+      "file": "Robots/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "sha256": "DA5D24C52E00E431AE051240AF7BA9E9F2DD7EAF6F6B7481C69D36FCB6D496AC"
+    },
+    {
+      "file": "Robots/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "sha256": "562DC85F510D5881CCD66BB3AF26E5B3F161A7C399FA4E8D710C0EE801E1228F"
+    },
+    {
+      "file": "Robots/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "sha256": "FC09E7D21E98569F59853752E84885EFD377F40C417F5E6BFE35BB1C1D20D9CC"
+    },
+    {
+      "file": "Robots/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "sha256": "506635F191AA1F12716A069DB3319A6BCAD68BE5D7F9C7D97BF18F81A693002E"
+    },
+    {
+      "file": "Robots/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "sha256": "846FD16EFDA850DB2A36DB64480C45899AE26CD6481D9CEFC4AC27257332C568"
+    },
+    {
+      "file": "Robots/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "sha256": "E22956B386353102288F794573D2E3B5C29FFAAA1B3DC1C0F823C0E23B40EE5D"
+    },
+    {
+      "file": "Robots/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "sha256": "456129935205500440C29F01EB627713B0DB660C2FD8144E8F97F39030A8B768"
+    },
+    {
+      "file": "Robots/Locust(F1)(Moonfisher).txt",
+      "sha256": "425376200A83ED56CDA9CE6CA59FA50DB1FCA172FBF876628E4E739F6B4FBE81"
+    },
+    {
+      "file": "Robots/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "sha256": "411B04032A8FEAF20E7DD413A08340C96C3B93AFEBC7E5A35A54CBF7F6BE071F"
+    },
+    {
+      "file": "Robots/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "sha256": "C346E93DD954D111D569B8D2D63DA4177D5433CF2EB15BA334A154C1613F25E9"
+    },
+    {
+      "file": "Robots/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "sha256": "9E93D6694DDA3F3C6B5A054B24A12838E2D8A7E0160A62F33ACDD890AE06C77A"
+    },
+    {
+      "file": "Robots/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "sha256": "80EF0E7437FD2BBEAC64736576FE48B906FF61E0FA4D6974C2E251181B8A45FB"
+    },
+    {
+      "file": "Robots/Quickdraw(F1)(Moonfisher).txt",
+      "sha256": "F24C30BFE66CE31E221F30FF520068345CFA1D7506FD716FF7054966E2FC0DEE"
+    },
+    {
+      "file": "Robots/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "sha256": "CDAB99B7AF6F8ACA54A7E9D3064E11F8C5ABDD4F98625FEBB0E48746FC2A59A0"
+    },
+    {
+      "file": "Robots/Republican Wasp (F1)(Commander Keen).txt",
+      "sha256": "CC3733F51BDE8AC1CE0EFF85F63217BE061EB6003476E5AD8F527B3898FC32FA"
+    },
+    {
+      "file": "Robots/Saber.txt",
+      "sha256": "7CB4F03B211F279ADEA16281E39AC898A4BBA2EF28E5375104C4101B1005CC0A"
+    },
+    {
+      "file": "Robots/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "sha256": "83E6EBF019B08156862496326A70700F1374A9A1BDE7EA4C6032C09FF1562F8E"
+    },
+    {
+      "file": "Robots/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "sha256": "C4EAB07A29B53014D966ADB4698FAE156105EE0F01D25C8D42B40EDEB5FB13D4"
+    },
+    {
+      "file": "Robots/Spinnerv1.52.txt",
+      "sha256": "27B5D7C70FA3A542B3AE38F83AAD4A8123E5BD68637ABB475B3B0812E50D2EED"
+    },
+    {
+      "file": "Robots/The One (1G)(Shen)-23.04.05.txt",
+      "sha256": "798E486BFA9C80C518455ADA8061C547458D06CC6E3CC4E3FFE92CA6CE54D220"
+    },
+    {
+      "file": "Robots/TieFighters.txt",
+      "sha256": "878A101CADAD7B4F98693CB5E3ED3E111F358C579004F393D465ACE24116BBAA"
+    },
+    {
+      "file": "TABCTL32.OCX",
+      "sha256": "40CADBFB2EB5732F025D687664F34239DB7153A192BCA0287F9208852B201FB6"
+    }
+  ],
+  "temporary_root": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7",
+  "cases": [
+    {
+      "case": "movement",
+      "sandbox": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/movement",
+      "executable": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/movement/Darwin2.48.32.exe",
+      "input": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/movement/input.sim",
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/movement/captures/movement-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/movement/captures/movement-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/movement/captures/movement-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "verified_template_files": 56,
+      "verified_robots": 48,
+      "launched": false
+    },
+    {
+      "case": "fixed",
+      "sandbox": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/fixed",
+      "executable": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/fixed/Darwin2.48.32.exe",
+      "input": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/fixed/input.sim",
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/fixed/captures/fixed-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/fixed/captures/fixed-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/fixed/captures/fixed-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "verified_template_files": 56,
+      "verified_robots": 48,
+      "launched": false
+    },
+    {
+      "case": "contacts",
+      "sandbox": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/contacts",
+      "executable": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/contacts/Darwin2.48.32.exe",
+      "input": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/contacts/input.sim",
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/contacts/captures/contacts-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/contacts/captures/contacts-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/contacts/captures/contacts-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "verified_template_files": 56,
+      "verified_robots": 48,
+      "launched": false
+    },
+    {
+      "case": "body",
+      "sandbox": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/body",
+      "executable": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/body/Darwin2.48.32.exe",
+      "input": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/body/input.sim",
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/body/captures/body-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/body/captures/body-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/body/captures/body-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "verified_template_files": 56,
+      "verified_robots": 48,
+      "launched": false
+    },
+    {
+      "case": "ties",
+      "sandbox": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/ties",
+      "executable": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/ties/Darwin2.48.32.exe",
+      "input": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/ties/input.sim",
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "random_sensitive": false,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/ties/captures/ties-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/ties/captures/ties-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/ties/captures/ties-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "verified_template_files": 56,
+      "verified_robots": 48,
+      "launched": false
+    },
+    {
+      "case": "feeding",
+      "sandbox": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/feeding",
+      "executable": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/feeding/Darwin2.48.32.exe",
+      "input": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/feeding/input.sim",
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "random_sensitive": true,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/feeding/captures/feeding-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/feeding/captures/feeding-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/feeding/captures/feeding-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "verified_template_files": 56,
+      "verified_robots": 48,
+      "launched": false
+    },
+    {
+      "case": "reproduction",
+      "sandbox": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/reproduction",
+      "executable": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/reproduction/Darwin2.48.32.exe",
+      "input": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/reproduction/input.sim",
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "random_sensitive": true,
+      "planned_captures": [
+        {
+          "native_cycle": 1,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/reproduction/captures/reproduction-original-cycle1.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 10,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/reproduction/captures/reproduction-original-cycle10.sim",
+          "actual_capture_exists": false
+        },
+        {
+          "native_cycle": 100,
+          "path": "C:/Users/PC/AppData/Local/Temp/db24832-oracle-20261016-nVc3W7/reproduction/captures/reproduction-original-cycle100.sim",
+          "actual_capture_exists": false
+        }
+      ],
+      "verified_template_files": 56,
+      "verified_robots": 48,
+      "launched": false
+    }
+  ],
+  "restarter_copied": false,
+  "software_executed": false,
+  "source_frozen_batch46_edited": false,
+  "policy": "One pristine process sandbox per case. Pause using actual toolbar before toolbar Load. Save actual counter1 after native Load. Use exactly9 toolbar single-cycle clicks to10, then90 further toolbar single-cycle clicks to100; verify actual counters from saved bytes. Do not select a robot or open console. Original .sim omits global Rnd/Gauss. No UI until actual idle >=300s and no guarded GPU/capacity worker.",
+  "controlled_rng_context": {
+    "authority": [
+      "Darwinbots2/main.frm:1374-1407",
+      "Darwinbots2/Common.bas:gasdev"
+    ],
+    "uniform_load": "startloaded executes Rnd -1, Randomize saved UserSeedNumber/100, then exactly3chartcolor draws. Rust initialize_native_load follows this source sequence.",
+    "gaussian_cache": "Use one pristine process per case and never StartNew before Load, to retain fresh empty process-static gasdev cache.",
+    "conditions_to_verify": "tmpseed override absent; actual saved seed remains fixture48032; no UseIntRnd; load toolbar actualcounter is1; none of these conditions is claimed runtime-verified yet.",
+    "limit": "Arbitrary original saves do not contain hidden process cache. This fresh-process controlled protocol does not establish arbitrary historical RNG continuation."
+  },
+  "main_directory_contract": {
+    "source": "Darwinbots2/HDRoutines.bas:852-900",
+    "default": "MainDir=App.path; only an existing adjacent Maindir.gset with an existing directory overrides it.",
+    "owned_sandboxes": "Each isolated case uses its own executable folder, no Maindir.gset, so saves/settings/league paths resolve within that sandbox. Verify absence again immediately before any launch.",
+    "checked_utc": "2026-10-16T13:02:12.489Z"
+  },
+  "startup_protocol_review": {
+    "reviewed_utc": "2026-10-16T16:40:20.198Z",
+    "runtime_executed": false,
+    "automatic_startnew": false,
+    "steps": [
+      "Launch the owned original EXE with no command arguments",
+      "Acknowledge missing lastexit info; close InfoForm and Getting Started; cancel automatically opened .set picker; close Options via X",
+      "Click actual TOOLBAR Pause (key stop) before actual TOOLBAR Load (key loadsim); do not use F12/menu Pause or F2/menu Load",
+      "Load own input.sim. Source predicts first automatic UpdateSim before pausefix: native0 to1; save unique original-cycle1.sim and verify bytes",
+      "Use9 toolbar Single Cycle(key cycle) clicks to reach counter10, then90 further clicks to100; save unique new files and verify each actual counter. Keep loaded focus0; never select a robot or invoke FindBest/console.",
+      "Fresh original process per case; discard contaminated run if any earlier simulation or incorrect counter"
+    ],
+    "source": [
+      "Iersera.vbp75",
+      "InfoForm.frm262-269",
+      "OptionsForm.frm2873-2877",
+      "OptionsForm.frm5026-5049",
+      "MDIForm1.frm1756-1770",
+      "MDIForm1.frm2090-2095",
+      "main.frm1377-1407",
+      "main.frm2078-2127",
+      "Common.bas85-103"
+    ],
+    "rng": "Fresh tmpseed0 keeps saved48032. startloaded Rnd -1 and Randomize savedseed/100 reset uniform before exactly3 chart draws; reviewed onboarding/load path does not call gasdev. Gaussian emptiness requires fresh process and no earlier simulation.",
+    "checkpoint_counters": [
+      1,
+      10,
+      100
+    ],
+    "new_original_trajectories": 0,
+    "superseding_reviews": [
+      "output/native-original-startup-toolbar-review49.json",
+      "output/native-original-selection-review49.json"
+    ],
+    "console_correction": "Bare9/90 do nothing. Console requires exact cycle 9 / cycle 90, but enabling it through selection can alter state. Canonical differential protocol uses toolbar stepping only.",
+    "selection_limit": "whichrob and extra Redraw can round Single positions. Toolbar stepping also invokes normal per-cycle Redraw; avoidance of selection removes extra hit-test/Redraw passes, and does not assert the original rendering is bit-preserving."
+  },
+  "startup_protocol_review_history": [
+    {
+      "reviewed_utc": "2026-10-16T14:45:23.807Z",
+      "runtime_executed": false,
+      "automatic_startnew": false,
+      "steps": [
+        "Launch the owned original EXE with no command arguments",
+        "Acknowledge missing lastexit info; close InfoForm and Getting Started; cancel automatically opened .set picker; close Options via X",
+        "Click actual TOOLBAR Pause (key stop) before actual TOOLBAR Load (key loadsim); do not use F12/menu Pause or F2/menu Load",
+        "Load own input.sim. Source predicts first automatic UpdateSim before pausefix: native0 to1; save unique original-cycle1.sim and verify bytes",
+        "Use selected robot console9 to reach10, then90 to100, saving unique new files each time",
+        "Fresh original process per case; discard contaminated run if any earlier simulation or incorrect counter"
+      ],
+      "source": [
+        "Iersera.vbp75",
+        "InfoForm.frm262-269",
+        "OptionsForm.frm2873-2877",
+        "OptionsForm.frm5026-5049",
+        "MDIForm1.frm1756-1770",
+        "MDIForm1.frm2090-2095",
+        "main.frm1377-1407",
+        "main.frm2078-2127",
+        "Common.bas85-103"
+      ],
+      "rng": "Fresh tmpseed0 keeps saved48032. startloaded Rnd -1 and Randomize savedseed/100 reset uniform before exactly3 chart draws; reviewed onboarding/load path does not call gasdev. Gaussian emptiness requires fresh process and no earlier simulation.",
+      "checkpoint_counters": [
+        1,
+        10,
+        100
+      ],
+      "new_original_trajectories": 0
+    }
+  ]
+}

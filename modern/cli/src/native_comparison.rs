@@ -288,6 +288,8 @@ pub(crate) fn write_suite(directory: &Path) -> Result<Value, Box<dyn Error>> {
     ];
     let mut manifest = Vec::new();
     for (name, source, positions) in cases {
+        // These are loaded-world fixtures at cycle zero, not fresh StartNew
+        // worlds at -1. Loading the saved .sim supplies its own native prologue.
         let mut world = Engine::new(EngineConfig {
             backend: BackendPreference::Cpu,
             seed: 48_032,

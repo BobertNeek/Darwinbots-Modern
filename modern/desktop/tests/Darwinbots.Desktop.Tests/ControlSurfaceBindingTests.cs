@@ -19,7 +19,7 @@ public sealed class ControlSurfaceBindingTests
     {
         var surfaces = new[]
         {
-            new Surface("MainWindow.axaml", typeof(MainWindow), 59),
+            new Surface("MainWindow.axaml", typeof(MainWindow), 62),
             new Surface("SetupWindow.axaml", typeof(SetupWindow), 22),
             new Surface("AdvancedSettingsWindow.axaml", typeof(AdvancedSettingsWindow), 3),
             new Surface("GlobalSettingsWindow.axaml", typeof(GlobalSettingsWindow), 3),

@@ -1,7 +1,5 @@
 use crate::persistence::SaveFile;
-use crate::{
-    Engine, EngineConfig, EngineError, LegacyDna, LegacyOrganismFile, OrganismId, SpeciesDefinition,
-};
+use crate::{Engine, EngineConfig, EngineError, LegacyOrganismFile, OrganismId, SpeciesDefinition};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
 
@@ -56,6 +54,19 @@ enum ManualReproductionMutationMode {
 enum EngineCommand {
     Tick {
         count: u32,
+    },
+    SetNativeRestartSeed {
+        seed: u64,
+        #[serde(default)]
+        skin_timer_seconds: Option<[f32; 2]>,
+    },
+    ReadNativeGaussianSpare,
+    SetNativeGaussianSpare {
+        spare: Option<f32>,
+    },
+    ReadNativeSunChange,
+    SetNativeSunChange {
+        sun_change: u8,
     },
     ConfigureLocalMode {
         config: crate::LocalModeConfig,
@@ -150,6 +161,9 @@ enum EngineCommand {
     ExportDna {
         slot: u32,
         generation: u32,
+    },
+    ExportSpeciesTemplateDna {
+        species: u32,
     },
     ExportOrganismGroup {
         organisms: Vec<OrganismIdCommand>,
@@ -371,7 +385,7 @@ fn db_engine_create_impl(
             Err(error) => return fail(DbStatus::InvalidConfig, error),
         }
     };
-    match Engine::new(config) {
+    match Engine::new_native(config) {
         Ok(engine) => {
             unsafe { out_engine.write(Box::into_raw(Box::new(engine))) };
             DbStatus::Ok
@@ -429,7 +443,7 @@ pub extern "C" fn db_engine_import_dna(
         Ok(text) => text,
         Err(error) => return fail(DbStatus::InvalidUtf8, error),
     };
-    let dna = match LegacyDna::parse(text) {
+    let dna = match engine.load_dna_source(text) {
         Ok(dna) => dna,
         Err(error) => return fail(DbStatus::EngineError, error),
     };
@@ -533,6 +547,49 @@ fn db_engine_command_batch_impl(
             format!("unsupported command batch version {}", batch.version),
         );
     }
+    // Pure queries must not reconstruct the world or its GPU backend.
+    if !batch.commands.is_empty()
+        && batch.commands.iter().all(|command| {
+            matches!(
+                command,
+                EngineCommand::ReadNativeGaussianSpare
+                    | EngineCommand::ReadNativeSunChange
+                    | EngineCommand::ExportSpeciesTemplateDna { .. }
+            )
+        })
+    {
+        let results: Result<Vec<_>, EngineError> = batch
+            .commands
+            .iter()
+            .map(|command| match command {
+                EngineCommand::ReadNativeGaussianSpare => {
+                    Ok(serde_json::json!(engine.read_native_gaussian_spare()))
+                }
+                EngineCommand::ReadNativeSunChange => {
+                    Ok(serde_json::json!(engine.read_native_sun_change()))
+                }
+                EngineCommand::ExportSpeciesTemplateDna { species } => engine
+                    .export_species_template_dna(crate::SpeciesId(*species))
+                    .map(|dna| serde_json::json!({ "dna": dna })),
+                _ => unreachable!("pure queries were validated above"),
+            })
+            .collect();
+        let results = match results {
+            Ok(results) => results,
+            Err(error) => return fail(DbStatus::EngineError, error),
+        };
+        let response = serde_json::json!({
+            "version": ABI_VERSION,
+            "tick": engine.snapshot().tick,
+            "population": engine.population(),
+            "backend": format!("{:?}", engine.backend()),
+            "results": results,
+        });
+        return match serde_json::to_vec(&response) {
+            Ok(bytes) => write_buffer(out_buffer, bytes),
+            Err(error) => fail(DbStatus::EngineError, error),
+        };
+    }
     let mut command_results = Vec::with_capacity(batch.commands.len());
     let committed_engine = engine;
     let mut candidate = match SaveFile::encode(committed_engine) {
@@ -546,6 +603,25 @@ fn db_engine_command_batch_impl(
 
     for command in batch.commands {
         let result = match command {
+            EngineCommand::SetNativeRestartSeed {
+                seed,
+                skin_timer_seconds,
+            } => engine
+                .set_native_restart_inputs(seed, skin_timer_seconds)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::ReadNativeGaussianSpare => {
+                Ok(serde_json::json!(engine.read_native_gaussian_spare()))
+            }
+            EngineCommand::SetNativeGaussianSpare { spare } => engine
+                .set_native_gaussian_spare(spare)
+                .map(|_| serde_json::Value::Null),
+            EngineCommand::ReadNativeSunChange => {
+                Ok(serde_json::json!(engine.read_native_sun_change()))
+            }
+            EngineCommand::SetNativeSunChange { sun_change } => {
+                engine.set_native_sun_change(sun_change);
+                Ok(serde_json::Value::Null)
+            }
             EngineCommand::Tick { count } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
@@ -589,18 +665,20 @@ fn db_engine_command_batch_impl(
             EngineCommand::AdjudicateLocalRound { winner, reason } => engine
                 .adjudicate_local_round(winner, reason)
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::ImportDna { dna, position } => LegacyDna::parse(&dna).and_then(|dna| {
-                let compatibility_warnings = dna.compatibility_warnings().to_vec();
-                engine
-                    .spawn_at(dna, position.unwrap_or([0.0; 2]))
-                    .map(|id| {
-                        serde_json::json!({
-                            "slot": id.slot(),
-                            "generation": id.generation(),
-                            "compatibility_warnings": compatibility_warnings,
+            EngineCommand::ImportDna { dna, position } => {
+                engine.load_dna_source(&dna).and_then(|dna| {
+                    let compatibility_warnings = dna.compatibility_warnings().to_vec();
+                    engine
+                        .spawn_at(dna, position.unwrap_or([0.0; 2]))
+                        .map(|id| {
+                            serde_json::json!({
+                                "slot": id.slot(),
+                                "generation": id.generation(),
+                                "compatibility_warnings": compatibility_warnings,
+                            })
                         })
-                    })
-            }),
+                })
+            }
             EngineCommand::ImportOrganism { payload, position } => {
                 if payload.starts_with(b"DB2O") {
                     LegacyOrganismFile::decode(&payload).and_then(|file| {
@@ -642,90 +720,94 @@ fn db_engine_command_batch_impl(
                 skin,
                 restrictions,
                 positions,
-            } => LegacyDna::parse(&dna).and_then(|dna| {
-                if let Some(profile) = &mutation_profile {
-                    profile.validate()?;
-                }
-                let compatibility_warnings = dna.compatibility_warnings().to_vec();
-                let mut definition = SpeciesDefinition {
-                    name,
-                    vegetable,
-                    color,
-                    minimum_population,
-                    reseed,
-                    mutation_rate,
-                    mutation_profile,
-                    ..SpeciesDefinition::default()
-                };
-                if let Some(skin) = skin {
-                    definition.skin = skin;
-                    definition.custom_skin = true;
-                }
-                definition.restrictions = restrictions;
-                let mode = placement
-                    .as_ref()
-                    .and_then(|value| value.get("mode"))
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or("random");
-                if !matches!(mode, "random" | "center" | "fixed") {
-                    return Err(EngineError::Invariant(
-                        "species placement mode must be random, center or fixed".into(),
-                    ));
-                }
-                if let Some(value) = placement.as_ref() {
-                    definition.placement_bounds = [
-                        value
-                            .get("left")
-                            .and_then(serde_json::Value::as_f64)
-                            .unwrap_or(0.0) as f32,
-                        value
-                            .get("right")
-                            .and_then(serde_json::Value::as_f64)
-                            .unwrap_or(1.0) as f32,
-                        value
-                            .get("top")
-                            .and_then(serde_json::Value::as_f64)
-                            .unwrap_or(0.0) as f32,
-                        value
-                            .get("bottom")
-                            .and_then(serde_json::Value::as_f64)
-                            .unwrap_or(1.0) as f32,
-                    ];
-                }
-                definition
-                    .validate_placement_bounds()
-                    .map_err(EngineError::Invariant)?;
-                let species = engine.register_species(definition);
-                let ids = if placement.is_some() && engine.has_native_random() {
-                    let positions = if mode == "random" && initial_count > 0 {
-                        vec![[0.0; 2]; initial_count]
-                    } else {
-                        positions
+            } => {
+                let source_text = dna.clone();
+                engine.load_dna_source(&dna).and_then(|dna| {
+                    if let Some(profile) = &mutation_profile {
+                        profile.validate()?;
+                    }
+                    let compatibility_warnings = dna.compatibility_warnings().to_vec();
+                    let mut definition = SpeciesDefinition {
+                        name,
+                        vegetable,
+                        color,
+                        minimum_population,
+                        reseed,
+                        mutation_rate,
+                        mutation_profile,
+                        ..SpeciesDefinition::default()
                     };
-                    engine.spawn_species_batch_with_native_placement(
-                        dna,
-                        species,
-                        positions,
-                        initial_energy,
-                        mode == "random",
-                    )
-                } else {
-                    engine.spawn_species_batch(dna, species, positions, initial_energy)
-                };
-                ids.map(|ids| {
-                    serde_json::json!({
-                        "species": species.0,
-                        "count": ids.len(),
-                        "compatibility_warnings": compatibility_warnings,
+                    if let Some(skin) = skin {
+                        definition.skin = skin;
+                        definition.custom_skin = true;
+                    }
+                    definition.restrictions = restrictions;
+                    let mode = placement
+                        .as_ref()
+                        .and_then(|value| value.get("mode"))
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or("random");
+                    if !matches!(mode, "random" | "center" | "fixed") {
+                        return Err(EngineError::Invariant(
+                            "species placement mode must be random, center or fixed".into(),
+                        ));
+                    }
+                    if let Some(value) = placement.as_ref() {
+                        definition.placement_bounds = [
+                            value
+                                .get("left")
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(0.0) as f32,
+                            value
+                                .get("right")
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(1.0) as f32,
+                            value
+                                .get("top")
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(0.0) as f32,
+                            value
+                                .get("bottom")
+                                .and_then(serde_json::Value::as_f64)
+                                .unwrap_or(1.0) as f32,
+                        ];
+                    }
+                    definition
+                        .validate_placement_bounds()
+                        .map_err(EngineError::Invariant)?;
+                    let species = engine.register_species(definition);
+                    let ids = if placement.is_some() && engine.has_native_random() {
+                        let positions = if mode == "random" && initial_count > 0 {
+                            vec![[0.0; 2]; initial_count]
+                        } else {
+                            positions
+                        };
+                        engine.spawn_species_batch_with_native_placement(
+                            dna,
+                            species,
+                            positions,
+                            initial_energy,
+                            mode == "random",
+                        )
+                    } else {
+                        engine.spawn_species_batch(dna, species, positions, initial_energy)
+                    };
+                    ids.and_then(|ids| {
+                        engine.retain_species_template_source(species, source_text)?;
+                        Ok(serde_json::json!({
+                            "species": species.0,
+                            "count": ids.len(),
+                            "compatibility_warnings": compatibility_warnings,
+                        }))
                     })
                 })
-            }),
+            }
             EngineCommand::InsertSpecies {
                 name,
                 dna,
                 position,
                 initial_energy,
-            } => LegacyDna::parse(&dna).and_then(|dna| {
+            } => engine.load_dna_source(&dna).and_then(|dna| {
                 let warnings = dna.compatibility_warnings().to_vec();
                 engine
                     .insert_registered_species_at(&name, dna, position, initial_energy)
@@ -755,11 +837,15 @@ fn db_engine_command_batch_impl(
                 slot,
                 generation,
                 dna,
-            } => LegacyDna::parse(&dna)
+            } => engine
+                .load_dna_source(&dna)
                 .and_then(|dna| engine.replace_dna(OrganismId::new(slot, generation), dna))
                 .map(|_| serde_json::Value::Null),
             EngineCommand::ExportDna { slot, generation } => engine
                 .export_dna(OrganismId::new(slot, generation))
+                .map(|dna| serde_json::json!({ "dna": dna })),
+            EngineCommand::ExportSpeciesTemplateDna { species } => engine
+                .export_species_template_dna(crate::SpeciesId(species))
                 .map(|dna| serde_json::json!({ "dna": dna })),
             EngineCommand::ExportOrganismGroup { organisms } => {
                 let members: Vec<_> = organisms
@@ -1167,6 +1253,7 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
             // its complete saved policy; the two load formats stay distinct.
             if !bytes.starts_with(b"DB3S") {
                 loaded.retain_native_global_preferences(engine.configuration());
+                loaded.inherit_native_gaussian_spare(engine);
             }
             *engine = loaded;
             DbStatus::Ok
@@ -1245,6 +1332,7 @@ fn ffi_guard(operation: &str, action: impl FnOnce() -> DbStatus) -> DbStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{LegacyDna, SpeciesId};
 
     #[test]
     fn invalid_find_best_weight_preserves_the_entire_command_batch() {
@@ -1298,5 +1386,536 @@ mod tests {
         let message = LAST_ERROR.with(|error| error.borrow().clone());
         assert!(message.contains("test operation panicked"));
         assert!(message.contains("deliberate failure"));
+    }
+    fn source_fixture_engine(native: bool) -> Engine {
+        if native {
+            return Engine::new_native(EngineConfig::testing()).unwrap();
+        }
+        // Engine::new already has a native stream. Represent the supported
+        // legacy save state explicitly without adding a runtime setting.
+        let mut state =
+            serde_json::to_value(Engine::new(EngineConfig::testing()).unwrap()).unwrap();
+        state["native_random"] = serde_json::Value::Null;
+        let engine: Engine = serde_json::from_value(state).unwrap();
+        assert!(!engine.has_native_random());
+        engine
+    }
+
+    fn classic_test_batch(engine: &mut Engine, commands: serde_json::Value) -> (DbStatus, Vec<u8>) {
+        let payload =
+            serde_json::to_vec(&serde_json::json!({"version":1,"commands":commands})).unwrap();
+        let mut buffer = DbBuffer::default();
+        let status = db_engine_command_batch(engine, payload.as_ptr(), payload.len(), &mut buffer);
+        let result = if buffer.data.is_null() {
+            Vec::new()
+        } else {
+            unsafe { slice::from_raw_parts(buffer.data, buffer.len) }.to_vec()
+        };
+        if !buffer.data.is_null() {
+            assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
+        }
+        (status, result)
+    }
+
+    #[test]
+    fn classic_raw_source_and_clock_inputs_survive_public_ffi_clones_saves_and_atomic_failures() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let raw = "' original CRLF input\r\ndef marker 900\r\nstart 7 .marker store stop end 123\r\n'#tag:retained\r\n";
+        let (status, _) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_native_restart_seed","seed":112,"skin_timer_seconds":[1.125,1.375]},
+                {"type":"import_species","name":"Original.txt","dna":raw,"vegetable":false,"color":4279312947u32,"minimum_population":0,"reseed":false,"mutation_rate":0,"initial_energy":777,"initial_count":1,"positions":[[500,500]]}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let source = engine
+            .snapshot()
+            .species
+            .iter()
+            .position(|s| s.name == "Original.txt")
+            .unwrap();
+        let saved = SaveFile::encode(&engine).unwrap();
+        let (status, result) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([{ "type":"export_species_template_dna","species":source }]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(result["results"][0]["dna"], raw);
+        assert_eq!(SaveFile::encode(&engine).unwrap(), saved);
+        engine = SaveFile::decode(&saved).unwrap();
+        assert_eq!(
+            serde_json::to_value(&engine).unwrap()["native_skin_timer_seconds"],
+            serde_json::json!([1.125, 1.375])
+        );
+        let (status, _) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([{ "type":"set_native_restart_seed","seed":162 }]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(
+            serde_json::to_value(&engine).unwrap()["native_skin_timer_seconds"],
+            serde_json::json!([1.125, 1.375])
+        );
+        for timers in [
+            serde_json::json!([-0.1, 1]),
+            serde_json::json!([0, 86400]),
+            serde_json::json!([1]),
+        ] {
+            let before = SaveFile::encode(&engine).unwrap();
+            let (status, result) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([{ "type":"set_native_restart_seed","seed":999,"skin_timer_seconds":timers }]),
+            );
+            assert_ne!(status, DbStatus::Ok);
+            assert!(result.is_empty());
+            assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        }
+        let before = SaveFile::encode(&engine).unwrap();
+        let (status, result) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_native_restart_seed","seed":999,"skin_timer_seconds":[5,6]},
+                {"type":"export_species_template_dna","species":4294967295u32}
+            ]),
+        );
+        assert_ne!(status, DbStatus::Ok);
+        assert!(result.is_empty());
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(
+            engine
+                .export_species_template_dna(SpeciesId(source as u32))
+                .unwrap(),
+            raw
+        );
+    }
+
+    #[test]
+    fn native_text_import_insert_replace_keep_source_coding_and_private_context_across_ffi_clones()
+    {
+        for native in [true, false] {
+            let mut engine = source_fixture_engine(native);
+            let mut raw = String::from("' exact CRLF source\r\ndef Foo 7\r\ndef foo 9\r\n");
+            for index in 0..53 {
+                raw.push_str(&format!(
+                    "def v{index} {}\r\n",
+                    if index == 47 { 32767 } else { 3000 + index }
+                ));
+            }
+            raw.push_str("11 start .Foo .foo 1 999 += stop end 123\r\nNewMove\r\n");
+            let expected = engine.load_dna_source(&raw).unwrap();
+            assert_eq!(expected.uses_new_move(), !native);
+            assert_eq!(
+                expected
+                    .blocks()
+                    .iter()
+                    .map(|block| (block.class as u8, block.value))
+                    .collect::<Vec<_>>(),
+                default_import_literal(native)
+            );
+            if native {
+                assert_eq!(expected.blocks()[0].class, crate::TokenClass::Flow);
+                assert_eq!(expected.blocks()[1].value, 7);
+                assert_eq!(expected.blocks()[2].value, 9);
+            } else {
+                assert_eq!(expected.blocks()[0].value, 11);
+            }
+            let (status, result) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([{ "type":"import_species","name":"Native Source.txt","dna":raw,"vegetable":false,"color":4279312947u32,"minimum_population":0,"reseed":false,"initial_energy":1000,"initial_count":1,"positions":[[500,500]] }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let response: serde_json::Value = serde_json::from_slice(&result).unwrap();
+            let species = SpeciesId(response["results"][0]["species"].as_u64().unwrap() as u32);
+            let first = engine.snapshot().organisms[0].id;
+            assert_eq!(engine.organism(first).unwrap().flags.new_move, !native);
+            assert_eq!(
+                engine.organism(first).unwrap().private_variable_count,
+                if native { 56 } else { 51 }
+            );
+            assert_eq!(
+                LegacyDna::parse(&engine.export_dna(first).unwrap())
+                    .unwrap()
+                    .blocks(),
+                expected.blocks()
+            );
+            assert_eq!(engine.export_species_template_dna(species).unwrap(), raw);
+            let saved = SaveFile::encode(&engine).unwrap();
+            engine = SaveFile::decode(&saved).unwrap();
+            assert_eq!(
+                engine.organism(first).unwrap().private_variable_count,
+                if native { 56 } else { 51 }
+            );
+            assert_eq!(engine.export_species_template_dna(species).unwrap(), raw);
+            if native {
+                let record = crate::native_binary::NativeRecordFile::decode(
+                    &engine.export_native_sim().unwrap(),
+                )
+                .unwrap();
+                assert_eq!(record.robots[0].word("private_variable_count").unwrap(), 56);
+                let variables = record.robots[0].bytes("private_variables").unwrap();
+                let mut offset = 0;
+                let mut saved_variables = Vec::new();
+                for _ in 0..50 {
+                    let length =
+                        i16::from_le_bytes(variables[offset..offset + 2].try_into().unwrap())
+                            as usize;
+                    offset += 2;
+                    let name =
+                        String::from_utf8(variables[offset..offset + length].to_vec()).unwrap();
+                    offset += length;
+                    let value =
+                        i16::from_le_bytes(variables[offset..offset + 2].try_into().unwrap());
+                    offset += 2;
+                    saved_variables.push((name, value));
+                }
+                assert_eq!(saved_variables[0], ("Foo".into(), 7));
+                assert_eq!(saved_variables[1], ("foo".into(), 9));
+                assert_eq!(saved_variables[49], ("v47".into(), 32767));
+                let imported = Engine::from_native_sim(&record.encode().unwrap()).unwrap();
+                assert_eq!(imported.snapshot().organisms[0].private_variable_count, 56);
+            }
+            let (status, _) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([{ "type":"insert_species","name":"Native Source.txt","dna":raw,"position":[321,654],"initial_energy":2000 }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            assert_eq!(engine.population(), 2);
+            assert!(
+                engine
+                    .snapshot()
+                    .organisms
+                    .iter()
+                    .all(|r| r.private_variable_count == if native { 56 } else { 51 })
+            );
+            assert_eq!(engine.export_species_template_dna(species).unwrap(), raw);
+            let replacement = "def A 4\r\ndef a 5\r\nstart .A .a += stop end\r\nNewMove\r\n";
+            let expected_replacement = engine.load_dna_source(replacement).unwrap();
+            let (status, _) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([{ "type":"replace_dna","slot":first.slot(),"generation":first.generation(),"dna":replacement }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            assert_eq!(
+                LegacyDna::parse(&engine.export_dna(first).unwrap())
+                    .unwrap()
+                    .blocks(),
+                expected_replacement.blocks()
+            );
+            assert_eq!(engine.organism(first).unwrap().flags.new_move, !native);
+            assert_eq!(
+                engine.organism(first).unwrap().private_variable_count,
+                if native { 3 } else { 51 }
+            );
+            assert_eq!(engine.export_species_template_dna(species).unwrap(), raw);
+            let (status, result) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([{ "type":"import_species","name":"Zero Count.txt","dna":raw,"vegetable":false,"color":4279312947u32,"minimum_population":0,"reseed":false,"initial_energy":777,"initial_count":0,"positions":[] }]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
+            let zero = SpeciesId(result["results"][0]["species"].as_u64().unwrap() as u32);
+            assert_eq!(engine.population(), 2);
+            assert_eq!(engine.export_species_template_dna(zero).unwrap(), raw);
+            let resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+            assert_eq!(resumed.export_species_template_dna(zero).unwrap(), raw);
+            assert_eq!(
+                resumed.organism(first).unwrap().private_variable_count,
+                if native { 3 } else { 51 }
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_native_text_loader_fails_the_entire_import_batch_without_committing() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let before = SaveFile::encode(&engine).unwrap();
+        let (status, result) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_native_restart_seed","seed":999},
+                {"type":"import_species","name":"Overflow.txt","dna":"start 32768 stop","vegetable":false,"color":4279312947u32,"minimum_population":0,"reseed":false,"initial_energy":1000,"initial_count":1,"positions":[[500,500]]}
+            ]),
+        );
+        assert_ne!(status, DbStatus::Ok);
+        assert!(result.is_empty());
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    }
+    fn default_import_literal(native: bool) -> Vec<(u8, i32)> {
+        if native {
+            vec![
+                (9, 2),
+                (0, 7),
+                (0, 9),
+                (0, 1),
+                (0, 999),
+                (0, 0),
+                (9, 4),
+                (10, 1),
+            ]
+        } else {
+            vec![
+                (0, 11),
+                (9, 2),
+                (0, 9),
+                (0, 9),
+                (0, 1),
+                (0, 999),
+                (7, 4),
+                (9, 4),
+                (10, 1),
+            ]
+        }
+    }
+
+    fn default_import_source() -> String {
+        let mut source = String::from("' exact CRLF input\r\ndef Foo 7\r\ndef foo 9\r\n");
+        for index in 0..53 {
+            source.push_str(&format!(
+                "def v{index} {}\r\n",
+                if index == 47 { 32767 } else { 3000 + index }
+            ));
+        }
+        source.push_str("11 start .Foo .foo 1 999 += stop end 123\r\nNewMove\r\n");
+        source
+    }
+
+    fn assert_default_source_actor(engine: &Engine, id: OrganismId, native: bool) {
+        let dna = engine.dna(id).unwrap();
+        assert_eq!(
+            dna.blocks()
+                .iter()
+                .map(|block| (block.class as u8, block.value))
+                .collect::<Vec<_>>(),
+            default_import_literal(native)
+        );
+        assert_eq!(dna.uses_new_move(), !native);
+        assert_eq!(engine.organism(id).unwrap().flags.new_move, !native);
+        assert_eq!(
+            engine.organism(id).unwrap().private_variable_count,
+            if native { 56 } else { 51 }
+        );
+        assert_eq!(dna.native_user_variables().len(), 55);
+        assert_eq!(
+            &dna.native_user_variables()[..2],
+            &[("Foo".into(), 7), ("foo".into(), 9)]
+        );
+        if native {
+            // Inspect the persisted runtime cells beyond the native file's50
+            // saved slots, independently from the DNA definition list.
+            let saved = SaveFile::encode(engine).unwrap();
+            let payload: serde_json::Value = serde_json::from_slice(&saved[10..]).unwrap();
+            let program = &payload["slots"][id.slot() as usize]["organism"]["program"];
+            let cells = program["private_variables"]["cells"].as_array().unwrap();
+            let cell = |address| {
+                cells
+                    .iter()
+                    .find(|entry| entry[0].as_u64() == Some(address))
+                    .unwrap()[1]
+                    .as_i64()
+                    .unwrap()
+            };
+            assert_eq!(cell(50), 32767);
+            assert_eq!(cell(51), 3048);
+            assert_eq!(cell(55), 3052);
+        }
+    }
+
+    #[test]
+    fn default_utf8_import_boundaries_use_native_source_without_creating_startup_templates() {
+        for native in [true, false] {
+            for command in [false, true] {
+                let mut engine = source_fixture_engine(native);
+                let templates = serde_json::to_value(&engine).unwrap()["species_templates"].clone();
+                assert!(
+                    engine
+                        .export_species_template_dna(SpeciesId::default())
+                        .is_err()
+                );
+                let source = default_import_source();
+                if command {
+                    let (status, result) = classic_test_batch(
+                        &mut engine,
+                        serde_json::json!([
+                            {"type":"import_dna","dna":source,"position":[321,654]}
+                        ]),
+                    );
+                    assert_eq!(status, DbStatus::Ok);
+                    let result: serde_json::Value = serde_json::from_slice(&result).unwrap();
+                    assert!(result["results"][0]["compatibility_warnings"].is_array());
+                } else {
+                    assert_eq!(
+                        db_engine_import_dna(&mut engine, source.as_ptr(), source.len()),
+                        DbStatus::Ok
+                    );
+                }
+                let id = engine.snapshot().organisms[0].id;
+                assert_eq!(
+                    engine.organism(id).unwrap().position,
+                    if command { [321.0, 654.0] } else { [0.0, 0.0] }
+                );
+                assert_default_source_actor(&engine, id, native);
+                assert_eq!(
+                    serde_json::to_value(&engine).unwrap()["species_templates"],
+                    templates
+                );
+                assert!(
+                    engine
+                        .export_species_template_dna(SpeciesId::default())
+                        .is_err()
+                );
+                engine = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+                assert_default_source_actor(&engine, id, native);
+                assert!(
+                    engine
+                        .export_species_template_dna(SpeciesId::default())
+                        .is_err()
+                );
+
+                // Later individual programs may differ while sharing their
+                // default species identity. Neither import becomes a template.
+                let second = "def Two 13\r\nstart .Two 999 store stop\r\n";
+                assert_eq!(
+                    db_engine_import_dna(&mut engine, second.as_ptr(), second.len()),
+                    DbStatus::Ok
+                );
+                let (status, _) = classic_test_batch(
+                    &mut engine,
+                    serde_json::json!([
+                        {"type":"import_dna","dna":"start 17 998 store stop","position":[123,456]}
+                    ]),
+                );
+                assert_eq!(status, DbStatus::Ok);
+                assert_eq!(engine.population(), 3);
+                let last = engine.snapshot().organisms.last().unwrap().id;
+                assert_eq!(
+                    engine
+                        .dna(last)
+                        .unwrap()
+                        .blocks()
+                        .iter()
+                        .map(|block| (block.class as u8, block.value))
+                        .collect::<Vec<_>>(),
+                    vec![(9, 2), (0, 17), (0, 998), (7, 1), (9, 4), (10, 1)]
+                );
+                assert_default_source_actor(&engine, id, native);
+                assert_eq!(
+                    serde_json::to_value(&engine).unwrap()["species_templates"],
+                    templates
+                );
+                assert!(
+                    engine
+                        .export_species_template_dna(SpeciesId::default())
+                        .is_err()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn individual_default_imports_preserve_existing_startup_templates_with_or_without_raw_source() {
+        for native in [true, false] {
+            for retained_raw in [false, true] {
+                let mut engine = source_fixture_engine(native);
+                let original = "start 3 997 store stop\r\n'#tag:retained\r\n";
+                let dna = engine.load_dna_source(original).unwrap();
+                engine
+                    .spawn_species_batch(dna, SpeciesId::default(), [[500.0; 2]; 2], 777)
+                    .unwrap();
+                if retained_raw {
+                    engine
+                        .retain_species_template_source(SpeciesId::default(), original.into())
+                        .unwrap();
+                }
+                let templates = serde_json::to_value(&engine).unwrap()["species_templates"].clone();
+                let exported = engine
+                    .export_species_template_dna(SpeciesId::default())
+                    .unwrap();
+                for source in [original, "start 7 999 addstore stop\r\n"] {
+                    assert_eq!(
+                        db_engine_import_dna(&mut engine, source.as_ptr(), source.len()),
+                        DbStatus::Ok
+                    );
+                    let (status, _) = classic_test_batch(
+                        &mut engine,
+                        serde_json::json!([
+                            {"type":"import_dna","dna":source,"position":[321,654]}
+                        ]),
+                    );
+                    assert_eq!(status, DbStatus::Ok);
+                    let last = engine.snapshot().organisms.last().unwrap().id;
+                    let literal = if source == original {
+                        vec![(9, 2), (0, 3), (0, 997), (7, 1), (9, 4), (10, 1)]
+                    } else {
+                        vec![(9, 2), (0, 7), (0, 999), (7, 4), (9, 4), (10, 1)]
+                    };
+                    assert_eq!(
+                        engine
+                            .dna(last)
+                            .unwrap()
+                            .blocks()
+                            .iter()
+                            .map(|block| (block.class as u8, block.value))
+                            .collect::<Vec<_>>(),
+                        literal
+                    );
+                    assert_eq!(
+                        serde_json::to_value(&engine).unwrap()["species_templates"],
+                        templates
+                    );
+                    assert_eq!(
+                        engine
+                            .export_species_template_dna(SpeciesId::default())
+                            .unwrap(),
+                        exported
+                    );
+                }
+                assert_eq!(engine.population(), 6);
+                let resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+                assert_eq!(
+                    serde_json::to_value(&resumed).unwrap()["species_templates"],
+                    templates
+                );
+                assert_eq!(
+                    resumed
+                        .export_species_template_dna(SpeciesId::default())
+                        .unwrap(),
+                    exported
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn default_utf8_and_native_overflow_import_errors_preserve_entire_saved_state() {
+        for native in [true, false] {
+            let mut engine = source_fixture_engine(native);
+            let before = SaveFile::encode(&engine).unwrap();
+            let invalid_utf8 = [0xff];
+            assert_eq!(
+                db_engine_import_dna(&mut engine, invalid_utf8.as_ptr(), invalid_utf8.len()),
+                DbStatus::InvalidUtf8
+            );
+            assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+            if native {
+                let overflow = "start 32768 stop";
+                assert_eq!(
+                    db_engine_import_dna(&mut engine, overflow.as_ptr(), overflow.len()),
+                    DbStatus::EngineError
+                );
+                assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+                let (status, result) = classic_test_batch(
+                    &mut engine,
+                    serde_json::json!([
+                        {"type":"set_native_restart_seed","seed":999},
+                        {"type":"import_dna","dna":overflow,"position":[500,500]}
+                    ]),
+                );
+                assert_eq!(status, DbStatus::EngineError);
+                assert!(result.is_empty());
+                assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+            }
+        }
     }
 }

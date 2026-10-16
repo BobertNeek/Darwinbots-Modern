@@ -314,9 +314,8 @@ impl Engine {
         record.set_value("mutation_rates", NativeValue::Bytes(rates))?;
         record.set_value("mutation_shapes", NativeValue::Bytes(shapes))?;
         let variables = robot.program.dna.native_user_variables();
-        if variables.len() > 50 {
-            return Err(invalid("more than 50 private variables"));
-        }
+        // SaveRobotBody writes only vars(1..50), followed by the actual vnum.
+        // DB3S retains the complete table; the native format cannot carry it.
         let mut private = Vec::new();
         let mut definitions = variables.iter();
         for _ in 0..50 {
@@ -597,6 +596,83 @@ mod tests {
         assert!(engine.export_native_organisms(&[id, id]).is_err());
         assert!(engine.export_native_organisms(&[]).is_err());
         assert!(ansi("unsupported 🐉").is_err());
+    }
+
+    #[test]
+    fn native_private_table_projects_first_fifty_without_clamping_the_next_index() {
+        let source = (0..70)
+            .map(|index| format!("def v{index} {}\n", index + 100))
+            .collect::<String>()
+            + "start .v69 999 store stop";
+        let dna = crate::dna::native_load_robot_dna(&source).unwrap();
+        assert_eq!(dna.native_user_variables().len(), 70);
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = engine.spawn_at(dna, [500.0; 2]).unwrap();
+        engine
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .program
+            .private_variable_count = 71;
+        let saved = crate::SaveFile::encode(&engine).unwrap();
+        let bytes = engine.export_native_sim().unwrap();
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), saved);
+        let file = NativeRecordFile::decode(&bytes).unwrap();
+        let record = &file.robots[0];
+        assert_eq!(record.word("private_variable_count").unwrap(), 71);
+        let private = record.bytes("private_variables").unwrap();
+        let mut offset = 0;
+        for index in 0..50 {
+            let size = i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()) as usize;
+            offset += 2;
+            assert_eq!(
+                &private[offset..offset + size],
+                format!("v{index}").as_bytes()
+            );
+            offset += size;
+            assert_eq!(
+                i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()),
+                index + 100
+            );
+            offset += 2;
+        }
+        assert_eq!(offset, private.len());
+        let resumed = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(
+            resumed
+                .slots
+                .get(id)
+                .unwrap()
+                .program
+                .dna
+                .native_user_variables()
+                .len(),
+            70
+        );
+        let mut native = Engine::from_native_sim(&bytes).unwrap();
+        let imported = native.slots.ids_in_slot_order()[0];
+        assert_eq!(
+            native
+                .slots
+                .get(imported)
+                .unwrap()
+                .program
+                .dna
+                .native_user_variables()
+                .len(),
+            50
+        );
+        assert_eq!(
+            native
+                .slots
+                .get(imported)
+                .unwrap()
+                .program
+                .private_variable_count,
+            71
+        );
+        native.tick().unwrap();
+        assert_eq!(native.memory_at(imported, 999).unwrap(), 169);
     }
 
     #[test]

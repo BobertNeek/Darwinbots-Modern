@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Darwinbots.Desktop.Core;
 using Xunit;
 
@@ -5,6 +6,680 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class CommunityLeagueNativeTests
 {
+    [Fact]
+    public async Task PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna()
+    {
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 16, BrownianMotion = 0,
+            MutationSettings = MutationSettingsUpdate.Default with { Enabled = false },
+        }, new TestClock(1125));
+        engine.ImportSpecies(new("Gone.txt", "start\n1 .up store\nstop", false, 0xff123456, 1, 1000, 0, false, 0));
+        engine.ImportSpecies(new("Next.txt", "start stop", false, 0xff654321, 2, 1000, 0, false, 0));
+        engine.ImportSpecies(new("Plant.txt", "start stop", true, 0xff00ff00, 1, 1000, 0, false, 0));
+        var species = engine.Snapshot().Species;
+        var gone = (uint)species.Select((value, index) => (value, index)).Single(item => item.value.Name == "Gone.txt").index;
+        var next = (uint)species.Select((value, index) => (value, index)).Single(item => item.value.Name == "Next.txt").index;
+        var original = engine.ExportSpeciesTemplateDna(gone);
+        engine.ConfigureLocalMode(LocalModeConfig.Default with
+        {
+            Workflow = LeagueWorkflow.PopulationSeeding, EntrantOrder = [gone, next],
+            SeedingOpponent = next, MaximumCycles = 1, RestartOnExtinction = true,
+            MinimumRounds = 1, MaximumRounds = 1,
+        });
+        engine.StartLocalMode();
+        Assert.Equal(gone, engine.Snapshot().LocalMode.Series!.ActiveSeed);
+        Assert.All(engine.Snapshot().Organisms.Where(robot => !robot.Vegetable), robot => Assert.Equal(gone, robot.Species));
+        Assert.Contains(engine.Snapshot().Organisms, robot => robot.Vegetable);
+        var candidates = engine.Snapshot().Organisms.Where(robot => !robot.Vegetable).ToArray();
+        Assert.Equal(5, candidates.Length);
+        var candidate = candidates[0];
+        engine.ReplaceDna(candidate.Slot, candidate.Generation, "start 2 .up store stop");
+        engine.RemoveMany(candidates.Select(robot => new OrganismKey(robot.Slot, robot.Generation)).ToArray());
+        engine.Load(PopulationSeedCycle(engine.Save(), 1999));
+
+        engine.Tick();
+
+        var first = engine.Snapshot();
+        Assert.Equal(new PopulationSeedSnapshot(gone, 0, 2000) { FileName = "0.txt" }, Assert.Single(first.LocalMode.Series!.PopulationSeeds));
+        Assert.Equal(next, first.LocalMode.Series.ActiveSeed);
+        Assert.Empty(first.LocalMode.Results);
+        Assert.Empty(first.LocalMode.Series.ActiveMatch);
+        Assert.Empty(first.LocalMode.Series.Matches);
+        Assert.Empty(first.LocalMode.Series.Seeded);
+        Assert.All(first.Organisms.Where(robot => !robot.Vegetable), robot => Assert.Equal(next, robot.Species));
+        var saved = engine.Save();
+        Assert.Equal(original, engine.ExportSpeciesTemplateDna(gone));
+        Assert.Equal(saved, engine.Save());
+        using var resumed = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" }, new TestClock(1375));
+        resumed.Load(saved);
+        Assert.Equal(saved, resumed.Save());
+        Assert.Equal(original, resumed.ExportSpeciesTemplateDna(gone));
+        Assert.Equal(first.LocalMode.Series.PopulationSeeds, resumed.Snapshot().LocalMode.Series!.PopulationSeeds);
+        Assert.Equal(LeagueWorkflow.PopulationSeeding, resumed.Snapshot().LocalMode.Configuration!.Workflow);
+        Assert.Null(resumed.Snapshot().LocalMode.Configuration!.SeedingOpponent);
+        // Jumping the public cycle does not run UpdateCounters. Carry the real
+        // preceding displayed census instead of inventing it at cycle 2000.
+        resumed.Load(PopulationSeedCycle(resumed.Save(), 1999, 5));
+
+        resumed.Tick();
+
+        var tournament = resumed.Snapshot().LocalMode;
+        Assert.Equal(LocalModeStatus.Running, tournament.Status);
+        Assert.Null(tournament.Series!.ActiveSeed);
+        Assert.Equal(ClassicTournamentPhase.Tournament, tournament.Series.PopulationSeedingPhase);
+        Assert.Equal(new PopulationSeedSnapshot(next, 5, 2000) { FileName = "5.txt" }, tournament.Series.PopulationSeeds[1]);
+        Assert.Equal(new[] { gone, next }.Order(), tournament.Series.ActiveMatch.Order());
+        Assert.Equal(2, tournament.Series.PopulationSeeds.Count);
+        Assert.Empty(tournament.Results);
+        Assert.Null(tournament.Adjudication);
+        var boundary = resumed.Save();
+        resumed.Load(boundary);
+        Assert.Equal(boundary, resumed.Save());
+        Assert.Equal(tournament.Series.ActiveMatch, resumed.Snapshot().LocalMode.Series!.ActiveMatch);
+        resumed.AdjudicateLocalRound(next, "controlled classic winner");
+        var complete = resumed.Snapshot().LocalMode;
+        Assert.Equal(LocalModeStatus.Completed, complete.Status);
+        Assert.Equal(ClassicTournamentPhase.Complete, complete.Series!.PopulationSeedingPhase);
+        Assert.Equal(new[] { next }, complete.Series.Ladder);
+        Assert.False(complete.Series.EnteredLadder);
+        Assert.Equal(original, resumed.ExportSpeciesTemplateDna(gone));
+        var directory = Path.Combine(Path.GetTempPath(), "db-native-classic-winner-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = await ClassicTournamentDnaExport.WriteAsync(directory, complete,
+                [new(next, resumed.Snapshot().Species[(int)next].Name, resumed.ExportSpeciesTemplateDna(next))]);
+            Assert.Equal("Next.txt", Path.GetFileName(Assert.Single(paths)));
+            Assert.Equal("start stop" + Environment.NewLine + "'#tag:Next.txt" + Environment.NewLine,
+                await File.ReadAllTextAsync(paths[0]));
+            Assert.Equal(original, resumed.ExportSpeciesTemplateDna(gone));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task NativeClassicLadderHistorySurvivesSaveAndExportsFinalRankOrder()
+    {
+        using var engine = new NativeEngineClient(new WorldSetupOptions {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 32, BrownianMotion = 0,
+        }, new TestClock(1125));
+        for (var index = 0; index < 4; index++)
+            engine.ImportSpecies(new($"Original{index}.txt", $"' source {index}\nstart stop", false, 0xff123456, 1, 1000, 0, false, 0));
+        var entrants = engine.Snapshot().Species.Select((value, index) => (value, index))
+            .Where(item => item.value.Name.StartsWith("Original", StringComparison.Ordinal)).Select(item => (uint)item.index).ToArray();
+        engine.ConfigureLocalMode(LocalModeConfig.Default with {
+            Workflow = LeagueWorkflow.PopulationSeeding, EntrantOrder = entrants,
+            FinishWithLadder = true, MinimumRounds = 1, MaximumRounds = 1,
+        });
+        engine.StartLocalMode();
+        foreach (var score in new[] { 0, 5, 5, 9 })
+        {
+            engine.Load(PopulationSeedCycle(engine.Save(), 1999, score));
+            engine.Tick();
+        }
+        Assert.Equal(new[] { "0.txt", "5.txt", "5a.txt", "9.txt" },
+            engine.Snapshot().LocalMode.Series!.PopulationSeeds.Select(value => value.FileName));
+        var observedLadder = false;
+        for (var match = 0; match < 20 && engine.Snapshot().LocalMode.Status != LocalModeStatus.Completed; match++)
+        {
+            var mode = engine.Snapshot().LocalMode;
+            if (mode.Series!.PopulationSeedingPhase == ClassicTournamentPhase.Ladder)
+            {
+                observedLadder = true;
+                Assert.True(mode.Series.EnteredLadder);
+                var save = engine.Save();
+                engine.Load(save);
+                Assert.Equal(save, engine.Save());
+            }
+            Assert.Equal(2, mode.Series.ActiveMatch.Count);
+            engine.AdjudicateLocalRound(mode.Series.ActiveMatch[0], "controlled native schedule");
+        }
+        var complete = engine.Snapshot().LocalMode;
+        Assert.True(observedLadder);
+        Assert.Equal(LocalModeStatus.Completed, complete.Status);
+        Assert.Equal(ClassicTournamentPhase.Complete, complete.Series!.PopulationSeedingPhase);
+        Assert.True(complete.Series.EnteredLadder);
+        Assert.Equal(2, complete.Series.Ladder.Count);
+        Assert.Equal(new[] { 0, 5, 5, 9 }, complete.Series.PopulationSeeds.Select(value => value.Population));
+        var directory = Path.Combine(Path.GetTempPath(), "db-native-classic-ladder-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var finalists = complete.Series.Ladder.Select(id => new ClassicTournamentDna(id,
+                engine.Snapshot().Species[(int)id].Name, engine.ExportSpeciesTemplateDna(id))).ToArray();
+            var paths = await ClassicTournamentDnaExport.WriteAsync(directory, complete, finalists);
+            Assert.Equal(finalists.Select((value, index) => $"{index + 1}-{value.SourceName}"), paths.Select(Path.GetFileName));
+            for (var index = 0; index < paths.Count; index++)
+                Assert.Equal(finalists[index].Dna + Environment.NewLine + "'#tag:" + finalists[index].SourceName + Environment.NewLine,
+                    await File.ReadAllTextAsync(paths[index]));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void ClassicSkinClockKeepsRawSingleSamplesAndModernSaveProvenance()
+    {
+        var clock = new AdvancingTestClock();
+        using var engine = new NativeEngineClient(new WorldSetupOptions {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 32, BrownianMotion = 0,
+        }, clock);
+        const string raw = "' Exact source comment\r\nstart 7 .up store stop\r\n";
+        engine.ImportSpecies(new("SourceA.txt", raw, false, 0xff123456, 1, 1000, 0, false, 0));
+        engine.ImportSpecies(new("SourceB.txt", "start stop", false, 0xff654321, 1, 1000, 0, false, 0));
+        var entrants = engine.Snapshot().Species.Select((value, index) => (value, index))
+            .Where(item => item.value.Name.StartsWith("Source", StringComparison.Ordinal)).Select(item => (uint)item.index).ToArray();
+        engine.ConfigureLocalMode(LocalModeConfig.Default with {
+            Workflow = LeagueWorkflow.PopulationSeeding, EntrantOrder = entrants, MinimumRounds = 1, MaximumRounds = 1,
+        });
+        engine.StartLocalMode();
+        Assert.Equal(2, clock.Samples);
+        Assert.Equal(112ul, SavedConfigurationValue(engine, "native_restart_seed"));
+        Assert.Equal(raw, engine.ExportSpeciesTemplateDna(entrants[0]));
+        using (var first = JsonDocument.Parse(engine.Save().AsMemory(10)))
+        {
+            var profile = Assert.Single(first.RootElement.GetProperty("local_mode").GetProperty("series")
+                .GetProperty("classic_skin_profiles").EnumerateArray());
+            Assert.Equal("Test.txt", profile.GetProperty("alias").GetString());
+            Assert.Equal(1.125f, profile.GetProperty("timer_seconds").GetSingle());
+            Assert.NotEqual(112 / 100f, profile.GetProperty("timer_seconds").GetSingle());
+            Assert.False(profile.GetProperty("synthetic_timer").GetBoolean());
+            Assert.False(profile.GetProperty("canonical_source").GetBoolean());
+            Assert.False(first.RootElement.GetProperty("config").TryGetProperty("skin_timer_seconds", out _));
+        }
+        engine.Load(PopulationSeedCycle(engine.Save(), 1999, 5));
+        engine.Tick();
+        engine.Load(PopulationSeedCycle(engine.Save(), 1999, 5));
+        engine.Tick();
+        Assert.Equal(6, clock.Samples);
+        Assert.Equal(212ul, SavedConfigurationValue(engine, "native_restart_seed"));
+        var saved = engine.Save();
+        using (var document = JsonDocument.Parse(saved.AsMemory(10)))
+        {
+            var profiles = document.RootElement.GetProperty("local_mode").GetProperty("series")
+                .GetProperty("classic_skin_profiles").EnumerateArray().ToArray();
+            Assert.Equal(2, profiles.Length);
+            Assert.Equal(2.125f, profiles.Single(profile => profile.GetProperty("alias").GetString() == "robotA.txt")
+                .GetProperty("timer_seconds").GetSingle());
+            Assert.Equal(2.375f, profiles.Single(profile => profile.GetProperty("alias").GetString() == "robotB.txt")
+                .GetProperty("timer_seconds").GetSingle());
+            Assert.All(profiles, profile => Assert.Equal(8, profile.GetProperty("skin").GetArrayLength()));
+        }
+        var resumedClock = new AdvancingTestClock();
+        using var resumed = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" }, resumedClock);
+        resumed.Load(saved);
+        Assert.Equal(saved, resumed.Save());
+        Assert.Equal(raw, resumed.ExportSpeciesTemplateDna(entrants[0]));
+        resumed.Tick();
+        Assert.Equal(2, resumedClock.Samples);
+    }
+
+    [Fact]
+    public async Task SingleClassicEntrantCompletesBeforeOptionalLadderAndExportsThePlainChampion()
+    {
+        using var engine = new NativeEngineClient(new WorldSetupOptions {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 16,
+        }, new TestClock(1125));
+        engine.ImportSpecies(new("Only.txt", "' only\nstart stop", false, 0xff123456, 1, 1000, 0, false, 0));
+        var id = (uint)engine.Snapshot().Species.Select((value, index) => (value, index))
+            .Single(item => item.value.Name == "Only.txt").index;
+        engine.ConfigureLocalMode(LocalModeConfig.Default with {
+            Workflow = LeagueWorkflow.PopulationSeeding, EntrantOrder = [id], FinishWithLadder = true,
+        });
+        engine.StartLocalMode();
+        engine.Load(PopulationSeedCycle(engine.Save(), 1999, 5));
+        engine.Tick();
+        var complete = engine.Snapshot().LocalMode;
+        Assert.Equal(LocalModeStatus.Completed, complete.Status);
+        Assert.Equal(ClassicTournamentPhase.Complete, complete.Series!.PopulationSeedingPhase);
+        Assert.False(complete.Series.EnteredLadder);
+        Assert.True(complete.Configuration!.FinishWithLadder);
+        var directory = Path.Combine(Path.GetTempPath(), "db-native-single-classic-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = await ClassicTournamentDnaExport.WriteAsync(directory, complete,
+                [new(id, engine.Snapshot().Species[(int)id].Name, engine.ExportSpeciesTemplateDna(id))]);
+            Assert.Equal(Path.Combine(directory, "Tournament_Results", "Only.txt"), Assert.Single(paths));
+            Assert.False(Directory.Exists(Path.Combine(directory, "stepladder")));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void ExistingSeedFilterKeepsItsCompetitivePairAndSavedToken()
+    {
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 16,
+        }, new TestClock(1125));
+        engine.ImportSpecies(new("Candidate.txt", "start stop", false, 0xff123456, 1, 1000, 0, false, 0));
+        engine.ImportSpecies(new("Reference.txt", "start stop", false, 0xff654321, 1, 1000, 0, false, 0));
+        var animals = engine.Snapshot().Species.Select((species, index) => (species, index))
+            .Where(item => item.species.Name is "Candidate.txt" or "Reference.txt").Select(item => (uint)item.index).ToArray();
+        engine.ConfigureLocalMode(LocalModeConfig.Default with
+        {
+            Workflow = LeagueWorkflow.Seeding, EntrantOrder = [animals[0]], SeedingOpponent = animals[1],
+        });
+        engine.StartLocalMode();
+        var before = engine.Snapshot().LocalMode;
+        Assert.Equal(LeagueWorkflow.Seeding, before.Configuration!.Workflow);
+        Assert.Equal(animals, before.Series!.ActiveMatch);
+        Assert.Null(before.Series.ActiveSeed);
+        Assert.Empty(before.Series.PopulationSeeds);
+        using var resumed = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" });
+        resumed.Load(engine.Save());
+        Assert.Equal(LeagueWorkflow.Seeding, resumed.Snapshot().LocalMode.Configuration!.Workflow);
+        Assert.Equal(animals, resumed.Snapshot().LocalMode.Series!.ActiveMatch);
+        using var saved = JsonDocument.Parse(resumed.Save().AsMemory(10));
+        Assert.Equal("seeding", saved.RootElement.GetProperty("local_mode").GetProperty("config").GetProperty("workflow").GetString());
+    }
+
+    private static byte[] PopulationSeedCycle(byte[] save, int cycle, int census = 0)
+    {
+        var payload = System.Text.Json.Nodes.JsonNode.Parse(System.Text.Encoding.UTF8.GetString(save, 10, save.Length - 10))!;
+        payload["native_cycle"] = cycle;
+        payload["native_population_census"] = new System.Text.Json.Nodes.JsonArray(census, census);
+        var json = JsonSerializer.SerializeToUtf8Bytes(payload);
+        var framed = new byte[10 + json.Length];
+        save.AsSpan(0, 6).CopyTo(framed);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(framed.AsSpan(6, 4), (uint)json.Length);
+        json.CopyTo(framed.AsSpan(10));
+        return framed;
+    }
+
+    [Fact]
+    public void NativeFreshExplicitAndContinuationBoundariesKeepDistinctCyclesAndMonotonicTicks()
+    {
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 16,
+            BrownianMotion = 0, MutationSettings = MutationSettingsUpdate.Default with { Enabled = false },
+        }, new TestClock(1125));
+        Assert.Equal(0ul, engine.Snapshot().Tick);
+        Assert.Equal(-1, engine.Snapshot().NativeCycle);
+        engine.ImportSpecies(new("Alpha.txt", "start stop", false, 0xff123456, 1, 1000, 0, false, 0));
+        engine.ImportSpecies(new("Beta.txt", "start stop", false, 0xff654321, 1, 1000, 0, false, 0));
+        engine.Tick();
+        Assert.Equal(1ul, engine.Snapshot().Tick);
+        Assert.Equal(0, engine.Snapshot().NativeCycle);
+        engine.ConfigureLocalMode(LocalModeConfig.Default with
+        {
+            Kind = LocalModeKind.Contest, MinimumRounds = 10, MaximumRounds = 10,
+        });
+
+        engine.StartLocalMode();
+        Assert.Equal(1ul, engine.Snapshot().Tick);
+        Assert.Equal(-1, engine.Snapshot().NativeCycle);
+        engine.Tick();
+        Assert.Equal(2ul, engine.Snapshot().Tick);
+        Assert.Equal(0, engine.Snapshot().NativeCycle);
+        engine.AdjudicateLocalRound(1, "native continuation cycle boundary");
+        Assert.Equal(2ul, engine.Snapshot().Tick);
+        Assert.Equal(0, engine.Snapshot().NativeCycle);
+        Assert.Equal(2u, engine.Snapshot().LocalMode.CurrentRound);
+        engine.Tick();
+        Assert.Equal(3ul, engine.Snapshot().Tick);
+        Assert.Equal(1, engine.Snapshot().NativeCycle);
+
+        var saved = engine.Save();
+        using var resumed = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" });
+        resumed.Load(saved);
+        Assert.Equal(saved, resumed.Save());
+        Assert.Equal(3ul, resumed.Snapshot().Tick);
+        Assert.Equal(1, resumed.Snapshot().NativeCycle);
+        resumed.RestartLocalMode();
+        Assert.Equal(3ul, resumed.Snapshot().Tick);
+        Assert.Equal(-1, resumed.Snapshot().NativeCycle);
+        resumed.Tick();
+        Assert.Equal(4ul, resumed.Snapshot().Tick);
+        Assert.Equal(0, resumed.Snapshot().NativeCycle);
+    }
+
+    [Theory]
+    [InlineData(0u, -1, 0)]
+    [InlineData(1u, 0, 1)]
+    public void NativeLoadedCycleAdvancesWithoutReapplyingTheFreshWorldOffset(uint initialTicks, int initialCycle, int nextCycle)
+    {
+        using var source = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 16, BrownianMotion = 0,
+        });
+        source.ImportDna("start stop", [500, 500]);
+        source.Tick(initialTicks);
+        Assert.Equal(initialCycle, source.Snapshot().NativeCycle);
+        var native = source.SaveLegacy();
+        using var loaded = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" });
+        loaded.Load(native);
+        var before = loaded.Snapshot();
+        Assert.Equal(initialCycle, before.NativeCycle);
+
+        loaded.Tick();
+
+        Assert.Equal(before.Tick + 1, loaded.Snapshot().Tick);
+        Assert.Equal(nextCycle, loaded.Snapshot().NativeCycle);
+    }
+
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(1.25f)]
+    [InlineData(-2.5f)]
+    public void NewClientInheritsOnlyItsExplicitGaussianSpareWithoutDrawingOrCouplingClients(float spare)
+    {
+        var options = new WorldSetupOptions { Backend = "Cpu", Seed = 42 };
+        using var independent = new NativeEngineClient(options);
+        using var inherited = new NativeEngineClient(options with { NativeGaussianSpare = spare, NativeSunChange = 12 });
+        using var baseline = JsonDocument.Parse(independent.Save().AsMemory(10));
+        using var handoff = JsonDocument.Parse(inherited.Save().AsMemory(10));
+        Assert.Equal(baseline.RootElement.GetProperty("native_random").GetProperty("state").GetUInt32(),
+            handoff.RootElement.GetProperty("native_random").GetProperty("state").GetUInt32());
+        var saved = inherited.Save();
+
+        Assert.Equal(spare, inherited.ReadNativeGaussianSpare());
+        Assert.Equal(spare, inherited.ReadNativeGaussianSpare());
+        Assert.Null(independent.ReadNativeGaussianSpare());
+        Assert.Equal((byte)12, inherited.ReadNativeSunChange());
+        Assert.Equal((byte)0, independent.ReadNativeSunChange());
+        Assert.Equal(saved, inherited.Save());
+        Assert.Equal(0ul, inherited.Snapshot().Tick);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(bool savedHasSpare)
+    {
+        using var inherited = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, NativeGaussianSpare = 1.25f, NativeSunChange = 12,
+        });
+        const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, relative))) directory = directory.Parent;
+        Assert.NotNull(directory);
+        var original = File.ReadAllBytes(Path.Combine(directory.FullName, relative));
+        using var reference = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" });
+        reference.Load(original);
+        inherited.Load(original);
+        Assert.Equal(1.25f, inherited.ReadNativeGaussianSpare());
+        Assert.Equal(reference.ReadNativeSunChange(), inherited.ReadNativeSunChange());
+        using var source = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 17, NativeGaussianSpare = savedHasSpare ? 2.5f : null, NativeSunChange = 7,
+        });
+        var modern = source.Save();
+
+        inherited.Load(modern);
+
+        Assert.Equal(savedHasSpare ? 2.5f : (float?)null, inherited.ReadNativeGaussianSpare());
+        Assert.Equal((byte)7, inherited.ReadNativeSunChange());
+        Assert.Equal(modern, inherited.Save());
+        Assert.Equal(0ul, inherited.Snapshot().Tick);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void WeatherOnNativeHeaderOverridesIncomingProcessSunChange(bool weatherEnabled, bool sunOnRandom)
+    {
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, NativeSunChange = 12,
+            Vegetation = Db2VegetationOptions.Default with { WeatherEnabled = weatherEnabled, SunOnRandom = sunOnRandom },
+        });
+        Assert.Equal((byte)10, engine.ReadNativeSunChange());
+        using var save = JsonDocument.Parse(engine.Save().AsMemory(10));
+        Assert.Equal(0x008fc6e7u, save.RootElement.GetProperty("native_random").GetProperty("state").GetUInt32());
+        Assert.Equal(0ul, engine.Snapshot().Tick);
+    }
+
+    [Fact]
+    public void DirectModeConfiguredStartAndExplicitRestartKeepTheChosenSeedAndGaussianSpare()
+    {
+        var clock = new TestClock(1125);
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, NativeGaussianSpare = 1.25f,
+        }, clock);
+        engine.ImportSpecies(new("Alpha.txt", "start stop", false, 0xff123456, 1, 1000, 0, false, 0));
+        engine.ImportSpecies(new("Beta.txt", "start stop", false, 0xff654321, 1, 1000, 0, false, 0));
+        engine.ConfigureLocalMode(LocalModeConfig.Default with { Kind = LocalModeKind.Contest });
+        engine.StartLocalMode();
+        Assert.Equal(42ul, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(112ul, SavedConfigurationValue(engine, "native_restart_seed"));
+        Assert.Equal(1.25f, engine.ReadNativeGaussianSpare());
+        clock.Milliseconds = 1375;
+
+        engine.RestartLocalMode();
+
+        Assert.Equal(42ul, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(138ul, SavedConfigurationValue(engine, "native_restart_seed"));
+        Assert.Equal(1.25f, engine.ReadNativeGaussianSpare());
+        Assert.Equal(0ul, engine.Snapshot().Tick);
+    }
+
+    [Theory]
+    [InlineData(1125, 112UL)]
+    [InlineData(1375, 138UL)]
+    public void NewSimulationSeedUsesTimerSingleAndLongTiesToEven(int milliseconds, ulong expectedSeed)
+    {
+        var clock = new TestClock(milliseconds);
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = ulong.MaxValue,
+            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { NewSeed = true } },
+        }, clock);
+
+        Assert.Equal(expectedSeed, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(0ul, engine.Snapshot().Tick);
+    }
+
+    [Fact]
+    public void ExplicitFullWidthSeedAndModernResumeIgnoreTheHostClockUntilALiveBoundary()
+    {
+        var clock = new TestClock(1125);
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 0x1234567880000000UL,
+            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { NewSeed = false } },
+        }, clock);
+        var save = engine.Save();
+        Assert.Equal(0x1234567880000000UL, SavedConfigurationValue(engine, "seed"));
+        clock.Milliseconds = 1375;
+        Assert.Equal(save, engine.Save());
+
+        using var resumed = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu",
+            GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { NewSeed = true } },
+        }, clock);
+        Assert.Equal(138ul, SavedConfigurationValue(resumed, "seed"));
+        resumed.Load(save);
+
+        Assert.Equal(save, resumed.Save());
+        Assert.Equal(0x1234567880000000UL, SavedConfigurationValue(resumed, "seed"));
+    }
+
+    [Fact]
+    public void LiveModeBoundariesCaptureCurrentTimerAndRetainTheInputThroughModernResume()
+    {
+        var clock = new TestClock(1125);
+        using var engine = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu", Seed = 42 }, clock);
+        engine.ImportSpecies(new("Alpha.txt", "start stop", false, 0xff123456, 1, 1000, 0, false, 0));
+        engine.ImportSpecies(new("Beta.txt", "start stop", false, 0xff654321, 1, 1000, 0, false, 0));
+        engine.ConfigureLocalMode(LocalModeConfig.Default with
+        {
+            Kind = LocalModeKind.Contest, MinimumRounds = 10, MaximumRounds = 10,
+        });
+
+        engine.StartLocalMode();
+        Assert.Equal(42ul, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(112ul, SavedConfigurationValue(engine, "native_restart_seed"));
+
+        clock.Milliseconds = 1375;
+        engine.RestartLocalMode();
+        Assert.Equal(42ul, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(138ul, SavedConfigurationValue(engine, "native_restart_seed"));
+
+        clock.Milliseconds = 2125;
+        engine.Tick();
+        Assert.Equal(42ul, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(212ul, SavedConfigurationValue(engine, "native_restart_seed"));
+
+        clock.Milliseconds = 2375;
+        engine.AdjudicateLocalRound(1, "controlled clock round");
+        Assert.Equal(238ul, SavedConfigurationValue(engine, "native_restart_seed"));
+        var result = Assert.Single(engine.Snapshot().LocalMode.Results);
+        Assert.Equal(1u, result.Winner);
+        Assert.Equal("controlled clock round", result.Reason);
+        Assert.Equal(2u, engine.Snapshot().LocalMode.CurrentRound);
+        var currentRoundSeed = SavedConfigurationValue(engine, "seed");
+
+        var save = engine.Save();
+        using var resumed = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" }, new TestClock(3375));
+        resumed.Load(save);
+        Assert.Equal(save, resumed.Save());
+        Assert.Equal(238ul, SavedConfigurationValue(resumed, "native_restart_seed"));
+        resumed.RestartLocalMode();
+        Assert.Equal(338ul, SavedConfigurationValue(resumed, "native_restart_seed"));
+        Assert.Equal(currentRoundSeed, SavedConfigurationValue(resumed, "seed"));
+    }
+
+    [Fact]
+    public void AutomaticStagedRestartUsesTheTimerCapturedByTheTickBatch()
+    {
+        var clock = new TestClock(1125);
+        using var engine = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu", Seed = 42 }, clock);
+        engine.ConfigureLocalMode(LocalModeConfig.Default with
+        {
+            Kind = LocalModeKind.SimpleSurvival,
+            StagedEvolution = new(EvolutionMode.SimpleSurvival, "start stop", 2, 150, false, 255, false),
+        });
+        engine.StartLocalMode();
+        Assert.Equal(112ul, SavedConfigurationValue(engine, "seed"));
+        var before = engine.Snapshot();
+        var mutatorSpecies = before.LocalMode.Evolution!.MutatorSpecies;
+        var mutators = before.Organisms.Where(robot => mutatorSpecies.Contains(robot.Species))
+            .Select(robot => new OrganismKey(robot.Slot, robot.Generation)).ToArray();
+        Assert.NotEmpty(mutators);
+        engine.RemoveMany(mutators);
+
+        clock.Milliseconds = 1375;
+        engine.Tick();
+
+        Assert.Equal(138ul, SavedConfigurationValue(engine, "seed"));
+        var after = engine.Snapshot();
+        var evolution = Assert.IsType<StagedEvolutionSnapshot>(after.LocalMode.Evolution);
+        Assert.Equal("evolving", evolution.Phase);
+        Assert.Contains(after.Organisms, robot => evolution.MutatorSpecies.Contains(robot.Species));
+        Assert.True(after.LocalMode.RestartCount > before.LocalMode.RestartCount);
+    }
+
+    [Fact]
+    public void ZeroTicksAndRejectedModeActionDoNotCommitThePrependedClockInput()
+    {
+        var clock = new TestClock(1125);
+        using var engine = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu", Seed = 42 }, clock);
+        var before = engine.Save();
+        clock.Milliseconds = 1375;
+
+        engine.Tick(0);
+        Assert.Equal(before, engine.Save());
+        Assert.Throws<InvalidOperationException>(() => engine.StartLocalMode());
+        Assert.Equal(before, engine.Save());
+    }
+
+    [Fact]
+    public void StagedBatchSamplesEachExternalRestartAndLoadedModesKeepThatPolicy()
+    {
+        var clock = new AdvancingTestClock();
+        // Base fills the five available slots, so each attempt starts without
+        // Mutate and takes the real staged-loss/restart path on its next cycle.
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 5,
+        }, clock);
+        engine.ConfigureLocalMode(LocalModeConfig.Default with
+        {
+            Kind = LocalModeKind.SimpleSurvival,
+            StagedEvolution = new(EvolutionMode.SimpleSurvival, "start stop", 2, 150, false, 255, false),
+        });
+        engine.StartLocalMode();
+        var before = engine.Snapshot();
+        var evolution = Assert.IsType<StagedEvolutionSnapshot>(before.LocalMode.Evolution);
+        Assert.Equal(5, before.Population);
+        Assert.DoesNotContain(before.Organisms, robot => evolution.MutatorSpecies.Contains(robot.Species));
+        Assert.Equal(112ul, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(1, clock.Samples);
+        var beforeZero = engine.Save();
+
+        engine.Tick(0);
+        Assert.Equal(beforeZero, engine.Save());
+        Assert.Equal(1, clock.Samples);
+        engine.Tick(2);
+
+        Assert.Equal(before.LocalMode.RestartCount + 2u, engine.Snapshot().LocalMode.RestartCount);
+        Assert.Equal(3, clock.Samples);
+        Assert.Equal(162ul, SavedConfigurationValue(engine, "seed"));
+        Assert.Equal(162ul, SavedConfigurationValue(engine, "native_restart_seed"));
+
+        var save = engine.Save();
+        var resumedClock = new AdvancingTestClock();
+        using var resumed = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" }, resumedClock);
+        resumed.Load(save);
+        Assert.Equal(save, resumed.Save());
+        resumed.Tick(2);
+
+        Assert.Equal(2, resumedClock.Samples);
+        Assert.Equal(138ul, SavedConfigurationValue(resumed, "seed"));
+        Assert.Equal(before.LocalMode.RestartCount + 4u, resumed.Snapshot().LocalMode.RestartCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrdinaryAndDirectContestTickBatchesTakeOneClockSample(bool directContest)
+    {
+        var clock = new AdvancingTestClock();
+        using var engine = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu", Seed = 42 }, clock);
+        if (directContest)
+        {
+            engine.ImportSpecies(new("Alpha.txt", "start stop", false, 0xff123456, 1, 1000, 0, false, 0));
+            engine.ImportSpecies(new("Beta.txt", "start stop", false, 0xff654321, 1, 1000, 0, false, 0));
+            engine.ConfigureLocalMode(LocalModeConfig.Default with
+            {
+                Kind = LocalModeKind.Contest, MinimumRounds = 10, MaximumRounds = 10,
+            });
+            engine.StartLocalMode();
+        }
+        int samplesBefore = clock.Samples;
+
+        engine.Tick(2);
+
+        Assert.Equal(samplesBefore + 1, clock.Samples);
+        Assert.Equal(2ul, engine.Snapshot().Tick);
+    }
+
+    private static ulong SavedConfigurationValue(NativeEngineClient engine, string field)
+    {
+        using var document = JsonDocument.Parse(engine.Save().AsMemory(10));
+        return document.RootElement.GetProperty("config").GetProperty(field).GetUInt64();
+    }
+
+    private sealed class TestClock(int milliseconds) : TimeProvider
+    {
+        public int Milliseconds { get; set; } = milliseconds;
+        public override DateTimeOffset GetUtcNow() => new DateTimeOffset(2026, 10, 15, 0, 0, 0, TimeSpan.Zero)
+            .AddMilliseconds(Milliseconds);
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+    }
+
+    private sealed class AdvancingTestClock : TimeProvider
+    {
+        public int Samples { get; private set; }
+        public override DateTimeOffset GetUtcNow() => new DateTimeOffset(2026, 10, 15, 0, 0, 0, TimeSpan.Zero)
+            .AddMilliseconds(1125 + 250 * Samples++);
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+    }
+
     [Theory]
     [InlineData(LeaguePreset.ShortBot, "at most 6 genes")]
     [InlineData(LeaguePreset.SingleGene, "at most 6 genes")]

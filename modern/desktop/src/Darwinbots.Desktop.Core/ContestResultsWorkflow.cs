@@ -28,6 +28,10 @@ public sealed record ContestResultSnapshot(
         if (snapshot.LocalMode.Status == LocalModeStatus.Idle)
             return Empty;
 
+        // Population seeding scores every candidate, including extinction, without a contest winner.
+        if (snapshot.LocalMode.Series?.IsPopulationCensus == true)
+            return Empty;
+
         if (snapshot.LocalMode.Evolution is { } evolution)
         {
             if (evolution.Phase != "testing") return Empty;

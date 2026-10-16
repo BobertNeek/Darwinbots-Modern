@@ -300,7 +300,12 @@ impl Engine {
         engine.native_f1 = Some(tail.integer("f1")? != 0);
         engine.dynamic_cost_state.saved_multiplier = tail.number("old_cost")?;
         engine.config.shapes_visible = tail.integer("shapes_visible")? != 0;
-        engine.tick = nonnegative(tail.integer("total_cycles")?, "total cycles")?;
+        let native_cycle = tail.integer("total_cycles")?;
+        if native_cycle < -1 {
+            return Err(invalid("total cycles cannot precede -1"));
+        }
+        engine.native_cycle = Some(native_cycle);
+        engine.tick = native_cycle.max(0) as u64;
         engine.stats.completed_cycles = engine.tick;
         engine.stats.births = nonnegative(tail.integer("total_born")?, "total born")?;
         engine.ties_enabled = tail.integer("disable_ties")? == 0;
@@ -390,6 +395,7 @@ impl Engine {
             if engine.species_templates[species_index].is_none() {
                 let p = format!("species[{species_index}].");
                 engine.species_templates[species_index] = Some(SpeciesTemplate {
+                    source_text: None,
                     dna: state.program.dna.clone(),
                     initial_energy: tail.integer(&(p.clone() + "start_energy"))?,
                     initial_population: nonnegative(
@@ -404,6 +410,7 @@ impl Engine {
         engine.native_environment(&tail)?;
         engine.refresh_native_chloroplast_population();
         engine.native_origin = Some(file);
+        engine.initialize_native_load();
         Self::restore(engine)
     }
 

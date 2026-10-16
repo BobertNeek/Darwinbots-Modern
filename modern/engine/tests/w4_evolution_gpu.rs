@@ -180,10 +180,14 @@ fn physical_gpu_phase2_ecological_differential_has_adapter_receipt() {
         .expect("GPU engine must expose its physical adapter receipt");
     assert!(!receipt.name.is_empty());
     assert!(!receipt.backend.is_empty());
-    println!(
-        "physical gpu adapter={} backend={} device_type={}",
-        receipt.name, receipt.backend, receipt.device_type
+    assert!(
+        matches!(
+            receipt.device_type.as_str(),
+            "DiscreteGpu" | "IntegratedGpu"
+        ),
+        "a physical adapter is required for ecological differential qualification: {receipt:?}"
     );
+    println!("physical gpu adapter={receipt:?}");
 
     let cpu_parent = seed_differential_engine(&mut cpu);
     let gpu_parent = seed_differential_engine(&mut gpu);

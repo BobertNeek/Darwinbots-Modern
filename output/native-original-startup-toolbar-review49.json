@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "status": "Original-source UI protocol review complete; toolbar route is source-reachable; console command syntax correction required; no runtime proof",
+  "reviewed_utc": "2026-10-16T16:34:51.664Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2/",
+  "source_files": [
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "sha256": "7CE8CDEBEA42396A2371E22E6FDE5D568B6FF26AE89720F5DC107C008F155D95"
+    },
+    {
+      "file": "Darwinbots2/console.frm",
+      "sha256": "1CE6D7315FC2AFBD44C8479916A7CED15D1F9FDD7E5647A983C7562E0B221780"
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765"
+    },
+    {
+      "file": "Darwinbots2/Master.bas",
+      "sha256": "D46C737105A0DDACD46BE56BB73D5747317B4D2928D058DE2D5D67BFE48FEA1A"
+    },
+    {
+      "file": "Darwinbots2/OptionsForm.frm",
+      "sha256": "72BEE23D9842C105FF242D8D6C2018D5587AE67718A099C1F7E89F42E1624B68"
+    },
+    {
+      "file": "Darwinbots2/InfoForm.frm",
+      "sha256": "AD8B589C7BF7E4656FDC10D1AED1342B6D27F44A699F065522C486EC68DC9F4F"
+    },
+    {
+      "file": "Darwinbots2/frmFirstTimeInfo.frm",
+      "sha256": "2FD25D01D8B48B2946051C7C217F153C72AF76C94EC44518DA5E0C392089D0CE"
+    },
+    {
+      "file": "Darwinbots2/Iersera.vbp",
+      "sha256": "3F5CC1650739272A7108648050EA9C0BB2C22C5A45C03AEBF7E69645304E2616"
+    }
+  ],
+  "toolbar_pre_simulation_reachability": {
+    "conclusion": "Source predicts enabled and reachable toolbar Pause(key stop) and Load(key loadsim) after onboarding dialogs and Options are closed, without any StartNew.",
+    "designer": [
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "lines": "5-17;112-161;315-338",
+        "fact": "MDI parent/Toolbar have no serialized Enabled=False override. Button2 is loadsim, Button7 is stop; neither carries Enabled=False. They retain normal enabled/visible control defaults. The two serialized False entries at273/289 disable graph-menu separators, not these toolbar buttons."
+      }
+    ],
+    "startup": [
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "lines": "2417;2442-2445;2520;2833-2855",
+        "fact": "Startup shows the MDI form. Default restartmode0/empty Command/absent prior SIM does not start a world. disablesim is called but actual disabling statements are commented."
+      },
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "lines": "3113-3124",
+        "fact": "enablesim changes Edit/popup/zoom menus only; disablesim has commented statements. Neither touches Toolbar1 or its buttons."
+      },
+      {
+        "file": "Darwinbots2/InfoForm.frm",
+        "lines": "262-269",
+        "fact": "Closing first-time info shows Getting Started modally, then Options and its settings picker. Dismissing/cancelling these leaves the toolbar reachable."
+      },
+      {
+        "file": "Darwinbots2/OptionsForm.frm",
+        "lines": "2873-2877;5026-5049",
+        "fact": "Closing Options sets Canc/camfix and restores graph z-order. Cancelling settings picker loads no settings; neither path starts a simulation."
+      }
+    ],
+    "all_original_bas_frm_cls_toolbar_references_reviewed": true,
+    "toolbar_runtime_enable_or_visibility_disablers_found": false,
+    "actual_OCX_enabled_state_observed": false
+  },
+  "pause_and_load": {
+    "file": "Darwinbots2/MDIForm1.frm",
+    "toolbar_pause_lines": "1766-1770",
+    "effect": "Calls simload directly; preserves fresh tmpseed0.",
+    "toolbar_load_lines": "1756-1757",
+    "menu_pause_lines": "1534-1539",
+    "menu_load_lines": "2090-2095",
+    "distinction": "F12/menu Pause does not set pausefix. Menu Load can set tmpseed and override saved seed. Retain toolbar-only initial route.",
+    "initial_loaded_cycle": {
+      "file": "Darwinbots2/main.frm",
+      "lines": "1377-1407;1437-1439;1513;2066-2127",
+      "prediction": "startloaded reseeds saved seed, takes3 chart draws, sets ActiveTrue and enters main. One UpdateSim happens before camfix/pausefix pauses. For inputnative0, expected first captured counter1.",
+      "counter_source": "Darwinbots2/Master.bas:50",
+      "runtime_observed": false
+    }
+  },
+  "concrete_corrections": [
+    {
+      "id": "console_requires_cycle_keyword",
+      "previous_shorthand": "console numeric9 then90",
+      "correct_text": [
+        "cycle 9",
+        "cycle 90"
+      ],
+      "finding": "Bare9/90 are not recognized commands and do not advance time.",
+      "authority": [
+        {
+          "file": "Darwinbots2/console.frm",
+          "lines": "251-285",
+          "fact": "Enter parses text into words and fires handler."
+        },
+        {
+          "file": "Darwinbots2/console.frm",
+          "lines": "333-399",
+          "fact": "Case cycle calls cycle Val(second word) at348-351. No numeric fallback exists."
+        }
+      ]
+    },
+    {
+      "id": "select_robot_before_console",
+      "finding": "Open Console is a robot menu item, initially disabled until a loaded robot is selected.",
+      "authority": [
+        {
+          "file": "Darwinbots2/MDIForm1.frm",
+          "lines": "682-685;1930-1932;2858-2880",
+          "fact": "Robot→Open Console has shortcutCtrl+Y; Enable/DisableRobotsMenu controls cons.Enabled."
+        },
+        {
+          "file": "Darwinbots2/main.frm",
+          "lines": "1848;1896-1899",
+          "fact": "Clicking a robot sets robfocus and enables Robot menu. Select without dragging."
+        },
+        {
+          "file": "Darwinbots2/console.frm",
+          "lines": "318-325",
+          "fact": "Console is attached to rob(robfocus)."
+        }
+      ]
+    }
+  ],
+  "exact_stepping": {
+    "conclusion": "After first toolbar-paused counter1 with ActiveFalse/pausefixTrue/camfixTrue, 'cycle 9' invokes exactly9 UpdateSim calls; 'cycle 90' invokes exactly90. These commands do not set Form1.ActiveTrue.",
+    "source": [
+      {
+        "file": "Darwinbots2/console.frm",
+        "lines": "348-351;461-487",
+        "fact": "For k=1 To num performs one UpdateSim466, redraw/readback and DoEvents each iteration. No extra update is added before or after."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "2066-2078;2113-2127",
+        "fact": "Normal main loop updates only while Active. Console command executes as an event reached via DoEvents; paused outer loop remains inactive after command returns. camfix alreadyTrue prevents a pause-state reset."
+      },
+      {
+        "file": "Darwinbots2/main.frm",
+        "lines": "1960-2022",
+        "fact": "SecTimer statistics code does not call UpdateSim."
+      },
+      {
+        "file": "Darwinbots2/MDIForm1.frm",
+        "lines": "2234-2245",
+        "fact": "Save dialog/simsave calls SaveSimulation without changing Active or invoking UpdateSim."
+      }
+    ],
+    "conditions": [
+      "Wait for initial toolbar-paused state and verify nativecounter1 from saved bytes.",
+      "Type exactly 'cycle 9' and 'cycle 90', pressing Enter after each. Do not use Play/StartNew/Apply/other cycle commands while stepping; wait for each command to return.",
+      "Keep same process and loaded world between1/10/100 captures.",
+      "Verify actual saved native counters10 and100; do not rely only on displayed statistics."
+    ],
+    "expected_counters": [
+      1,
+      10,
+      100
+    ],
+    "fallback": "If no robot console is available, toolbar key cycle directly invokes Consoleform.cycle 1 (MDIForm1:1771-1773);9 then90 individual toolbar single-cycle clicks provide the same count without a robot console.",
+    "genuine_original_captures": 0
+  },
+  "scope": {
+    "original_source_only": true,
+    "modern_source_changes": false,
+    "existing_pinned_or_plan_files_modified": false,
+    "format_tests_builds_Git_UI_apps_Sky_input": false,
+    "only_new_file": "output/native-original-startup-toolbar-review49.json",
+    "runtime_or_qualification_claim": false
+  }
+}

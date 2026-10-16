@@ -14,6 +14,111 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class SafeModeAutosaveRenderedTests
 {
     [Fact]
+    public async Task NativeBoundaryWritesActualRecoveryStateWithoutUsingTheMonotonicTickAsOriginalCycle()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"db24832-native-cycle-backup-{Guid.NewGuid():N}.db3s");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var options = Setup(true) with { PopulationCapacity = 16, Species = [], BrownianMotion = 0 };
+                var engine = new NativeEngineClient(options);
+                // Persist a world just before native cycle2000 while retaining
+                // scheduling Tick0, avoiding thousands of fixture-only updates.
+                engine.Load(WithNativeCycle(engine.Save(), 1999));
+                await using var session = new SimulationSession(engine);
+                var storage = new AuditStorageService { LatestAutosave = path, PersistAutosaves = true };
+                var window = new MainWindow([], options, new AuditEngineClientFactory(), storage);
+                try
+                {
+                    DesktopTestApplication.UseSession(window, session);
+                    Show(window);
+                    const string commandStatus = "TURBO · RENDERING SUSPENDED";
+                    ViewModel(window).Status = commandStatus;
+                    Assert.Equal(0ul, session.LatestSnapshot.Tick);
+                    Assert.Equal(1999, session.LatestSnapshot.NativeCycle);
+
+                    await InvokeTask(window, "AdvanceSimulationAsync", 2u);
+
+                    var backup = Assert.Single(storage.AutosaveWrites);
+                    Assert.Equal(backup, await File.ReadAllBytesAsync(path));
+                    using var saved = System.Text.Json.JsonDocument.Parse(backup.AsMemory(10));
+                    Assert.Equal(2000, saved.RootElement.GetProperty("native_cycle").GetInt32());
+                    Assert.Equal(1ul, saved.RootElement.GetProperty("tick").GetUInt64());
+                    Assert.Equal(2ul, session.LatestSnapshot.Tick);
+                    Assert.Equal(2001, session.LatestSnapshot.NativeCycle);
+                    Assert.Equal(1ul, Field<OfflineDiagnosticRecovery>(window, "_diagnostics").LastCheckpointTick);
+                    Assert.Equal(commandStatus, ViewModel(window).Status);
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task RestartCapableBatchObservesResetAndCanSaveTheSameNativeBoundaryInTwoWorlds()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"db24832-reset-cycle-backup-{Guid.NewGuid():N}.db3s");
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory(encodeTickInSave: true);
+                var storage = new AuditStorageService { LatestAutosave = path, PersistAutosaves = true };
+                var window = new MainWindow([], Setup(true), factory, storage);
+                try
+                {
+                    Show(window);
+                    await Ready(window);
+                    var engine = factory.Clients.Single();
+                    engine.NativeCycle = 1999;
+                    engine.LocalModeForRead = LocalModeSnapshot.Idle with
+                    {
+                        Status = LocalModeStatus.Running, Kind = LocalModeKind.SimpleSurvival,
+                        Configuration = LocalModeConfig.Default with { Kind = LocalModeKind.SimpleSurvival, RestartOnExtinction = true },
+                    };
+                    int updates = 0;
+                    engine.AdvanceNativeCycle = (count, _) =>
+                    {
+                        Assert.Equal(1u, count);
+                        return ++updates switch { 1 => 2000, 2 => -1, 3 => 0, _ => 2000 };
+                    };
+                    await Field<SimulationSession>(window, "_session").RefreshSnapshotAsync();
+
+                    await InvokeTask(window, "AdvanceSimulationAsync", 3u);
+
+                    Assert.Equal(new ulong[] { 1 }, storage.AutosaveWrites.Select(bytes => BitConverter.ToUInt64(bytes)));
+                    Assert.Equal(0, Field<SimulationSession>(window, "_session").LatestSnapshot.NativeCycle);
+                    // The next attempt approaches its own original cycle2000.
+                    engine.NativeCycle = 1999;
+                    await Field<SimulationSession>(window, "_session").RefreshSnapshotAsync();
+                    await InvokeTask(window, "AdvanceSimulationAsync", 1u);
+
+                    Assert.Equal(new ulong[] { 1, 4 }, storage.AutosaveWrites.Select(bytes => BitConverter.ToUInt64(bytes)));
+                    Assert.Equal(4ul, BitConverter.ToUInt64(await File.ReadAllBytesAsync(path)));
+                    Assert.Equal(4ul, Field<OfflineDiagnosticRecovery>(window, "_diagnostics").LastCheckpointTick);
+                    Assert.Equal(new[] { "Tick:1", "Tick:1", "Tick:1", "Tick:1" }, engine.Calls.Where(value => value.StartsWith("Tick:", StringComparison.Ordinal)));
+                }
+                finally { window.Close(); }
+            }, CancellationToken.None);
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    private static byte[] WithNativeCycle(byte[] save, int cycle)
+    {
+        var payload = System.Text.Json.Nodes.JsonNode.Parse(System.Text.Encoding.UTF8.GetString(save, 10, save.Length - 10))!;
+        payload["native_cycle"] = cycle;
+        var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(payload);
+        var framed = new byte[10 + json.Length];
+        save.AsSpan(0, 6).CopyTo(framed);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(framed.AsSpan(6, 4), (uint)json.Length);
+        json.CopyTo(framed.AsSpan(10));
+        return framed;
+    }
+
+    [Fact]
     public async Task SetupGlobalAndRecordingDialogsKeepExplicitDisabledPreferenceThroughWorldCreation()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>

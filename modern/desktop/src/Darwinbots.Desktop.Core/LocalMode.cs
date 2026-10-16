@@ -30,7 +30,8 @@ public enum LocalModeStatus
     Completed,
 }
 
-public enum LeagueWorkflow { Direct, Ladder, Tournament, Seeding }
+public enum LeagueWorkflow { Direct, Ladder, Tournament, Seeding, PopulationSeeding }
+public enum ClassicTournamentPhase { Seeding, Tournament, Ladder, Complete }
 
 public sealed record StagedEvolutionConfiguration(EvolutionMode Mode, string SourceDna,
     float ReductionUnit, uint CycleLength, bool NormalizeDnaSize, int ZerobotInitialDnaLength,
@@ -50,10 +51,28 @@ public sealed record StagedEvolutionSnapshot(uint Stage, string Phase, bool Hidd
 public sealed record LeagueMatchSnapshot(uint Number, IReadOnlyList<uint> Entrants, uint Winner,
     int FirstResult, int ResultCount);
 
+public sealed record PopulationSeedSnapshot(uint Species, int Population, int NativeCycle)
+{
+    public string FileName { get; init; } = string.Empty;
+}
+
 public sealed record LeagueSeriesSnapshot(LeagueWorkflow Workflow, IReadOnlyList<uint> ActiveMatch,
     uint MatchNumber, IReadOnlyList<uint> Ladder, IReadOnlyList<uint> Seeded, IReadOnlyList<LeagueMatchSnapshot> Matches)
 {
     public int MatchStartResult { get; init; }
+    public uint? ActiveSeed { get; init; }
+    public IReadOnlyList<PopulationSeedSnapshot> PopulationSeeds { get; init; } = [];
+    public ClassicTournamentPhase? PopulationSeedingPhase { get; init; }
+    public uint TournamentRound { get; init; }
+    public bool EnteredLadder { get; init; }
+    public IReadOnlyList<uint> Pending { get; init; } = [];
+    public IReadOnlyList<uint> RoundWinners { get; init; } = [];
+    public IReadOnlyList<uint> SeedFileOrder { get; init; } = [];
+    public bool IsPopulationCensus => Workflow == LeagueWorkflow.PopulationSeeding
+        && PopulationSeedingPhase is null or ClassicTournamentPhase.Seeding;
+    public bool IsClassicCompetitive => Workflow == LeagueWorkflow.PopulationSeeding
+        && PopulationSeedingPhase is ClassicTournamentPhase.Tournament or ClassicTournamentPhase.Ladder
+        && ActiveMatch.Count == 2;
 }
 
 public sealed record LocalModeRestrictions(
@@ -82,6 +101,7 @@ public sealed record LocalModeConfig(
     public IReadOnlyList<uint> EntrantOrder { get; init; } = [];
     public IReadOnlyList<uint> InitialLadder { get; init; } = [];
     public uint? SeedingOpponent { get; init; }
+    public bool FinishWithLadder { get; init; }
     public StagedEvolutionConfiguration? StagedEvolution { get; init; }
     public static LocalModeConfig Default { get; } = new(
         LocalModeKind.League,

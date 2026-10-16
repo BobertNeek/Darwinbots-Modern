@@ -11,11 +11,15 @@ public sealed partial class NativeEngineClient : IEngineClient
     private float _worldWidth;
     private float _worldHeight;
     private readonly SeededSpawnPlacement _spawnPlacement;
+    private readonly TimeProvider _clock;
+    private bool _sampleRestartClockPerCycle;
+    private bool _sampleClassicSkinClock;
 
-    public NativeEngineClient(WorldSetupOptions options)
+    public NativeEngineClient(WorldSetupOptions options, TimeProvider? timeProvider = null)
     {
+        _clock = timeProvider ?? TimeProvider.System;
         if (options.GlobalSettings.Main.NewSeed)
-            options = options with { Seed = BitConverter.ToUInt64(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8)) };
+            options = options with { Seed = NativeTimerSeed() };
         _worldWidth = options.WorldWidth;
         _worldHeight = options.WorldHeight;
         _spawnPlacement = new SeededSpawnPlacement(options.Seed);
@@ -28,6 +32,10 @@ public sealed partial class NativeEngineClient : IEngineClient
         }
         try
         {
+            if (options.NativeGaussianSpare is { } spare)
+                ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_native_gaussian_spare", spare } } }, "inherit native Gaussian spare");
+            if (options.NativeSunChange is { } sunChange && !(options.Vegetation.WeatherEnabled || options.Vegetation.SunOnRandom))
+                ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_native_sun_change", sun_change = sunChange } } }, "inherit native sun change");
             UpdateMutationSettings(options.MutationSettings);
             SetTiesEnabled(options.TiesEnabled);
             UpdateLegacyRestrictions(options.RobotFixingAllowed, options.AsexualReproductionAllowed);
@@ -57,7 +65,8 @@ public sealed partial class NativeEngineClient : IEngineClient
         bool toroidalWorld = true,
         bool wrapX = true,
         bool wrapY = true,
-        GlobalSettings? globalSettings = null) : this(new WorldSetupOptions
+        GlobalSettings? globalSettings = null,
+        TimeProvider? timeProvider = null) : this(new WorldSetupOptions
     {
         Backend = backend,
         PopulationCapacity = capacity,
@@ -80,7 +89,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         WrapX = wrapX,
         WrapY = wrapY,
         GlobalSettings = globalSettings ?? new GlobalSettings(),
-    })
+    }, timeProvider)
     {
     }
 
@@ -95,7 +104,14 @@ public sealed partial class NativeEngineClient : IEngineClient
     {
         EnsureAlive();
         if (count == 0) return;
-        ExecuteBatch(new { version = 1, commands = new[] { new { type = "tick", count } } }, "advance simulation");
+        if (_sampleRestartClockPerCycle && count is > 1 and <= 1_000_000)
+        {
+            // External league/staged restarts take a new Timer sample for each
+            // original cycle. Each successful cycle commits before the next begins.
+            for (uint cycle = 0; cycle < count; cycle++) Tick(1);
+            return;
+        }
+        ExecuteBatch(new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "tick", count } } }, "advance simulation");
     }
 
     public DnaImportReport ImportDna(string dna, float[]? position = null)
@@ -250,6 +266,17 @@ public sealed partial class NativeEngineClient : IEngineClient
         var result = ExecuteBatchForResult(new { version = 1, commands = new[] { new { type = "export_dna", slot, generation } } }, "export DNA");
         return result.GetProperty("results")[0].GetProperty("dna").GetString()
             ?? throw new InvalidDataException("Native engine returned empty DNA.");
+    }
+
+    public string ExportSpeciesTemplateDna(uint species)
+    {
+        var result = ExecuteBatchForResult(new
+        {
+            version = 1,
+            commands = new[] { new { type = "export_species_template_dna", species } },
+        }, "export startup species DNA");
+        return result.GetProperty("results")[0].GetProperty("dna").GetString()
+            ?? throw new InvalidDataException("Native engine returned no startup species DNA.");
     }
 
     public byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms)
@@ -645,10 +672,12 @@ public sealed partial class NativeEngineClient : IEngineClient
                     {
                         kind = ModeKindName(config.Kind),
                         preset = PresetName(config.Preset),
-                        workflow = config.Workflow.ToString().ToLowerInvariant(),
+                        workflow = config.Workflow == LeagueWorkflow.PopulationSeeding
+                            ? "population_seeding" : config.Workflow.ToString().ToLowerInvariant(),
                         entrant_order = config.EntrantOrder,
                         initial_ladder = config.InitialLadder,
-                        seeding_opponent = config.SeedingOpponent,
+                        seeding_opponent = config.Workflow == LeagueWorkflow.PopulationSeeding ? null : config.SeedingOpponent,
+                        finish_with_ladder = config.FinishWithLadder,
                         staged_evolution = config.StagedEvolution is { } evolution ? new {
                             mode = evolution.Mode switch { EvolutionMode.Eco => "eco", EvolutionMode.Zerobot => "zerobot", _ => "simple_survival" },
                             source_dna = evolution.SourceDna, reduction_unit = evolution.ReductionUnit,
@@ -678,14 +707,15 @@ public sealed partial class NativeEngineClient : IEngineClient
                 },
             },
         }, "configure local mode");
+        UpdateRestartClockPolicy(Snapshot().LocalMode);
     }
 
     public void StartLocalMode() => ExecuteBatch(
-        new { version = 1, commands = new[] { new { type = "start_local_mode" } } },
+        new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "start_local_mode" } } },
         "start local mode");
 
     public void RestartLocalMode() => ExecuteBatch(
-        new { version = 1, commands = new[] { new { type = "restart_local_mode" } } },
+        new { version = 1, commands = new object[] { NativeRestartSeedCommand(), new { type = "restart_local_mode" } } },
         "restart local mode");
 
     public void AdjudicateLocalRound(uint? winner, string reason)
@@ -695,7 +725,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         ExecuteBatch(new
         {
             version = 1,
-            commands = new[] { new { type = "adjudicate_local_round", winner, reason } },
+            commands = new object[] { NativeRestartSeedCommand(), new { type = "adjudicate_local_round", winner, reason } },
         }, "adjudicate local round");
     }
 
@@ -802,6 +832,23 @@ public sealed partial class NativeEngineClient : IEngineClient
         }
     }
 
+    public float? ReadNativeGaussianSpare()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_gaussian_spare" } } },
+            "read native Gaussian spare").GetProperty("results")[0];
+        return result.ValueKind == JsonValueKind.Null ? null : result.GetSingle();
+    }
+
+    public byte ReadNativeSunChange()
+    {
+        EnsureAlive();
+        return ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_sun_change" } } },
+            "read native sun change").GetProperty("results")[0].GetByte();
+    }
+
     public byte[] Save()
     {
         EnsureAlive();
@@ -838,6 +885,7 @@ public sealed partial class NativeEngineClient : IEngineClient
         var loaded = Snapshot();
         _worldWidth = loaded.WorldSize[0];
         _worldHeight = loaded.WorldSize[1];
+        UpdateRestartClockPolicy(loaded.LocalMode);
     }
 
     public EngineSnapshot Snapshot()
@@ -873,6 +921,32 @@ public sealed partial class NativeEngineClient : IEngineClient
     }
 
     private void EnsureAlive() => ObjectDisposedException.ThrowIf(_engine == IntPtr.Zero, this);
+
+    private ulong NativeTimerSeed()
+    {
+        // VB6 Timer is a Single; assignment of Timer * 100 to Long rounds ties to even.
+        float seconds = (float)_clock.GetLocalNow().TimeOfDay.TotalSeconds;
+        return (ulong)Math.Round(seconds * 100f, MidpointRounding.ToEven);
+    }
+
+    private object NativeRestartSeedCommand()
+    {
+        // Keep the existing seed rounding and first clock read. AssignSkin's
+        // parameterless Randomize also needs the original, unrounded Single.
+        float seconds = (float)_clock.GetLocalNow().TimeOfDay.TotalSeconds;
+        var seed = (ulong)Math.Round(seconds * 100f, MidpointRounding.ToEven);
+        return _sampleClassicSkinClock
+            ? new { type = "set_native_restart_seed", seed, skin_timer_seconds = new[] {
+                seconds, (float)_clock.GetLocalNow().TimeOfDay.TotalSeconds } }
+            : new { type = "set_native_restart_seed", seed };
+    }
+
+    private void UpdateRestartClockPolicy(LocalModeSnapshot mode)
+    {
+        _sampleRestartClockPerCycle = mode.Evolution is not null
+            || mode.Configuration is { Workflow: not LeagueWorkflow.Direct };
+        _sampleClassicSkinClock = mode.Configuration?.Workflow == LeagueWorkflow.PopulationSeeding;
+    }
 
     private void ExecuteBatch(object batch, string operation)
     {

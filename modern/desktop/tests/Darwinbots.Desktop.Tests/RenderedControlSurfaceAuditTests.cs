@@ -3,6 +3,7 @@ using System.Reflection;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -21,6 +22,474 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class RenderedControlSurfaceAuditTests
 {
+    [Fact]
+    public async Task PopulationSeedingDropdownShowsZeroScoresAndExportsTemplatesThroughTheFolderPicker()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "db-rendered-seeds-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory();
+                var storage = new AuditStorageService();
+                var window = new MainWindow([], new WorldSetupOptions
+                {
+                    Species = [new("Audit Species", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
+                }, factory, storage);
+                SimulationSession? session = null;
+                try
+                {
+                    ShowForInteraction(window, 1500, 900);
+                    await WaitFor(() => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Audit Species"));
+                    var engine = factory.Clients.First();
+                    session = Field<SimulationSession>(window, "_session");
+                    var workflow = Named<ComboBox>(window, "LocalModeWorkflow");
+                    Assert.Equal(5, workflow.ItemCount);
+                    Assert.Equal("SEED FILTER", ((ComboBoxItem)workflow.Items[3]!).Content);
+                    Assert.Equal("MODERN KNOCKOUT BRACKET", ((ComboBoxItem)workflow.Items[2]!).Content);
+                    Assert.Equal("CLASSIC TOURNAMENT", ((ComboBoxItem)workflow.Items[4]!).Content);
+                    AssertComboSelection(window, workflow, 4);
+                    Assert.True(Named<TextBlock>(window, "PopulationSeedHelp").IsVisible);
+                    Assert.Contains("2,000", Named<TextBlock>(window, "PopulationSeedHelp").Text);
+                    Assert.True(Named<NumericUpDown>(window, "ModeMinimumRounds").IsEffectivelyEnabled);
+                    Assert.True(Named<NumericUpDown>(window, "ModeMaximumRounds").IsEffectivelyEnabled);
+                    Assert.True(Named<NumericUpDown>(window, "ModeMaximumCycles").IsEffectivelyEnabled);
+                    Assert.True(Named<NumericUpDown>(window, "ModePopulationCap").IsEffectivelyEnabled);
+                    Assert.False(Named<NumericUpDown>(window, "ModeSeedingOpponent").IsEffectivelyEnabled);
+                    Assert.False(Named<Button>(window, "AdjudicateModeButton").IsEnabled);
+                    ToggleAndAssert(window, Named<CheckBox>(window, "ModeFinishWithLadder"));
+                    Named<TextBox>(window, "ModeEntrantOrder").Text = "1";
+                    Click(window, Named<Button>(window, "ConfigureModeButton"));
+                    await WaitFor(() => engine.Calls.Contains("ConfigureLocalMode"));
+                    Assert.Equal(LeagueWorkflow.PopulationSeeding, engine.LastLocalModeConfiguration.Workflow);
+                    Assert.Null(engine.LastLocalModeConfiguration.SeedingOpponent);
+                    Assert.True(engine.LastLocalModeConfiguration.FinishWithLadder);
+                    Assert.Equal(new uint[] { 1 }, engine.LastLocalModeConfiguration.EntrantOrder);
+
+                    engine.LocalModeForRead = new(LocalModeStatus.Running, LocalModeKind.League, LeaguePreset.F1,
+                        0, 1, 2000, 15000, 0, [new(1, 0, 4, 1000, "previous match")], null, new())
+                    {
+                        Configuration = engine.LastLocalModeConfiguration,
+                        Series = new(LeagueWorkflow.PopulationSeeding, [1, 0], 1, [], [], [])
+                        {
+                            PopulationSeeds = [new(1, 0, 2000) { FileName = "0.txt" }],
+                            PopulationSeedingPhase = ClassicTournamentPhase.Tournament,
+                            SeedFileOrder = [1],
+                            MatchStartResult = 1,
+                        },
+                    };
+                    engine.NativeCycle = 2000;
+                    const string template = "start\n1 .up store\nstop";
+                    engine.SpeciesTemplateDna[1] = template;
+                    await session.RefreshSnapshotAsync();
+                    await WaitFor(() => Named<Button>(window, "ExportPopulationSeedsButton").IsEnabled);
+                    Assert.Equal("POPULATION SCORES · Audit Species: 0", Named<TextBlock>(window, "PopulationSeedScores").Text);
+                    var model = Field<MainWindowViewModel>(window, "_viewModel");
+                    Assert.Contains("CLASSIC TOURNAMENT", model.LocalMode.SeriesLabel);
+                    Assert.NotEmpty(ContestResultSnapshot.FromSnapshot(session.LatestSnapshot).Competitors);
+                    Assert.True(Named<Button>(window, "AdjudicateModeButton").IsEnabled);
+                    Click(window, Named<Button>(window, "AdjudicateModeButton"));
+                    await WaitFor(() => engine.Calls.Contains("AdjudicateLocalRound:1"));
+                    Click(window, Named<Button>(window, "ExportPopulationSeedsButton"));
+                    await WaitFor(() => model.Status == "POPULATION SEED EXPORT CANCELLED");
+                    Assert.False(Directory.Exists(directory));
+                    Assert.DoesNotContain(engine.Calls, call => call.StartsWith("ExportSpeciesTemplateDna:", StringComparison.Ordinal));
+
+                    Directory.CreateDirectory(Path.Combine(directory, "seeded"));
+                    var existing = Path.Combine(directory, "seeded", "0.txt");
+                    await File.WriteAllTextAsync(existing, "existing seed");
+                    storage.PickedPopulationSeedDirectory = directory;
+                    Click(window, Named<Button>(window, "ExportPopulationSeedsButton"));
+                    await WaitFor(() => model.Status.StartsWith("POPULATION SEED EXPORT FAILED", StringComparison.Ordinal));
+                    Assert.Equal("existing seed", await File.ReadAllTextAsync(existing));
+                    Assert.Single(Directory.GetFiles(Path.Combine(directory, "seeded")));
+                    storage.PickedPopulationSeedDirectory = Path.Combine(directory, "exact");
+                    Click(window, Named<Button>(window, "ExportPopulationSeedsButton"));
+                    await WaitFor(() => model.Status == "EXPORTED 1 POPULATION SEEDS", () => model.Status);
+                    Assert.Equal(template + Environment.NewLine + "'#tag:Audit Species" + Environment.NewLine,
+                        await File.ReadAllTextAsync(Path.Combine(directory, "exact", "seeded", "0.txt")));
+                    Assert.Equal("existing seed", await File.ReadAllTextAsync(existing));
+                    Assert.Equal(3, storage.PopulationSeedPickerOwners.Count);
+                    Assert.All(storage.PopulationSeedPickerOwners, owner => Assert.Same(window, owner));
+                    Assert.Contains("ExportSpeciesTemplateDna:1", engine.Calls);
+                    Assert.DoesNotContain("ExportDna", engine.Calls);
+                    Assert.False(Field<DispatcherTimer>(window, "_runTimer").IsEnabled);
+                    AssertComboSelection(window, workflow, 3);
+                    Assert.True(Named<NumericUpDown>(window, "ModeSeedingOpponent").IsEffectivelyEnabled);
+                    Assert.True(Named<NumericUpDown>(window, "ModeMaximumCycles").IsEffectivelyEnabled);
+                }
+                finally
+                {
+                    foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                    window.Close();
+                    if (session is not null) await session.DisposeAsync();
+                }
+            }, CancellationToken.None);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "db-rendered-classic-dna-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            await DesktopTestApplication.Session.Dispatch(async () =>
+            {
+                var factory = new AuditEngineClientFactory();
+                var storage = new AuditStorageService();
+                var window = new MainWindow([], new WorldSetupOptions {
+                    Species = [new("Audit Species", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
+                }, factory, storage);
+                SimulationSession? session = null;
+                try
+                {
+                    ShowForInteraction(window, 1500, 900);
+                    await WaitFor(() => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Audit Species"));
+                    var engine = factory.Clients.First();
+                    session = Field<SimulationSession>(window, "_session");
+                    var model = Field<MainWindowViewModel>(window, "_viewModel");
+                    var config = LocalModeConfig.Default with { Workflow = LeagueWorkflow.PopulationSeeding, FinishWithLadder = true };
+                    var complete = new LocalModeSnapshot(LocalModeStatus.Completed, LocalModeKind.League, LeaguePreset.F1,
+                        1, 1, 0, 15000, 0, [], null, new()) {
+                        Configuration = config,
+                        Series = new(LeagueWorkflow.PopulationSeeding, [], 1, [1], [], []) {
+                            PopulationSeedingPhase = ClassicTournamentPhase.Complete,
+                            PopulationSeeds = [new(1, 0, 2000) { FileName = "0.txt" }],
+                        },
+                    };
+                    var button = Named<Button>(window, "ExportClassicTournamentButton");
+                    foreach (var phase in new ClassicTournamentPhase?[] { null, ClassicTournamentPhase.Seeding,
+                        ClassicTournamentPhase.Tournament, ClassicTournamentPhase.Ladder })
+                    {
+                        engine.LocalModeForRead = complete with { Series = complete.Series! with { PopulationSeedingPhase = phase } };
+                        await session.RefreshSnapshotAsync();
+                        await WaitFor(() => model.LocalMode.Series?.PopulationSeedingPhase == phase);
+                        Assert.False(button.IsEnabled);
+                    }
+                    engine.LocalModeForRead = complete with { Configuration = config with { Workflow = LeagueWorkflow.Tournament },
+                        Series = complete.Series! with { Workflow = LeagueWorkflow.Tournament } };
+                    await session.RefreshSnapshotAsync();
+                    await WaitFor(() => model.LocalMode.Workflow == LeagueWorkflow.Tournament);
+                    Assert.False(button.IsEnabled);
+
+                    engine.LocalModeForRead = complete;
+                    engine.SpeciesTemplateDna[1] = "' raw original\r\n'#tag:PreviousName.txt\r\nstart 7 .up store stop\r\n";
+                    engine.SpeciesTemplateDna[0] = "' raw second\nstart stop\n";
+                    await session.RefreshSnapshotAsync();
+                    await WaitFor(() => button.IsEnabled);
+                    Assert.True(Named<CheckBox>(window, "ModeFinishWithLadder").IsChecked);
+                    Click(window, button);
+                    await WaitFor(() => model.Status == "CLASSIC TOURNAMENT DNA EXPORT CANCELLED");
+                    Assert.False(Directory.Exists(directory));
+                    Assert.DoesNotContain(engine.Calls, call => call.StartsWith("ExportSpeciesTemplateDna:", StringComparison.Ordinal));
+
+                    var preserved = Path.Combine(directory, "Tournament_Results", "Audit Species.txt");
+                    Directory.CreateDirectory(Path.GetDirectoryName(preserved)!);
+                    await File.WriteAllTextAsync(preserved, "existing result");
+                    storage.PickedPopulationSeedDirectory = directory;
+                    Click(window, button);
+                    await WaitFor(() => model.Status.StartsWith("CLASSIC TOURNAMENT DNA EXPORT FAILED", StringComparison.Ordinal));
+                    Assert.Equal("existing result", await File.ReadAllTextAsync(preserved));
+
+                    var clean = Path.Combine(directory, "clean");
+                    storage.PickedPopulationSeedDirectory = clean;
+                    Click(window, button);
+                    await WaitFor(() => model.Status == "EXPORTED 1 CLASSIC TOURNAMENT DNA FILE(S)");
+                    Assert.Equal(engine.SpeciesTemplateDna[1] + Environment.NewLine + "'#tag:Audit Species" + Environment.NewLine,
+                        await File.ReadAllTextAsync(Path.Combine(clean, "Tournament_Results", "Audit Species.txt")));
+                    Assert.False(Directory.Exists(Path.Combine(clean, "stepladder")));
+
+                    engine.LocalModeForRead = complete with { Series = complete.Series! with { EnteredLadder = true, Ladder = [1, 0] } };
+                    await session.RefreshSnapshotAsync();
+                    await WaitFor(() => model.LocalMode.Series?.EnteredLadder == true);
+                    Click(window, button);
+                    await WaitFor(() => model.Status == "EXPORTED 2 CLASSIC TOURNAMENT DNA FILE(S)");
+                    Assert.Equal(engine.SpeciesTemplateDna[1] + Environment.NewLine + "'#tag:Audit Species" + Environment.NewLine,
+                        await File.ReadAllTextAsync(Path.Combine(clean, "stepladder", "1-Audit Species.txt")));
+                    Assert.Equal(engine.SpeciesTemplateDna[0] + Environment.NewLine + "'#tag:Unassigned" + Environment.NewLine,
+                        await File.ReadAllTextAsync(Path.Combine(clean, "stepladder", "2-Unassigned.txt")));
+                    Assert.All(storage.PopulationSeedPickerOwners, owner => Assert.Same(window, owner));
+                    Assert.DoesNotContain("ExportDna", engine.Calls);
+                }
+                finally
+                {
+                    foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                    window.Close();
+                    if (session is not null) await session.DisposeAsync();
+                }
+            }, CancellationToken.None);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task RealNativeNewAndResetRenderOriginalCyclesWhileKeepingSchedulingTicks()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var windows = new List<Window>();
+            using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+            var initial = new MainWindow([], new WorldSetupOptions
+            {
+                Backend = "Cpu", Seed = 42, PopulationCapacity = 16,
+                BrownianMotion = 0, WorldWidth = 3000, WorldHeight = 2000,
+                Species = [new("Cycle Display", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
+            }, NativeEngineClientFactory.Instance, new AuditStorageService());
+            try
+            {
+                ShowForInteraction(initial, 1280, 900);
+                await WaitFor(() => Field<MainWindowViewModel>(initial, "_viewModel").Status.Contains("WORLD READY", StringComparison.Ordinal));
+                AssertOriginalCycleDisplay(initial, -1, 0);
+                await AdvanceForCycleDisplayAsync(initial);
+                await WaitFor(() => Field<MainWindowViewModel>(initial, "_viewModel").NativeCycle == 0);
+                AssertOriginalCycleDisplay(initial, 0, 1);
+
+                Named<Button>(initial, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => windows.OfType<MainWindow>().Count() == 2);
+                var reset = windows.OfType<MainWindow>().Single(value => value != initial);
+                await WaitFor(() => Field<MainWindowViewModel>(reset, "_viewModel").Status.Contains("WORLD READY", StringComparison.Ordinal));
+                AssertOriginalCycleDisplay(reset, -1, 0);
+                await AdvanceForCycleDisplayAsync(reset);
+                await WaitFor(() => Field<MainWindowViewModel>(reset, "_viewModel").NativeCycle == 0);
+                AssertOriginalCycleDisplay(reset, 0, 1);
+
+                Named<Button>(reset, "ToolbarSlot01").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => windows.OfType<SetupWindow>().Any());
+                var setup = windows.OfType<SetupWindow>().Single();
+                Named<ComboBox>(setup, "Backend").SelectedIndex = 1;
+                Named<NumericUpDown>(setup, "PopulationCap").Value = 16;
+                Named<NumericUpDown>(setup, "WorldWidth").Value = 3000;
+                Named<NumericUpDown>(setup, "WorldHeight").Value = 2000;
+                setup.Species.Clear();
+                setup.Species.Add(new("New Cycle Display", "start stop", false, 0xff123456, 1, 1000, 0, false));
+                Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => windows.OfType<MainWindow>().Count() == 3);
+                var created = windows.OfType<MainWindow>().Single(value => value != initial && value != reset);
+                await WaitFor(() => Field<MainWindowViewModel>(created, "_viewModel").Status.Contains("WORLD READY", StringComparison.Ordinal));
+                AssertOriginalCycleDisplay(created, -1, 0);
+                await AdvanceForCycleDisplayAsync(created);
+                await WaitFor(() => Field<MainWindowViewModel>(created, "_viewModel").NativeCycle == 0);
+                AssertOriginalCycleDisplay(created, 0, 1);
+            }
+            finally { await CloseNavigationWindowsAsync(windows); }
+        }, CancellationToken.None);
+    }
+
+    private static Task AdvanceForCycleDisplayAsync(MainWindow window) =>
+        (Task)typeof(MainWindow).GetMethod("AdvanceSimulationAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [1u])!;
+
+    private static void AssertOriginalCycleDisplay(MainWindow window, int nativeCycle, ulong tick)
+    {
+        window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        var model = Field<MainWindowViewModel>(window, "_viewModel");
+        Assert.Equal(nativeCycle, model.NativeCycle);
+        Assert.Equal(tick, model.Tick);
+        Assert.Equal(nativeCycle.ToString(System.Globalization.CultureInfo.InvariantCulture), Named<TextBlock>(window, "CycleValue").Text);
+        Assert.Equal($"Cycles {model.CycleLabel}", model.StatusPanels[5].Display);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(bool useMenu)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var storage = new AuditStorageService();
+            var windows = new List<Window>();
+            using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+            var original = new MainWindow([], new WorldSetupOptions
+            {
+                NativeGaussianSpare = 1.25f, NativeSunChange = 7,
+                Species = [new("Handoff", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
+            }, factory, storage);
+            try
+            {
+                ShowForInteraction(original, 1280, 900);
+                await WaitFor(() => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Handoff"));
+                var oldClient = factory.Clients.Single();
+                Assert.Equal(1.25f, factory.CreatedSetups.Single().NativeGaussianSpare);
+                oldClient.NativeGaussianSpare = 2.5f;
+                oldClient.NativeSunChange = 12;
+                Field<DispatcherTimer>(original, "_runTimer").Start();
+                if (useMenu)
+                    ActivateMenu(Named<LegacyMenuBar>(original, "HistoricMenuBar")
+                        .FindCommandItem(Core.LegacyMenus.LegacyCommandId.FileNewSimulation)!);
+                else
+                    Named<Button>(original, "ToolbarSlot01").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => windows.OfType<SetupWindow>().Any() && oldClient.Calls.Contains("Dispose"));
+                var setup = Assert.Single(windows.OfType<SetupWindow>());
+                Assert.False(original.IsVisible);
+                Assert.False(Field<DispatcherTimer>(original, "_runTimer").IsEnabled);
+                AssertReadBeforeDisposeWithoutTicks(oldClient, 2.5f);
+                Assert.Equal((byte)12, Assert.Single(oldClient.SunChangeReads));
+                if (Application.Current!.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+                    Assert.Same(setup, lifetime.MainWindow);
+
+                Named<Button>(setup, "StartNewButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.Count == 2 && windows.OfType<MainWindow>().Count() == 2);
+                var replacement = windows.OfType<MainWindow>().Single(value => value != original);
+                await WaitFor(() => factory.Clients.Last().Calls.Any(value => value.StartsWith("ImportSpecies:", StringComparison.Ordinal)));
+                Assert.Equal(2.5f, factory.CreatedSetups.Last().NativeGaussianSpare);
+                Assert.Equal(2.5f, factory.Clients.Last().NativeGaussianSpare);
+                Assert.Equal((byte)12, factory.CreatedSetups.Last().NativeSunChange);
+                Assert.Equal((byte)12, factory.Clients.Last().NativeSunChange);
+                Assert.Same(factory, Field<IEngineClientFactory>(replacement, "_engineFactory"));
+                Assert.Same(storage, Field<IDesktopStorageService>(replacement, "_storage"));
+                Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeGaussianSpare);
+                Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeSunChange);
+                Assert.Null(typeof(MainWindow).GetField("_initialNativeGaussianSpare", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(replacement));
+                Assert.Null(typeof(MainWindow).GetField("_initialNativeSunChange", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(replacement));
+                Assert.False(setup.IsVisible);
+                Assert.True(replacement.IsVisible);
+                if (Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime replacedLifetime)
+                    Assert.Same(replacement, replacedLifetime.MainWindow);
+                Assert.Equal(2, factory.CreatedSetups.Count);
+                Assert.All(storage.LastStartWrites, bytes =>
+                {
+                    Assert.DoesNotContain("Gaussian", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+                    Assert.DoesNotContain("NativeSunChange", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+                });
+            }
+            finally { await CloseNavigationWindowsAsync(windows); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var storage = new AuditStorageService();
+            var windows = new List<Window>();
+            using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+            var original = new MainWindow([], new WorldSetupOptions
+            {
+                NativeGaussianSpare = 1.25f, NativeSunChange = 7,
+                Species = [new("Reset Handoff", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
+            }, factory, storage);
+            try
+            {
+                ShowForInteraction(original, 1280, 900);
+                await WaitFor(() => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Reset Handoff"));
+                var oldClient = factory.Clients.Single();
+                oldClient.NativeGaussianSpare = 2.5f;
+                oldClient.NativeSunChange = 12;
+                Field<DispatcherTimer>(original, "_runTimer").Start();
+                Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.Count == 2 && oldClient.Calls.Contains("Dispose"));
+                var replacement = windows.OfType<MainWindow>().Single(value => value != original);
+                await WaitFor(() => factory.Clients.Last().Calls.Contains("ImportSpecies:Reset Handoff"));
+                var middleClient = factory.Clients.Last();
+                Assert.Equal(2.5f, factory.CreatedSetups.Last().NativeGaussianSpare);
+                Assert.Equal((byte)12, factory.CreatedSetups.Last().NativeSunChange);
+                AssertReadBeforeDisposeWithoutTicks(oldClient, 2.5f);
+                Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeGaussianSpare);
+                middleClient.NativeGaussianSpare = null;
+                middleClient.NativeSunChange = 2;
+
+                Named<Button>(replacement, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                await WaitFor(() => factory.Clients.Count == 3 && middleClient.Calls.Contains("Dispose"));
+                var finalWindow = windows.OfType<MainWindow>().Single(value => value != original && value != replacement);
+                await WaitFor(() => factory.Clients.Last().Calls.Contains("ImportSpecies:Reset Handoff"));
+                Assert.Null(factory.CreatedSetups.Last().NativeGaussianSpare);
+                Assert.Null(factory.Clients.Last().NativeGaussianSpare);
+                Assert.Equal((byte)2, factory.CreatedSetups.Last().NativeSunChange);
+                Assert.Equal((byte)2, factory.Clients.Last().NativeSunChange);
+                AssertReadBeforeDisposeWithoutTicks(middleClient, null);
+                Assert.Same(factory, Field<IEngineClientFactory>(finalWindow, "_engineFactory"));
+                Assert.Same(storage, Field<IDesktopStorageService>(finalWindow, "_storage"));
+                Assert.True(finalWindow.IsVisible);
+                if (Application.Current!.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+                    Assert.Same(finalWindow, lifetime.MainWindow);
+                Assert.Equal(new float?[] { 1.25f, 2.5f, null }, factory.CreatedSetups.Select(value => value.NativeGaussianSpare));
+                Assert.All(storage.LastStartWrites, bytes =>
+                {
+                    Assert.DoesNotContain("Gaussian", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+                    Assert.DoesNotContain("NativeSunChange", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+                });
+            }
+            finally { await CloseNavigationWindowsAsync(windows); }
+        }, CancellationToken.None);
+    }
+
+    private static void AssertReadBeforeDisposeWithoutTicks(AuditEngineClient client, float? expected)
+    {
+        Assert.Equal(expected, Assert.Single(client.GaussianSpareReads));
+        var calls = client.Calls.ToArray();
+        int read = Array.IndexOf(calls, "ReadNativeGaussianSpare");
+        Assert.True(read >= 0 && read < Array.IndexOf(calls, "Dispose"), string.Join(", ", calls));
+        int sun = Array.IndexOf(calls, "ReadNativeSunChange");
+        Assert.True(sun > read && sun < Array.IndexOf(calls, "Dispose"), string.Join(", ", calls));
+        Assert.DoesNotContain(calls, value => value.StartsWith("Tick:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task FailedInitialCreationRetainsPendingContextForRetryThenResetReadsCurrentState()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory { FailedCreatesRemaining = 1 };
+            var storage = new AuditStorageService();
+            var windows = new List<Window>();
+            using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
+            var original = new MainWindow([], new WorldSetupOptions
+            {
+                NativeGaussianSpare = 1.25f, NativeSunChange = 12,
+                Species = [new("Creation Retry", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
+            }, factory, storage);
+            try
+            {
+                ShowForInteraction(original, 1280, 900);
+                await WaitFor(() => Field<MainWindowViewModel>(original, "_viewModel").Status.Contains("Controlled initial creation failure", StringComparison.Ordinal));
+                Assert.Empty(factory.Clients);
+                Assert.Equal(1.25f, typeof(MainWindow).GetField("_initialNativeGaussianSpare", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(original));
+                Assert.Equal((byte)12, typeof(MainWindow).GetField("_initialNativeSunChange", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(original));
+                Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Creation Retry"));
+                var retry = windows.OfType<MainWindow>().Single(value => value != original);
+                var retryClient = Assert.Single(factory.Clients);
+                Assert.Equal(2, factory.CreatedSetups.Count);
+                Assert.All(factory.CreatedSetups, options =>
+                {
+                    Assert.Equal(1.25f, options.NativeGaussianSpare);
+                    Assert.Equal((byte)12, options.NativeSunChange);
+                });
+                Assert.Null(typeof(MainWindow).GetField("_initialNativeGaussianSpare", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(retry));
+                Assert.Null(typeof(MainWindow).GetField("_initialNativeSunChange", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(retry));
+                retryClient.NativeGaussianSpare = 3.5f;
+                retryClient.NativeSunChange = 2;
+
+                Named<Button>(retry, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                await WaitFor(() => factory.Clients.Count == 2 && retryClient.Calls.Contains("Dispose"));
+                await WaitFor(() => factory.Clients.Last().Calls.Contains("ImportSpecies:Creation Retry"));
+                Assert.Equal(3.5f, factory.CreatedSetups.Last().NativeGaussianSpare);
+                Assert.Equal((byte)2, factory.CreatedSetups.Last().NativeSunChange);
+                AssertReadBeforeDisposeWithoutTicks(retryClient, 3.5f);
+                Assert.Equal((byte)2, Assert.Single(retryClient.SunChangeReads));
+            }
+            finally { await CloseNavigationWindowsAsync(windows); }
+        }, CancellationToken.None);
+    }
+
+    private static async Task CloseNavigationWindowsAsync(IEnumerable<Window> windows)
+    {
+        foreach (var window in windows.Reverse().ToArray())
+        {
+            if (window is MainWindow main) Field<DispatcherTimer>(main, "_runTimer").Stop();
+            window.Close();
+            if (window is MainWindow && typeof(MainWindow).GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window) is SimulationSession session)
+                await session.DisposeAsync();
+        }
+    }
+
     private static readonly IReadOnlyDictionary<string, string[]> Coverage =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -54,6 +523,10 @@ public sealed class RenderedControlSurfaceAuditTests
                 "live.local_mode.sexual", "live.local_mode.configure", "live.local_mode.start",
                 "live.local_mode.restart_button", "live.local_mode.adjudicate", "live.local_mode.reason",
             ],
+            [nameof(PopulationSeedingDropdownShowsZeroScoresAndExportsTemplatesThroughTheFolderPicker)] =
+            ["live.local_mode.workflow", "live.local_mode.finish_with_ladder", "live.local_mode.export_population_seeds"],
+            [nameof(CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles)] =
+            ["live.local_mode.export_classic_dna"],
             [nameof(AdvancedSettingsRenderedControlsRoundTripEveryField)] =
             [
                 "advanced.metabolism", "advanced.vegetableenergy", "advanced.sunlight",
@@ -83,7 +556,7 @@ public sealed class RenderedControlSurfaceAuditTests
     {
         var ids = Coverage.Values.SelectMany(value => value).ToArray();
 
-        Assert.Equal(135, ids.Length);
+        Assert.Equal(139, ids.Length);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
         Assert.All(ids, id => Assert.False(string.IsNullOrWhiteSpace(id)));
     }
@@ -380,6 +853,63 @@ public sealed class RenderedControlSurfaceAuditTests
             Click(cancel, Named<Button>(cancel, "CancelButton"));
             Assert.False(cancel.Accepted);
             Assert.False(cancel.IsVisible);
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task AdvancedWeatherCheckboxRetainsNativeLoadedSunOnRndUntilThePlayerTurnsItOff()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            using var source = new NativeEngineClient(new WorldSetupOptions
+            {
+                Backend = "Cpu", Seed = 42,
+                Vegetation = Db2VegetationOptions.Default with { WeatherEnabled = false, SunOnRandom = true },
+            });
+            using var loaded = new NativeEngineClient(new WorldSetupOptions { Backend = "Cpu" });
+            loaded.Load(source.SaveLegacy());
+            var environment = loaded.ReadConfiguration().Environment;
+            Assert.False(environment.Vegetation.WeatherEnabled);
+            Assert.True(environment.Vegetation.SunOnRandom);
+            var windows = new List<AdvancedSettingsWindow>();
+            try
+            {
+                var unrelated = new AdvancedSettingsWindow(environment, loaded.Snapshot(), selectedTab: 1);
+                windows.Add(unrelated);
+                ShowForInteraction(unrelated, 860, 760);
+                Assert.True(Named<CheckBox>(unrelated, "WeatherEnabled").IsChecked);
+                Named<NumericUpDown>(unrelated, "Metabolism").Value = environment.MetabolismCost + 1;
+                Click(unrelated, Named<Button>(unrelated, "ApplyButton"));
+                Assert.True(unrelated.Accepted);
+                loaded.UpdateEnvironment(unrelated.Update);
+                environment = loaded.ReadConfiguration().Environment;
+                Assert.Equal(unrelated.Update.MetabolismCost, environment.MetabolismCost);
+                Assert.True(environment.Vegetation.WeatherEnabled || environment.Vegetation.SunOnRandom);
+
+                var turnOff = new AdvancedSettingsWindow(environment, loaded.Snapshot(), selectedTab: 1);
+                windows.Add(turnOff);
+                ShowForInteraction(turnOff, 860, 760);
+                Assert.True(Named<CheckBox>(turnOff, "WeatherEnabled").IsChecked);
+                Click(turnOff, Named<CheckBox>(turnOff, "WeatherEnabled"));
+                Click(turnOff, Named<Button>(turnOff, "ApplyButton"));
+                Assert.True(turnOff.Accepted);
+                loaded.UpdateEnvironment(turnOff.Update);
+                environment = loaded.ReadConfiguration().Environment;
+                Assert.False(environment.Vegetation.WeatherEnabled || environment.Vegetation.SunOnRandom);
+                var savedOff = loaded.Save();
+
+                var cancel = new AdvancedSettingsWindow(environment, loaded.Snapshot(), selectedTab: 1);
+                windows.Add(cancel);
+                ShowForInteraction(cancel, 860, 760);
+                Click(cancel, Named<CheckBox>(cancel, "WeatherEnabled"));
+                Click(cancel, Named<Button>(cancel, "CancelButton"));
+                Assert.False(cancel.Accepted);
+                Assert.Equal(savedOff, loaded.Save());
+            }
+            finally
+            {
+                foreach (var window in windows) window.Close();
+            }
         }, CancellationToken.None);
     }
 
@@ -833,6 +1363,13 @@ public sealed class RenderedControlSurfaceAuditTests
 
                 var engine = factory.Clients.First();
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                var session = Field<SimulationSession>(window, "_session");
+                // Import dispatch precedes the final startup UI presentation.
+                // Capture the inert-control baseline only after both are ready.
+                await WaitFor(() => viewModel.Status == "WORLD READY · 1 SPECIES"
+                    && viewModel.Tick == session.LatestSnapshot.Tick
+                    && viewModel.Population == session.LatestSnapshot.Population,
+                    () => viewModel.Status);
                 var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
                 var onlineButton = Named<Button>(window, "InternetButton");
                 var offlineOverlay = Named<Border>(window, "InternetOfflineOverlay");
@@ -1347,6 +1884,13 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public string? LatestAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
     public string? SavedDna { get; private set; }
+    public string? PickedPopulationSeedDirectory { get; set; }
+    public ConcurrentQueue<TopLevel> PopulationSeedPickerOwners { get; } = [];
+    public Task<string?> PickPopulationSeedDirectoryAsync(TopLevel owner)
+    {
+        PopulationSeedPickerOwners.Enqueue(owner);
+        return Task.FromResult(PickedPopulationSeedDirectory);
+    }
     public byte[]? SavedLivingSnapshot { get; private set; }
     public List<byte[]> DeadSnapshotWrites { get; } = [];
     public bool AcceptOrganismSave { get; init; } = true;
@@ -1356,6 +1900,13 @@ internal sealed class AuditStorageService : IDesktopStorageService
     public List<byte[]> AutosaveWrites { get; } = [];
     public bool PersistAutosaves { get; init; }
     public DesktopSettings? SavedSettings { get; private set; }
+    public ConcurrentQueue<byte[]> LastStartWrites { get; } = [];
+
+    public Task SaveLastStartAsync(ReadOnlyMemory<byte> setup)
+    {
+        LastStartWrites.Enqueue(setup.ToArray());
+        return Task.CompletedTask;
+    }
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult(DnaFiles);
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
@@ -1420,10 +1971,23 @@ internal sealed class AuditStorageService : IDesktopStorageService
 internal sealed class AuditEngineClientFactory(bool includeWorldObjects = true, bool encodeTickInSave = false) : IEngineClientFactory
 {
     public ConcurrentQueue<AuditEngineClient> Clients { get; } = [];
+    public ConcurrentQueue<WorldSetupOptions> CreatedSetups { get; } = [];
+    public int FailedCreatesRemaining { get; set; }
 
     public IEngineClient Create(WorldSetupOptions setup)
     {
-        var client = new AuditEngineClient(includeWorldObjects) { EncodeTickInSave = encodeTickInSave };
+        CreatedSetups.Enqueue(setup);
+        if (FailedCreatesRemaining > 0)
+        {
+            FailedCreatesRemaining--;
+            throw new InvalidOperationException("Controlled initial creation failure.");
+        }
+        var client = new AuditEngineClient(includeWorldObjects)
+        {
+            EncodeTickInSave = encodeTickInSave,
+            NativeGaussianSpare = setup.NativeGaussianSpare,
+            NativeSunChange = setup.NativeSunChange ?? 0,
+        };
         Clients.Enqueue(client);
         return client;
     }
@@ -1460,13 +2024,42 @@ internal sealed class AuditEngineClient : IEngineClient
     public ConcurrentQueue<string> Calls { get; } = [];
     public ConcurrentQueue<EnvironmentUpdate> EnvironmentUpdates { get; } = [];
     public ConcurrentQueue<MutationSettingsUpdate> MutationUpdates { get; } = [];
+    public Dictionary<uint, string> SpeciesTemplateDna { get; } = [];
+    public LocalModeConfig LastLocalModeConfiguration => _localModeConfig;
     public string Backend => _backend;
     public bool EncodeTickInSave { get; init; }
     public WorldConfiguration? ConfigurationForRead { get; set; }
     public WorldConfiguration? ReadConfiguration() => ConfigurationForRead;
+    public int? NativeCycle { get; set; }
+    public Func<uint, int?, int?>? AdvanceNativeCycle { get; set; }
+    public LocalModeSnapshot? LocalModeForRead { get; set; }
+    public float? NativeGaussianSpare { get; set; }
+    public byte NativeSunChange { get; set; }
+    public ConcurrentQueue<byte> SunChangeReads { get; } = [];
+    public byte ReadNativeSunChange()
+    {
+        var sun = NativeSunChange;
+        SunChangeReads.Enqueue(sun);
+        Calls.Enqueue("ReadNativeSunChange");
+        return sun;
+    }
+    public ConcurrentQueue<float?> GaussianSpareReads { get; } = [];
+    public float? ReadNativeGaussianSpare()
+    {
+        var spare = NativeGaussianSpare;
+        GaussianSpareReads.Enqueue(spare);
+        Calls.Enqueue("ReadNativeGaussianSpare");
+        return spare;
+    }
 
     public EngineCapabilities Capabilities() => new(1, _backend, true, null);
-    public void Tick(uint count = 1) { _tick += count; Calls.Enqueue($"Tick:{count}"); }
+    public void Tick(uint count = 1)
+    {
+        _tick += count;
+        if (AdvanceNativeCycle is { } advance) NativeCycle = advance(count, NativeCycle);
+        else if (NativeCycle is { } cycle) NativeCycle = checked(cycle + checked((int)count));
+        Calls.Enqueue($"Tick:{count}");
+    }
     public DnaImportReport ImportDna(string dna, float[]? position = null) { Calls.Enqueue("ImportDna"); return DnaImportReport.Compatible; }
     public DnaImportReport ImportSpecies(SpeciesImport species) { Calls.Enqueue($"ImportSpecies:{species.Name}"); return DnaImportReport.Compatible; }
     public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)
@@ -1480,6 +2073,11 @@ internal sealed class AuditEngineClient : IEngineClient
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position) { Calls.Enqueue($"Clone:{slot}:{generation}"); return new OrganismKey(40, 0); }
     public void ReplaceDna(uint slot, uint generation, string dna) => Calls.Enqueue($"ReplaceDna:{slot}:{generation}");
     public string ExportDna(uint slot, uint generation) { Calls.Enqueue("ExportDna"); return "start\nstop"; }
+    public string ExportSpeciesTemplateDna(uint species)
+    {
+        Calls.Enqueue($"ExportSpeciesTemplateDna:{species}");
+        return SpeciesTemplateDna[species];
+    }
     public OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position)
     {
         Calls.Enqueue($"Reproduce:{firstSlot}:{firstGeneration}");
@@ -1558,6 +2156,10 @@ internal sealed class AuditEngineClient : IEngineClient
     public byte[] Save() { Calls.Enqueue("Save"); return EncodeTickInSave ? BitConverter.GetBytes(_tick) : [1, 2, 3, 4]; }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }
     public void Load(byte[] save) => Calls.Enqueue("Load");
-    public EngineSnapshot Snapshot() => _snapshot with { Tick = _tick, Backend = _backend };
+    public EngineSnapshot Snapshot() => _snapshot with
+    {
+        Tick = _tick, NativeCycle = NativeCycle, Backend = _backend,
+        LocalMode = LocalModeForRead ?? _snapshot.LocalMode,
+    };
     public void Dispose() => Calls.Enqueue("Dispose");
 }

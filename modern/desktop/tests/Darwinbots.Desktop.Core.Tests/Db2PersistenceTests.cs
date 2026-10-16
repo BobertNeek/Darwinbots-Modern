@@ -7,6 +7,25 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class Db2PersistenceTests
 {
     [Fact]
+    public void OriginalSettingsUseWindows1252ForNonAsciiSpeciesNamesAndPaths()
+    {
+        var expected = new DesktopSettings {
+            Species = [new("Café.txt", "start stop", false, 0xff123456, 5, 3000, 0, false, 0) {
+                DnaPath = "Robots/Café €/Café.txt", Comment = "é €",
+            }],
+        };
+        var bytes = Db2SettingsCodec.Encode(expected);
+        Assert.Contains((byte)0xe9, bytes);
+        Assert.Contains((byte)0x80, bytes);
+        Assert.Equal(expected.ToJson(), Db2SettingsCodec.Decode(bytes).ToJson());
+        var originalText = LegacyDnaText.Decode(bytes);
+        originalText = originalText[..originalText.IndexOf("#DARWINBOTS_MODERN_SETTINGS_V1#", StringComparison.Ordinal)];
+        var original = Db2SettingsCodec.Decode(LegacyDnaText.Encode(originalText));
+        Assert.Equal("Café.txt", Assert.Single(original.Species).Name);
+        Assert.Contains("Café €", original.Species[0].DnaPath);
+    }
+
+    [Fact]
     public void SettingsCodecWritesDb2SetTextAndRestoresTheModernWorldFields()
     {
         var expected = new DesktopSettings

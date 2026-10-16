@@ -35,6 +35,8 @@ pub enum LeagueWorkflow {
     Ladder,
     Tournament,
     Seeding,
+    /// Original restartmode1: score each candidate's population at cycle2000.
+    PopulationSeeding,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +82,8 @@ pub struct LocalModeConfig {
     pub entrant_order: Vec<SpeciesId>,
     pub initial_ladder: Vec<SpeciesId>,
     pub seeding_opponent: Option<SpeciesId>,
+    /// Original UseStepladder: finish a classic tournament as a ladder below32 survivors.
+    pub finish_with_ladder: bool,
     pub kind: LocalModeKind,
     pub preset: LeaguePreset,
     pub minimum_rounds: u32,
@@ -102,6 +106,7 @@ impl Default for LocalModeConfig {
             entrant_order: Vec::new(),
             initial_ladder: Vec::new(),
             seeding_opponent: None,
+            finish_with_ladder: false,
             kind: LocalModeKind::League,
             preset: LeaguePreset::F1,
             minimum_rounds: 5,

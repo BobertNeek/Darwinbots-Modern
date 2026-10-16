@@ -6,7 +6,6 @@ use serde_json::{Value, json};
 use std::{
     collections::HashSet,
     error::Error,
-    fs,
     path::{Path, PathBuf},
     time::Instant,
 };
@@ -52,7 +51,7 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
     let mut cursor = 0usize;
     let mut warnings = Vec::new();
     let mut candidate_species = Vec::with_capacity(options.bot.len());
-    let mut engine = Engine::new(EngineConfig {
+    let mut engine = Engine::new_native(EngineConfig {
         seed: options.seed,
         // Preserve reproduction headroom where possible without rejecting a
         // starting population that already occupies every native robot slot.
@@ -69,7 +68,7 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
     })?;
 
     for path in &options.bot {
-        let dna = read_dna(path)?;
+        let (dna, source) = read_dna(&engine, path)?;
         warnings.extend(dna.compatibility_warnings().iter().cloned());
         let species = engine.register_species(SpeciesDefinition {
             name: file_name(path),
@@ -87,11 +86,12 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
             positions[cursor..end].iter().copied(),
             options.initial_energy,
         )?;
+        engine.retain_species_template_source(species, source)?;
         cursor = end;
     }
 
     if let Some(path) = &options.vegetable_bot {
-        let dna = read_dna(path)?;
+        let (dna, source) = read_dna(&engine, path)?;
         warnings.extend(dna.compatibility_warnings().iter().cloned());
         let species = engine.register_species(SpeciesDefinition {
             name: file_name(path),
@@ -107,6 +107,7 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
             positions[cursor..].iter().copied(),
             options.initial_energy,
         )?;
+        engine.retain_species_template_source(species, source)?;
     }
 
     warnings.sort();
@@ -153,8 +154,8 @@ pub(crate) fn execute(options: Options) -> Result<Value, Box<dyn Error>> {
     }))
 }
 
-fn read_dna(path: &Path) -> Result<LegacyDna, Box<dyn Error>> {
-    Ok(LegacyDna::parse(&fs::read_to_string(path)?)?)
+fn read_dna(engine: &Engine, path: &Path) -> Result<(LegacyDna, String), Box<dyn Error>> {
+    crate::dna_source::read(engine, path)
 }
 
 fn file_name(path: &Path) -> String {
@@ -246,6 +247,7 @@ fn candidate_ids(snapshot: &Snapshot, species: &HashSet<SpeciesId>) -> HashSet<O
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn run_accepts_full_native_robot_capacity_without_an_extra_birth_slot() {

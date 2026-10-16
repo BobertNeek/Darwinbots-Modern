@@ -88,6 +88,8 @@ use native_disqualification::DisqualificationAction;
 mod native_tie_sharing;
 use native_tie_sharing::{SharedResource, native_share_resource};
 
+#[path = "world/native_obstacles.rs"]
+mod native_obstacles;
 #[path = "world/native_physics.rs"]
 mod native_physics;
 
@@ -100,6 +102,9 @@ mod native_tie_creation;
 #[path = "world/native_vision.rs"]
 mod native_vision;
 
+#[cfg(test)]
+#[path = "world/classic_tournament_tests.rs"]
+mod classic_tournament_tests;
 #[path = "world/league_series.rs"]
 mod league_series;
 #[path = "world/native_birth_mutation.rs"]
@@ -121,6 +126,9 @@ mod staged_evolution;
 
 #[path = "world/native_random_world.rs"]
 mod native_random_world;
+use native_random_world::NativeStartBoundary;
+#[path = "world/native_script_placement.rs"]
+mod native_script_placement;
 
 #[path = "world/cached_radius.rs"]
 mod cached_radius;
@@ -516,6 +524,9 @@ pub struct Snapshot {
     #[serde(default = "default_snapshot_schema_version")]
     pub schema_version: u32,
     pub tick: u64,
+    /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_cycle: Option<i32>,
     #[serde(default = "default_world_size")]
     pub world_size: [f32; 2],
     pub organisms: Vec<OrganismSnapshot>,
@@ -562,6 +573,7 @@ pub struct Snapshot {
 impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
+            && self.native_cycle == other.native_cycle
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
             && self.organisms == other.organisms
@@ -585,6 +597,8 @@ impl PartialEq for Snapshot {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct SpeciesTemplate {
     dna: LegacyDna,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    source_text: Option<String>,
     initial_energy: i32,
     #[serde(default = "default_initial_population")]
     initial_population: usize,
@@ -970,6 +984,7 @@ impl From<Db3sV2EngineConfig> for EngineConfig {
             greedy_reproduction: false,
             body_cutoff: 0,
             seed: value.seed,
+            native_restart_seed: None,
             organism_capacity: value.organism_capacity.min(MAX_ROBOTS),
             vegetable_population_cap: value.vegetable_population_cap,
             world_width: value.world_width,
@@ -1285,6 +1300,7 @@ impl From<Db3sV2SpeciesTemplate> for SpeciesTemplate {
     fn from(value: Db3sV2SpeciesTemplate) -> Self {
         Self {
             dna: value.dna.into(),
+            source_text: None,
             initial_energy: value.initial_energy,
             initial_population: 1,
         }
@@ -1895,6 +1911,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
         Self {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
+            native_cycle: None,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
             corpses: value.corpses.into_iter().map(Into::into).collect(),
@@ -2228,6 +2245,10 @@ struct EngineCycleCheckpoint {
     native_random: Option<crate::native_random::NativeRandom>,
     native_buckets: native_collisions::NativeBuckets,
     dynamic_cost_state: DynamicCostRuntimeState,
+    native_sim_guid: Option<i32>,
+    native_cycle: Option<i32>,
+    native_population_census: Option<[usize; 2]>,
+    native_skin_timer_seconds: Option<[f32; 2]>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -2251,6 +2272,15 @@ pub struct Engine {
     /// Imported SimOpts.F1; global restart modes and x_fudge are separate files.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_f1: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_sim_guid: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_cycle: Option<i32>,
+    /// Original mode1 UpdateCounters census and its one-cycle delayed display.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_population_census: Option<[usize; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_skin_timer_seconds: Option<[f32; 2]>,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2538,6 +2568,10 @@ impl Engine {
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
             native_f1: None,
+            native_sim_guid: None,
+            native_cycle: None,
+            native_population_census: None,
+            native_skin_timer_seconds: None,
         })
     }
 
@@ -2670,6 +2704,7 @@ impl Engine {
             snapshot: Snapshot {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
+                native_cycle: None,
                 world_size,
                 organisms: Vec::new(),
                 corpses: Vec::new(),
@@ -2741,6 +2776,10 @@ impl Engine {
             graph_sampling: crate::GraphSamplingSettings::default(),
             native_origin: None,
             native_f1: None,
+            native_sim_guid: None,
+            native_cycle: None,
+            native_population_census: None,
+            native_skin_timer_seconds: None,
         })
     }
 
@@ -3051,7 +3090,13 @@ impl Engine {
         let series = self.prepare_league_series(&config)?;
         let evolution = self.prepare_staged_evolution(&config)?;
         if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
+            let retained = (config.workflow == crate::LeagueWorkflow::PopulationSeeding)
+                .then(|| (self.species.clone(), self.species_templates.clone()));
             self.apply_league_preset(config.preset);
+            if let Some((definitions, templates)) = retained {
+                self.species = definitions;
+                self.species_templates = templates;
+            }
         }
         self.apply_mode_restrictions(&config);
         self.local_mode = LocalModeState::configured(config);
@@ -3082,13 +3127,14 @@ impl Engine {
         self.local_mode.adjudication = None;
         if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct
             && self.local_mode.series.active_match.is_none()
+            && self.local_mode.series.active_seed.is_none()
         {
             self.local_mode.status = LocalModeStatus::Completed;
             self.publish_snapshot();
             return Ok(());
         }
         if self.local_mode.evolution.is_some() {
-            self.restart_staged_world()?;
+            self.restart_staged_world(true)?;
             self.publish_snapshot();
             return Ok(());
         }
@@ -3098,10 +3144,17 @@ impl Engine {
         }
         if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
             self.capture_missing_league_templates();
-            for template in self.species_templates.iter_mut().flatten() {
-                template.initial_population = 5;
+            if config.workflow != crate::LeagueWorkflow::PopulationSeeding {
+                for template in self.species_templates.iter_mut().flatten() {
+                    template.initial_population = 5;
+                }
             }
-            self.restart_mode_world(None)?;
+            let boundary = if config.workflow == crate::LeagueWorkflow::Direct {
+                NativeStartBoundary::ConfiguredStart
+            } else {
+                NativeStartBoundary::ExternalProcess
+            };
+            self.restart_mode_world(None, boundary)?;
             for robot in self
                 .slots
                 .iter_mut()
@@ -3132,7 +3185,7 @@ impl Engine {
             self.local_mode.adjudication = None;
             self.local_mode.current_round = 1;
             self.local_mode.status = LocalModeStatus::Running;
-            self.restart_staged_world()?;
+            self.restart_staged_world(true)?;
             self.publish_snapshot();
             return Ok(());
         }
@@ -3141,7 +3194,14 @@ impl Engine {
             self.zerobot_checkpoint_score = 0;
         }
         self.local_mode.series = self.prepare_league_series(&config)?;
-        self.restart_mode_world(None)?;
+        let boundary = if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest)
+            && config.workflow == crate::LeagueWorkflow::Direct
+        {
+            NativeStartBoundary::ConfiguredStart
+        } else {
+            NativeStartBoundary::ExternalProcess
+        };
+        self.restart_mode_world(None, boundary)?;
         self.local_mode.current_round = 1;
         self.local_mode.restart_count = self.local_mode.restart_count.saturating_add(1);
         self.local_mode.cycle_in_round = 0;
@@ -3151,6 +3211,7 @@ impl Engine {
         self.local_mode.adjudication = None;
         self.local_mode.status = if self.local_mode.series.workflow != crate::LeagueWorkflow::Direct
             && self.local_mode.series.active_match.is_none()
+            && self.local_mode.series.active_seed.is_none()
         {
             LocalModeStatus::Completed
         } else {
@@ -3166,6 +3227,18 @@ impl Engine {
         winner: Option<SpeciesId>,
         reason: String,
     ) -> Result<(), EngineError> {
+        if self
+            .local_mode
+            .config
+            .as_ref()
+            .is_some_and(|config| config.workflow == crate::LeagueWorkflow::PopulationSeeding)
+            && self.local_mode.series.is_population_census()
+        {
+            return Err(EngineError::Invariant(
+                "population seeding records a census at native cycle2000, not a round winner"
+                    .into(),
+            ));
+        }
         if reason.trim().is_empty() {
             return Err(EngineError::Invariant(
                 "local round adjudication requires a reason".to_owned(),
@@ -3754,6 +3827,11 @@ impl Engine {
         } else {
             self.local_mode.current_round >= config.maximum_rounds.max(config.minimum_rounds)
         };
+        // F1Mode.Countpop: a surviving winner resets the next round to0;
+        // both-dead rounds and ordinary extinction restarts retain the counter.
+        if contest && !complete && winner.is_some() && self.native_cycle.is_some() {
+            self.native_cycle = Some(0);
+        }
         if staged_test {
             let start = self
                 .local_mode
@@ -3794,7 +3872,11 @@ impl Engine {
             if zerobot && rollback {
                 self.local_mode.status = LocalModeStatus::RoundComplete;
                 let keep_species = restart_seed.as_ref().map(|seed| seed.identity.species);
-                self.restart_mode_world_with_seed(keep_species, restart_seed)?;
+                self.restart_mode_world_with_seed(
+                    keep_species,
+                    restart_seed,
+                    NativeStartBoundary::SameProcessRound,
+                )?;
             }
             self.local_mode.status = LocalModeStatus::Completed;
             self.publish_snapshot();
@@ -3810,15 +3892,41 @@ impl Engine {
                 .flatten()
         };
         if zerobot {
-            self.restart_mode_world_with_seed(keep_species, restart_seed)?;
+            self.restart_mode_world_with_seed(
+                keep_species,
+                restart_seed,
+                NativeStartBoundary::SameProcessRound,
+            )?;
         } else {
-            self.restart_mode_world(keep_species)?;
+            self.restart_mode_world(keep_species, NativeStartBoundary::SameProcessRound)?;
         }
         self.local_mode.current_round = self.local_mode.current_round.saturating_add(1);
         self.local_mode.cycle_in_round = 0;
         self.local_mode.contest_runtime = Default::default();
         self.local_mode.status = LocalModeStatus::Running;
         self.publish_snapshot();
+        Ok(())
+    }
+
+    pub(super) fn retry_native_contest_round(&mut self) -> Result<(), EngineError> {
+        // Countpop's both-dead branch does not award a round or advance Contests.
+        // FindSpecies resets optMaxCycles, but the process-static old-population
+        // sample and ModeChangeCycles survive this particular restart path.
+        let mut runtime = self.local_mode.contest_runtime.clone();
+        let restart_count = self.local_mode.restart_count;
+        runtime.effective_cycle_limit = self
+            .local_mode
+            .config
+            .as_ref()
+            .map_or(0, |config| config.maximum_cycles);
+        if self.local_mode.evolution.is_some() {
+            self.restart_staged_world(false)?;
+        } else {
+            self.restart_mode_world(None, NativeStartBoundary::SameProcessRound)?;
+        }
+        self.local_mode.cycle_in_round = 0;
+        self.local_mode.restart_count = restart_count;
+        self.local_mode.contest_runtime = runtime;
         Ok(())
     }
 
@@ -3833,6 +3941,11 @@ impl Engine {
         let Some(config) = self.local_mode.config.clone() else {
             return Ok(());
         };
+        if self.local_mode.series.is_population_census() {
+            // Master records after this old world's sunlight phase; restarting
+            // here would consume a weather draw from the fresh startup stream.
+            return Ok(());
+        }
         let contest = matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest);
         let counts = self.contest_populations();
         if contest {
@@ -3843,6 +3956,9 @@ impl Engine {
             }
         }
         if contest {
+            if counts.is_empty() && self.native_cycle.is_some() {
+                return self.retry_native_contest_round();
+            }
             let entrants: std::collections::BTreeSet<_> = self
                 .slots
                 .iter()
@@ -3874,10 +3990,15 @@ impl Engine {
         } else {
             config.maximum_cycles
         };
+        let limit_cycle = if contest && self.native_cycle.is_some() {
+            self.native_cycle_or_tick()
+        } else {
+            self.local_mode.cycle_in_round
+        };
         if limit > 0
             && (!contest || counts.len() <= 2)
             && (if contest {
-                self.local_mode.cycle_in_round > limit
+                limit_cycle > limit
             } else {
                 self.local_mode.cycle_in_round >= limit
             })
@@ -3906,7 +4027,11 @@ impl Engine {
         Ok(())
     }
 
-    fn restart_mode_world(&mut self, keep_species: Option<SpeciesId>) -> Result<(), EngineError> {
+    fn restart_mode_world(
+        &mut self,
+        keep_species: Option<SpeciesId>,
+        boundary: NativeStartBoundary,
+    ) -> Result<(), EngineError> {
         let winner_seed = keep_species.and_then(|species| {
             self.slots
                 .iter()
@@ -3920,14 +4045,21 @@ impl Engine {
                 })
                 .cloned()
         });
-        self.restart_mode_world_with_seed(keep_species, winner_seed)
+        self.restart_mode_world_with_seed(keep_species, winner_seed, boundary)
     }
 
     fn restart_mode_world_with_seed(
         &mut self,
         keep_species: Option<SpeciesId>,
         winner_seed: Option<RobotState>,
+        boundary: NativeStartBoundary,
     ) -> Result<(), EngineError> {
+        self.prepare_native_restart(boundary);
+        if self.local_mode.series.population_seeding_phase.is_some()
+            && boundary != NativeStartBoundary::SameProcessRound
+        {
+            self.prepare_classic_skin_profiles()?;
+        }
         let ids: Vec<_> = self
             .slots
             .iter()
@@ -3941,6 +4073,14 @@ impl Engine {
             .collect();
         for id in ids {
             self.slots.remove(id)?;
+        }
+        if self.local_mode.series.population_seeding_phase.is_some() {
+            // Original starts a fresh slot array, while modern handles retain
+            // generations. Allocate source-order actors into ascending slots.
+            self.slots.free_slots.sort_unstable_by(|a, b| b.cmp(a));
+            if boundary == NativeStartBoundary::ExternalProcess {
+                self.next_absolute_id = 1;
+            }
         }
         self.ties.clear();
         self.native_tie_index = None;
@@ -3959,7 +4099,7 @@ impl Engine {
                 }
             })
             .min(self.config.organism_capacity);
-        let species_to_spawn: Vec<_> = self
+        let mut species_to_spawn: Vec<_> = self
             .species
             .iter()
             .enumerate()
@@ -3971,6 +4111,11 @@ impl Engine {
                     .series
                     .active_match
                     .is_none_or(|pair| species.vegetable || pair.contains(&species_id))
+                    && self
+                        .local_mode
+                        .series
+                        .active_seed
+                        .is_none_or(|candidate| species.vegetable || candidate == species_id)
                     && keep_species.is_none_or(|keep| keep == species_id)
                     && (!species.vegetable || keep_species.is_none())
                     && (is_winner_seed_species
@@ -3992,8 +4137,34 @@ impl Engine {
                 )
             })
             .collect();
+        if let Some(aliases) = self.classic_native_species_aliases() {
+            species_to_spawn.sort_by_key(|(id, _)| {
+                if self.species[id.0 as usize].vegetable {
+                    (0, id.0 as usize)
+                } else {
+                    (
+                        1,
+                        aliases
+                            .iter()
+                            .position(|(selected, _)| selected == id)
+                            .unwrap_or(usize::MAX),
+                    )
+                }
+            });
+        }
+        if self.local_mode.series.population_seeding_phase.is_some()
+            && boundary != NativeStartBoundary::SameProcessRound
+        {
+            // OptionsForm.StartNew_Click resets each active header counter.
+            // Countpop's in-process F1 continuation bypasses StartNew.
+            for (species, _) in &species_to_spawn {
+                self.subspecies_counters[species.0 as usize] = 0;
+            }
+        }
         let mut spawned = 0usize;
         for (species, requested) in species_to_spawn {
+            let classic_animal = self.classic_native_species_color(species).is_some();
+            let requested = if classic_animal { 5 } else { requested };
             let template = self
                 .species_templates
                 .get(species.0 as usize)
@@ -4011,6 +4182,7 @@ impl Engine {
             let Some(dna) = dna else {
                 continue;
             };
+            let dna = self.classic_native_start_dna(species, dna)?;
             for ordinal in 0..requested {
                 if spawned >= max_population {
                     break;
@@ -4021,9 +4193,8 @@ impl Engine {
                         ^ (species.0 as u64).rotate_left(31)
                         ^ ordinal as u64,
                 );
-                let position = self.native_placement_position(species, random);
-                let id = self.spawn_species_at_unpublished(dna.clone(), species, position)?;
-                self.native_placement_heading(id)?;
+                let id = self.spawn_native_start_robot(dna.clone(), species, random, None)?;
+                self.apply_classic_start_actor(id, species)?;
                 let organism = self.slots.get_mut(id)?;
                 if let Some(seed) = winner_seed.as_ref() {
                     organism.program = seed.program.clone();
@@ -4067,6 +4238,7 @@ impl Engine {
                     let initial_energy = template
                         .as_ref()
                         .map_or(1, |template| template.initial_energy);
+                    let initial_energy = if classic_animal { 3000 } else { initial_energy };
                     organism.materials.energy = initial_energy as f32;
                     organism.materials.synchronize_energy();
                     organism.program.memory.write(MEM_NRG, initial_energy);
@@ -4081,6 +4253,9 @@ impl Engine {
         let Some(config) = self.local_mode_config() else {
             return Ok(());
         };
+        if self.local_mode.series.is_population_census() {
+            return Ok(());
+        }
         if matches!(config.kind, LocalModeKind::League | LocalModeKind::Contest) {
             return self.enforce_contest_population_cap(config.maximum_population);
         }
@@ -4316,24 +4491,26 @@ impl Engine {
         let energy = initial_energy.max(1);
         self.species_templates[species.0 as usize] = Some(SpeciesTemplate {
             dna: dna.clone(),
+            source_text: None,
             initial_energy: energy,
             initial_population: positions.len(),
         });
         let mut ids = Vec::with_capacity(positions.len());
         for position in positions {
-            let position = if native_placement == Some(true) {
-                self.native_placement_position(species, advance_random(self.config.seed))
+            let id = if let Some(random_position) = native_placement {
+                self.spawn_native_start_robot(
+                    dna.clone(),
+                    species,
+                    advance_random(self.config.seed),
+                    (!random_position).then_some(position),
+                )?
             } else {
-                position
+                self.spawn_species_at_unpublished(dna.clone(), species, position)?
             };
-            let id = self.spawn_species_at_unpublished(dna.clone(), species, position)?;
             let state = self.slots.get_mut(id)?;
             state.materials.energy = energy as f32;
             state.materials.synchronize_energy();
             state.program.memory.write(MEM_NRG, energy);
-            if native_placement.is_some() {
-                self.native_placement_heading(id)?;
-            }
             ids.push(id);
         }
         self.publish_snapshot();
@@ -4433,6 +4610,9 @@ impl Engine {
             initial_biology,
             phenotype,
         );
+        if self.native_random.is_some() {
+            state.program.initialize_native_dna_context();
+        }
         state.program.mutation_profile = self.species[species.0 as usize]
             .mutation_profile
             .clone()
@@ -4775,6 +4955,7 @@ impl Engine {
         if self.available_robot_capacity() == 0 {
             return Err(EngineError::CapacityReached);
         }
+        let birth_cycle = self.native_cycle_or_tick();
         let mut cloned_organism = self.slots.get(id)?.clone();
         cloned_organism.identity.parents = [Some(id), None];
         cloned_organism.identity.parent_absolute_id = cloned_organism.identity.absolute_id;
@@ -4784,7 +4965,7 @@ impl Engine {
             .generation
             .saturating_add(1)
             .min(32_000);
-        cloned_organism.counters.birth_cycle = self.tick;
+        cloned_organism.counters.birth_cycle = birth_cycle;
         cloned_organism.counters.offspring = 0;
         cloned_organism.counters.descendants = 0;
         cloned_organism.kinematics.position = position;
@@ -4813,9 +4994,22 @@ impl Engine {
         Ok(clone)
     }
 
+    /// Load textual DNA with the active engine's native-file or convenience lexer.
+    pub fn load_dna_source(&self, source: &str) -> Result<LegacyDna, EngineError> {
+        if self.native_random.is_some() {
+            crate::dna::native_load_robot_dna(source)
+        } else {
+            LegacyDna::parse(source)
+        }
+    }
+
     pub fn replace_dna(&mut self, id: OrganismId, dna: LegacyDna) -> Result<(), EngineError> {
         let organism = self.slots.get_mut(id)?;
         organism.program.dna = dna;
+        if self.native_random.is_some() {
+            organism.program.initialize_native_dna_context();
+            organism.flags.new_move = organism.program.dna.uses_new_move();
+        }
         organism.refresh_occurrence_census();
         self.publish_snapshot();
         Ok(())
@@ -4864,6 +5058,61 @@ impl Engine {
             }
         }
         Ok(exported.to_source_with_runtime_metadata(generation, mutations, tag))
+    }
+
+    /// Export the retained startup genome even if no living candidate remains.
+    pub fn export_species_template_dna(&self, species: SpeciesId) -> Result<String, EngineError> {
+        if self.species.get(species.0 as usize).is_none() {
+            return Err(EngineError::Invariant(
+                "startup species does not exist".into(),
+            ));
+        }
+        self.species_templates
+            .get(species.0 as usize)
+            .and_then(Option::as_ref)
+            .map(|template| {
+                template
+                    .source_text
+                    .clone()
+                    .unwrap_or_else(|| template.dna.to_source())
+            })
+            .ok_or_else(|| EngineError::Invariant("species has no retained startup genome".into()))
+    }
+
+    /// Retain exact startup file text for source-faithful reload and export.
+    pub fn retain_species_template_source(
+        &mut self,
+        species: SpeciesId,
+        source: String,
+    ) -> Result<(), EngineError> {
+        let parsed = self.load_dna_source(&source)?;
+        let template = self
+            .species_templates
+            .get_mut(species.0 as usize)
+            .and_then(Option::as_mut)
+            .ok_or_else(|| {
+                EngineError::Invariant("species has no retained startup genome".into())
+            })?;
+        if template
+            .source_text
+            .as_ref()
+            .is_some_and(|existing| !existing.is_empty() && *existing != source)
+        {
+            return Err(EngineError::Invariant(
+                "retained startup source is immutable".into(),
+            ));
+        }
+        if parsed.blocks() != template.dna.blocks()
+            || parsed.native_user_variables() != template.dna.native_user_variables()
+            || parsed.uses_new_move() != template.dna.uses_new_move()
+            || parsed.metadata() != template.dna.metadata()
+        {
+            return Err(EngineError::Invariant(
+                "retained source does not match its startup coding genome".into(),
+            ));
+        }
+        template.source_text = Some(source);
+        Ok(())
     }
 
     pub fn manual_reproduce(
@@ -4936,6 +5185,7 @@ impl Engine {
         let child =
             self.spawn_species_at_unpublished(dna, first_organism.identity.species, position)?;
         let absolute_id = self.slots.get(child)?.identity.absolute_id;
+        let birth_cycle = self.native_cycle_or_tick();
         {
             let child_organism = self.slots.get_mut(child)?;
             child_organism.identity = first_organism.identity.clone();
@@ -4947,7 +5197,7 @@ impl Engine {
                 .generation
                 .saturating_add(1)
                 .min(32_000);
-            child_organism.counters.birth_cycle = self.tick;
+            child_organism.counters.birth_cycle = birth_cycle;
             child_organism.counters.offspring = 0;
             child_organism.counters.descendants = 0;
             child_organism.phenotype = first_organism.phenotype.clone();
@@ -5065,11 +5315,12 @@ impl Engine {
             && !self.config.allow_cpu_fallback)
             || self.has_file_transfers())
         .then(|| self.cycle_checkpoint());
+        let next_native_cycle = self.next_native_cycle()?;
         let mut transfers = FileTransferTransaction::default();
         self.update_native_mutation_oscillation();
         self.update_dynamic_cost_state();
         match self
-            .tick_internal(publish, trace_enabled, &mut transfers)
+            .tick_internal(publish, trace_enabled, &mut transfers, next_native_cycle)
             .and_then(|trace| {
                 transfers.commit()?;
                 Ok(trace)
@@ -5138,6 +5389,10 @@ impl Engine {
             dynamic_cost_state: self.dynamic_cost_state.clone(),
             native_random: self.native_random.clone(),
             native_buckets: self.native_buckets.clone(),
+            native_sim_guid: self.native_sim_guid,
+            native_cycle: self.native_cycle,
+            native_population_census: self.native_population_census,
+            native_skin_timer_seconds: self.native_skin_timer_seconds,
         }
     }
 
@@ -5148,6 +5403,10 @@ impl Engine {
         self.dynamic_cost_state = checkpoint.dynamic_cost_state;
         self.native_random = checkpoint.native_random;
         self.native_buckets = checkpoint.native_buckets;
+        self.native_sim_guid = checkpoint.native_sim_guid;
+        self.native_cycle = checkpoint.native_cycle;
+        self.native_population_census = checkpoint.native_population_census;
+        self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
@@ -5210,6 +5469,7 @@ impl Engine {
         publish: bool,
         trace_enabled: bool,
         transfers: &mut FileTransferTransaction,
+        next_native_cycle: Option<i32>,
     ) -> Result<Option<crate::CycleTrace>, EngineError> {
         let cycle_started = Instant::now();
         self.phase_timings = PhaseTimings::default();
@@ -5223,6 +5483,7 @@ impl Engine {
         trace.phase(CyclePhase::Pause);
         trace.phase(CyclePhase::CycleIncrement);
         self.tick = next_tick;
+        self.native_cycle = next_native_cycle;
         trace.phase(CyclePhase::ModeLogic);
         let (staged_restart, staged_energy_before) = self.staged_evolution_before_cycle()?;
         if staged_restart {
@@ -5259,6 +5520,9 @@ impl Engine {
         self.capture_previous_positions();
 
         trace.phase(CyclePhase::RobotPipeline);
+        if let Some(census) = self.native_population_census.as_mut() {
+            census[1] = census[0];
+        }
         self.trace_robot_phase(&mut trace, CyclePhase::TeleporterTest);
         self.apply_file_teleporters_staged(transfers)?;
         self.apply_environment_features(false, true);
@@ -5309,6 +5573,19 @@ impl Engine {
         self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
         self.decay_corpses_phase();
         if self.native_random.is_some() {
+            if let Some(census) = self.native_population_census.as_mut() {
+                census[0] = self
+                    .slots
+                    .iter()
+                    .filter_map(|slot| slot.organism.as_ref())
+                    .filter(|robot| {
+                        robot.flags.exists
+                            && !robot.flags.vegetable
+                            && !robot.flags.corpse
+                            && !robot.flags.hidden
+                    })
+                    .count();
+            }
             self.native_mid_robot_pipeline(&mut trace)?;
         } else {
             self.trace_robot_phase(&mut trace, CyclePhase::Tie);
@@ -5383,6 +5660,11 @@ impl Engine {
         let started = Instant::now();
         self.vegetation_feed_phase();
         self.phase_timings.vegetation += elapsed_ms(started);
+        if self.local_mode.status == LocalModeStatus::Running
+            && self.local_mode.series.is_population_census()
+        {
+            self.advance_population_seeding()?;
+        }
         self.refresh_occurrence_census_readbacks();
         self.sensing_gpu_publication_phase()?;
         self.native_tie_index = None;
@@ -5860,6 +6142,14 @@ impl Engine {
                 "invalid epigenetic mutation dose exponent".into(),
             ));
         }
+        if self.native_skin_timer_seconds.is_some_and(|pair| {
+            pair.iter()
+                .any(|t| !t.is_finite() || !(0.0..86_400.0).contains(t))
+        }) {
+            return Err(EngineError::Invariant(
+                "invalid native skin Timer sample".into(),
+            ));
+        }
         self.local_mode
             .series
             .validate(self.species.len())
@@ -5969,6 +6259,7 @@ impl Engine {
             ));
         }
         if self.snapshot.tick != self.tick
+            || self.snapshot.native_cycle != self.native_cycle
             || self.snapshot.organisms.len() != self.occupied_robot_records()
         {
             return Err(EngineError::Invariant(
@@ -6561,8 +6852,9 @@ impl Engine {
         if period == 0 {
             return 1.0;
         }
-        let phase = (self.tick as i64 + i64::from(self.config.vegetation.tides_offset))
-            .rem_euclid(i64::from(period)) as f32
+        let phase = (self.native_cycle_or_tick() as i64
+            + i64::from(self.config.vegetation.tides_offset))
+        .rem_euclid(i64::from(period)) as f32
             / period as f32;
         ((1.0 + (phase * std::f32::consts::TAU).sin()) * 0.5)
             .max(0.0)
@@ -9907,21 +10199,7 @@ impl Engine {
     fn apply_environment_features(&mut self, obstacles: bool, teleporters: bool) {
         if obstacles && let Some(phase) = self.native_phase.as_ref() {
             let id = phase.actor;
-            if let Ok(robot) = self.slots.get_mut(id) {
-                let mut positions = [robot.kinematics.position];
-                let mut velocities = [robot.kinematics.velocity];
-                crate::environment::apply_world_features(
-                    &[robot.materials.radius],
-                    &mut positions,
-                    &mut velocities,
-                    &[true],
-                    &self.obstacles,
-                    &[],
-                    [self.config.world_width, self.config.world_height],
-                );
-                robot.kinematics.position = positions[0];
-                robot.kinematics.velocity = velocities[0];
-            }
+            self.native_obstacles_for(id);
         } else if obstacles {
             let mut positions: Vec<_> = self
                 .slots
@@ -10543,13 +10821,16 @@ impl Engine {
         {
             return Ok(());
         }
+        let classic_table = self.classic_native_species_table();
         let eligible: Vec<_> = self
             .species
             .iter()
             .enumerate()
             .filter_map(|(index, species)| {
                 (species.vegetable
-                    && species.reseed
+                    && classic_table.as_ref().map_or(species.reseed, |table| {
+                        table.contains(&SpeciesId(index as u32))
+                    })
                     && self
                         .species_templates
                         .get(index)
@@ -10559,6 +10840,20 @@ impl Engine {
             })
             .collect();
         if eligible.is_empty() {
+            if let Some(random) = self.native_random.as_mut() {
+                // Caller arguments are evaluated before aggiungirob discovers
+                // that no species can be repopulated (Vegs.bas / Globals.bas).
+                for _ in 0..self.config.vegetation.repopulation_amount {
+                    random.integer(
+                        60,
+                        (self.config.world_width - 60.0).round_ties_even() as i32,
+                    );
+                    random.integer(
+                        60,
+                        (self.config.world_height - 60.0).round_ties_even() as i32,
+                    );
+                }
+            }
             return Ok(());
         }
         let capacity = self.available_robot_capacity();
@@ -10591,7 +10886,11 @@ impl Engine {
                     (self.config.world_height - 60.0).round_ties_even() as i32,
                 );
                 loop {
-                    let index = source.integer(0, self.species.len() as i32 - 1) as usize;
+                    let count = classic_table.as_ref().map_or(self.species.len(), Vec::len);
+                    let selected = source.integer(0, count as i32 - 1) as usize;
+                    let index = classic_table
+                        .as_ref()
+                        .map_or(selected, |table| table[selected].0 as usize);
                     if eligible.contains(&index) {
                         break index;
                     }
@@ -10605,16 +10904,17 @@ impl Engine {
                 .clone();
             let position = self
                 .native_placement_position(SpeciesId(species_index as u32), advance_random(random));
-            let id = self.spawn_species_at_unpublished(
-                template.dna,
-                SpeciesId(species_index as u32),
-                position,
-            )?;
-            self.native_placement_heading(id)?;
+            let dna =
+                self.classic_native_start_dna(SpeciesId(species_index as u32), template.dna)?;
+            let id =
+                self.spawn_native_script_robot(dna, SpeciesId(species_index as u32), position)?;
+            self.apply_classic_start_actor(id, SpeciesId(species_index as u32))?;
             let robot = self.slots.get_mut(id)?;
             robot.materials.energy = template.initial_energy as f32;
             robot.materials.synchronize_energy();
-            robot.program.memory.write(MEM_NRG, template.initial_energy);
+            if self.native_random.is_none() {
+                robot.program.memory.write(MEM_NRG, template.initial_energy);
+            }
             self.stats.reseeds = self.stats.reseeds.saturating_add(1);
         }
         Ok(())
@@ -10648,6 +10948,7 @@ impl Engine {
         let mut queues = LifecycleQueues::default();
         let runtime = SysvarRuntime::new();
         let native = self.native_random.is_some();
+        let classic_native_table = self.classic_native_species_table();
         let chloroplast_equivalents = (self.phase_chloroplast_total() / 16_000.0)
             .round_ties_even()
             .max(0.0) as usize;
@@ -10671,7 +10972,11 @@ impl Engine {
             let species_repopulates = self
                 .species
                 .get(organism.identity.species.0 as usize)
-                .is_some_and(|s| s.reseed);
+                .is_some_and(|s| {
+                    classic_native_table
+                        .as_ref()
+                        .map_or(s.reseed, |table| table.contains(&organism.identity.species))
+                });
             let asexual = commands.asexual.max(commands.mutated);
             let sexual = commands.sexual > 0
                 && organism.effects.fertilization_timer >= 0
@@ -10789,6 +11094,7 @@ impl Engine {
         mut queues: LifecycleQueues,
         trace: &mut CycleRecorder,
     ) -> Result<(), EngineError> {
+        let birth_cycle = self.native_cycle_or_tick();
         let runtime = SysvarRuntime::new();
         let deferred_deaths = if self.native_random.is_some() && !queues.births.is_empty() {
             std::mem::take(&mut queues.deaths)
@@ -11064,7 +11370,7 @@ impl Engine {
                     .generation
                     .saturating_add(1)
                     .min(32_000);
-                child_organism.counters.birth_cycle = self.tick;
+                child_organism.counters.birth_cycle = birth_cycle;
                 child_organism.counters.multibot_time =
                     native_league::child_multibot_timer(parent_state.counters.multibot_time);
                 child_organism.counters.disqualification = parent_state.counters.disqualification;
@@ -11488,6 +11794,8 @@ impl Engine {
         context: MutationContext,
         scheduled: Option<(StandardMutationKind, usize, crate::MutationPolicyReport)>,
     ) {
+        let source_cycle = self.native_cycle_or_tick();
+        let native_log_nonzero = self.native_cycle.map_or(self.tick > 0, |cycle| cycle != 0);
         let original_color = self.slots.get(id).map_or(0, |robot| robot.phenotype.color);
         // The original log budget uses the displayed census from the preceding cycle.
         let native_log_population = self.snapshot.organisms.len().max(1);
@@ -11644,7 +11952,7 @@ impl Engine {
                     .mutation_metadata
                     .total_mutations
                     .saturating_add(report.changes as u64);
-                organism.program.mutation_metadata.last_mutation_cycle = Some(self.tick);
+                organism.program.mutation_metadata.last_mutation_cycle = Some(source_cycle);
                 organism.program.mutation_metadata.last_mutation_kind = report.standard_kind;
                 for kind in StandardMutationKind::ALL {
                     let changes = if self.native_random.is_some() {
@@ -11666,7 +11974,7 @@ impl Engine {
                     *count = count.saturating_add(u64::from(changes));
                 }
                 if self.native_random.is_some() {
-                    if self.tick > 0 {
+                    if native_log_nonzero {
                         let limit = 100_000_000usize / native_log_population;
                         let log = &mut organism.program.mutation_metadata.detailed_log;
                         let mut bytes = log.iter().map(|line| line.len() + 2).sum::<usize>();
@@ -11679,7 +11987,7 @@ impl Engine {
                             }
                             let line = format!(
                                 "mutation:{:?}:{}:cycle={}",
-                                event.kind, event.detail, self.tick
+                                event.kind, event.detail, source_cycle
                             );
                             bytes += line.len() + 2;
                             added.push(line);
@@ -11999,6 +12307,7 @@ impl Engine {
         self.snapshot = Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
+            native_cycle: self.native_cycle,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
             corpses: self.corpse_views(),
@@ -12040,6 +12349,19 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        if engine.native_cycle.is_some_and(|cycle| cycle < -1) {
+            return Err(EngineError::InvalidSave(
+                "native cycle cannot precede -1".into(),
+            ));
+        }
+        if engine
+            .native_population_census
+            .is_some_and(|census| census.into_iter().any(|count| count > MAX_ROBOTS))
+        {
+            return Err(EngineError::InvalidSave(
+                "native population census exceeds robot capacity".into(),
+            ));
+        }
         // Older DB3S files retained the original tail before F1 was projected.
         if engine.native_f1.is_none()
             && let Some(origin) = engine

@@ -3,6 +3,8 @@ use super::*;
 
 impl Engine {
     pub(super) fn infect_from_virus(&mut self, target: usize, dna: LegacyDna, power: f32) -> bool {
+        let source_cycle = self.native_cycle_or_tick();
+        let log_mutation = self.native_cycle != Some(0);
         let Some(robot) = self.slots[target].organism.as_mut() else {
             return false;
         };
@@ -34,16 +36,19 @@ impl Engine {
         metadata.total_mutations = metadata.total_mutations.saturating_add(1);
         metadata.native_last_mutations =
             metadata.native_last_mutations.saturating_add(1).min(32_000);
-        metadata.last_mutation_cycle = Some(self.tick);
-        metadata.detailed_log.insert(
-            0,
-            format!(
-                "virus:cycle={}:length={}:boundary={boundary}",
-                self.tick,
-                gene.blocks().len().saturating_sub(1),
-            ),
-        );
-        metadata.detailed_log.truncate(128);
+        metadata.last_mutation_cycle = Some(source_cycle);
+        // NeoMutations.logmutation returns at native cycle0, even for infection.
+        if log_mutation {
+            metadata.detailed_log.insert(
+                0,
+                format!(
+                    "virus:cycle={}:length={}:boundary={boundary}",
+                    source_cycle,
+                    gene.blocks().len().saturating_sub(1),
+                ),
+            );
+            metadata.detailed_log.truncate(128);
+        }
         let species = robot.identity.species;
         publish_reproductive_readbacks(robot);
         let subspecies = self.next_subspecies(species);
@@ -276,6 +281,29 @@ impl ProjectilePool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_cycle_zero_infection_changes_dna_without_a_mutation_log_entry() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world.tick = 500;
+        world.native_cycle = Some(0);
+        let gene = LegacyDna::parse("start 123 900 store stop").unwrap();
+        assert!(world.infect_from_virus(id.slot() as usize, gene.clone(), 1.0));
+        let metadata = &world.slots.get(id).unwrap().program.mutation_metadata;
+        assert_eq!(metadata.total_mutations, 1);
+        assert_eq!(metadata.last_mutation_cycle, Some(0));
+        assert!(metadata.detailed_log.is_empty());
+        world.native_cycle = Some(1);
+        assert!(world.infect_from_virus(id.slot() as usize, gene, 1.0));
+        let metadata = &world.slots.get(id).unwrap().program.mutation_metadata;
+        assert_eq!(metadata.total_mutations, 2);
+        assert_eq!(metadata.last_mutation_cycle, Some(1));
+        assert!(metadata.detailed_log[0].contains("cycle=1:"));
+        assert!(!metadata.detailed_log[0].contains("cycle=500:"));
+    }
 
     #[test]
     fn invalid_virus_gene_still_consumes_newshot_draws() {

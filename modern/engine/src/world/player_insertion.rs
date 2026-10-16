@@ -24,13 +24,14 @@ impl Engine {
             .position(|species| species.name == name)
             .ok_or_else(|| EngineError::Invariant(format!("species '{name}' does not exist")))?;
         let species = SpeciesId(index as u32);
-        let id = self.spawn_species_at_unpublished(dna, species, position)?;
+        let id = self.spawn_native_script_robot(dna, species, position)?;
         let robot = self.slots.get_mut(id)?;
         robot.materials.energy = initial_energy as f32;
         robot.materials.synchronize_energy();
-        robot.program.memory.write(MEM_NRG, initial_energy);
+        if self.native_random.is_none() {
+            robot.program.memory.write(MEM_NRG, initial_energy);
+        }
         if self.native_random.is_some() {
-            self.native_placement_heading(id)?;
             self.native_buckets.synchronize(
                 [self.config.world_width, self.config.world_height],
                 &self.slots,

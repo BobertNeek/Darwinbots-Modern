@@ -15,6 +15,63 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class SetupControlSurfaceTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0f)]
+    [InlineData(1.25f)]
+    public async Task SetupCarriesProcessSpareThroughEveryLaunchRouteWithoutSavingIt(float? spare)
+    {
+        var storage = new SettingsWorkflowStorage
+        {
+            SettingsToOpen = new DesktopSettings { WorldWidth = 21_000 },
+            SimulationPathToOpen = "chosen-original.sim",
+            LatestAutosave = "chosen-modern.db3s",
+        };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage, spare, 12);
+            var created = new List<WorldSetupOptions>();
+            window.WorldCreated += created.Add;
+            var fresh = new SetupWindow(storage);
+            WorldSetupOptions? independentlyCreated = null;
+            fresh.WorldCreated += value => independentlyCreated = value;
+            try
+            {
+                window.Show();
+                Invoke(window, "StartNew_Click");
+                Invoke(window, "Change_Click");
+                Invoke(window, "NewWorld_Click");
+                Invoke(window, "StartNew_Click");
+                Invoke(window, "LoadSettings_Click");
+                await WaitFor(() => window.FindControl<NumericUpDown>("WorldWidth")!.Value == 21_000);
+                Invoke(window, "Change_Click");
+                Invoke(window, "SaveSettings_Click");
+                await WaitFor(() => storage.SavedSettings is not null);
+                Assert.DoesNotContain("Gaussian", storage.SavedSettings!.ToJson(), StringComparison.OrdinalIgnoreCase);
+                Invoke(window, "OpenSave_Click");
+                await WaitFor(() => created.Count == 5);
+                Invoke(window, "Recover_Click");
+
+                Assert.Equal(6, created.Count);
+                Assert.All(created, value => Assert.Equal(spare, value.NativeGaussianSpare));
+                Assert.All(created, value => Assert.Equal((byte)12, value.NativeSunChange));
+                Assert.Equal("chosen-original.sim", created[4].LoadSavePath);
+                Assert.False(created[4].IsAutosaveRecovery);
+                Assert.Equal("chosen-modern.db3s", created[5].LoadSavePath);
+                Assert.True(created[5].IsAutosaveRecovery);
+                Invoke(fresh, "StartNew_Click");
+                Assert.NotNull(independentlyCreated);
+                Assert.Null(independentlyCreated.NativeGaussianSpare);
+                Assert.Null(independentlyCreated.NativeSunChange);
+            }
+            finally
+            {
+                fresh.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public async Task MainWindowOpensWithDb24832ContestAndPresentationDefaults()
     {
@@ -509,14 +566,16 @@ internal sealed class SettingsWorkflowStorage : IDesktopStorageService
 {
     public DesktopSettings? SettingsToOpen { get; init; }
     public DesktopSettings? SavedSettings { get; private set; }
+    public string? SimulationPathToOpen { get; init; }
+    public string? LatestAutosave { get; init; }
 
     public Task<IReadOnlyList<DesktopTextFile>> OpenDnaFilesAsync(TopLevel owner) => Task.FromResult<IReadOnlyList<DesktopTextFile>>([]);
-    public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult<string?>(null);
+    public Task<string?> PickSimulationPathAsync(TopLevel owner) => Task.FromResult(SimulationPathToOpen);
     public Task<byte[]?> OpenSimulationAsync(TopLevel owner) => Task.FromResult<byte[]?>(null);
     public Task<bool> SaveSimulationAsync(TopLevel owner, ReadOnlyMemory<byte> save) => Task.FromResult(true);
     public Task<bool> SaveDnaAsync(TopLevel owner, string suggestedFileName, string dna) => Task.FromResult(true);
     public Task<bool> SaveOrganismAsync(TopLevel owner, string suggestedFileName, Func<Stream, Task> writeAsync) => Task.FromResult(true);
-    public string? FindLatestAutosave() => null;
+    public string? FindLatestAutosave() => LatestAutosave;
     public Task SaveAutosaveAsync(ReadOnlyMemory<byte> save) => Task.CompletedTask;
     public Task<DesktopSettings?> OpenSettingsAsync(TopLevel owner) => Task.FromResult(SettingsToOpen);
 

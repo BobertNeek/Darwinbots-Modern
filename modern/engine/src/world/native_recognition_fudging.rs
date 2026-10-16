@@ -44,7 +44,10 @@ impl Engine {
         let eligible =
             self.native_f1_enabled()
                 || self.local_mode.config.as_ref().is_some_and(|config| {
-                    config.workflow != crate::LeagueWorkflow::Seeding
+                    (config.workflow != crate::LeagueWorkflow::PopulationSeeding
+                        || self.classic_competitive_world())
+                        && (config.workflow != crate::LeagueWorkflow::Seeding
+                            || self.native_cycle.is_some())
                         && !self.local_mode.evolution.as_ref().is_some_and(|state| {
                             state.phase == crate::EvolutionPhase::ZerobotTesting
                         })
@@ -340,6 +343,27 @@ mod tests {
                 assert_eq!(at(&read, if tied { 463 } else { 708 }), 0);
             }
             assert_eq!(world.native_random, before);
+        }
+    }
+
+    #[test]
+    fn native_filter_enables_noise_but_population_seeding_excludes_it() {
+        for workflow in [
+            crate::LeagueWorkflow::Seeding,
+            crate::LeagueWorkflow::PopulationSeeding,
+        ] {
+            let (mut world, observer, target) = world(1);
+            world.native_cycle = Some(0);
+            world.local_mode.config.as_mut().unwrap().workflow = workflow;
+            let mut expected = world.native_random.clone().unwrap();
+            let eye = if workflow == crate::LeagueWorkflow::Seeding {
+                expected.integer(0, 1) + 1
+            } else {
+                CENSUS[7]
+            };
+            let read = values(&mut world, observer, target, false);
+            assert_eq!(at(&read, 708), eye);
+            assert_eq!(world.native_random.as_ref(), Some(&expected));
         }
     }
 

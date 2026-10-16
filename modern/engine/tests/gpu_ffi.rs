@@ -275,7 +275,10 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
     let receipt = gpu.adapter_receipt();
     assert!(!receipt.name.trim().is_empty());
     assert!(!receipt.backend.trim().is_empty());
-    assert!(!receipt.device_type.trim().is_empty());
+    assert!(matches!(
+        receipt.device_type.as_str(),
+        "DiscreteGpu" | "IntegratedGpu"
+    ));
     println!(
         "AUT-02 physical gpu adapter={} backend={} device_type={}",
         receipt.name, receipt.backend, receipt.device_type
@@ -311,6 +314,183 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
     assert_eq!(instances[3].slot, 3);
     assert_eq!(instances[3].position, [165.0, 187.0]);
     assert!((instances[3].radius - 2.0).abs() < 0.001);
+    // Release the direct compute fixture before creating the live FFI engine.
+    drop(gpu);
+    let configuration = serde_json::to_vec(&EngineConfig {
+        backend: BackendPreference::Gpu,
+        allow_cpu_fallback: false,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let mut engine = std::ptr::null_mut();
+    assert_eq!(
+        db_engine_create(configuration.as_ptr(), configuration.len(), &mut engine),
+        DbStatus::Ok
+    );
+    let command = |handle: *mut Engine, value: serde_json::Value| {
+        let bytes = serde_json::to_vec(&value).unwrap();
+        let mut buffer = DbBuffer::default();
+        assert_eq!(
+            db_engine_command_batch(handle, bytes.as_ptr(), bytes.len(), &mut buffer),
+            DbStatus::Ok
+        );
+        let result: serde_json::Value =
+            serde_json::from_slice(unsafe { std::slice::from_raw_parts(buffer.data, buffer.len) })
+                .unwrap();
+        assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
+        result
+    };
+    let startup_dna = "start 7 900 store stop";
+    let imported = command(
+        engine,
+        serde_json::json!({
+            "version": 1,
+            "commands": [
+                {
+                    "type": "import_species", "name": "PopulationCandidate.txt",
+                    "dna": startup_dna, "vegetable": false, "color": 0,
+                    "minimum_population": 0, "reseed": false,
+                    "initial_energy": 20_000, "positions": [[300, 500]]
+                },
+                {
+                    "type": "import_dna", "dna": "start 10 .up store stop",
+                    "position": [700, 500]
+                },
+                {
+                    "type": "update_mutation_settings", "enabled": false,
+                    "global_multiplier": 1.0, "species_rates": []
+                }
+            ]
+        }),
+    );
+    let species = imported["results"][0]["species"].as_u64().unwrap();
+    let candidate = unsafe { &*engine }
+        .snapshot()
+        .organisms
+        .iter()
+        .find(|robot| u64::from(robot.species.0) == species)
+        .unwrap()
+        .id;
+    command(
+        engine,
+        serde_json::json!({
+            "version": 1,
+            "commands": [
+                {
+                    "type": "replace_dna", "slot": candidate.slot(),
+                    "generation": candidate.generation(), "dna": "start 999 900 store stop"
+                },
+                {
+                    "type": "remove_many",
+                    "organisms": [{"slot": candidate.slot(), "generation": candidate.generation()}]
+                },
+                {"type": "set_native_gaussian_spare", "spare": 1.25},
+                {"type": "set_native_sun_change", "sun_change": 12},
+                {"type": "tick", "count": 1}
+            ]
+        }),
+    );
+    assert_eq!(unsafe { &*engine }.population(), 1);
+    assert_eq!(unsafe { &*engine }.backend(), BackendKind::Gpu);
+    let adapter = unsafe { &*engine }.gpu_adapter_receipt().unwrap().clone();
+    assert!(!adapter.name.trim().is_empty());
+    assert!(!adapter.backend.trim().is_empty());
+    assert!(matches!(
+        adapter.device_type.as_str(),
+        "DiscreteGpu" | "IntegratedGpu"
+    ));
+    println!("AUT-02 physical FFI query adapter={adapter:?}");
+    let saved = darwinbots_engine::SaveFile::encode(unsafe { &*engine }).unwrap();
+    let snapshot = serde_json::to_vec(unsafe { &*engine }.snapshot()).unwrap();
+    let publications = unsafe { &*engine }.snapshot_publication_count();
+    let live = unsafe { &*engine }.snapshot().organisms[0].clone();
+    assert_eq!(unsafe { &*engine }.snapshot().render_instances.len(), 1);
+
+    for _ in 0..2 {
+        let result = command(
+            engine,
+            serde_json::json!({
+                "version": 1,
+                "commands": [
+                    {"type": "read_native_gaussian_spare"},
+                    {"type": "export_species_template_dna", "species": species},
+                    {"type": "read_native_sun_change"}
+                ]
+            }),
+        );
+        assert_eq!(result["backend"], "Gpu");
+        assert_eq!(result["tick"], 1);
+        assert_eq!(result["population"], 1);
+        assert_eq!(result["results"][0], 1.25);
+        assert_eq!(result["results"][2], 12);
+        let exported = result["results"][1]["dna"].as_str().unwrap();
+        assert_eq!(
+            LegacyDna::parse(exported).unwrap().blocks(),
+            LegacyDna::parse(startup_dna).unwrap().blocks()
+        );
+        assert_eq!(
+            darwinbots_engine::SaveFile::encode(unsafe { &*engine }).unwrap(),
+            saved
+        );
+        assert_eq!(
+            serde_json::to_vec(unsafe { &*engine }.snapshot()).unwrap(),
+            snapshot
+        );
+        assert_eq!(
+            unsafe { &*engine }.snapshot_publication_count(),
+            publications
+        );
+        assert_eq!(unsafe { &*engine }.gpu_adapter_receipt(), Some(&adapter));
+        assert_eq!(unsafe { &*engine }.backend(), BackendKind::Gpu);
+    }
+
+    let rejected = serde_json::to_vec(&serde_json::json!({
+        "version": 1,
+        "commands": [
+            {"type": "export_species_template_dna", "species": species},
+            {"type": "export_species_template_dna", "species": u32::MAX}
+        ]
+    }))
+    .unwrap();
+    let mut output = DbBuffer::default();
+    assert_eq!(
+        db_engine_command_batch(engine, rejected.as_ptr(), rejected.len(), &mut output),
+        DbStatus::EngineError
+    );
+    assert!(output.data.is_null());
+    assert_eq!(output.len, 0);
+    assert_eq!(db_buffer_free(&mut output), DbStatus::Ok);
+    assert_eq!(
+        darwinbots_engine::SaveFile::encode(unsafe { &*engine }).unwrap(),
+        saved
+    );
+    assert_eq!(
+        serde_json::to_vec(unsafe { &*engine }.snapshot()).unwrap(),
+        snapshot
+    );
+    assert_eq!(
+        unsafe { &*engine }.snapshot_publication_count(),
+        publications
+    );
+
+    // Adapter metadata is public; the private wgpu device has no identity API.
+    // Prove exact query-state retention and an actual next GPU-produced frame.
+    assert_eq!(db_engine_tick(engine), DbStatus::Ok);
+    let continued = unsafe { &*engine };
+    assert_eq!(continued.backend(), BackendKind::Gpu);
+    assert!(continued.capabilities().fallback_reason.is_none());
+    assert_eq!(continued.gpu_adapter_receipt(), Some(&adapter));
+    assert_eq!(continued.snapshot().tick, 2);
+    assert_eq!(continued.snapshot().native_cycle, Some(1));
+    assert_eq!(continued.snapshot_publication_count(), publications + 1);
+    let organism = continued.organism(live.id).unwrap();
+    assert_ne!(organism.position, live.position);
+    assert_eq!(continued.snapshot().render_instances.len(), 1);
+    let instance = &continued.snapshot().render_instances[0];
+    assert_eq!(instance.slot, live.id.slot());
+    assert_eq!(instance.generation, live.id.generation());
+    assert_eq!(instance.position, organism.position);
+    assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
 }
 
 #[test]

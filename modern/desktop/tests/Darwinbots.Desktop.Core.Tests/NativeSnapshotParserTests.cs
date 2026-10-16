@@ -5,6 +5,38 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class NativeSnapshotParserTests
 {
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
+    public void SignedNativeCycleDoesNotReplaceTheUnsignedSchedulingOrHistoryTick(int cycle)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            tick = ulong.MaxValue,
+            native_cycle = cycle,
+            organisms = Array.Empty<object>(),
+            history = new[] { new { tick = ulong.MaxValue, population = 0 } },
+        });
+
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+
+        Assert.Equal(cycle, snapshot.NativeCycle);
+        Assert.Equal(ulong.MaxValue, snapshot.Tick);
+        Assert.Equal(ulong.MaxValue, Assert.Single(snapshot.History).Tick);
+    }
+
+    [Theory]
+    [InlineData("{\"tick\":91,\"organisms\":[]}")]
+    [InlineData("{\"tick\":91,\"native_cycle\":null,\"organisms\":[]}")]
+    public void MissingAndNullNativeCycleRetainTheExistingSnapshotContract(string json)
+    {
+        var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+        Assert.Null(snapshot.NativeCycle);
+        Assert.Equal(91ul, snapshot.Tick);
+    }
+
     [Fact]
     public void RetainsNativeSpeciesGraphSamplesAndSixCostSeries()
     {

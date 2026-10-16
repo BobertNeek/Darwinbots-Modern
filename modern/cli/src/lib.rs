@@ -1,3 +1,4 @@
+mod dna_source;
 mod native_comparison;
 mod probe;
 
@@ -25,8 +26,8 @@ enum Command {
         simulation: PathBuf,
         #[arg(long, conflicts_with = "until_cycle")]
         ticks: Option<u64>,
-        #[arg(long, conflicts_with = "ticks")]
-        until_cycle: Option<u64>,
+        #[arg(long, conflicts_with = "ticks", allow_hyphen_values = true)]
+        until_cycle: Option<i32>,
         #[arg(long)]
         output_sim: PathBuf,
     },
@@ -129,15 +130,24 @@ where
             output_sim,
         } => {
             let mut engine = Engine::from_native_sim(&fs::read(&simulation)?)?;
-            let start = engine.snapshot().tick;
+            let start = engine
+                .snapshot()
+                .native_cycle
+                .ok_or("native simulation has no original cycle counter")?;
             let ticks = match until_cycle {
-                Some(cycle) => cycle
-                    .checked_sub(start)
-                    .ok_or("target cycle precedes simulation cycle")?,
+                Some(cycle) => u64::try_from(i64::from(cycle) - i64::from(start))
+                    .map_err(|_| "target cycle precedes simulation cycle")?,
                 None => ticks.unwrap_or(1),
             };
+            if i128::from(start) + i128::from(ticks) > i128::from(i32::MAX) {
+                return Err("replay exceeds the original signed Long cycle range".into());
+            }
             advance(&mut engine, ticks)?;
             engine.validate_invariants()?;
+            let end = engine
+                .snapshot()
+                .native_cycle
+                .ok_or("replay lost its original cycle counter")?;
             if simulation == output_sim {
                 return Err("replay output must not replace its input simulation".into());
             }
@@ -145,7 +155,8 @@ where
             serde_json::to_writer(
                 &mut output,
                 &json!({ "start_cycle": start,
-                "end_cycle": engine.snapshot().tick, "ticks": ticks, "backend": "Cpu",
+                "end_cycle": end, "ticks": ticks, "processed_tick": engine.snapshot().tick,
+                "backend": "Cpu",
                 "output_sim": output_sim, "population": engine.population(),
                 "rng_boundary": native_comparison::RNG_BOUNDARY }),
             )?;
@@ -203,9 +214,9 @@ where
             backend,
             seed,
         } => {
-            let dna = read_bot(&bot)?;
             let mut engine = create_engine(population, backend, seed)?;
-            populate(&mut engine, &dna, population)?;
+            let (dna, source) = read_bot(&engine, &bot)?;
+            populate(&mut engine, &dna, &source, population)?;
             advance(&mut engine, warmup_ticks)?;
             let started = Instant::now();
             advance(&mut engine, ticks)?;
@@ -236,10 +247,10 @@ where
             if invariant_interval == 0 {
                 return Err("invariant interval must be positive".into());
             }
-            let dna = read_bot(&bot)?;
             let mut engine =
                 create_engine_with_metabolism(population, backend, seed, metabolism_cost)?;
-            populate(&mut engine, &dna, population)?;
+            let (dna, source) = read_bot(&engine, &bot)?;
+            populate(&mut engine, &dna, &source, population)?;
             let started = Instant::now();
             let mut checks = 0u64;
             for tick in 1..=ticks {
@@ -294,11 +305,14 @@ fn create_engine_with_metabolism(
         metabolism_cost: metabolism_cost.max(0),
         ..EngineConfig::default()
     };
-    Ok(Engine::new(config)?)
+    Ok(Engine::new_native(config)?)
 }
 
-fn read_bot(path: &PathBuf) -> Result<LegacyDna, Box<dyn Error>> {
-    Ok(LegacyDna::parse(&fs::read_to_string(path)?)?)
+fn read_bot(
+    engine: &Engine,
+    path: &std::path::Path,
+) -> Result<(LegacyDna, String), Box<dyn Error>> {
+    dna_source::read(engine, path)
 }
 
 fn advance(engine: &mut Engine, ticks: u64) -> Result<(), Box<dyn Error>> {
@@ -311,18 +325,29 @@ fn advance(engine: &mut Engine, ticks: u64) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn populate(engine: &mut Engine, dna: &LegacyDna, population: usize) -> Result<(), Box<dyn Error>> {
+fn populate(
+    engine: &mut Engine,
+    dna: &LegacyDna,
+    source: &str,
+    population: usize,
+) -> Result<(), Box<dyn Error>> {
     let columns = (population as f64).sqrt().ceil().max(1.0) as usize;
     let rows = population.div_ceil(columns).max(1);
     let organisms = (0..population).map(|index| {
         let column = index % columns;
         let row = index / columns;
-        let position = [
+        [
             16_000.0 * (column + 1) as f32 / (columns + 1) as f32,
             12_000.0 * (row + 1) as f32 / (rows + 1) as f32,
-        ];
-        (dna.clone(), position)
+        ]
     });
-    engine.spawn_batch(organisms)?;
+    engine.spawn_species_batch(
+        dna.clone(),
+        darwinbots_engine::SpeciesId::default(),
+        organisms,
+        1000,
+    )?;
+    engine
+        .retain_species_template_source(darwinbots_engine::SpeciesId::default(), source.into())?;
     Ok(())
 }

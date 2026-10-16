@@ -23,6 +23,10 @@ public sealed record WorldSetupOptions
     public bool AutomaticZerobotProgression { get; init; } = true;
     public string Backend { get; init; } = "Auto";
     public ulong Seed { get; init; } = 1;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public float? NativeGaussianSpare { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte? NativeSunChange { get; init; }
     public IReadOnlyList<string>? LegacySettingsFields { get; init; }
     public MutationSettingsUpdate MutationSettings { get; init; } = MutationSettingsUpdate.Default;
     public int PopulationCapacity { get; init; } = 25_000;

@@ -18,13 +18,13 @@ public static class Db2SettingsCodec
         var modern = Convert.ToBase64String(Encoding.UTF8.GetBytes(settings.ToJson()));
         lines.Add(ModernExtensionMarker);
         lines.Add(modern);
-        return Encoding.UTF8.GetBytes(string.Join("\r\n", lines) + "\r\n");
+        return LegacyDnaText.Encode(string.Join("\r\n", lines) + "\r\n");
     }
 
     public static DesktopSettings Decode(ReadOnlySpan<byte> bytes)
     {
         if (bytes.IsEmpty) throw new InvalidDataException("DB2 settings are empty.");
-        var text = Encoding.UTF8.GetString(bytes);
+        var text = LegacyDnaText.Decode(bytes);
         var lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var marker = Array.IndexOf(lines, ModernExtensionMarker);
         if (marker >= 0 && marker + 1 < lines.Length)

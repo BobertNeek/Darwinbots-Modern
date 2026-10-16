@@ -15,6 +15,8 @@ public interface IEngineClient : IDisposable
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);
     string ExportDna(uint slot, uint generation);
+    string ExportSpeciesTemplateDna(uint species) =>
+        throw new NotSupportedException("This engine client does not support startup species DNA export.");
     byte[] ExportOrganismGroup(IReadOnlyList<OrganismKey> organisms) =>
         throw new NotSupportedException("This engine client does not support native organism export.");
     OrganismKey Reproduce(uint firstSlot, uint firstGeneration, uint? secondSlot, uint? secondGeneration, float[] position);
@@ -75,4 +77,6 @@ public interface IEngineClient : IDisposable
     void Load(byte[] save);
     EngineSnapshot Snapshot();
     WorldConfiguration? ReadConfiguration() => null;
+    float? ReadNativeGaussianSpare() => null;
+    byte ReadNativeSunChange() => 0;
 }

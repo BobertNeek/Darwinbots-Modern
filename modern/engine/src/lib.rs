@@ -16,6 +16,7 @@ mod modes;
 mod mutation;
 pub mod native_binary;
 mod native_random;
+pub(crate) mod native_skin;
 mod persistence;
 mod physics;
 mod robot_state;
@@ -58,7 +59,9 @@ pub use evolution::{
 };
 pub use history::{GeneticGraphState, GraphSamplingSettings, HistorySample, SpeciesGraphSample};
 pub use id::OrganismId;
-pub use league::{LeagueMatch, LeagueSeries};
+pub use league::{
+    ClassicSkinProfile, LeagueMatch, LeagueSeries, PopulationSeed, PopulationSeedingPhase,
+};
 pub use legacy::{
     LegacyOrganism, LegacyOrganismFile, LegacyOrganismKey, LegacyOrganismMember, LegacyOrganismTie,
     LegacySettingsFile, LegacySimulationFile, LegacySpeciesStartup,

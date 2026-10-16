@@ -102,7 +102,9 @@ internal static class LegacySettingsAdapter
         Flag(global + 7, !settings.TiesEnabled);
         Flag(global + 83, settings.WrapX); Flag(global + 84, settings.WrapY);
         Number(global + 85, vegetation.RepopulationAmount); Number(global + 86, vegetation.RepopulationCooldown);
-        Flag(global + 87, physics.ZeroMomentum); Flag(global + 88, true); Number(global + 89, settings.Seed ?? 1);
+        Flag(global + 87, physics.ZeroMomentum); Flag(global + 88, true);
+        // VB6 stores UserSeedNumber as a signed Long; the extension retains all 64 modern bits.
+        Number(global + 89, unchecked((int)(settings.Seed ?? 1)));
         Number(extra + 1, vegetation.FeedingToBody); Number(extra + 2, physics.StaticFriction); Number(extra + 3, physics.KineticFriction);
         Flag(extra + 4, physics.PlanetEaters); Number(extra + 5, physics.PlanetEatersG); Number(extra + 6, physics.Viscosity); Number(extra + 7, physics.Density);
         var indexedCosts = new (int, double)[] { (0,cost.DnaNumber), (1,cost.DnaDereference), (2,cost.DnaBasic),
@@ -147,7 +149,7 @@ internal static class LegacySettingsAdapter
             Flag(footer + 9 + count + i * 2, settings.Species[i].Restrictions.KillMultibot);
             Flag(footer + 10 + count + i * 2, settings.Species[i].Restrictions.KillDisqualified);
         }
-        Flag(footer + 4 + count, vegetation.WeatherEnabled);
+        Flag(footer + 4 + count, vegetation.WeatherEnabled || vegetation.SunOnRandom);
         Flag(footer + 9 + 3 * count, !settings.RobotFixingAllowed);
         Number(footer + 10 + 3 * count, vegetation.Tides); Number(footer + 11 + 3 * count, vegetation.TidesOffset);
         return fields;
@@ -166,6 +168,13 @@ internal static class LegacySettingsAdapter
                 && double.IsFinite(value) ? value : throw new InvalidDataException($"Legacy settings field {i} is not a finite number.");
         }
         int Integer(int i, int fallback = 0) => (int)Math.Clamp(Number(i, fallback), int.MinValue, int.MaxValue);
+        ulong NativeSeed(int i)
+        {
+            double value = Math.Round(Number(i, 1), MidpointRounding.ToEven);
+            if (value < int.MinValue || value > int.MaxValue)
+                throw new InvalidDataException("Legacy settings seed is outside the signed 32-bit range.");
+            return unchecked((uint)(int)value);
+        }
         bool Flag(int i, bool fallback = false)
         {
             if (i >= lines.Length || string.IsNullOrWhiteSpace(Text(i))) return fallback;
@@ -276,7 +285,7 @@ internal static class LegacySettingsAdapter
         return new DesktopSettings
         {
             OrganismCapacity = 32000, WorldWidth = Float(3), WorldHeight = Float(4),
-            Seed = (ulong)Math.Max(0, Number(global + 89, 1)), LegacySettingsFields = lines.TakeWhile(line => !line.StartsWith("#DARWINBOTS_MODERN_SETTINGS", StringComparison.Ordinal)).ToArray(),
+            Seed = NativeSeed(global + 89), LegacySettingsFields = lines.TakeWhile(line => !line.StartsWith("#DARWINBOTS_MODERN_SETTINGS", StringComparison.Ordinal)).ToArray(),
             MutationSettings = MutationSettingsUpdate.Default with { GlobalMultiplier = Float(27, 1) },
             VegetablePopulationCap = Math.Max(0, Integer(global + 5)), SunlightEnergy = vegetation.MaxEnergyPerTick,
             Gravity = [0, Float(18)], BrownianMotion = Float(20), Species = species,

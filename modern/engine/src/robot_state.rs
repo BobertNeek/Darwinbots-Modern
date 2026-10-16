@@ -194,6 +194,23 @@ pub struct RobotProgramState {
 }
 
 impl RobotProgramState {
+    pub(crate) fn initialize_native_dna_context(&mut self) {
+        // LoadDNA fills its real1000-entry Integer table. Native files save
+        // only50 entries, independently from the actual vnum cursor.
+        self.private_variable_count = self.dna.native_user_variables().len().min(1000) as u16 + 1;
+        self.private_variables = VmMemory::default();
+        for (index, (_, value)) in self
+            .dna
+            .native_user_variables()
+            .iter()
+            .take(1000)
+            .enumerate()
+        {
+            self.private_variables
+                .restore_native_cell(index as i32 + 1, *value as i16);
+        }
+    }
+
     fn new(dna: LegacyDna, memory: VmMemory, rng_state: u64) -> Self {
         let genetic_graph = Some(crate::GeneticGraphState::for_dna(&dna));
         let mut private_variables = VmMemory::default();

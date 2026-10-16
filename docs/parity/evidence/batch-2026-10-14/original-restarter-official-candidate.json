@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "captured_utc": "2026-10-15T18:23:24.70158-06:00",
+  "purpose": "Bounded static lookup of official original Restarter.exe for future isolated original league/staged acceptance",
+  "candidate": {
+    "url": "http://ftp.darwinbots.com/Restarter.exe",
+    "listing_url": "http://ftp.darwinbots.com/",
+    "local_path": "output/original-restarter-reference-20261016T002103Z-7321a442/Restarter.download",
+    "http_status": 200,
+    "content_type": "application/x-msdownload",
+    "bytes": 24576,
+    "sha256": "f0c87579e91aa65728ace0ff04564ca46941ecc8fbbaae2f3bfdc35770c54791",
+    "official_listing_timestamp": "2014-08-30 18:30",
+    "acquisition": "Direct official FTP HTTP download, no archive/extraction"
+  },
+  "pe": {
+    "dos_signature": "MZ",
+    "pe_signature": "PE",
+    "architecture": "x86",
+    "machine": "0x014c",
+    "pe_format": "PE32",
+    "subsystem": "Windows GUI",
+    "pe_timestamp_utc": "2014-08-30T18:19:19Z",
+    "file_version": "1.00",
+    "product_version": "1.00",
+    "company_name": "Darwin Bots",
+    "file_description": "Can be used to restart any program by passing path by command line.",
+    "original_filename": "Restarter.exe",
+    "product_name": "Restarter",
+    "relevant_ascii_strings": [
+      "MSVBVM60.DLL",
+      "Restarter",
+      "Restarter",
+      "TerminateProcess",
+      "CreateToolhelp32Snapshot",
+      "MSVBVM60.DLL"
+    ]
+  },
+  "source_authority": {
+    "repository": "https://github.com/darwinbots/Darwinbots2",
+    "revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+    "project": "Restarter/Restarter.vbp",
+    "project_blob": "c6e9f24df6d9e59b0fc2224bec0029cee84aecc6",
+    "implementation": "Restarter/main.bas",
+    "implementation_blob": "4b8d5a8572973131724c7b4fa0b79e1d11cafd3b",
+    "expected_title": "Restarter",
+    "expected_executable": "Restarter.exe",
+    "expected_version": "1.0.0",
+    "expected_company": "Darwin Bots",
+    "expected_description": "Can be used to restart any program by passing path by command line.",
+    "source_behavior": "Wait; terminate process matching command full path; terminate adjacent DarwinbotsIM.exe; launch requested executable."
+  },
+  "conclusion": "Official distribution candidate has the expected PE architecture, executable identity, company, version and description from the pinned original source. Static agreement does not establish reproducible source-to-binary equivalence or successful runtime behavior.",
+  "boundaries": {
+    "binary_executed": false,
+    "installer_executed": false,
+    "helper_executed": false,
+    "extracted_archive": false,
+    "isolated_app_modified": false,
+    "configuration_changed": false,
+    "modern_source_modified": false,
+    "dependencies_installed": false,
+    "current_inspection_process_priority": "BelowNormal"
+  },
+  "supporting_files": [
+    {
+      "sha256": "21FDB8002A73748B21023807AEB83709FACD7B7AB7A1DA707452887CECE60FDC",
+      "path": "output\\original-restarter-reference-20261016T002103Z-7321a442\\provenance-static-inspection.json"
+    },
+    {
+      "sha256": "FB0251F3A9F014FB48B0491B3EF44583990EF4EBC3AC394E6E677D5A0B8E3465",
+      "path": "output/original-restarter-reference-20261016T002103Z-7321a442/ftp-index.html"
+    },
+    {
+      "sha256": "84F8821DA500ABB52A70B38A918F8574BA1939005754728B704D3D5D8EA4ACE8",
+      "path": "output/original-restarter-reference-20261016T002103Z-7321a442/http-attempts.json"
+    }
+  ]
+}

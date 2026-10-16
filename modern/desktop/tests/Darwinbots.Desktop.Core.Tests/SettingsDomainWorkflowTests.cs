@@ -6,6 +6,28 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class SettingsDomainWorkflowTests
 {
     [Fact]
+    public void GaussianHandoffStaysInMemoryAndNeverBecomesPersistentSettings()
+    {
+        var setup = new WorldSetupOptions { Seed = 42, NativeGaussianSpare = 1.25f, NativeSunChange = 12 };
+        var workflow = new SimulationSettingsWorkflow(setup);
+        Assert.Equal(1.25f, workflow.StartNew().NativeGaussianSpare);
+        Assert.Equal((byte)12, workflow.StartNew().NativeSunChange);
+
+        var lastStart = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(setup);
+        Assert.DoesNotContain("NativeGaussianSpare", System.Text.Encoding.UTF8.GetString(lastStart), StringComparison.OrdinalIgnoreCase);
+        Assert.Null(System.Text.Json.JsonSerializer.Deserialize<WorldSetupOptions>(lastStart)!.NativeGaussianSpare);
+        Assert.DoesNotContain("NativeSunChange", System.Text.Encoding.UTF8.GetString(lastStart), StringComparison.OrdinalIgnoreCase);
+        Assert.Null(System.Text.Json.JsonSerializer.Deserialize<WorldSetupOptions>(lastStart)!.NativeSunChange);
+        var settings = DesktopSettings.FromWorldSetup(setup);
+        Assert.DoesNotContain("Gaussian", settings.ToJson(), StringComparison.OrdinalIgnoreCase);
+        Assert.Null(DesktopSettings.FromJson(settings.ToJson()).ToWorldSetup().NativeGaussianSpare);
+        Assert.Null(DesktopSettings.FromJson(settings.ToJson()).ToWorldSetup().NativeSunChange);
+        Assert.Null(Db2SettingsCodec.Decode(Db2SettingsCodec.Encode(settings)).ToWorldSetup().NativeGaussianSpare);
+        Assert.Null(Db2SettingsCodec.Decode(Db2SettingsCodec.Encode(settings)).ToWorldSetup().NativeSunChange);
+        Assert.DoesNotContain("Gaussian", NativeCommandSerializer.SerializeEngineConfig(setup), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SixTabWorkingCopyCommitsAndSerializesTheNativeSettingsPayload()
     {
         var initial = new WorldSetupOptions

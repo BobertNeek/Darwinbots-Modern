@@ -11,6 +11,8 @@ public sealed partial class SetupWindow : Window
 {
     private bool _controlsReady;
     private readonly IDesktopStorageService _storage;
+    private readonly float? _nativeGaussianSpare;
+    private readonly byte? _nativeSunChange;
     private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
     private GlobalSettings _globalSettings = new();
@@ -27,9 +29,11 @@ public sealed partial class SetupWindow : Window
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _nativeGaussianSpare = nativeGaussianSpare;
+        _nativeSunChange = nativeSunChange;
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
         DataContext = this;
@@ -114,14 +118,14 @@ public sealed partial class SetupWindow : Window
     {
         if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
-        WorldCreated?.Invoke(_workflow.StartNew());
+        PublishWorld(_workflow.StartNew());
     }
 
     private void Change_Click(object? sender, RoutedEventArgs e)
     {
         if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
-        WorldCreated?.Invoke(_workflow.Change());
+        PublishWorld(_workflow.Change());
     }
 
     private void Cancel_Click(object? sender, RoutedEventArgs e)
@@ -130,6 +134,9 @@ public sealed partial class SetupWindow : Window
         ApplySetupOptions(_workflow.WorkingCopy);
         SetupStatus.Text = "WORKING COPY CANCELLED";
     }
+
+    private void PublishWorld(WorldSetupOptions options) =>
+        WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange });
 
     private WorldSetupOptions ReadSetupOptions()
     {
@@ -387,7 +394,7 @@ public sealed partial class SetupWindow : Window
     private async void OpenSave_Click(object? sender, RoutedEventArgs e)
     {
         if (await _storage.PickSimulationPathAsync(this) is { } path)
-            WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = path });
+            PublishWorld(new WorldSetupOptions { LoadSavePath = path });
     }
 
     private void Exit_Click(object? sender, RoutedEventArgs e) => Close();
@@ -469,7 +476,7 @@ public sealed partial class SetupWindow : Window
     {
         var latest = _storage.FindLatestAutosave();
         if (latest is null) { SetupStatus.Text = "No autosave is available."; return; }
-        WorldCreated?.Invoke(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true });
+        PublishWorld(new WorldSetupOptions { LoadSavePath = latest, IsAutosaveRecovery = true });
     }
 
     private async void OnboardingGotIt_Click(object? sender, RoutedEventArgs e)

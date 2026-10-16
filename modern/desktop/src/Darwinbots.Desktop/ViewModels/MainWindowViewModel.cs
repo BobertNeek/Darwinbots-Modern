@@ -11,6 +11,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private OrganismKey? _selectedKey;
     private bool _selectionWasLost;
     private ulong _tick;
+    private int? _nativeCycle;
+    private string _cycleLabel = "0";
     private int _population;
     private string _backend = "STARTING";
     private string _status = "INITIALIZING ENGINE";
@@ -71,6 +73,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public LocalModeViewModel LocalMode { get; } = new();
     public ulong Tick { get => _tick; private set => Set(ref _tick, value); }
+    public int? NativeCycle { get => _nativeCycle; private set => Set(ref _nativeCycle, value); }
+    public string CycleLabel { get => _cycleLabel; private set => Set(ref _cycleLabel, value); }
     public int Population { get => _population; private set => Set(ref _population, value); }
     public string Backend { get => _backend; private set => Set(ref _backend, value); }
     public string Status { get => _status; set => Set(ref _status, value); }
@@ -150,8 +154,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (costMultiplier is { } value)
             _costMultiplier = value;
         _snapshot = snapshot;
-        LocalMode.Observe(snapshot.LocalMode);
+        LocalMode.Observe(snapshot.LocalMode, snapshot.NativeCycle, snapshot.Species);
         Tick = snapshot.Tick;
+        NativeCycle = snapshot.NativeCycle;
+        CycleLabel = snapshot.NativeCycle?.ToString(CultureInfo.InvariantCulture)
+            ?? snapshot.Tick.ToString(CultureInfo.InvariantCulture);
         Population = snapshot.Population;
         Backend = snapshot.Backend;
         if (_selectedKey is null)
@@ -229,7 +236,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SetPanel(2, snapshot.Organisms.Count(organism => !organism.Vegetable).ToString(CultureInfo.InvariantCulture));
         SetPanel(3, snapshot.Organisms.Sum(organism => organism.Chloroplasts).ToString(CultureInfo.InvariantCulture));
         SetPanel(4, snapshot.Stats.Births.ToString(CultureInfo.InvariantCulture));
-        SetPanel(5, snapshot.Tick.ToString(CultureInfo.InvariantCulture));
+        SetPanel(5, CycleLabel);
         SetPanel(6, FormatElapsed(elapsed));
         SetPanel(7, $"{snapshot.MutationSettings.GlobalMultiplier.ToString("0.###", CultureInfo.InvariantCulture)}x");
         SetPanel(8, snapshot.LocalMode.RestartCount.ToString(CultureInfo.InvariantCulture));

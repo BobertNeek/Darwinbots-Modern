@@ -30,10 +30,14 @@ fn assert_untouched_starter_animal_moves(backend: BackendPreference) {
             .expect("GPU engine must expose its physical adapter receipt");
         assert!(!receipt.name.is_empty());
         assert!(!receipt.backend.is_empty());
-        println!(
-            "physical gpu adapter={} backend={} device_type={}",
-            receipt.name, receipt.backend, receipt.device_type
+        assert!(
+            matches!(
+                receipt.device_type.as_str(),
+                "DiscreteGpu" | "IntegratedGpu"
+            ),
+            "a physical adapter is required for starter movement qualification: {receipt:?}"
         );
+        println!("physical gpu adapter={receipt:?}");
     }
 
     let alga = engine.register_species(SpeciesDefinition {

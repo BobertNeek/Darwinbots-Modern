@@ -215,6 +215,7 @@ public static class NativeSnapshotParser
         var restrictionOptions = ParseRestrictionOptions(native.RestrictionOptions);
         return new EngineSnapshot(native.Tick, organisms.Length, backend, organisms)
         {
+            NativeCycle = native.NativeCycle,
             RenderInstances = renderInstances,
             Species = species,
             MutationSettings = new MutationSettingsSnapshot(
@@ -310,6 +311,7 @@ public static class NativeSnapshotParser
             EntrantOrder = config.EntrantOrder ?? [],
             InitialLadder = config.InitialLadder ?? [],
             SeedingOpponent = config.SeedingOpponent,
+            FinishWithLadder = config.FinishWithLadder,
         };
         return new LocalModeSnapshot(
             ParseStatus(native.Status),
@@ -346,7 +348,18 @@ public static class NativeSnapshotParser
                 series.Ladder ?? [], series.Seeded ?? [], (series.Matches ?? []).Select(match =>
                     new LeagueMatchSnapshot(match.Number, match.Entrants ?? [], match.Winner,
                         match.FirstResult, match.ResultCount)).ToArray())
-                    { MatchStartResult = series.MatchStartResult } : null,
+                    {
+                        MatchStartResult = series.MatchStartResult,
+                        ActiveSeed = series.ActiveSeed,
+                        PopulationSeeds = (series.PopulationSeeds ?? []).Select(seed =>
+                            new PopulationSeedSnapshot(seed.Species, seed.Population, seed.NativeCycle) { FileName = seed.FileName ?? string.Empty }).ToArray(),
+                        PopulationSeedingPhase = ParseClassicPhase(series.PopulationSeedingPhase),
+                        TournamentRound = series.TournamentRound,
+                        EnteredLadder = series.EnteredLadder,
+                        Pending = series.Pending ?? [],
+                        RoundWinners = series.RoundWinners ?? [],
+                        SeedFileOrder = series.SeedFileOrder ?? [],
+                    } : null,
             Disqualifications = (native.Disqualifications ?? []).Select(value => new DisqualificationRecord(
                 value.Tick, value.Round, value.Species, value.FileName ?? string.Empty,
                 value.Tag ?? string.Empty, value.Reason ?? string.Empty)).ToArray(),
@@ -407,7 +420,17 @@ public static class NativeSnapshotParser
         "ladder" => LeagueWorkflow.Ladder,
         "tournament" => LeagueWorkflow.Tournament,
         "seeding" => LeagueWorkflow.Seeding,
+        "population_seeding" => LeagueWorkflow.PopulationSeeding,
         _ => LeagueWorkflow.Direct,
+    };
+
+    private static ClassicTournamentPhase? ParseClassicPhase(string? value) => value?.ToLowerInvariant() switch
+    {
+        "seeding" => ClassicTournamentPhase.Seeding,
+        "tournament" => ClassicTournamentPhase.Tournament,
+        "ladder" => ClassicTournamentPhase.Ladder,
+        "complete" => ClassicTournamentPhase.Complete,
+        _ => null,
     };
 
     private static LeaguePreset ParsePreset(string? value) => value?.ToLowerInvariant() switch
@@ -477,6 +500,7 @@ public static class NativeSnapshotParser
 
     private sealed record NativeSnapshot(
         [property: JsonPropertyName("tick")] ulong Tick,
+        [property: JsonPropertyName("native_cycle")] int? NativeCycle,
         [property: JsonPropertyName("world_size")] float[]? WorldSize,
         [property: JsonPropertyName("organisms")] NativeOrganism[] Organisms,
         [property: JsonPropertyName("render_instances")] NativeRenderInstance[]? RenderInstances,
@@ -572,7 +596,21 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("match_start_result")] int MatchStartResult,
         [property: JsonPropertyName("ladder")] uint[]? Ladder,
         [property: JsonPropertyName("seeded")] uint[]? Seeded,
-        [property: JsonPropertyName("matches")] NativeLeagueMatch[]? Matches);
+        [property: JsonPropertyName("matches")] NativeLeagueMatch[]? Matches,
+        [property: JsonPropertyName("active_seed")] uint? ActiveSeed,
+        [property: JsonPropertyName("population_seeds")] NativePopulationSeed[]? PopulationSeeds,
+        [property: JsonPropertyName("population_seeding_phase")] string? PopulationSeedingPhase,
+        [property: JsonPropertyName("tournament_round")] uint TournamentRound,
+        [property: JsonPropertyName("entered_ladder")] bool EnteredLadder,
+        [property: JsonPropertyName("pending")] uint[]? Pending,
+        [property: JsonPropertyName("round_winners")] uint[]? RoundWinners,
+        [property: JsonPropertyName("seed_file_order")] uint[]? SeedFileOrder);
+
+    private sealed record NativePopulationSeed(
+        [property: JsonPropertyName("species")] uint Species,
+        [property: JsonPropertyName("population")] int Population,
+        [property: JsonPropertyName("native_cycle")] int NativeCycle,
+        [property: JsonPropertyName("file_name")] string? FileName);
 
     private sealed record NativeLeagueMatch(
         [property: JsonPropertyName("number")] uint Number,
@@ -608,7 +646,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("entrant_order")] uint[]? EntrantOrder,
         [property: JsonPropertyName("initial_ladder")] uint[]? InitialLadder,
         [property: JsonPropertyName("seeding_opponent")] uint? SeedingOpponent,
-        [property: JsonPropertyName("staged_evolution")] NativeEvolutionConfig? StagedEvolution);
+        [property: JsonPropertyName("staged_evolution")] NativeEvolutionConfig? StagedEvolution,
+        [property: JsonPropertyName("finish_with_ladder")] bool FinishWithLadder);
 
     private sealed record NativeLocalModeRestrictions(
         [property: JsonPropertyName("prohibit_information_shots")] bool ProhibitInformationShots,

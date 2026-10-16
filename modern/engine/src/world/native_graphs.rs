@@ -179,10 +179,21 @@ impl Engine {
                 ),
                 ("slow_genetic_distance".into(), f64::from(slow)),
             ]);
+            let actor = robots[0];
             let color = self
-                .species
-                .get(robots[0].identity.species.0 as usize)
-                .map_or(0xff62a844, |species| species.color);
+                .classic_native_species_aliases()
+                .filter(|aliases| {
+                    !actor.flags.corpse
+                        && aliases
+                            .iter()
+                            .any(|(id, alias)| *id == actor.identity.species && *alias == name)
+                })
+                .and_then(|_| self.classic_native_species_color(actor.identity.species))
+                .unwrap_or_else(|| {
+                    self.species
+                        .get(actor.identity.species.0 as usize)
+                        .map_or(0xff62a844, |species| species.color)
+                });
             result.push(SpeciesGraphSample {
                 name,
                 color,
