@@ -148,7 +148,8 @@ public sealed class LegacySettingsNativeTests
         using var stream = entry.Open();
         using var bytes = new MemoryStream();
         stream.CopyTo(bytes);
-        using var engine = new NativeEngineClient(backend: "Cpu");
+        var clock = new ContinuationTestClock();
+        using var engine = new NativeEngineClient(backend: "Cpu", timeProvider: clock);
         var native = bytes.ToArray();
         Assert.Equal("F00975B9C463EBDADFCA8ABE39926AAD8CEB0AC34767B51974B97B0C3B2413D9",
             Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(native)));
@@ -163,7 +164,7 @@ public sealed class LegacySettingsNativeTests
         var checkpoint = engine.Save();
         using (var saved = System.Text.Json.JsonDocument.Parse(checkpoint.AsMemory(10)))
             Assert.Equal("pending", saved.RootElement.GetProperty("native_loaded_census_stage").GetString());
-        using var resumed = new NativeEngineClient(backend: "Cpu");
+        using var resumed = new NativeEngineClient(backend: "Cpu", timeProvider: clock);
         resumed.Load(checkpoint);
         Assert.Equal(checkpoint, resumed.Save());
         engine.Tick();
@@ -293,5 +294,12 @@ public sealed class LegacySettingsNativeTests
         Assert.Equal("DB3S", System.Text.Encoding.ASCII.GetString(save, 0, 4));
         engine.Load(save);
         Assert.Equal(snapshot.Population, engine.Snapshot().Population);
+    }
+
+    private sealed class ContinuationTestClock : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() =>
+            new DateTimeOffset(2026, 10, 17, 0, 0, 0, TimeSpan.Zero).AddMilliseconds(1125);
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
     }
 }
