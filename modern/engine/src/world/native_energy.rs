@@ -255,24 +255,28 @@ mod tests {
         let publications = world.snapshot_publication_count();
         for invalid in [
             NativeProcessCaches {
+                repopulation_counter: original.repopulation_counter,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: f64::NAN,
                 energy: original.energy.clone(),
             },
             NativeProcessCaches {
+                repopulation_counter: original.repopulation_counter,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: -0.1,
                 energy: original.energy.clone(),
             },
             NativeProcessCaches {
+                repopulation_counter: original.repopulation_counter,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 1.1,
                 energy: original.energy.clone(),
             },
             NativeProcessCaches {
+                repopulation_counter: original.repopulation_counter,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 0.75,
@@ -282,6 +286,7 @@ mod tests {
                 },
             },
             NativeProcessCaches {
+                repopulation_counter: original.repopulation_counter,
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 0.75,
@@ -291,6 +296,7 @@ mod tests {
                 },
             },
             NativeProcessCaches {
+                repopulation_counter: original.repopulation_counter,
                 death_poffs_enabled: true,
                 shots_this_cycle: i32::MAX as u64 + 1,
                 light_availability: 0.75,

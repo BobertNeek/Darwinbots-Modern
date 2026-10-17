@@ -723,7 +723,15 @@ public sealed class RuntimeControlSurfaceTests
             try
             {
                 window.Show();
-                await WaitFor(() => Field<MainWindowViewModel>(window, "_viewModel").Status == "LOADED");
+                // This real 196-robot native save includes native load and UI hydration.
+                // Give only this startup route its own bounded budget; surface engine errors immediately.
+                await WaitFor(() =>
+                {
+                    var diagnostics = Field<OfflineDiagnosticRecovery>(window, "_diagnostics");
+                    Assert.True(diagnostics.LastErrorMessage is null,
+                        $"Native simulation startup reported an error. {DescribeNativeLoadReadiness(window)}");
+                    return Field<MainWindowViewModel>(window, "_viewModel").Status == "LOADED";
+                }, () => DescribeNativeLoadReadiness(window), TimeSpan.FromSeconds(30));
                 session = Field<SimulationSession>(window, "_session");
                 Assert.Equal(281ul, session.LatestSnapshot.Tick);
                 Assert.Equal(196, session.LatestSnapshot.Population);
@@ -1675,9 +1683,20 @@ public sealed class RuntimeControlSurfaceTests
     private static T Raise<T>(object target, string eventName) where T : Delegate =>
         (T)target.GetType().GetField(eventName, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(target)!;
 
-    private static async Task WaitFor(Func<bool> condition, Func<string>? details = null)
+    private static string DescribeNativeLoadReadiness(MainWindow window)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        var model = Field<MainWindowViewModel>(window, "_viewModel");
+        var session = Field<SimulationSession?>(window, "_session");
+        var diagnostics = Field<OfflineDiagnosticRecovery>(window, "_diagnostics");
+        return $"Native startup Status={model.Status}; SessionPresent={session is not null}; "
+            + $"Tick={session?.LatestSnapshot.Tick}; Population={session?.LatestSnapshot.Population}; "
+            + $"LastErrorTick={diagnostics.LastErrorTick}; LastError={diagnostics.LastErrorMessage}; "
+            + $"RecoveryVisible={window.FindControl<Border>("RecoveryPanel")?.IsVisible}";
+    }
+
+    private static async Task WaitFor(Func<bool> condition, Func<string>? details = null, TimeSpan? timeout = null)
+    {
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(5));
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(10);
         Assert.True(condition(), $"Timed out waiting for the serialized UI command batch. Calls: {details?.Invoke()}");
     }

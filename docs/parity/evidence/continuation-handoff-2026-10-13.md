@@ -1,3 +1,55 @@
+# BATCH 63 AUTHORED AND PEER REVIEWED — FRESH QUALIFICATION PENDING
+
+All batch 63 code/tests and static peer reviews are complete. This is an **eight-path, test-only repair batch: seven existing paths and one new qualifier**, with no new test rows or production logic changes. Three Rust test-source files repair imports/private-state observation/incomplete cache literals; two Desktop fixtures repair readiness barriers and diagnostics. The other paths are the new qualifier and these two existing reports. Declared fresh checks remain **68 Rust targets, Core 314, Desktop 214, 94 ordinary outcomes, and 25 original controls/55,849 strict reference fields**. These are authored declarations, not source63 execution results. Root records complete application/commit/freeze, then collects every fresh ordinary and hosted outcome before further repair.
+
+## Latest collected source: batch 62 needs repair
+
+- Exact committed/pushed source: **9d9321e4b86d76d18ef5e2c10f6c873ce0446089**. Frozen manifest `output/native-roundtrip-pass62-source.json` SHA-256 **5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED**, 661 source pins. All pins, HEAD and the unrelated protected PNG were unchanged at collection.
+- All **94 ordinary local outcomes** finished: **92 zero exits, two direct nonzero, no dependency skips**. Strict Clippy and the Rust workspace stopped on 13 test-compilation errors: three wrong native-binary paths, four private free-list accesses and six missing signed-counter fields. **Zero Rust targets/tests executed out of 68 declared targets.** No passing empty suite, ecology or continuation result is inherited.
+- Local **Core 314/0 and Desktop 214/0**, zero skips, are actual complete TRX results. Production native library and CLI compilation succeeded despite the separate lib-test compiler errors.
+- All **25 genuine original controls matched 55,849 fields at zero tolerance**, including feeding C100's 1,684 fields. This is the production source62 replay, distinct from the temporary source61 diagnostic. All21 canonical and four extra captures/goldens remain unchanged. Strict 393,316-field/raw-byte zero-step preservation passed separately; raw file identity, normalized Engine loading and runtime trajectory comparison remain distinct contracts.
+- Local package publication, **13 CPU ticks/movement/save-resume and all48 exact bot assets** passed. Target/package/Desktop DLL identity before/after was **8F8489A078FF11E801890D581160B17F5B93BD001A871197935A4AF14FEC3988**. CLI SHA-256 was **73E1B5E7DB4C486B243D4E3597C47502C4F1925C614A657A9C65C04A7D7EA425**. These boundaries do not qualify the blocked full Rust suite.
+- Hosted MAIN's four platforms failed on the same13 unique compiler locations (52 diagnostic occurrences total), with **zero Rust test executions** and downstream managed/package steps skipped. Diagnostics completed **642 rows: 640 passed/two failed/zero skipped**. Linux214/0; ARM and Intel213/1 each. All changed shot-rendering facts passed on all three;114 actual PNGs and three TRXs are indexed. ARM's first post-GlobalCancel Find Best wait and Intel's196-robot startup wait failed without actual timeout status in the logs. A completion-order race and cold-load cost are supported hypotheses, not proven causes.
+
+Sealed batch62 receipts (immutable):
+
+| Receipt | SHA-256 |
+| --- | --- |
+| `docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/qualification-summary.json` | BCD1AC87464C165280D912973A8A588E37630E77D649E9B62D01B18C06AE7443 |
+| `docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/rust-target-results.json` | 2439EFE7A41A4724638E9DBECB6E5640F6A136FAB0AD4A535AB2B0118E7E1BF1 |
+| `docs/parity/evidence/batch-2026-10-14/hosted-main-9d9321e.json` | 985F7C5F6CF91669DEBD566F71BF1545F9C91D92056BF433237F1569F52AA463 |
+| `docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-9d9321e.json` | 1FF0545FF6DA856F9121341EE78E0ACA6EC280C74F2BB10D61EC97AC8A3BCFA1 |
+
+## Batch 63 authored repair contract
+
+1. `modern/engine/src/world/native_reproduction.rs`, `native_energy.rs` and `native_shots.rs` change cfg(test) blocks only. Types use their actual native_binary module path. The private free-list is observed through existing serialized state, without broadening visibility or changing the pool. Invalid-cache fixtures include the signed counter while preserving malformed values and strict atomicity assertions. Production prefixes and existing test rows/assertions are retained.
+2. `modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs` requires fresh actual `CANCELED` status **and** GlobalSettings window closure before the next command. It preserves every BEST FAMILY/selection/restart/Zerobot assertion and the existing wait budget; diagnostics include status, selection, tick/population and owned settings count.
+3. `modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs` gives only the196-robot native startup a bounded **30-second** readiness budget. Every other wait retains five seconds. Actual status/session/tick/population/error/recovery state is reported and a reported engine error fails immediately. Loaded identity/configuration/topology assertions remain exact.
+4. New `output/qualify-native-roundtrip-pass63.ps1` changes batch namespace/state constants from62; all94 checks, separate comparison stdout/stderr handling, strict reference counts and guards remain intact.
+5. These reports preserve25 ledger IDs/order, existing historical JSON values, CSS/filter JavaScript and the full prior handoff suffix. Static review is complete; authoring does not prove source63 behavior.
+
+Authoring releases:
+
+| Release | SHA-256 |
+| --- | --- |
+| `output/pass63-drafts/rust-test-compilation/metadata.json` | A929975A2FD9E073C51299588FDF574425537F03E8F6E4D6FD31BD9CB53582A8 |
+| `output/pass63-drafts/managed-readiness/metadata.json` | 5715165007D7BD56068B111776F5742AD219E7615BC554BC949438AA5A088FC7 |
+| `output/pass63-drafts/qualification/metadata.json` | 6E97BC06473915E34E062859C5263106249D4B634B1C9B4E0CFA843D31AA96E6 |
+
+The unchanged diagnostics workflow path filters exclude both Desktop readiness fixtures. Root will manually dispatch diagnostics exactly once for the pushed frozen source63 ref and collect all three outcomes along with all four MAIN outcomes. No workflow filter change or duplicate dispatch is needed.
+
+## Remaining acceptance
+
+**Batch59 ff50b1a735ef61c6d5d282358da76f2734f64099 remains the latest fully qualified ordinary CPU/hosted checkpoint.** Source62 has bounded passing original/managed/package evidence and blocked full Rust/hosted gates. Source63 has no fresh results. No percentage or full-parity claim is warranted.
+
+Original full mode/restart/settings/graph observations, final visible package walkthrough, physical/portable/switch GPU and sustained CPU/GPU capacity remain verification pending. Official Restarter's first launch still needs human confirmation. Respect A-Life GPU priority and Bob, the dot, and source/input/idle/exclusive-lease admission before hardware work. Internet Mode is excluded; offline exchange is included.
+
+Original UI capture recovery made two supported window-capture attempts and no clicks, keys or helper launches. Four owned `output/original-ui62-*` observation/custody files preserve the fallback screenshot of overlapping settings and an existing removal warning. They prove neither a broken installation nor completed mode/restart progression. Do not stage the unrelated protected report PNG or external temporary screenshot.
+
+The entire earlier handoff follows unchanged, including historical failures and superseded authoring states.
+
+---
+
 # BATCH 62 AUTHORED AND PEER REVIEWED — FRESH QUALIFICATION PENDING
 
 All batch 62 code/tests are authored and static peer reviews are complete. Final application census: **25 paths, 23 existing/two new** = 11 Rust + 10 managed + one new qualifier + one new source-authority receipt + two existing report documents. Added versus61: **four Rust tests, two Core and one Desktop row**. Declared fresh suites: **68 Rust targets/Core314/Desktop214**, 94 ordinary outcomes and25original controls/55,849zero-tolerance reference fields. These are authored counts, not test passes. Root records complete application/commit/freeze separately, then collects every fresh ordinary outcome before further repairs.

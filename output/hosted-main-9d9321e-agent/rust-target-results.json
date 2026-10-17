@@ -1,0 +1,1345 @@
+{
+  "schema_version": 2,
+  "batch": 62,
+  "state": "compile_blocked",
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "source_manifest_sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+  "run_id": 39035994065,
+  "sealed_utc": "2026-10-17T13:25:45.748Z",
+  "workspace_metadata": {
+    "file": "output/pass62-workspace-metadata.json",
+    "sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+    "bytes": 21645
+  },
+  "all_four_platforms_completed": true,
+  "all_expected_test_targets_emitted": false,
+  "all_tests_passed": false,
+  "per_platform_expected_targets": 68,
+  "declared_expected_target_inventory": [
+    {
+      "package": "darwinbots-engine",
+      "name": "darwinbots_engine",
+      "kind": "lib",
+      "source": "modern/engine/src/lib.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "darwinbots_engine",
+      "kind": "doc",
+      "source": "modern/engine/src/lib.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "advanced_mutation_costs",
+      "kind": "test",
+      "source": "modern/engine/tests/advanced_mutation_costs.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "canonical_cycle_248",
+      "kind": "test",
+      "source": "modern/engine/tests/canonical_cycle_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "community_league_admission",
+      "kind": "test",
+      "source": "modern/engine/tests/community_league_admission.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "contracts",
+      "kind": "test",
+      "source": "modern/engine/tests/contracts.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "core_state_contracts",
+      "kind": "test",
+      "source": "modern/engine/tests/core_state_contracts.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "corpses_collisions",
+      "kind": "test",
+      "source": "modern/engine/tests/corpses_collisions.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db24832_clean_defaults",
+      "kind": "test",
+      "source": "modern/engine/tests/db24832_clean_defaults.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db24832_genuine_feeding",
+      "kind": "test",
+      "source": "modern/engine/tests/db24832_genuine_feeding.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db24832_genuine_load_transients",
+      "kind": "test",
+      "source": "modern/engine/tests/db24832_genuine_load_transients.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db24832_starter_movement",
+      "kind": "test",
+      "source": "modern/engine/tests/db24832_starter_movement.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db2_final_engine_world",
+      "kind": "test",
+      "source": "modern/engine/tests/db2_final_engine_world.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db2_mutation_248",
+      "kind": "test",
+      "source": "modern/engine/tests/db2_mutation_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db2_physics",
+      "kind": "test",
+      "source": "modern/engine/tests/db2_physics.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db2_projectiles",
+      "kind": "test",
+      "source": "modern/engine/tests/db2_projectiles.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db2_starter_ecology",
+      "kind": "test",
+      "source": "modern/engine/tests/db2_starter_ecology.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db2_vegetation",
+      "kind": "test",
+      "source": "modern/engine/tests/db2_vegetation.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "db2_vision",
+      "kind": "test",
+      "source": "modern/engine/tests/db2_vision.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "dna_runtime_248",
+      "kind": "test",
+      "source": "modern/engine/tests/dna_runtime_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "eco05_repopulation",
+      "kind": "test",
+      "source": "modern/engine/tests/eco05_repopulation.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "environment_world",
+      "kind": "test",
+      "source": "modern/engine/tests/environment_world.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "extinct_species",
+      "kind": "test",
+      "source": "modern/engine/tests/extinct_species.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "final_state_persistence_248",
+      "kind": "test",
+      "source": "modern/engine/tests/final_state_persistence_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "gpu_ffi",
+      "kind": "test",
+      "source": "modern/engine/tests/gpu_ffi.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "history_records",
+      "kind": "test",
+      "source": "modern/engine/tests/history_records.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "legacy_distribution",
+      "kind": "test",
+      "source": "modern/engine/tests/legacy_distribution.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "legacy_transport",
+      "kind": "test",
+      "source": "modern/engine/tests/legacy_transport.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "live_legacy_menu_settings",
+      "kind": "test",
+      "source": "modern/engine/tests/live_legacy_menu_settings.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "local_modes",
+      "kind": "test",
+      "source": "modern/engine/tests/local_modes.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "manual_tools",
+      "kind": "test",
+      "source": "modern/engine/tests/manual_tools.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "mutation_advanced_248",
+      "kind": "test",
+      "source": "modern/engine/tests/mutation_advanced_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "mutation_lifecycle",
+      "kind": "test",
+      "source": "modern/engine/tests/mutation_lifecycle.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "native_continuation_qualification",
+      "kind": "test",
+      "source": "modern/engine/tests/native_continuation_qualification.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "native_mutation_continuation_qualification",
+      "kind": "test",
+      "source": "modern/engine/tests/native_mutation_continuation_qualification.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "native_random_lifecycle_248",
+      "kind": "test",
+      "source": "modern/engine/tests/native_random_lifecycle_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "native_reference_senses_248",
+      "kind": "test",
+      "source": "modern/engine/tests/native_reference_senses_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "native_resource_precision",
+      "kind": "test",
+      "source": "modern/engine/tests/native_resource_precision.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "occurrence_census_248",
+      "kind": "test",
+      "source": "modern/engine/tests/occurrence_census_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "parity_completion",
+      "kind": "test",
+      "source": "modern/engine/tests/parity_completion.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "reproduction_heredity_248",
+      "kind": "test",
+      "source": "modern/engine/tests/reproduction_heredity_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "robot_state_248",
+      "kind": "test",
+      "source": "modern/engine/tests/robot_state_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "robot_tools",
+      "kind": "test",
+      "source": "modern/engine/tests/robot_tools.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "scheduler_housekeeping",
+      "kind": "test",
+      "source": "modern/engine/tests/scheduler_housekeeping.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "scheduler_shock",
+      "kind": "test",
+      "source": "modern/engine/tests/scheduler_shock.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "sensing_compatibility",
+      "kind": "test",
+      "source": "modern/engine/tests/sensing_compatibility.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "shot_state",
+      "kind": "test",
+      "source": "modern/engine/tests/shot_state.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "spawn_placement",
+      "kind": "test",
+      "source": "modern/engine/tests/spawn_placement.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "species_ecology",
+      "kind": "test",
+      "source": "modern/engine/tests/species_ecology.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "starter_ecology",
+      "kind": "test",
+      "source": "modern/engine/tests/starter_ecology.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "sysvar_lifecycle_248",
+      "kind": "test",
+      "source": "modern/engine/tests/sysvar_lifecycle_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "ties_multibot",
+      "kind": "test",
+      "source": "modern/engine/tests/ties_multibot.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "toroidal_world",
+      "kind": "test",
+      "source": "modern/engine/tests/toroidal_world.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "touch_taste_248",
+      "kind": "test",
+      "source": "modern/engine/tests/touch_taste_248.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "visual_phenotypes",
+      "kind": "test",
+      "source": "modern/engine/tests/visual_phenotypes.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "vm",
+      "kind": "test",
+      "source": "modern/engine/tests/vm.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "vm_costs_telemetry",
+      "kind": "test",
+      "source": "modern/engine/tests/vm_costs_telemetry.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "vm_implicit_conditions",
+      "kind": "test",
+      "source": "modern/engine/tests/vm_implicit_conditions.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "w4_evolution_gpu",
+      "kind": "test",
+      "source": "modern/engine/tests/w4_evolution_gpu.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "world_systems",
+      "kind": "test",
+      "source": "modern/engine/tests/world_systems.rs"
+    },
+    {
+      "package": "darwinbots-engine",
+      "name": "zerobot_progression",
+      "kind": "test",
+      "source": "modern/engine/tests/zerobot_progression.rs"
+    },
+    {
+      "package": "darwinbots-cli",
+      "name": "darwinbots_cli",
+      "kind": "lib",
+      "source": "modern/cli/src/lib.rs"
+    },
+    {
+      "package": "darwinbots-cli",
+      "name": "darwinbots_cli",
+      "kind": "doc",
+      "source": "modern/cli/src/lib.rs"
+    },
+    {
+      "package": "darwinbots-cli",
+      "name": "darwinbots-cli",
+      "kind": "bin",
+      "source": "modern/cli/src/main.rs"
+    },
+    {
+      "package": "darwinbots-cli",
+      "name": "bundled_bot_corpus",
+      "kind": "test",
+      "source": "modern/cli/tests/bundled_bot_corpus.rs"
+    },
+    {
+      "package": "darwinbots-cli",
+      "name": "commands",
+      "kind": "test",
+      "source": "modern/cli/tests/commands.rs"
+    },
+    {
+      "package": "darwinbots-cli",
+      "name": "db245_probes",
+      "kind": "test",
+      "source": "modern/cli/tests/db245_probes.rs"
+    },
+    {
+      "package": "darwinbots-cli",
+      "name": "native_comparison",
+      "kind": "test",
+      "source": "modern/cli/tests/native_comparison.rs"
+    }
+  ],
+  "aggregate": {
+    "expected_platform_target_executions": 272,
+    "actual_platform_target_executions": 0,
+    "actual_unique_target_identities": 0,
+    "actual_test_result_summaries": 0,
+    "actual_executed_tests": 0,
+    "counts": null,
+    "compiler_error_diagnostics": 52,
+    "unique_compiler_error_locations": 13
+  },
+  "platforms": {
+    "osx-x64": {
+      "job_id": 117405752101,
+      "conclusion": "failure",
+      "targets": [],
+      "actual_distinct_targets": 0,
+      "actual_test_result_summaries": 0,
+      "counts": null,
+      "full_expected_corpus_completed": false,
+      "compile_failed_before_test_execution": true,
+      "compiler_errors": [
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeRecordFile` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:43:32",
+          "line": 626,
+          "context": [
+            "error[E0433]: cannot find `NativeRecordFile` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:43:32",
+            "   |",
+            "43 |         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();",
+            "   |                                ^^^^^^^^^^^^^^^^ could not find `NativeRecordFile` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeSimulationTail` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:45:31",
+          "line": 642,
+          "context": [
+            "error[E0433]: cannot find `NativeSimulationTail` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:45:31",
+            "   |",
+            "45 |         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();",
+            "   |                               ^^^^^^^^^^^^^^^^^^^^ could not find `NativeSimulationTail` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeValue` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:51:42",
+          "line": 658,
+          "context": [
+            "error[E0433]: cannot find `NativeValue` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:51:42",
+            "   |",
+            "51 |             tail.set_value(field, crate::NativeValue::Word(value))",
+            "   |                                          ^^^^^^^^^^^ could not find `NativeValue` in the crate root",
+            "   |",
+            "help: consider importing this enum",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:491:48",
+          "line": 674,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:491:48",
+            "    |",
+            "491 |             let free_slots = world.projectiles.free_slots.clone();",
+            "    |                                                ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:516:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:516:46",
+          "line": 680,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:516:46",
+            "    |",
+            "516 |                 assert_eq!(state.projectiles.free_slots, expected_free);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:524:52"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:524:52",
+          "line": 686,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:524:52",
+            "    |",
+            "524 |                 let free_slots = state.projectiles.free_slots.clone();",
+            "    |                                                    ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:526:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:526:46",
+          "line": 692,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:526:46",
+            "    |",
+            "526 |                 assert_eq!(state.projectiles.free_slots, free_slots);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:257:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:257:13",
+          "line": 698,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:257:13",
+            "    |",
+            "257 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:263:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:263:13",
+          "line": 704,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:263:13",
+            "    |",
+            "263 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:269:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:269:13",
+          "line": 710,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:269:13",
+            "    |",
+            "269 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:275:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:275:13",
+          "line": 716,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:275:13",
+            "    |",
+            "275 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:284:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:284:13",
+          "line": 722,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:284:13",
+            "    |",
+            "284 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:293:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:293:13",
+          "line": 728,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:293:13",
+            "    |",
+            "293 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "Some errors have detailed explanations: E0063, E0433, E0616.",
+            "For more information about an error, try `rustc --explain E0063`."
+          ]
+        }
+      ],
+      "compiler_error_count": 13,
+      "log": {
+        "file": "output/hosted-main-9d9321e-agent/logs/osx-x64-completed.log",
+        "sha256": "607B8DDEED6F648793AFF3235DE57328D1CAB913337F8671652F70DD8EF5CA08",
+        "bytes": 62769
+      }
+    },
+    "linux-x64": {
+      "job_id": 117405752186,
+      "conclusion": "failure",
+      "targets": [],
+      "actual_distinct_targets": 0,
+      "actual_test_result_summaries": 0,
+      "counts": null,
+      "full_expected_corpus_completed": false,
+      "compile_failed_before_test_execution": true,
+      "compiler_errors": [
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeRecordFile` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:43:32",
+          "line": 542,
+          "context": [
+            "error[E0433]: cannot find `NativeRecordFile` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:43:32",
+            "   |",
+            "43 |         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();",
+            "   |                                ^^^^^^^^^^^^^^^^ could not find `NativeRecordFile` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeSimulationTail` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:45:31",
+          "line": 558,
+          "context": [
+            "error[E0433]: cannot find `NativeSimulationTail` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:45:31",
+            "   |",
+            "45 |         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();",
+            "   |                               ^^^^^^^^^^^^^^^^^^^^ could not find `NativeSimulationTail` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeValue` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:51:42",
+          "line": 574,
+          "context": [
+            "error[E0433]: cannot find `NativeValue` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:51:42",
+            "   |",
+            "51 |             tail.set_value(field, crate::NativeValue::Word(value))",
+            "   |                                          ^^^^^^^^^^^ could not find `NativeValue` in the crate root",
+            "   |",
+            "help: consider importing this enum",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:491:48",
+          "line": 590,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:491:48",
+            "    |",
+            "491 |             let free_slots = world.projectiles.free_slots.clone();",
+            "    |                                                ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:516:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:516:46",
+          "line": 596,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:516:46",
+            "    |",
+            "516 |                 assert_eq!(state.projectiles.free_slots, expected_free);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:524:52"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:524:52",
+          "line": 602,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:524:52",
+            "    |",
+            "524 |                 let free_slots = state.projectiles.free_slots.clone();",
+            "    |                                                    ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:526:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:526:46",
+          "line": 608,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:526:46",
+            "    |",
+            "526 |                 assert_eq!(state.projectiles.free_slots, free_slots);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:257:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:257:13",
+          "line": 614,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:257:13",
+            "    |",
+            "257 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:263:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:263:13",
+          "line": 620,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:263:13",
+            "    |",
+            "263 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:269:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:269:13",
+          "line": 626,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:269:13",
+            "    |",
+            "269 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:275:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:275:13",
+          "line": 632,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:275:13",
+            "    |",
+            "275 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:284:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:284:13",
+          "line": 638,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:284:13",
+            "    |",
+            "284 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:293:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:293:13",
+          "line": 644,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:293:13",
+            "    |",
+            "293 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "Some errors have detailed explanations: E0063, E0433, E0616.",
+            "For more information about an error, try `rustc --explain E0063`."
+          ]
+        }
+      ],
+      "compiler_error_count": 13,
+      "log": {
+        "file": "output/hosted-main-9d9321e-agent/logs/linux-x64-completed.log",
+        "sha256": "4D1C793F0460FF0832C5840B67F08BE2E206331382988ECD4686A099C9A5AF3B",
+        "bytes": 57198
+      }
+    },
+    "win-x64": {
+      "job_id": 117405752227,
+      "conclusion": "failure",
+      "targets": [],
+      "actual_distinct_targets": 0,
+      "actual_test_result_summaries": 0,
+      "counts": null,
+      "full_expected_corpus_completed": false,
+      "compile_failed_before_test_execution": true,
+      "compiler_errors": [
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeRecordFile` in the crate root",
+          "location": "--> modern\\engine\\src\\world\\native_reproduction.rs:43:32",
+          "line": 555,
+          "context": [
+            "error[E0433]: cannot find `NativeRecordFile` in the crate root",
+            "  --> modern\\engine\\src\\world\\native_reproduction.rs:43:32",
+            "   |",
+            "43 |         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();",
+            "   |                                ^^^^^^^^^^^^^^^^ could not find `NativeRecordFile` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeSimulationTail` in the crate root",
+          "location": "--> modern\\engine\\src\\world\\native_reproduction.rs:45:31",
+          "line": 571,
+          "context": [
+            "error[E0433]: cannot find `NativeSimulationTail` in the crate root",
+            "  --> modern\\engine\\src\\world\\native_reproduction.rs:45:31",
+            "   |",
+            "45 |         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();",
+            "   |                               ^^^^^^^^^^^^^^^^^^^^ could not find `NativeSimulationTail` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeValue` in the crate root",
+          "location": "--> modern\\engine\\src\\world\\native_reproduction.rs:51:42",
+          "line": 587,
+          "context": [
+            "error[E0433]: cannot find `NativeValue` in the crate root",
+            "  --> modern\\engine\\src\\world\\native_reproduction.rs:51:42",
+            "   |",
+            "51 |             tail.set_value(field, crate::NativeValue::Word(value))",
+            "   |                                          ^^^^^^^^^^^ could not find `NativeValue` in the crate root",
+            "   |",
+            "help: consider importing this enum",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern\\engine\\src\\world\\native_shots.rs:491:48",
+          "line": 603,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern\\engine\\src\\world\\native_shots.rs:491:48",
+            "    |",
+            "491 |             let free_slots = world.projectiles.free_slots.clone();",
+            "    |                                                ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern\\engine\\src\\world\\native_shots.rs:516:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern\\engine\\src\\world\\native_shots.rs:516:46",
+          "line": 609,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern\\engine\\src\\world\\native_shots.rs:516:46",
+            "    |",
+            "516 |                 assert_eq!(state.projectiles.free_slots, expected_free);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern\\engine\\src\\world\\native_shots.rs:524:52"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern\\engine\\src\\world\\native_shots.rs:524:52",
+          "line": 615,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern\\engine\\src\\world\\native_shots.rs:524:52",
+            "    |",
+            "524 |                 let free_slots = state.projectiles.free_slots.clone();",
+            "    |                                                    ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern\\engine\\src\\world\\native_shots.rs:526:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern\\engine\\src\\world\\native_shots.rs:526:46",
+          "line": 621,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern\\engine\\src\\world\\native_shots.rs:526:46",
+            "    |",
+            "526 |                 assert_eq!(state.projectiles.free_slots, free_slots);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:257:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern\\engine\\src\\world\\native_energy.rs:257:13",
+          "line": 627,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:257:13",
+            "    |",
+            "257 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:263:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern\\engine\\src\\world\\native_energy.rs:263:13",
+          "line": 633,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:263:13",
+            "    |",
+            "263 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:269:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern\\engine\\src\\world\\native_energy.rs:269:13",
+          "line": 639,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:269:13",
+            "    |",
+            "269 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:275:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern\\engine\\src\\world\\native_energy.rs:275:13",
+          "line": 645,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:275:13",
+            "    |",
+            "275 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:284:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern\\engine\\src\\world\\native_energy.rs:284:13",
+          "line": 651,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:284:13",
+            "    |",
+            "284 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:293:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern\\engine\\src\\world\\native_energy.rs:293:13",
+          "line": 657,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern\\engine\\src\\world\\native_energy.rs:293:13",
+            "    |",
+            "293 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "Some errors have detailed explanations: E0063, E0433, E0616.",
+            "For more information about an error, try `rustc --explain E0063`."
+          ]
+        }
+      ],
+      "compiler_error_count": 13,
+      "log": {
+        "file": "output/hosted-main-9d9321e-agent/logs/win-x64-completed.log",
+        "sha256": "593085B640ED8F36BDB2333B9AABAEFB0CBE52714B162712550CC4BF93252302",
+        "bytes": 59092
+      }
+    },
+    "osx-arm64": {
+      "job_id": 117405752252,
+      "conclusion": "failure",
+      "targets": [],
+      "actual_distinct_targets": 0,
+      "actual_test_result_summaries": 0,
+      "counts": null,
+      "full_expected_corpus_completed": false,
+      "compile_failed_before_test_execution": true,
+      "compiler_errors": [
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeRecordFile` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:43:32",
+          "line": 544,
+          "context": [
+            "error[E0433]: cannot find `NativeRecordFile` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:43:32",
+            "   |",
+            "43 |         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();",
+            "   |                                ^^^^^^^^^^^^^^^^ could not find `NativeRecordFile` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeSimulationTail` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:45:31",
+          "line": 560,
+          "context": [
+            "error[E0433]: cannot find `NativeSimulationTail` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:45:31",
+            "   |",
+            "45 |         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();",
+            "   |                               ^^^^^^^^^^^^^^^^^^^^ could not find `NativeSimulationTail` in the crate root",
+            "   |",
+            "help: consider importing this struct",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0433",
+          "message": "cannot find `NativeValue` in the crate root",
+          "location": "--> modern/engine/src/world/native_reproduction.rs:51:42",
+          "line": 576,
+          "context": [
+            "error[E0433]: cannot find `NativeValue` in the crate root",
+            "  --> modern/engine/src/world/native_reproduction.rs:51:42",
+            "   |",
+            "51 |             tail.set_value(field, crate::NativeValue::Word(value))",
+            "   |                                          ^^^^^^^^^^^ could not find `NativeValue` in the crate root",
+            "   |",
+            "help: consider importing this enum",
+            "   |"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:491:48",
+          "line": 592,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:491:48",
+            "    |",
+            "491 |             let free_slots = world.projectiles.free_slots.clone();",
+            "    |                                                ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:516:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:516:46",
+          "line": 598,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:516:46",
+            "    |",
+            "516 |                 assert_eq!(state.projectiles.free_slots, expected_free);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:524:52"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:524:52",
+          "line": 604,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:524:52",
+            "    |",
+            "524 |                 let free_slots = state.projectiles.free_slots.clone();",
+            "    |                                                    ^^^^^^^^^^ private field",
+            "",
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:526:46"
+          ]
+        },
+        {
+          "code": "E0616",
+          "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+          "location": "--> modern/engine/src/world/native_shots.rs:526:46",
+          "line": 610,
+          "context": [
+            "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "   --> modern/engine/src/world/native_shots.rs:526:46",
+            "    |",
+            "526 |                 assert_eq!(state.projectiles.free_slots, free_slots);",
+            "    |                                              ^^^^^^^^^^ private field",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:257:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:257:13",
+          "line": 616,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:257:13",
+            "    |",
+            "257 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:263:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:263:13",
+          "line": 622,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:263:13",
+            "    |",
+            "263 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:269:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:269:13",
+          "line": 628,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:269:13",
+            "    |",
+            "269 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:275:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:275:13",
+          "line": 634,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:275:13",
+            "    |",
+            "275 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:284:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:284:13",
+          "line": 640,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:284:13",
+            "    |",
+            "284 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:293:13"
+          ]
+        },
+        {
+          "code": "E0063",
+          "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+          "location": "--> modern/engine/src/world/native_energy.rs:293:13",
+          "line": 646,
+          "context": [
+            "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "   --> modern/engine/src/world/native_energy.rs:293:13",
+            "    |",
+            "293 |             NativeProcessCaches {",
+            "    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`",
+            "",
+            "Some errors have detailed explanations: E0063, E0433, E0616.",
+            "For more information about an error, try `rustc --explain E0063`."
+          ]
+        }
+      ],
+      "compiler_error_count": 13,
+      "log": {
+        "file": "output/hosted-main-9d9321e-agent/logs/osx-arm64-completed.log",
+        "sha256": "F73F3DF773AD034608741826A512C447434AD381F64C0E922B4CFC54B48470B3",
+        "bytes": 57811
+      }
+    }
+  },
+  "boundary": "All four normal jobs fail compiling the Rust library test target before any Running/Doc-tests header or test-result summary. No Rust pass/fail/ignored census exists; 68 targets and Core314/Desktop214 remain declarations. Compiler diagnostic repetitions are not failed test rows."
+}

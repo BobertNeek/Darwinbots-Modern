@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "runner_candidate_authored_unapplied_unexecuted_awaiting_all63_candidates",
+  "created_utc": "2026-10-17T13:47:49.298Z",
+  "owner": "/root",
+  "base_source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "pinned_files": 661
+  },
+  "files": [
+    {
+      "target_path": "output/qualify-native-roundtrip-pass63.ps1",
+      "new_file": true,
+      "base_path": "output/qualify-native-roundtrip-pass62.ps1",
+      "base_raw_sha256": "C75F20122582DDD4EC357C3674C1F4784E5B4C1A95BE56F8E2D371661DBDE118",
+      "base_bytes": 58462,
+      "candidate_path": "output/pass63-drafts/qualification/candidate/output/qualify-native-roundtrip-pass63.ps1",
+      "candidate_raw_sha256": "FD2397CFA228ADC9ADF79F74C7EF8295D59000C77B44A19979EE5F865FD21D8E",
+      "candidate_bytes": 58462
+    }
+  ],
+  "scope": "Only batch63 source/paths/state constants differ from executed62; all94 ordinary collection, strict comparisons and split stdout/stderr logging remain unchanged.",
+  "declared_counts": {
+    "core": 314,
+    "desktop": 214,
+    "rust_targets": 68,
+    "ordinary_local_outcomes": 94,
+    "net_new_tests_vs62": 0
+  },
+  "execution_gate": "ROOT applies every63 code/test/document candidate, records checks, commits/pushes then freezes source63 manifest before the combined qualification. No inherited runtime results.",
+  "execution": {
+    "active_apply": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "UI": false,
+    "GPU": false,
+    "git": false
+  }
+}

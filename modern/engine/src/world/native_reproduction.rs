@@ -34,22 +34,22 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
     const REPRODUCTION_START: &[u8] =
         include_bytes!("../../tests/fixtures/db24832-reproduction-start-48032.sim");
 
     #[test]
     fn native_load_repopulation_waits_until_c21_and_preserves_negative_db3s_delay_and_caller_draws()
     {
-        let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();
+        let mut input = NativeRecordFile::decode(REPRODUCTION_START).unwrap();
         input.robots.clear();
-        let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();
+        let mut tail = NativeSimulationTail::decode(&input.tail).unwrap();
         for (field, value) in [
             ("minimum_plants", 50),
             ("repop_amount", 10),
             ("repop_cooldown", 10),
         ] {
-            tail.set_value(field, crate::NativeValue::Word(value))
-                .unwrap();
+            tail.set_value(field, NativeValue::Word(value)).unwrap();
         }
         input.tail = tail.encode().unwrap();
         let mut continuous = Engine::from_native_sim(&input.encode().unwrap()).unwrap();

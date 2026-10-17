@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "created_utc": "2026-10-17T13:47:49.263Z",
+  "source_screenshot": "C:\\Users\\PC\\AppData\\Local\\Temp\\codex-shot-2026-10-17_07-25-21.png",
+  "owned_copy": "output/original-ui62-owner-window.png",
+  "sha256": "3C6164B86D0B34B4F69342CF27098B76E85488CF3EA1BFC74AAAC10B5CF819A0",
+  "bytes": 52217,
+  "copy_only_no_image_transform": true,
+  "original_UI_actions": 0,
+  "reference_records": [
+    "output/original-ui62-capture-failure.json",
+    "output/original-ui62-visual-observation.json"
+  ],
+  "qualification": false
+}

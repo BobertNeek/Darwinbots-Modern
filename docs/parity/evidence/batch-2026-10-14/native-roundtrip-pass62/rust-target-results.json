@@ -1,0 +1,811 @@
+{
+  "schema_version": 2,
+  "batch": 62,
+  "sealed_utc": "2026-10-17T13:45:49.669Z",
+  "state": "completed_with_failures_or_incomplete_target_evidence",
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED"
+  },
+  "workspace_metadata": {
+    "file": "output/pass62-workspace-metadata.json",
+    "sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+    "bytes": 21645
+  },
+  "command": {
+    "executable": "cargo.exe",
+    "arguments": [
+      "test",
+      "--release",
+      "--workspace",
+      "--no-fail-fast",
+      "--",
+      "--skip",
+      "gpu",
+      "--skip",
+      "switch",
+      "--nocapture",
+      "--test-threads=1"
+    ]
+  },
+  "invocation": {
+    "fresh_full_workspace_invocation": true,
+    "hardware_filtered": true,
+    "exit_code": 101,
+    "seconds": 928.4649997,
+    "counts_inherited": false
+  },
+  "full_workspace_passed": false,
+  "expected_distinct_targets": 68,
+  "total_distinct_targets": 0,
+  "all_expected_targets_emitted": false,
+  "counts": {
+    "passed": 0,
+    "failed": 0,
+    "ignored": 0,
+    "measured": 0,
+    "filtered_out": 0
+  },
+  "test_execution_started": false,
+  "executed_tests_from_completed_summaries": 0,
+  "no_test_execution_due_to_compilation_failure": true,
+  "compilation": {
+    "diagnostic_errors": [
+      {
+        "code": "E0433",
+        "message": "cannot find `NativeRecordFile` in `crate`",
+        "log_line": 3,
+        "source": "modern\\engine\\src\\world\\native_reproduction.rs:43:32",
+        "excerpt": "error[E0433]: cannot find `NativeRecordFile` in `crate`\n  --> modern\\engine\\src\\world\\native_reproduction.rs:43:32\n   |\n43 |         let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();\n   |                                ^^^^^^^^^^^^^^^^ could not find `NativeRecordFile` in the crate root\n   |\nhelp: consider importing this struct\n   |\n36 +     use crate::native_binary::NativeRecordFile;"
+      },
+      {
+        "code": "E0433",
+        "message": "cannot find `NativeSimulationTail` in `crate`",
+        "log_line": 19,
+        "source": "modern\\engine\\src\\world\\native_reproduction.rs:45:31",
+        "excerpt": "error[E0433]: cannot find `NativeSimulationTail` in `crate`\n  --> modern\\engine\\src\\world\\native_reproduction.rs:45:31\n   |\n45 |         let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();\n   |                               ^^^^^^^^^^^^^^^^^^^^ could not find `NativeSimulationTail` in the crate root\n   |\nhelp: consider importing this struct\n   |\n36 +     use crate::native_binary::NativeSimulationTail;"
+      },
+      {
+        "code": "E0433",
+        "message": "cannot find `NativeValue` in `crate`",
+        "log_line": 35,
+        "source": "modern\\engine\\src\\world\\native_reproduction.rs:51:42",
+        "excerpt": "error[E0433]: cannot find `NativeValue` in `crate`\n  --> modern\\engine\\src\\world\\native_reproduction.rs:51:42\n   |\n51 |             tail.set_value(field, crate::NativeValue::Word(value))\n   |                                          ^^^^^^^^^^^ could not find `NativeValue` in the crate root\n   |\nhelp: consider importing this enum\n   |\n36 +     use crate::native_binary::NativeValue;"
+      },
+      {
+        "code": "E0616",
+        "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+        "log_line": 51,
+        "source": "modern\\engine\\src\\world\\native_shots.rs:491:48",
+        "excerpt": "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private\n   --> modern\\engine\\src\\world\\native_shots.rs:491:48\n    |\n491 |             let free_slots = world.projectiles.free_slots.clone();\n    |                                                ^^^^^^^^^^ private field\n\nerror[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private\n   --> modern\\engine\\src\\world\\native_shots.rs:516:46\n    |"
+      },
+      {
+        "code": "E0616",
+        "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+        "log_line": 57,
+        "source": "modern\\engine\\src\\world\\native_shots.rs:516:46",
+        "excerpt": "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private\n   --> modern\\engine\\src\\world\\native_shots.rs:516:46\n    |\n516 |                 assert_eq!(state.projectiles.free_slots, expected_free);\n    |                                              ^^^^^^^^^^ private field\n\nerror[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private\n   --> modern\\engine\\src\\world\\native_shots.rs:524:52\n    |"
+      },
+      {
+        "code": "E0616",
+        "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+        "log_line": 63,
+        "source": "modern\\engine\\src\\world\\native_shots.rs:524:52",
+        "excerpt": "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private\n   --> modern\\engine\\src\\world\\native_shots.rs:524:52\n    |\n524 |                 let free_slots = state.projectiles.free_slots.clone();\n    |                                                    ^^^^^^^^^^ private field\n\nerror[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private\n   --> modern\\engine\\src\\world\\native_shots.rs:526:46\n    |"
+      },
+      {
+        "code": "E0616",
+        "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+        "log_line": 69,
+        "source": "modern\\engine\\src\\world\\native_shots.rs:526:46",
+        "excerpt": "error[E0616]: field `free_slots` of struct `projectile::ProjectilePool` is private\n   --> modern\\engine\\src\\world\\native_shots.rs:526:46\n    |\n526 |                 assert_eq!(state.projectiles.free_slots, free_slots);\n    |                                              ^^^^^^^^^^ private field\n\nerror[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:257:13\n    |"
+      },
+      {
+        "code": "E0063",
+        "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+        "log_line": 75,
+        "source": "modern\\engine\\src\\world\\native_energy.rs:257:13",
+        "excerpt": "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:257:13\n    |\n257 |             NativeProcessCaches {\n    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`\n\nerror[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:263:13\n    |"
+      },
+      {
+        "code": "E0063",
+        "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+        "log_line": 81,
+        "source": "modern\\engine\\src\\world\\native_energy.rs:263:13",
+        "excerpt": "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:263:13\n    |\n263 |             NativeProcessCaches {\n    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`\n\nerror[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:269:13\n    |"
+      },
+      {
+        "code": "E0063",
+        "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+        "log_line": 87,
+        "source": "modern\\engine\\src\\world\\native_energy.rs:269:13",
+        "excerpt": "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:269:13\n    |\n269 |             NativeProcessCaches {\n    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`\n\nerror[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:275:13\n    |"
+      },
+      {
+        "code": "E0063",
+        "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+        "log_line": 93,
+        "source": "modern\\engine\\src\\world\\native_energy.rs:275:13",
+        "excerpt": "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:275:13\n    |\n275 |             NativeProcessCaches {\n    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`\n\nerror[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:284:13\n    |"
+      },
+      {
+        "code": "E0063",
+        "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+        "log_line": 99,
+        "source": "modern\\engine\\src\\world\\native_energy.rs:284:13",
+        "excerpt": "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:284:13\n    |\n284 |             NativeProcessCaches {\n    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`\n\nerror[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:293:13\n    |"
+      },
+      {
+        "code": "E0063",
+        "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+        "log_line": 105,
+        "source": "modern\\engine\\src\\world\\native_energy.rs:293:13",
+        "excerpt": "error[E0063]: missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`\n   --> modern\\engine\\src\\world\\native_energy.rs:293:13\n    |\n293 |             NativeProcessCaches {\n    |             ^^^^^^^^^^^^^^^^^^^ missing `repopulation_counter`\n\nSome errors have detailed explanations: E0063, E0433, E0616.\nFor more information about an error, try `rustc --explain E0063`.\nerror: could not compile `darwinbots-engine` (lib test) due to 13 previous errors"
+      }
+    ],
+    "diagnostic_error_count": 13,
+    "could_not_compile": [
+      "error: could not compile `darwinbots-engine` (lib test) due to 13 previous errors"
+    ],
+    "boundary": "Compiler diagnostics are not executed tests or assertion failures. The unchanged full log is hashed separately."
+  },
+  "failed_target_count": 0,
+  "failed_targets": [],
+  "failure_diagnostics": [],
+  "all_targets": [],
+  "zero_case_targets": [],
+  "doc_targets": [],
+  "log": {
+    "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/cpu-rust-workspace.log",
+    "sha256": "B63D2460C38C2969A0D3CD6A652E37E20583C53845777DA555DCB0055B0E09C0",
+    "bytes": 5338
+  },
+  "runner_results": {
+    "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/results.json",
+    "sha256": "5AB684E4633E6D0209039F1BAC0077B39106228D9F3FBFA3392D77C2F2F059A0",
+    "bytes": 48634
+  },
+  "runner_state_at_collection": {
+    "status": "needs_repair",
+    "step": "all",
+    "pid": 47176,
+    "utc": "2026-10-17T13:44:05.6550616Z",
+    "source_parent": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+    "comparison_base": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+    "source_manifest_sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "expected_managed_test_counts": {
+      "core": 314,
+      "desktop": 214
+    },
+    "details": {
+      "failed_steps": [
+        "strict-clippy",
+        "cpu-rust-workspace"
+      ],
+      "scope": "All available ordinary CPU outcomes collected; root seals counts, summary and admission separately."
+    }
+  },
+  "validation": {
+    "target_identity_includes_package_kind_name": true,
+    "missing_expected_targets": [
+      {
+        "package": "darwinbots-engine",
+        "kind": "lib",
+        "name": "darwinbots_engine",
+        "cargo_kinds": [
+          "cdylib",
+          "rlib"
+        ],
+        "source": "modern/engine/src/lib.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "doctest",
+        "name": "darwinbots_engine",
+        "cargo_kinds": [
+          "cdylib",
+          "rlib"
+        ],
+        "source": "modern/engine/src/lib.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "advanced_mutation_costs",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/advanced_mutation_costs.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "canonical_cycle_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/canonical_cycle_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "community_league_admission",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/community_league_admission.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "contracts",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/contracts.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "core_state_contracts",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/core_state_contracts.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "corpses_collisions",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/corpses_collisions.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db24832_clean_defaults",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db24832_clean_defaults.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db24832_genuine_feeding",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db24832_genuine_feeding.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db24832_genuine_load_transients",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db24832_genuine_load_transients.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db24832_starter_movement",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db24832_starter_movement.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db2_final_engine_world",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db2_final_engine_world.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db2_mutation_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db2_mutation_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db2_physics",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db2_physics.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db2_projectiles",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db2_projectiles.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db2_starter_ecology",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db2_starter_ecology.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db2_vegetation",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db2_vegetation.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "db2_vision",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/db2_vision.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "dna_runtime_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/dna_runtime_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "eco05_repopulation",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/eco05_repopulation.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "environment_world",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/environment_world.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "extinct_species",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/extinct_species.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "final_state_persistence_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/final_state_persistence_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "gpu_ffi",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/gpu_ffi.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "history_records",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/history_records.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "legacy_distribution",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/legacy_distribution.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "legacy_transport",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/legacy_transport.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "live_legacy_menu_settings",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/live_legacy_menu_settings.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "local_modes",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/local_modes.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "manual_tools",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/manual_tools.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "mutation_advanced_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/mutation_advanced_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "mutation_lifecycle",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/mutation_lifecycle.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "native_continuation_qualification",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/native_continuation_qualification.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "native_mutation_continuation_qualification",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/native_mutation_continuation_qualification.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "native_random_lifecycle_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/native_random_lifecycle_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "native_reference_senses_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/native_reference_senses_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "native_resource_precision",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/native_resource_precision.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "occurrence_census_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/occurrence_census_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "parity_completion",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/parity_completion.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "reproduction_heredity_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/reproduction_heredity_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "robot_state_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/robot_state_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "robot_tools",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/robot_tools.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "scheduler_housekeeping",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/scheduler_housekeeping.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "scheduler_shock",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/scheduler_shock.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "sensing_compatibility",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/sensing_compatibility.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "shot_state",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/shot_state.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "spawn_placement",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/spawn_placement.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "species_ecology",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/species_ecology.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "starter_ecology",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/starter_ecology.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "sysvar_lifecycle_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/sysvar_lifecycle_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "ties_multibot",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/ties_multibot.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "toroidal_world",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/toroidal_world.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "touch_taste_248",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/touch_taste_248.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "visual_phenotypes",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/visual_phenotypes.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "vm",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/vm.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "vm_costs_telemetry",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/vm_costs_telemetry.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "vm_implicit_conditions",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/vm_implicit_conditions.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "w4_evolution_gpu",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/w4_evolution_gpu.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "world_systems",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/world_systems.rs"
+      },
+      {
+        "package": "darwinbots-engine",
+        "kind": "test",
+        "name": "zerobot_progression",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/engine/tests/zerobot_progression.rs"
+      },
+      {
+        "package": "darwinbots-cli",
+        "kind": "lib",
+        "name": "darwinbots_cli",
+        "cargo_kinds": [
+          "lib"
+        ],
+        "source": "modern/cli/src/lib.rs"
+      },
+      {
+        "package": "darwinbots-cli",
+        "kind": "doctest",
+        "name": "darwinbots_cli",
+        "cargo_kinds": [
+          "lib"
+        ],
+        "source": "modern/cli/src/lib.rs"
+      },
+      {
+        "package": "darwinbots-cli",
+        "kind": "bin",
+        "name": "darwinbots-cli",
+        "cargo_kinds": [
+          "bin"
+        ],
+        "source": "modern/cli/src/main.rs"
+      },
+      {
+        "package": "darwinbots-cli",
+        "kind": "test",
+        "name": "bundled_bot_corpus",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/cli/tests/bundled_bot_corpus.rs"
+      },
+      {
+        "package": "darwinbots-cli",
+        "kind": "test",
+        "name": "commands",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/cli/tests/commands.rs"
+      },
+      {
+        "package": "darwinbots-cli",
+        "kind": "test",
+        "name": "db245_probes",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/cli/tests/db245_probes.rs"
+      },
+      {
+        "package": "darwinbots-cli",
+        "kind": "test",
+        "name": "native_comparison",
+        "cargo_kinds": [
+          "test"
+        ],
+        "source": "modern/cli/tests/native_comparison.rs"
+      }
+    ],
+    "incomplete_targets": [],
+    "all_running_counts_match": true
+  },
+  "proof_scope": "Fresh local62 emitted results only. Missing summaries are explicit; no historical/hosted counts or physical-GPU result is inherited."
+}

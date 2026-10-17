@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "observed_utc": "2026-10-17T13:23:18.576Z",
+  "kind": "original_reference_UI_observation_failure_not_product_qualification",
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "idle_before_seconds": 5248.25,
+  "target": {
+    "window_id": 464526,
+    "app": "process:C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\reproduction\\Darwin2.48.32.exe"
+  },
+  "attempts": [
+    {
+      "fresh_selection": true,
+      "screenshot": true,
+      "text": false,
+      "result": "window capture timed out: timed out waiting on channel"
+    },
+    {
+      "fresh_selection": true,
+      "activated_returned_window": true,
+      "screenshot": true,
+      "text": true,
+      "result": "window capture timed out: timed out waiting on channel"
+    }
+  ],
+  "recovery_exhausted": true,
+  "coordinate_or_AX_clicks": 0,
+  "keys_or_typing": 0,
+  "modal_response_changed": false,
+  "helper_executed": false,
+  "new_original_control_captures": 0,
+  "boundary": "Capture failure does not establish that the original install is broken. No stale indexes/coordinates or private/native fallback used; no further UI input attempted."
+}

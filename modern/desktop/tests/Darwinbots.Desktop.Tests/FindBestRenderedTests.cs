@@ -30,7 +30,8 @@ public sealed class FindBestRenderedTests
             {
                 window.Show();
                 await WaitFor(() => !factory.Clients.IsEmpty && Field<SimulationSession>(window, "_session") is { LatestSnapshot.Population: 1 }
-                    && Field<MainWindowViewModel>(window, "_viewModel")!.Status.StartsWith("WORLD READY", StringComparison.Ordinal));
+                    && Field<MainWindowViewModel>(window, "_viewModel")!.Status.StartsWith("WORLD READY", StringComparison.Ordinal),
+                    () => DescribeReadiness(window));
                 var engine = factory.Clients.First();
                 var session = Field<SimulationSession>(window, "_session")!;
                 var model = Field<MainWindowViewModel>(window, "_viewModel")!;
@@ -49,7 +50,8 @@ public sealed class FindBestRenderedTests
                 await Flush();
                 await CheckWeightDialogAndCancel(window, menus, 100m);
                 InvokeFindBest(window, menus, menu);
-                await WaitFor(() => model.Status.Contains("BEST FAMILY", StringComparison.Ordinal));
+                await WaitFor(() => model.Status.Contains("BEST FAMILY", StringComparison.Ordinal),
+                    () => DescribeReadiness(window));
                 Assert.Equal(LocalModeStatus.Configured, session.LatestSnapshot.LocalMode.Status);
                 Assert.Equal(new OrganismKey(3, 2), model.SelectedKey);
                 engine.LocalModeForRead = evolving;
@@ -72,7 +74,8 @@ public sealed class FindBestRenderedTests
                     return new(null, true) { EffectiveWeight = 29 };
                 };
                 InvokeFindBest(window, menus, menu);
-                await WaitFor(() => model.Status.Contains("ZEROBOT ADVANCED TO TESTING", StringComparison.Ordinal));
+                await WaitFor(() => model.Status.Contains("ZEROBOT ADVANCED TO TESTING", StringComparison.Ordinal),
+                    () => DescribeReadiness(window));
                 Assert.Equal(100, fallback);
                 Assert.Null(model.SelectedKey);
                 Assert.Equal("zerobot_testing", session.LatestSnapshot.LocalMode.Evolution!.Phase);
@@ -97,11 +100,26 @@ public sealed class FindBestRenderedTests
     private static async Task CheckWeightDialogAndCancel(MainWindow window, LegacyMenuBar menus, decimal expected)
     {
         menus.FindCommandItem(LegacyCommandId.EditGlobalSettings)!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-        await WaitFor(() => window.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
+        await WaitFor(() => window.OwnedWindows.OfType<GlobalSettingsWindow>().Any(),
+            () => DescribeReadiness(window));
         var settings = Assert.Single(window.OwnedWindows.OfType<GlobalSettingsWindow>());
         Assert.Equal(expected, settings.FindControl<NumericUpDown>("FindBestWeight")!.Value);
+        var model = Field<MainWindowViewModel>(window, "_viewModel")!;
+        Assert.NotEqual("CANCELED", model.Status);
         settings.FindControl<Button>("CancelButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        await WaitFor(() => !window.OwnedWindows.OfType<GlobalSettingsWindow>().Any());
+        // Closing the dialog precedes the outer async menu handler publishing cancellation.
+        // Require a fresh terminal status before the next command can publish its result.
+        await WaitFor(() => !window.OwnedWindows.OfType<GlobalSettingsWindow>().Any()
+            && model.Status == "CANCELED", () => DescribeReadiness(window));
+    }
+
+    private static string DescribeReadiness(MainWindow window)
+    {
+        var model = Field<MainWindowViewModel>(window, "_viewModel");
+        var session = Field<SimulationSession>(window, "_session");
+        return $"Status={model?.Status}; SelectedKey={model?.SelectedKey}; "
+            + $"Tick={session?.LatestSnapshot.Tick}; Population={session?.LatestSnapshot.Population}; "
+            + $"GlobalSettingsWindows={window.OwnedWindows.OfType<GlobalSettingsWindow>().Count()}";
     }
 
     private static T? Field<T>(object target, string name) where T : class =>
@@ -113,7 +131,7 @@ public sealed class FindBestRenderedTests
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
     }
 
-    private static async Task WaitFor(Func<bool> ready)
+    private static async Task WaitFor(Func<bool> ready, Func<string>? details = null)
     {
         for (var attempt = 0; attempt < 500; attempt++)
         {
@@ -121,6 +139,6 @@ public sealed class FindBestRenderedTests
             if (ready()) return;
             await Task.Delay(20);
         }
-        Assert.True(ready(), "Find Best route did not publish its expected UI state.");
+        Assert.True(ready(), $"Find Best route did not publish its expected UI state. {details?.Invoke()}");
     }
 }

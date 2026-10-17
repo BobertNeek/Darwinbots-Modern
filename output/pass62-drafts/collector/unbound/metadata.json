@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "unbound_review_draft_awaiting_actual_artifact_identities",
+  "prepared_utc": "2026-10-17T13:26:08.349Z",
+  "operator_may_execute": false,
+  "active_source_modified": false,
+  "model": {
+    "file": "output/pass61-drafts/collector/artifact-junction-amendment/collect-native-roundtrip-pass61.mjs",
+    "sha256": "D50EC31975DC5977272AA33D6D13C0F97D5A34B4D486475559B1F64D9961F443",
+    "bytes": 48226
+  },
+  "model_amendment": {
+    "file": "output/pass61-drafts/collector/artifact-junction-amendment/metadata.json",
+    "sha256": "D55BB71642E1E3705388776443C14EE8D6AEDC53A88EA42D881C303090F96CEB",
+    "bytes": 6225
+  },
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "bytes": 113644
+  },
+  "expected_source_pins": 661,
+  "expected_ordinary_outcomes": 94,
+  "expected_distinct_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 314,
+    "desktop": 214
+  },
+  "candidate": {
+    "file": "output/pass62-drafts/collector/unbound/collect-native-roundtrip-pass62.mjs",
+    "sha256": "AB4ED5779365A237D2D196BD3FDEF71567886E47EB2466B2696631F9AA66BA27",
+    "bytes": 49856
+  },
+  "pending_bindings": [
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/cli-build-identity.json",
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/native-dll-identity-before.json",
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/native-dll-identity.json"
+  ],
+  "behavior": [
+    "Hard-fails before any collector operation while unbound; historical61 artifact hashes removed.",
+    "Preserves exact two build-artifact/junction exception model; final candidate must use actual62 literal identities and actual raw receipt hashes only.",
+    "Requires exact terminal94 ordinary outcomes, actual runner exit and absence,661 raw pins, unchanged proof evidence, protected PNG and exact frozen HEAD before sealing.",
+    "Rust counts derive only from completed emitted summaries. Compiler diagnostics have a separate classification; pre-test compilation failure records0executed tests/targets and68missing rather than fabricated results.",
+    "Strict Clippy full log is hashed; coded diagnostics are included separately from assertion failures.",
+    "No canonical summary.json or CPU-ready/hardware admission created, including on failure."
+  ],
+  "changes_from_reviewed_model": [
+    "Batch/source/path/pin/expected managed count substitutions only.",
+    "Explicit pre-test compiler failure and compiler-diagnostic receipt fields.",
+    "Temporary fail-closed unbound guard and empty artifact allowlist pending actual build identities."
+  ],
+  "execution": {
+    "collector_executed": false,
+    "javascript_parser_executed": false,
+    "formatter_executed": false,
+    "build_or_tests_executed": false,
+    "product_or_ui_or_gpu_executed": false,
+    "git_invoked": false,
+    "current_evidence_sealed": false
+  },
+  "scope": "Preparation only. Root is sole future collector operator. Not a qualified collector release until actual62 artifact identities are supplied and the unbound guard is replaced."
+}

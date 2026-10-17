@@ -1,0 +1,1047 @@
+{
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "run_id": 39035994121,
+  "files": [
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/accessibility-preferences.png",
+      "sha256": "B1E93AE98037F5213C68EA9627B123FC5B028A288627318477E21A07EDD2DCE2",
+      "bytes": 91086,
+      "png": {
+        "width": 1140,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/advanced-initial.png",
+      "sha256": "4A36C1B10776E68203D149028570F23A5D6B37E5FD7C6814851AC771E6AE28B1",
+      "bytes": 80426,
+      "png": {
+        "width": 860,
+        "height": 760
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/db24832-world06-shape-editor.png",
+      "sha256": "583924F2569A119D31BC806B4813495B5DCDED59B5C1F9B49B47D87275FBC881",
+      "bytes": 37339,
+      "png": {
+        "width": 430,
+        "height": 650
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/dna-exercised.png",
+      "sha256": "7A8CCC6DE37F012152D5DBF1A56794664A1129C8820C5ECFBD39964FBAC10BA7",
+      "bytes": 13943,
+      "png": {
+        "width": 760,
+        "height": 620
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/dna-initial.png",
+      "sha256": "2784F40EA11C6A661439068A911B05259AA7B766603158CD1141CECE1DDA7544",
+      "bytes": 11203,
+      "png": {
+        "width": 760,
+        "height": 620
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/feeding-settings-controls.png",
+      "sha256": "0798CCAFA8CD2427DF74573435FC834A8A1010C353EC789FBF00094BB36EB955",
+      "bytes": 67991,
+      "png": {
+        "width": 860,
+        "height": 760
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/final-tools-visual.png",
+      "sha256": "6087274381261C19FB838016132B63DB44AA0D5C92B357C953A626A217714A61",
+      "bytes": 17906,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/global-settings-find-best-weight.png",
+      "sha256": "CB88B8611A9B7D6B52FFFD6FE72B78E061F490828D5B6214B390A9C0D6FFF21D",
+      "bytes": 67530,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/global-settings-four-tabs.png",
+      "sha256": "BDDFF8B47F4C2FD544EC63472B2E0D0C8997A6AEE23A8CBEE9FCBBAA4FF4A9B3",
+      "bytes": 67556,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/global-settings-recognition-fudging.png",
+      "sha256": "CBC8CE6CEB4DED5439FA2DFD3A4FB75B9B8C7AD706A7BA6C83948E3356757CE3",
+      "bytes": 53611,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/graph-inline-history.png",
+      "sha256": "C7938DA5DA16DE146BFC6B3336A1301F4E1C0FADFBBD0FB1E36B56D670300F35",
+      "bytes": 166696,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/io05-autosave-safemode-recovery.png",
+      "sha256": "E396D5DD3E72D712388D22600C58EA560C4410B08B55F91F98D0087DE027A6F2",
+      "bytes": 119412,
+      "png": {
+        "width": 1200,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/menu-05-robot-find-best.png",
+      "sha256": "06D0ECC98448A1C79505D7646397335B1B1DFD1CD7A8F57A71749296044D6C5A",
+      "bytes": 110364,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-species-graph.png",
+      "sha256": "375187FFED9F17672F3243CD84AA728A98EF12ED8A1CA1A4AA8363C278A98964",
+      "bytes": 12568,
+      "png": {
+        "width": 620,
+        "height": 380
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/robot-details.png",
+      "sha256": "E8D03883D8C85ABCDCDAB6E7C0F4E1F493874EAE3E8D29498B5D90DF6C2137D3",
+      "bytes": 108590,
+      "png": {
+        "width": 1080,
+        "height": 680
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/run-01-classic-reset.png",
+      "sha256": "A41CF1409D28E42A676F5A9A2211609B832F98141D45FAC87086787F49A206D5",
+      "bytes": 112275,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-before-kill.png",
+      "sha256": "6D318FDFFD39CFF3BA1C324CD6601C584E7B0DABFAC07A7E3D4A0CE002227BD8",
+      "bytes": 119051,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-exercised.png",
+      "sha256": "8DA8CB1969A615AB3F68ED6C1FE4C01421B8856D4595C3B0E324169675B75DB0",
+      "bytes": 152939,
+      "png": {
+        "width": 1500,
+        "height": 1200
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-header-wide-1280.png",
+      "sha256": "CD2F110DDCAF6643BFADAA3E3586EAAB6C58639FB059C034E28608103D770ABA",
+      "bytes": 112231,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-header-wide-1500.png",
+      "sha256": "3E2AEF984F764982FF03B56D50359C0ACBDDBF4D1816336E7DA28B78B2DBAB3A",
+      "bytes": 116480,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/runtime-initial.png",
+      "sha256": "2AAD9B73CAFD3E1EB81B8CECD5B5E7C574E06BFC3922F0C0DD033AB6B4B42FCB",
+      "bytes": 114866,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/set-01-setup-working-copy.png",
+      "sha256": "B5143AE3B1AB471D4456B6B760699C3682C556672706264FDF46E58949C2793D",
+      "bytes": 97690,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/set07-restart-league.png",
+      "sha256": "49B4ACA788D02596442F5606DA0FBEEAE1B64A24D84714C9C1820282608C6E55",
+      "bytes": 132222,
+      "png": {
+        "width": 1500,
+        "height": 1000
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/setup-exercised.png",
+      "sha256": "1C665DF9030D27495821741CC3442EB422FEEC06DF834E1E1ED5231BAA1F87F0",
+      "bytes": 103107,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/setup-initial.png",
+      "sha256": "D0572D6C6E1A7A5023D2923C600475D3C7280A52A7C6EFB6B77D4A30A84491A4",
+      "bytes": 96919,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/shell-dashboard-1500x900.png",
+      "sha256": "03E982806F8F38364C4E4835AA5AFB1F515D6445E2B7B27C393EDF1134245286",
+      "bytes": 110443,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/teleporter-editor-exercised.png",
+      "sha256": "ACE5F1F8CAE43C3536F546F5FCD26922AB50568C29252E6B59482AF6557AB98F",
+      "bytes": 57138,
+      "png": {
+        "width": 560,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/toolbar-1280x900.png",
+      "sha256": "C2A40C2D82E165C25924DFB1F717AAB65BA1A7FCAAE7E0120824AE481555A587",
+      "bytes": 112197,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-death-particle-colours.png",
+      "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+      "bytes": 3876,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-insertion-exercised.png",
+      "sha256": "40F5848FF9871BA2F7EE05B0828AC7D61B944110C494EFC621E193637BAFF0E1",
+      "bytes": 99957,
+      "png": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-flashes.png",
+      "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+      "bytes": 3950,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-normal.png",
+      "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+      "bytes": 3216,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-flash-palette.png",
+      "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+      "bytes": 5900,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+      "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+      "bytes": 3193,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+      "sha256": "0F8F1789F52724C8F7C670A7AC282E08AD2082D2FC8CCF4D10FFFE8D00BA9A7B",
+      "bytes": 334194
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/accessibility-preferences.png",
+      "sha256": "A49AB06E28AF6FE38FD8A653836EF1DCA7BAA8FA6316D8E36AD61CC4E4F1F116",
+      "bytes": 104181,
+      "png": {
+        "width": 1140,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/advanced-initial.png",
+      "sha256": "480D6AAE70CF52B51F1E262E3AC0DB99C761380338AB35418B460C2ED3BF4B75",
+      "bytes": 104047,
+      "png": {
+        "width": 860,
+        "height": 760
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/db24832-world06-shape-editor.png",
+      "sha256": "329FEB69C57583B0E0CD8586D757B2BD7E1E8FF46A091A344135129E6E461EB3",
+      "bytes": 44377,
+      "png": {
+        "width": 430,
+        "height": 650
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/dna-exercised.png",
+      "sha256": "97A8BFDD54F207AFD66AEACA0B20E6D99F664856494B8947794C94565FA2CA1C",
+      "bytes": 16766,
+      "png": {
+        "width": 760,
+        "height": 620
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/dna-initial.png",
+      "sha256": "BDE83FB707A5BB68DF529EA840B9E69D39A99810A6EA266DFFBEF5992FA34E3E",
+      "bytes": 12638,
+      "png": {
+        "width": 760,
+        "height": 620
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/feeding-settings-controls.png",
+      "sha256": "B129FFF6DAF7C92F46536CD5A904BEA9701F349B417698455A14D40A54A3CF13",
+      "bytes": 89622,
+      "png": {
+        "width": 860,
+        "height": 760
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/final-tools-visual.png",
+      "sha256": "B2C3DBD09CF0B1F2289D9E363075247196D23D84857C597AE48DE4D24ED2451B",
+      "bytes": 18188,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/global-settings-find-best-weight.png",
+      "sha256": "BB3A47A6C7A9F0ABA33C2FEAA2B4F0ABBA03A51E208AB6C03637AA01EDD42788",
+      "bytes": 83772,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/global-settings-four-tabs.png",
+      "sha256": "4FEA497585347C978B68DD8D97B9E43B52C8192A37FF93C4B1DE29B6062E721E",
+      "bytes": 83747,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/global-settings-recognition-fudging.png",
+      "sha256": "061FB58BBC4151D4C4BD07F4F96ECB7A663197CD2829543A917E447F6A3F4DD3",
+      "bytes": 65342,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/graph-inline-history.png",
+      "sha256": "88A7F696DF8EEE1E66213EF9BD8F0A3847597CA4C83DAAA2F64A501CC7AF1C81",
+      "bytes": 195368,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/io05-autosave-safemode-recovery.png",
+      "sha256": "F96FA7B0F4BE555B2F5B17A848C6C875C700B01058FC81359C3A68A6FDA4213D",
+      "bytes": 147004,
+      "png": {
+        "width": 1200,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/menu-05-robot-find-best.png",
+      "sha256": "AD917AD31EB9258BBB58899F9989266A1E799E6D8E056230C80B9ABD8CD4D2B9",
+      "bytes": 135442,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-species-graph.png",
+      "sha256": "90E422230A39E8CC035A6AB7707084BE63D76DAFDE050B3A071F1E5F3F78A830",
+      "bytes": 7989,
+      "png": {
+        "width": 620,
+        "height": 380
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/robot-details.png",
+      "sha256": "E45A018B70F520EB3CD59CDC1B9EE3678D001F0D5F4241C2BA09BA790A09D146",
+      "bytes": 135909,
+      "png": {
+        "width": 1080,
+        "height": 680
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/run-01-classic-reset.png",
+      "sha256": "DED68170A7DC4916FEEF4C71DAB767BDE45F29B90DE722628329C520EDD21A01",
+      "bytes": 136854,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-before-kill.png",
+      "sha256": "EC74AF655A66B8743D2D07BA6CED34A0A96D5BD6D316E696D4FE4F3EE4D5269E",
+      "bytes": 152342,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-exercised.png",
+      "sha256": "2B58A2C9F3018B8902A262E5369ADA8131D963E91033BD6BEF107CFF7769B44F",
+      "bytes": 195531,
+      "png": {
+        "width": 1500,
+        "height": 1200
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-header-wide-1280.png",
+      "sha256": "7B749B8FF8CB26F9226737417338E03B2D29F8C2EDE40FD87DAB549739AE92DB",
+      "bytes": 138588,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-header-wide-1500.png",
+      "sha256": "DCBF5A05BFC0DD0DB656941A6834FF60647196F66F51A099FD7B6924F88E2631",
+      "bytes": 144476,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/runtime-initial.png",
+      "sha256": "8A62F74359A83F25DBDA1D225ECFDD93817208D445FDD4A62288A8D39A63BD66",
+      "bytes": 142055,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/set-01-setup-working-copy.png",
+      "sha256": "745D7185F4AE241579113A0994B7E58BFE5546C288E92A5B70AD2BC64FF013EA",
+      "bytes": 122166,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/set07-restart-league.png",
+      "sha256": "F562838C900E8E65E9E7F0AD06AC105E6CE57A0709BE57E280605332E30ECFFE",
+      "bytes": 167853,
+      "png": {
+        "width": 1500,
+        "height": 1000
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/setup-exercised.png",
+      "sha256": "3CA46706627D91DCB1B2C801FCF85E28A85285AB604538D883B5039675E81225",
+      "bytes": 132160,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/setup-initial.png",
+      "sha256": "04DC802E1043172D807A1CABFDE786A51A99181AA75DC0A5BAB995C63A6E0B7B",
+      "bytes": 120614,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/shell-dashboard-1500x900.png",
+      "sha256": "53008DCF9C50121ABFDD889071BC9E8A6E8D85DA29A9A3382AC4E843AB2FBD08",
+      "bytes": 138119,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/teleporter-editor-exercised.png",
+      "sha256": "EFF8967727C3BD5C07EA396A4622528D5C4E9757CB7E0EF991B1CBBDE15EBE32",
+      "bytes": 73211,
+      "png": {
+        "width": 560,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/toolbar-1280x900.png",
+      "sha256": "A1A2D9681885A6A2CFB0FBDB294A26579540112D0C77D46564DBC30127F839E5",
+      "bytes": 138208,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-death-particle-colours.png",
+      "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+      "bytes": 3876,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-insertion-exercised.png",
+      "sha256": "B332E2C93B427A27D89A032C10F57CF3A70BB2043FC6F164DEE0B276CD5A3258",
+      "bytes": 120543,
+      "png": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-existence-storage-flashes.png",
+      "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+      "bytes": 3950,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-existence-storage-normal.png",
+      "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+      "bytes": 3216,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-flash-palette.png",
+      "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+      "bytes": 5900,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-impacts-off-retains-shots.png",
+      "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+      "bytes": 3193,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+      "sha256": "97A71AE17729B8D773EE26771CDCDCAD765F9BB596719BA69E595480C6D83E61",
+      "bytes": 348749
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/accessibility-preferences.png",
+      "sha256": "97DC9D29B1CFE5DD1CC9DB01AFE9CB400BF97D008CDD0082C5A457E474EF2B89",
+      "bytes": 103861,
+      "png": {
+        "width": 1140,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/advanced-initial.png",
+      "sha256": "19D32976059EC4DC26D34F2143C70058BBD4E56BADD3986BBF0FB615518034B1",
+      "bytes": 104038,
+      "png": {
+        "width": 860,
+        "height": 760
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/db24832-world06-shape-editor.png",
+      "sha256": "B690E822B750068D63FC5D34FA9216C9A70C3212C5001EB658E563606A5F2A6A",
+      "bytes": 44359,
+      "png": {
+        "width": 430,
+        "height": 650
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/dna-exercised.png",
+      "sha256": "B9E1A82864F3594BB04220248ABDA31F2FDA64BF7B4E7862650EAC13973B14C5",
+      "bytes": 16688,
+      "png": {
+        "width": 760,
+        "height": 620
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/dna-initial.png",
+      "sha256": "2C2832CA80924999EBC4B545E1E3738C29A3C758FBAE1836C30E782CFCCD3031",
+      "bytes": 12645,
+      "png": {
+        "width": 760,
+        "height": 620
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/feeding-settings-controls.png",
+      "sha256": "1927C28229A831D70D4E77B5D2AC0DDF1E4863D05FD9D3C299A10C2B53D133A4",
+      "bytes": 89612,
+      "png": {
+        "width": 860,
+        "height": 760
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/final-tools-visual.png",
+      "sha256": "B2C3DBD09CF0B1F2289D9E363075247196D23D84857C597AE48DE4D24ED2451B",
+      "bytes": 18188,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/global-settings-find-best-weight.png",
+      "sha256": "AB0ADDA7A58F6EE8A7677E088280C9A0C5E168E685055E79AAD67FB839FAE05B",
+      "bytes": 83766,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/global-settings-four-tabs.png",
+      "sha256": "B991BCEECFED1F90D63E58EF52FC8AE0A58962849B57460B0279071BD86BBE0B",
+      "bytes": 83737,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/global-settings-recognition-fudging.png",
+      "sha256": "10380EF39C6613F5CCF0B7EB197C498DE595658700C81D0A63040BE17BE3C618",
+      "bytes": 65298,
+      "png": {
+        "width": 1050,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/graph-inline-history.png",
+      "sha256": "1B4E94D4BAD664A23F1957E8FFC4CFE3EFCDA596057281A42DD25F7D15DC0C57",
+      "bytes": 196644,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/io05-autosave-safemode-recovery.png",
+      "sha256": "0C1550CD729D5397CE243796F9CDAF0DF3C93F69E770450850C6446AC6493F58",
+      "bytes": 146836,
+      "png": {
+        "width": 1200,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/menu-05-robot-find-best.png",
+      "sha256": "037E868AEF4D1745CC252BCA16C3ACAFD5DA463F8486515F8E73EB06FF190F25",
+      "bytes": 135344,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-species-graph.png",
+      "sha256": "C94F0A61316279E48831070D2ACC7DFDEAE3DF6385BFE37067E144F97FB5C18C",
+      "bytes": 7989,
+      "png": {
+        "width": 620,
+        "height": 380
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939,
+      "png": {
+        "width": 480,
+        "height": 360
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/robot-details.png",
+      "sha256": "D4DE7C30A13D41EC5D7D8FA8AD8DE2CCCE5A4C5F3F306FC799B26734BE094E01",
+      "bytes": 135916,
+      "png": {
+        "width": 1080,
+        "height": 680
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/run-01-classic-reset.png",
+      "sha256": "D49ED35B7B8CB7CD51E09E75D42A64EFD86BAA9AB6D19CA23A1212300EA186FA",
+      "bytes": 138642,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-before-kill.png",
+      "sha256": "807C7F49CEC14D0BF25B2BC89F68ADD756B5C91C879677321007D00149ABD607",
+      "bytes": 152433,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-exercised.png",
+      "sha256": "9734D074DECA3B0A0EC573E513C76B40AB77538FE6E7A6A4CA9C86F37892D79B",
+      "bytes": 195586,
+      "png": {
+        "width": 1500,
+        "height": 1200
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-header-wide-1280.png",
+      "sha256": "DED6110F170C7C754C22CA55FD48BD9C730F50D58CA41D4820CAB5F20533613D",
+      "bytes": 138243,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-header-wide-1500.png",
+      "sha256": "09F660BE34ACDE0B75559C74EEAB44CF80D0CC77B80A92C433DD53E851EBB662",
+      "bytes": 144215,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/runtime-initial.png",
+      "sha256": "CC1B6ADEEC4AA5380C7D3A52E7A3D418573846BE637BFBC5F9125351940412FC",
+      "bytes": 142029,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/set-01-setup-working-copy.png",
+      "sha256": "93B299F4BFFF7D3047494C83FA7B6779E25EFEFBA2BD29C4CDF11E63EFA971E2",
+      "bytes": 122112,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/set07-restart-league.png",
+      "sha256": "412935FAF3EB87EED6B30B5E87326ACCDEA6D882309546644E6B9EFB0D8B27D8",
+      "bytes": 167963,
+      "png": {
+        "width": 1500,
+        "height": 1000
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/setup-exercised.png",
+      "sha256": "2B03023C6163B0BF8A355AAAC576B59242A236E3F7F243EACFC8BDE64FA8FE32",
+      "bytes": 131921,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/setup-initial.png",
+      "sha256": "65DD42B4ABA1DE90A4E863AD9415C3C522E9D1419ED8F6368509618EEEC419D9",
+      "bytes": 120564,
+      "png": {
+        "width": 1280,
+        "height": 820
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/shell-dashboard-1500x900.png",
+      "sha256": "7C6B6B35179EA4F1C8AF240B06DDB803584428E2E76D93D832DA5ECFACBE4FA7",
+      "bytes": 138132,
+      "png": {
+        "width": 1500,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/teleporter-editor-exercised.png",
+      "sha256": "BB0B705B17AA50D9262EBDCF332573A13E220D21E83A78430EEB118DC6D930A8",
+      "bytes": 73199,
+      "png": {
+        "width": 560,
+        "height": 780
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/toolbar-1280x900.png",
+      "sha256": "90C35B71F7D3D06EF89E254AF6E223E630D713663184678BDD705DE2FA1E3E91",
+      "bytes": 138052,
+      "png": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-death-particle-colours.png",
+      "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+      "bytes": 3876,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-insertion-exercised.png",
+      "sha256": "27D33DDB79D4A76084788A3CE8616196C21C3A05FC983A7A552685BF542B94E6",
+      "bytes": 120114,
+      "png": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-existence-storage-flashes.png",
+      "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+      "bytes": 3950,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-existence-storage-normal.png",
+      "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+      "bytes": 3216,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-flash-palette.png",
+      "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+      "bytes": 5900,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+      "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+      "bytes": 3193,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252,
+      "png": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+      "sha256": "8557DCD48902CCE02D6BB46D4B801381CAC2136258564D124BB99A08333B4192",
+      "bytes": 349665
+    }
+  ]
+}

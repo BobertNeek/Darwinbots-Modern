@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "observed_utc": "2026-10-17T13:26:11.838Z",
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "screenshot_method": "Bundled screenshot skill fallback after two Sky capture timeouts; returned original window handle464526 only",
+  "screenshot": {
+    "path": "C:\\Users\\PC\\AppData\\Local\\Temp\\codex-shot-2026-10-17_07-25-21.png",
+    "sha256": "3C6164B86D0B34B4F69342CF27098B76E85488CF3EA1BFC74AAAC10B5CF819A0"
+  },
+  "visual_observation": "Original classic VB6 controls are visible beneath overlapping Global/settings dialogs and the existing robot-removal Continue warning. The bounded owner-window screenshot clips portions of the owned dialogs. This does not show a broken install or completed mode workflow.",
+  "modal_actions": 0,
+  "helper_executed": false,
+  "settings_or_new_simulation_started": false,
+  "further_Sky_input_after_recovery_failure": false,
+  "qualification": false
+}

@@ -418,6 +418,16 @@ impl Engine {
 mod native_loop_tests {
     use super::*;
 
+    fn persisted_free_slots(world: &Engine) -> Vec<u32> {
+        // Observe the saved pool field without exposing allocator internals.
+        let pool = serde_json::to_value(&world.projectiles).unwrap();
+        let free_slots = pool
+            .get("free_slots")
+            .expect("saved projectile pool must contain free_slots");
+        serde_json::from_value(free_slots.clone())
+            .expect("saved projectile free_slots must be an array of u32 slots")
+    }
+
     fn feeding_world(capacity: usize) -> (Engine, OrganismId, OrganismId) {
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
         let owner = world
@@ -488,7 +498,7 @@ mod native_loop_tests {
             let positions = world.projectiles.positions.clone();
             let previous_positions = world.projectiles.previous_positions.clone();
             let ages = world.projectiles.ages.clone();
-            let free_slots = world.projectiles.free_slots.clone();
+            let free_slots = persisted_free_slots(&world);
             let saved = crate::SaveFile::encode(&world).unwrap();
             let mut restored = crate::SaveFile::decode(&saved).unwrap();
             assert_eq!(crate::SaveFile::encode(&restored).unwrap(), saved);
@@ -513,7 +523,7 @@ mod native_loop_tests {
                 if was_alive {
                     expected_free.push(shot as u32);
                 }
-                assert_eq!(state.projectiles.free_slots, expected_free);
+                assert_eq!(persisted_free_slots(state), expected_free);
                 assert!(state.snapshot().shots.is_empty());
             }
             assert_eq!(
@@ -521,9 +531,9 @@ mod native_loop_tests {
                 crate::SaveFile::encode(&restored).unwrap()
             );
             for state in [&mut world, &mut restored] {
-                let free_slots = state.projectiles.free_slots.clone();
+                let free_slots = persisted_free_slots(state);
                 phase(state);
-                assert_eq!(state.projectiles.free_slots, free_slots);
+                assert_eq!(persisted_free_slots(state), free_slots);
                 assert_eq!(state.stats.native_shots_visited, Some(0));
                 assert_eq!(state.native_random, random);
                 assert!(state.snapshot().shots.is_empty());
