@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "status": "ORIGINAL_CAPTURED_PORT_COMPARISON_PENDING",
+  "captured_utc": "2026-10-17T08:50:12.348Z",
+  "case": "ties",
+  "cycle": 100,
+  "seed": 48032,
+  "input": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\ties\\input.sim",
+  "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+  "source_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "capture": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\ties\\captures\\ties-original-cycle100-pass60.sim",
+  "candidate": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass60-drafts\\original-controls\\db24832-genuine-ties-cycle100-20261017.sim",
+  "sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+  "bytes": 26443,
+  "raw_saved_counter": 100,
+  "decoded_records": [
+    {
+      "fixed": 0,
+      "position": [
+        7925.72119140625,
+        6000
+      ],
+      "velocity": [
+        0,
+        0
+      ],
+      "actual_velocity": [
+        0,
+        0
+      ],
+      "age": 100,
+      "body": 1000,
+      "energy": 20000,
+      "dna_length": 9
+    },
+    {
+      "fixed": 0,
+      "position": [
+        8154.27880859375,
+        6000
+      ],
+      "velocity": [
+        0.0000019999999949504854,
+        0
+      ],
+      "actual_velocity": [
+        0,
+        0
+      ],
+      "age": 100,
+      "body": 1000,
+      "energy": 20000,
+      "dna_length": 9
+    }
+  ],
+  "protocol": [
+    "Same fresh original ties process and unchanged C0 input as verified C10.",
+    "Activate after C10 save; four successful batches20 plus10; no intervening load or reseed.",
+    "PlayerBot visually unchecked, no Details/selection/FindBest/console/NewSim/menuF2.",
+    "F3 unique save; raw saved counter100 and seed48032 verified before admission.",
+    "DocumentedSky input, GDI screenshot fallback; shared helper/runtime unchanged."
+  ],
+  "port_engine_executed": false,
+  "canonical_port_comparison_passed": false,
+  "active_source_mutated": false
+}

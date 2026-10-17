@@ -10,11 +10,21 @@ const ORIGINAL_C10: &[u8] =
     include_bytes!("fixtures/db24832-genuine-movement-cycle10-20261016.sim");
 const ORIGINAL_C102: &[u8] =
     include_bytes!("fixtures/db24832-genuine-movement-cycle102-20261016.sim");
+const ORIGINAL_C100: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-movement-cycle100-20261017.sim");
 const FIXED_START: &[u8] = include_bytes!("fixtures/db24832-fixed-start-48032.sim");
 const ORIGINAL_FIXED_C1: &[u8] =
     include_bytes!("fixtures/db24832-genuine-fixed-cycle1-20261016.sim");
+const ORIGINAL_FIXED_C10: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-fixed-cycle10-20261017.sim");
+const ORIGINAL_FIXED_C100: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-fixed-cycle100-20261017.sim");
 const BODY_START: &[u8] = include_bytes!("fixtures/db24832-body-start-48032.sim");
 const ORIGINAL_BODY_C1: &[u8] = include_bytes!("fixtures/db24832-genuine-body-cycle1-20261016.sim");
+const ORIGINAL_BODY_C10: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-body-cycle10-20261017.sim");
+const ORIGINAL_BODY_C100: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-body-cycle100-20261017.sim");
 const CHLOROPLAST_START: &[u8] = include_bytes!("fixtures/db24832-chloroplast-start-48032.sim");
 const ORIGINAL_CHLOROPLAST_C1: &[u8] =
     include_bytes!("fixtures/db24832-genuine-chloroplast-cycle1-20261016.sim");
@@ -138,8 +148,12 @@ fn genuine_original_first_load_tick_matches_with_or_without_a_modern_checkpoint(
 
 #[test]
 fn genuine_original_later_ticks_match_across_the_first_aim_cache_checkpoint() {
-    // These are actual saved counters: C100 was not captured.
-    for (cycle, reference) in [(10, ORIGINAL_C10), (102, ORIGINAL_C102)] {
+    // Keep the original C102 control and the newly captured exact C100 separately.
+    for (cycle, reference) in [
+        (10, ORIGINAL_C10),
+        (100, ORIGINAL_C100),
+        (102, ORIGINAL_C102),
+    ] {
         let mut continuous = Engine::from_native_sim(START).unwrap();
         continuous.tick_many(cycle as u32).unwrap();
         assert_genuine_movement_observation(&continuous, reference, cycle);
@@ -368,5 +382,61 @@ fn native_load_rebuilds_disabled_dna_length_and_genes_before_the_first_tick() {
         // require executing DNA or discard any of the other saved VM cells.
         engine.tick().unwrap();
         assert_genuine_movement_observation(&engine, ORIGINAL_CHLOROPLAST_C1, 1);
+    }
+}
+
+#[test]
+fn genuine_fixed_and_body_later_cycles_match_continuous_and_checkpointed_worlds() {
+    for (input, first, later, fixed) in [
+        (
+            FIXED_START,
+            ORIGINAL_FIXED_C1,
+            [(10, ORIGINAL_FIXED_C10), (100, ORIGINAL_FIXED_C100)],
+            true,
+        ),
+        (
+            BODY_START,
+            ORIGINAL_BODY_C1,
+            [(10, ORIGINAL_BODY_C10), (100, ORIGINAL_BODY_C100)],
+            false,
+        ),
+    ] {
+        let mut continuous = Engine::from_native_sim(input).unwrap();
+        continuous.tick().unwrap();
+        assert_genuine_movement_observation(&continuous, first, 1);
+        let mut resumed = SaveFile::decode(&SaveFile::encode(&continuous).unwrap()).unwrap();
+        let mut previous = 1;
+        for (cycle, reference) in later {
+            for observed in [&mut continuous, &mut resumed] {
+                observed.tick_many((cycle - previous) as u32).unwrap();
+                assert_genuine_movement_observation(observed, reference, cycle);
+                let actual =
+                    NativeRecordFile::decode(&observed.export_native_sim().unwrap()).unwrap();
+                let expected = NativeRecordFile::decode(reference).unwrap();
+                assert_eq!(
+                    actual.robots[0].word("fixed").unwrap(),
+                    expected.robots[0].word("fixed").unwrap()
+                );
+                assert_eq!(
+                    observed
+                        .organism(observed.snapshot().organisms[0].id)
+                        .unwrap()
+                        .age,
+                    cycle as u64
+                );
+                if fixed {
+                    assert_eq!(actual.robots[0].word("fixed").unwrap(), -1);
+                    assert_eq!(observed.snapshot().organisms[0].position, [8000.0, 6000.0]);
+                }
+                observed.validate_invariants().unwrap();
+            }
+            resumed = SaveFile::decode(&SaveFile::encode(&resumed).unwrap()).unwrap();
+            assert_genuine_movement_observation(&resumed, reference, cycle);
+            assert_eq!(
+                SaveFile::encode(&continuous).unwrap(),
+                SaveFile::encode(&resumed).unwrap()
+            );
+            previous = cycle;
+        }
     }
 }

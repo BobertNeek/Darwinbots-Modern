@@ -41,12 +41,18 @@ public sealed record StagedEvolutionConfiguration(EvolutionMode Mode, string Sou
     public MutationProfileUpdate? SourceMutationProfile { get; init; }
 }
 
+public sealed record RobotSelectionResult(OrganismKey? Robot, bool Restarted)
+{
+    public ushort? EffectiveWeight { get; init; }
+}
+
 public sealed record StagedEvolutionSnapshot(uint Stage, string Phase, bool Hidden,
     float ReductionUnit, uint HideCycles, uint TestWins, uint OpponentStage, double Handicap)
 {
     public IReadOnlyList<uint> BaselineSpecies { get; init; } = [];
     public IReadOnlyList<uint> MutatorSpecies { get; init; } = [];
     public int TestResultCursor { get; init; }
+    public ushort? FitnessWeight { get; init; }
 }
 
 public sealed record LeagueMatchSnapshot(uint Number, IReadOnlyList<uint> Entrants, uint Winner,

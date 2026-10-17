@@ -53,6 +53,7 @@ public interface IEngineClient : IDisposable
     void ExecuteRobots() => throw new NotSupportedException("DNA-only execution is unavailable.");
     OrganismKey? FindBestRobot(bool energyWeighting) => null;
     OrganismKey? FindBestRobot(int weightPercent) => FindBestRobot(weightPercent > 0);
+    RobotSelectionResult SelectBestRobot(int fallbackWeight) => new(FindBestRobot(fallbackWeight), false);
     void UpdateMainRules(GlobalMainSettings settings) { }
     void UpdateAdvancedMutationSettings(GlobalAdvancedMutationSettings settings, GlobalMainSettings main) { }
     void UpdateCostSettings(GlobalSimulationCostSettings settings) { }

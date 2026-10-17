@@ -595,6 +595,63 @@ public sealed class CommunityLeagueNativeTests
     }
 
     [Fact]
+    public void ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract()
+    {
+        var clock = new AdvancingTestClock();
+        using var engine = new NativeEngineClient(new WorldSetupOptions
+        {
+            Backend = "Cpu", Seed = 42, PopulationCapacity = 2,
+        }, clock);
+        engine.ImportSpecies(new("Animal.txt", "start stop", false, 0xff123456, 1, 1000, 0, false, 0));
+        var ordinary = engine.Save();
+        var queried = engine.FindBestRobot(137);
+        var selected = engine.SelectBestRobot(137);
+        Assert.Equal(queried, selected.Robot);
+        Assert.False(selected.Restarted);
+        Assert.Equal((ushort)137, selected.EffectiveWeight);
+        Assert.Equal(0, clock.Samples);
+        Assert.Equal(ordinary, engine.Save());
+        engine.ConfigureLocalMode(LocalModeConfig.Default with
+        {
+            Kind = LocalModeKind.Zerobot,
+            StagedEvolution = new(EvolutionMode.Zerobot, "", 10, 150, false, 32, false) { FitnessWeight = 100 },
+        });
+        Assert.Equal(LocalModeStatus.Configured, engine.Snapshot().LocalMode.Status);
+        var configured = engine.Save();
+        selected = engine.SelectBestRobot(137);
+        Assert.Equal(queried, selected.Robot);
+        Assert.False(selected.Restarted);
+        Assert.Equal((ushort)137, selected.EffectiveWeight);
+        Assert.Equal(0, clock.Samples);
+        Assert.Equal(configured, engine.Save());
+        engine.StartLocalMode();
+        var before = engine.Save();
+        var snapshot = engine.Snapshot();
+        Assert.Equal((ushort)29, snapshot.LocalMode.Evolution!.FitnessWeight);
+        Assert.Equal((ushort)100, snapshot.LocalMode.Configuration!.StagedEvolution!.FitnessWeight);
+        var samples = clock.Samples;
+        Assert.NotNull(engine.FindBestRobot(200));
+        Assert.Equal(samples, clock.Samples);
+        Assert.Equal(before, engine.Save());
+        selected = engine.SelectBestRobot(200);
+        Assert.Equal((ushort)29, selected.EffectiveWeight);
+        Assert.False(selected.Restarted, "an unmutated starter cannot advance Zerobot");
+        Assert.NotNull(selected.Robot);
+        Assert.Equal(samples + 1, clock.Samples);
+        Assert.Equal(snapshot.Tick, engine.Snapshot().Tick);
+        Assert.Equal(snapshot.NativeCycle, engine.Snapshot().NativeCycle);
+        // The unused host clock sample must not alter the world or pending seed.
+        Assert.Equal(before, engine.Save());
+        var after = engine.Save();
+        Assert.Throws<ArgumentOutOfRangeException>(() => engine.SelectBestRobot(201));
+        Assert.Equal(samples + 1, clock.Samples);
+        Assert.Equal(after, engine.Save());
+        engine.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => engine.SelectBestRobot(100));
+        Assert.Equal(samples + 1, clock.Samples);
+    }
+
+    [Fact]
     public void ZeroTicksAndRejectedModeActionDoNotCommitThePrependedClockInput()
     {
         var clock = new TestClock(1125);

@@ -281,6 +281,11 @@ enum EngineCommand {
         #[serde(default)]
         weight_percent: Option<u16>,
     },
+    SelectBestRobot {
+        weight_percent: u16,
+        #[serde(default)]
+        restart_seed: Option<u64>,
+    },
     SetOrganismEnergy {
         slot: u32,
         generation: u32,
@@ -561,9 +566,20 @@ fn db_engine_command_batch_impl(
                     | EngineCommand::ReadNativeSunChange
                     | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
+                    | EngineCommand::FindBestRobot { .. }
             )
         })
     {
+        if batch.commands.iter().any(|command| {
+            matches!(command,
+                EngineCommand::FindBestRobot { weight_percent: Some(weight), .. } if *weight > 200
+            )
+        }) {
+            return fail(
+                DbStatus::InvalidCommand,
+                "Find Best weighting must be 0..200",
+            );
+        }
         let results: Result<Vec<_>, EngineError> = batch
             .commands
             .iter()
@@ -580,6 +596,16 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
+                EngineCommand::FindBestRobot {
+                    energy_weighting,
+                    weight_percent,
+                } => {
+                    let weight = weight_percent.unwrap_or(if *energy_weighting { 100 } else { 0 });
+                    Ok(engine.find_best_robot_weighted(weight).map_or(
+                        serde_json::Value::Null,
+                        |id| serde_json::json!({"slot":id.slot(),"generation":id.generation()}),
+                    ))
+                }
                 _ => unreachable!("pure queries were validated above"),
             })
             .collect();
@@ -1057,6 +1083,24 @@ fn db_engine_command_batch_impl(
                     serde_json::Value::Null,
                     |id| serde_json::json!({ "slot": id.slot(), "generation": id.generation() }),
                 ))
+            }
+            EngineCommand::SelectBestRobot {
+                weight_percent,
+                restart_seed,
+            } => {
+                if weight_percent > 200 {
+                    return fail(
+                        DbStatus::InvalidCommand,
+                        "Find Best weighting must be 0..200",
+                    );
+                }
+                engine.select_best_robot(weight_percent, restart_seed).map(|(selected, restarted, weight)| {
+                    serde_json::json!({
+                        "selected": selected.map(|id| serde_json::json!({"slot":id.slot(),"generation":id.generation()})),
+                        "restarted": restarted,
+                        "effective_weight": weight,
+                    })
+                })
             }
             EngineCommand::SetOrganismEnergy {
                 slot,
@@ -1574,6 +1618,85 @@ mod tests {
             assert!(response.is_empty());
             assert_eq!(SaveFile::encode(&engine).unwrap(), before);
         }
+    }
+
+    #[test]
+    fn manual_best_selection_keeps_legacy_queries_pure_and_rejects_batches_atomically() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let before = SaveFile::encode(&engine).unwrap();
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"find_best_robot"},
+                {"type":"find_best_robot","energy_weighting":true},
+                {"type":"find_best_robot","weight_percent":137}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        let key = serde_json::json!({"slot":id.slot(),"generation":id.generation()});
+        for index in 0..3 {
+            assert_eq!(response["results"][index], key);
+        }
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"select_best_robot","weight_percent":137}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(
+            response["results"][0],
+            serde_json::json!({"selected":key,"restarted":false,"effective_weight":137})
+        );
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"find_best_robot","weight_percent":201}
+            ]),
+        );
+        assert_eq!(status, DbStatus::InvalidCommand);
+        assert!(response.is_empty());
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        for bad in [
+            serde_json::json!({"type":"select_best_robot","weight_percent":201}),
+            serde_json::json!({"type":"set_organism_energy","slot":id.slot(),"generation":id.generation()+1,"energy":42}),
+        ] {
+            let (status, response) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([
+                    {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":42},
+                    {"type":"select_best_robot","weight_percent":100},
+                    bad
+                ]),
+            );
+            assert_ne!(status, DbStatus::Ok);
+            assert!(response.is_empty());
+            assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        }
+        let other = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [700.0, 500.0])
+            .unwrap();
+        assert_eq!(engine.find_best_robot_weighted(200), Some(other));
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":2000},
+                {"type":"find_best_robot","weight_percent":200},
+                {"type":"select_best_robot","weight_percent":200}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(response["results"][1], key);
+        assert_eq!(response["results"][2]["selected"], key);
+        assert_eq!(engine.organism(id).unwrap().energy, 2000);
     }
 
     #[test]

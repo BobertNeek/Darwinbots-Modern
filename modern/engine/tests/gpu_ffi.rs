@@ -453,7 +453,9 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
                 "commands": [
                     {"type": "read_native_gaussian_spare"},
                     {"type": "export_species_template_dna", "species": species},
-                    {"type": "read_native_sun_change"}
+                    {"type": "read_native_sun_change"},
+                    {"type": "find_best_robot"},
+                    {"type": "find_best_robot", "weight_percent": 137}
                 ]
             }),
         );
@@ -462,6 +464,9 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
         assert_eq!(result["population"], 1);
         assert_eq!(result["results"][0], 1.25);
         assert_eq!(result["results"][2], 12);
+        let key = serde_json::json!({"slot":live.id.slot(),"generation":live.id.generation()});
+        assert_eq!(result["results"][3], key);
+        assert_eq!(result["results"][4], key);
         let exported = result["results"][1]["dna"].as_str().unwrap();
         assert_eq!(
             LegacyDna::parse(exported).unwrap().blocks(),
@@ -533,6 +538,86 @@ fn physical_gpu_fuses_grid_sensing_integration_and_render_preparation() {
             .all(|robot| u64::from(robot.species.0) != species),
         "minimum-zero retained species must remain extinct on the next GPU cycle"
     );
+    let instance = &continued.snapshot().render_instances[0];
+    assert_eq!(instance.slot, live.id.slot());
+    assert_eq!(instance.generation, live.id.generation());
+    assert_eq!(instance.position, organism.position);
+    // The ordinary manual action uses the normal atomic command path. It must
+    // keep the physical backend and continue producing genuinely new GPU frames.
+    let after_query_position = organism.position;
+    let after_query_save = darwinbots_engine::SaveFile::encode(continued).unwrap();
+    let selected = command(
+        engine,
+        serde_json::json!({"version":1,"commands":[
+            {"type":"select_best_robot","weight_percent":137,"restart_seed":777}
+        ]}),
+    );
+    assert_eq!(selected["backend"], "Gpu");
+    assert_eq!(selected["tick"], 2);
+    assert_eq!(selected["population"], 1);
+    assert_eq!(
+        selected["results"][0],
+        serde_json::json!({
+            "selected":{"slot":live.id.slot(),"generation":live.id.generation()},
+            "restarted":false,"effective_weight":137
+        })
+    );
+    assert_eq!(
+        darwinbots_engine::SaveFile::encode(unsafe { &*engine }).unwrap(),
+        after_query_save
+    );
+    assert_eq!(unsafe { &*engine }.backend(), BackendKind::Gpu);
+    assert!(unsafe { &*engine }.capabilities().fallback_reason.is_none());
+    assert_eq!(unsafe { &*engine }.gpu_adapter_receipt(), Some(&adapter));
+    assert_eq!(
+        unsafe { &*engine }.organism(live.id).unwrap().position,
+        after_query_position
+    );
+    let manual_snapshot = serde_json::to_vec(unsafe { &*engine }.snapshot()).unwrap();
+    let manual_publications = unsafe { &*engine }.snapshot_publication_count();
+    for commands in [
+        serde_json::json!([{"type":"find_best_robot","weight_percent":201}]),
+        serde_json::json!([
+            {"type":"set_organism_energy","slot":live.id.slot(),"generation":live.id.generation(),"energy":42},
+            {"type":"select_best_robot","weight_percent":137,"restart_seed":777},
+            {"type":"select_best_robot","weight_percent":201}
+        ]),
+    ] {
+        checked_ffi_command_batch(
+            engine,
+            serde_json::json!({"version":1,"commands":commands}),
+            DbStatus::InvalidCommand,
+        );
+        assert_eq!(
+            darwinbots_engine::SaveFile::encode(unsafe { &*engine }).unwrap(),
+            after_query_save
+        );
+        assert_eq!(
+            serde_json::to_vec(unsafe { &*engine }.snapshot()).unwrap(),
+            manual_snapshot
+        );
+        assert_eq!(
+            unsafe { &*engine }.snapshot_publication_count(),
+            manual_publications
+        );
+        assert_eq!(unsafe { &*engine }.backend(), BackendKind::Gpu);
+        assert!(unsafe { &*engine }.capabilities().fallback_reason.is_none());
+        assert_eq!(unsafe { &*engine }.gpu_adapter_receipt(), Some(&adapter));
+    }
+    assert_eq!(db_engine_tick(engine), DbStatus::Ok);
+    let continued = unsafe { &*engine };
+    assert_eq!(continued.backend(), BackendKind::Gpu);
+    assert!(continued.capabilities().fallback_reason.is_none());
+    assert_eq!(continued.gpu_adapter_receipt(), Some(&adapter));
+    assert_eq!(continued.snapshot().tick, 3);
+    assert_eq!(continued.snapshot().native_cycle, Some(2));
+    assert_eq!(
+        continued.snapshot_publication_count(),
+        manual_publications + 1
+    );
+    let organism = continued.organism(live.id).unwrap();
+    assert_ne!(organism.position, after_query_position);
+    assert_eq!(continued.snapshot().render_instances.len(), 1);
     let instance = &continued.snapshot().render_instances[0];
     assert_eq!(instance.slot, live.id.slot());
     assert_eq!(instance.generation, live.id.generation());

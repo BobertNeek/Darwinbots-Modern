@@ -535,14 +535,18 @@ function Read-NativeFreshCpuAdmission55([string]$Repo, [string]$Source, [string]
     if ($dll.target_release -notmatch '^[0-9a-fA-F]{64}$' -or $dll.target_release -ne $dll.package -or $dll.target_release -ne $dll.desktop) {
         throw 'Fresh package/Desktop/target native DLL identities differ.'
     }
+    $expectedMovementCycles = if ($batch -ge 60) { @(1,10,100,102) } else { @(1,10,102) }
     $genuine = Read-FreshJson55 $Marker.genuine_movement 'genuine movement comparisons'
     Assert-FreshTrue55 $genuine.passed 'genuine movement passed'
     if ($genuine.schema_version -ne 1 -or $genuine.batch -ne $batch -or $genuine.source_head -cne $Source -or $genuine.source_manifest_sha256 -ne $Marker.source_manifest.sha256 -or
-        (@($genuine.expected_cycles) -join '|') -cne '1|10|102' -or @($genuine.checkpoints).Count -ne 3) { throw 'Fresh genuine movement receipt has the wrong origin or checkpoints.' }
+        (@($genuine.expected_cycles) -join '|') -cne ($expectedMovementCycles -join '|') -or @($genuine.checkpoints).Count -ne $expectedMovementCycles.Count) { throw 'Fresh genuine movement receipt has the wrong origin or checkpoints.' }
     $cycles = [Collections.Generic.HashSet[int]]::new()
     foreach ($row in @($genuine.checkpoints)) {
         Assert-FreshInteger55 $row.cycle 'genuine movement cycle' 1
-        if ($row.cycle -notin @(1,10,102) -or !$cycles.Add([int]$row.cycle)) { throw 'Fresh genuine movement cycles must be distinct C1/C10/C102.' }
+        if ($row.cycle -notin $expectedMovementCycles -or !$cycles.Add([int]$row.cycle)) {
+            if ($batch -ge 60) { throw 'Fresh genuine movement cycles must be distinct C1/C10/C100/C102.' }
+            throw 'Fresh genuine movement cycles must be distinct C1/C10/C102.'
+        }
         Assert-FreshTrue55 $row.passed 'genuine movement checkpoint passed'
         foreach ($field in @('candidate_exit_code', 'compare_exit_code', 'difference_count', 'absolute_tolerance', 'relative_tolerance')) {
             Assert-FreshInteger55 $row.$field ('genuine movement ' + $field)

@@ -23,6 +23,17 @@ const ORIGINAL_CONTACTS_C11: &[u8] =
 const ORIGINAL_CONTACTS_C100: &[u8] =
     include_bytes!("fixtures/db24832-genuine-contacts-cycle100-20261017.sim");
 
+const ORIGINAL_FEEDING_C100: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-feeding-cycle100-20261017.sim");
+const ORIGINAL_TIES_C10: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-ties-cycle10-20261017.sim");
+const ORIGINAL_TIES_C100: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-ties-cycle100-20261017.sim");
+const ORIGINAL_CONTACTS_C10: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-contacts-cycle10-20261017.sim");
+const ORIGINAL_REPRODUCTION_C100: &[u8] =
+    include_bytes!("fixtures/db24832-genuine-reproduction-cycle100-20261017.sim");
+
 fn assert_native_value(actual: &NativeValue, expected: &NativeValue, name: &str) {
     match (actual, expected) {
         (NativeValue::Single(actual), NativeValue::Single(expected)) => {
@@ -169,7 +180,7 @@ fn genuine_feeding_c1_proves_native_mutation_draws_mass_order_and_zero_shot_gene
 }
 
 #[test]
-fn genuine_feeding_c10_matches_after_preserving_post_c1_runtime_caches() {
+fn genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches() {
     let mut continuous = Engine::from_native_sim(START).unwrap();
     continuous.tick_many(10).unwrap();
     assert_original_pair(&continuous, ORIGINAL_C10, 10);
@@ -181,6 +192,21 @@ fn genuine_feeding_c10_matches_after_preserving_post_c1_runtime_caches() {
     assert_original_pair(&resumed, ORIGINAL_C10, 10);
     assert_eq!(
         SaveFile::encode(&resumed).unwrap(),
+        SaveFile::encode(&continuous).unwrap()
+    );
+    let mut resumed_at_c10 = SaveFile::decode(&SaveFile::encode(&continuous).unwrap()).unwrap();
+    for observed in [&mut continuous, &mut resumed, &mut resumed_at_c10] {
+        observed.tick_many(90).unwrap();
+        assert_original_pair(observed, ORIGINAL_FEEDING_C100, 100);
+        let restored = SaveFile::decode(&SaveFile::encode(observed).unwrap()).unwrap();
+        assert_original_pair(&restored, ORIGINAL_FEEDING_C100, 100);
+    }
+    assert_eq!(
+        SaveFile::encode(&resumed).unwrap(),
+        SaveFile::encode(&continuous).unwrap()
+    );
+    assert_eq!(
+        SaveFile::encode(&resumed_at_c10).unwrap(),
         SaveFile::encode(&continuous).unwrap()
     );
 }
@@ -491,7 +517,7 @@ fn genuine_reproduction_c1_retains_the_request_without_a_newborn_across_checkpoi
 }
 
 #[test]
-fn genuine_reproduction_c10_proves_birth_at_c2_and_continuation_from_the_c1_checkpoint() {
+fn genuine_reproduction_c10_and_c100_preserve_birth_at_c2_and_saved_continuation() {
     let expected = NativeRecordFile::decode(ORIGINAL_REPRODUCTION_C10).unwrap();
     assert_eq!(expected.robots.len(), 2);
     let parent = expected
@@ -526,11 +552,30 @@ fn genuine_reproduction_c10_proves_birth_at_c2_and_continuation_from_the_c1_chec
         SaveFile::encode(&resumed).unwrap(),
         SaveFile::encode(&continuous).unwrap()
     );
+    let mut resumed_at_c10 = SaveFile::decode(&SaveFile::encode(&continuous).unwrap()).unwrap();
+    for observed in [&mut continuous, &mut resumed, &mut resumed_at_c10] {
+        observed.tick_many(90).unwrap();
+        assert_original_live_capture(observed, ORIGINAL_REPRODUCTION_C100, 100);
+        let restored = SaveFile::decode(&SaveFile::encode(observed).unwrap()).unwrap();
+        assert_original_live_capture(&restored, ORIGINAL_REPRODUCTION_C100, 100);
+    }
+    assert_eq!(
+        SaveFile::encode(&resumed).unwrap(),
+        SaveFile::encode(&continuous).unwrap()
+    );
+    assert_eq!(
+        SaveFile::encode(&resumed_at_c10).unwrap(),
+        SaveFile::encode(&continuous).unwrap()
+    );
 }
 
 #[test]
-fn genuine_contacts_c11_and_c100_match_live_state_and_saved_continuation() {
-    for (reference, cycle) in [(ORIGINAL_CONTACTS_C11, 11), (ORIGINAL_CONTACTS_C100, 100)] {
+fn genuine_contacts_c10_c11_and_c100_match_live_state_and_saved_continuation() {
+    for (reference, cycle) in [
+        (ORIGINAL_CONTACTS_C10, 10),
+        (ORIGINAL_CONTACTS_C11, 11),
+        (ORIGINAL_CONTACTS_C100, 100),
+    ] {
         let expected = NativeRecordFile::decode(reference).unwrap();
         let tail = NativeSimulationTail::decode(&expected.tail).unwrap();
         assert_eq!(tail.integer("total_cycles").unwrap(), cycle);
@@ -544,7 +589,11 @@ fn genuine_contacts_c11_and_c100_match_live_state_and_saved_continuation() {
         );
     }
     let mut continuous = Engine::from_native_sim(CONTACTS_START).unwrap();
-    continuous.tick_many(11).unwrap();
+    continuous.tick_many(10).unwrap();
+    assert_original_live_capture(&continuous, ORIGINAL_CONTACTS_C10, 10);
+    let mut resumed_at_c10 = SaveFile::decode(&SaveFile::encode(&continuous).unwrap()).unwrap();
+    resumed_at_c10.tick().unwrap();
+    continuous.tick().unwrap();
     assert_original_live_capture(&continuous, ORIGINAL_CONTACTS_C11, 11);
     let mut resumed_at_c11 = SaveFile::decode(&SaveFile::encode(&continuous).unwrap()).unwrap();
     let mut resumed_at_c1 = Engine::from_native_sim(CONTACTS_START).unwrap();
@@ -552,9 +601,16 @@ fn genuine_contacts_c11_and_c100_match_live_state_and_saved_continuation() {
     resumed_at_c1.tick().unwrap();
     assert_original_live_capture(&resumed_at_c1, ORIGINAL_CONTACTS_C1, 1);
     resumed_at_c1 = SaveFile::decode(&SaveFile::encode(&resumed_at_c1).unwrap()).unwrap();
-    resumed_at_c1.tick_many(10).unwrap();
+    resumed_at_c1.tick_many(9).unwrap();
+    assert_original_live_capture(&resumed_at_c1, ORIGINAL_CONTACTS_C10, 10);
+    resumed_at_c1.tick().unwrap();
     assert_original_live_capture(&resumed_at_c1, ORIGINAL_CONTACTS_C11, 11);
-    for observed in [&mut continuous, &mut resumed_at_c11, &mut resumed_at_c1] {
+    for observed in [
+        &mut continuous,
+        &mut resumed_at_c11,
+        &mut resumed_at_c1,
+        &mut resumed_at_c10,
+    ] {
         observed.tick_many(89).unwrap();
         assert_original_live_capture(observed, ORIGINAL_CONTACTS_C100, 100);
         let restored = SaveFile::decode(&SaveFile::encode(observed).unwrap()).unwrap();
@@ -568,4 +624,48 @@ fn genuine_contacts_c11_and_c100_match_live_state_and_saved_continuation() {
         SaveFile::encode(&resumed_at_c1).unwrap(),
         SaveFile::encode(&continuous).unwrap()
     );
+    assert_eq!(
+        SaveFile::encode(&resumed_at_c10).unwrap(),
+        SaveFile::encode(&continuous).unwrap()
+    );
+}
+
+#[test]
+fn genuine_ties_later_cycles_preserve_both_endpoint_records_across_checkpoints() {
+    let mut continuous = Engine::from_native_sim(TIES_START).unwrap();
+    continuous.tick().unwrap();
+    assert_original_live_capture(&continuous, ORIGINAL_TIES_C1, 1);
+    let mut resumed = SaveFile::decode(&SaveFile::encode(&continuous).unwrap()).unwrap();
+    let mut previous = 1;
+    for (cycle, reference) in [(10, ORIGINAL_TIES_C10), (100, ORIGINAL_TIES_C100)] {
+        for observed in [&mut continuous, &mut resumed] {
+            observed.tick_many((cycle - previous) as u32).unwrap();
+            assert_original_live_capture(observed, reference, cycle);
+            let actual = NativeRecordFile::decode(&observed.export_native_sim().unwrap()).unwrap();
+            let expected = NativeRecordFile::decode(reference).unwrap();
+            for original in &expected.robots {
+                let id = original.long("absolute_id").unwrap();
+                let robot = actual
+                    .robots
+                    .iter()
+                    .find(|robot| robot.long("absolute_id").unwrap() == id)
+                    .unwrap();
+                for name in ["ties_core", "ties_extension"] {
+                    assert_eq!(
+                        robot.bytes(name).unwrap(),
+                        original.bytes(name).unwrap(),
+                        "original ties C{cycle} robot{id}.{name}"
+                    );
+                }
+            }
+            observed.validate_invariants().unwrap();
+        }
+        resumed = SaveFile::decode(&SaveFile::encode(&resumed).unwrap()).unwrap();
+        assert_original_live_capture(&resumed, reference, cycle);
+        assert_eq!(
+            SaveFile::encode(&resumed).unwrap(),
+            SaveFile::encode(&continuous).unwrap()
+        );
+        previous = cycle;
+    }
 }

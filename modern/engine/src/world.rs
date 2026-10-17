@@ -4799,12 +4799,21 @@ impl Engine {
     }
 
     pub fn find_best_robot_weighted(&self, weight_percent: u16) -> Option<OrganismId> {
-        let weight = weight_percent.min(200);
-        let energy_exponent = f64::from(weight.min(100)) / 100.0;
-        let population_exponent = f64::from((200 - weight).min(100)) / 100.0;
         let zerobot = self
             .local_mode_config()
             .is_some_and(|config| config.kind == LocalModeKind::Zerobot);
+        self.find_best_robot_with_cancer_filter(weight_percent, zerobot, false)
+    }
+
+    fn find_best_robot_with_cancer_filter(
+        &self,
+        weight_percent: u16,
+        zerobot: bool,
+        source_eligibility: bool,
+    ) -> Option<OrganismId> {
+        let weight = weight_percent.min(200);
+        let energy_exponent = f64::from(weight.min(100)) / 100.0;
+        let population_exponent = f64::from((200 - weight).min(100)) / 100.0;
         let families = self.native_family_scores();
         let mut best = None;
         let mut best_score = -1.0;
@@ -4812,7 +4821,11 @@ impl Engine {
             let Some(robot) = &entry.organism else {
                 continue;
             };
-            if robot.flags.corpse || robot.flags.dead || robot.flags.vegetable || robot.flags.hidden
+            if robot.flags.corpse
+                || robot.flags.dead
+                || robot.flags.vegetable
+                || robot.flags.hidden
+                || (source_eligibility && native_census_filename(robot, &self.species) == "Corpse")
             {
                 continue;
             }

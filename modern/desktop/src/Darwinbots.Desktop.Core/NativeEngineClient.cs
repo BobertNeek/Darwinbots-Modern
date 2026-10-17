@@ -527,6 +527,26 @@ public sealed partial class NativeEngineClient : IEngineClient
             .GetProperty("results")[0];
         return value.ValueKind == JsonValueKind.Null ? null : ReadKey(value);
     }
+    public RobotSelectionResult SelectBestRobot(int fallbackWeight)
+    {
+        EnsureAlive();
+        if (fallbackWeight is < 0 or > 200) throw new ArgumentOutOfRangeException(nameof(fallbackWeight));
+        var mode = Snapshot().LocalMode;
+        var canRestart = mode.Status == LocalModeStatus.Running
+            && mode.Kind == LocalModeKind.Zerobot && mode.Evolution?.Phase == "evolving";
+        // Sample the same Single Timer/Long seed as automatic staged restarts,
+        // but the engine stores/uses it only when this action actually restarts.
+        ulong? restartSeed = canRestart ? NativeTimerSeed() : null;
+        var value = ExecuteBatchForResult(new { version = 1, commands = new[] {
+            new { type = "select_best_robot", weight_percent = fallbackWeight, restart_seed = restartSeed }
+        } }, "select best robot").GetProperty("results")[0];
+        var selected = value.GetProperty("selected");
+        return new(selected.ValueKind == JsonValueKind.Null ? null : ReadKey(selected), value.GetProperty("restarted").GetBoolean())
+        {
+            EffectiveWeight = value.GetProperty("effective_weight").GetUInt16(),
+        };
+    }
+
     public void UpdateRecognitionFudging(int mode)
     {
         if (mode is < 0 or > 2) throw new ArgumentOutOfRangeException(nameof(mode));

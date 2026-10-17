@@ -2100,6 +2100,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public int? NativeCycle { get; set; }
     public Func<uint, int?, int?>? AdvanceNativeCycle { get; set; }
     public bool RejectLoads { get; set; }
+    public Func<int, RobotSelectionResult>? SelectBestOverride { get; set; }
     public LocalModeSnapshot? LocalModeForRead { get; set; }
     public float? NativeGaussianSpare { get; set; }
     public byte NativeSunChange { get; set; }
@@ -2183,6 +2184,8 @@ internal sealed class AuditEngineClient : IEngineClient
     public void UpdateRecognitionFudging(int mode) => Calls.Enqueue($"RecognitionFudging:{mode}");
     public void SetOrganismEnergy(uint slot, uint generation, int energy) => Calls.Enqueue($"Energy:{slot}:{generation}:{energy}");
     public OrganismKey? FindBestRobot(bool energyWeighting) { Calls.Enqueue("FindBestRobot"); return new(3, 2); }
+    public RobotSelectionResult SelectBestRobot(int fallbackWeight) => SelectBestOverride?.Invoke(fallbackWeight)
+        ?? new(FindBestRobot(fallbackWeight > 0), false);
     public void UpdateRestrictionOptions(RestrictionOptions options) => Calls.Enqueue("RestrictionOptions");
     public void ConfigureLocalMode(LocalModeConfig config)
     {

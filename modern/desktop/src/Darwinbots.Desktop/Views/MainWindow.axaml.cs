@@ -1464,7 +1464,11 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> OpenGlobalSettingsCommandAsync()
     {
-        var dialog = new GlobalSettingsWindow(_globalSettings);
+        var settings = _globalSettings;
+        if (_session?.LatestSnapshot.LocalMode is { Status: LocalModeStatus.Running, Kind: LocalModeKind.Zerobot,
+            Evolution: { Phase: "evolving", FitnessWeight: { } weight } })
+            settings = settings with { Main = settings.Main with { FindBestWeight = weight } };
+        var dialog = new GlobalSettingsWindow(settings);
         await dialog.ShowDialog(this);
         if (!dialog.Accepted) return LegacyCommandResult.Cancel();
         _globalSettings = dialog.Settings;
@@ -1677,8 +1681,14 @@ public sealed partial class MainWindow : Window
 
     private async Task<LegacyCommandResult> FindBestRobotAsync()
     {
-        if (_session is null || await _session.FindBestRobotAsync(_globalSettings.Main.EffectiveFindBestWeight) is not { } key)
-            return LegacyCommandResult.Failure("NO LIVING ROBOTS");
+        if (_session is null) return LegacyCommandResult.Failure("NO LIVING ROBOTS");
+        var result = await _session.SelectBestRobotAsync(_globalSettings.Main.EffectiveFindBestWeight);
+        if (result.Restarted) {
+            _viewModel.ClearSelection();
+            Viewport.SelectKey(null);
+            return LegacyCommandResult.Success("ZEROBOT ADVANCED TO TESTING");
+        }
+        if (result.Robot is not { } key) return LegacyCommandResult.Failure("NO LIVING ROBOTS");
         _viewModel.Select(key);
         Viewport.SelectKey(key);
         return LegacyCommandResult.Success($"BEST FAMILY · {key.Slot}:{key.Generation}");

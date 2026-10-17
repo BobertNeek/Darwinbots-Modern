@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "kind": "reference_only_projection_census",
+  "state": "all_ten_originals_captured_port_not_executed",
+  "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "schema": {
+    "file": "modern/engine/src/native_binary.rs",
+    "sha256": "B54813E8BF79B89B0D5D410F4C60C791336FC279C60F553EACC5FB53E40BFEB6",
+    "anchors": "41-56,194-349,436-548"
+  },
+  "projection": {
+    "file": "modern/cli/src/native_comparison.rs",
+    "sha256": "FC1488FABC19DFD6F0F23CC6EF1669787E6FDC67EDBE07ADCE38E6CF8CF1A0C9",
+    "anchors": "36-195"
+  },
+  "method": "Bounded direct Node byte framing of actual original saves: verify complete consumption, length bounds, record/object terminators, counts, actual saved cycles and seed; enumerate exactly the source projection keys without importing an Engine or executing the CLI. Inactive shot slots excluded. Per actor1365+2*DNAblocks+2*spermblocks; two simulation keys; each actual active shot contributes its named keys (23 here).",
+  "references": [
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-fixed-cycle10-20261017.sim",
+      "bytes": 17068,
+      "sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+      "saved_cycle": 10,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 17068,
+      "tail_start": 9380,
+      "expected_compared_fields": 1385,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 9,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9380,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1048,
+            "tie_cells": 209
+          },
+          "projected_fields": 1383
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "fixed",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle10-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-fixed-cycle100-20261017.sim",
+      "bytes": 17068,
+      "sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+      "saved_cycle": 100,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 17068,
+      "tail_start": 9380,
+      "expected_compared_fields": 1385,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 9,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9380,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1048,
+            "tie_cells": 209
+          },
+          "projected_fields": 1383
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "fixed",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle100-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-body-cycle10-20261017.sim",
+      "bytes": 17054,
+      "sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95",
+      "saved_cycle": 10,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 17054,
+      "tail_start": 9367,
+      "expected_compared_fields": 1379,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 6,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9367,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1042,
+            "tie_cells": 209
+          },
+          "projected_fields": 1377
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "body",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle10-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-body-cycle100-20261017.sim",
+      "bytes": 17054,
+      "sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+      "saved_cycle": 100,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 17054,
+      "tail_start": 9367,
+      "expected_compared_fields": 1379,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 6,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9367,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1042,
+            "tie_cells": 209
+          },
+          "projected_fields": 1377
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "body",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle100-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-contacts-cycle10-20261017.sim",
+      "bytes": 35764,
+      "sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+      "saved_cycle": 10,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 35764,
+      "tail_start": 28073,
+      "expected_compared_fields": 4115,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 3,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9359,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1036,
+            "tie_cells": 209
+          },
+          "projected_fields": 1371
+        },
+        {
+          "id": 2,
+          "dna_length": 3,
+          "sperm_length": 0,
+          "record_start": 9359,
+          "record_end": 18716,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1036,
+            "tie_cells": 209
+          },
+          "projected_fields": 1371
+        },
+        {
+          "id": 3,
+          "dna_length": 3,
+          "sperm_length": 0,
+          "record_start": 18716,
+          "record_end": 28073,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1036,
+            "tie_cells": 209
+          },
+          "projected_fields": 1371
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "contacts",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle10-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-ties-cycle10-20261017.sim",
+      "bytes": 26443,
+      "sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0",
+      "saved_cycle": 10,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 26443,
+      "tail_start": 18756,
+      "expected_compared_fields": 2768,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 9,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9379,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1048,
+            "tie_cells": 209
+          },
+          "projected_fields": 1383
+        },
+        {
+          "id": 2,
+          "dna_length": 9,
+          "sperm_length": 0,
+          "record_start": 9379,
+          "record_end": 18756,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1048,
+            "tie_cells": 209
+          },
+          "projected_fields": 1383
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "ties",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle10-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-ties-cycle100-20261017.sim",
+      "bytes": 26443,
+      "sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+      "saved_cycle": 100,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 26443,
+      "tail_start": 18756,
+      "expected_compared_fields": 2768,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 9,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9379,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1048,
+            "tie_cells": 209
+          },
+          "projected_fields": 1383
+        },
+        {
+          "id": 2,
+          "dna_length": 9,
+          "sperm_length": 0,
+          "record_start": 9379,
+          "record_end": 18756,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1048,
+            "tie_cells": 209
+          },
+          "projected_fields": 1383
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "ties",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle100-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-movement-cycle100-20261017.sim",
+      "bytes": 17062,
+      "sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+      "saved_cycle": 100,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 17062,
+      "tail_start": 9371,
+      "expected_compared_fields": 1379,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 6,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9371,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1042,
+            "tie_cells": 209
+          },
+          "projected_fields": 1377
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "movement",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-feeding-cycle100-20261017.sim",
+      "bytes": 18512,
+      "sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+      "saved_cycle": 100,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 18512,
+      "tail_start": 9382,
+      "expected_compared_fields": 1684,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 9,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9382,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1048,
+            "tie_cells": 209
+          },
+          "projected_fields": 1383
+        }
+      ],
+      "active_shots": [
+        "shot[62]",
+        "shot[63]",
+        "shot[64]",
+        "shot[65]",
+        "shot[66]",
+        "shot[67]",
+        "shot[68]",
+        "shot[69]",
+        "shot[70]",
+        "shot[71]",
+        "shot[72]",
+        "shot[73]",
+        "shot[74]"
+      ],
+      "shot_projected_fields": 299,
+      "case": "feeding",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim"
+    },
+    {
+      "file": "output/pass60-drafts/original-controls/db24832-genuine-reproduction-cycle100-20261017.sim",
+      "bytes": 26475,
+      "sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+      "saved_cycle": 100,
+      "seed": 48032,
+      "saved_shot_capacity": 100,
+      "total_consumed": 26475,
+      "tail_start": 18780,
+      "expected_compared_fields": 2772,
+      "simulation_fields": 2,
+      "robots": [
+        {
+          "id": 1,
+          "dna_length": 10,
+          "sperm_length": 0,
+          "record_start": 2,
+          "record_end": 9391,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1050,
+            "tie_cells": 209
+          },
+          "projected_fields": 1385
+        },
+        {
+          "id": 2,
+          "dna_length": 10,
+          "sperm_length": 0,
+          "record_start": 9391,
+          "record_end": 18780,
+          "groups": {
+            "present": 1,
+            "scalars": 60,
+            "opaque_bytes": 2,
+            "mutation_float_cells": 63,
+            "word_cells": 1050,
+            "tie_cells": 209
+          },
+          "projected_fields": 1385
+        }
+      ],
+      "active_shots": [],
+      "shot_projected_fields": 0,
+      "case": "reproduction",
+      "final_file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle100-20261017.sim"
+    }
+  ],
+  "prior_reference_count": 15,
+  "prior_fields": 34835,
+  "new_reference_count": 10,
+  "new_fields": 21014,
+  "total_reference_count": 25,
+  "total_fields": 55849,
+  "engine_or_cli_executed": false,
+  "port_comparison_passed": null
+}

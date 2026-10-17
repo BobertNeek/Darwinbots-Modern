@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "state": "authored_quarantine_release_no_active_application_or_execution",
+  "sealed_utc": "2026-10-17T09:17:38.088Z",
+  "owner": "/root/recover_46_inventory",
+  "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "files": [
+    {
+      "source_path": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "base_raw_sha256": "70D0C7FF65A6285119329FE7B5D7DEE147729D4B4FC63B8B8A0FF2ACA703B6FC",
+      "base_bytes": 500768,
+      "candidate_path": "output/pass60-drafts/report/candidate/docs/parity/db24832-parity-report-2026-10-14.html",
+      "candidate_raw_sha256": "C4EE836CBB75C94967E24809F13408178B2319116682A9DA9E84FC4853B291F3",
+      "candidate_bytes": 535992,
+      "new_file": false
+    },
+    {
+      "source_path": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "base_raw_sha256": "899AA32510E7AE0092D5B4406303BF285ADFE8E72AD1BD3FD39534729AB2409D",
+      "base_bytes": 388135,
+      "candidate_path": "output/pass60-drafts/report/candidate/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "candidate_raw_sha256": "513516AB291EF71DB93C3617BD1704C0FDC6FDF0F17410F1444183F75E21EFD9",
+      "candidate_bytes": 394927,
+      "new_file": false
+    }
+  ],
+  "scope": "Only report and handoff candidates; phase-stable visible wording distinguishes qualified59checkpoint from authored60awaitingfreshqualification.",
+  "latest_qualified_checkpoint": {
+    "batch": 59,
+    "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+    "local_summary": {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass59/qualification-summary.json",
+      "sha256": "321780566BF491CC6D5FAE7C5E0E92D74187C221D8889560A068C0F5F475584B"
+    },
+    "rust_census": {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass59/rust-target-results.json",
+      "sha256": "FFD16403068D892F56FC1E5E7D3E9239074FC97FC770B79565D0D3EE2026479B"
+    },
+    "hosted_main": {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-main-ff50b1a.json",
+      "sha256": "715A80121CF8B2CCD8F23758D6822AA1F0A4E02B0A32BE86547F78FFAF4705C0"
+    },
+    "hosted_diagnostics": {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-ff50b1a.json",
+      "sha256": "65BD4BAFCCBB2342A118E9B4357F643CBECDD50704644061705409E7E04F46CF"
+    },
+    "local_ordinary_outcomes": {
+      "passed": 74,
+      "failed": 0,
+      "total": 74
+    },
+    "rust": {
+      "targets": 68,
+      "passed": 1023,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 27
+    },
+    "managed": {
+      "core": 307,
+      "desktop": 206,
+      "failed": 0
+    },
+    "all_hosted_jobs_passed": 7,
+    "qualified_original_controls": 15,
+    "qualified_original_fields": 34835
+  },
+  "next60_authoring_plan": {
+    "total_targets": 34,
+    "existing": 21,
+    "new": 13,
+    "source_runner_test_paths": 32,
+    "report_paths": 2,
+    "expected_ordinary_outcomes": 94,
+    "separate_admission_probe_cases": 22,
+    "expected_rust_targets": 68,
+    "expected_managed": {
+      "core": 309,
+      "desktop": 209
+    },
+    "new_test_rows_vs59": {
+      "rust": 13,
+      "core": 2,
+      "desktop": 3
+    },
+    "captured_original_references": 25,
+    "canonical": 21,
+    "extras": 4,
+    "new_captures": 10,
+    "planned_reference_fields": 55849,
+    "port_comparisons_executed": false,
+    "source_results_inherited": false,
+    "source_release": {
+      "file": "output/pass60-drafts/manual-find-best/automatic-source/metadata.json",
+      "sha256": "08BD2A7EA85DA0161C68C79C0805F59185B920527485066BDA5542EE82F866FA"
+    },
+    "reference_release": {
+      "file": "output/pass60-drafts/original-controls/integration/metadata.json",
+      "sha256": "B16CDB77231170DBB96F6C54EFBE43E2FF8B0B902BC3F94D50AABC8191B8E000"
+    },
+    "reference_only_census": {
+      "file": "output/pass60-drafts/original-controls/integration/reference-only-field-census.json",
+      "sha256": "4E4204CB084E8ED60CCA67F7EA81F1AC7F59E72B437D3C6B85FA696992021BFE"
+    },
+    "admission_release": {
+      "file": "output/pass60-drafts/admission/metadata.json",
+      "metadata_seal_owned_and_recorded_separately_by_root": true
+    }
+  },
+  "static_document_checks": {
+    "report_json_parsed": true,
+    "ledger_ids_and_order_preserved": true,
+    "ledger_rows": 25,
+    "all_previous_historical_json_fields_value_exact": true,
+    "prior_handoff_bytes_exact_suffix": true,
+    "css_and_filter_javascript_unchanged": true,
+    "active_docs_equal_saved_raw_before": true,
+    "no_visible_current_unapplied_or_uncaptured_claim": true,
+    "qualified59_vs_planned60_fields_separate": true,
+    "no_parity_percentage_or_completion_claim": true
+  },
+  "execution": {
+    "product_builds": false,
+    "product_tests": false,
+    "formatter": false,
+    "browser_or_render": false,
+    "desktop_or_gpu": false,
+    "admission_probes": false
+  },
+  "remaining": "Root applies complete34-target batch and records actualapplication/commit/freeze, then executesfresh94ordinaryqualification plusseparateauthoring/admissionchecks. Visible original/mode/graph/settings,hardware,capacityandwalkthroughacceptance remainverificationpending."
+}

@@ -6,6 +6,25 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class StagedEvolutionTests
 {
     [Fact]
+    public void CurrentZerobotSearchWeightIsOptionalAndDistinctFromConfiguredWeight()
+    {
+        const string legacy = """
+            {"local_mode":{"status":"running","config":{"kind":"zerobot","staged_evolution":{
+                "mode":"zerobot","fitness_weight":100}},"evolution":{"stage":0,"phase":"evolving"}}}
+            """;
+        var old = NativeSnapshotParser.Parse(legacy, "CPU");
+        Assert.Null(old.LocalMode.Evolution!.FitnessWeight);
+        Assert.Equal((ushort)100, old.LocalMode.Configuration!.StagedEvolution!.FitnessWeight);
+        Assert.Null(new StagedEvolutionSnapshot(0, "evolving", false, 0, 0, 0, 0, 0).FitnessWeight);
+        var current = NativeSnapshotParser.Parse(legacy.Replace("\"phase\":\"evolving\"", "\"phase\":\"evolving\",\"fitness_weight\":29"), "CPU");
+        Assert.Equal((ushort)29, current.LocalMode.Evolution!.FitnessWeight);
+        Assert.Equal((ushort)100, current.LocalMode.Configuration!.StagedEvolution!.FitnessWeight);
+        IEngineClient provider = new FakeEngineClient();
+        Assert.Equal(new RobotSelectionResult(null, false), provider.SelectBestRobot(137));
+        provider.Dispose();
+    }
+
+    [Fact]
     public void DecimalReductionUnitAndOptInSurviveSettingsRoundtrip()
     {
         var settings = new GlobalSettings { Evolution = new GlobalEvolutionSettings {

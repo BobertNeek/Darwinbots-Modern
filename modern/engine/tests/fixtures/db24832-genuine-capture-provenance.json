@@ -209,6 +209,116 @@
       "case": "contacts",
       "robot_count": 3,
       "expected_compared_fields": 4115
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle10-20261017.sim",
+      "bytes": 17068,
+      "sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "fixed",
+      "robot_count": 1,
+      "expected_compared_fields": 1385,
+      "capture_receipt": "output/pass60-drafts/original-controls/fixed-cycle10-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle100-20261017.sim",
+      "bytes": 17068,
+      "sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "fixed",
+      "robot_count": 1,
+      "expected_compared_fields": 1385,
+      "capture_receipt": "output/pass60-drafts/original-controls/fixed-cycle100-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle10-20261017.sim",
+      "bytes": 17054,
+      "sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "body",
+      "robot_count": 1,
+      "expected_compared_fields": 1379,
+      "capture_receipt": "output/pass60-drafts/original-controls/body-cycle10-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle100-20261017.sim",
+      "bytes": 17054,
+      "sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "body",
+      "robot_count": 1,
+      "expected_compared_fields": 1379,
+      "capture_receipt": "output/pass60-drafts/original-controls/body-cycle100-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle10-20261017.sim",
+      "bytes": 35764,
+      "sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "contacts",
+      "robot_count": 3,
+      "expected_compared_fields": 4115,
+      "capture_receipt": "output/pass60-drafts/original-controls/contacts-cycle10-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle10-20261017.sim",
+      "bytes": 26443,
+      "sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "ties",
+      "robot_count": 2,
+      "expected_compared_fields": 2768,
+      "capture_receipt": "output/pass60-drafts/original-controls/ties-cycle10-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle100-20261017.sim",
+      "bytes": 26443,
+      "sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "ties",
+      "robot_count": 2,
+      "expected_compared_fields": 2768,
+      "capture_receipt": "output/pass60-drafts/original-controls/ties-cycle100-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim",
+      "bytes": 17062,
+      "sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "movement",
+      "robot_count": 1,
+      "expected_compared_fields": 1379,
+      "capture_receipt": "output/pass60-drafts/original-controls/movement-cycle100-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim",
+      "bytes": 18512,
+      "sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "feeding",
+      "robot_count": 1,
+      "expected_compared_fields": 1684,
+      "capture_receipt": "output/pass60-drafts/original-controls/feeding-cycle100-capture.json"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle100-20261017.sim",
+      "bytes": 26475,
+      "sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "reproduction",
+      "robot_count": 2,
+      "expected_compared_fields": 2772,
+      "capture_receipt": "output/pass60-drafts/original-controls/reproduction-cycle100-capture.json"
     }
   ],
   "claim": "Independent original runtime references for these cases and actual counters. The fixtures alone do not certify complete port parity.",
@@ -229,6 +339,91 @@
       "addition": "Root subsequently authorized two later contacts controls after field-framed verification of actual C11 and C100. This supersedes the prior history entry holding C11; all prior8inputs/13captures retained verbatim.",
       "provenance_addendum": "output/pass56-drafts/contacts/contacts-long-release.json",
       "comparison_status": "Genuine original references only; batch56 comparison/test execution remains pending."
+    },
+    {
+      "base_source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+      "base_sha256": "739CBD3FB8528740F6CCB6B74988DB91126A5DE6D474A46FDB309C2C5A3C5F98",
+      "addition": "Batch60 adds ten exact original controls: fixed/body/ties C10/C100, contacts C10, movement/feeding/reproduction C100. All prior8inputs/15captures and history entries are retained verbatim.",
+      "comparison_status": "Genuine original runtime references and reference-only field counts. Batch60 port comparison and product tests remain unexecuted.",
+      "provenance_receipts": [
+        {
+          "file": "output/pass60-drafts/original-controls/fixed-cycle10-capture.json",
+          "sha256": "FB37165D53A81C5A6D009ABDBA3E919E1141001CD6D7142713385F95A9E9693B",
+          "case": "fixed",
+          "cycle": 10,
+          "capture_sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/fixed-cycle100-capture.json",
+          "sha256": "52AF7B411B871E8111F8BC7D83AE00368FB43B898CC5AC7955F87292840EBA20",
+          "case": "fixed",
+          "cycle": 100,
+          "capture_sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/body-cycle10-capture.json",
+          "sha256": "C78B5EA857C5A4C3C3358A73CB3D1EF9132532F4FA021628A4D8891398EF0385",
+          "case": "body",
+          "cycle": 10,
+          "capture_sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/body-cycle100-capture.json",
+          "sha256": "194A981F0AD3E8193F5B230F90C738889556F8C279780183FA2EEBEF8661D107",
+          "case": "body",
+          "cycle": 100,
+          "capture_sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/contacts-cycle10-capture.json",
+          "sha256": "C2ACCDD8435DCA82BEB60FC8176F964A128F5EC127120222CAD799F19A8288A6",
+          "case": "contacts",
+          "cycle": 10,
+          "capture_sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/ties-cycle10-capture.json",
+          "sha256": "01141C144AB9D2F575D70BE2F0B9F06BE8C8D6399B3C4B345C36FFD6F8BCB0AE",
+          "case": "ties",
+          "cycle": 10,
+          "capture_sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/ties-cycle100-capture.json",
+          "sha256": "A788E86F5DB0EF8F54D44728A61C16AF02C078F79CE4658D628ADD04F04832C5",
+          "case": "ties",
+          "cycle": 100,
+          "capture_sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/movement-cycle100-capture.json",
+          "sha256": "11863F69C5E509147E877FFE643F83D9356E4EC77B544CB74B52A34C49E94573",
+          "case": "movement",
+          "cycle": 100,
+          "capture_sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/feeding-cycle100-capture.json",
+          "sha256": "1DD41661674666EA258EB1E74DAFA4B1F72448555E47723EC19CE78DFD6D74B0",
+          "case": "feeding",
+          "cycle": 100,
+          "capture_sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F"
+        },
+        {
+          "file": "output/pass60-drafts/original-controls/reproduction-cycle100-capture.json",
+          "sha256": "97F9A7ECA514DC459494169A12F2556393B5CA70178011505082617A9C46AA49",
+          "case": "reproduction",
+          "cycle": 100,
+          "capture_sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234"
+        }
+      ],
+      "reference_only_census": {
+        "new_captures": 10,
+        "new_compared_fields": 21014,
+        "total_captures": 25,
+        "total_compared_fields": 55849,
+        "method": "Bounded original-byte record framing and projection-key census, with no engine or CLI execution."
+      }
     }
   ]
 }

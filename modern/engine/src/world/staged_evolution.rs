@@ -360,7 +360,7 @@ impl Engine {
     fn staged_candidates(&mut self, eco: bool, weight: u16) -> Vec<EvolutionGenome> {
         if !eco {
             return self
-                .find_best_robot_weighted(weight)
+                .find_best_robot_with_cancer_filter(weight, false, true)
                 .and_then(|id| self.slots.get(id).ok())
                 .map(genome_of)
                 .into_iter()
@@ -370,18 +370,21 @@ impl Engine {
         let mut diversity = HashMap::new();
         for &id in &ids {
             let robot = self.slots.get(id).unwrap();
-            if robot.flags.corpse || robot.flags.vegetable || robot.flags.hidden {
+            if robot.flags.corpse
+                || robot.flags.vegetable
+                || robot.flags.hidden
+                || native_census_filename(robot, &self.species) == "Corpse"
+            {
                 continue;
             }
-            let name = &self.species[robot.identity.species.0 as usize].name;
+            let name = native_census_filename(robot, &self.species);
             let distance: f32 = ids
                 .iter()
                 .copied()
                 .filter(|other| *other != id)
                 .filter_map(|other| self.slots.get(other).ok())
                 .filter(|target| {
-                    !target.flags.corpse
-                        && self.species[target.identity.species.0 as usize].name == *name
+                    !target.flags.corpse && native_census_filename(target, &self.species) == name
                 })
                 .map(|target| robot.program.dna.genetic_distance(&target.program.dna))
                 .sum();
@@ -449,7 +452,7 @@ impl Engine {
                 restart = true;
             } else if baselines == 0 {
                 let changed = self
-                    .find_best_robot_weighted(state.fitness_weight)
+                    .find_best_robot_with_cancer_filter(state.fitness_weight, false, true)
                     .and_then(|id| self.slots.get(id).ok())
                     .is_some_and(|robot| robot.program.mutation_metadata.total_mutations > 0);
                 if changed && (state.config.mode != EvolutionMode::Eco || mutators >= 15) {
@@ -611,10 +614,98 @@ impl Engine {
         }
     }
 
+    /// Original menu/toolbar fittest action. The explicit weighted query stays read-only.
+    /// A Zerobot search observes the current source-generated weight even between
+    /// Master.bas's automatic 50-cycle calls, and can start an external test round.
+    pub fn select_best_robot(
+        &mut self,
+        fallback_weight: u16,
+        restart_seed: Option<u64>,
+    ) -> Result<(Option<OrganismId>, bool, u16), EngineError> {
+        if fallback_weight > 200 {
+            return Err(EngineError::Invariant(
+                "Find Best weighting must be 0..200".into(),
+            ));
+        }
+        let mut state = self.local_mode.evolution.take();
+        // Original 7 and loaded continuation 8 are Evolving; test mode 9 is ZerobotTesting.
+        let source_action = self.local_mode.status == LocalModeStatus::Running
+            && state.as_ref().is_some_and(|state| {
+                state.config.mode == EvolutionMode::Zerobot
+                    && state.phase == EvolutionPhase::Evolving
+            });
+        let weight = if source_action {
+            state.as_ref().unwrap().fitness_weight
+        } else {
+            fallback_weight
+        };
+        if weight > 200 {
+            self.local_mode.evolution = state;
+            return Err(EngineError::Invariant(
+                "Find Best weighting must be 0..200".into(),
+            ));
+        }
+        let selected = self.find_best_robot_with_cancer_filter(weight, source_action, true);
+        let observation = if source_action {
+            self.observe_zerobot_selection(state.as_mut().unwrap(), selected)
+        } else {
+            Ok(false)
+        };
+        self.local_mode.evolution = state;
+        let restarted = observation?;
+        if restarted {
+            if let Some(seed) = restart_seed {
+                self.set_native_restart_seed(seed);
+            }
+            self.restart_staged_world(true)?;
+        }
+        if source_action {
+            self.publish_snapshot();
+        }
+        // Restart destroys the selected generation; never hand its stale ID to UI.
+        Ok((if restarted { None } else { selected }, restarted, weight))
+    }
+
+    fn observe_zerobot_selection(
+        &mut self,
+        state: &mut EvolutionState,
+        selected: Option<OrganismId>,
+    ) -> Result<bool, EngineError> {
+        let Some(id) = selected else { return Ok(false) };
+        let robot = self.slots.get(id)?;
+        // main.frm3028-3030 tests the actual FName, not its configured role.
+        if native_census_filename(robot, &self.species) != "Mutate.txt" {
+            return Ok(false);
+        }
+        let family = self.native_family_scores()[id.slot() as usize];
+        let weight = f64::from(state.fitness_weight);
+        let score = if family.2 {
+            0.0
+        } else {
+            (family.0 as f64).powf(if weight < 100.0 {
+                1.0
+            } else {
+                (200.0 - weight) / 100.0
+            }) * family.1.max(0.0).powf(weight.min(100.0) / 100.0)
+        };
+        let mut genome = genome_of(robot);
+        let restart = state.observe_zerobot(
+            robot.identity.absolute_id,
+            score,
+            robot.program.mutation_metadata.native_last_mutations > 0,
+            &mut genome,
+        );
+        self.slots.get_mut(id)?.program.mutation_profile = genome.mutation_profile;
+        Ok(restart)
+    }
+
     pub(super) fn staged_evolution_after_cycle(
         &mut self,
         average_before: Option<f64>,
     ) -> Result<(), EngineError> {
+        if self.local_mode.status != LocalModeStatus::Running {
+            return Ok(());
+        }
         let Some(mut state) = self.local_mode.evolution.take() else {
             return Ok(());
         };
@@ -629,30 +720,10 @@ impl Engine {
             if state.config.mode == EvolutionMode::Zerobot
                 && (self.native_cycle.is_none() || source_cycle > 0)
                 && source_cycle.is_multiple_of(50)
-                && let Some(id) = self.find_best_robot_weighted(state.fitness_weight)
+                && let Some(id) =
+                    self.find_best_robot_with_cancer_filter(state.fitness_weight, true, true)
             {
-                let robot = self.slots.get(id)?;
-                if state.mutator_species.contains(&robot.identity.species) {
-                    let family = self.native_family_scores()[id.slot() as usize];
-                    let weight = f64::from(state.fitness_weight);
-                    let score = if family.2 {
-                        0.0
-                    } else {
-                        (family.0 as f64).powf(if weight < 100.0 {
-                            1.0
-                        } else {
-                            (200.0 - weight) / 100.0
-                        }) * family.1.max(0.0).powf(weight.min(100.0) / 100.0)
-                    };
-                    let mut genome = genome_of(robot);
-                    restart = state.observe_zerobot(
-                        robot.identity.absolute_id,
-                        score,
-                        robot.program.mutation_metadata.native_last_mutations > 0,
-                        &mut genome,
-                    );
-                    self.slots.get_mut(id)?.program.mutation_profile = genome.mutation_profile;
-                }
+                restart = self.observe_zerobot_selection(&mut state, Some(id))?;
             }
         } else if state.phase == EvolutionPhase::ZerobotTesting && source_cycle == 1 {
             state.test_start_energy = self.staged_role_energy(&state.mutator_species);
@@ -964,6 +1035,240 @@ mod tests {
             .find_map(|slot| slot.organism.as_ref())
             .unwrap();
         assert_eq!(robot.program.rng_state, 0x003ac52d);
+    }
+
+    fn manual_zerobot_fixture() -> (Engine, Vec<OrganismId>) {
+        let mut world = Engine::new_native(EngineConfig {
+            organism_capacity: 4,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.set_native_restart_seed(42);
+        world
+            .configure_local_mode(LocalModeConfig {
+                kind: LocalModeKind::Zerobot,
+                staged_evolution: Some(crate::EvolutionConfig {
+                    mode: EvolutionMode::Zerobot,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(world.local_mode.status, LocalModeStatus::Configured);
+        let unstarted = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let robot = world.slots.get_mut(unstarted).unwrap();
+        robot.identity.species_file = "Mutate.txt".into();
+        robot.program.mutation_metadata.native_last_mutations = 1;
+        world.publish_snapshot();
+        world.validate_invariants().unwrap();
+        let configured = crate::SaveFile::encode(&world).unwrap();
+        assert_eq!(
+            world.select_best_robot(137, Some(777)).unwrap(),
+            (Some(unstarted), false, 137)
+        );
+        assert_eq!(
+            crate::SaveFile::encode(&world).unwrap(),
+            configured,
+            "configured search has not entered original mode 7/8"
+        );
+        world.start_local_mode().unwrap();
+        let all = world.slots.ids_in_slot_order();
+        let (ids, baselines): (Vec<_>, Vec<_>) = all.into_iter().partition(|id| {
+            native_census_filename(world.slots.get(*id).unwrap(), &world.species) == "Mutate.txt"
+        });
+        world.remove_many(&baselines).unwrap();
+        assert_eq!(ids.len(), 2);
+        for &id in &ids {
+            let robot = world.slots.get_mut(id).unwrap();
+            robot.materials.energy = 2000.0;
+            robot.materials.body = 0.0;
+            robot.program.mutation_metadata.native_last_mutations = 1;
+        }
+        world.native_cycle = Some(23);
+        world.tick = 123;
+        world.publish_snapshot();
+        (world, ids)
+    }
+
+    #[test]
+    fn manual_zerobot_progress_between_fifty_cycle_checks_restarts_without_a_stale_selection() {
+        let (mut world, ids) = manual_zerobot_fixture();
+        let selected = *ids.last().unwrap();
+        let rate = world.mutation_profile(selected).unwrap().point.one_in;
+        let before = crate::SaveFile::encode(&world).unwrap();
+        assert_eq!(world.find_best_robot_weighted(200), Some(selected));
+        assert_eq!(world.find_best_robot(false), Some(selected));
+        assert_eq!(
+            crate::SaveFile::encode(&world).unwrap(),
+            before,
+            "queries are pure"
+        );
+        let random = world.native_random.as_ref().unwrap().state();
+        assert_eq!(
+            world.select_best_robot(200, Some(777)).unwrap(),
+            (Some(selected), false, 29)
+        );
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        assert_eq!(
+            state.zerobot_previous_id,
+            world.slots.get(selected).unwrap().identity.absolute_id
+        );
+        assert_eq!(state.stage, 0);
+        assert_eq!(world.config.seed, 42);
+        assert_eq!(world.config.native_restart_seed, Some(42));
+        assert_eq!(world.native_random.as_ref().unwrap().state(), random);
+        assert_eq!(world.native_cycle, Some(23));
+        assert_eq!(world.tick, 123);
+        world.slots.get_mut(selected).unwrap().materials.energy = 3000.0;
+        world.set_native_gaussian_spare(Some(1.25)).unwrap();
+        assert_eq!(
+            world.select_best_robot(0, Some(99)).unwrap(),
+            (None, true, 29)
+        );
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        assert_eq!(state.phase, EvolutionPhase::ZerobotTesting);
+        assert_eq!(state.stage, 1);
+        assert_eq!(
+            state.candidate[0].mutation_profile.point.one_in,
+            f64::from((rate * 1.75) as f32)
+        );
+        assert_eq!(state.stages[&1], state.candidate);
+        assert!(world.organism(selected).is_err());
+        assert_eq!(world.config.seed, 99);
+        assert_eq!(world.read_native_gaussian_spare(), None);
+        assert_eq!(world.native_cycle, Some(-1));
+        assert_eq!(world.tick, 123);
+        // Mode 9 is an ordinary selection using the explicit fallback, not the old search weight.
+        assert_eq!(world.select_best_robot(100, None).unwrap().2, 100);
+        let saved = crate::SaveFile::encode(&world).unwrap();
+        let restored = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(crate::SaveFile::encode(&restored).unwrap(), saved);
+    }
+
+    #[test]
+    fn manual_zerobot_observation_requires_mutation_and_actual_mutator_filename() {
+        let (mut world, ids) = manual_zerobot_fixture();
+        let first = ids[0];
+        let second = ids[1];
+        world.slots.get_mut(first).unwrap().materials.energy = 3000.0;
+        assert_eq!(world.select_best_robot(100, None).unwrap().0, Some(first));
+        let previous_score = world
+            .local_mode
+            .evolution
+            .as_ref()
+            .unwrap()
+            .zerobot_previous_score;
+        let unchanged = crate::SaveFile::encode(&world).unwrap();
+        assert!(
+            !world.select_best_robot(100, Some(777)).unwrap().1,
+            "equal score is not progress"
+        );
+        assert_eq!(
+            crate::SaveFile::encode(&world).unwrap(),
+            unchanged,
+            "unused restart input is not stored"
+        );
+        world.slots.get_mut(second).unwrap().materials.energy = 4000.0;
+        let rate = world.mutation_profile(second).unwrap().point.one_in;
+        assert_eq!(world.select_best_robot(100, None).unwrap().0, Some(second));
+        assert_eq!(
+            world.mutation_profile(second).unwrap().point.one_in,
+            f64::from((rate * 1.15) as f32)
+        );
+        assert_eq!(world.local_mode.evolution.as_ref().unwrap().stage, 0);
+        assert!(
+            world
+                .local_mode
+                .evolution
+                .as_ref()
+                .unwrap()
+                .zerobot_previous_score
+                > previous_score
+        );
+        let observed = world.local_mode.evolution.clone();
+        world.slots.get_mut(second).unwrap().materials.energy = 5000.0;
+        world
+            .slots
+            .get_mut(second)
+            .unwrap()
+            .program
+            .mutation_metadata
+            .native_last_mutations = 0;
+        assert!(!world.select_best_robot(100, None).unwrap().1);
+        assert_eq!(world.local_mode.evolution, observed);
+        let robot = world.slots.get_mut(second).unwrap();
+        robot.program.mutation_metadata.native_last_mutations = 1;
+        robot.identity.species_file = "Other.txt".into();
+        assert!(!world.select_best_robot(100, None).unwrap().1);
+        assert_eq!(world.local_mode.evolution, observed);
+        let before = crate::SaveFile::encode(&world).unwrap();
+        assert!(world.select_best_robot(201, Some(999)).is_err());
+        assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+        world.remove_many(&ids).unwrap();
+        assert_eq!(
+            world.select_best_robot(100, None).unwrap(),
+            (None, false, 29)
+        );
+    }
+
+    #[test]
+    fn manual_mode_nine_selection_keeps_cancer_families_without_observing_zerobot_progress() {
+        let (mut world, ids) = manual_zerobot_fixture();
+        let parent = ids[0];
+        let rival = ids[1];
+        world.slots.get_mut(parent).unwrap().materials.energy = 10_000.0;
+        world.slots.get_mut(rival).unwrap().materials.energy = 5_000.0;
+        let absolute_id = world.slots.get(parent).unwrap().identity.absolute_id;
+        let child = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let robot = world.slots.get_mut(child).unwrap();
+        robot.identity.parent_absolute_id = absolute_id;
+        robot.materials.energy = 1.0;
+        robot.materials.body = 0.0;
+        robot.flags.vegetable = true; // contributes to ancestry, cannot itself be selected
+        let families = world.native_family_scores();
+        assert_eq!(families[parent.slot() as usize], (2, 10_001.0, true));
+        assert_eq!(families[rival.slot() as usize], (1, 5_000.0, false));
+        assert_eq!(
+            world.select_best_robot(200, None).unwrap().0,
+            Some(rival),
+            "modes 7/8 suppress cancer"
+        );
+        let candidate = genome_of(world.slots.get(parent).unwrap());
+        let state = world.local_mode.evolution.as_mut().unwrap();
+        state.candidate = vec![candidate];
+        state.phase = EvolutionPhase::ZerobotTesting; // original restart mode 9, not loaded search mode 8
+        state.zerobot_previous_id = absolute_id;
+        state.zerobot_previous_score = 0.0;
+        world.publish_snapshot();
+        world.validate_invariants().unwrap();
+        let before = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&before).unwrap();
+        restored.validate_invariants().unwrap();
+        assert_eq!(crate::SaveFile::encode(&restored).unwrap(), before);
+        assert_eq!(
+            restored.select_best_robot(200, Some(777)).unwrap(),
+            (Some(parent), false, 200)
+        );
+        restored.validate_invariants().unwrap();
+        assert_eq!(crate::SaveFile::encode(&restored).unwrap(), before);
+        assert_eq!(
+            world.find_best_robot_weighted(200),
+            Some(rival),
+            "public explicit query retains its existing contract"
+        );
+        assert_eq!(
+            world.select_best_robot(200, Some(777)).unwrap(),
+            (Some(parent), false, 200)
+        );
+        assert_eq!(
+            crate::SaveFile::encode(&world).unwrap(),
+            before,
+            "mode 9 neither observes nor restarts"
+        );
     }
 
     fn simple() -> Engine {
@@ -1286,5 +1591,189 @@ mod tests {
         assert_eq!(trace.tick, tick);
         assert_eq!(world.tick, tick);
         assert_eq!(world.native_random, random);
+    }
+    #[test]
+    fn automatic_zerobot_fittest_excludes_literal_corpse_filename_at_fifty_cycles() {
+        let (mut world, ids) = manual_zerobot_fixture();
+        let eligible = ids[0];
+        let named_corpse = ids[1];
+        world.slots.get_mut(eligible).unwrap().materials.energy = 5_000.0;
+        let robot = world.slots.get_mut(named_corpse).unwrap();
+        robot.materials.energy = 10_000.0;
+        robot.identity.species_file = "Corpse".into();
+        assert!(!robot.flags.corpse);
+        let absolute_id = world.slots.get(eligible).unwrap().identity.absolute_id;
+        let state = world.local_mode.evolution.as_mut().unwrap();
+        state.zerobot_previous_id = absolute_id;
+        state.zerobot_previous_score = 0.0;
+        world.native_cycle = Some(50);
+        // Keep the public query unchanged, while Master.bas501-503 must call
+        // the source fittest eligibility before calculateZB observes progress.
+        assert_eq!(world.find_best_robot_weighted(29), Some(named_corpse));
+        world.staged_evolution_after_cycle(None).unwrap();
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        assert_eq!(state.phase, EvolutionPhase::ZerobotTesting);
+        assert_eq!(state.stage, 1);
+        assert!(world.organism(eligible).is_err());
+        assert!(world.organism(named_corpse).is_err());
+    }
+
+    #[test]
+    fn automatic_survival_fittest_gate_and_candidate_export_exclude_literal_corpse_filename() {
+        let mut world = Engine::new_native(EngineConfig {
+            organism_capacity: 16,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        world.set_native_restart_seed(42);
+        world
+            .configure_local_mode(LocalModeConfig {
+                kind: LocalModeKind::SimpleSurvival,
+                staged_evolution: Some(crate::EvolutionConfig {
+                    mode: EvolutionMode::SimpleSurvival,
+                    source_dna: "start stop".into(),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        world.start_local_mode().unwrap();
+        let (mutators, baselines): (Vec<_>, Vec<_>) =
+            world.slots.ids_in_slot_order().into_iter().partition(|id| {
+                native_census_filename(world.slots.get(*id).unwrap(), &world.species)
+                    == "Mutate.txt"
+            });
+        world.remove_many(&baselines).unwrap();
+        assert!(mutators.len() >= 2);
+        for &id in &mutators {
+            let robot = world.slots.get_mut(id).unwrap();
+            robot.materials.energy = 1_000.0;
+            robot.materials.body = 0.0;
+            robot.program.mutation_metadata.total_mutations = 0;
+        }
+        let eligible = mutators[0];
+        let named_corpse = mutators[1];
+        let robot = world.slots.get_mut(eligible).unwrap();
+        robot.materials.energy = 5_000.0;
+        robot.program.mutation_metadata.total_mutations = 1;
+        robot.identity.tag = "ELIGIBLE".into();
+        let expected = genome_of(robot);
+        let robot = world.slots.get_mut(named_corpse).unwrap();
+        robot.materials.energy = 10_000.0;
+        robot.identity.species_file = "Corpse".into();
+        assert!(!robot.flags.corpse);
+        assert_eq!(world.find_best_robot_weighted(100), Some(named_corpse));
+        world.native_cycle = Some(1);
+        assert!(world.staged_evolution_before_cycle().unwrap().0);
+        let state = world.local_mode.evolution.as_ref().unwrap();
+        // The first fittest gates UpdateWonEvo on Mutations; the second captures
+        // the Simple test genome. Both must reject the same Corpse filename.
+        assert_eq!(state.phase, EvolutionPhase::Testing);
+        assert_eq!(state.candidate, vec![expected]);
+        assert!(world.organism(eligible).is_err());
+    }
+
+    #[test]
+    fn automatic_eco_candidates_use_actual_filename_groups_and_exclude_corpse_candidates() {
+        fn select(outside_dna: &str) -> Vec<EvolutionGenome> {
+            let mut world = Engine::new_native(EngineConfig {
+                organism_capacity: 4,
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            let dna_a = LegacyDna::parse("start 1 999 store stop").unwrap();
+            let dna_b = LegacyDna::parse("start 2 999 store stop").unwrap();
+            assert!(dna_a.genetic_distance(&dna_b) > 0.0);
+            let group_a = world.spawn_at(dna_a, [100.0; 2]).unwrap();
+            let group_b = world.spawn_at(dna_b, [200.0; 2]).unwrap();
+            let named_corpse = world
+                .spawn_at(LegacyDna::parse(outside_dna).unwrap(), [300.0; 2])
+                .unwrap();
+            let outside = world
+                .spawn_at(LegacyDna::parse(outside_dna).unwrap(), [400.0; 2])
+                .unwrap();
+            for (id, name, energy) in [
+                (group_a, "Group.txt", 1_000.0),
+                (group_b, "Group.txt", 1_000.0),
+                (named_corpse, "Corpse", 1_000_000.0),
+                (outside, "Other.txt", 8_000.0),
+            ] {
+                let robot = world.slots.get_mut(id).unwrap();
+                robot.identity.species_file = name.into();
+                robot.materials.energy = energy;
+                robot.materials.body = 0.0;
+            }
+            world.slots.get_mut(outside).unwrap().flags.vegetable = true;
+            assert_eq!(
+                world.slots.get(group_a).unwrap().identity.species,
+                world.slots.get(outside).unwrap().identity.species
+            );
+            assert_eq!(world.find_best_robot_weighted(100), Some(named_corpse));
+            let expected = vec![
+                genome_of(world.slots.get(group_b).unwrap()),
+                genome_of(world.slots.get(group_a).unwrap()),
+            ];
+            let selected = world.staged_candidates(true, 100);
+            assert_eq!(
+                selected, expected,
+                "only Group.txt contributes to Group.txt diversity; ties keep later slot first"
+            );
+            assert!(world.organism(named_corpse).is_ok());
+            assert!(world.organism(outside).is_ok());
+            selected
+        }
+        // Both excluded actors share the configured registry species with the
+        // candidates. Varying their genomes must not change Group.txt ranking.
+        assert_eq!(
+            select("start 1 999 store stop"),
+            select("start 2 999 store stop")
+        );
+    }
+
+    #[test]
+    fn configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        world.set_native_restart_seed(42);
+        world
+            .configure_local_mode(LocalModeConfig {
+                kind: LocalModeKind::Zerobot,
+                staged_evolution: Some(crate::EvolutionConfig {
+                    mode: EvolutionMode::Zerobot,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        let robot = world
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let state = world.slots.get_mut(robot).unwrap();
+        state.identity.species_file = "Mutate.txt".into();
+        state.program.mutation_metadata.native_last_mutations = 1;
+        state.materials.energy = 2_000.0;
+        state.materials.body = 0.0;
+        let absolute_id = state.identity.absolute_id;
+        let evolution = world.local_mode.evolution.as_mut().unwrap();
+        evolution.zerobot_previous_id = absolute_id;
+        evolution.zerobot_previous_score = 0.0;
+        world.tick = 50;
+        world.native_cycle = Some(50);
+        world.set_native_gaussian_spare(Some(1.25)).unwrap();
+        world.publish_snapshot();
+        let before = crate::SaveFile::encode(&world).unwrap();
+        let random = world.native_random.as_ref().unwrap().state();
+        assert_eq!(
+            world.staged_evolution_before_cycle().unwrap(),
+            (false, None)
+        );
+        world.staged_evolution_after_cycle(None).unwrap();
+        assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+        assert_eq!(world.local_mode.status, LocalModeStatus::Configured);
+        assert_eq!(world.native_random.as_ref().unwrap().state(), random);
+        assert_eq!(world.read_native_gaussian_spare(), Some(1.25));
+        assert_eq!(world.config.seed, 42);
+        assert_eq!(world.config.native_restart_seed, Some(42));
+        assert_eq!(world.tick, 50);
+        assert_eq!(world.native_cycle, Some(50));
     }
 }

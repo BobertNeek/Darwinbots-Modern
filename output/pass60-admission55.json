@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "checks": [
+    "valid_fresh_schema5_67_actual_target_rows",
+    "wrong_origin",
+    "wrong_core_origin",
+    "missing_pin",
+    "failed_target_status",
+    "failed_target_count",
+    "duplicate_target",
+    "failed_core_trx",
+    "failed_desktop_trx",
+    "false_fresh_flag",
+    "source_alias_duplicate",
+    "escape_source",
+    "changed_source",
+    "exclusive_lease_collision_and_release"
+  ],
+  "count": 14,
+  "scope": "CPU-only synthetic receipt/lease probes in an isolated owned Temp directory; no real workspace marker, build, Git, UI, native helper or GPU."
+}

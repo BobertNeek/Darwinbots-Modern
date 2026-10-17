@@ -6,6 +6,26 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class SimulationSessionTests
 {
     [Fact]
+    public async Task SourceSelectionUsesTheLegacyProviderFallbackOnTheSessionWorker()
+    {
+        var engine = new FakeEngineClient();
+        await using var session = new SimulationSession(engine);
+        await session.ImportDnaAsync("start stop");
+        await session.StepAsync(3);
+        var result = await session.SelectBestRobotAsync(137);
+        Assert.Equal(new OrganismKey(0, 0), result.Robot);
+        Assert.False(result.Restarted);
+        Assert.Null(result.EffectiveWeight);
+        Assert.Equal(137, engine.LastFindBestWeight);
+        Assert.Equal(3ul, session.LatestSnapshot.Tick);
+        Assert.Single(engine.ExecutionThreads);
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => session.SelectBestRobotAsync(20, canceled.Token));
+        Assert.Equal(137, engine.LastFindBestWeight);
+    }
+
+    [Fact]
     public async Task StartupTemplateExportIsQueuedBehindEarlierCommandsWithoutAdvancingTheWorld()
     {
         var engine = new FakeEngineClient();
@@ -420,6 +440,13 @@ internal sealed class FakeEngineClient : IEngineClient
     public bool SavedNormally { get; private set; }
     public bool SavedWithoutMutations { get; private set; }
     public List<int> RecognitionFudgingUpdates { get; } = [];
+    public int? LastFindBestWeight { get; private set; }
+    public OrganismKey? FindBestRobot(int weightPercent)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        LastFindBestWeight = weightPercent;
+        return _population > 0 ? new(0, 0) : null;
+    }
     public Action? BeforeTick { get; set; }
     public Action? BeforeDnaExport { get; set; }
     public OrganismSnapshot[] SnapshotOrganisms { get; set; } = [];

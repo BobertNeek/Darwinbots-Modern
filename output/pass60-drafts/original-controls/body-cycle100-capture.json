@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "status": "ORIGINAL_CAPTURED_PORT_COMPARISON_PENDING",
+  "captured_utc": "2026-10-17T08:41:53.560Z",
+  "case": "body",
+  "cycle": 100,
+  "seed": 48032,
+  "input": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\body\\input.sim",
+  "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+  "source_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "capture": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\body\\captures\\body-original-cycle100-pass60.sim",
+  "candidate": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass60-drafts\\original-controls\\db24832-genuine-body-cycle100-20261017.sim",
+  "sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+  "bytes": 17054,
+  "raw_saved_counter": 100,
+  "decoded_records": [
+    {
+      "fixed": 0,
+      "position": [
+        8000,
+        6000
+      ],
+      "velocity": [
+        0,
+        0
+      ],
+      "actual_velocity": [
+        0,
+        0
+      ],
+      "age": 100,
+      "body": 1050,
+      "energy": 19500,
+      "dna_length": 6
+    }
+  ],
+  "protocol": [
+    "Fresh original process, unchanged C0 input and seed48032; toolbarPause before toolbarLoad; no reseeding menu.",
+    "Raw saved C10 verified before continuation; four successful batches20 plus10, after transient tooltip activation recovery; no failed batch counted as evidence.",
+    "PlayerBot visually unchecked; no Details/selection/FindBest/console/NewSim.",
+    "F3 unique save; raw saved counter/seed verified before admission.",
+    "DocumentedSky input; GDI fallback; shared helpers and other applications unchanged."
+  ],
+  "port_engine_executed": false,
+  "canonical_port_comparison_passed": false,
+  "active_source_mutated": false
+}

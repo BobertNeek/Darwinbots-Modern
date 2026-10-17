@@ -42,6 +42,13 @@ public sealed class SimulationSession : IAsyncDisposable
         await Enqueue(engine => result = engine.FindBestRobot(weightPercent), cancellationToken).ConfigureAwait(false);
         return result;
     }
+    public async Task<RobotSelectionResult> SelectBestRobotAsync(int fallbackWeight, CancellationToken cancellationToken = default)
+    {
+        RobotSelectionResult result = new(null, false);
+        await Enqueue(engine => result = engine.SelectBestRobot(fallbackWeight), cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     public Task UpdateRecognitionFudgingAsync(int mode, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateRecognitionFudging(mode), cancellationToken);
 

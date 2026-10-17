@@ -344,7 +344,7 @@ public static class NativeSnapshotParser
                 evolution.Phase ?? "evolving", evolution.Hidden, evolution.ReductionUnit, evolution.HideCycles,
                 evolution.TestWins, evolution.OpponentStage, evolution.Handicap - evolution.InverseHandicap) {
                     BaselineSpecies = evolution.BaselineSpecies ?? [], MutatorSpecies = evolution.MutatorSpecies ?? [],
-                    TestResultCursor = evolution.TestResultCursor,
+                    TestResultCursor = evolution.TestResultCursor, FitnessWeight = evolution.FitnessWeight,
                 } : null,
             Series = native.Series is { } series ? new LeagueSeriesSnapshot(
                 ParseWorkflow(series.Workflow), series.ActiveMatch ?? [], series.MatchNumber,
@@ -582,7 +582,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("inverse_handicap")] double InverseHandicap,
         [property: JsonPropertyName("baseline_species")] uint[]? BaselineSpecies,
         [property: JsonPropertyName("mutator_species")] uint[]? MutatorSpecies,
-        [property: JsonPropertyName("test_result_cursor")] int TestResultCursor);
+        [property: JsonPropertyName("test_result_cursor")] int TestResultCursor,
+        [property: JsonPropertyName("fitness_weight")] ushort? FitnessWeight);
 
     private sealed record NativeEvolutionConfig(
         [property: JsonPropertyName("mode")] string? Mode,

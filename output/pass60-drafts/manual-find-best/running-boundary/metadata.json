@@ -1,0 +1,481 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "state": "superseding_authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T07:59:32.950Z",
+  "owner": "/root/seeding_tournament_ui",
+  "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "frozen_source_manifest": {
+    "file": "output/native-roundtrip-pass59-source.json",
+    "sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+    "pins": 555
+  },
+  "scope": "Source-faithful manual Find Best action for Zerobot, distinct from the public read-only weighted query.",
+  "files": [
+    {
+      "source_path": "modern/engine/src/world/staged_evolution.rs",
+      "base_raw_sha256": "D41646AD1AFACD9B8C8E5F4BA1E76C88A11B1E30ADEB488E4C9D8D5A8DE6C714",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world/staged_evolution.rs",
+      "candidate_raw_sha256": "D02DFBDADAC65E56F0447AF40A80FDDA611956FA60D81661E65BA5371AF6F48F",
+      "base_bytes": 51936,
+      "candidate_bytes": 63211,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "18314F98C456A05B7A0B032F222A323250E7F7BC866D6D5EE1A5DA5E1BFE14FB",
+      "changed_from_parent": true
+    },
+    {
+      "source_path": "modern/engine/src/ffi.rs",
+      "base_raw_sha256": "1AB1AD12E3BBAC79E4CB6FC0E89B1CCD9CAD099AE50964750384E489A1C24C66",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/ffi.rs",
+      "candidate_raw_sha256": "80BEF85CB5F99486BAE7BEC2A1571232746C22BC4468D0248F8A22D00200089E",
+      "base_bytes": 84333,
+      "candidate_bytes": 89084,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "80BEF85CB5F99486BAE7BEC2A1571232746C22BC4468D0248F8A22D00200089E",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "base_raw_sha256": "4623BFA212A895CCA24061DDDCF5089E49E7C605042B4CE3ABD710B74E04E2A9",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "candidate_raw_sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+      "base_bytes": 5600,
+      "candidate_bytes": 5787,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "base_raw_sha256": "3CBB7EB300245787CF4F69DBFECE399BFC1AA71F7C35D50871BA0CED49A6449E",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "candidate_raw_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+      "base_bytes": 4909,
+      "candidate_bytes": 5017,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "base_raw_sha256": "1C2BA3E71A069FC0850978DFB94957262F8DBC4AB7F0894535D3E537655F78E2",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "candidate_raw_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+      "base_bytes": 22446,
+      "candidate_bytes": 22800,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "base_raw_sha256": "1B5D13B9F8CF945AD31DF7C51EC8F75C4D73CA0FF8C15F6424C7B10C6CC0028B",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "candidate_raw_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+      "base_bytes": 55376,
+      "candidate_bytes": 55496,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "base_raw_sha256": "BC9A4ACFC7F84D891FA603B93AD0165E8C577CD299CAC8350BACDDAA2F5B981E",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "candidate_raw_sha256": "E2D27190B2165631BA158DF08EE0AB6FB338209D125BC4B76CCEC760D3428A43",
+      "base_bytes": 48232,
+      "candidate_bytes": 49426,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "5C97F74B7FC03845DDC8E875F60138B7D19DCE99A4C66DC31F3C628E8D1649C0",
+      "changed_from_parent": true
+    },
+    {
+      "source_path": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_raw_sha256": "91C05D457EF91E4668CEA84DB6115FFB4C195916E6E80A4CFCF8E04E83FE9FC0",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate_raw_sha256": "AAFC0115476B2D750B0D79D1CA707060E0C948DA9031873E7439874D11CFE788",
+      "base_bytes": 141332,
+      "candidate_bytes": 141951,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "13D1F2E623C0416D4A30770888455A8C468E6C3E92F3314F15BE356062AFE2D8",
+      "changed_from_parent": true
+    },
+    {
+      "source_path": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+      "base_raw_sha256": "3ECE78356C7D8925A2FC68FEB75B325D28E1F274FF901EC6E569107B6FD7AD54",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+      "candidate_raw_sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+      "base_bytes": 1945,
+      "candidate_bytes": 3122,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "base_raw_sha256": "17651D34D069686ECDAD94524ADAD51E90B3ECA0F44B49632D65A4050C9CD5D0",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "candidate_raw_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+      "base_bytes": 25694,
+      "candidate_bytes": 26957,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "base_raw_sha256": "A637955B25785A38FD23FAD7FC0130E0B20763FAE69AFC26DAD58A74C61911BA",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "candidate_raw_sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+      "base_bytes": 38517,
+      "candidate_bytes": 42165,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "480C134FA67FF7F2270257DC9CB0E1FE6E8A6673D522CA15AEF507DEA3033CDA",
+      "changed_from_parent": true
+    },
+    {
+      "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_raw_sha256": "9D696B47A5B5E556DCE77FE5065E03050DE6FBE73F44D6C3184FD86ACA53AA9C",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate_raw_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+      "base_bytes": 134964,
+      "candidate_bytes": 135216,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+      "changed_from_parent": false
+    },
+    {
+      "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "base_raw_sha256": null,
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "candidate_raw_sha256": "34154B207147B3B87BA67461F210F42790275D4E26C8E393E01E143F1B6D1E0F",
+      "base_bytes": 0,
+      "candidate_bytes": 6547,
+      "new_file": true,
+      "parent_candidate_raw_sha256": "F043E4017BFC297CC96391E179CAA3E70BA5117AF5095B9437B34DF2F8132752",
+      "changed_from_parent": true
+    },
+    {
+      "source_path": "modern/engine/src/world.rs",
+      "base_raw_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world.rs",
+      "candidate_raw_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED",
+      "base_bytes": 580098,
+      "candidate_bytes": 580318,
+      "new_file": false,
+      "parent_candidate_raw_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED",
+      "changed_from_parent": false
+    }
+  ],
+  "ancestry": {
+    "unreleased_pre_restart_seed_candidate_history": "output/pass60-drafts/manual-find-best/history/pre-restart-seed-consumption/",
+    "files": [
+      {
+        "source_path": "modern/engine/src/world/staged_evolution.rs",
+        "base_raw_sha256": "D41646AD1AFACD9B8C8E5F4BA1E76C88A11B1E30ADEB488E4C9D8D5A8DE6C714",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/engine/src/world/staged_evolution.rs",
+        "candidate_raw_sha256": "876AAFB3A6C7A7CCA95B08B60F79D3EB83882A7A08F30986B87CF5CB777E4CAD",
+        "base_bytes": 51936,
+        "candidate_bytes": 59438,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/engine/src/ffi.rs",
+        "base_raw_sha256": "1AB1AD12E3BBAC79E4CB6FC0E89B1CCD9CAD099AE50964750384E489A1C24C66",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/engine/src/ffi.rs",
+        "candidate_raw_sha256": "78D59F66C074CB87BE026BD8E9DB4596D30C0AE1043E20585CFA2DEE76ECD6CD",
+        "base_bytes": 84333,
+        "candidate_bytes": 88995,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+        "base_raw_sha256": "4623BFA212A895CCA24061DDDCF5089E49E7C605042B4CE3ABD710B74E04E2A9",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+        "candidate_raw_sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+        "base_bytes": 5600,
+        "candidate_bytes": 5787,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+        "base_raw_sha256": "3CBB7EB300245787CF4F69DBFECE399BFC1AA71F7C35D50871BA0CED49A6449E",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+        "candidate_raw_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+        "base_bytes": 4909,
+        "candidate_bytes": 5017,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+        "base_raw_sha256": "1C2BA3E71A069FC0850978DFB94957262F8DBC4AB7F0894535D3E537655F78E2",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+        "candidate_raw_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+        "base_bytes": 22446,
+        "candidate_bytes": 22800,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "base_raw_sha256": "1B5D13B9F8CF945AD31DF7C51EC8F75C4D73CA0FF8C15F6424C7B10C6CC0028B",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "candidate_raw_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+        "base_bytes": 55376,
+        "candidate_bytes": 55496,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+        "base_raw_sha256": "BC9A4ACFC7F84D891FA603B93AD0165E8C577CD299CAC8350BACDDAA2F5B981E",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+        "candidate_raw_sha256": "50D97A09137618BCFF76BB0CA6EC6B566C03B470EFA94E3333F87C894BFCDCD3",
+        "base_bytes": 48232,
+        "candidate_bytes": 49412,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+        "base_raw_sha256": "91C05D457EF91E4668CEA84DB6115FFB4C195916E6E80A4CFCF8E04E83FE9FC0",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+        "candidate_raw_sha256": "13D1F2E623C0416D4A30770888455A8C468E6C3E92F3314F15BE356062AFE2D8",
+        "base_bytes": 141332,
+        "candidate_bytes": 141918,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+        "base_raw_sha256": "3ECE78356C7D8925A2FC68FEB75B325D28E1F274FF901EC6E569107B6FD7AD54",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+        "candidate_raw_sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+        "base_bytes": 1945,
+        "candidate_bytes": 3122,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "base_raw_sha256": "17651D34D069686ECDAD94524ADAD51E90B3ECA0F44B49632D65A4050C9CD5D0",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "candidate_raw_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+        "base_bytes": 25694,
+        "candidate_bytes": 26957,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "base_raw_sha256": "A637955B25785A38FD23FAD7FC0130E0B20763FAE69AFC26DAD58A74C61911BA",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "candidate_raw_sha256": "47830D24E3F4FC4E7B1D1AD4576EAA7FCFAB079159704D2610EEC6F4CB49F3E6",
+        "base_bytes": 38517,
+        "candidate_bytes": 40833,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "base_raw_sha256": "9D696B47A5B5E556DCE77FE5065E03050DE6FBE73F44D6C3184FD86ACA53AA9C",
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "candidate_raw_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+        "base_bytes": 134964,
+        "candidate_bytes": 135216,
+        "new_file": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+        "base_raw_sha256": null,
+        "candidate_path": "output/pass60-drafts/manual-find-best/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+        "candidate_raw_sha256": "F043E4017BFC297CC96391E179CAA3E70BA5117AF5095B9437B34DF2F8132752",
+        "base_bytes": 0,
+        "candidate_bytes": 5577,
+        "new_file": true
+      }
+    ],
+    "reason": "Preserved the preliminary always-prepended clock draft, superseded before release. Final seed is stored/used only on an actual source restart."
+  },
+  "original_sources": [
+    {
+      "file": "Darwinbots2/main.frm",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765"
+    },
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "sha256": "7CE8CDEBEA42396A2371E22E6FDE5D568B6FF26AE89720F5DC107C008F155D95"
+    },
+    {
+      "file": "Darwinbots2/Evo.bas",
+      "sha256": "A91935D4A109E9E29BD39F2D0EA3B93983701188AA9D72DDD1D22E612F4FE0E4"
+    },
+    {
+      "file": "Darwinbots2/Master.bas",
+      "sha256": "D46C737105A0DDACD46BE56BB73D5747317B4D2928D058DE2D5D67BFE48FEA1A"
+    },
+    {
+      "file": "Darwinbots2/HDRoutines.bas",
+      "sha256": "E767C9CFF585E0ABEF6DD56F46C69CC076DC89B012A21875A7290DE2456939A3"
+    },
+    {
+      "file": "Darwinbots2/frmGset.frm",
+      "sha256": "1DFE5A5FE1BB8067447C1C38912CA3797C5C7379257A0B9B4026DC09D8AE2BB5"
+    },
+    {
+      "file": "Darwinbots2/Common.bas",
+      "sha256": "EB5554B3639932E76CC4D12154D1E66B3EF26B69510B2B6181A03F24377B64F1"
+    }
+  ],
+  "source_contract": [
+    {
+      "file": "Darwinbots2/main.frm",
+      "lines": "2993-3034",
+      "behavior": "fittest uses current intFindBestV2; cancer suppression and calculateZB only original search modes7/8 and actual FName Mutate.txt."
+    },
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "lines": "1398-1399,1780-1781,2539-2574",
+      "behavior": "Both menu and toolbar invoke fittest; mode7 initializes random search weight, mode9 starts Test.txt with mutations disabled."
+    },
+    {
+      "file": "Darwinbots2/HDRoutines.bas",
+      "lines": "1033-1035",
+      "behavior": "Autosaved original search mode7 becomes loaded search mode8, not testing9."
+    },
+    {
+      "file": "Darwinbots2/Master.bas",
+      "lines": "499-504",
+      "behavior": "Automatic fittest runs at positive multiples of50 in modes7/8; manual commands are not cycle-gated."
+    },
+    {
+      "file": "Darwinbots2/Evo.bas",
+      "lines": "579-620,686-725",
+      "behavior": "LastMut guard; new best ID1.15, same ID improved score1.75; stage archive and mode9 external restart."
+    },
+    {
+      "file": "Darwinbots2/frmGset.frm",
+      "lines": "1098-1109,1586",
+      "behavior": "Dialog displays current search weight but saves it for the next start; no new generic live weight update is added."
+    },
+    {
+      "file": "Darwinbots2/Common.bas",
+      "lines": "208-215",
+      "behavior": "restarter launches a fresh original process; reuse existing external staged restart boundary."
+    }
+  ],
+  "wire_contract": {
+    "read_only": "find_best_robot unchanged request defaults, wire key/null result, weighted public API semantics and invalid201 code. Pure-only batches reuse existing no-reconstruction query path; mixed batches retain ordered candidate/commit behavior.",
+    "manual": "select_best_robot {weight_percent:u16,restart_seed?:u64} -> {selected:{slot,generation}|null,restarted:bool,effective_weight:u16}. Weight0..200; optional seed used only if observation requests restart.",
+    "modes": "Only Running + Evolving Zerobot represents original7/loaded8: use active state.fitness_weight, cancer filtering and calculateZB. Configured-but-unstarted and original9/ZerobotTesting use fallback weight and no source observation/restart; mode9 does not suppress cancer.",
+    "selection": "External restart returns null selected ID and restarted=true; UI clears viewport and model selection and reports successful promotion.",
+    "snapshot_compatibility": "C# StagedEvolutionSnapshot.FitnessWeight is optional/null for old payloads; config FitnessWeight defaults100. Positional constructors preserved; IEngineClient default manual action delegates to existing pure query for legacy providers."
+  },
+  "clock_and_authority": {
+    "provider": "NativeEngineClient NativeTimerSeed() uses existing injected TimeProvider, rawSingle seconds*100 then ties-to-even Long conversion.",
+    "sampling": "Pure queries, configured-but-unstarted and ordinary/mode9 manual actions take no clock sample. Running Zerobot search action samples once; unused sample is neither stored nor consumed.",
+    "restart": "Final new payload passes optional restart_seed atomically; engine applies it only after actual progress, then restart_staged_world(true), preserving existing external seed/Gaussian/process-cache reset behavior.",
+    "existing_callers": "Existing Tick/Start/Restart/Adjudicate and set_native_restart_seed command code and clock continuation tests are unchanged.",
+    "cpu_gpu": "Pure query fast path reads current authority without SaveFile backend reconstruction. Mutating manual command remains on existing validated SaveFile candidate/commit path and uses existing staged restart implementation; no hardware execution claimed."
+  },
+  "authored_tests": [
+    {
+      "file": "modern/engine/src/world/staged_evolution.rs",
+      "test": "manual_zerobot_progress_between_fifty_cycle_checks_restarts_without_a_stale_selection",
+      "rows": 1,
+      "kind": "rust"
+    },
+    {
+      "file": "modern/engine/src/world/staged_evolution.rs",
+      "test": "manual_zerobot_observation_requires_mutation_and_actual_mutator_filename",
+      "rows": 1,
+      "kind": "rust"
+    },
+    {
+      "file": "modern/engine/src/world/staged_evolution.rs",
+      "test": "manual_mode_nine_selection_keeps_cancer_families_without_observing_zerobot_progress",
+      "rows": 1,
+      "kind": "rust"
+    },
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "test": "manual_best_selection_keeps_legacy_queries_pure_and_rejects_batches_atomically",
+      "rows": 1,
+      "kind": "rust"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+      "kind": "Fact",
+      "test": "CurrentZerobotSearchWeightIsOptionalAndDistinctFromConfiguredWeight",
+      "rows": 1
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "kind": "Fact",
+      "test": "SourceSelectionUsesTheLegacyProviderFallbackOnTheSessionWorker",
+      "rows": 1
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "kind": "Fact",
+      "test": "ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract",
+      "rows": 1
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "kind": "Theory",
+      "test": "ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection",
+      "rows": 2
+    }
+  ],
+  "test_census": {
+    "method": "Static named #[test]/Fact/InlineData census; existing authored cases extended, no new rows beyond initial60release.",
+    "rust_delta": 4,
+    "core_delta": 2,
+    "desktop_delta": 3,
+    "rust_distinct_targets_unchanged": 68,
+    "baseline59_expected": {
+      "core": 307,
+      "desktop": 206
+    },
+    "this_draft_only_expected": {
+      "core": 309,
+      "desktop": 209
+    },
+    "existing_paths": 13,
+    "new_paths": 1,
+    "total_paths": 14,
+    "delta_from_parent": {
+      "rust": 0,
+      "core": 0,
+      "desktop": 0
+    }
+  },
+  "static_review": {
+    "owned_existing_source_raw_pins_unchanged": 13,
+    "candidate_hashes_match": true,
+    "original_public_weighted_scorer_body_preserved": "Only extract the original body into a private helper; public wrapper retains original Zerobot-kind cancer behavior.",
+    "guarded_source_not_written": true,
+    "report_and_handoff_not_written": true,
+    "unrelated_png_not_touched": true,
+    "product_builds_or_tests": false,
+    "formatter": false,
+    "parser": false,
+    "ui_or_gpu": false,
+    "git_commands": false,
+    "application": false,
+    "parent_metadata_hash_unchanged": true,
+    "parent_candidate_hashes_unchanged": true,
+    "changed_parent_candidates": 5
+  },
+  "remaining_acceptance": "Parent must finish all59 ordinary local/hosted outcomes before applying this complete60 code/test batch, then format/compile and run combined qualification. Original paired manual Find Best visible acceptance and physical GPU/capacity checks remain unproven.",
+  "supersedes": {
+    "metadata": "output/pass60-drafts/manual-find-best/metadata.json",
+    "sha256": "E0A623A0357D34D7ECE780FB530AA3A69F089B9E3FA79EDA8FE988051940D840",
+    "all_parent_candidates_preserved": true
+  },
+  "corrections": [
+    {
+      "issue": "Configured-but-unstarted EvolutionState is already Evolving.",
+      "repair": "Require local_mode.status==Running in Rust manual eligibility, Native host Timer gate, and live settings weight override. Scheduling pause does not change this local mode status.",
+      "coverage": "Existing Rust helper now creates a real configured-but-unstarted world with a mutated Mutate.txt actor; fallback137 must win with exact save/RNG/pending-seed unchanged. Existing Native test performs fallback137/no clock/exact save before StartLocalMode. Both rendered routes check configured settings100 and ordinary selection before running-paused settings29 and promotion."
+    },
+    {
+      "issue": "Mode9 fixture must be a valid persisted state before selection.",
+      "repair": "Populate candidate from the selected valid genome, validate invariants, decode/re-encode an exact checkpoint, validate the restored state, then prove mode9 selection differs from the public query without observations or restart."
+    }
+  ]
+}

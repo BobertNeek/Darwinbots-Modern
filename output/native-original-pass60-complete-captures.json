@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "created_utc": "2026-10-17T09:16:48.675Z",
+  "state": "all_ten_missing_original_controls_captured_port_qualification_pending",
+  "base_source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "official_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "new_captures": [
+    {
+      "case": "fixed",
+      "cycle": 10,
+      "seed": 48032,
+      "bytes": 17068,
+      "sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+      "robots": 1,
+      "metadata": "output/pass60-drafts/original-controls/fixed-cycle10-capture.json",
+      "metadata_sha256": "FB37165D53A81C5A6D009ABDBA3E919E1141001CD6D7142713385F95A9E9693B",
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6"
+    },
+    {
+      "case": "fixed",
+      "cycle": 100,
+      "seed": 48032,
+      "bytes": 17068,
+      "sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+      "robots": 1,
+      "metadata": "output/pass60-drafts/original-controls/fixed-cycle100-capture.json",
+      "metadata_sha256": "52AF7B411B871E8111F8BC7D83AE00368FB43B898CC5AC7955F87292840EBA20",
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6"
+    },
+    {
+      "case": "body",
+      "cycle": 10,
+      "seed": 48032,
+      "bytes": 17054,
+      "sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95",
+      "robots": 1,
+      "metadata": "output/pass60-drafts/original-controls/body-cycle10-capture.json",
+      "metadata_sha256": "C78B5EA857C5A4C3C3358A73CB3D1EF9132532F4FA021628A4D8891398EF0385",
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5"
+    },
+    {
+      "case": "body",
+      "cycle": 100,
+      "seed": 48032,
+      "bytes": 17054,
+      "sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+      "robots": 1,
+      "metadata": "output/pass60-drafts/original-controls/body-cycle100-capture.json",
+      "metadata_sha256": "194A981F0AD3E8193F5B230F90C738889556F8C279780183FA2EEBEF8661D107",
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5"
+    },
+    {
+      "case": "contacts",
+      "cycle": 10,
+      "seed": 48032,
+      "bytes": 35764,
+      "sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+      "robots": 3,
+      "metadata": "output/pass60-drafts/original-controls/contacts-cycle10-capture.json",
+      "metadata_sha256": "C2ACCDD8435DCA82BEB60FC8176F964A128F5EC127120222CAD799F19A8288A6",
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72"
+    },
+    {
+      "case": "ties",
+      "cycle": 10,
+      "seed": 48032,
+      "bytes": 26443,
+      "sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0",
+      "robots": 2,
+      "metadata": "output/pass60-drafts/original-controls/ties-cycle10-capture.json",
+      "metadata_sha256": "01141C144AB9D2F575D70BE2F0B9F06BE8C8D6399B3C4B345C36FFD6F8BCB0AE",
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3"
+    },
+    {
+      "case": "ties",
+      "cycle": 100,
+      "seed": 48032,
+      "bytes": 26443,
+      "sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+      "robots": 2,
+      "metadata": "output/pass60-drafts/original-controls/ties-cycle100-capture.json",
+      "metadata_sha256": "A788E86F5DB0EF8F54D44728A61C16AF02C078F79CE4658D628ADD04F04832C5",
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3"
+    },
+    {
+      "case": "movement",
+      "cycle": 100,
+      "seed": 48032,
+      "bytes": 17062,
+      "sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+      "robots": 1,
+      "metadata": "output/pass60-drafts/original-controls/movement-cycle100-capture.json",
+      "metadata_sha256": "11863F69C5E509147E877FFE643F83D9356E4EC77B544CB74B52A34C49E94573",
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E"
+    },
+    {
+      "case": "feeding",
+      "cycle": 100,
+      "seed": 48032,
+      "bytes": 18512,
+      "sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+      "robots": 1,
+      "metadata": "output/pass60-drafts/original-controls/feeding-cycle100-capture.json",
+      "metadata_sha256": "1DD41661674666EA258EB1E74DAFA4B1F72448555E47723EC19CE78DFD6D74B0",
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D"
+    },
+    {
+      "case": "reproduction",
+      "cycle": 100,
+      "seed": 48032,
+      "bytes": 26475,
+      "sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+      "robots": 2,
+      "metadata": "output/pass60-drafts/original-controls/reproduction-cycle100-capture.json",
+      "metadata_sha256": "97F9A7ECA514DC459494169A12F2556393B5CA70178011505082617A9C46AA49",
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040"
+    }
+  ],
+  "planned_total_original_references": 25,
+  "canonical_checkpoints": 21,
+  "additional_checkpoints": 4,
+  "planned_strict_fields": 55849,
+  "reference_release": "output/pass60-drafts/original-controls/integration/metadata.json",
+  "reference_release_sha256": "B16CDB77231170DBB96F6C54EFBE43E2FF8B0B902BC3F94D50AABC8191B8E000",
+  "all_owned_original_windows_closed": true,
+  "port_product_execution_for_new_references": false,
+  "active_source_mutated": false,
+  "limits": [
+    "Saved counter is authoritative; status display can lag.",
+    "Rejected101/106attempts preserved separately and not admitted.",
+    "SIM omits arbitrary pre-save Rnd/Gauss state; captures cover the stated fresh-process seeded inputs.",
+    "Internet Mode excluded. A-Life training and Bob dot were left running."
+  ]
+}

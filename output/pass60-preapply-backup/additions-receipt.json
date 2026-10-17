@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "created_utc": "2026-10-17T09:07:21.005Z",
+  "base_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "state": "backed_up_only_no_source_application",
+  "preserved_prior_backup_receipt": "output/pass60-preapply-backup/receipt.json",
+  "preserved_prior_backup_receipt_sha256": "AC919EEBDAEE88A2B65E56AEBC2C718B6A44D4181E185CDDE8D03B11F987847B",
+  "additional_target_count": 16,
+  "existing_backups": 6,
+  "new_target_absences": 10,
+  "files": [
+    {
+      "target": "modern/engine/src/world/native_fitness.rs",
+      "backup": "output/pass60-preapply-backup/additions/modern/engine/src/world/native_fitness.rs",
+      "previously_absent": false,
+      "base_sha256": "FB24E0AD8F4716AC0E1E68E003F2E891155703498235D0D81FFC37B1085C334D",
+      "bytes": 3152
+    },
+    {
+      "target": "modern/engine/tests/db24832_genuine_load_transients.rs",
+      "backup": "output/pass60-preapply-backup/additions/modern/engine/tests/db24832_genuine_load_transients.rs",
+      "previously_absent": false,
+      "base_sha256": "8D443F438490F2C8E600A4E6255F6AEED31378746953E279EDFD1186A2D08F48",
+      "bytes": 15191
+    },
+    {
+      "target": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "backup": "output/pass60-preapply-backup/additions/modern/engine/tests/db24832_genuine_feeding.rs",
+      "previously_absent": false,
+      "base_sha256": "73973FA6DA0D8A0E8B0F0960E0DE9D566C9B0E2C5D1ACE43E6DB6437938FB1F4",
+      "bytes": 24045
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "backup": "output/pass60-preapply-backup/additions/modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "previously_absent": false,
+      "base_sha256": "739CBD3FB8528740F6CCB6B74988DB91126A5DE6D474A46FDB309C2C5A3C5F98",
+      "bytes": 9494
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle10-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle100-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-body-cycle10-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-body-cycle100-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle10-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle10-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle100-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle100-20261017.sim",
+      "backup": null,
+      "previously_absent": true,
+      "base_sha256": null,
+      "bytes": 0
+    },
+    {
+      "target": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "backup": "output/pass60-preapply-backup/additions/docs/parity/db24832-parity-report-2026-10-14.html",
+      "previously_absent": false,
+      "base_sha256": "70D0C7FF65A6285119329FE7B5D7DEE147729D4B4FC63B8B8A0FF2ACA703B6FC",
+      "bytes": 500768
+    },
+    {
+      "target": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "backup": "output/pass60-preapply-backup/additions/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "previously_absent": false,
+      "base_sha256": "899AA32510E7AE0092D5B4406303BF285ADFE8E72AD1BD3FD39534729AB2409D",
+      "bytes": 388135
+    }
+  ]
+}
