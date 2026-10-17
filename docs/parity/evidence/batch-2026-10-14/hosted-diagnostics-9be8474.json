@@ -1,0 +1,765 @@
+{
+  "schema_version": 3,
+  "batch": 56,
+  "source_commit": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "source_head": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "repository": "BobertNeek/Darwinbots-Modern",
+  "workflow": "Desktop platform diagnostics",
+  "workflow_file": ".github/workflows/modern-desktop-diagnostics.yml",
+  "workflow_source": {
+    "file": ".github/workflows/modern-desktop-diagnostics.yml",
+    "sha256": "8A015ADC60FAB8E1A90AB469FAB9890259C7E93367B610116E14D861311AFA91",
+    "bytes": 1782
+  },
+  "run_id": 39002567286,
+  "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567286",
+  "branch": "codex/db24832-completion",
+  "event": "push",
+  "created_utc": "2026-10-17T04:26:21Z",
+  "updated_utc": "2026-10-17T04:30:30Z",
+  "sealed_utc": "2026-10-17T04:34:00.564Z",
+  "state": "needs_repair_compile_prerequisite_failed",
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "all_normal_outcomes_collected": true,
+  "cancelled_jobs": 0,
+  "overall_passed": false,
+  "normal_jobs": [
+    {
+      "completedAt": "2026-10-17T04:28:14Z",
+      "conclusion": "failure",
+      "databaseId": 117308393136,
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "startedAt": "2026-10-17T04:26:29Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:26:31Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:26:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:33Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:26:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:40Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:26:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:52Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:26:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:10Z",
+          "conclusion": "failure",
+          "name": "Diagnose rendered desktop controls",
+          "number": 5,
+          "startedAt": "2026-10-17T04:26:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:10Z",
+          "conclusion": "success",
+          "name": "Preserve diagnostic receipts",
+          "number": 6,
+          "startedAt": "2026-10-17T04:28:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:10Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:28:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:11Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 12,
+          "startedAt": "2026-10-17T04:28:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:12Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13,
+          "startedAt": "2026-10-17T04:28:11Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567286/job/117308393136"
+    },
+    {
+      "completedAt": "2026-10-17T04:30:29Z",
+      "conclusion": "failure",
+      "databaseId": 117308393270,
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "startedAt": "2026-10-17T04:26:27Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:26:31Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:26:28Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:35Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:26:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:48Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:26:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:10Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:26:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:30:25Z",
+          "conclusion": "failure",
+          "name": "Diagnose rendered desktop controls",
+          "number": 5,
+          "startedAt": "2026-10-17T04:27:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:30:26Z",
+          "conclusion": "success",
+          "name": "Preserve diagnostic receipts",
+          "number": 6,
+          "startedAt": "2026-10-17T04:30:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:30:26Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:30:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:30:26Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 12,
+          "startedAt": "2026-10-17T04:30:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:30:26Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13,
+          "startedAt": "2026-10-17T04:30:26Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567286/job/117308393270"
+    },
+    {
+      "completedAt": "2026-10-17T04:28:20Z",
+      "conclusion": "failure",
+      "databaseId": 117308393308,
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "startedAt": "2026-10-17T04:26:25Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:26:28Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:26:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:30Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:26:28Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:39Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:26:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:47Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:26:39Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:16Z",
+          "conclusion": "failure",
+          "name": "Diagnose rendered desktop controls",
+          "number": 5,
+          "startedAt": "2026-10-17T04:26:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:16Z",
+          "conclusion": "success",
+          "name": "Preserve diagnostic receipts",
+          "number": 6,
+          "startedAt": "2026-10-17T04:28:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:16Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:28:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:17Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 12,
+          "startedAt": "2026-10-17T04:28:16Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:17Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13,
+          "startedAt": "2026-10-17T04:28:17Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567286/job/117308393308"
+    }
+  ],
+  "platform_results": [
+    {
+      "rid": "osx-arm64",
+      "job": {
+        "completedAt": "2026-10-17T04:28:14Z",
+        "conclusion": "failure",
+        "databaseId": 117308393136,
+        "name": "rendered-desktop (macos-latest, osx-arm64)",
+        "startedAt": "2026-10-17T04:26:29Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:26:31Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:26:29Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:33Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:26:31Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:40Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:26:33Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:52Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:26:40Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:10Z",
+            "conclusion": "failure",
+            "name": "Diagnose rendered desktop controls",
+            "number": 5,
+            "startedAt": "2026-10-17T04:26:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:10Z",
+            "conclusion": "success",
+            "name": "Preserve diagnostic receipts",
+            "number": 6,
+            "startedAt": "2026-10-17T04:28:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:10Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:28:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:11Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 12,
+            "startedAt": "2026-10-17T04:28:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:12Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 13,
+            "startedAt": "2026-10-17T04:28:11Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567286/job/117308393136"
+      },
+      "compile_boundary": {
+        "code": "E0609",
+        "source_file": "modern/engine/src/world/native_shots.rs",
+        "source_line": 71,
+        "reason": "EngineConfig has no direct max_velocity field; the field is under config.physics.",
+        "diagnostic_context": [
+          "2026-10-17T04:28:06.2355330Z   error[E0609]: no field `max_velocity` on type `config::EngineConfig`",
+          "2026-10-17T04:28:06.2356230Z     --> modern/engine/src/world/native_shots.rs:71:38",
+          "2026-10-17T04:28:06.2356570Z      |",
+          "2026-10-17T04:28:06.2357220Z   71 |             + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:28:06.2358120Z      |                                      ^^^^^^^^^^^^ unknown field",
+          "2026-10-17T04:28:06.2358620Z      |",
+          "2026-10-17T04:28:06.2359060Z   help: one of the expressions' fields has a field of the same name",
+          "2026-10-17T04:28:06.2359590Z      |",
+          "2026-10-17T04:28:06.2361990Z   71 |             + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:28:06.2362680Z      |                                      ++++++++"
+        ],
+        "additional_msbuild_diagnostic": [
+          "2026-10-17T04:28:10.5015000Z /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj(36,5): error MSB3073: The command \"cargo build -p darwinbots-engine --release\" exited with code 101."
+        ],
+        "not_a_test_failure": true
+      },
+      "actual_rust_completed_targets": 0,
+      "actual_rust_test_results": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered_out": 0,
+        "executed": 0
+      },
+      "actual_managed_test_results": {
+        "total": 0,
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "trx_files": 0,
+        "reason": "dotnet test command failed in prerequisite cargo build before test-host execution."
+      },
+      "rust_test_terminal_summaries": 0,
+      "rust_test_start_lines": 0,
+      "managed_test_terminal_summaries": 0,
+      "not_run_after_failure": [
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-diagnostics-9be8474-agent/logs/osx-arm64-final.log",
+        "sha256": "AC98877C0EE9A40AB90D458DCDEA457A5E083D40607512B6BD1AB25DD17E27B7",
+        "bytes": 51136
+      }
+    },
+    {
+      "rid": "osx-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:30:29Z",
+        "conclusion": "failure",
+        "databaseId": 117308393270,
+        "name": "rendered-desktop (macos-15-intel, osx-x64)",
+        "startedAt": "2026-10-17T04:26:27Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:26:31Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:26:28Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:35Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:26:31Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:48Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:26:35Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:10Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:26:48Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:30:25Z",
+            "conclusion": "failure",
+            "name": "Diagnose rendered desktop controls",
+            "number": 5,
+            "startedAt": "2026-10-17T04:27:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:30:26Z",
+            "conclusion": "success",
+            "name": "Preserve diagnostic receipts",
+            "number": 6,
+            "startedAt": "2026-10-17T04:30:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:30:26Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:30:26Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:30:26Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 12,
+            "startedAt": "2026-10-17T04:30:26Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:30:26Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 13,
+            "startedAt": "2026-10-17T04:30:26Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567286/job/117308393270"
+      },
+      "compile_boundary": {
+        "code": "E0609",
+        "source_file": "modern/engine/src/world/native_shots.rs",
+        "source_line": 71,
+        "reason": "EngineConfig has no direct max_velocity field; the field is under config.physics.",
+        "diagnostic_context": [
+          "2026-10-17T04:30:17.9564180Z   error[E0609]: no field `max_velocity` on type `config::EngineConfig`",
+          "2026-10-17T04:30:17.9565270Z     --> modern/engine/src/world/native_shots.rs:71:38",
+          "2026-10-17T04:30:17.9566010Z      |",
+          "2026-10-17T04:30:17.9567010Z   71 |             + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:30:17.9568270Z      |                                      ^^^^^^^^^^^^ unknown field",
+          "2026-10-17T04:30:17.9568970Z      |",
+          "2026-10-17T04:30:17.9569570Z   help: one of the expressions' fields has a field of the same name",
+          "2026-10-17T04:30:17.9570260Z      |",
+          "2026-10-17T04:30:17.9571120Z   71 |             + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:30:17.9572300Z      |                                      ++++++++"
+        ],
+        "additional_msbuild_diagnostic": [
+          "2026-10-17T04:30:25.6700370Z /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj(36,5): error MSB3073: The command \"cargo build -p darwinbots-engine --release\" exited with code 101."
+        ],
+        "not_a_test_failure": true
+      },
+      "actual_rust_completed_targets": 0,
+      "actual_rust_test_results": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered_out": 0,
+        "executed": 0
+      },
+      "actual_managed_test_results": {
+        "total": 0,
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "trx_files": 0,
+        "reason": "dotnet test command failed in prerequisite cargo build before test-host execution."
+      },
+      "rust_test_terminal_summaries": 0,
+      "rust_test_start_lines": 0,
+      "managed_test_terminal_summaries": 0,
+      "not_run_after_failure": [
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-diagnostics-9be8474-agent/logs/osx-x64-final.log",
+        "sha256": "000EA6F95D64BFDD8BCBAEC08903A6492F8D5AD5AB33C933EB489AE21ADF9471",
+        "bytes": 50986
+      }
+    },
+    {
+      "rid": "linux-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:28:20Z",
+        "conclusion": "failure",
+        "databaseId": 117308393308,
+        "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+        "startedAt": "2026-10-17T04:26:25Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:26:28Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:26:26Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:30Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:26:28Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:39Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:26:30Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:47Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:26:39Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:16Z",
+            "conclusion": "failure",
+            "name": "Diagnose rendered desktop controls",
+            "number": 5,
+            "startedAt": "2026-10-17T04:26:47Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:16Z",
+            "conclusion": "success",
+            "name": "Preserve diagnostic receipts",
+            "number": 6,
+            "startedAt": "2026-10-17T04:28:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:16Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:28:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:17Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 12,
+            "startedAt": "2026-10-17T04:28:16Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:17Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 13,
+            "startedAt": "2026-10-17T04:28:17Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567286/job/117308393308"
+      },
+      "compile_boundary": {
+        "code": "E0609",
+        "source_file": "modern/engine/src/world/native_shots.rs",
+        "source_line": 71,
+        "reason": "EngineConfig has no direct max_velocity field; the field is under config.physics.",
+        "diagnostic_context": [
+          "2026-10-17T04:28:13.1693196Z   error[E0609]: no field `max_velocity` on type `config::EngineConfig`",
+          "2026-10-17T04:28:13.1694580Z     --> modern/engine/src/world/native_shots.rs:71:38",
+          "2026-10-17T04:28:13.1695006Z      |",
+          "2026-10-17T04:28:13.1695596Z   71 |             + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:28:13.1696320Z      |                                      ^^^^^^^^^^^^ unknown field",
+          "2026-10-17T04:28:13.1696782Z      |",
+          "2026-10-17T04:28:13.1697223Z   help: one of the expressions' fields has a field of the same name",
+          "2026-10-17T04:28:13.1697686Z      |",
+          "2026-10-17T04:28:13.1698297Z   71 |             + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:28:13.1698971Z      |                                      ++++++++"
+        ],
+        "additional_msbuild_diagnostic": [
+          "2026-10-17T04:28:16.7531414Z /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj(36,5): error MSB3073: The command \"cargo build -p darwinbots-engine --release\" exited with code 101."
+        ],
+        "not_a_test_failure": true
+      },
+      "actual_rust_completed_targets": 0,
+      "actual_rust_test_results": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered_out": 0,
+        "executed": 0
+      },
+      "actual_managed_test_results": {
+        "total": 0,
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "trx_files": 0,
+        "reason": "dotnet test command failed in prerequisite cargo build before test-host execution."
+      },
+      "rust_test_terminal_summaries": 0,
+      "rust_test_start_lines": 0,
+      "managed_test_terminal_summaries": 0,
+      "not_run_after_failure": [
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-diagnostics-9be8474-agent/logs/linux-x64-final.log",
+        "sha256": "6DE52A2BFBAFC43B2ECEB68BBE5221B831F15EABEFBAA3C8C33AEE5250EEE2FE",
+        "bytes": 50508
+      }
+    }
+  ],
+  "artifacts": {
+    "api_available_count": 0,
+    "downloaded_count": 0,
+    "metadata": [],
+    "actual_trx_files": 0,
+    "gui_frames": 0,
+    "published_packages": [],
+    "reason": "Compile failure occurred before test result or GUI artifacts and package creation; always-run preservation steps found no files."
+  },
+  "evidence": {
+    "initial_run": {
+      "file": "output/hosted-diagnostics-9be8474-agent/initial-run.json",
+      "sha256": "9585DD2D4EF34295678188824BF1299FD2F68CC29C5E50F511B772336AB25EE9",
+      "bytes": 7653
+    },
+    "final_run": {
+      "file": "output/hosted-diagnostics-9be8474-agent/final-run.json",
+      "sha256": "79B21076D80A633AF2F680757F4DD1B7D200DAEA2A3B858350F788C762FDEFB3",
+      "bytes": 8504
+    },
+    "artifacts_api": {
+      "file": "output/hosted-diagnostics-9be8474-agent/artifacts-api.json",
+      "sha256": "F7417E1FB877D3F5934F143CC38AD9E2905476E8F5AC6776507D09441EFCD6F6",
+      "bytes": 42
+    },
+    "job_logs": [
+      {
+        "file": "output/hosted-diagnostics-9be8474-agent/logs/osx-arm64-final.log",
+        "sha256": "AC98877C0EE9A40AB90D458DCDEA457A5E083D40607512B6BD1AB25DD17E27B7",
+        "bytes": 51136
+      },
+      {
+        "file": "output/hosted-diagnostics-9be8474-agent/logs/osx-x64-final.log",
+        "sha256": "000EA6F95D64BFDD8BCBAEC08903A6492F8D5AD5AB33C933EB489AE21ADF9471",
+        "bytes": 50986
+      },
+      {
+        "file": "output/hosted-diagnostics-9be8474-agent/logs/linux-x64-final.log",
+        "sha256": "6DE52A2BFBAFC43B2ECEB68BBE5221B831F15EABEFBAA3C8C33AEE5250EEE2FE",
+        "bytes": 50508
+      }
+    ],
+    "capture_method": "Completed-job GitHub logs API via gh api --allow-escape-sequences, saved as UTF8 text with native ANSI content retained. Hashes identify these saved text captures, not a reconstructed ZIP archive."
+  },
+  "execution_boundary": {
+    "manual_workflow_dispatch": false,
+    "workflow_retries": false,
+    "source_or_head_edits": false,
+    "git_mutations": false,
+    "local_product_build_or_test": false,
+    "computer_use_or_gpu": false,
+    "previous_receipts_modified": false
+  },
+  "claim_boundary": "This is failed exact-source56 hosted qualification. Job failures are compile failures, not executed test failures. Zero executed tests is not a passing suite. No historical source55/54 test counts, stale native DLL, package, original-executable, or hardware result is promoted to this source.",
+  "all_three_normal_outcomes_collected": true,
+  "aggregate_test_executions": {
+    "platforms": 3,
+    "command_invocations": 3,
+    "total": 0,
+    "executed": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "actual_trx_files": 0,
+    "prerequisite_rust_build_failures": 3,
+    "scope": "dotnet test invoked on three platforms; required cargo build -p darwinbots-engine --release failed E0609 / MSB3073 before any test host ran. No managed test result exists."
+  },
+  "new_diagnostics_run_id": 39002567286
+}

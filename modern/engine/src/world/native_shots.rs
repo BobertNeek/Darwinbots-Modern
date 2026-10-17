@@ -68,7 +68,7 @@ impl Engine {
         let owner = self.projectiles.owners[shot];
         let radius = crate::physics::organism_radius(32_000.0, 0.0, self.config.fixed_bot_radii);
         let separation = (f64::from(radius).powi(2)
-            + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))
+            + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))
         .sqrt() as f32;
         let mut candidates = self.spatial.segment_candidates(start, end, reach);
         candidates.sort_unstable();
