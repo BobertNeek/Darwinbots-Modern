@@ -12,6 +12,18 @@ const STAGED_MEMORY: [i32; 15] = [
     2_989, 2_990,
 ];
 
+// Robots.HandleWaste/feedveg2 runs before Reproduce even in darkness. These
+// source equations use the shared fixture's200 chloroplasts and .75 body share;
+// every named Single assignment is rounded before the next source expression.
+const PRE_REPRO_ENERGY: f32 = 4_000.0 + (200.0_f64 / 64_000.0 * 0.25) as f32;
+const PRE_REPRO_BODY: f32 = 400.0 + (200.0_f64 / 64_000.0 * 0.75 / 10.0) as f32;
+const PRE_REPRO_WASTE: f32 = (40.0 - 200.0_f32 / 32_000.0 * 0.25) - 200.0_f32 / 32_000.0 * 0.75;
+const CHILD_TRANSFER_ENERGY: f32 = (PRE_REPRO_ENERGY as f64 / 100.0 * 25.0) as f32;
+const CHILD_TRANSFER_WASTE: f32 = (PRE_REPRO_WASTE as f64 / 100.0 * 25.0) as f32;
+const POST_SPLIT_ENERGY: f32 = (PRE_REPRO_ENERGY as f64
+    - CHILD_TRANSFER_ENERGY as f64
+    - CHILD_TRANSFER_ENERGY as f64 * 0.001) as f32;
+
 fn testing_engine() -> Engine {
     let mut config = EngineConfig {
         organism_capacity: 64,
@@ -24,7 +36,8 @@ fn testing_engine() -> Engine {
     };
     // Vegs.FeedVeg feeds existing chloroplasts even when their command flag is
     // disabled. Keep this birth-only fixture dark so its exact split, fee,
-    // radius and prior-energy assertions precede any photosynthesis changes.
+    // radius and prior-energy assertions exclude late photosynthesis. Source
+    // HandleWaste still feeds positive waste/chloroplasts before reproduction.
     config.vegetation.day_night_enabled = false;
     config.vegetation.daytime = false;
     Engine::new(config).unwrap()
@@ -144,15 +157,24 @@ fn child_of(engine: &Engine, parent: OrganismId) -> OrganismId {
         .id
 }
 
-fn assert_transfer(parent: &RobotState, child: &RobotState, parent_energy: i32) {
-    assert_eq!(parent.materials.energy, parent_energy as f32);
-    assert_eq!(parent.materials.body, 300.0);
-    assert_eq!(parent.materials.waste, 30.0);
+fn assert_transfer(parent: &RobotState, child: &RobotState, copy_cost: f64) {
+    assert_eq!(
+        parent.materials.energy,
+        (f64::from(POST_SPLIT_ENERGY) - copy_cost) as f32
+    );
+    assert_eq!(parent.materials.body, PRE_REPRO_BODY - 100.0);
+    assert_eq!(
+        parent.materials.waste,
+        PRE_REPRO_WASTE - CHILD_TRANSFER_WASTE
+    );
     assert_eq!(parent.materials.permanent_waste, 15.0);
     assert_eq!(parent.materials.chloroplasts, 149.645_98);
-    assert_eq!(child.materials.energy, 999.0);
+    assert_eq!(
+        child.materials.energy,
+        (f64::from(CHILD_TRANSFER_ENERGY) * 0.999) as f32
+    );
     assert_eq!(child.materials.body, 100.0);
-    assert_eq!(child.materials.waste, 10.0);
+    assert_eq!(child.materials.waste, CHILD_TRANSFER_WASTE);
     assert_eq!(child.materials.permanent_waste, 5.0);
     assert_eq!(child.materials.chloroplasts, 49.881_992);
 }
@@ -205,7 +227,7 @@ fn repro_125_transfers_twenty_five_percent_of_db2_resources() {
     assert_transfer(
         engine.robot_state(parent).unwrap(),
         engine.robot_state(child).unwrap(),
-        2_999,
+        0.0,
     );
     let parent_state = engine.robot_state(parent).unwrap();
     let child_state = engine.robot_state(child).unwrap();
@@ -609,7 +631,7 @@ fn successful_birth_charges_parent_only_for_five_block_dna_copy() {
     assert_transfer(
         engine.robot_state(parent).unwrap(),
         engine.robot_state(child).unwrap(),
-        2_969,
+        30.0,
     );
 }
 
@@ -861,7 +883,10 @@ fn body_split_uses_vb6_cint_round_to_even_without_minimums() {
         let (engine, parent, _) =
             configured_parent(LegacyDna::parse("start\nstop").unwrap(), percentage, 7);
         let mut engine = edit_engine(&engine, |payload| {
-            robot_value_mut(payload, parent)["materials"]["body"] = json!(5);
+            let robot = robot_value_mut(payload, parent);
+            robot["materials"]["body"] = json!(5);
+            // Isolate the exact CInt body boundary from HandleWaste/feedveg2.
+            robot["materials"]["waste"] = json!(0);
         });
 
         engine.tick().unwrap();
@@ -899,8 +924,10 @@ fn post_birth_mass_and_previous_energy_match_source_bookkeeping() {
     assert!((engine.robot_state(child).unwrap().materials.mass - 0.1).abs() < 0.000_001);
     let payload = engine_payload(&engine);
     assert_eq!(
-        payload["slots"][parent.slot() as usize]["organism"]["materials"]["previous_energy"],
-        json!(2_999.0)
+        payload["slots"][parent.slot() as usize]["organism"]["materials"]["previous_energy"]
+            .as_f64()
+            .unwrap() as f32,
+        POST_SPLIT_ENERGY
     );
 }
 
@@ -990,11 +1017,14 @@ fn native_birth_orders_tie_fee_previous_energy_timer_and_copy_fee() {
     engine.tick().unwrap();
     let child = child_of(&engine, parent);
     let state = engine.robot_state(parent).unwrap();
-    assert_eq!(state.materials.energy, 2990.0);
+    let after_tie = (f64::from(POST_SPLIT_ENERGY) - 3.0) as f32;
+    assert_eq!(state.materials.energy, (f64::from(after_tie) - 6.0) as f32);
     let payload = engine_payload(&engine);
     assert_eq!(
-        payload["slots"][parent.slot() as usize]["organism"]["materials"]["previous_energy"],
-        json!(2996.0)
+        payload["slots"][parent.slot() as usize]["organism"]["materials"]["previous_energy"]
+            .as_f64()
+            .unwrap() as f32,
+        after_tie
     );
     assert_eq!(engine.memory_at(parent, 310).unwrap(), 2999);
     assert_eq!(engine.memory_at(parent, 12).unwrap(), 1235);

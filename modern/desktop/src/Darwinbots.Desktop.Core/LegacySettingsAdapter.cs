@@ -7,6 +7,17 @@ internal static class LegacySettingsAdapter
 {
     internal static List<string> Encode(DesktopSettings settings)
     {
+        // Original SaveSett has one shared shapesAbsorbShots Boolean.
+        string shotPolicy = settings.Obstacles.FirstOrDefault()?.ShotPolicy ?? "absorb";
+        if (settings.Obstacles.Any(o => o.ShotPolicy is not ("absorb" or "reflect"))
+            || settings.Obstacles.Any(o => o.ShotPolicy != shotPolicy))
+            throw new InvalidDataException("Original DB2 .set files support one global Absorb or Reflect shape shot policy; PassThrough, unknown policies, and mixed policies cannot be represented.");
+
+        if (settings.Waste.AlzheimerThreshold is < short.MinValue or > short.MaxValue)
+            throw new InvalidDataException("Original DB2 .set Alzheimer waste threshold must fit a signed 16-bit Integer.");
+        if (settings.Waste.DefecationThreshold != 32_000)
+            throw new InvalidDataException("Original DB2 .set files cannot represent a custom defecation threshold; native HandleWaste always uses 32000.");
+
         int count = settings.Species.Count;
         int global = 2 + 40 * count;
         int extra = global + 90 + 8 * count;
@@ -117,7 +128,10 @@ internal static class LegacySettingsAdapter
             (59,cost.DynamicLowerReinstateThreshold), (60,cost.DynamicUpperReinstateThreshold) };
         foreach (var (index, value) in indexedCosts) Number(costs + index, value);
         Flag(costs + 56, cost.DynamicMultiplier != 0); Flag(costs + 61, cost.DynamicAllRobots); Flag(costs + 62, cost.DynamicAllowNegative);
-        Number(tail, physics.MaxVelocity); Number(tail + 1, settings.Waste.AlzheimerThreshold); Number(tail + 2, settings.Recording.SamplingInterval);
+        Number(tail, physics.MaxVelocity);
+        // OptionsForm.CustomWaste maps modern disabled zero to native -1.
+        Number(tail + 1, settings.Waste.AlzheimerThreshold == 0 ? -1 : settings.Waste.AlzheimerThreshold);
+        Number(tail + 2, settings.Recording.SamplingInterval);
         Number(tail + 3, 2); Number(tail + 4, 2); Number(tail + 5, physics.Elasticity); Number(tail + 6, physics.MaxVelocity);
         Flag(tail + 7, settings.Shots.EnergyShotsDoNotDecay); Number(tail + 8, vegetation.SunUpThreshold); Flag(tail + 9, vegetation.SunUpEnabled);
         Number(tail + 10, vegetation.SunDownThreshold); Flag(tail + 11, vegetation.SunDownEnabled); Number(tail + 15, vegetation.SunThresholdMode);
@@ -127,7 +141,7 @@ internal static class LegacySettingsAdapter
         Flag(shapes + 1, false); Flag(shapes + 3, settings.Obstacles.Any(o => o.Drift[0] != 0));
         Flag(shapes + 4, settings.Obstacles.Any(o => o.Drift[1] != 0));
         Flag(shapes + 5, settings.Obstacles.All(o => o.VisionPolicy == "see_through"));
-        Flag(shapes + 6, settings.Obstacles.All(o => o.ShotPolicy == "absorb"));
+        Flag(shapes + 6, shotPolicy == "absorb");
         Flag(shapes + 7, settings.ShapesVisible); Number(shapes + 8, settings.Obstacles.Count);
         for (int i = 0; i < settings.Obstacles.Count; i++)
         {
@@ -204,7 +218,7 @@ internal static class LegacySettingsAdapter
                 Opacity = Flag(shapes) ? 0 : 1,
                 Drift = [Flag(shapes + 3) ? (float)Number(o + 3) : 0, Flag(shapes + 4) ? (float)Number(o + 4) : 0],
                 VisionPolicy = Flag(shapes + 5) ? "see_through" : "opaque",
-                ShotPolicy = Flag(shapes + 6) ? "absorb" : "pass_through",
+                ShotPolicy = Flag(shapes + 6) ? "absorb" : "reflect",
             });
         }
         int footer = shapes + 9 + 7 * obstacleCount;

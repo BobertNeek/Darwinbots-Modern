@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "state": "unapplied_draft_authored_static_review_only",
+  "created_utc": "2026-10-17T04:58:27.013Z",
+  "ownership": "Only this runner draft and metadata; no active source or existing helper/probe changes.",
+  "frozen_predecessor": {
+    "source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+    "source_manifest": {
+      "file": "output/native-roundtrip-pass57-source.json",
+      "sha256": "154F4CECC99C37025F4947FFB80739D8940F2E7ECD46F01820890AC09271C195"
+    },
+    "qualification_state": "all57_code_and_tests_authored_frozen",
+    "source_file_count": 507,
+    "all_ordinary_outcomes_collected": false
+  },
+  "base_runner": {
+    "file": "output/qualify-native-roundtrip-pass57.ps1",
+    "sha256": "85DB65571EA4179FF559D08534F6C5366FFE18348938E4FA23AF9DF3DDA0E61B",
+    "bytes": 54809
+  },
+  "candidate": {
+    "draft": "output/pass58-drafts/qualification/qualify-native-roundtrip-pass58.ps1",
+    "promotion_target": "output/qualify-native-roundtrip-pass58.ps1",
+    "sha256": "9A2570E9FB003D205F059224FC36CE71DAA49261FCE2C127C058C6957D7F0527",
+    "bytes": 54809
+  },
+  "exact_replacement_census": [
+    {
+      "from": "pass57",
+      "to": "pass58",
+      "count": 7
+    },
+    {
+      "from": "Batch57",
+      "to": "Batch58",
+      "count": 6
+    },
+    {
+      "from": "batch57",
+      "to": "batch58",
+      "count": 4
+    },
+    {
+      "from": "all57",
+      "to": "all58",
+      "count": 1
+    },
+    {
+      "from": "candidate57",
+      "to": "candidate58",
+      "count": 4
+    },
+    {
+      "from": "batch = 57",
+      "to": "batch = 58",
+      "count": 3
+    },
+    {
+      "from": "after all batch56 outcomes.",
+      "to": "after all batch57 outcomes.",
+      "count": 1
+    }
+  ],
+  "changed_line_count": 24,
+  "changed_lines": [
+    {
+      "line": 1,
+      "before": "# Draft for promotion to output/qualify-native-roundtrip-pass57.ps1 after all batch56 outcomes.",
+      "after": "# Draft for promotion to output/qualify-native-roundtrip-pass58.ps1 after all batch57 outcomes."
+    },
+    {
+      "line": 14,
+      "before": "$manifestPath = Join-Path $repo 'output/native-roundtrip-pass57-source.json'",
+      "after": "$manifestPath = Join-Path $repo 'output/native-roundtrip-pass58-source.json'"
+    },
+    {
+      "line": 16,
+      "before": "if ($manifest.qualification_state -ne 'all57_code_and_tests_authored_frozen') {",
+      "after": "if ($manifest.qualification_state -ne 'all58_code_and_tests_authored_frozen') {"
+    },
+    {
+      "line": 17,
+      "before": "    throw 'Batch57 source has not been released for combined qualification'",
+      "after": "    throw 'Batch58 source has not been released for combined qualification'"
+    },
+    {
+      "line": 22,
+      "before": "    throw 'Batch57 manifest requires its exact frozen parent HEAD and a separate comparison_base'",
+      "after": "    throw 'Batch58 manifest requires its exact frozen parent HEAD and a separate comparison_base'"
+    },
+    {
+      "line": 26,
+      "before": "$proof = Join-Path $repo 'docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57'",
+      "after": "$proof = Join-Path $repo 'docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass58'"
+    },
+    {
+      "line": 27,
+      "before": "$package = Join-Path $repo 'artifacts/win-x64-native-roundtrip-pass57'",
+      "after": "$package = Join-Path $repo 'artifacts/win-x64-native-roundtrip-pass58'"
+    },
+    {
+      "line": 28,
+      "before": "$candidateDirectory = Join-Path $repo 'output/native-oracle-candidate57'",
+      "after": "$candidateDirectory = Join-Path $repo 'output/native-oracle-candidate58'"
+    },
+    {
+      "line": 30,
+      "before": "    if (Test-Path -LiteralPath $freshPath) { throw \"Do not overwrite or merge an existing batch57 artifact: $freshPath\" }",
+      "after": "    if (Test-Path -LiteralPath $freshPath) { throw \"Do not overwrite or merge an existing batch58 artifact: $freshPath\" }"
+    },
+    {
+      "line": 38,
+      "before": "        throw \"Invalid or duplicate batch57 source pin: $relative\"",
+      "after": "        throw \"Invalid or duplicate batch58 source pin: $relative\""
+    },
+    {
+      "line": 41,
+      "before": "if ($pinnedNames.Count -eq 0) { throw 'Batch57 source pins are missing' }",
+      "after": "if ($pinnedNames.Count -eq 0) { throw 'Batch58 source pins are missing' }"
+    },
+    {
+      "line": 50,
+      "before": "        throw ('Batch57 requires a positive manifest expected_managed_test_counts.' + $name)",
+      "after": "        throw ('Batch58 requires a positive manifest expected_managed_test_counts.' + $name)"
+    },
+    {
+      "line": 62,
+      "before": "    throw 'Batch57 requires a pinned workspace metadata file and an explicit expected Rust target count.'",
+      "after": "    throw 'Batch58 requires a pinned workspace metadata file and an explicit expected Rust target count.'"
+    },
+    {
+      "line": 276,
+      "before": "    if (Test-Path -LiteralPath (Join-Path $repo 'output/STOP-native-pass57')) { throw 'Owned batch57 STOP marker present' }",
+      "after": "    if (Test-Path -LiteralPath (Join-Path $repo 'output/STOP-native-pass58')) { throw 'Owned batch58 STOP marker present' }"
+    },
+    {
+      "line": 279,
+      "before": "        throw 'Frozen batch57 source manifest changed'",
+      "after": "        throw 'Frozen batch58 source manifest changed'"
+    },
+    {
+      "line": 281,
+      "before": "    if ((Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash -ne $runnerHash) { throw 'Batch57 runner changed' }",
+      "after": "    if ((Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash -ne $runnerHash) { throw 'Batch58 runner changed' }"
+    },
+    {
+      "line": 346,
+      "before": "    file = 'output/qualify-native-roundtrip-pass57.ps1'; sha256 = $runnerHash",
+      "after": "    file = 'output/qualify-native-roundtrip-pass58.ps1'; sha256 = $runnerHash"
+    },
+    {
+      "line": 401,
+      "before": "                schema_version = 1; batch = 57; source_head = $expectedParent; source_manifest_sha256 = $manifestHash",
+      "after": "                schema_version = 1; batch = 58; source_head = $expectedParent; source_manifest_sha256 = $manifestHash"
+    },
+    {
+      "line": 433,
+      "before": "        if (Test-Path -LiteralPath $candidateDirectory) { throw 'Do not reuse an existing candidate57 directory' }",
+      "after": "        if (Test-Path -LiteralPath $candidateDirectory) { throw 'Do not reuse an existing candidate58 directory' }"
+    },
+    {
+      "line": 438,
+      "before": "                if (Test-Path -LiteralPath $output) { throw 'Do not overwrite a candidate57 checkpoint' }",
+      "after": "                if (Test-Path -LiteralPath $output) { throw 'Do not overwrite a candidate58 checkpoint' }"
+    },
+    {
+      "line": 449,
+      "before": "            source = 'native-roundtrip-pass57/source.json'; status = 'Fresh seven-case/21-output Rust candidates; genuine movement and additional control comparisons are recorded separately.'",
+      "after": "            source = 'native-roundtrip-pass58/source.json'; status = 'Fresh seven-case/21-output Rust candidates; genuine movement and additional control comparisons are recorded separately.'"
+    },
+    {
+      "line": 510,
+      "before": "            schema_version = 1; batch = 57; source_head = $expectedParent; source_manifest_sha256 = $manifestHash",
+      "after": "            schema_version = 1; batch = 58; source_head = $expectedParent; source_manifest_sha256 = $manifestHash"
+    },
+    {
+      "line": 526,
+      "before": "            if (Test-Path -LiteralPath $output) { throw 'Do not reuse a plant candidate57 checkpoint.' }",
+      "after": "            if (Test-Path -LiteralPath $output) { throw 'Do not reuse a plant candidate58 checkpoint.' }"
+    },
+    {
+      "line": 603,
+      "before": "            schema_version = 1; batch = 57; source_head = $expectedParent; source_manifest_sha256 = $manifestHash",
+      "after": "            schema_version = 1; batch = 58; source_head = $expectedParent; source_manifest_sha256 = $manifestHash"
+    }
+  ],
+  "preserved_contract": {
+    "non_namespace_bytes_reversible_to_exact_base": true,
+    "line_endings_unchanged": {
+      "CRLF": 148,
+      "LF_only": 600,
+      "total_newline_sequences": 748
+    },
+    "fixture_path_literals_unchanged": true,
+    "fixture_path_literal_count": 26,
+    "fixture_and_executable_hash_literals_unchanged": true,
+    "sha256_literal_count": 23,
+    "reference_controls": 15,
+    "reference_only_expected_fields_total": 34835,
+    "feeding_cycle10_expected_fields": 3090,
+    "expected_rust_targets_from_frozen_metadata": 68,
+    "managed_counts_remain_manifest_driven": true,
+    "predecessor_expected_managed_counts": {
+      "core": 289,
+      "desktop": 193
+    },
+    "fresh_workspace_invocation": "cargo test --release --workspace --no-fail-fast -- --skip gpu --skip switch --nocapture --test-threads=1",
+    "jobs": 1,
+    "priority": "BelowNormal",
+    "source_and_stop_guards_preserved": true,
+    "fresh_run_lock_CreateNew_guard_preserved": true,
+    "existing_helper_and_probes_unchanged": true,
+    "png_observe_only_guard_preserved": true,
+    "all_ordinary_failures_collected_before_repairs": true
+  },
+  "fresh_paths": {
+    "manifest": "output/native-roundtrip-pass58-source.json",
+    "qualification_state": "all58_code_and_tests_authored_frozen",
+    "proof": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass58",
+    "package": "artifacts/win-x64-native-roundtrip-pass58",
+    "candidates": "output/native-oracle-candidate58",
+    "stop": "output/STOP-native-pass58"
+  },
+  "allowed_predecessor_namespace_reference": [
+    {
+      "line": 1,
+      "text": "# Draft for promotion to output/qualify-native-roundtrip-pass58.ps1 after all batch57 outcomes."
+    }
+  ],
+  "execution": {
+    "powershell_parser": false,
+    "formatter": false,
+    "build": false,
+    "test": false,
+    "product_or_original_engine": false,
+    "gui": false,
+    "gpu": false,
+    "git_command": false,
+    "git_mutation": false,
+    "active_application": false
+  },
+  "qualification_boundary": "Draft only. All57 ordinary outcomes and root release must precede application/freezing of58. No current or future qualification/admission result is claimed. Later58 repairs may extend the draft only after review.",
+  "ownership_released": true
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "completed_utc": "2026-10-17T06:01:11.1209066Z",
+  "all_code_applied_first": true,
+  "format_exit_code": 0,
+  "new_runner_parser_errors": 0,
+  "parser_messages": [],
+  "metadata_exit_code": 0,
+  "metadata_expected_targets": 68,
+  "metadata_target_set_equals57": true,
+  "expected_managed_test_counts": {
+    "core": 307,
+    "desktop": 197
+  },
+  "unchanged_guard_checks_retained": {
+    "receipt": "output/pass57-authoring-checks.json",
+    "sha256": "65C57C01C7EC5CAC0BAA8CE067B9A18A01B16EFD0D6166CCB47026B5131BA2FA",
+    "schema5_passed": 23,
+    "schema4_historical_passed": 8,
+    "rerun": false,
+    "reason": "Guard helper/probes unchanged; historical schema4 is not current-source admission."
+  },
+  "product_builds_or_tests_executed": false,
+  "desktop_or_gpu_executed": false
+}

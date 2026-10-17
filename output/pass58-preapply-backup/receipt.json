@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "created_utc": "2026-10-17T05:27:11.1516696Z",
+  "base_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "plan": "output/pass58-authoring-plan.json",
+  "plan_sha256": "B77F973F1391358B90B659976CB228F7003B26DA6097C1744C5CFD0E37DFB882",
+  "targets": 15,
+  "existing_backed_up": 12,
+  "new_targets_preserved_absent": 3,
+  "application_performed": false,
+  "files": [
+    {
+      "target": "modern/engine/src/environment.rs",
+      "existed": true,
+      "sha256": "8A943B723C95E5B79A6321D3D99C5D124322C50088F9FE1FCF28C3916A63761A",
+      "backup": "output/pass58-preapply-backup/modern/engine/src/environment.rs"
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "existed": true,
+      "sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "backup": "output/pass58-preapply-backup/modern/engine/src/world.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "existed": true,
+      "sha256": "B21F676C436C13DC3F1F396F3CFF16FCB16389B7FB36A9D6580747B2FAD84A40",
+      "backup": "output/pass58-preapply-backup/modern/engine/src/world/native_io.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "existed": true,
+      "sha256": "986CCF84ACC33D613FC063E37552550F51A0C1BF5F50C5D2C0213FE53AD55C63",
+      "backup": "output/pass58-preapply-backup/modern/engine/src/world/native_sim_export.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "existed": true,
+      "sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "backup": "output/pass58-preapply-backup/modern/engine/src/world/native_shots.rs"
+    },
+    {
+      "target": "modern/engine/tests/db2_projectiles.rs",
+      "existed": true,
+      "sha256": "275487A152ACA9BB6AA4C9B2DD61D52224E99ED5B6D8020E0A311777343604DD",
+      "backup": "output/pass58-preapply-backup/modern/engine/tests/db2_projectiles.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "existed": true,
+      "sha256": "267AE175E70E91593FD97C4A53A8376D015292743B8048B4047E7FBD940674A0",
+      "backup": "output/pass58-preapply-backup/modern/engine/src/world/native_energy.rs"
+    },
+    {
+      "target": "modern/engine/tests/contracts.rs",
+      "existed": true,
+      "sha256": "E7053ADB06233C61D23776A8EA10781AF9764E5516860BD88D7221AAB532114F",
+      "backup": "output/pass58-preapply-backup/modern/engine/tests/contracts.rs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "existed": true,
+      "sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD",
+      "backup": "output/pass58-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "existed": true,
+      "sha256": "29D26866E27BCE8A86721E1C6E5B6C0A9FBC76398EDB9934378C6882BC480EB3",
+      "backup": "output/pass58-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "existed": true,
+      "sha256": "5C0254B7FBDB86F3EEF54DDDE1D98E308698C7479A98D29B33193E9061E5E506",
+      "backup": "output/pass58-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ShapeShotPolicyCompatibilityTests.cs",
+      "existed": false,
+      "sha256": null,
+      "backup": null
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/ShapeEditorReflectPolicyTests.cs",
+      "existed": false,
+      "sha256": null,
+      "backup": null
+    },
+    {
+      "target": ".github/workflows/modern-cross-platform.yml",
+      "existed": true,
+      "sha256": "4B596B870FC8E38DDD9D9F658AD1ACDAAB7082ED10B161D22655025D2ABF6707",
+      "backup": "output/pass58-preapply-backup/.github/workflows/modern-cross-platform.yml"
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass58.ps1",
+      "existed": false,
+      "sha256": null,
+      "backup": null
+    }
+  ]
+}

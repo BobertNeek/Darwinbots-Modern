@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_pending_all57_ordinary_outcomes",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "all_initial_code_and_tests_authored_utc": "2026-10-17T05:26:55.4533091Z",
+  "code_and_tests_authored_before_checks": true,
+  "product_builds_or_tests_executed": false,
+  "active_application": false,
+  "source_file_count": 15,
+  "new_targets": 3,
+  "existing_targets": 12,
+  "expected_distinct_rust_targets": 68,
+  "expected_net_new_rust_tests_vs55": 62,
+  "expected_managed_test_counts": {
+    "core": 298,
+    "desktop": 197
+  },
+  "ordinary_predecessor_outcomes": {
+    "hosted_all_collected": true,
+    "local_all_collected": false,
+    "local_runner": 49988,
+    "local_exec_session": 92452
+  },
+  "supersession": {
+    "world": "shape-policy includes approved energy-validation restore",
+    "native_shots": "shape-policy includes approved shot-fixture and lint changes",
+    "native_energy": "native-energy-validation includes native-lint cleanup",
+    "base_bytes": "Actual raw baseline bytes measured for this plan; do not reuse stale40955 native_shots count from earlier metadata"
+  },
+  "releases": [
+    {
+      "file": "output/pass58-drafts/shape-policy/metadata.json",
+      "sha256": "09FF864080AFE95646943C16AA71D090C4A7EA48F8286E810944667401FA9CA7"
+    },
+    {
+      "file": "output/pass58-drafts/native-energy-validation/metadata.json",
+      "sha256": "74F7F354824D54E4B7D7158CC51BEA023E4914C58A3E73B3AB230AF39DA80499"
+    },
+    {
+      "file": "output/pass58-drafts/toxin-migration-contract/metadata.json",
+      "sha256": "8144FDEF14DF4BBCFC86F7E2AEF9BF0A574B79501A346ABE00D1AF415C34C417"
+    },
+    {
+      "file": "output/pass58-drafts/managed-reflect/metadata.json",
+      "sha256": "231D9547EA11CBA1BB238E65C859477E6C8034B30F87C28849D0EF19CC028486"
+    },
+    {
+      "file": "output/pass58-drafts/hosted-rust-census/metadata.json",
+      "sha256": "DD3101874C751E507D89EA46D2AAF11E9D09B40E6869DBC2D4652ABDAA1A0414"
+    },
+    {
+      "file": "output/pass58-drafts/qualification/metadata.json",
+      "sha256": "6AC4967D6C4754E0A5C50F0A7A006494619647C4F546D3666AB15AD7B5DAEBEA"
+    }
+  ],
+  "files": [
+    {
+      "target": "modern/engine/src/environment.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/environment.rs",
+      "base_raw_sha256": "8A943B723C95E5B79A6321D3D99C5D124322C50088F9FE1FCF28C3916A63761A",
+      "candidate_raw_sha256": "CC209E6CD44EE462DFCD337789032D196D1DA8477D34840C7BD8441AAC612425",
+      "is_new": false,
+      "release": "output/pass58-drafts/shape-policy/metadata.json",
+      "base_bytes": 11447,
+      "candidate_bytes": 11629
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world.rs",
+      "base_raw_sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "candidate_raw_sha256": "8816512B1AC6CC7253F163EA7E1BA1428E5D9A4D98635AA833E0A309FDD61E7C",
+      "is_new": false,
+      "release": "output/pass58-drafts/shape-policy/metadata.json",
+      "base_bytes": 578163,
+      "candidate_bytes": 579640
+    },
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_io.rs",
+      "base_raw_sha256": "B21F676C436C13DC3F1F396F3CFF16FCB16389B7FB36A9D6580747B2FAD84A40",
+      "candidate_raw_sha256": "E2F03EE8066DC1202182D5902A061429490AD6598ADECB3B3772C81F16DFBCED",
+      "is_new": false,
+      "release": "output/pass58-drafts/shape-policy/metadata.json",
+      "base_bytes": 61514,
+      "candidate_bytes": 61510
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_sim_export.rs",
+      "base_raw_sha256": "986CCF84ACC33D613FC063E37552550F51A0C1BF5F50C5D2C0213FE53AD55C63",
+      "candidate_raw_sha256": "510526EC99024960989A6F7C94016FAFB968623B08CF99368E57DC81CEDAB86E",
+      "is_new": false,
+      "release": "output/pass58-drafts/shape-policy/metadata.json",
+      "base_bytes": 55058,
+      "candidate_bytes": 58375
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_shots.rs",
+      "base_raw_sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "candidate_raw_sha256": "45837A2442A8ADC444D392D7A5FA961984513D4A1B41C645C5C92C281899DEAD",
+      "is_new": false,
+      "release": "output/pass58-drafts/shape-policy/metadata.json",
+      "base_bytes": 41211,
+      "candidate_bytes": 50926
+    },
+    {
+      "target": "modern/engine/tests/db2_projectiles.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/tests/db2_projectiles.rs",
+      "base_raw_sha256": "275487A152ACA9BB6AA4C9B2DD61D52224E99ED5B6D8020E0A311777343604DD",
+      "candidate_raw_sha256": "D0B2CA6050798F6D09D20BD9325B21B89EA3AD67A85C3B630B8F99D99B6F8057",
+      "is_new": false,
+      "release": "output/pass58-drafts/shape-policy/metadata.json",
+      "base_bytes": 30442,
+      "candidate_bytes": 33337
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "draft": "output/pass58-drafts/native-energy-validation/modern/engine/src/world/native_energy.rs",
+      "base_raw_sha256": "267AE175E70E91593FD97C4A53A8376D015292743B8048B4047E7FBD940674A0",
+      "candidate_raw_sha256": "2DEBC72890B56366913C46C266AF6CFD4FB6A9BB17B68BD253B8F45D7CEE9DC6",
+      "is_new": false,
+      "release": "output/pass58-drafts/native-energy-validation/metadata.json",
+      "base_bytes": 18348,
+      "candidate_bytes": 19977
+    },
+    {
+      "target": "modern/engine/tests/contracts.rs",
+      "draft": "output/pass58-drafts/toxin-migration-contract/modern/engine/tests/contracts.rs",
+      "base_raw_sha256": "E7053ADB06233C61D23776A8EA10781AF9764E5516860BD88D7221AAB532114F",
+      "candidate_raw_sha256": "CF369243FA400EEE8B73E3C1D8EEAF90453A67633A67CF8A792E306BC6F4B800",
+      "is_new": false,
+      "release": "output/pass58-drafts/toxin-migration-contract/metadata.json",
+      "base_bytes": 61041,
+      "candidate_bytes": 63414
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "draft": "output/pass58-drafts/managed-reflect/modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "base_raw_sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD",
+      "candidate_raw_sha256": "83A49251A427B17A98C06A56FB8EF1B45D8AAB7CABD1A7B83A1AC7456B1B74DA",
+      "is_new": false,
+      "release": "output/pass58-drafts/managed-reflect/metadata.json",
+      "base_bytes": 21940,
+      "candidate_bytes": 22428
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "draft": "output/pass58-drafts/managed-reflect/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "base_raw_sha256": "29D26866E27BCE8A86721E1C6E5B6C0A9FBC76398EDB9934378C6882BC480EB3",
+      "candidate_raw_sha256": "E2220334969C1351935AAC572632ACC45DD0F3755FB445F2E2CAE8B0373EDAAE",
+      "is_new": false,
+      "release": "output/pass58-drafts/managed-reflect/metadata.json",
+      "base_bytes": 2491,
+      "candidate_bytes": 2663
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "draft": "output/pass58-drafts/managed-reflect/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "base_raw_sha256": "5C0254B7FBDB86F3EEF54DDDE1D98E308698C7479A98D29B33193E9061E5E506",
+      "candidate_raw_sha256": "1E99772506D098B20D587F21AFD4A3ABE2711169B382017D64290806E2141741",
+      "is_new": false,
+      "release": "output/pass58-drafts/managed-reflect/metadata.json",
+      "base_bytes": 3343,
+      "candidate_bytes": 3376
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ShapeShotPolicyCompatibilityTests.cs",
+      "draft": "output/pass58-drafts/managed-reflect/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ShapeShotPolicyCompatibilityTests.cs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "CBE9347849408F6D17B7168F4CFAB9EE0A606DB75B638CB709F00ACB0638BD5F",
+      "is_new": true,
+      "release": "output/pass58-drafts/managed-reflect/metadata.json",
+      "base_bytes": null,
+      "candidate_bytes": 4586
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/ShapeEditorReflectPolicyTests.cs",
+      "draft": "output/pass58-drafts/managed-reflect/modern/desktop/tests/Darwinbots.Desktop.Tests/ShapeEditorReflectPolicyTests.cs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "6D6A551D6F572FEB11610A824FAE84C0EEF204BFAA27968BB4DDB71EC457F78A",
+      "is_new": true,
+      "release": "output/pass58-drafts/managed-reflect/metadata.json",
+      "base_bytes": null,
+      "candidate_bytes": 3196
+    },
+    {
+      "target": ".github/workflows/modern-cross-platform.yml",
+      "draft": "output/pass58-drafts/hosted-rust-census/.github/workflows/modern-cross-platform.yml",
+      "base_raw_sha256": "4B596B870FC8E38DDD9D9F658AD1ACDAAB7082ED10B161D22655025D2ABF6707",
+      "candidate_raw_sha256": "0C094489C1716CACBE70899525134169DD0027B8783BE0229A463FB2D2419F6F",
+      "is_new": false,
+      "release": "output/pass58-drafts/hosted-rust-census/metadata.json",
+      "base_bytes": 2910,
+      "candidate_bytes": 2925
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass58.ps1",
+      "draft": "output/pass58-drafts/qualification/qualify-native-roundtrip-pass58.ps1",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "9A2570E9FB003D205F059224FC36CE71DAA49261FCE2C127C058C6957D7F0527",
+      "is_new": true,
+      "release": "output/pass58-drafts/qualification/metadata.json",
+      "base_bytes": null,
+      "candidate_bytes": 54809
+    }
+  ],
+  "apply_gate": "Collect every ordinary57 local outcome, amend full batch if further repairs are needed, back up all targets, then apply every58 code/test target before any qualification."
+}

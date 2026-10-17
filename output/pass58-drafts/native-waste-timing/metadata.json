@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_released_for_static_review",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "classification": "production native feedveg2 ran in the wrong phase, omitted its source RNG order and independent strict-cap waste costs; strict reproduction fixtures exposed late post-birth contamination",
+  "source_formulas": {
+    "file": "output/pass58-drafts/native-waste-timing/source-formulas.json",
+    "sha256": "01E4042A9F67B1F864015514262542C6163D0A0B25EFA7FE05544719C6FCF501"
+  },
+  "repair": [
+    "Native HandleWaste performs feedveg2 before Alzheimer, defecation and subsequent per-actor phases; queued reproduction sees converted stores",
+    "Positive waste and chloroplasts consume exactly one source Rndy to select energy/body order; NoChlr and darkness do not suppress it",
+    "Energy/body meal variables are Single; each successful channel requires new store strictly below32000, then independently subtracts its own Double-expression share into Single waste and clamps waste at0",
+    "Late native FeedVeg no longer runs generic waste conversion; portable legacy late conversion is retained without changes",
+    "Shared positive-waste reproduction fixture now asserts explicit original Single/Integer transfer equations, preserving exact integer childbody100, mem3102999, fees and chloroplasts",
+    "Isolated CInt-body boundary clears waste locally and retains all original exact5/0,0/5,3/2 assertions"
+  ],
+  "files": [
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft": "output/pass58-drafts/native-waste-timing/modern/engine/src/world.rs",
+      "raw_before": "output/pass58-drafts/native-waste-timing/before/modern/engine/src/world.rs",
+      "base_raw_sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "base_bytes": 578163,
+      "derived_from": "output/pass58-drafts/fresh-native-stats/modern/engine/src/world.rs",
+      "derived_from_sha256": "4E85AD2535C6446968A84CC294657D837EE5B9EC6C85B042E8C8A5A37964ED33",
+      "candidate_raw_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "candidate_bytes": 580098,
+      "new_test_rows": 0
+    },
+    {
+      "target": "modern/engine/src/world/native_waste.rs",
+      "draft": "output/pass58-drafts/native-waste-timing/modern/engine/src/world/native_waste.rs",
+      "raw_before": "output/pass58-drafts/native-waste-timing/before/modern/engine/src/world/native_waste.rs",
+      "base_raw_sha256": "04C49D40BA6E4AF90A06280AFAAD1E4204B88967C967618FA33A5FA163F81ED2",
+      "base_bytes": 9161,
+      "derived_from": "modern/engine/src/world/native_waste.rs",
+      "derived_from_sha256": "04C49D40BA6E4AF90A06280AFAAD1E4204B88967C967618FA33A5FA163F81ED2",
+      "candidate_raw_sha256": "94980D1D13C5E30C375B10BF261E5DC15F49B33D092F5CCA59B46927627F7B3B",
+      "candidate_bytes": 18696,
+      "new_test_rows": 2
+    },
+    {
+      "target": "modern/engine/tests/reproduction_heredity_248.rs",
+      "draft": "output/pass58-drafts/native-waste-timing/modern/engine/tests/reproduction_heredity_248.rs",
+      "raw_before": "output/pass58-drafts/native-waste-timing/before/modern/engine/tests/reproduction_heredity_248.rs",
+      "base_raw_sha256": "13D47B5ED345269B6AF3C9DC2256CB1FA4B3D56FD2E0CC4C399BB34CA81E1BF3",
+      "base_bytes": 39620,
+      "derived_from": "modern/engine/tests/reproduction_heredity_248.rs",
+      "derived_from_sha256": "13D47B5ED345269B6AF3C9DC2256CB1FA4B3D56FD2E0CC4C399BB34CA81E1BF3",
+      "candidate_raw_sha256": "607C030608DF8FD9B4EDBDCD45CADCC98D5198B3B3C3EF8DC20A1260B20E2C62",
+      "candidate_bytes": 41017,
+      "new_test_rows": 0
+    }
+  ],
+  "test_census": {
+    "native_waste_before": 4,
+    "native_waste_after": 6,
+    "reproduction_before": 30,
+    "reproduction_after": 30,
+    "new_rust_test_rows": 2,
+    "cumulative_net_new_rust_rows_vs55": 64,
+    "expected_distinct_rust_targets": 68,
+    "expected_managed_test_counts": {
+      "core": 298,
+      "desktop": 197
+    }
+  },
+  "new_tests": [
+    {
+      "name": "native_waste_meal_uses_source_order_exhaustion_and_strict_store_caps",
+      "assertions": [
+        "Both channel orders with exhausted waste",
+        "Exact store-cap and over-cap rejection without consuming waste",
+        "Below-cap gain consumes exact source waste share",
+        "Native phase uses exactly one seeded draw and follows its energy/body order"
+      ]
+    },
+    {
+      "name": "native_handle_waste_feeds_in_darkness_before_birth_and_not_again_in_feedveg",
+      "assertions": [
+        "Explicit source-equation pre-reproduction stores",
+        "Exactly one native draw and legacy RNG mirror",
+        "NoChlr and darkness do not block HandleWaste meal",
+        "Late dark FeedVeg does not convert twice",
+        "Whole native tick splits converted stores before birth, including exact fractional energy/body/waste",
+        "DB3S full encode-decode-encode equality after birth",
+        "Portable profile retains unchanged late generic waste conversion"
+      ]
+    }
+  ],
+  "ancestry": {
+    "world_inverse_equals_4E85": true,
+    "preserved_prior_releases": [
+      "fresh-native-stats metadata3D3E8A6DFF56C315ED9767721B07257DB11F1096D1AAF7681623007394D47762",
+      "shape-policy world881651 and shots45837",
+      "native-energy-validation energy2DEB"
+    ],
+    "new_intended_targets": [
+      "modern/engine/src/world/native_waste.rs",
+      "modern/engine/tests/reproduction_heredity_248.rs"
+    ],
+    "supersedes_only": "fresh-native-stats world.rs4E85 with the late native conversion guard; all previous releases/active files remain unchanged"
+  },
+  "required_later_qualification": [
+    "Full fresh Rust/Core/Desktop/package checks after all58 code and tests are applied",
+    "All15 genuine original CLI comparisons, particularly feeding and reproduction",
+    "Original plant/light, loaded-census, energy-ring and whole-source continuation tests"
+  ],
+  "performed": {
+    "static_source_read": true,
+    "source_arithmetic_data_analysis": true,
+    "active_source_edits": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine_or_cli": false,
+    "git": false,
+    "ui": false,
+    "gpu": false
+  }
+}

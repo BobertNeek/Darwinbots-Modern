@@ -274,78 +274,79 @@ impl Engine {
             if self.projectiles.kinds[shot] == -2 {
                 self.add_native_shot_energy(self.projectiles.energies[shot])?;
             }
-            if self.projectiles.kinds[shot] != -100 && !self.projectiles.stored[shot] {
-                if let Some(target) = self.native_shot_collision(shot, reach) {
-                    let owner = self.projectiles.owners[shot];
-                    let robot = self.slots[target].organism.as_ref().unwrap();
-                    // Shots.parent is a slot; rob.parent is an absolute ID, even when they differ.
-                    let immune = robot.counters.age <= 1
-                        && robot.identity.parent_absolute_id as u32 as i32
-                            == literal_owner_slot(owner);
-                    if !immune {
-                        self.projectiles
-                            .native_collision_decay(shot, &self.config.shots);
-                        if self.projectiles.kinds[shot] > 0 {
-                            self.projectiles.kinds[shot] =
-                                (self.projectiles.kinds[shot] - 1) % 1_000 + 1;
-                        }
-                        let effect = projectile_effect(
-                            self.projectiles.kinds[shot],
-                            self.projectiles.values[shot],
-                        );
-                        let traced_kind = trace.is_enabled().then(|| format!("{effect:?}"));
-                        let taste_kind = self.projectiles.kinds[shot];
-                        let previous = self.projectiles.previous_positions[shot];
-                        let payload = self.projectiles.payloads[shot].clone();
-                        let source_species = self.projectiles.source_species_names[shot].clone();
-                        let location = self.projectiles.toxin_memory_locations[shot];
-                        let value = self.projectiles.toxin_memory_values[shot];
-                        let position = self.projectiles.positions[shot];
-                        let velocity = self.projectiles.velocities[shot];
-                        let range = self.projectiles.ranges[shot];
-                        let energy = self.projectiles.energies[shot];
-                        let power = self
-                            .projectiles
-                            .impact_power(shot as u32, &self.config.shots);
-                        let toxin_power = self.projectiles.toxin_impact_power(shot as u32);
-                        self.stats.projectile_impacts =
-                            self.stats.projectile_impacts.saturating_add(1);
-                        let effect_owner = self.current_native_shot_owner(owner).unwrap_or(owner);
-                        let applied = self.apply_projectile_effect_at_boundary(
-                            effect_owner,
-                            ProjectileTarget::Organism(target),
-                            effect,
-                            power,
-                            toxin_power,
-                            payload,
-                            source_species,
-                            location,
-                            value,
-                            position,
-                            velocity,
-                            range,
-                            energy,
-                            true,
-                        )?;
-                        if applied {
-                            self.stats.projectile_effects =
-                                self.stats.projectile_effects.saturating_add(1);
-                            if let Some(kind) = traced_kind {
-                                let id =
-                                    OrganismId::new(target as u32, self.slots[target].generation);
-                                trace.effect(CyclePhase::ShotUpdate, Some(effect_owner), id, kind);
-                            }
-                        }
-                        if let Some(robot) = self.slots[target].organism.as_mut() {
-                            write_shot_taste(robot, previous, taste_kind);
-                            reach = reach.max(reach_for(robot));
-                        }
-                        self.projectiles.impact_flash[shot] = true;
+            if self.projectiles.kinds[shot] != -100
+                && !self.projectiles.stored[shot]
+                && let Some(target) = self.native_shot_collision(shot, reach)
+            {
+                let owner = self.projectiles.owners[shot];
+                let robot = self.slots[target].organism.as_ref().unwrap();
+                // Shots.parent is a slot; rob.parent is an absolute ID, even when they differ.
+                let immune = robot.counters.age <= 1
+                    && robot.identity.parent_absolute_id as u32 as i32 == literal_owner_slot(owner);
+                if !immune {
+                    self.projectiles
+                        .native_collision_decay(shot, &self.config.shots);
+                    if self.projectiles.kinds[shot] > 0 {
+                        self.projectiles.kinds[shot] =
+                            (self.projectiles.kinds[shot] - 1) % 1_000 + 1;
                     }
+                    let effect = projectile_effect(
+                        self.projectiles.kinds[shot],
+                        self.projectiles.values[shot],
+                    );
+                    let traced_kind = trace.is_enabled().then(|| format!("{effect:?}"));
+                    let taste_kind = self.projectiles.kinds[shot];
+                    let previous = self.projectiles.previous_positions[shot];
+                    let payload = self.projectiles.payloads[shot].clone();
+                    let source_species = self.projectiles.source_species_names[shot].clone();
+                    let location = self.projectiles.toxin_memory_locations[shot];
+                    let value = self.projectiles.toxin_memory_values[shot];
+                    let position = self.projectiles.positions[shot];
+                    let velocity = self.projectiles.velocities[shot];
+                    let range = self.projectiles.ranges[shot];
+                    let energy = self.projectiles.energies[shot];
+                    let power = self
+                        .projectiles
+                        .impact_power(shot as u32, &self.config.shots);
+                    let toxin_power = self.projectiles.toxin_impact_power(shot as u32);
+                    self.stats.projectile_impacts = self.stats.projectile_impacts.saturating_add(1);
+                    let effect_owner = self.current_native_shot_owner(owner).unwrap_or(owner);
+                    let applied = self.apply_projectile_effect_at_boundary(
+                        effect_owner,
+                        ProjectileTarget::Organism(target),
+                        effect,
+                        power,
+                        toxin_power,
+                        payload,
+                        source_species,
+                        location,
+                        value,
+                        position,
+                        velocity,
+                        range,
+                        energy,
+                        true,
+                    )?;
+                    if applied {
+                        self.stats.projectile_effects =
+                            self.stats.projectile_effects.saturating_add(1);
+                        if let Some(kind) = traced_kind {
+                            let id = OrganismId::new(target as u32, self.slots[target].generation);
+                            trace.effect(CyclePhase::ShotUpdate, Some(effect_owner), id, kind);
+                        }
+                    }
+                    if let Some(robot) = self.slots[target].organism.as_mut() {
+                        write_shot_taste(robot, previous, taste_kind);
+                        reach = reach.max(reach_for(robot));
+                    }
+                    self.projectiles.impact_flash[shot] = true;
                 }
             }
             // Obstacles use current impact/start position, even on flashed or stored shots.
             for obstacle in &self.obstacles {
+                if obstacle.shot_policy == ShapeShotPolicy::PassThrough {
+                    continue;
+                }
                 let position = self.projectiles.positions[shot];
                 if position[0] >= obstacle.minimum[0]
                     && position[0] <= obstacle.maximum[0]
@@ -659,21 +660,51 @@ mod native_loop_tests {
                 0,
             )
             .unwrap() as usize;
+        // createshot stores Range+40+1 as energy; only kind-2 uses val as nrg.
+        assert_eq!(world.projectiles.energies[shot], 81.0);
+        assert_eq!(world.projectiles.values[shot], 10);
+        assert_eq!(world.projectiles.ranges[shot], 2.0);
         world.projectiles.stored[shot] = true;
         phase(&mut world);
         assert!(world.projectiles.alive[shot]);
         assert_eq!(world.projectiles.positions[shot], [1_105.0, 500.0]);
         assert_eq!(world.projectiles.ages[shot], 0);
-        world.projectiles.stored[shot] = false;
-        world.projectiles.kinds[shot] = -2;
-        world.projectiles.positions[shot] = [500.0; 2];
-        world.projectiles.velocities[shot] = [0.0; 2];
-        world.config.shots.energy_shots_do_not_decay = true;
-        for _ in 0..3 {
-            phase(&mut world);
+        let mut restored =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert!(restored.projectiles.alive[shot] && restored.projectiles.stored[shot]);
+        for state in [&mut world, &mut restored] {
+            state.projectiles.stored[shot] = false;
+            state.projectiles.kinds[shot] = -2;
+            state.projectiles.positions[shot] = [500.0; 2];
+            state.projectiles.velocities[shot] = [0.0; 2];
+            state.config.shots.energy_shots_do_not_decay = true;
         }
-        assert_eq!(world.projectiles.ages[shot], 0);
-        assert_eq!(world.projectiles.energies[shot], 10.0);
+        for _ in 0..3 {
+            for state in [&mut world, &mut restored] {
+                phase(state);
+                assert!(state.projectiles.alive[shot]);
+                assert_eq!(state.projectiles.ages[shot], 0);
+                assert_eq!(state.projectiles.energies[shot], 81.0);
+                assert_eq!(state.stats.native_shots_visited, Some(1));
+            }
+        }
+        for state in [&mut world, &mut restored] {
+            state.config.shots.energy_shots_do_not_decay = false;
+        }
+        for expected_age in 1..=3 {
+            for state in [&mut world, &mut restored] {
+                phase(state);
+                assert_eq!(state.projectiles.ages[shot], expected_age);
+                assert_eq!(state.projectiles.alive[shot], expected_age <= 2);
+                assert_eq!(state.projectiles.energies[shot], 81.0);
+                assert_eq!(state.stats.native_shots_visited, Some(1));
+            }
+        }
+        assert_eq!(
+            serde_json::to_value(&world.projectiles).unwrap(),
+            serde_json::to_value(&restored.projectiles).unwrap()
+        );
+        assert_eq!(world.native_energy, restored.native_energy);
     }
 
     #[test]
@@ -859,15 +890,69 @@ mod native_loop_tests {
             .unwrap();
         assert_eq!(replacement.slot(), old_owner.slot());
         assert_ne!(replacement, old_owner);
-        world.slots.get_mut(replacement).unwrap().materials.radius = 10.0;
-        let replacement_energy = world.slots.get(replacement).unwrap().materials.energy;
-        phase(&mut world);
+        let robot = world.slots.get_mut(replacement).unwrap();
+        robot.materials.radius = 10.0;
+        robot.counters.age = 10; // Keep newborn parent-zero immunity out of the control.
+        assert_eq!(robot.materials.energy, 1_000.0);
+        assert_eq!(robot.materials.body, 1_000.0);
+        assert_eq!(robot.materials.poison, 0.0);
+        assert!(!robot.flags.corpse);
+        // A nearby second victim would emit a legitimate return packet into the
+        // replacement this same cycle. Isolate numeric-owner exclusion instead.
+        world.slots.get_mut(target).unwrap().kinematics.position = [800.0, 800.0];
+        world.publish_snapshot();
+        let checkpoint = crate::SaveFile::encode(&world).unwrap();
+        let mut restored = crate::SaveFile::decode(&checkpoint).unwrap();
+        for state in [&mut world, &mut restored] {
+            phase(state);
+            assert_eq!(
+                state.slots.get(replacement).unwrap().materials.energy,
+                1_000.0
+            );
+            assert_eq!(
+                state.slots.get(replacement).unwrap().materials.body,
+                1_000.0
+            );
+            assert_eq!(state.slots.get(target).unwrap().materials.energy, 20_000.0);
+            assert!(!state.projectiles.impact_flash[shot]);
+            assert_eq!(state.projectiles.positions[shot], [215.0, 200.0]);
+            assert_eq!(state.projectiles.ages[shot], 1);
+            assert_eq!(state.stats.projectile_impacts, 0);
+            assert_eq!(state.stats.native_shots_visited, Some(1));
+        }
         assert_eq!(
-            world.slots.get(replacement).unwrap().materials.energy,
-            replacement_energy
+            serde_json::to_value(&world.projectiles).unwrap(),
+            serde_json::to_value(&restored.projectiles).unwrap()
         );
-        assert_eq!(world.slots.get(target).unwrap().materials.energy, 19_910.0);
-        assert!(world.projectiles.impact_flash[shot]);
+
+        // The same geometry must collide when its parent is not the reused slot.
+        let mut control = crate::SaveFile::decode(&checkpoint).unwrap();
+        control.projectiles.owners[shot] = owner_from_literal_slot(0);
+        assert!(!control.config.shots.feeding_proportional);
+        assert_eq!(control.config.shots.feeding_fixed_power, 100);
+        // releasenrg: fixed power 100 debits 90 energy and 1 body, then emits 100.
+        phase(&mut control);
+        assert_eq!(
+            control.slots.get(replacement).unwrap().materials.energy,
+            910.0
+        );
+        assert_eq!(
+            control.slots.get(replacement).unwrap().materials.body,
+            999.0
+        );
+        assert_eq!(
+            control.slots.get(target).unwrap().materials.energy,
+            20_000.0
+        );
+        assert!(control.projectiles.impact_flash[shot]);
+        assert_eq!(control.stats.projectile_impacts, 1);
+        let returned = shot + 1;
+        assert_eq!(control.projectiles.owners[returned], replacement);
+        assert_eq!(control.projectiles.kinds[returned], -2);
+        assert_eq!(control.projectiles.energies[returned], 100.0);
+        assert_eq!(control.projectiles.values[returned], 100);
+        assert!(!control.projectiles.impact_flash[returned]);
+        assert_eq!(control.stats.native_shots_visited, Some(2));
     }
 
     #[test]
@@ -982,6 +1067,159 @@ mod native_loop_tests {
                 world.slots.get(owner).unwrap().materials.energy,
                 energy - 2.0
             );
+            assert_eq!(
+                serde_json::to_value(&world.projectiles).unwrap(),
+                serde_json::to_value(&restored.projectiles).unwrap()
+            );
+        }
+    }
+    #[test]
+    fn native_shape_policies_use_current_points_without_flash_and_continue_across_db3s() {
+        for (policy, wire) in [
+            (ShapeShotPolicy::Absorb, "absorb"),
+            (ShapeShotPolicy::Reflect, "reflect"),
+            (ShapeShotPolicy::PassThrough, "pass_through"),
+        ] {
+            let mut world = Engine::new(EngineConfig::testing()).unwrap();
+            world.projectiles.reset_native_slots(100);
+            let mut shape = Obstacle::new(1, [200.0, 190.0], [230.0, 210.0]);
+            shape.shot_policy = policy;
+            world.add_obstacle(shape).unwrap();
+            let shot = world
+                .projectiles
+                .spawn_native_packet(
+                    owner_from_literal_slot(0),
+                    [190.0, 200.0],
+                    [40.0, 0.0],
+                    400.0,
+                    37.0,
+                    500,
+                    None,
+                    false,
+                    0,
+                    0,
+                    0,
+                )
+                .unwrap() as usize;
+            // Crossing the shape's boundary is not enough: current 190 is outside.
+            phase(&mut world);
+            assert!(world.projectiles.alive[shot]);
+            assert_eq!(world.projectiles.positions[shot], [230.0, 200.0]);
+            assert_eq!(world.projectiles.velocities[shot], [40.0, 0.0]);
+            assert_eq!(world.stats.projectile_impacts, 0);
+            let encoded = crate::SaveFile::encode(&world).unwrap();
+            let payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+            assert_eq!(payload["obstacles"][0]["shot_policy"], wire);
+            let mut restored = crate::SaveFile::decode(&encoded).unwrap();
+            for state in [&mut world, &mut restored] {
+                // Current 230 is inclusively inside; previous 190 is outside x only.
+                phase(state);
+                let bypass = policy == ShapeShotPolicy::PassThrough;
+                assert_eq!(
+                    state.projectiles.alive[shot],
+                    policy != ShapeShotPolicy::Absorb
+                );
+                assert_eq!(
+                    state.projectiles.positions[shot],
+                    if bypass {
+                        [270.0, 200.0]
+                    } else {
+                        [190.0, 200.0]
+                    }
+                );
+                assert_eq!(
+                    state.projectiles.velocities[shot],
+                    if bypass { [40.0, 0.0] } else { [-40.0, 0.0] }
+                );
+                assert_eq!(state.projectiles.ages[shot], 2);
+                assert!(!state.projectiles.impact_flash[shot]);
+                assert_eq!(state.stats.projectile_impacts, 0);
+                assert_eq!(state.stats.projectile_effects, 0);
+                assert_eq!(state.stats.native_shots_visited, Some(1));
+            }
+            assert_eq!(
+                serde_json::to_value(&world.projectiles).unwrap(),
+                serde_json::to_value(&restored.projectiles).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn portable_shape_policies_keep_swept_absorb_and_point_reflect_timing() {
+        for policy in [
+            ShapeShotPolicy::Absorb,
+            ShapeShotPolicy::Reflect,
+            ShapeShotPolicy::PassThrough,
+        ] {
+            let mut world = Engine::new(EngineConfig::testing()).unwrap();
+            world.native_random = None;
+            world.projectiles.reset_native_slots(100);
+            let mut shape = Obstacle::new(1, [200.0, 190.0], [230.0, 210.0]);
+            shape.shot_policy = policy;
+            world.add_obstacle(shape).unwrap();
+            let shot = world
+                .projectiles
+                .spawn_native_packet(
+                    owner_from_literal_slot(0),
+                    [190.0, 200.0],
+                    [40.0, 0.0],
+                    400.0,
+                    37.0,
+                    500,
+                    None,
+                    false,
+                    0,
+                    0,
+                    0,
+                )
+                .unwrap() as usize;
+            world
+                .projectile_update_phase(&mut CycleRecorder::disabled(1))
+                .unwrap();
+            world.publish_snapshot();
+            let absorb = policy == ShapeShotPolicy::Absorb;
+            assert_eq!(world.projectiles.impact_flash[shot], absorb);
+            assert_eq!(
+                world.projectiles.positions[shot],
+                if absorb {
+                    [200.0, 200.0]
+                } else {
+                    [230.0, 200.0]
+                }
+            );
+            assert_eq!(
+                world.projectiles.velocities[shot],
+                if policy == ShapeShotPolicy::Reflect {
+                    [-40.0, 0.0]
+                } else {
+                    [40.0, 0.0]
+                }
+            );
+            assert_eq!(world.stats.projectile_impacts, if absorb { 1 } else { 0 });
+            assert_eq!(world.stats.projectile_effects, 0);
+            assert_eq!(world.stats.native_shots_visited, None);
+            let mut restored =
+                crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+            for state in [&mut world, &mut restored] {
+                state
+                    .projectile_update_phase(&mut CycleRecorder::disabled(2))
+                    .unwrap();
+                state.publish_snapshot();
+                if absorb {
+                    assert!(state.snapshot().shots.is_empty());
+                } else {
+                    assert_eq!(
+                        state.projectiles.positions[shot],
+                        if policy == ShapeShotPolicy::Reflect {
+                            [190.0, 200.0]
+                        } else {
+                            [270.0, 200.0]
+                        }
+                    );
+                    assert!(!state.projectiles.impact_flash[shot]);
+                    assert_eq!(state.stats.projectile_impacts, 0);
+                }
+            }
             assert_eq!(
                 serde_json::to_value(&world.projectiles).unwrap(),
                 serde_json::to_value(&restored.projectiles).unwrap()

@@ -145,6 +145,20 @@ impl Engine {
 
     /// Export the running world in the original 2.48.32 `.sim` format.
     pub fn export_native_sim(&self) -> Result<Vec<u8>, EngineError> {
+        if self.config.waste.defecation_threshold != 32_000 {
+            return Err(invalid(
+                "defecation threshold cannot be represented; native HandleWaste always uses 32000",
+            ));
+        }
+        if self
+            .obstacles
+            .iter()
+            .any(|obstacle| obstacle.shot_policy == ShapeShotPolicy::PassThrough)
+        {
+            return Err(invalid(
+                "pass_through shape shot policy cannot be represented; native shapes support only absorb or reflect",
+            ));
+        }
         if !self.file_teleporters.is_empty() {
             let mut world = crate::SaveFile::decode(&crate::SaveFile::encode(self)?)?;
             let gateways = std::mem::take(&mut world.file_teleporters);
@@ -479,7 +493,15 @@ impl Engine {
             ("tides", f64::from(v.tides)),
             ("tides_offset", f64::from(v.tides_offset)),
             ("chart_interval", c.recording.sampling_interval as f64),
-            ("bad_waste", f64::from(c.waste.alzheimer_threshold)),
+            // Original UI writes -1 for disabled; ReadSim maps native zero to400.
+            (
+                "bad_waste",
+                f64::from(if c.waste.alzheimer_threshold == 0 {
+                    -1
+                } else {
+                    c.waste.alzheimer_threshold
+                }),
+            ),
             (
                 "max_absolute_id",
                 self.next_absolute_id.saturating_sub(1) as f64,
@@ -1289,5 +1311,170 @@ mod tests {
             source
         );
         assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+    }
+    #[test]
+    fn native_shape_export_distinguishes_reflection_and_rejects_unrepresentable_policies() {
+        for (policy, wire) in [
+            (ShapeShotPolicy::Absorb, "absorb"),
+            (ShapeShotPolicy::Reflect, "reflect"),
+            (ShapeShotPolicy::PassThrough, "pass_through"),
+        ] {
+            let mut world = Engine::new(EngineConfig::testing()).unwrap();
+            let mut shape = Obstacle::new(7, [200.0, 190.0], [230.0, 210.0]);
+            shape.shot_policy = policy;
+            world.add_obstacle(shape).unwrap();
+            let before = crate::SaveFile::encode(&world).unwrap();
+            let payload: serde_json::Value = serde_json::from_slice(&before[10..]).unwrap();
+            assert_eq!(payload["obstacles"][0]["shot_policy"], wire);
+            let restored = crate::SaveFile::decode(&before).unwrap();
+            assert_eq!(restored.obstacles[0].shot_policy, policy);
+            let restored_before = crate::SaveFile::encode(&restored).unwrap();
+            if policy == ShapeShotPolicy::PassThrough {
+                let error = restored.export_native_sim().unwrap_err().to_string();
+                assert!(error.contains("pass_through") && error.contains("absorb or reflect"));
+            } else {
+                let encoded = restored.export_native_sim().unwrap();
+                let file = NativeRecordFile::decode(&encoded).unwrap();
+                let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+                assert_eq!(
+                    tail.integer("shapes_absorb").unwrap(),
+                    if policy == ShapeShotPolicy::Absorb {
+                        -1
+                    } else {
+                        0
+                    }
+                );
+                let imported = Engine::from_native_sim(&encoded).unwrap();
+                assert_eq!(imported.obstacles.len(), 1);
+                assert_eq!(imported.obstacles[0].shot_policy, policy);
+            }
+            assert_eq!(crate::SaveFile::encode(&restored).unwrap(), restored_before);
+            assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+        }
+
+        // Native shape options are global; do not flatten mixed modern choices.
+        for (second_shot, second_vision) in [
+            (ShapeShotPolicy::Reflect, ShapeVisionPolicy::Opaque),
+            (ShapeShotPolicy::Absorb, ShapeVisionPolicy::SeeThrough),
+        ] {
+            let mut world = Engine::new(EngineConfig::testing()).unwrap();
+            world
+                .add_obstacle(Obstacle::new(1, [100.0; 2], [130.0; 2]))
+                .unwrap();
+            let mut second = Obstacle::new(2, [200.0; 2], [230.0; 2]);
+            second.shot_policy = second_shot;
+            second.vision_policy = second_vision;
+            world.add_obstacle(second).unwrap();
+            let before = crate::SaveFile::encode(&world).unwrap();
+            assert!(
+                world
+                    .export_native_sim()
+                    .unwrap_err()
+                    .to_string()
+                    .contains("mixed shape policies")
+            );
+            assert_eq!(crate::SaveFile::encode(&world).unwrap(), before);
+        }
+    }
+
+    #[test]
+    fn native_waste_threshold_mapping_preserves_load_fallback_and_disabled_intent() {
+        let mut source = Engine::new(EngineConfig::testing()).unwrap();
+        source.config.waste.alzheimer_threshold = -1;
+        source
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let template = source.export_native_sim().unwrap();
+        for raw in [0_i16, 1, 1234, -1, i16::MIN, i16::MAX] {
+            let mut file = NativeRecordFile::decode(&template).unwrap();
+            let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            tail.set_value("bad_waste", NativeValue::Word(raw)).unwrap();
+            file.tail = tail.encode().unwrap();
+            let input = file.encode().unwrap();
+            let loaded = Engine::from_native_sim(&input).unwrap();
+            let expected = if raw == 0 { 400 } else { i32::from(raw) };
+            assert_eq!(loaded.config.waste.alzheimer_threshold, expected);
+            assert_eq!(loaded.config.waste.defecation_threshold, 32_000);
+            // Raw source bytes remain available; the loaded runtime follows ReadSim1281.
+            assert_eq!(
+                loaded.native_origin.as_ref().unwrap().encode().unwrap(),
+                input
+            );
+            let saved = crate::SaveFile::encode(&loaded).unwrap();
+            let mut resumed = crate::SaveFile::decode(&saved).unwrap();
+            assert_eq!(resumed.config.waste.alzheimer_threshold, expected);
+            assert_eq!(crate::SaveFile::encode(&resumed).unwrap(), saved);
+            let output = NativeRecordFile::decode(&resumed.export_native_sim().unwrap()).unwrap();
+            let output_tail = NativeSimulationTail::decode(&output.tail).unwrap();
+            assert_eq!(output_tail.integer("bad_waste").unwrap(), expected);
+
+            if raw == 1234 || raw == -1 {
+                let id = resumed.slots.ids_in_slot_order()[0];
+                let robot = resumed.slots.get_mut(id).unwrap();
+                robot.materials.waste = 1238.0;
+                robot.materials.permanent_waste = 0.0;
+                robot.materials.chloroplasts = 0.0;
+                let random_before = serde_json::to_value(&resumed.native_random).unwrap();
+                resumed.waste_phase().unwrap();
+                let random_after = serde_json::to_value(&resumed.native_random).unwrap();
+                if raw == 1234 {
+                    assert_ne!(
+                        random_after, random_before,
+                        "loaded positive threshold must trigger Alzheimer writes"
+                    );
+                } else {
+                    assert_eq!(
+                        random_after, random_before,
+                        "loaded negative threshold must disable Alzheimer writes"
+                    );
+                }
+            }
+        }
+
+        source.config.waste.alzheimer_threshold = 0;
+        let before = crate::SaveFile::encode(&source).unwrap();
+        let zero_output = source.export_native_sim().unwrap();
+        let zero_file = NativeRecordFile::decode(&zero_output).unwrap();
+        assert_eq!(
+            NativeSimulationTail::decode(&zero_file.tail)
+                .unwrap()
+                .integer("bad_waste")
+                .unwrap(),
+            -1
+        );
+        assert_eq!(
+            Engine::from_native_sim(&zero_output)
+                .unwrap()
+                .config
+                .waste
+                .alzheimer_threshold,
+            -1
+        );
+        assert_eq!(source.config.waste.alzheimer_threshold, 0);
+        assert_eq!(crate::SaveFile::encode(&source).unwrap(), before);
+        assert_eq!(
+            crate::SaveFile::decode(&before)
+                .unwrap()
+                .config
+                .waste
+                .alzheimer_threshold,
+            0
+        );
+
+        for invalid in [i32::from(i16::MIN) - 1, i32::from(i16::MAX) + 1] {
+            source.config.waste.alzheimer_threshold = invalid;
+            let before = crate::SaveFile::encode(&source).unwrap();
+            let error = source.export_native_sim().unwrap_err().to_string();
+            assert!(error.contains("bad_waste") && error.contains("native numeric range"));
+            assert_eq!(crate::SaveFile::encode(&source).unwrap(), before);
+        }
+        source.config.waste.alzheimer_threshold = -1;
+        for threshold in [0, 200, 32_001, i32::MAX] {
+            source.config.waste.defecation_threshold = threshold;
+            let before = crate::SaveFile::encode(&source).unwrap();
+            let error = source.export_native_sim().unwrap_err().to_string();
+            assert!(error.contains("defecation threshold") && error.contains("32000"));
+            assert_eq!(crate::SaveFile::encode(&source).unwrap(), before);
+        }
     }
 }

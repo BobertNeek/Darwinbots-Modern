@@ -44,7 +44,7 @@ jobs:
         with:
           dotnet-version: "10.0.x"
       - name: Test Rust workspace
-        run: cargo test --release --workspace
+        run: cargo test --release --workspace --no-fail-fast
       - name: Test desktop core
         run: dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release
       - name: Test rendered desktop controls

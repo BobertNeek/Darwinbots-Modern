@@ -1,10 +1,23 @@
 mod support;
 
 use darwinbots_engine::{
-    DnaCosts, Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, ShapeShotPolicy,
-    ShotSettings, SpeciesDefinition,
+    DnaCosts, Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SaveFile,
+    ShapeShotPolicy, ShotSettings, SpeciesDefinition,
 };
 use support::db2_fixtures::SHOT_SPEED;
+
+// Explicit old DB3S profile: modern swept shape absorption remains an extension.
+fn legacy_projectile_profile(config: EngineConfig) -> Engine {
+    let encoded = SaveFile::encode(&Engine::new(config).unwrap()).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["native_random"] = serde_json::Value::Null;
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    SaveFile::decode(&save).unwrap()
+}
 
 #[test]
 fn db24832_shootval_positive_power_and_negative_range_are_applied_to_spawn() {
@@ -233,7 +246,7 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
         ..EngineConfig::testing()
     })
     .unwrap();
-    engine
+    let attacker = engine
         .spawn_at(
             LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
             [250.0, 500.0],
@@ -242,14 +255,34 @@ fn swept_collision_hits_a_bot_between_projectile_endpoints() {
     let target = engine
         .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [500.0, 500.0])
         .unwrap();
-    let before = engine.organism(target).unwrap().energy;
+    let before = engine.robot_state(target).unwrap().materials.clone();
 
     engine.tick().unwrap();
+    // Isolate one primary request; a native later-slot return still runs now.
+    engine
+        .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
+        .unwrap();
+    let attacker_before_return = engine.robot_state(attacker).unwrap().materials.clone();
     engine.tick().unwrap();
 
-    assert!(engine.organism(target).unwrap().energy < before);
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
-    assert_eq!(engine.snapshot().stats.projectile_effects, 1);
+    let target_after = &engine.robot_state(target).unwrap().materials;
+    assert_eq!(target_after.energy, before.energy - 90.0);
+    assert_eq!(target_after.body, before.body - 1.0);
+    let attacker_after = &engine.robot_state(attacker).unwrap().materials;
+    assert_eq!(attacker_after.energy, attacker_before_return.energy + 95.0);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(2));
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .any(|shot| { shot.owner == attacker && shot.kind == -1 && shot.impact_flash })
+    );
+    assert!(engine.snapshot().shots.iter().any(|shot| {
+        shot.owner == target && shot.kind == -2 && shot.value == 100 && shot.impact_flash
+    }));
 }
 
 #[test]
@@ -406,6 +439,9 @@ fn moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants() {
     let mover = engine.spawn_at(mover_and_shooter, [180.0, 112.0]).unwrap();
 
     engine.tick().unwrap();
+    let initial_shot = engine.snapshot().shots[0].clone();
+    assert_eq!(initial_shot.owner, mover);
+    assert_eq!(initial_shot.age, 0);
     engine.move_organism(mover, [180.0, 112.0]).unwrap();
     engine.tick().unwrap();
     let collision_snapshot = engine.snapshot();
@@ -466,24 +502,29 @@ fn moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants() {
     assert!(final_obstacle.minimum[0] >= 0.0);
     assert!(final_obstacle.maximum[0] <= snapshot.world_size[0]);
 
+    // Original shapes kill at a current point without creating a bot impact
+    // or flash. Nine visits are still within this one-shot pulse's lifetime.
+    assert!(initial_shot.age + 9 <= initial_shot.range);
+    assert_eq!(snapshot.stats.shots_fired, 1);
     assert!(
-        snapshot.stats.projectile_impacts > 0
-            || snapshot.shots.iter().any(|shot| shot.impact_flash),
-        "the moving projectile must be intercepted by the obstacle before reaching the far edge"
+        snapshot.shots.is_empty(),
+        "the shape must absorb the unexpired shot"
     );
+    assert_eq!(snapshot.stats.projectile_impacts, 0);
 }
 
 #[test]
 fn obstacle_intercepts_projectile_before_target() {
-    let mut engine = Engine::new(EngineConfig {
+    // This extension uses swept shape interception and an impact flash.
+    // Native current-point/no-flash behavior is covered by native_shape_policies.
+    let mut engine = legacy_projectile_profile(EngineConfig {
         metabolism_cost: 0,
         physics: PhysicsSettings {
             density: 0.0,
             ..PhysicsSettings::default()
         },
         ..EngineConfig::testing()
-    })
-    .unwrap();
+    });
     engine
         .add_obstacle(Obstacle::new(1, [400.0, 450.0], [430.0, 550.0]))
         .unwrap();
@@ -532,6 +573,11 @@ fn pass_through_shape_allows_a_projectile_to_reach_the_target() {
     engine.tick_many(7).unwrap();
 
     assert_eq!(engine.memory_at(target, 500).unwrap(), 37);
+    assert_eq!(
+        engine.snapshot().obstacles[0].shot_policy,
+        ShapeShotPolicy::PassThrough
+    );
+    assert!(engine.snapshot().stats.native_shots_visited.is_some());
 }
 
 #[test]
@@ -749,13 +795,18 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
         .unwrap();
         engine
             .spawn_at(
-                LegacyDna::parse("start\n-1 .shoot store\n100 .shootval store\nstop").unwrap(),
+                // An information pulse isolates relative motion from feeding returns.
+                LegacyDna::parse(
+                    "cond\n*.robage 0 =\nstart\n500 .shoot store\n37 .shootval store\nstop",
+                )
+                .unwrap(),
                 [250.0, 500.0],
             )
             .unwrap();
         let target = engine
             .spawn_at(LegacyDna::parse("start\nstop").unwrap(), case.position)
             .unwrap();
+        engine.set_organism_memory(target, 500, 123).unwrap();
         let mut batch = engine.physics_batch();
         let target_index = batch
             .ids
@@ -773,6 +824,17 @@ fn shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundari
             "moving-target {}",
             case.name
         );
+        assert_eq!(
+            engine.snapshot().stats.projectile_effects,
+            case.expected_impacts
+        );
+        assert_eq!(
+            engine.memory_at(target, 500).unwrap(),
+            if case.expected_impacts == 1 { 37 } else { 123 },
+            "moving-target {} information delivery",
+            case.name
+        );
+        assert_eq!(engine.snapshot().stats.native_shots_visited, Some(1));
     }
 
     for (shootval, expected_range) in [(4, 11), (5, 11), (-4, 11), (-8, 21)] {

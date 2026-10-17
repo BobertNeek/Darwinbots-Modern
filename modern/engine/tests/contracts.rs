@@ -880,27 +880,102 @@ fn db3s_v3_round_trip_preserves_in_flight_toxin_payload() {
 fn db3s_v3_missing_toxin_projectile_fields_default_to_aligned_empty_payloads() {
     let (engine, _source, _target) = engine_with_in_flight_venom();
     let save = SaveFile::encode(&engine).unwrap();
-    let mut payload: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
-    let projectiles = payload["projectiles"].as_object_mut().unwrap();
-    projectiles.remove("source_species_names");
-    projectiles.remove("toxin_memory_locations");
-    projectiles.remove("toxin_memory_values");
-
-    let restored = SaveFile::decode(&frame_save(3, &payload)).unwrap();
-    let migrated = SaveFile::encode(&restored).unwrap();
-    let migrated: serde_json::Value = serde_json::from_slice(&migrated[10..]).unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&save[10..]).unwrap();
+    let native_width = saved["projectiles"]["owners"].as_array().unwrap().len();
+    // The native update owns a complete saved slot array, including inactive slots.
+    assert_eq!(native_width, 100);
     assert_eq!(
-        migrated["projectiles"]["source_species_names"],
-        serde_json::json!([null])
+        saved["projectiles"]["pool_capacity"].as_u64().unwrap(),
+        native_width as u64
     );
+    assert!(saved["projectiles"]["native_slot_pointer"].is_u64());
+    let alive = saved["projectiles"]["alive"].as_array().unwrap();
     assert_eq!(
-        migrated["projectiles"]["toxin_memory_locations"],
-        serde_json::json!([0])
+        alive
+            .iter()
+            .filter(|value| value.as_bool() == Some(true))
+            .count(),
+        1
     );
-    assert_eq!(
-        migrated["projectiles"]["toxin_memory_values"],
-        serde_json::json!([0])
-    );
+    assert_eq!(alive[0], serde_json::json!(true));
+    for compact_older_image in [false, true] {
+        let mut payload = saved.clone();
+        let projectiles = payload["projectiles"].as_object_mut().unwrap();
+        let width = if compact_older_image {
+            // Older v3 images used parallel arrays through the last allocated shot,
+            // without native cursor/shadow fields. Keep the sole active slot intact.
+            for name in [
+                "owners",
+                "positions",
+                "previous_positions",
+                "velocities",
+                "ages",
+                "ranges",
+                "energies",
+                "kinds",
+                "values",
+                "alive",
+                "impact_flash",
+                "payloads",
+                "source_species_names",
+                "toxin_memory_locations",
+                "toxin_memory_values",
+                "colors",
+                "source_vegetables",
+                "stored",
+                "gene_numbers",
+                "dna_lengths",
+            ] {
+                projectiles
+                    .get_mut(name)
+                    .unwrap()
+                    .as_array_mut()
+                    .unwrap()
+                    .truncate(1);
+            }
+            projectiles.insert("free_slots".to_owned(), serde_json::json!([]));
+            projectiles.remove("native_slot_pointer");
+            projectiles.remove("native_zero_slot_occupied");
+            1
+        } else {
+            native_width
+        };
+        for name in [
+            "source_species_names",
+            "toxin_memory_locations",
+            "toxin_memory_values",
+        ] {
+            projectiles.remove(name);
+        }
+        let mut expected_projectiles = projectiles.clone();
+        expected_projectiles.insert(
+            "source_species_names".to_owned(),
+            serde_json::json!(vec![serde_json::Value::Null; width]),
+        );
+        expected_projectiles.insert(
+            "toxin_memory_locations".to_owned(),
+            serde_json::json!(vec![0; width]),
+        );
+        expected_projectiles.insert(
+            "toxin_memory_values".to_owned(),
+            serde_json::json!(vec![0; width]),
+        );
+        let restored = SaveFile::decode(&frame_save(3, &payload)).unwrap();
+        assert_eq!(restored.snapshot().shots.len(), 1);
+        let migrated_bytes = SaveFile::encode(&restored).unwrap();
+        let migrated: serde_json::Value = serde_json::from_slice(&migrated_bytes[10..]).unwrap();
+        // Compare every defaulted entry and all retained owner, payload and parallel state.
+        assert_eq!(
+            migrated["projectiles"],
+            serde_json::Value::Object(expected_projectiles),
+            "compact older image={compact_older_image}"
+        );
+        let resumed = SaveFile::decode(&migrated_bytes).unwrap();
+        let resumed_bytes = SaveFile::encode(&resumed).unwrap();
+        let resumed_payload: serde_json::Value =
+            serde_json::from_slice(&resumed_bytes[10..]).unwrap();
+        assert_eq!(resumed_payload["projectiles"], migrated["projectiles"]);
+    }
 }
 
 #[test]

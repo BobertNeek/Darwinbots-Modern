@@ -149,19 +149,49 @@ public sealed class LegacySettingsNativeTests
         using var bytes = new MemoryStream();
         stream.CopyTo(bytes);
         using var engine = new NativeEngineClient(backend: "Cpu");
-        engine.Load(bytes.ToArray());
+        var native = bytes.ToArray();
+        Assert.Equal("F00975B9C463EBDADFCA8ABE39926AAD8CEB0AC34767B51974B97B0C3B2413D9",
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(native)));
+        engine.Load(native);
         var loaded = engine.Snapshot();
         Assert.Equal(654ul, loaded.Tick);
         Assert.Equal(543, loaded.Population);
+        var livingBefore = loaded.Organisms.Where(bot => !bot.IsCorpse && !bot.IsHidden)
+            .Select(bot => new OrganismKey(bot.Slot, bot.Generation)).ToHashSet();
+        Assert.Equal(loaded.Population, livingBefore.Count);
+
+        var checkpoint = engine.Save();
+        using (var saved = System.Text.Json.JsonDocument.Parse(checkpoint.AsMemory(10)))
+            Assert.Equal("pending", saved.RootElement.GetProperty("native_loaded_census_stage").GetString());
+        using var resumed = new NativeEngineClient(backend: "Cpu");
+        resumed.Load(checkpoint);
+        Assert.Equal(checkpoint, resumed.Save());
         engine.Tick();
-        Assert.Equal(655ul, engine.Snapshot().Tick);
+        resumed.Tick();
         var advanced = engine.Snapshot();
-        // Source-correct body feeding kills one robot while a birth adds one.
-        // The fixture proves native exchange, not matching future trajectories.
-        Assert.Equal(1ul, advanced.Stats.Births - loaded.Stats.Births);
-        Assert.Equal(1ul, advanced.Stats.Deaths - loaded.Stats.Deaths);
-        Assert.Equal(543, advanced.Population);
-        Assert.Equal(advanced.Population, advanced.Organisms.Count);
+        Assert.Equal(655ul, advanced.Tick);
+        var advancedCheckpoint = engine.Save();
+        Assert.Equal(advancedCheckpoint, resumed.Save());
+        using (var saved = System.Text.Json.JsonDocument.Parse(advancedCheckpoint.AsMemory(10)))
+            Assert.Equal("first_cycle", saved.RootElement.GetProperty("native_loaded_census_stage").GetString());
+
+        // main.startloaded sets totvegs=-1; Reproduce/sexreproduce both block
+        // births on the first loaded cycle. The archive has no saved C655 or
+        // future original Rnd state, so it cannot predict a death/reseed count.
+        Assert.Equal(loaded.Stats.Births, advanced.Stats.Births);
+        Assert.True(advanced.Stats.Deaths >= loaded.Stats.Deaths);
+        Assert.True(advanced.Stats.Reseeds >= loaded.Stats.Reseeds);
+        var deaths = advanced.Stats.Deaths - loaded.Stats.Deaths;
+        var reseeds = advanced.Stats.Reseeds - loaded.Stats.Reseeds;
+        var livingAfter = advanced.Organisms.Where(bot => !bot.IsCorpse && !bot.IsHidden)
+            .Select(bot => new OrganismKey(bot.Slot, bot.Generation)).ToHashSet();
+        Assert.Equal(advanced.Population, livingAfter.Count);
+        Assert.Equal(deaths, (ulong)livingBefore.Except(livingAfter).Count());
+        Assert.Equal(reseeds, (ulong)livingAfter.Except(livingBefore).Count());
+        Assert.Equal(checked((long)loaded.Population + (long)reseeds - (long)deaths),
+            (long)advanced.Population);
+        resumed.Load(advancedCheckpoint);
+        Assert.Equal(advancedCheckpoint, resumed.Save());
     }
 
     [Fact]

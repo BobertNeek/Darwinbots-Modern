@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "status": "authored_unapplied_released",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "worktree": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+  "scope": "Managed shape-shot Reflect choice and truthful original .set representability only",
+  "wire_values": [
+    "absorb",
+    "reflect",
+    "pass_through"
+  ],
+  "ui_indexes": {
+    "absorb": 0,
+    "pass_through": 1,
+    "reflect": 2
+  },
+  "source_authority": [
+    {
+      "path": "Darwinbots2/Obstacles.bas",
+      "lines": "411-430",
+      "finding": "Inside shape reflects velocity components; shapesAbsorbShots additionally removes the shot. False is Reflect, not bypass."
+    },
+    {
+      "path": "Darwinbots2/OptionsForm.frm",
+      "lines": "5277,5647",
+      "finding": "SaveSett/LoadSett write/read one shared shapesAbsorbShots Boolean."
+    }
+  ],
+  "semantics": {
+    "original_true": "absorb",
+    "original_false": "reflect",
+    "original_encode": "Require every obstacle policy to be absorb or reflect and all policies equal; otherwise InvalidDataException before codec returns bytes. Empty shape list retains absorb flag.",
+    "modern_compatibility": "DesktopSettings JSON and existing modern extension retain pass_through literally; no blanket migration. Native .set refusal is specific to one global Absorb/Reflect policy.",
+    "unchanged_transport": "ObstacleSnapshot string, ObjectEditorPolicy/ObstacleEditorPolicy, NativeSnapshotParser and NativeEngineClient already preserve the exact wire string; no needless API or enum edits."
+  },
+  "candidates": [
+    {
+      "target_path": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "candidate_path": "output/pass58-drafts/managed-reflect/modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "raw_before_path": "output/pass58-drafts/managed-reflect/before/modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "original_sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD",
+      "candidate_sha256": "83A49251A427B17A98C06A56FB8EF1B45D8AAB7CABD1A7B83A1AC7456B1B74DA",
+      "is_new": false
+    },
+    {
+      "target_path": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "candidate_path": "output/pass58-drafts/managed-reflect/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "raw_before_path": "output/pass58-drafts/managed-reflect/before/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "original_sha256": "29D26866E27BCE8A86721E1C6E5B6C0A9FBC76398EDB9934378C6882BC480EB3",
+      "candidate_sha256": "E2220334969C1351935AAC572632ACC45DD0F3755FB445F2E2CAE8B0373EDAAE",
+      "is_new": false
+    },
+    {
+      "target_path": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "candidate_path": "output/pass58-drafts/managed-reflect/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "raw_before_path": "output/pass58-drafts/managed-reflect/before/modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "original_sha256": "5C0254B7FBDB86F3EEF54DDDE1D98E308698C7479A98D29B33193E9061E5E506",
+      "candidate_sha256": "1E99772506D098B20D587F21AFD4A3ABE2711169B382017D64290806E2141741",
+      "is_new": false
+    },
+    {
+      "target_path": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ShapeShotPolicyCompatibilityTests.cs",
+      "candidate_path": "output/pass58-drafts/managed-reflect/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ShapeShotPolicyCompatibilityTests.cs",
+      "raw_before_path": null,
+      "original_sha256": null,
+      "candidate_sha256": "CBE9347849408F6D17B7168F4CFAB9EE0A606DB75B638CB709F00ACB0638BD5F",
+      "is_new": true
+    },
+    {
+      "target_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/ShapeEditorReflectPolicyTests.cs",
+      "candidate_path": "output/pass58-drafts/managed-reflect/modern/desktop/tests/Darwinbots.Desktop.Tests/ShapeEditorReflectPolicyTests.cs",
+      "raw_before_path": null,
+      "original_sha256": null,
+      "candidate_sha256": "6D6A551D6F572FEB11610A824FAE84C0EEF204BFAA27968BB4DDB71EC457F78A",
+      "is_new": true
+    }
+  ],
+  "test_census": {
+    "core": {
+      "new_files": 1,
+      "facts": 2,
+      "theories": 3,
+      "inline_data_rows": 7,
+      "new_executed_rows_if_discovered": 9,
+      "previous_expected_rows": 289,
+      "next_expected_rows": 298
+    },
+    "desktop": {
+      "new_files": 1,
+      "facts": 1,
+      "theories": 1,
+      "inline_data_rows": 3,
+      "new_executed_rows_if_discovered": 4,
+      "previous_expected_rows": 193,
+      "next_expected_rows": 197
+    },
+    "new_managed_rows": 13,
+    "removed_rows": 0,
+    "rust_rows_delta": 0
+  },
+  "static_review": [
+    "Exact source Boolean cannot encode PassThrough or mixed per-shape Absorb/Reflect; encode preflight is intentionally stricter than modern JSON.",
+    "Zero-species native .set Boolean record 195 derives from SaveSett offsets and is independently asserted by literal TRUE/FALSE tests.",
+    "Prior index1=Pass through is unchanged; index2=Reflect is appended and constructor/apply mapping covers all three.",
+    "Core tests cover modern model/editor/setup/native JSON, two native Boolean values, unsupported and mixed rejection, and historical modern extension semantics.",
+    "Headless tests use the existing application session, named ComboBox and public Button.ClickEvent; they preserve geometry and prove cancel is inert.",
+    "All five candidate paths statically read; source files remain frozen and new test files absent from active source."
+  ],
+  "performed": {
+    "active_source_mutations": false,
+    "git_mutations": false,
+    "format": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product_execution": false,
+    "ui": false,
+    "gpu": false
+  },
+  "limitations": [
+    "Authored and statically reviewed only. Compilation, test discovery, headless rendering and Rust integration await the parent-owned combined batch58 qualification after every batch57 ordinary outcome.",
+    "Runtime original obstacle reflection acceptance remains separate from source authority; this receipt claims no genuine original runtime proof."
+  ]
+}

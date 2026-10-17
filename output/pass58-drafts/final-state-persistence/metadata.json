@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_only",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "files": [
+    {
+      "target": "modern/engine/tests/final_state_persistence_248.rs",
+      "draft": "output/pass58-drafts/final-state-persistence/modern/engine/tests/final_state_persistence_248.rs",
+      "before": "output/pass58-drafts/final-state-persistence/before/modern/engine/tests/final_state_persistence_248.rs",
+      "base_raw_sha256": "E7B9DFFDEAA15DC9B9AA877994DF1BDE6FF1EEE86136DB9EA0516CD06B94D514",
+      "candidate_raw_sha256": "6643E2B9631C12AD2A42CF4A612B20AAC209AAE59BC49426DE880DB1F694C298",
+      "base_bytes": 14744,
+      "candidate_bytes": 14938,
+      "existing_test_rows_before": 4,
+      "existing_test_rows_after": 4,
+      "new_test_rows": 0
+    }
+  ],
+  "failure": {
+    "test": "core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically",
+    "log": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57/cpu-rust-workspace.log",
+    "source_line": 335,
+    "logged_context_line": 1111,
+    "actual_line": 1112,
+    "expected_line": 1113,
+    "assertion": "authoritative projectiles changed",
+    "classification": "fixture_constructed_inconsistent_parallel_vector_lengths"
+  },
+  "diagnosis": {
+    "native_physical_slots": 100,
+    "fixture_replaced_parallel_arrays_with_singletons": 17,
+    "owners_alive_payload_vectors_remained": 100,
+    "default_aligned_array_length_differences": [
+      {
+        "path": "$.colors.length",
+        "fixture": 1,
+        "restored": 100
+      },
+      {
+        "path": "$.dna_lengths.length",
+        "fixture": 1,
+        "restored": 100
+      },
+      {
+        "path": "$.gene_numbers.length",
+        "fixture": 1,
+        "restored": 100
+      },
+      {
+        "path": "$.source_species_names.length",
+        "fixture": 1,
+        "restored": 100
+      },
+      {
+        "path": "$.source_vegetables.length",
+        "fixture": 1,
+        "restored": 100
+      },
+      {
+        "path": "$.stored.length",
+        "fixture": 1,
+        "restored": 100
+      },
+      {
+        "path": "$.toxin_memory_locations.length",
+        "fixture": 1,
+        "restored": 100
+      },
+      {
+        "path": "$.toxin_memory_values.length",
+        "fixture": 1,
+        "restored": 100
+      }
+    ],
+    "added_default_entries": 792,
+    "array_length_records": 8,
+    "total_structural_presence_records": 800,
+    "existing_scalar_or_value_differences": 0,
+    "behavioral_failure_count_claimed": false,
+    "conclusion": "Restore correctly aligns eight optional metadata vectors to owners.len; no existing scalar/value changes.800 structural diff records are8length+792added-default presence records, not800 behavioral errors.",
+    "source_authority": {
+      "file": "modern/engine/src/shot/projectile.rs",
+      "sha256": "A1858CBF45F1C0AAAAD92433531A96231CC251361DC1DFBBCF27C61F8ECC6990",
+      "lines": [
+        124,
+        133
+      ],
+      "contract": "fill_toxin_payload_defaults resizes the eight optional vectors to owners.len and retains at least that logical capacity."
+    },
+    "independent_of_constructor_stats_gap": true
+  },
+  "repair": "Keep all100 physical native entries and mutate only slot0 in17 vectors; explicitly assert native alignment and one live projectile. Preserve nondefault logical pool_capacity101 and fractional range23.25. Every original snapshot/full-object/repeated-restore/invalid-update assertion remains unchanged.",
+  "coverage_preserved": {
+    "mutated_shot_all_original_projected_fields": true,
+    "mutated_tie_all_original_fields": true,
+    "obstacle_and_teleporter_original_assertions": true,
+    "entire_projectiles_ties_obstacles_teleporters_equality": true,
+    "repeat_db3s_stability": true,
+    "invalid_obstacle_update_atomicity": true,
+    "old_compact_control": "Separately authored contracts.rs8144FDEF release already covers compact1 versus native100 migration; not duplicated here."
+  },
+  "static_review": {
+    "inverse_reconstructs_full_raw_baseline": true,
+    "unchanged_prefix_before_mutation": true,
+    "all_original_tie_mutation_snapshot_full_equality_repeat_restore_invalid_update_suffix_unchanged": true,
+    "test_rows_before": 4,
+    "test_rows_after": 4,
+    "new_test_rows": 0,
+    "production_files_modified": false,
+    "active_source_unchanged": true,
+    "diagnostic_changed_fields": [
+      "colors",
+      "dna_lengths",
+      "gene_numbers",
+      "source_species_names",
+      "source_vegetables",
+      "stored",
+      "toxin_memory_locations",
+      "toxin_memory_values"
+    ],
+    "diagnostic_existing_scalars_or_values_changed": 0
+  },
+  "evidence": {
+    "method": "Bounded diagnostic decoding of two complete serde_json Debug lines from the existing running57 log. No Engine/test/CLI was invoked. Standard JSON outputs retain original numeric lexemes; full structural diff saved.",
+    "artifacts": [
+      {
+        "file": "output/pass58-drafts/final-state-persistence/diagnostics/fixture-projectiles.debug.txt",
+        "sha256": "979E0C2A58540B12475E0772D594258CD9517A55D3E54524D5BA0EA474105F6D",
+        "bytes": 8956
+      },
+      {
+        "file": "output/pass58-drafts/final-state-persistence/diagnostics/restored-projectiles.debug.txt",
+        "sha256": "BB6426EF3AA0C1F825373E49AA7B0B47DCD1D5564C8E242F4D088446DCCE33F4",
+        "bytes": 17569
+      },
+      {
+        "file": "output/pass58-drafts/final-state-persistence/diagnostics/fixture-projectiles.json",
+        "sha256": "96DD8CACC170CC68BFA03A31344636F6F10FFEA6C8E38E022DDA2BBEC9DD72A0",
+        "bytes": 5082
+      },
+      {
+        "file": "output/pass58-drafts/final-state-persistence/diagnostics/restored-projectiles.json",
+        "sha256": "6E006EB499D86F88EF8F09EB26FA5365EE282194613DC93FA9F681AA019F2946",
+        "bytes": 7755
+      },
+      {
+        "file": "output/pass58-drafts/final-state-persistence/diagnostics/projectiles-diff.json",
+        "sha256": "121491E6ED08ED86AA73BA288D6F957EC17F52839EABC7D1A3F96420FD3DB8C5",
+        "bytes": 102318
+      }
+    ],
+    "source_log_capture_is_nonterminal_snapshot": true
+  },
+  "test_census": {
+    "new_rows": 0,
+    "new_cargo_targets": 0,
+    "existing_target": "final_state_persistence_248",
+    "cumulative_expected_new_rust_rows_vs55": 62,
+    "expected_distinct_rust_targets": 68,
+    "expected_managed_counts": {
+      "core": 298,
+      "desktop": 197
+    }
+  },
+  "overlap": {
+    "world": false,
+    "native_shots": false,
+    "native_energy": false,
+    "constructor_repair": "Recover owns latest881651-derived constructor projection; independent and preserved."
+  },
+  "execution": {
+    "diagnostic_existing_log_data_only": true,
+    "formatter": false,
+    "powershell_or_product_parser": false,
+    "build": false,
+    "tests": false,
+    "engine_or_cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false,
+    "active_source_edits": false
+  },
+  "apply_gate": "Root collects all ordinary57 outcomes, extends initial58plan/backup without overwriting history, then applies every approved58 code/test target before qualification.",
+  "ownership_released": true
+}

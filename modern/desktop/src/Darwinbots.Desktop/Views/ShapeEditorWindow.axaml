@@ -19,7 +19,7 @@
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Horizontal drift" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="DriftX" Minimum="-100000" Maximum="100000" Increment="0.1" FormatString="0.0" /></Grid>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Vertical drift" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="DriftY" Minimum="-100000" Maximum="100000" Increment="0.1" FormatString="0.0" /></Grid>
         <Grid ColumnDefinitions="*,150"><TextBlock Text="Vision policy" VerticalAlignment="Center"/><ComboBox Grid.Column="1" x:Name="VisionPolicy"><ComboBoxItem Content="Opaque"/><ComboBoxItem Content="See through"/></ComboBox></Grid>
-        <Grid ColumnDefinitions="*,150"><TextBlock Text="Shot policy" VerticalAlignment="Center"/><ComboBox Grid.Column="1" x:Name="ShotPolicy"><ComboBoxItem Content="Absorb"/><ComboBoxItem Content="Pass through"/></ComboBox></Grid>
+        <Grid ColumnDefinitions="*,150"><TextBlock Text="Shot policy" VerticalAlignment="Center"/><ComboBox Grid.Column="1" x:Name="ShotPolicy"><ComboBoxItem Content="Absorb"/><ComboBoxItem Content="Pass through"/><ComboBoxItem Content="Reflect"/></ComboBox></Grid>
       </StackPanel>
     </ScrollViewer>
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">

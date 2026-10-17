@@ -155,22 +155,93 @@ fn sensing_projects_direction_and_aim_occurrence_references() {
 
 #[test]
 fn negative_shot_damages_nearest_target_and_records_event() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+    let mut config = EngineConfig::testing();
+    config.shots.feeding_proportional = false;
+    config.shots.feeding_fixed_power = 100;
+    let mut engine = Engine::new(config).unwrap();
     let attacker = LegacyDna::parse("start\n-1 .shoot store\n0 .shootval store\nstop").unwrap();
     let idle = LegacyDna::parse("start\nstop").unwrap();
     let attacker = engine.spawn_at(attacker, [300.0, 500.0]).unwrap();
     let target = engine.spawn_at(idle, [550.0, 500.0]).unwrap();
     let before = engine.organism(target).unwrap().energy;
+    assert_eq!(before, 1_000);
 
     engine.tick().unwrap();
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 0);
+    let incoming = engine.snapshot().shots[0].clone();
     engine
         .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
         .unwrap();
-    engine.tick().unwrap();
+    let trace = engine.tick_with_trace().unwrap();
 
     assert!(engine.organism(target).unwrap().energy < before);
     assert_eq!(engine.snapshot().stats.shots_fired, 1);
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    // Original updateshots visits the new later-slot return immediately. The
+    // forward -1 damages the target; its target-owned -2 then hits the attacker.
+    let effects: Vec<_> = trace
+        .events
+        .iter()
+        .filter_map(|event| match event {
+            darwinbots_engine::CycleEvent::Effect {
+                phase: darwinbots_engine::CyclePhase::ShotUpdate,
+                source,
+                target,
+                kind,
+                ..
+            } => Some((*source, *target, kind.as_str())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        effects,
+        vec![
+            (Some(attacker), target, "ReleaseEnergy"),
+            (Some(target), attacker, "DonateEnergy"),
+        ]
+    );
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(2));
+    // releasenrg100 removes90energy and1body. takenrg100 gives95energy,
+    // .4body and1waste; neither organism has chloroplasts to convert waste.
+    let damaged = &engine.robot_state(target).unwrap().materials;
+    assert_eq!(
+        (damaged.energy, damaged.body, damaged.waste),
+        (910.0, 999.0, 0.0)
+    );
+    let fed = &engine.robot_state(attacker).unwrap().materials;
+    assert_eq!((fed.energy, fed.body, fed.waste), (1_095.0, 1_000.4, 1.0));
+    let shots = &engine.snapshot().shots;
+    assert_eq!(shots.len(), 2);
+    assert_eq!(
+        (
+            shots[0].kind,
+            shots[0].owner,
+            shots[0].age,
+            shots[0].impact_flash
+        ),
+        (-1, attacker, 1, true)
+    );
+    assert_eq!(
+        (
+            shots[1].kind,
+            shots[1].owner,
+            shots[1].age,
+            shots[1].impact_flash
+        ),
+        (-2, target, 1, true)
+    );
+    assert_eq!(shots[1].energy, 100.0);
+    assert_eq!(shots[1].range, incoming.range * 2 + 1);
+    assert_eq!(
+        shots[1].velocity,
+        incoming.velocity.map(|value| (-value).round_ties_even())
+    );
+    let restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    assert_eq!(restored.snapshot().shots, engine.snapshot().shots);
+    assert_eq!(restored.robot_state(target).unwrap().materials, *damaged);
+    assert_eq!(restored.robot_state(attacker).unwrap().materials, *fed);
+    restored.validate_invariants().unwrap();
 }
 
 #[test]

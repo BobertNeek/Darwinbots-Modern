@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "classification": "Same real fresh-constructor stats normalization defect; no separate Gaussian/RNG defect",
+  "existing_log": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57/cpu-rust-workspace.log",
+  "panic_line": 1276,
+  "left_line": 1278,
+  "right_line": 1279,
+  "actual_debug_characters": 30202,
+  "expected_debug_characters": 30130,
+  "actual_debug_sha256": "9D244A2F4F0CFD17AE4CB19881FF4E3EB4EE6860901A7D5136E49E775B833E66",
+  "expected_debug_sha256": "4A242CF96D21B98DFFB2620946938780198C531AE9FB3173E7C5510AB150013F",
+  "only_differences": [
+    "$.stats.native_energy_delta absent_before -> 0_after",
+    "$.stats.native_energy_displayed absent_before -> 0_after"
+  ],
+  "removing_only_two_literal_field_insertions_restores_full_debug_equality": true,
+  "source_confirmation": "FFI mixed Gaussian setter/read commands restore a transactional engine. Fresh construction omitted native stats projection. Existing strict whole-state/cache/read-only assertions remain unchanged.",
+  "covered_by_release": "output/pass58-drafts/fresh-native-stats/metadata.json",
+  "covered_by_release_sha256": "3D3E8A6DFF56C315ED9767721B07257DB11F1096D1AAF7681623007394D47762",
+  "production_changes_added": false,
+  "test_rows_added": 0,
+  "engine_or_cli_executed": false,
+  "tests_rerun": false,
+  "active_sources_changed": false
+}

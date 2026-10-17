@@ -2730,7 +2730,7 @@ impl Engine {
         let (capabilities, physics) = select_backend(&config)?;
         let world_size = [config.world_width, config.world_height];
         let native_random = crate::native_random::NativeRandom::with_user_seed(config.seed);
-        Ok(Self {
+        let mut engine = Self {
             config,
             slots: RobotArena::default(),
             tick: 0,
@@ -2816,7 +2816,11 @@ impl Engine {
             native_loaded_census_stage: None,
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
-        })
+        };
+        // Match restore publication without advancing a cycle or publishing a snapshot.
+        engine.project_native_energy_stats();
+        engine.snapshot.stats = engine.stats.clone();
+        Ok(engine)
     }
 
     pub fn spawn(&mut self, dna: LegacyDna) -> Result<OrganismId, EngineError> {
@@ -9517,6 +9521,32 @@ impl Engine {
             self.config.axis_topology(),
         );
         self.resolve_projectile_impacts(trace);
+        // The portable profile advances first. Reflect then tests that current
+        // point, including flashed/stored shots; it is not swept absorption.
+        for shot in 0..self.projectiles.alive.len() {
+            if !self.projectiles.alive[shot] {
+                continue;
+            }
+            for obstacle in &self.obstacles {
+                if obstacle.shot_policy != ShapeShotPolicy::Reflect {
+                    continue;
+                }
+                let position = self.projectiles.positions[shot];
+                if position[0] >= obstacle.minimum[0]
+                    && position[0] <= obstacle.maximum[0]
+                    && position[1] >= obstacle.minimum[1]
+                    && position[1] <= obstacle.maximum[1]
+                {
+                    for axis in 0..2 {
+                        let previous = self.projectiles.previous_positions[shot][axis];
+                        if previous < obstacle.minimum[axis] || previous > obstacle.maximum[axis] {
+                            self.projectiles.velocities[shot][axis] =
+                                -self.projectiles.velocities[shot][axis];
+                        }
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -11040,17 +11070,21 @@ impl Engine {
                 organism.program.memory.write(MEM_LIGHT, 0);
                 continue;
             }
-            let (waste_energy_gain, waste_body_gain) = organism
-                .materials
-                .metabolize_waste(settings.feeding_to_body);
-            self.stats.plant_energy_generated = self
-                .stats
-                .plant_energy_generated
-                .saturating_add(waste_energy_gain.max(0.0) as u64);
-            self.stats.plant_body_produced = self
-                .stats
-                .plant_body_produced
-                .saturating_add(waste_body_gain.max(0.0) as u64);
+            if !native {
+                // The portable extension retains its late waste conversion.
+                // Native feedveg2 already ran in this actor's HandleWaste.
+                let (waste_energy_gain, waste_body_gain) = organism
+                    .materials
+                    .metabolize_waste(settings.feeding_to_body);
+                self.stats.plant_energy_generated = self
+                    .stats
+                    .plant_energy_generated
+                    .saturating_add(waste_energy_gain.max(0.0) as u64);
+                self.stats.plant_body_produced = self
+                    .stats
+                    .plant_body_produced
+                    .saturating_add(waste_body_gain.max(0.0) as u64);
+            }
             if native && !daytime {
                 continue;
             }
@@ -12715,6 +12749,10 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        // Reject process caches before migration or snapshot-derived ring indexing.
+        engine.native_energy.validate().map_err(|error| {
+            EngineError::InvalidSave(format!("invalid native energy cache: {error}"))
+        })?;
         if !engine.native_light_availability().is_finite()
             || !(0.0..=1.0).contains(&engine.native_light_availability())
         {

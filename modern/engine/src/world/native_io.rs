@@ -223,6 +223,14 @@ fn configuration(t: &NativeSimulationTail) -> Result<EngineConfig, EngineError> 
             waste_shots_do_not_decay: b("no_waste_decay")?,
             ..ShotSettings::default()
         },
+        waste: WasteSettings {
+            // HDRoutines.ReadSim normalizes the source Integer zero before C0.
+            alzheimer_threshold: match t.integer("bad_waste")? {
+                0 => 400,
+                value => value,
+            },
+            ..WasteSettings::default()
+        },
         corpse_decay: CorpseDecaySettings {
             enabled: b("corpses")?,
             packet_size: n("decay")?.round_ties_even() as i32,
@@ -896,7 +904,7 @@ impl Engine {
             shape.shot_policy = if t.integer("shapes_absorb")? != 0 {
                 ShapeShotPolicy::Absorb
             } else {
-                ShapeShotPolicy::PassThrough
+                ShapeShotPolicy::Reflect
             };
             self.obstacles.push(shape);
         }

@@ -27,7 +27,12 @@ public sealed partial class ShapeEditorWindow : Window
         DriftX.Value = (decimal)obstacle.Drift.ElementAtOrDefault(0);
         DriftY.Value = (decimal)obstacle.Drift.ElementAtOrDefault(1);
         VisionPolicy.SelectedIndex = obstacle.VisionPolicy.Equals("see_through", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-        ShotPolicy.SelectedIndex = obstacle.ShotPolicy.Equals("pass_through", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        ShotPolicy.SelectedIndex = obstacle.ShotPolicy.ToLowerInvariant() switch
+        {
+            "pass_through" => 1,
+            "reflect" => 2,
+            _ => 0,
+        };
     }
 
     public ObstacleSnapshot? Result { get; private set; }
@@ -46,7 +51,12 @@ public sealed partial class ShapeEditorWindow : Window
             (float)(OpacityValue.Value ?? 1m),
             [(float)(DriftX.Value ?? 0m), (float)(DriftY.Value ?? 0m)],
             VisionPolicy.SelectedIndex == 1 ? "see_through" : "opaque",
-            ShotPolicy.SelectedIndex == 1 ? "pass_through" : "absorb");
+            ShotPolicy.SelectedIndex switch
+            {
+                1 => "pass_through",
+                2 => "reflect",
+                _ => "absorb",
+            });
         Close();
     }
 

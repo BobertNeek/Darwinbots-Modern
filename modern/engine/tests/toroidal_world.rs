@@ -120,22 +120,67 @@ fn wrapped_axis_applies_border_smudge_before_integration() {
 
 #[test]
 fn projectile_wrap_preserves_its_travel_segment() {
-    let mut engine = Engine::new(toroidal_test_config()).unwrap();
-    engine
-        .spawn_at(
-            LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
-            [95.0, 50.0],
-        )
-        .unwrap();
+    // Shots.NewShotCollision wraps the current point once using strict >/<,
+    // then updateshots records that corrected start and performs Euler movement.
+    // The new endpoint can remain outside until the next serial visit.
+    for (position, first_start, next_start) in [
+        (95.0, 95.0, 35.0),
+        (100.0, 100.0, 40.0),
+        (-5.0, 95.0, 35.0),
+        (205.0, 105.0, 45.0),
+    ] {
+        let mut engine = Engine::new(toroidal_test_config()).unwrap();
+        let owner = engine
+            .spawn_at(
+                LegacyDna::parse("start\n-1 .shoot store\nstop").unwrap(),
+                [95.0, 50.0],
+            )
+            .unwrap();
+        engine.tick().unwrap();
+        engine
+            .replace_dna(owner, LegacyDna::parse("start stop").unwrap())
+            .unwrap();
+        let encoded = SaveFile::encode(&engine).unwrap();
+        let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+        let shots = &mut payload["projectiles"];
+        assert_eq!(shots["alive"][0], serde_json::json!(true));
+        // Keep the valid native pool and owner; replace only this shot's
+        // geometry/age/range so launch scatter cannot obscure border timing.
+        shots["positions"][0] = serde_json::json!([position, 50.0]);
+        shots["previous_positions"][0] = serde_json::json!([position - 40.0, 50.0]);
+        shots["velocities"][0] = serde_json::json!([40.0, 0.0]);
+        shots["ages"][0] = serde_json::json!(0);
+        shots["ranges"][0] = serde_json::json!(20.0);
+        let payload = serde_json::to_vec(&payload).unwrap();
+        let mut save = encoded[..6].to_vec();
+        save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        save.extend_from_slice(&payload);
+        let mut engine = SaveFile::decode(&save).unwrap();
+        engine.validate_invariants().unwrap();
 
-    engine.tick().unwrap();
-    engine.tick().unwrap();
-
-    let shot = &engine.snapshot().shots[0];
-    let segment_length = (shot.end[0] - shot.start[0]).hypot(shot.end[1] - shot.start[1]);
-    let velocity_length = shot.velocity[0].hypot(shot.velocity[1]);
-    assert!((0.0..100.0).contains(&shot.end[0]));
-    assert!((segment_length - velocity_length).abs() < 0.01);
+        engine.tick().unwrap();
+        assert_eq!(engine.snapshot().shots.len(), 1);
+        let shot = &engine.snapshot().shots[0];
+        assert_eq!(shot.start, [first_start, 50.0]);
+        assert_eq!(shot.end, [first_start + 40.0, 50.0]);
+        assert_eq!(shot.velocity, [40.0, 0.0]);
+        assert_eq!(shot.age, 1);
+        assert!(!shot.impact_flash);
+        let segment_length = (shot.end[0] - shot.start[0]).hypot(shot.end[1] - shot.start[1]);
+        let velocity_length = shot.velocity[0].hypot(shot.velocity[1]);
+        assert_eq!(segment_length, velocity_length);
+        assert_eq!(engine.snapshot().stats.projectile_impacts, 0);
+        let mut restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        engine.tick().unwrap();
+        restored.tick().unwrap();
+        let shot = &engine.snapshot().shots[0];
+        assert_eq!(shot.start, [next_start, 50.0]);
+        assert_eq!(shot.end, [next_start + 40.0, 50.0]);
+        assert_eq!(shot.velocity, [40.0, 0.0]);
+        assert_eq!(shot.age, 2);
+        assert_eq!(engine.snapshot().shots, restored.snapshot().shots);
+        restored.validate_invariants().unwrap();
+    }
 }
 
 #[test]

@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_review_only",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "files": [
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "draft": "output/pass58-drafts/native-shot-test-fixtures/modern/engine/src/world/native_shots.rs",
+      "active_base_raw_sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "derived_from": "output/pass58-drafts/native-lint/modern/engine/src/world/native_shots.rs",
+      "derived_from_raw_sha256": "5950F06A62BFE5B5A23BB0C0B23D200D35A36D3C911E606754DDB688863F621B",
+      "candidate_raw_sha256": "C118759C0E0652A8C3572489E19E3458AF70462517EAFB70F11977E79E8F7C2F",
+      "base_bytes": 40955,
+      "candidate_bytes": 44915,
+      "existing_test_cases": 16,
+      "new_test_cases": 0
+    }
+  ],
+  "source_evidence": [
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "sha256": "5091B7196149EC219A66AC75EE0ED704B68D34F1DB763EDEC77C406ED226D408",
+      "ranges": [
+        {
+          "start": 237,
+          "end": 244,
+          "purpose": "createshot initializes nrg=Range+40+1, range=(Range+40+1)\\40; only kind -2 substitutes val for nrg."
+        },
+        {
+          "start": 315,
+          "end": 330,
+          "purpose": "Visit existing slots, add -2 energy, skip stored collisions, and apply numeric-parent newborn immunity."
+        },
+        {
+          "start": 388,
+          "end": 404,
+          "purpose": "Move once per visit; stored and configured no-decay energy shots do not age; expire only when age>range."
+        },
+        {
+          "start": 538,
+          "end": 588,
+          "purpose": "Fixed feeding power, corpse/poison branch, exact 0.9 energy debit, 0.01 body debit, then -2 packet owned by the victim."
+        }
+      ]
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2"
+    },
+    {
+      "file": "modern/engine/src/shot/projectile.rs",
+      "sha256": "A1858CBF45F1C0AAAAD92433531A96231CC251361DC1DFBBCF27C61F8ECC6990"
+    },
+    {
+      "file": "modern/engine/src/world/native_energy.rs",
+      "sha256": "267AE175E70E91593FD97C4A53A8376D015292743B8048B4047E7FBD940674A0"
+    }
+  ],
+  "repairs": [
+    {
+      "test": "native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+      "cause": "The nearby collateral target legitimately emitted a later-slot -2 packet into the recycled owner, adding 95 energy. That mixed owner exclusion with independent packet reception.",
+      "change": "Relocate collateral target to [800,800]; retain exact 1000 energy/body and zero impacts for same numeric owner across live and DB3S-restored states. Use age10 to exclude newborn-immunity confounding. Same saved geometry with parent0 must hit and create an excluded return packet.",
+      "negative_control": {
+        "proportional": false,
+        "fixed_power": 100,
+        "replacement_initial_energy": 1000,
+        "replacement_initial_body": 1000,
+        "replacement_poison": 0,
+        "replacement_corpse": false,
+        "source_energy_debit": "100 * 0.9 = 90",
+        "source_body_debit": "100 * 0.01 = 1",
+        "expected_energy": 910,
+        "expected_body": 999,
+        "returned_packet_owner": "replacement",
+        "returned_packet_kind": -2,
+        "returned_packet_energy": 100,
+        "returned_packet_value": 100,
+        "expected_impacts": 1,
+        "expected_visited": 2,
+        "derivation": "Original releasenrg source equations; not inferred from the observed +95 reception."
+      }
+    },
+    {
+      "test": "native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+      "cause": "The failing 81-vs-10 assertion is packet energy, not age: kind -7 with Range40 initializes nrg81 and value10. Later changing shottype to -2 does not reconstruct energy.",
+      "change": "Assert original constructor energy81/value10/range2, preserve stored orphan at capacity100 and its age0/motion; restore DB3S; check each of three no-decay visits retains age0/energy81, then decay visits age1/2/3 with exact expiry after range2. Compare final projectile state and native energy runtime."
+    }
+  ],
+  "static_review": {
+    "production_prefix_exactly_unchanged_from_lint_candidate": true,
+    "existing_lint_repair_preserved": true,
+    "changed_test_bodies": [
+      "native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+      "native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity"
+    ],
+    "all_other_14_test_bodies_exact": true,
+    "test_names_and_order_unchanged": true,
+    "test_rows_before": 16,
+    "test_rows_after": 16,
+    "net_new_test_rows": 0,
+    "cumulative_new_rust_test_rows_vs55": 59,
+    "line_endings": "LF",
+    "active_source_unchanged": true,
+    "lint_candidate_unchanged": true
+  },
+  "execution": {
+    "format": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine": false,
+    "cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false,
+    "active_source_edits": false
+  },
+  "apply_gate": "Parent collects every ordinary local and hosted batch57 outcome, reviews all58 changes, and applies all code/tests before qualification."
+}

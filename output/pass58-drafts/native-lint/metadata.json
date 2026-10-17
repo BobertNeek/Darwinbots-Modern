@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_diff_reviewed",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "head_identity_read_from_worktree_files_without_git_command": true,
+  "files": [
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "draft": "output/pass58-drafts/native-lint/modern/engine/src/world/native_shots.rs",
+      "before": "output/pass58-drafts/native-lint/before/modern/engine/src/world/native_shots.rs",
+      "base_raw_sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "candidate_raw_sha256": "5950F06A62BFE5B5A23BB0C0B23D200D35A36D3C911E606754DDB688863F621B",
+      "base_bytes": 41211,
+      "candidate_bytes": 40955,
+      "existing_test_cases": 16,
+      "new_test_cases": 0
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "draft": "output/pass58-drafts/native-lint/modern/engine/src/world/native_energy.rs",
+      "before": "output/pass58-drafts/native-lint/before/modern/engine/src/world/native_energy.rs",
+      "base_raw_sha256": "267AE175E70E91593FD97C4A53A8376D015292743B8048B4047E7FBD940674A0",
+      "candidate_raw_sha256": "D04ED16A52D21FCD791B85FC0676F409F8F63AF71329BC995CF4D4094AE345AA",
+      "base_bytes": 18348,
+      "candidate_bytes": 18332,
+      "existing_test_cases": 8,
+      "new_test_cases": 0
+    }
+  ],
+  "repairs": [
+    {
+      "file": "modern/engine/src/world/native_shots.rs",
+      "base_line": 277,
+      "rule": "clippy::collapsible_if",
+      "change": "Merge ornamental/stored eligibility and optional collision target using ordered && let Some(target).",
+      "short_circuit_order": [
+        "kind != -100",
+        "!stored",
+        "native_shot_collision exactly once only after both eligibility conditions"
+      ]
+    },
+    {
+      "file": "modern/engine/src/world/native_energy.rs",
+      "base_line": 102,
+      "rule": "clippy::collapsible_if",
+      "change": "Merge successful arena lookup with robot.flags.exists using if let Ok(robot) && exists.",
+      "short_circuit_order": [
+        "slots.get(id)",
+        "exists only for Ok(robot)",
+        "unchanged add_actor only for existing robot"
+      ]
+    }
+  ],
+  "static_diff_review": {
+    "exactly_one_nested_if_rewrite_per_file": true,
+    "branch_bodies_unchanged_except_one_indent_level": true,
+    "no_allow_annotations": true,
+    "no_warning_policy_changes": true,
+    "all_24_existing_test_cases_unchanged": true
+  },
+  "net_new_test_rows": 0,
+  "combined_new_code_test_count": 59,
+  "execution": {
+    "format": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine": false,
+    "cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false,
+    "active_source_edits": false
+  },
+  "apply_gate": "Wait for all ordinary local and hosted batch57 outcomes, then combine all approved58 repairs before checks."
+}

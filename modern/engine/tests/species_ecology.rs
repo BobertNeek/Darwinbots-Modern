@@ -793,14 +793,14 @@ fn body_feeding_shots_use_body_coefficients_and_return_energy_from_target() {
     let target_after = engine.organism(target).unwrap();
     assert_eq!(target_after.energy, target_before.energy - 20);
     assert_eq!(target_after.body, target_before.body - 8);
-    assert_eq!(attacker_after_impact.energy, attacker_before.energy);
-    assert!(
-        engine
-            .snapshot()
-            .shots
-            .iter()
-            .any(|shot| { shot.kind == -2 && shot.owner == target && shot.value == 100 })
-    );
+    // Shots.bas visits the later free return slot in this same update.
+    assert_eq!(attacker_after_impact.energy, attacker_before.energy + 95);
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(2));
+    assert!(engine.snapshot().shots.iter().any(|shot| {
+        shot.kind == -2 && shot.owner == target && shot.value == 100 && shot.impact_flash
+    }));
 
     engine.tick_many(8).unwrap();
     assert!(engine.organism(attacker).unwrap().energy > attacker_before.energy);
@@ -979,10 +979,16 @@ fn information_defense_applies_vb_cint_to_reversed_velocity() {
         .snapshot()
         .shots
         .iter()
-        .find(|shot| shot.kind == -5 && !shot.impact_flash)
+        .find(|shot| shot.kind == -5)
         .unwrap();
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    // The source slot loop also visits and delivers this later return now.
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(2));
+    assert!(returned.impact_flash);
+    assert_eq!(returned.age, 1);
     assert_eq!(returned.owner, defender);
+    assert_eq!(returned.value, 220);
     assert_eq!(incoming.velocity, [40.5, -2.5]);
     assert_eq!(returned.velocity, [-40.0, 2.0]);
     assert_eq!(returned.range, 12);
@@ -1058,10 +1064,16 @@ fn release_energy_defense_applies_vb_cint_after_target_velocity_formula() {
         .snapshot()
         .shots
         .iter()
-        .find(|shot| shot.kind == -5 && !shot.impact_flash)
+        .find(|shot| shot.kind == -5)
         .unwrap();
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    // The source slot loop also visits and delivers this later return now.
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(2));
+    assert!(returned.impact_flash);
+    assert_eq!(returned.age, 1);
     assert_eq!(returned.owner, defender);
+    assert_eq!(returned.value, 220);
     assert_eq!(incoming.velocity, [40.25, -2.75]);
     assert_eq!(returned.velocity, [-35.0, 0.0]);
     assert_eq!(returned.range, 23);
@@ -1110,7 +1122,13 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
     information_engine =
         restore_with_material(&information_engine, information_defender, "poison", 220.0);
     information_engine.tick().unwrap();
-    assert_eq!(information_engine.snapshot().stats.projectile_impacts, 1);
+    // Information equality creates poison, whose later slot hits the attacker now.
+    assert_eq!(information_engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(information_engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(
+        information_engine.snapshot().stats.native_shots_visited,
+        Some(2)
+    );
 
     let information_after = information_engine.organism(information_defender).unwrap();
     assert_eq!(information_after.poison, 22);
@@ -1120,7 +1138,7 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
             .snapshot()
             .shots
             .iter()
-            .any(|shot| shot.kind == -5 && !shot.impact_flash)
+            .any(|shot| shot.kind == -5 && shot.owner == information_defender && shot.impact_flash)
     );
     assert_ne!(
         information_engine
@@ -1159,7 +1177,13 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
     feeding_engine.replace_dna(feeding_attacker, idle).unwrap();
     feeding_engine = restore_with_material(&feeding_engine, feeding_defender, "poison", 220.0);
     feeding_engine.tick().unwrap();
-    assert_eq!(feeding_engine.snapshot().stats.projectile_impacts, 1);
+    // Feeding equality extracts energy instead; its energy return also visits now.
+    assert_eq!(feeding_engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(feeding_engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(
+        feeding_engine.snapshot().stats.native_shots_visited,
+        Some(2)
+    );
 
     let feeding_after = feeding_engine.organism(feeding_defender).unwrap();
     assert_eq!(feeding_after.poison, 216);
@@ -1169,7 +1193,7 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
             .snapshot()
             .shots
             .iter()
-            .any(|shot| shot.kind == -5 && !shot.impact_flash)
+            .any(|shot| shot.kind == -5)
     );
 
     let mut poisoned_feeding_engine = Engine::new(EngineConfig {
@@ -1230,9 +1254,20 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
     poisoned_feeding_engine.tick().unwrap();
     assert_eq!(
         poisoned_feeding_engine.snapshot().stats.projectile_impacts,
-        1
+        2
     );
 
+    assert_eq!(
+        poisoned_feeding_engine.snapshot().stats.projectile_effects,
+        2
+    );
+    assert_eq!(
+        poisoned_feeding_engine
+            .snapshot()
+            .stats
+            .native_shots_visited,
+        Some(2)
+    );
     let poisoned_feeding_after = poisoned_feeding_engine
         .organism(poisoned_feeding_defender)
         .unwrap();
@@ -1247,7 +1282,9 @@ fn defensive_poison_uses_db2_information_and_feeding_equality_rules() {
             .snapshot()
             .shots
             .iter()
-            .any(|shot| shot.kind == -5 && !shot.impact_flash)
+            .any(|shot| shot.kind == -5
+                && shot.owner == poisoned_feeding_defender
+                && shot.impact_flash)
     );
 }
 
@@ -1355,7 +1392,14 @@ fn conspecific_defensive_poison_adds_to_store_without_forced_effect() {
         .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
         .unwrap();
     engine.tick().unwrap();
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    // The later free poison slot delivers before this update returns.
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(2));
+    assert!(engine.snapshot().shots.iter().any(|shot| {
+        shot.owner == defender && shot.kind == -5 && shot.value == 20 && shot.impact_flash
+    }));
+    assert_eq!(engine.organism(attacker).unwrap().poisoned, 0);
     engine.tick().unwrap();
     assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
 
@@ -1421,14 +1465,22 @@ fn heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_poi
         .replace_dna(attacker, LegacyDna::parse("start\nstop").unwrap())
         .unwrap();
     engine.tick().unwrap();
-    assert_eq!(engine.snapshot().stats.projectile_impacts, 1);
+    // Serial later-slot delivery precedes Robots.bas poison forcing/one decrement.
+    assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
+    assert_eq!(engine.snapshot().stats.projectile_effects, 2);
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(2));
+    assert!(engine.snapshot().shots.iter().any(|shot| {
+        shot.owner == defender && shot.kind == -5 && shot.value == 15 && shot.impact_flash
+    }));
+    assert_eq!(engine.organism(attacker).unwrap().poisoned, 9);
+    assert_eq!(engine.memory_at(attacker, 500).unwrap(), 77);
     engine.tick().unwrap();
     assert_eq!(engine.snapshot().stats.projectile_impacts, 2);
 
     let attacker = engine.organism(attacker).unwrap();
     assert_eq!(attacker.energy, energy_before);
     assert_eq!(attacker.shell, 5);
-    assert_eq!(attacker.poisoned, 9);
+    assert_eq!(attacker.poisoned, 8);
     assert_eq!(engine.memory_at(attacker.id, 500).unwrap(), 77);
 }
 

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_only",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "files": [
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft": "output/pass58-drafts/native-energy-validation/modern/engine/src/world.rs",
+      "before": "output/pass58-drafts/native-energy-validation/before/modern/engine/src/world.rs",
+      "base_raw_sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "candidate_raw_sha256": "EF1CD0B01651B82735F3A315C1EB2F705CA83B3D85A91BDCFC0AC7AFE84B0F56",
+      "base_bytes": 578163,
+      "candidate_bytes": 578405
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "draft": "output/pass58-drafts/native-energy-validation/modern/engine/src/world/native_energy.rs",
+      "before": "output/pass58-drafts/native-energy-validation/before/modern/engine/src/world/native_energy.rs",
+      "base_raw_sha256": "267AE175E70E91593FD97C4A53A8376D015292743B8048B4047E7FBD940674A0",
+      "candidate_raw_sha256": "2DEBC72890B56366913C46C266AF6CFD4FB6A9BB17B68BD253B8F45D7CEE9DC6",
+      "base_bytes": 18348,
+      "candidate_bytes": 19977
+    }
+  ],
+  "derives_energy_candidate_from": {
+    "metadata": "output/pass58-drafts/native-lint/metadata.json",
+    "metadata_sha256": "F55D0FA6A54215FE2444C50FDFB37EB45842742D6473DB5505301ABD46FA93CD",
+    "candidate": "output/pass58-drafts/native-lint/modern/engine/src/world/native_energy.rs",
+    "candidate_sha256": "D04ED16A52D21FCD791B85FC0676F409F8F63AF71329BC995CF4D4094AE345AA",
+    "prior_preserved": "output/pass58-drafts/native-energy-validation/prior/native-lint-native_energy.rs",
+    "original_lint_release_modified": false
+  },
+  "failure": {
+    "test": "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+    "observed": "Malformed DB3S ring length1 reaches native_energy.delta index98 before validation; panic instead of controlled error.",
+    "classification": "product restore-order bug"
+  },
+  "cause": {
+    "load_route": "persistence.rs76-106 DB3S decode -> Engine::restore; world.rs12717-12831 migrates/selects backend/publishes snapshot; native_energy validation was only in later validate_invariants/cycle, so project_native_energy_stats called delta on malformed ring.",
+    "derived_access": "native_energy.rs delta indexes ring[(current_index+98)%100] without fallback, correctly assuming validated state."
+  },
+  "repair": "Validate native_energy at the first line of Engine::restore, map validation failure to InvalidSave, then continue existing migration/backend/publication only for valid cache. No fallback/default/masking and no delta formula change.",
+  "test_changes": {
+    "new_rows": 0,
+    "existing_energy_facts_before": 8,
+    "existing_energy_facts_after": 8,
+    "strengthened_existing_fact": true,
+    "malformed_cases": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        100,
+        0
+      ],
+      [
+        102,
+        0
+      ],
+      [
+        1,
+        98
+      ],
+      [
+        101,
+        100
+      ],
+      [
+        101,
+        255
+      ]
+    ],
+    "both_routes": [
+      "direct Engine::restore of deserialized payload",
+      "public SaveFile::decode of correctly framed DB3S v3 bytes"
+    ],
+    "required_error": "EngineError::InvalidSave containing native energy cache, before snapshot/publication",
+    "valid_control": "101cells/index99/display7/ring97=5 decodes and publishes exact displayed7/delta2",
+    "old_missing_field_default_control_preserved": true,
+    "lint_let_chain_preserved": true
+  },
+  "net_new_test_rows": 0,
+  "combined_new_code_test_count": 59,
+  "apply_policy": "Use this world.rs and native_energy.rs pair; do not overwrite the energy candidate with older native-lint copy. Other58 shot fixture/lint work is separate. Apply only after all57 ordinary local+hosted outcomes.",
+  "execution": {
+    "active_sources_unchanged": true,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "engine": false,
+    "cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  }
+}

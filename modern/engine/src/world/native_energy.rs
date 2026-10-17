@@ -99,11 +99,11 @@ impl Engine {
         if self.native_random.is_none() {
             return Ok(());
         }
-        if let Ok(robot) = self.slots.get(id) {
-            if robot.flags.exists {
-                let (energy, body) = (robot.materials.energy, robot.materials.body);
-                self.native_energy.add_actor(energy, body)?;
-            }
+        if let Ok(robot) = self.slots.get(id)
+            && robot.flags.exists
+        {
+            let (energy, body) = (robot.materials.energy, robot.materials.body);
+            self.native_energy.add_actor(energy, body)?;
         }
         Ok(())
     }
@@ -407,9 +407,50 @@ mod tests {
         assert_eq!(old_context.shots_this_cycle, 0);
         assert_eq!(old.read_native_process_caches().shots_this_cycle, 0);
         assert_eq!(old.native_energy, NativeEnergyRuntime::default());
-        payload["native_energy"] =
-            serde_json::json!({ "ring": [0], "current_index": 0, "displayed": 0 });
-        assert!(Engine::restore(Engine::from_db3s_v3_payload(payload).unwrap()).is_err());
+        let frame = |payload: &serde_json::Value| {
+            let encoded = serde_json::to_vec(payload).unwrap();
+            let mut bytes = b"DB3S".to_vec();
+            bytes.extend_from_slice(&3_u16.to_le_bytes());
+            bytes.extend_from_slice(&(encoded.len() as u32).to_le_bytes());
+            bytes.extend_from_slice(&encoded);
+            bytes
+        };
+        for (length, current_index) in [
+            (0, 0),
+            (1, 0),
+            (100, 0),
+            (102, 0),
+            (1, 98),
+            (101, 100),
+            (101, 255),
+        ] {
+            let mut malformed = payload.clone();
+            malformed["native_energy"] = serde_json::json!({
+                "ring": vec![0; length], "current_index": current_index, "displayed": 0
+            });
+            let error = Engine::restore(Engine::from_db3s_v3_payload(malformed.clone()).unwrap())
+                .err()
+                .expect("malformed energy must return an error before publication");
+            assert!(
+                matches!(error, EngineError::InvalidSave(ref message) if message.contains("native energy cache"))
+            );
+            let error = crate::SaveFile::decode(&frame(&malformed))
+                .err()
+                .expect("public decode must reject malformed energy before publication");
+            assert!(
+                matches!(error, EngineError::InvalidSave(ref message) if message.contains("native energy cache"))
+            );
+        }
+        // A boundary index remains valid: the source delta reads ring[(99+98)%100].
+        let mut ring = vec![0; 101];
+        ring[97] = 5;
+        payload["native_energy"] = serde_json::json!({
+            "ring": ring, "current_index": 99, "displayed": 7
+        });
+        let valid = crate::SaveFile::decode(&frame(&payload)).unwrap();
+        assert_eq!(valid.native_energy.current_index, 99);
+        assert_eq!(valid.snapshot().stats.native_energy_displayed, Some(7));
+        assert_eq!(valid.snapshot().stats.native_energy_delta, Some(2));
     }
 
     #[test]

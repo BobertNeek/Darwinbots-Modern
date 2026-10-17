@@ -1,0 +1,2117 @@
+{
+  "schema_version": 3,
+  "batch": 57,
+  "source_commit": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "repository": "BobertNeek/Darwinbots-Modern",
+  "workflow": "Modern cross-platform",
+  "workflow_file": ".github/workflows/modern-cross-platform.yml",
+  "workflow_source": {
+    "file": ".github/workflows/modern-cross-platform.yml",
+    "sha256": "4B596B870FC8E38DDD9D9F658AD1ACDAAB7082ED10B161D22655025D2ABF6707",
+    "bytes": 2910
+  },
+  "run_id": 39003277798,
+  "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798",
+  "branch": "codex/db24832-completion",
+  "event": "push",
+  "created_utc": "2026-10-17T04:37:45Z",
+  "updated_utc": "2026-10-17T04:52:06Z",
+  "sealed_utc": "2026-10-17T04:56:13.108Z",
+  "state": "needs_repair_rust_engine_library_test_failures",
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "all_four_normal_outcomes_collected": true,
+  "cancelled_jobs": 0,
+  "overall_passed": false,
+  "normal_jobs": [
+    {
+      "completedAt": "2026-10-17T04:52:05Z",
+      "conclusion": "failure",
+      "databaseId": 117310487837,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "startedAt": "2026-10-17T04:37:50Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:37:54Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:37:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:00Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:37:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:13Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:38:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:34Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:38:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:38:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:01Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:02Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:52:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:52:03Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:52:02Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487837"
+    },
+    {
+      "completedAt": "2026-10-17T04:45:56Z",
+      "conclusion": "failure",
+      "databaseId": 117310487891,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "startedAt": "2026-10-17T04:37:48Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:37:51Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:37:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:37:53Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:37:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:02Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:37:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:13Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:38:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:52Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:38:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:52Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:45:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:52Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:45:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:53Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:45:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:53Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:45:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:53Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:45:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:53Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:45:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:53Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:45:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:53Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:45:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:45:53Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:45:53Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487891"
+    },
+    {
+      "completedAt": "2026-10-17T04:46:23Z",
+      "conclusion": "failure",
+      "databaseId": 117310487908,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "startedAt": "2026-10-17T04:37:48Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:37:50Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:37:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:37:55Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:37:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:13Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:37:55Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:50Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:38:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:38:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:20Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:22Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:46:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:46:22Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:46:22Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487908"
+    },
+    {
+      "completedAt": "2026-10-17T04:44:48Z",
+      "conclusion": "failure",
+      "databaseId": 117310487909,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "startedAt": "2026-10-17T04:37:55Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:37:58Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:37:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:03Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:37:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:13Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:38:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:38:25Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:38:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:38:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:45Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:46Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:44:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:44:46Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:44:46Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487909"
+    }
+  ],
+  "aggregate": {
+    "rust": {
+      "actual_workspace_command_invocations": 4,
+      "successful_workspace_invocations": 0,
+      "completed_targets": 28,
+      "executed_tests": 2100,
+      "passed": 2088,
+      "failed": 12,
+      "ignored": 32,
+      "measured": 0,
+      "filtered_out": 0,
+      "total_including_ignored": 2132,
+      "counts_are_actual_complete_log_summaries": true,
+      "scope": "Four requested full-workspace commands executed only seven targets each before the default Cargo stop at engine library failures. The28 collected target summaries are partial workspace execution, not four full workspace passes."
+    },
+    "core": {
+      "command_invocations": 0,
+      "total": 0,
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "platforms_without_execution": 4,
+      "scope": "not_run_after_rust_test_failure on all four platforms"
+    },
+    "desktop": {
+      "command_invocations": 0,
+      "total": 0,
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "actual_trx_files": 0,
+      "platforms_without_execution": 4,
+      "scope": "not_run_after_rust_test_failure on all four platforms"
+    },
+    "package": {
+      "publish_invocations": 0,
+      "smoke_invocations": 0,
+      "published": 0,
+      "not_run_platforms": 4
+    },
+    "focused_cli_source_image_controls": {
+      "test_executions": 16,
+      "passed": 16,
+      "scope": "Four actually executed CLI tests on each platform cover raw NativeRecord identity, independent981-transform runtime image across393316fields, zero-step byte preservation, and genuine movementC1 public replay. This is narrow passing evidence inside failed overall qualification."
+    },
+    "gui_frames": 0
+  },
+  "failure_clusters": [
+    {
+      "test_name": "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+      "failed_platforms": [
+        "osx-x64",
+        "linux-x64",
+        "win-x64",
+        "osx-arm64"
+      ],
+      "evidence": "Actual named failed test rows and panic diagnostics in each platform log. Root owns future repair diagnosis; this receipt does not weaken assertions or label failures as harmless."
+    },
+    {
+      "test_name": "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+      "failed_platforms": [
+        "osx-x64",
+        "linux-x64",
+        "win-x64",
+        "osx-arm64"
+      ],
+      "evidence": "Actual named failed test rows and panic diagnostics in each platform log. Root owns future repair diagnosis; this receipt does not weaken assertions or label failures as harmless."
+    },
+    {
+      "test_name": "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+      "failed_platforms": [
+        "osx-x64",
+        "linux-x64",
+        "win-x64",
+        "osx-arm64"
+      ],
+      "evidence": "Actual named failed test rows and panic diagnostics in each platform log. Root owns future repair diagnosis; this receipt does not weaken assertions or label failures as harmless."
+    }
+  ],
+  "platform_results": [
+    {
+      "rid": "osx-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:52:05Z",
+        "conclusion": "failure",
+        "databaseId": 117310487837,
+        "name": "verify-and-package (macos-15-intel, osx-x64)",
+        "startedAt": "2026-10-17T04:37:50Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:37:54Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:37:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:00Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:37:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:13Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:38:00Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:34Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:38:13Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:38:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:01Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:02Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:52:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:52:03Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:52:02Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487837"
+      },
+      "rust": {
+        "actual_workspace_command_invocations": 1,
+        "successful_workspace_invocations": 0,
+        "completed_targets": 7,
+        "executed_tests": 525,
+        "total_including_ignored": 533,
+        "passed": 522,
+        "failed": 3,
+        "ignored": 8,
+        "measured": 0,
+        "filtered_out": 0,
+        "targets": [
+          {
+            "target": "Running unittests src/lib.rs (target/release/deps/darwinbots_cli-dc96abc3d1c2ef03)",
+            "status": "ok",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 1,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 6.86s"
+          },
+          {
+            "target": "Running unittests src/main.rs (target/release/deps/darwinbots_cli-22bbe30128a3f2c5)",
+            "status": "ok",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+          },
+          {
+            "target": "Running tests/bundled_bot_corpus.rs (target/release/deps/bundled_bot_corpus-7b755e9be38baa9f)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 131.34s"
+          },
+          {
+            "target": "Running tests/commands.rs (target/release/deps/commands-94b39d0bb57e36e2)",
+            "status": "ok",
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+          },
+          {
+            "target": "Running tests/db245_probes.rs (target/release/deps/db245_probes-71d329fd3604fc69)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 339.58s"
+          },
+          {
+            "target": "Running tests/native_comparison.rs (target/release/deps/native_comparison-c979a1d266815bde)",
+            "status": "ok",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s"
+          },
+          {
+            "target": "Running unittests src/lib.rs (target/release/deps/darwinbots_engine-b4e9676725af6016)",
+            "status": "FAILED",
+            "passed": 497,
+            "failed": 3,
+            "ignored": 7,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: FAILED. 497 passed; 3 failed; 7 ignored; 0 measured; 0 filtered out; finished in 17.93s"
+          }
+        ],
+        "failures": [
+          {
+            "test_name": "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+            "location": "modern/engine/src/world/native_energy.rs:68:34:",
+            "diagnostic": [
+              "index out of bounds: the len is 1 but the index is 98",
+              "---- world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity stdout ----"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+            "location": "modern/engine/src/world/native_shots.rs:865:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 1095.0",
+              "right: 1000.0"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+            "location": "modern/engine/src/world/native_shots.rs:676:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 81.0",
+              "right: 10.0"
+            ]
+          }
+        ],
+        "failed_test_names": [
+          "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+          "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+          "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age"
+        ],
+        "ignored_tests": [
+          {
+            "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+            "outcome": "ignored",
+            "detail": ", requires an idle physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_failure_does_not_partially_advance_the_cycle",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_allows_later_tick_with_trace",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          }
+        ],
+        "focused_cli_source_image_controls": [
+          {
+            "name": "native_comparison::tests::native_record_codec_preserves_original_bytes_and_all_compared_live_fields",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "native_comparison::tests::native_load_matches_original_owner_rate_and_shot_parent_projection_transforms",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "positive_replay_exports_actual_runtime_and_matches_the_genuine_first_update",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "zero_step_replay_preserves_validated_original_bytes_and_create_new_outputs",
+            "outcome": "ok",
+            "detail": ""
+          }
+        ],
+        "execution_boundary": "Default cargo workspace stops after engine library target failure; later integration/doc targets did not execute. Seven target summaries are actual, not a full workspace pass."
+      },
+      "core": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "desktop": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "trx_files": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_rust_test_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-f2a4287-agent/logs/osx-x64-final.log",
+        "sha256": "0D293B1A4CECECC3538E9FB5431A4A8FBD23BE9DD0302C604666E2CE051D0DBC",
+        "bytes": 130627
+      }
+    },
+    {
+      "rid": "linux-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:45:56Z",
+        "conclusion": "failure",
+        "databaseId": 117310487891,
+        "name": "verify-and-package (ubuntu-latest, linux-x64)",
+        "startedAt": "2026-10-17T04:37:48Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:37:51Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:37:49Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:37:53Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:37:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:02Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:37:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:13Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:38:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:52Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:38:13Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:52Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:45:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:52Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:45:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:53Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:45:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:53Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:45:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:53Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:45:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:53Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:45:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:53Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:45:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:53Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:45:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:45:53Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:45:53Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487891"
+      },
+      "rust": {
+        "actual_workspace_command_invocations": 1,
+        "successful_workspace_invocations": 0,
+        "completed_targets": 7,
+        "executed_tests": 525,
+        "total_including_ignored": 533,
+        "passed": 522,
+        "failed": 3,
+        "ignored": 8,
+        "measured": 0,
+        "filtered_out": 0,
+        "targets": [
+          {
+            "target": "Running unittests src/lib.rs (target/release/deps/darwinbots_cli-1956191e99649b9c)",
+            "status": "ok",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 1,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 2.20s"
+          },
+          {
+            "target": "Running unittests src/main.rs (target/release/deps/darwinbots_cli-10a5adc9a6338e66)",
+            "status": "ok",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+          },
+          {
+            "target": "Running tests/bundled_bot_corpus.rs (target/release/deps/bundled_bot_corpus-c22b23924d5b064a)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 97.01s"
+          },
+          {
+            "target": "Running tests/commands.rs (target/release/deps/commands-28225f96ed3fef26)",
+            "status": "ok",
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+          },
+          {
+            "target": "Running tests/db245_probes.rs (target/release/deps/db245_probes-c56634da8abe7862)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 163.79s"
+          },
+          {
+            "target": "Running tests/native_comparison.rs (target/release/deps/native_comparison-8833678850162773)",
+            "status": "ok",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s"
+          },
+          {
+            "target": "Running unittests src/lib.rs (target/release/deps/darwinbots_engine-3ea6c0970bcd56d7)",
+            "status": "FAILED",
+            "passed": 497,
+            "failed": 3,
+            "ignored": 7,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: FAILED. 497 passed; 3 failed; 7 ignored; 0 measured; 0 filtered out; finished in 4.97s"
+          }
+        ],
+        "failures": [
+          {
+            "test_name": "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+            "location": "modern/engine/src/world/native_energy.rs:68:34:",
+            "diagnostic": [
+              "index out of bounds: the len is 1 but the index is 98",
+              "---- world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity stdout ----"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+            "location": "modern/engine/src/world/native_shots.rs:865:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 1095.0",
+              "right: 1000.0"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+            "location": "modern/engine/src/world/native_shots.rs:676:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 81.0",
+              "right: 10.0"
+            ]
+          }
+        ],
+        "failed_test_names": [
+          "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+          "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+          "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age"
+        ],
+        "ignored_tests": [
+          {
+            "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+            "outcome": "ignored",
+            "detail": ", requires an idle physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_failure_does_not_partially_advance_the_cycle",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_allows_later_tick_with_trace",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          }
+        ],
+        "focused_cli_source_image_controls": [
+          {
+            "name": "native_comparison::tests::native_record_codec_preserves_original_bytes_and_all_compared_live_fields",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "native_comparison::tests::native_load_matches_original_owner_rate_and_shot_parent_projection_transforms",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "positive_replay_exports_actual_runtime_and_matches_the_genuine_first_update",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "zero_step_replay_preserves_validated_original_bytes_and_create_new_outputs",
+            "outcome": "ok",
+            "detail": ""
+          }
+        ],
+        "execution_boundary": "Default cargo workspace stops after engine library target failure; later integration/doc targets did not execute. Seven target summaries are actual, not a full workspace pass."
+      },
+      "core": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "desktop": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "trx_files": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_rust_test_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-f2a4287-agent/logs/linux-x64-final.log",
+        "sha256": "96086CEA207BE704B82F585AB199257ED03DC57E6C396E08379EA1AC73B867B9",
+        "bytes": 128151
+      }
+    },
+    {
+      "rid": "win-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:46:23Z",
+        "conclusion": "failure",
+        "databaseId": 117310487908,
+        "name": "verify-and-package (windows-latest, win-x64)",
+        "startedAt": "2026-10-17T04:37:48Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:37:50Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:37:49Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:37:55Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:37:50Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:13Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:37:55Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:50Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:38:13Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:38:50Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:20Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:22Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:46:20Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:46:22Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:46:22Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487908"
+      },
+      "rust": {
+        "actual_workspace_command_invocations": 1,
+        "successful_workspace_invocations": 0,
+        "completed_targets": 7,
+        "executed_tests": 525,
+        "total_including_ignored": 533,
+        "passed": 522,
+        "failed": 3,
+        "ignored": 8,
+        "measured": 0,
+        "filtered_out": 0,
+        "targets": [
+          {
+            "target": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_cli-963c5cad04dda9b0.exe)",
+            "status": "ok",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 1,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.96s"
+          },
+          {
+            "target": "Running unittests src\\main.rs (target\\release\\deps\\darwinbots_cli-2f1a062424ba0910.exe)",
+            "status": "ok",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+          },
+          {
+            "target": "Running tests\\bundled_bot_corpus.rs (target\\release\\deps\\bundled_bot_corpus-86e8a8c2eee0d204.exe)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 71.69s"
+          },
+          {
+            "target": "Running tests\\commands.rs (target\\release\\deps\\commands-0bd854def9dc14b3.exe)",
+            "status": "ok",
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+          },
+          {
+            "target": "Running tests\\db245_probes.rs (target\\release\\deps\\db245_probes-616c472a991d53a0.exe)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 128.58s"
+          },
+          {
+            "target": "Running tests\\native_comparison.rs (target\\release\\deps\\native_comparison-5785575102cb11ef.exe)",
+            "status": "ok",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s"
+          },
+          {
+            "target": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_engine-ffa39a6f53b09956.exe)",
+            "status": "FAILED",
+            "passed": 497,
+            "failed": 3,
+            "ignored": 7,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: FAILED. 497 passed; 3 failed; 7 ignored; 0 measured; 0 filtered out; finished in 5.40s"
+          }
+        ],
+        "failures": [
+          {
+            "test_name": "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+            "location": "modern\\engine\\src\\world\\native_energy.rs:68:34:",
+            "diagnostic": [
+              "index out of bounds: the len is 1 but the index is 98",
+              "---- world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity stdout ----"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+            "location": "modern\\engine\\src\\world\\native_shots.rs:865:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 1095.0",
+              "right: 1000.0"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+            "location": "modern\\engine\\src\\world\\native_shots.rs:676:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 81.0",
+              "right: 10.0"
+            ]
+          }
+        ],
+        "failed_test_names": [
+          "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+          "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+          "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age"
+        ],
+        "ignored_tests": [
+          {
+            "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+            "outcome": "ignored",
+            "detail": ", requires an idle physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_failure_does_not_partially_advance_the_cycle",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_allows_later_tick_with_trace",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          }
+        ],
+        "focused_cli_source_image_controls": [
+          {
+            "name": "native_comparison::tests::native_record_codec_preserves_original_bytes_and_all_compared_live_fields",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "native_comparison::tests::native_load_matches_original_owner_rate_and_shot_parent_projection_transforms",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "positive_replay_exports_actual_runtime_and_matches_the_genuine_first_update",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "zero_step_replay_preserves_validated_original_bytes_and_create_new_outputs",
+            "outcome": "ok",
+            "detail": ""
+          }
+        ],
+        "execution_boundary": "Default cargo workspace stops after engine library target failure; later integration/doc targets did not execute. Seven target summaries are actual, not a full workspace pass."
+      },
+      "core": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "desktop": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "trx_files": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_rust_test_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-f2a4287-agent/logs/win-x64-final.log",
+        "sha256": "1B39C5B69D8D3ACEF54A41D77D237313D0D9AFCC79359B83110075F4B385A655",
+        "bytes": 130002
+      }
+    },
+    {
+      "rid": "osx-arm64",
+      "job": {
+        "completedAt": "2026-10-17T04:44:48Z",
+        "conclusion": "failure",
+        "databaseId": 117310487909,
+        "name": "verify-and-package (macos-latest, osx-arm64)",
+        "startedAt": "2026-10-17T04:37:55Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:37:58Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:37:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:03Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:37:58Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:13Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:38:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:38:25Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:38:13Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:38:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:45Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:46Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:44:45Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:44:46Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:44:46Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798/job/117310487909"
+      },
+      "rust": {
+        "actual_workspace_command_invocations": 1,
+        "successful_workspace_invocations": 0,
+        "completed_targets": 7,
+        "executed_tests": 525,
+        "total_including_ignored": 533,
+        "passed": 522,
+        "failed": 3,
+        "ignored": 8,
+        "measured": 0,
+        "filtered_out": 0,
+        "targets": [
+          {
+            "target": "Running unittests src/lib.rs (target/release/deps/darwinbots_cli-caa479a8d928cf76)",
+            "status": "ok",
+            "passed": 15,
+            "failed": 0,
+            "ignored": 1,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.83s"
+          },
+          {
+            "target": "Running unittests src/main.rs (target/release/deps/darwinbots_cli-b644a077d489ab6a)",
+            "status": "ok",
+            "passed": 0,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+          },
+          {
+            "target": "Running tests/bundled_bot_corpus.rs (target/release/deps/bundled_bot_corpus-37121cc5d77e5468)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 71.01s"
+          },
+          {
+            "target": "Running tests/commands.rs (target/release/deps/commands-0bb61a0a82072304)",
+            "status": "ok",
+            "passed": 3,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+          },
+          {
+            "target": "Running tests/db245_probes.rs (target/release/deps/db245_probes-923cf8f3e68c3c3f)",
+            "status": "ok",
+            "passed": 1,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 112.98s"
+          },
+          {
+            "target": "Running tests/native_comparison.rs (target/release/deps/native_comparison-91caa76fbc5dd973)",
+            "status": "ok",
+            "passed": 5,
+            "failed": 0,
+            "ignored": 0,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s"
+          },
+          {
+            "target": "Running unittests src/lib.rs (target/release/deps/darwinbots_engine-572bd71c0b5eb0bb)",
+            "status": "FAILED",
+            "passed": 497,
+            "failed": 3,
+            "ignored": 7,
+            "measured": 0,
+            "filtered_out": 0,
+            "terminal_summary": "test result: FAILED. 497 passed; 3 failed; 7 ignored; 0 measured; 0 filtered out; finished in 2.79s"
+          }
+        ],
+        "failures": [
+          {
+            "test_name": "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+            "location": "modern/engine/src/world/native_energy.rs:68:34:",
+            "diagnostic": [
+              "index out of bounds: the len is 1 but the index is 98",
+              "---- world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity stdout ----"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+            "location": "modern/engine/src/world/native_shots.rs:865:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 1095.0",
+              "right: 1000.0"
+            ]
+          },
+          {
+            "test_name": "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age",
+            "location": "modern/engine/src/world/native_shots.rs:676:9:",
+            "diagnostic": [
+              "assertion `left == right` failed",
+              "left: 81.0",
+              "right: 10.0"
+            ]
+          }
+        ],
+        "failed_test_names": [
+          "world::native_energy::tests::absent_old_checkpoint_cache_defaults_zero_but_malformed_saved_ring_is_rejected",
+          "world::native_shots::native_loop_tests::native_owner_exclusion_uses_recycled_numeric_slot_without_generation_identity",
+          "world::native_shots::native_loop_tests::native_stored_orphan_survives_without_compaction_and_no_decay_freezes_age"
+        ],
+        "ignored_tests": [
+          {
+            "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+            "outcome": "ignored",
+            "detail": ", requires an idle physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_failure_does_not_partially_advance_the_cycle",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_allows_later_tick_with_trace",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          },
+          {
+            "name": "world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason",
+            "outcome": "ignored",
+            "detail": ", requires a physical GPU; run with --ignored on the GPU qualification host"
+          }
+        ],
+        "focused_cli_source_image_controls": [
+          {
+            "name": "native_comparison::tests::native_record_codec_preserves_original_bytes_and_all_compared_live_fields",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "native_comparison::tests::native_load_matches_original_owner_rate_and_shot_parent_projection_transforms",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "positive_replay_exports_actual_runtime_and_matches_the_genuine_first_update",
+            "outcome": "ok",
+            "detail": ""
+          },
+          {
+            "name": "zero_step_replay_preserves_validated_original_bytes_and_create_new_outputs",
+            "outcome": "ok",
+            "detail": ""
+          }
+        ],
+        "execution_boundary": "Default cargo workspace stops after engine library target failure; later integration/doc targets did not execute. Seven target summaries are actual, not a full workspace pass.",
+        "target_association": "Cargo target headers and terminal summaries paired in their respective stream order after verifying matching unique seven-target census. ARM stderr target headers arrive ahead of buffered stdout summaries."
+      },
+      "core": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "desktop": {
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped_tests": 0,
+        "trx_files": 0,
+        "reason": "not_run_after_rust_test_failure"
+      },
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_rust_test_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_rust_test_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-f2a4287-agent/logs/osx-arm64-final.log",
+        "sha256": "3A830D70C8E64F6B562362EBE19D787CE690530B95C293C3AB7D6ACCB2B94637",
+        "bytes": 128771
+      }
+    }
+  ],
+  "artifacts": {
+    "api_available_count": 0,
+    "downloaded_count": 0,
+    "metadata": [],
+    "actual_trx_files": 0,
+    "gui_frames": 0,
+    "published_packages": [],
+    "reason": "Rust tests failed before managed test and package steps. Always-run receipt preservation had no GUI/TRX files to upload."
+  },
+  "diagnostics_boundary": {
+    "receipt": {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-f2a4287.json",
+      "sha256": "8466B0C4608A676AF573449B02379009236C44842EC0AF361B9002BA00109930",
+      "bytes": 5054
+    },
+    "status": "not_scheduled_by_path_filter",
+    "new_test_counts": null,
+    "historical56_failed_diagnostics_apply_to57": false
+  },
+  "evidence": {
+    "initial_run": {
+      "file": "output/hosted-main-f2a4287-agent/initial-run.json",
+      "sha256": "52A22FD801CFB9A6540D9E6DCC431DEDABDC1A0D378D354566557CC44F38C1A9",
+      "bytes": 14969
+    },
+    "final_run": {
+      "file": "output/hosted-main-f2a4287-agent/final-run.json",
+      "sha256": "26A1596AFABF56A9D5CD3489788F9277FC8EEDF0D767949A4DD0F48A2B62691A",
+      "bytes": 16270
+    },
+    "artifacts_api": {
+      "file": "output/hosted-main-f2a4287-agent/artifacts-api.json",
+      "sha256": "F7417E1FB877D3F5934F143CC38AD9E2905476E8F5AC6776507D09441EFCD6F6",
+      "bytes": 42
+    },
+    "commit_changes": {
+      "file": "output/hosted-main-f2a4287-agent/commit-file-changes.json",
+      "sha256": "61837F9EB024B092A81DCADA0BC04BE4207938B927003A7408C85836CD4EA676",
+      "bytes": 3099
+    },
+    "job_logs": [
+      {
+        "file": "output/hosted-main-f2a4287-agent/logs/osx-x64-final.log",
+        "sha256": "0D293B1A4CECECC3538E9FB5431A4A8FBD23BE9DD0302C604666E2CE051D0DBC",
+        "bytes": 130627
+      },
+      {
+        "file": "output/hosted-main-f2a4287-agent/logs/linux-x64-final.log",
+        "sha256": "96086CEA207BE704B82F585AB199257ED03DC57E6C396E08379EA1AC73B867B9",
+        "bytes": 128151
+      },
+      {
+        "file": "output/hosted-main-f2a4287-agent/logs/win-x64-final.log",
+        "sha256": "1B39C5B69D8D3ACEF54A41D77D237313D0D9AFCC79359B83110075F4B385A655",
+        "bytes": 130002
+      },
+      {
+        "file": "output/hosted-main-f2a4287-agent/logs/osx-arm64-final.log",
+        "sha256": "3A830D70C8E64F6B562362EBE19D787CE690530B95C293C3AB7D6ACCB2B94637",
+        "bytes": 128771
+      }
+    ],
+    "job_checks": [
+      {
+        "file": "output/hosted-main-f2a4287-agent/platform-osx-x64-job-check.json",
+        "sha256": "55C66550EC84849FBF70E0956289BE1A1EF1E8191DEE04C0AFCF3529EB881A82",
+        "bytes": 12401
+      },
+      {
+        "file": "output/hosted-main-f2a4287-agent/platform-linux-x64-job-check.json",
+        "sha256": "7092DCB24DA9D610655D69305B079FA56F2998F0B4D696F3D8D907D6C8F36771",
+        "bytes": 12404
+      },
+      {
+        "file": "output/hosted-main-f2a4287-agent/platform-win-x64-job-check.json",
+        "sha256": "D0CB771848323BD7F3954D65FF116F39BA02ACE1DB60837D6780360E9D5BF885",
+        "bytes": 12467
+      },
+      {
+        "file": "output/hosted-main-f2a4287-agent/platform-osx-arm64-job-check.json",
+        "sha256": "92A3B9713165A29D25F9B6B62418BC8979552339CD3E37C317513186C073F551",
+        "bytes": 12638
+      }
+    ],
+    "capture_method": "Completed-job GitHub logs API via gh api --allow-escape-sequences, saved as UTF8 text with ANSI retained. Hashes identify saved text captures, not reconstructed ZIP bytes. Actual summaries and named test rows are read from complete logs."
+  },
+  "execution_boundary": {
+    "manual_workflow_dispatch": false,
+    "workflow_retries": false,
+    "source_or_head_edits": false,
+    "git_mutations": false,
+    "local_product_build_or_test": false,
+    "computer_use_or_gpu": false,
+    "previous_receipts_modified": false
+  },
+  "claim_boundary": "This is failed exact-source57 hosted qualification with partial Rust execution. Managed tests, package publication and smoke did not run. No historical test counts, stale DLL result, full local CPU admission, original-runtime matrix, or hardware qualification is promoted."
+}

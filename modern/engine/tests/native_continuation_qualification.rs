@@ -58,9 +58,30 @@ fn modern_save_preserves_double_precision_cost_values_without_a_tick() {
         ..EngineConfig::testing()
     })
     .unwrap();
+    assert_eq!(engine.snapshot_publication_count(), 0);
     let before = SaveFile::encode(&engine).unwrap();
     let decoded = SaveFile::decode(&before).unwrap();
-    assert_eq!(before, SaveFile::encode(&decoded).unwrap());
+    for state in [&engine, &decoded] {
+        assert_eq!(state.snapshot().tick, 0);
+        assert_eq!(state.snapshot().stats.native_energy_displayed, Some(0));
+        assert_eq!(state.snapshot().stats.native_energy_delta, Some(0));
+    }
+    let after = SaveFile::encode(&decoded).unwrap();
+    for bytes in [&before, &after] {
+        let payload: serde_json::Value = serde_json::from_slice(&bytes[10..]).unwrap();
+        assert_eq!(payload["stats"]["native_energy_displayed"], 0);
+        assert_eq!(payload["stats"]["native_energy_delta"], 0);
+        assert_eq!(
+            payload["config"]["dna_costs"]["global_multiplier"]
+                .as_f64()
+                .unwrap()
+                .to_bits(),
+            1077.3647073988097_f64.to_bits()
+        );
+    }
+    assert_eq!(before, after);
+    let repeated = SaveFile::decode(&after).unwrap();
+    assert_eq!(before, SaveFile::encode(&repeated).unwrap());
 }
 
 #[test]

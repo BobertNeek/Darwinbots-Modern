@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_review_only",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "scope": "Additive Rust Reflect policy, source/native and portable contracts, native representability, and five causal db2_projectiles fixture repairs. Active57 inputs remain untouched.",
+  "files": [
+    {
+      "target": "modern/engine/src/environment.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/environment.rs",
+      "before": "output/pass58-drafts/shape-policy/before/modern/engine/src/environment.rs",
+      "base_raw_sha256": "8A943B723C95E5B79A6321D3D99C5D124322C50088F9FE1FCF28C3916A63761A",
+      "derived_from": "modern/engine/src/environment.rs",
+      "derived_from_raw_sha256": "8A943B723C95E5B79A6321D3D99C5D124322C50088F9FE1FCF28C3916A63761A",
+      "candidate_raw_sha256": "CC209E6CD44EE462DFCD337789032D196D1DA8477D34840C7BD8441AAC612425",
+      "base_bytes": 11447,
+      "candidate_bytes": 11629,
+      "test_rows_before": 0,
+      "test_rows_after": 0,
+      "new_test_rows": 0
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world.rs",
+      "before": "output/pass58-drafts/shape-policy/before/modern/engine/src/world.rs",
+      "base_raw_sha256": "DB85822E2E30622CA907FEA2BA80727086F6AA0C55B3D9072573A6E7552EDAC2",
+      "derived_from": "output/pass58-drafts/native-energy-validation/modern/engine/src/world.rs",
+      "derived_from_raw_sha256": "EF1CD0B01651B82735F3A315C1EB2F705CA83B3D85A91BDCFC0AC7AFE84B0F56",
+      "candidate_raw_sha256": "8816512B1AC6CC7253F163EA7E1BA1428E5D9A4D98635AA833E0A309FDD61E7C",
+      "base_bytes": 578163,
+      "candidate_bytes": 579640,
+      "test_rows_before": 24,
+      "test_rows_after": 24,
+      "new_test_rows": 0
+    },
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_io.rs",
+      "before": "output/pass58-drafts/shape-policy/before/modern/engine/src/world/native_io.rs",
+      "base_raw_sha256": "B21F676C436C13DC3F1F396F3CFF16FCB16389B7FB36A9D6580747B2FAD84A40",
+      "derived_from": "modern/engine/src/world/native_io.rs",
+      "derived_from_raw_sha256": "B21F676C436C13DC3F1F396F3CFF16FCB16389B7FB36A9D6580747B2FAD84A40",
+      "candidate_raw_sha256": "E2F03EE8066DC1202182D5902A061429490AD6598ADECB3B3772C81F16DFBCED",
+      "base_bytes": 61514,
+      "candidate_bytes": 61510,
+      "test_rows_before": 12,
+      "test_rows_after": 12,
+      "new_test_rows": 0
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_sim_export.rs",
+      "before": "output/pass58-drafts/shape-policy/before/modern/engine/src/world/native_sim_export.rs",
+      "base_raw_sha256": "986CCF84ACC33D613FC063E37552550F51A0C1BF5F50C5D2C0213FE53AD55C63",
+      "derived_from": "modern/engine/src/world/native_sim_export.rs",
+      "derived_from_raw_sha256": "986CCF84ACC33D613FC063E37552550F51A0C1BF5F50C5D2C0213FE53AD55C63",
+      "candidate_raw_sha256": "510526EC99024960989A6F7C94016FAFB968623B08CF99368E57DC81CEDAB86E",
+      "base_bytes": 55058,
+      "candidate_bytes": 58375,
+      "test_rows_before": 12,
+      "test_rows_after": 13,
+      "new_test_rows": 1
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/src/world/native_shots.rs",
+      "before": "output/pass58-drafts/shape-policy/before/modern/engine/src/world/native_shots.rs",
+      "base_raw_sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "derived_from": "output/pass58-drafts/native-shot-test-fixtures/modern/engine/src/world/native_shots.rs",
+      "derived_from_raw_sha256": "C118759C0E0652A8C3572489E19E3458AF70462517EAFB70F11977E79E8F7C2F",
+      "candidate_raw_sha256": "45837A2442A8ADC444D392D7A5FA961984513D4A1B41C645C5C92C281899DEAD",
+      "base_bytes": 41211,
+      "candidate_bytes": 50926,
+      "test_rows_before": 16,
+      "test_rows_after": 18,
+      "new_test_rows": 2
+    },
+    {
+      "target": "modern/engine/tests/db2_projectiles.rs",
+      "draft": "output/pass58-drafts/shape-policy/modern/engine/tests/db2_projectiles.rs",
+      "before": "output/pass58-drafts/shape-policy/before/modern/engine/tests/db2_projectiles.rs",
+      "base_raw_sha256": "275487A152ACA9BB6AA4C9B2DD61D52224E99ED5B6D8020E0A311777343604DD",
+      "derived_from": "modern/engine/tests/db2_projectiles.rs",
+      "derived_from_raw_sha256": "275487A152ACA9BB6AA4C9B2DD61D52224E99ED5B6D8020E0A311777343604DD",
+      "candidate_raw_sha256": "D0B2CA6050798F6D09D20BD9325B21B89EA3AD67A85C3B630B8F99D99B6F8057",
+      "base_bytes": 30442,
+      "candidate_bytes": 33337,
+      "test_rows_before": 23,
+      "test_rows_after": 23,
+      "new_test_rows": 0
+    }
+  ],
+  "wire_contract": {
+    "default": "absorb",
+    "preserved_existing": "pass_through",
+    "added": "reflect",
+    "variant_order": [
+      "Absorb",
+      "PassThrough",
+      "Reflect"
+    ],
+    "old_db3s_explicit_pass_through": "Preserved literally and now bypasses native as well as portable shape work. No provenance-based rewrite or DB3S version bump.",
+    "native_import": {
+      "shapes_absorb_true": "Absorb",
+      "shapes_absorb_false": "Reflect"
+    },
+    "native_export": "Only uniform representable Absorb/Reflect and uniform vision policy; reject PassThrough explicitly and retain mixed-policy rejection. Never flatten per-shape choices to one global bit.",
+    "unsupported_error": "native DB2 simulation export pass_through shape shot policy cannot be represented; native shapes support only absorb or reflect"
+  },
+  "runtime_contract": {
+    "native": "Original current point is checked after bot collision; Absorb kills without flash/impact counter and still applies entry-axis reversal before Euler; Reflect reverses entry axes and survives; PassThrough bypasses shape work.",
+    "portable": "Existing advance and swept bot/Absorb resolution remains. Reflect subsequently point-checks the portable current position, including flashed/stored live slots, and reverses axes whose previous coordinate was outside. It does not rewind to swept surface or claim native phase equivalence. PassThrough bypasses both shape paths."
+  },
+  "source_evidence": [
+    {
+      "file": "Darwinbots2/Obstacles.bas",
+      "sha256": "EFF80ADA379CD6C5B27B2CB65B5384E4A082766050EDBB12E22CB93A5A853EE8",
+      "lines": [
+        411,
+        432
+      ],
+      "contract": "Current-point inclusion, optional existence=false, axis reversal from previous point independently of absorption."
+    },
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "sha256": "5091B7196149EC219A66AC75EE0ED704B68D34F1DB763EDEC77C406ED226D408",
+      "lines": [
+        315,
+        404
+      ],
+      "contract": "Serial mutable-slot visits, bot collision before shape work, movement/age/expiry after shape work."
+    },
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "lines": [
+        538,
+        588
+      ],
+      "contract": "Fixed100 feeding debits90 energy/1 body and returns packet100 owned by victim; takenrg receives95% in same later-slot visit."
+    }
+  ],
+  "existing_fixture_repairs": [
+    {
+      "name": "swept_collision_hits_a_bot_between_projectile_endpoints",
+      "classification": "authentic_native_serial_return_effect",
+      "change": "Isolate one primary request, assert target90energy/1body extraction and attacker95return, two exact effects/impacts and both flashed ownership/kind records; no mere counter relaxation."
+    },
+    {
+      "name": "moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants",
+      "classification": "native_shape_absorption_has_no_flash_or_bot_impact",
+      "change": "Preserve robot penetration and shape drift/dimensions/bounds checks. Capture initial pulse age/range, prove nine visits remain within lifetime, exactly one shot fired, shot absorbed and zero bot impacts."
+    },
+    {
+      "name": "obstacle_intercepts_projectile_before_target",
+      "classification": "modern_legacy_swept_shape_extension",
+      "change": "Only this fixture explicitly restores old DB3S native_random=null profile, retaining unchanged target-resource and impact-flash assertions. Native point/DB3S behavior is tested separately."
+    },
+    {
+      "name": "pass_through_shape_allows_a_projectile_to_reach_the_target",
+      "classification": "real_public_policy_bug_fixed_in_native_path",
+      "change": "Keep native profile and exact memory37 delivery; explicitly assert stored PassThrough policy and native visit availability."
+    },
+    {
+      "name": "shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundaries",
+      "classification": "relative_motion_geometry_mixed_with_return_packet_effects",
+      "change": "Use one native information pulse so exact crossing1/near-miss0 counts are retained, with37delivery/123sentinel and exact effects/visited assertions. Range/age/decay suffix is byte-equivalent after line-ending normalization."
+    }
+  ],
+  "new_tests": [
+    "native_shape_policies_use_current_points_without_flash_and_continue_across_db3s",
+    "portable_shape_policies_keep_swept_absorb_and_point_reflect_timing",
+    "native_shape_export_distinguishes_reflection_and_rejects_unrepresentable_policies"
+  ],
+  "static_review": {
+    "active_sources_unchanged": true,
+    "world_inverse_equals_approved_validation_base": true,
+    "shots_inverse_equals_approved_two_fixture_lint_base": true,
+    "db2_rows_before": 23,
+    "db2_rows_after": 23,
+    "changed_existing_db2_test_bodies": [
+      "swept_collision_hits_a_bot_between_projectile_endpoints",
+      "moving_robot_obstacle_edge_preserves_collision_shot_and_drift_invariants",
+      "obstacle_intercepts_projectile_before_target",
+      "pass_through_shape_allows_a_projectile_to_reach_the_target",
+      "shot_01_projectile_corpus_covers_moving_target_edges_and_range_decay_boundaries"
+    ],
+    "other18_db2_test_bodies_unchanged": true,
+    "range_corpus_suffix_unchanged": true,
+    "legacy_profile_calls": 1,
+    "net_new_rows": 3,
+    "old_draft_sources_unchanged": true
+  },
+  "test_census": {
+    "method": "Static existing #[test] row/name census; no runtime discovery or execution.",
+    "net_new_rust_rows": 3,
+    "cumulative_net_new_rust_rows_vs55": 62,
+    "expected_distinct_rust_targets": 68,
+    "db2_projectiles_rows": 23,
+    "managed_owner": "recover_46_inventory",
+    "managed_release": {
+      "file": "output/pass58-drafts/managed-reflect/metadata.json",
+      "sha256": "231D9547EA11CBA1BB238E65C859477E6C8034B30F87C28849D0EF19CC028486"
+    },
+    "expected_managed_counts_after_managed_reflect": {
+      "core": 298,
+      "desktop": 197
+    }
+  },
+  "apply_instructions": [
+    "Use this final world.rs, derived from approved EF1CD0 validation candidate; do not overwrite with older validation-only world.rs.",
+    "Use this final native_shots.rs, derived from approved C118759 lint+two-fixture candidate; do not overwrite with older native-lint or fixture-only copy.",
+    "Keep approved native-energy-validation/native_energy.rs candidate separately; this release does not modify that file.",
+    "Apply all approved58 code/tests only after root collects every ordinary57 local and hosted outcome."
+  ],
+  "execution": {
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "test": false,
+    "engine_or_cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false,
+    "active_source_edits": false
+  },
+  "ownership_released": true
+}

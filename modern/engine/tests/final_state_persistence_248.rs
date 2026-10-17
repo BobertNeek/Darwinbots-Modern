@@ -276,34 +276,88 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
     let projectiles = payload["projectiles"]
         .as_object_mut()
         .expect("projectile pool");
-    projectiles.insert("positions".to_owned(), serde_json::json!([[151.0, 152.0]]));
-    projectiles.insert(
-        "previous_positions".to_owned(),
-        serde_json::json!([[141.0, 142.0]]),
+    // Keep a valid native cursor/capacity pair while exercising capacity 101.
+    // Prove slot 99 is the inactive native template, then copy it in every vector.
+    assert!(projectiles["native_slot_pointer"].as_u64().is_some());
+    assert!(projectiles["free_slots"].as_array().unwrap().is_empty());
+    for (name, expected_inactive) in [
+        (
+            "owners",
+            serde_json::json!({"slot": u32::MAX, "generation": 0}),
+        ),
+        ("positions", serde_json::json!([0.0, 0.0])),
+        ("previous_positions", serde_json::json!([0.0, 0.0])),
+        ("velocities", serde_json::json!([0.0, 0.0])),
+        ("ages", serde_json::json!(0)),
+        ("ranges", serde_json::json!(0.0)),
+        ("energies", serde_json::json!(0.0)),
+        ("kinds", serde_json::json!(0)),
+        ("values", serde_json::json!(0)),
+        ("alive", serde_json::json!(false)),
+        ("impact_flash", serde_json::json!(false)),
+        ("payloads", serde_json::json!(null)),
+        ("source_species_names", serde_json::json!(null)),
+        ("toxin_memory_locations", serde_json::json!(0)),
+        ("toxin_memory_values", serde_json::json!(0)),
+        ("colors", serde_json::json!(0)),
+        ("source_vegetables", serde_json::json!(false)),
+        ("stored", serde_json::json!(false)),
+        ("gene_numbers", serde_json::json!(0)),
+        ("dna_lengths", serde_json::json!(0)),
+    ] {
+        let values = projectiles
+            .get_mut(name)
+            .and_then(Value::as_array_mut)
+            .expect("native slot vector");
+        assert_eq!(values.len(), 100, "initial native {name} alignment");
+        let inactive = values[99].clone();
+        assert_eq!(
+            inactive, expected_inactive,
+            "inactive native {name} template"
+        );
+        values.push(inactive);
+        assert_eq!(values.len(), 101, "extended native {name} alignment");
+    }
+    assert_eq!(projectiles["owners"].as_array().unwrap().len(), 101);
+    assert_eq!(projectiles["alive"][0], true);
+    assert_eq!(
+        projectiles["alive"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|value| value.as_bool() == Some(true))
+            .count(),
+        1
     );
-    projectiles.insert("velocities".to_owned(), serde_json::json!([[7.0, -8.0]]));
-    projectiles.insert("ages".to_owned(), serde_json::json!([17]));
-    // Native Range is Single; exercise a fractional value, with rounded UI projection.
-    projectiles.insert("ranges".to_owned(), serde_json::json!([23.25]));
-    projectiles.insert("energies".to_owned(), serde_json::json!([345.5]));
-    projectiles.insert("kinds".to_owned(), serde_json::json!([-3]));
-    projectiles.insert("values".to_owned(), serde_json::json!([321]));
-    projectiles.insert("impact_flash".to_owned(), serde_json::json!([false]));
-    projectiles.insert(
-        "source_species_names".to_owned(),
-        serde_json::json!(["mutated-species"]),
-    );
-    projectiles.insert(
-        "toxin_memory_locations".to_owned(),
-        serde_json::json!([835]),
-    );
-    projectiles.insert("toxin_memory_values".to_owned(), serde_json::json!([1234]));
-    projectiles.insert("colors".to_owned(), serde_json::json!([0x5566_7788_u32]));
-    projectiles.insert("source_vegetables".to_owned(), serde_json::json!([true]));
-    projectiles.insert("stored".to_owned(), serde_json::json!([true]));
-    projectiles.insert("gene_numbers".to_owned(), serde_json::json!([9]));
-    projectiles.insert("dna_lengths".to_owned(), serde_json::json!([99]));
+    for (name, value) in [
+        ("positions", serde_json::json!([151.0, 152.0])),
+        ("previous_positions", serde_json::json!([141.0, 142.0])),
+        ("velocities", serde_json::json!([7.0, -8.0])),
+        ("ages", serde_json::json!(17)),
+        // Native Range is Single; retain the fractional value and rounded UI.
+        ("ranges", serde_json::json!(23.25)),
+        ("energies", serde_json::json!(345.5)),
+        ("kinds", serde_json::json!(-3)),
+        ("values", serde_json::json!(321)),
+        ("impact_flash", serde_json::json!(false)),
+        ("source_species_names", serde_json::json!("mutated-species")),
+        ("toxin_memory_locations", serde_json::json!(835)),
+        ("toxin_memory_values", serde_json::json!(1234)),
+        ("colors", serde_json::json!(0x5566_7788_u32)),
+        ("source_vegetables", serde_json::json!(true)),
+        ("stored", serde_json::json!(true)),
+        ("gene_numbers", serde_json::json!(9)),
+        ("dna_lengths", serde_json::json!(99)),
+    ] {
+        let values = projectiles
+            .get_mut(name)
+            .and_then(Value::as_array_mut)
+            .expect("native slot vector");
+        assert_eq!(values.len(), 101, "native {name} vector alignment");
+        values[0] = value;
+    }
     projectiles.insert("pool_capacity".to_owned(), serde_json::json!(101));
+    assert_eq!(projectiles["pool_capacity"], serde_json::json!(101));
 
     let tie = payload["ties"]
         .as_array_mut()
@@ -325,6 +379,9 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
     tie.insert("angle_initialized".to_owned(), serde_json::json!(true));
 
     let mut restored = SaveFile::decode(&frame_payload(3, payload.clone())).expect("load");
+    restored
+        .validate_invariants()
+        .expect("valid native 101-slot pool");
     assert_eq!(restored.snapshot().shots, vec![expected_shot]);
     assert_eq!(restored.snapshot().ties, vec![expected_tie]);
     assert_eq!(restored.snapshot().obstacles, vec![obstacle.clone()]);
@@ -336,6 +393,9 @@ fn core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically() {
     }
     let reloaded =
         SaveFile::decode(&SaveFile::encode(&restored).expect("stable save")).expect("stable load");
+    reloaded
+        .validate_invariants()
+        .expect("valid repeated native restore");
     let stable = framed_payload(&SaveFile::encode(&reloaded).expect("stable re-save"));
     for key in ["projectiles", "ties", "obstacles", "teleporters"] {
         assert_eq!(

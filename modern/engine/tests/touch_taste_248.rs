@@ -1,5 +1,6 @@
 use darwinbots_engine::{
-    CorpseDecaySettings, Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SpeciesId,
+    CorpseDecaySettings, Engine, EngineConfig, LegacyDna, Obstacle, PhysicsSettings, SaveFile,
+    SpeciesId,
 };
 
 const HIT: i32 = 201;
@@ -49,6 +50,20 @@ fn projectile_engine() -> Engine {
     .unwrap()
 }
 
+// This one shape control retains the modern swept-absorption contract. The
+// source-native taste and point-obstacle controls below keep native RNG enabled.
+fn legacy_projectile_engine() -> Engine {
+    let encoded = SaveFile::encode(&projectile_engine()).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["native_random"] = serde_json::Value::Null;
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    SaveFile::decode(&save).unwrap()
+}
+
 fn impact_from_known_previous_point(
     requested_kind: i32,
     value: i32,
@@ -58,19 +73,32 @@ fn impact_from_known_previous_point(
         "cond\n*.robage 1 <\nstart\n{requested_kind} .shoot store\n{value} .shootval store\nstop"
     ))
     .unwrap();
-    engine.spawn_at(fire_once, [300.0, 500.0]).unwrap();
+    let firer = engine.spawn_at(fire_once, [300.0, 500.0]).unwrap();
     let target = engine.spawn_at(inert_dna(), [900.0, 800.0]).unwrap();
     engine.set_organism_aim(target, 0).unwrap();
 
     engine.tick().unwrap();
-    let previous = engine.snapshot().shots[0].end;
+    // Updateshots precedes robot firing: the new shot has not been visited.
+    assert_eq!(engine.snapshot().stats.native_shots_visited, Some(0));
+    let previous = engine.snapshot().shots[0].start;
+    let current = engine.snapshot().shots[0].end;
+    assert_ne!(previous, current);
+    // Shots383 passes saved opos to taste before388 replaces it with impactpos.
+    // Scale the exact100/81 ratio to50/40.5: preserve angle764 while placing
+    // current safely inside the target and keeping the saved-opos angle distinct.
     engine
-        .move_organism(target, [previous[0] + 100.0, previous[1] + 81.0])
+        .move_organism(target, [previous[0] + 50.0, previous[1] + 40.5])
         .unwrap();
+    // Isolate taste from robot overlap and same-cycle returned-packet re-hits.
+    engine.move_organism(firer, [100.0, 100.0]).unwrap();
+    let robot = engine.organism(target).unwrap();
+    assert!((current[0] - robot.position[0]).hypot(current[1] - robot.position[1]) < robot.radius);
     engine.tick().unwrap();
 
     assert!(engine.snapshot().shots[0].impact_flash);
-    assert_eq!(engine.snapshot().shots[0].start, previous);
+    // NewShotCollision starts inside the target, then opos becomes current.
+    assert_eq!(engine.snapshot().shots[0].start, current);
+    assert_ne!(engine.snapshot().shots[0].start, previous);
     (engine, target)
 }
 
@@ -179,10 +207,12 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
         .unwrap();
     corpse_engine.tick().unwrap();
     assert_eq!(corpse_engine.snapshot().corpses.len(), 1);
+    // A memory shot isolates the corpse hit from feeding-return packets, which
+    // the original serial loop can visit and collide again in this same cycle.
     corpse_engine
         .spawn_at(
             LegacyDna::parse(
-                "cond\n*.robage 1 <\nstart\n-1 .shoot store\n40 .shootval store\nstop",
+                "cond\n*.robage 1 <\nstart\n400 .shoot store\n40 .shootval store\nstop",
             )
             .unwrap(),
             [300.0, 500.0],
@@ -197,7 +227,7 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
         [0, 0, 0, 0, 0, 0]
     );
 
-    let mut obstacle_engine = projectile_engine();
+    let mut obstacle_engine = legacy_projectile_engine();
     obstacle_engine
         .add_obstacle(Obstacle::new(1, [420.0, 490.0], [430.0, 520.0]))
         .unwrap();
@@ -224,6 +254,53 @@ fn corpse_and_obstacle_impacts_do_not_taste_a_live_robot() {
     );
     assert_eq!(
         taste_cells(&obstacle_engine, obstacle_bystander),
+        [0, 0, 0, 0, 0, 0]
+    );
+
+    // Native Obstacles411-430 checks the current point after robot collisions;
+    // absorption removes the shot without inventing a robot taste/impact event.
+    let mut native_obstacle_engine = projectile_engine();
+    native_obstacle_engine
+        .spawn_at(
+            LegacyDna::parse(
+                "cond\n*.robage 1 <\nstart\n-1 .shoot store\n40 .shootval store\nstop",
+            )
+            .unwrap(),
+            [300.0, 500.0],
+        )
+        .unwrap();
+    let native_bystander = native_obstacle_engine
+        .spawn_at(inert_dna(), [800.0, 800.0])
+        .unwrap();
+    native_obstacle_engine.tick().unwrap();
+    assert_eq!(
+        native_obstacle_engine.snapshot().stats.native_shots_visited,
+        Some(0)
+    );
+    let point = native_obstacle_engine.snapshot().shots[0].end;
+    native_obstacle_engine
+        .add_obstacle(Obstacle::new(
+            2,
+            [point[0] - 1.0, point[1] - 1.0],
+            [point[0] + 1.0, point[1] + 1.0],
+        ))
+        .unwrap();
+    native_obstacle_engine.tick().unwrap();
+    assert!(native_obstacle_engine.snapshot().shots.is_empty());
+    assert_eq!(
+        native_obstacle_engine.snapshot().stats.native_shots_visited,
+        Some(1)
+    );
+    assert_eq!(
+        native_obstacle_engine.snapshot().stats.projectile_impacts,
+        0
+    );
+    assert_eq!(
+        native_obstacle_engine.snapshot().stats.projectile_effects,
+        0
+    );
+    assert_eq!(
+        taste_cells(&native_obstacle_engine, native_bystander),
         [0, 0, 0, 0, 0, 0]
     );
 }

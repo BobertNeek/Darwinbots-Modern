@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_only",
+  "created_utc": "2026-10-17T05:55:28.476Z",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "base_source_manifest_sha256": "154F4CECC99C37025F4947FFB80739D8940F2E7ECD46F01820890AC09271C195",
+  "files": [
+    {
+      "target": "modern/engine/tests/touch_taste_248.rs",
+      "draft": "output/pass58-drafts/touch-taste/modern/engine/tests/touch_taste_248.rs",
+      "original": {
+        "file": "output/pass58-drafts/touch-taste/before/modern/engine/tests/touch_taste_248.rs",
+        "sha256": "228442951DC2BECD2584071FC9A053C9E95E1BBE81D0175413404A9E1B666A5C",
+        "bytes": 8431
+      },
+      "candidate_sha256": "2EDECD73DA9381AC5C8D914B4BE4AF45A7B325433202AD52EBA73909019F3120",
+      "candidate_bytes": 11459
+    }
+  ],
+  "production_changes": false,
+  "classification": {
+    "three_native_taste_failures": "Fixture confuses prior saved opos (taste input) with post-update opos (impactpoint). Source production path already passes pre-update previous_positions to taste, then overwrites it after effects. Preserve native execution; construct exact100/81 relation using saved opos, isolate firer/target overlap and immediate return-packet hits, retain exact764 and flavor assertions.",
+    "corpse_control": "Positive memory shot replaces a feeding shot in this sensory-isolation fixture so source serial feeding return/re-hit cannot create a second impact. The exact one-corpse-hit and live-bystander zero-taste assertions remain.",
+    "thin_obstacle_control": "Existing strict segment/AABB absorption and impact-event assertions belong to the modern swept extension. One explicit oldDB3S/native_randomNone block preserves them; no global/native taste mode flip.",
+    "native_obstacle_control": "Additional block in the same existing test puts an absorbing shape around current shotpoint before next update and asserts visited1/finalalive0/robotimpacts0/effects0/bystandertaste0, matching source point-obstacle path."
+  },
+  "source_anchors": [
+    {
+      "file": "Darwinbots2/Master.bas",
+      "lines": "339-371",
+      "rule": "Erase senses before updateshots; updateshots precedes UpdateBots/new firing."
+    },
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "lines": "146-165",
+      "rule": "newshot sets opos=pos-velocity."
+    },
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "lines": "383-389",
+      "rule": "Taste gets saved opos and canonical kind, then obstacles, opos=pos, Euler movement."
+    },
+    {
+      "file": "Darwinbots2/Senses.bas",
+      "lines": "61-94",
+      "rule": "Taste uses Single coordinates/legacy relative angle and Integer assignment for shang/flavor/directions."
+    },
+    {
+      "file": "Darwinbots2/Obstacles.bas",
+      "lines": "411-430",
+      "rule": "Source checks currentpoint and clears exist on absorption; it does not run the modern swept shape interception path."
+    }
+  ],
+  "failure_evidence": {
+    "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57/cpu-rust-workspace.log",
+    "sha256": "E5DA25207FAEEE2AEF3C888411913A2DADA2324BA099C31C115EF17AC67B885D",
+    "four_failed_tests": [
+      "shot_taste_uses_previous_position_and_vb6_angle_rounding",
+      "positive_memory_shot_taste_uses_canonical_address_kind",
+      "confirmed_organism_hit_tastes_even_when_effect_returns_false",
+      "corpse_and_obstacle_impacts_do_not_taste_a_live_robot"
+    ],
+    "lines": [
+      1669,
+      1676,
+      1683,
+      1689
+    ]
+  },
+  "test_census": {
+    "before": 8,
+    "after": 8,
+    "net_new": 0,
+    "ignored_added": 0,
+    "assertions_weakened": false
+  },
+  "static_checks": {
+    "all_test_names_preserved": true,
+    "exact_taste_expectations_retained": true,
+    "exact_old_obstacle_contract_retained": true,
+    "native_three_taste_cases_not_legacy": true,
+    "legacy_constructor_calls": 1,
+    "native_previous_and_current_points_distinguished": true,
+    "active_source_hash_matches_pin": true
+  },
+  "execution": {
+    "formatter": false,
+    "source_parser": false,
+    "build": false,
+    "tests": false,
+    "product_cli": false,
+    "git_mutation": false,
+    "ui_or_gpu": false,
+    "active_source_edits": false
+  },
+  "qualification_boundary": "Candidate authoring and static reasoning only. All tests require the later combined58 qualification. No57 outcome is replaced or marked passing by this draft."
+}

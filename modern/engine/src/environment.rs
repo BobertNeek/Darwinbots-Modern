@@ -14,7 +14,10 @@ pub enum ShapeVisionPolicy {
 pub enum ShapeShotPolicy {
     #[default]
     Absorb,
+    /// Modern extension: shots bypass the shape without absorption or reflection.
     PassThrough,
+    /// Original nonabsorbing shapes reverse entry axes at the current shot point.
+    Reflect,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
