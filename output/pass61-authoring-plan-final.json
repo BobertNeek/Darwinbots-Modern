@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "all_code_and_tests_authored_unapplied_static_reviewed_pending_final_rust_peer_review",
+  "authored_utc": "2026-10-17T11:19:59.597Z",
+  "base_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "target_count": 33,
+  "existing_targets": 29,
+  "new_targets": 4,
+  "files": [
+    {
+      "target": "modern/engine/src/world.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world.rs",
+      "base_sha256": "B7E47C7761B1D5E04324F31BADEEAC73930C083FBE40C9123F74961AE79F5551",
+      "candidate_sha256": "37D854DB79F3CA553BBA520BD1B477904338A9D6D932CA4B41DB6C3B70D31B30",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/world.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world/native_energy.rs",
+      "base_sha256": "FA72F1CF1856997E2549C4B2885B71F52EB83B73076CD3A0E5FA9F80365998BB",
+      "candidate_sha256": "48825ABCF93061ECA119A0D3800FC10DD6EACBDF92FD9650B496FFEB80E7E0CA",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/world/native_energy.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_random_world.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world/native_random_world.rs",
+      "base_sha256": "B43756637A1AE6486859F4F41A4C92FB0AFA0E2C97D9DD6B04F62E7D84FAAC51",
+      "candidate_sha256": "E47BAB63FF8CAF9C08BA2A60B0252B45976E5F598BA2AFA342DB43D57D269BA9",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/world/native_random_world.rs"
+    },
+    {
+      "target": "modern/engine/src/ffi.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/ffi.rs",
+      "base_sha256": "7CEB12A51A17E943967BA2AB50A75B4623C38D59F600F0E2109397033FAC5F8F",
+      "candidate_sha256": "27F85650791831E04F0A968311F54473B318F0FD81A8B3B86DDAB03691F164AB",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/ffi.rs"
+    },
+    {
+      "target": "modern/engine/src/world/file_teleporters.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world/file_teleporters.rs",
+      "base_sha256": "6D0D81758B755BF95FD1027C30870EEB534CBC3F8982148354E3D5109991CBD8",
+      "candidate_sha256": "4A2C093A81A86DC2BD4663F1D1D430B531449B86C6330F6847372C58B31355CC",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/world/file_teleporters.rs"
+    },
+    {
+      "target": "modern/engine/src/world/staged_evolution.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world/staged_evolution.rs",
+      "base_sha256": "F5953DC665030239CCE55EB1518C11C1BA4094B1CD60C963350A5F25473B98A0",
+      "candidate_sha256": "064CAA7E64CCE7FFC519FDE2D74E0DD187EC2737DC009FEFDABDE97F41FC9D69",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/world/staged_evolution.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_virus.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world/native_virus.rs",
+      "base_sha256": "BC1037674BD0B53392FFF215B8A931F13B5FCCDBF50A307582732AB748CDE185",
+      "candidate_sha256": "63965F702DFFE1FD7F3F3968084956DA8B7BDF1E0B7FD6AC81C3702F6039506C",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/world/native_virus.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_corpses.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world/native_corpses.rs",
+      "base_sha256": "87B8EE8BFD84DAAB77F7E1C83B1C0731057A986561BB32ABDF8789F15F74FC3C",
+      "candidate_sha256": "9C117A1200FE19500520C757071471C2DBFA3D91244665849FE025310DDF4750",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/src/world/native_corpses.rs"
+    },
+    {
+      "target": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/tests/db24832_genuine_feeding.rs",
+      "base_sha256": "47EB47AD5D5241527180926B8695FE1AB8A15BA34AB1AC8BBDBED4C764169793",
+      "candidate_sha256": "D271D2D796E81DDB9D5D2EF9A9D2CE9EE2C6B779FB09EA026E63EDF304975C9B",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/tests/db24832_genuine_feeding.rs"
+    },
+    {
+      "target": "modern/engine/tests/manual_tools.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/tests/manual_tools.rs",
+      "base_sha256": "EBDE58A9C7DA63F169699C0DA6401E961B0F7D2D05820E2888E903FC40CD77EC",
+      "candidate_sha256": "63F914E0A4E9B8B8757E4AE91DBFECFDD42345B935B29CAF3E35B32DB4359F96",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/engine/tests/manual_tools.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_poffs.rs",
+      "candidate": "output/pass61-drafts/native-poffs/candidate/modern/engine/src/world/native_poffs.rs",
+      "base_sha256": null,
+      "candidate_sha256": "9E070432F59C90AFDD895F4651C504FE4B30E0FA87DA00F3FC5DF22B8B436581",
+      "new_file": true,
+      "backup": null
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "base_sha256": "7E5B2020F61B862757BE1E7DDF78206114338EC283DEA620F238457C67BB98BE",
+      "candidate_sha256": "BD63CB4BD9894BCE8FE88A978A8B4F47E9B1BB19890FB3E933AC212020E3AB61",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "base_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+      "candidate_sha256": "11C5C37BCCF2E4FDCC4281A3B250E7071E504ECEB9655EA41769F407199C30FC",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "base_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+      "candidate_sha256": "AA5F19BC23939130DBBF139C4CBF6027DAB86EBB785D3B52F527B03E68D1AF63",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "base_sha256": "E2D27190B2165631BA158DF08EE0AB6FB338209D125BC4B76CCEC760D3428A43",
+      "candidate_sha256": "7FA365E7756DB29E7E77194FDFBC78FB46A09A5171E6D5C3C794ED33095432F9",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+      "base_sha256": "C873365BF073191145BC68A187E65D8AC9B45B6CC22EB9A01E6AAFB5211B716A",
+      "candidate_sha256": "837544BA2ADB17DB099D471D32B1969299D15B5F31EE76004FEA25A5E61A5C10",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "base_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+      "candidate_sha256": "1CF25A1B5D8C07D08A8D140353EABC022F17243F20A251237F3204D63D3698C1",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+      "base_sha256": "EF9787C2D52B4A612A85FF56BCC9D705EBAA89CB790D029DABBA27C2B8531591",
+      "candidate_sha256": "C82C31B41B0B798D354743E73C6D505E6A0124A961B6E872426BDDB2BC7BBB3E",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_sha256": "AAFC0115476B2D750B0D79D1CA707060E0C948DA9031873E7439874D11CFE788",
+      "candidate_sha256": "28087E2067733C062260C9CB4BDBEACDB94FB24D900BCD0EA042F5053C6A5C76",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/amendment/candidate/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "base_sha256": "1BB540FB9AE4293DB12EB1FB3BED11A344B69E2CD881BC8B1D7452DE3CD7E454",
+      "candidate_sha256": "9290BBEAB7BC0F0AF016C6DE54BA33FFBADB6470AADB1864F1AA53B614F4DF6D",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "base_sha256": "8E6964CF3812730FF007397F65CC21B5BFEBEF345B65C0D99EC1C839C75B600B",
+      "candidate_sha256": "93C66BB428772C627872DEBDC89EF0A0531636072ACBD48473FA6806BC6C36B3",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+      "base_sha256": "35E99120F0CF7A2F225A32D2A5DCBD3C4810A87BB4E146993717AB9383C19E37",
+      "candidate_sha256": "BBEB2DB5B65B0627BEF3008F5DC6062AD2429F8ECC679DEE50C0D23CBD3645A8",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "base_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+      "candidate_sha256": "9BF58294FE960915DBD04012EF61D2707CB2083ABB036C2FD7F92266E05BEB84",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "base_sha256": "ABAAEA57E91306AF63F94C36655524EBF254C8E461F350F529E199AC058ED592",
+      "candidate_sha256": "B9FD23B5202315A5948C2875625803707B158AB126D8D9707BDDA1735042E0A4",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/amendment/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "base_sha256": "B9829E46410DD15E84717857EB9E7FE42C8786F1324B7BA4A0F508AA7D09B739",
+      "candidate_sha256": "1748A21EE85DB2B615777F6CAEC92396033F0C58B9C6F0BD07EE152609BD9BB9",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/amendment-2/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "base_sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+      "candidate_sha256": "8257981DB3983DA766CC0DF0BCF0F7C8191AD2090B48A9BBB9C5ECEDF7BF7F25",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+      "candidate_sha256": "7364A34B585FC794D7EF2BC56D966627ACBF6532A0EEC01C6FF0D784DAD479EC",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "candidate": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "base_sha256": "34154B207147B3B87BA67461F210F42790275D4E26C8E393E01E143F1B6D1E0F",
+      "candidate_sha256": "8A558C6E8CD35CC77DCB9EEB18E7D88CEE62C9333B29AB9F9ED3F9CC8A4CDB9A",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs"
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass61.ps1",
+      "candidate": "output/pass61-drafts/qualification/candidate/output/qualify-native-roundtrip-pass61.ps1",
+      "base_sha256": null,
+      "candidate_sha256": "FD5AC09FE6BA7C6B986C96E875BEA8DEAB5331D1CFBA40AE388129652E0AC730",
+      "new_file": true,
+      "backup": null
+    },
+    {
+      "target": "output/probe-native-comparison-output61.ps1",
+      "candidate": "output/pass61-drafts/qualification/candidate/output/probe-native-comparison-output61.ps1",
+      "base_sha256": null,
+      "candidate_sha256": "A5F79AE26C610CF290FB4E34860F1C09A41759D8F0ED51AA88FF9AE0E5D82229",
+      "new_file": true,
+      "backup": null
+    },
+    {
+      "target": "docs/parity/evidence/batch-2026-10-14/native-poff-source-authority61.json",
+      "candidate": "output/pass61-drafts/qualification/candidate/docs/parity/evidence/batch-2026-10-14/native-poff-source-authority61.json",
+      "base_sha256": null,
+      "candidate_sha256": "9D9796168BD6372C10C6D25850F7089D0E033B120C070BC4F89F168447C73BEF",
+      "new_file": true,
+      "backup": null
+    },
+    {
+      "target": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "candidate": "output/pass61-drafts/report/candidate/docs/parity/db24832-parity-report-2026-10-14.html",
+      "base_sha256": "C4EE836CBB75C94967E24809F13408178B2319116682A9DA9E84FC4853B291F3",
+      "candidate_sha256": "B143C3E7F425FDCF13AD47A7BC2E7852CB8AF47FAB1C2A4B8D00036D246D13C5",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/docs/parity/db24832-parity-report-2026-10-14.html"
+    },
+    {
+      "target": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "candidate": "output/pass61-drafts/report/candidate/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "base_sha256": "513516AB291EF71DB93C3617BD1704C0FDC6FDF0F17410F1444183F75E21EFD9",
+      "candidate_sha256": "548F78F2CD1FCDD7ECFD37EBFA1F4E49B5F420E0FEB08D4A2A1EFAE56D6F4243",
+      "new_file": false,
+      "backup": "output/pass61-preapply-backup/docs/parity/evidence/continuation-handoff-2026-10-13.md"
+    }
+  ],
+  "releases": [
+    {
+      "file": "output/pass61-drafts/native-poffs/metadata.json",
+      "sha256": "AD9AFC64B68111DD6AF76C2BB89BAC615DD250F9A528C653204A257D30FEEF42"
+    },
+    {
+      "file": "output/pass61-drafts/managed-poffs/metadata.json",
+      "sha256": "81DBC1C1C476165D2133F7125D292ED5BDB5022C82E3C433FB7CAE331F521C4A"
+    },
+    {
+      "file": "output/pass61-drafts/managed-poffs/metadata-amendment.json",
+      "sha256": "E71A99E4AC223E0341998D0C17AD6DCC1FE23343CC2E5F750641BCFB4B90B847"
+    },
+    {
+      "file": "output/pass61-drafts/qualification/metadata-final.json",
+      "sha256": "72749AD5C5D8081FE783CA5CD869F747583C541B7AA730D31988566E438E1C8F"
+    },
+    {
+      "file": "output/pass61-drafts/report/metadata.json",
+      "sha256": "F104D342B05DF922407EEE73F42A374AE0CBF9BC43CEF7F4CC352EEF11CB5BA7"
+    },
+    {
+      "file": "output/pass61-drafts/managed-poffs/metadata-amendment-2.json",
+      "sha256": "1A7F44EBA4969A76FE523FC81A2D07CA3580DF95F58567002BDC5F6D25F05F1D"
+    }
+  ],
+  "old_source_raw_pins_verified": 613,
+  "protected_png_sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+  "test_declarations": {
+    "net_added_rust": 8,
+    "net_added_core": 3,
+    "net_added_desktop": 4,
+    "distinct_rust_targets": 68,
+    "expected_managed": {
+      "core": 312,
+      "desktop": 213
+    },
+    "ordinary_outcomes": 94,
+    "original_controls": 25,
+    "strict_original_active_fields": 55849,
+    "isolated_comparison_cases": 4,
+    "none_executed": true
+  },
+  "execution": {
+    "product_tests": false,
+    "builds": false,
+    "formatter": false,
+    "parser": false,
+    "isolated_probes": false,
+    "desktop": false,
+    "gpu": false
+  },
+  "review": "Root source/deletion transaction and color review; independent qualification/probe review approved. Managed/Rust protocol cross-review approved after inheritedFlash and DBrite fixture amendments. Last bounded Rust peer review pending; root applies only after release."
+}

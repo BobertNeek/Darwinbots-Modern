@@ -417,6 +417,8 @@ impl Engine {
             }
             let Some(id) = best else { break };
             selected.push(genome_of(self.slots.get(id).unwrap()));
+            // Evo candidate extraction clears existence temporarily; it is not
+            // KillRobot and must not allocate poffs or consume their Rnd draws.
             self.slots
                 .remove(id)
                 .expect("selected evolution candidate must exist");
@@ -1732,7 +1734,11 @@ mod tests {
 
     #[test]
     fn configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles() {
-        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let mut world = Engine::new_native(EngineConfig {
+            seed: 42,
+            ..EngineConfig::testing()
+        })
+        .unwrap();
         world.set_native_restart_seed(42);
         world
             .configure_local_mode(LocalModeConfig {

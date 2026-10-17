@@ -524,7 +524,18 @@ mod tests {
         assert_eq!(engine.projectiles.ages[0], 0);
         assert!(engine.projectiles.live_slots().is_empty());
         engine.remove(id).unwrap();
-        assert_eq!(engine.projectiles.len(), 0);
+        assert!(
+            !engine.projectiles.alive[0],
+            "KillRobot releases its stored virus after poff allocation"
+        );
+        assert_eq!(engine.projectiles.len(), 20);
+        assert!(
+            engine
+                .projectiles
+                .snapshots()
+                .iter()
+                .all(|shot| shot.kind == -100 && !shot.stored && shot.age == 0)
+        );
     }
 
     #[test]

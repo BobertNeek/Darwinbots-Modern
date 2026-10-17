@@ -1,0 +1,12 @@
+{
+  "batch": 61,
+  "utc": "2026-10-17T11:20:55.7261145Z",
+  "format_exit": 1,
+  "format_log": "output/pass61-format.log",
+  "workspace_metadata": "output/pass61-workspace-metadata.json",
+  "metadata_exit": 0,
+  "powershell_parse_errors": [],
+  "comparison_probe_exit": 0,
+  "comparison_probe_receipt": "output/pass61-native-comparison-probe.json",
+  "all_code_and_tests_applied_before_checks": true
+}

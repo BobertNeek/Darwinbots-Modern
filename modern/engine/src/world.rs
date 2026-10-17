@@ -52,6 +52,9 @@ mod native_reproduction;
 #[path = "world/native_shots.rs"]
 mod native_shots;
 
+#[path = "world/native_poffs.rs"]
+mod native_poffs;
+
 #[path = "world/native_energy.rs"]
 mod native_energy;
 pub(crate) use native_energy::NativeProcessCaches;
@@ -529,7 +532,7 @@ pub struct LineageEntry {
     pub depth: u32,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Snapshot {
     #[serde(default = "default_snapshot_schema_version")]
     pub schema_version: u32,
@@ -537,6 +540,8 @@ pub struct Snapshot {
     /// Original signed SimOpts.TotRunCycle, separate from the monotonic API tick.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_cycle: Option<i32>,
+    #[serde(default = "default_true")]
+    pub death_poffs_enabled: bool,
     #[serde(default = "default_world_size")]
     pub world_size: [f32; 2],
     pub organisms: Vec<OrganismSnapshot>,
@@ -580,10 +585,44 @@ pub struct Snapshot {
     pub local_mode: LocalModeState,
 }
 
+impl Default for Snapshot {
+    fn default() -> Self {
+        Self {
+            schema_version: 0,
+            tick: 0,
+            native_cycle: None,
+            death_poffs_enabled: true,
+            world_size: [0.0; 2],
+            organisms: Vec::new(),
+            corpses: Vec::new(),
+            shots: Vec::new(),
+            history: Vec::new(),
+            stats: SimulationStats::default(),
+            ties: Vec::new(),
+            render_instances: Vec::new(),
+            species: Vec::new(),
+            mutations_enabled: false,
+            global_mutation_multiplier: 0.0,
+            mutation_profile: StandardMutationProfile::default(),
+            ties_enabled: false,
+            robot_fixing_allowed: false,
+            asexual_reproduction_allowed: false,
+            player_bot: PlayerBotState::default(),
+            restriction_options: RestrictionOptions::default(),
+            obstacles: Vec::new(),
+            teleporters: Vec::new(),
+            file_teleporters: Vec::new(),
+            phase_timings: PhaseTimings::default(),
+            local_mode: LocalModeState::default(),
+        }
+    }
+}
+
 impl PartialEq for Snapshot {
     fn eq(&self, other: &Self) -> bool {
         self.tick == other.tick
             && self.native_cycle == other.native_cycle
+            && self.death_poffs_enabled == other.death_poffs_enabled
             && self.schema_version == other.schema_version
             && self.world_size == other.world_size
             && self.organisms == other.organisms
@@ -1925,6 +1964,7 @@ impl From<Db3sV2Snapshot> for Snapshot {
             schema_version: default_snapshot_schema_version(),
             tick: value.tick,
             native_cycle: None,
+            death_poffs_enabled: true,
             world_size: value.world_size,
             organisms: value.organisms.into_iter().map(Into::into).collect(),
             corpses: value.corpses.into_iter().map(Into::into).collect(),
@@ -2271,6 +2311,7 @@ struct EngineCycleCheckpoint {
     native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
     native_energy: native_energy::NativeEnergyRuntime,
     native_skin_timer_seconds: Option<[f32; 2]>,
+    death_poffs_enabled: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -2311,6 +2352,8 @@ pub struct Engine {
     native_energy: native_energy::NativeEnergyRuntime,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_skin_timer_seconds: Option<[f32; 2]>,
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
+    death_poffs_enabled: bool,
     config: EngineConfig,
     #[serde(flatten)]
     slots: RobotArena,
@@ -2605,6 +2648,7 @@ impl Engine {
             native_loaded_census_stage: None,
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
+            death_poffs_enabled: true,
         })
     }
 
@@ -2738,6 +2782,7 @@ impl Engine {
                 schema_version: default_snapshot_schema_version(),
                 tick: 0,
                 native_cycle: None,
+                death_poffs_enabled: true,
                 world_size,
                 organisms: Vec::new(),
                 corpses: Vec::new(),
@@ -2816,6 +2861,7 @@ impl Engine {
             native_loaded_census_stage: None,
             native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
+            death_poffs_enabled: true,
         };
         // Match restore publication without advancing a cycle or publishing a snapshot.
         engine.project_native_energy_stats();
@@ -3506,7 +3552,7 @@ impl Engine {
             .min(usize::MAX as u128) as usize
     }
 
-    fn enforce_low_memory_safety(&mut self, trace: &mut CycleRecorder) {
+    fn enforce_low_memory_safety(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
         let dna_limit = self.config.low_memory_dna_limit.max(1);
         let detail_limit = self.config.low_memory_detail_limit.max(1);
         let total_dna = self
@@ -3523,7 +3569,7 @@ impl Engine {
             }
         }
         if total_dna <= dna_limit {
-            return;
+            return Ok(());
         }
 
         let mut candidates: Vec<_> = self
@@ -3546,23 +3592,25 @@ impl Engine {
         });
         let deletion_budget =
             Self::low_memory_deletion_budget(self.occupied_robot_records(), total_dna);
-        let mut removed = Vec::new();
-        for (id, _) in candidates.into_iter().take(deletion_budget) {
-            let Ok(robot) = self.slots.remove(id) else {
-                continue;
-            };
-            // Master.ReStart invokes KillRobot, not ManageDeath.
-            if !robot.flags.corpse {
-                self.stats.deaths = self.stats.deaths.saturating_add(1);
-            }
-            removed.push(id);
-            trace.queue_change(CyclePhase::Restart, id, QueueChangeKind::DeathCommitted);
-        }
+        let removed: Vec<_> = candidates
+            .into_iter()
+            .take(deletion_budget)
+            .map(|(id, _)| id)
+            .collect();
         if !removed.is_empty() {
-            self.ties
-                .retain(|tie| !removed.contains(&tie.first) && !removed.contains(&tie.second));
-            self.rebuild_native_tie_index();
+            let living = removed
+                .iter()
+                .filter(|&&id| !self.slots.get(id).unwrap().flags.corpse)
+                .count();
+            // Master.ReStart invokes KillRobot, not ManageDeath. Validate the
+            // whole deletion batch before changing any actor or shot slot.
+            self.remove_many_at_boundary(&removed, false)?;
+            self.stats.deaths = self.stats.deaths.saturating_add(living as u64);
+            for id in removed {
+                trace.queue_change(CyclePhase::Restart, id, QueueChangeKind::DeathCommitted);
+            }
         }
+        Ok(())
     }
 
     fn remove_extinct_species_phase(&mut self) {
@@ -4331,8 +4379,13 @@ impl Engine {
                 .then_with(|| left_id.slot().cmp(&right_id.slot()))
                 .then_with(|| left_id.generation().cmp(&right_id.generation()))
         });
-        for (_, id) in candidates.into_iter().take(excess) {
-            self.slots.remove(id)?;
+        let remove: Vec<_> = candidates
+            .into_iter()
+            .take(excess)
+            .map(|(_, id)| id)
+            .collect();
+        if !remove.is_empty() {
+            self.remove_many_at_boundary(&remove, false)?;
         }
         Ok(())
     }
@@ -4683,6 +4736,24 @@ impl Engine {
     }
 
     pub fn remove_many(&mut self, ids: &[OrganismId]) -> Result<(), EngineError> {
+        self.remove_many_with_death_poffs(ids, false)
+    }
+
+    pub(crate) fn remove_many_with_death_poffs(
+        &mut self,
+        ids: &[OrganismId],
+        suppress_death_poffs: bool,
+    ) -> Result<(), EngineError> {
+        self.remove_many_at_boundary(ids, suppress_death_poffs)?;
+        self.publish_snapshot();
+        Ok(())
+    }
+
+    fn remove_many_at_boundary(
+        &mut self,
+        ids: &[OrganismId],
+        suppress_death_poffs: bool,
+    ) -> Result<(), EngineError> {
         if ids.is_empty() {
             return Err(EngineError::Invariant(
                 "remove_many requires at least one organism".to_owned(),
@@ -4700,11 +4771,11 @@ impl Engine {
         for &id in ids {
             self.valid_slot(id)?;
         }
-
-        if self.native_random.is_some() {
-            // KillRobot calls delallties while both endpoint records still
-            // exist. DeleteTie updates each endpoint's saved .tiepres.
-            for &id in ids {
+        let plan = self.preflight_native_deaths(ids, suppress_death_poffs)?;
+        for &id in ids {
+            if self.native_random.is_some() {
+                // KillRobot deletes ties before its poffs; the preflight plan
+                // already preserves each actor's poff/stored-virus slot order.
                 let others = self
                     .tie_indices_for(id)
                     .into_iter()
@@ -4721,26 +4792,25 @@ impl Engine {
                     self.native_delete_pair(id, other);
                 }
             }
-        }
-        for &id in ids {
             self.slots.remove(id)?;
         }
-        for shot in 0..self.projectiles.owners.len() {
-            if self.projectiles.stored[shot] && ids.contains(&self.projectiles.owners[shot]) {
-                self.projectiles.deactivate(shot as u32);
+        if self.native_random.is_some() {
+            self.commit_native_deaths(plan);
+        } else {
+            for shot in 0..self.projectiles.owners.len() {
+                if self.projectiles.stored[shot] && ids.contains(&self.projectiles.owners[shot]) {
+                    self.projectiles.deactivate(shot as u32);
+                }
             }
         }
         self.ties
             .retain(|tie| !ids.contains(&tie.first) && !ids.contains(&tie.second));
         self.rebuild_native_tie_index();
-        // An explicit topology edit publishes new tie counts immediately; a
-        // subsequent view refresh must not be responsible for changing VM state.
         if self.native_random.is_some() {
             self.refresh_tie_projections_impl(false, &HashMap::new(), false);
         } else {
             self.refresh_tie_projections();
         }
-        self.publish_snapshot();
         Ok(())
     }
 
@@ -5460,6 +5530,7 @@ impl Engine {
             native_loaded_census_stage: self.native_loaded_census_stage,
             native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
+            death_poffs_enabled: self.death_poffs_enabled,
         }
     }
 
@@ -5477,6 +5548,7 @@ impl Engine {
         self.native_loaded_census_stage = checkpoint.native_loaded_census_stage;
         self.native_energy = checkpoint.native_energy;
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
+        self.death_poffs_enabled = checkpoint.death_poffs_enabled;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
         self.slots = checkpoint.slots;
@@ -5719,7 +5791,7 @@ impl Engine {
         trace.phase(CyclePhase::ExtinctSpecies);
         self.remove_extinct_species_phase();
         trace.phase(CyclePhase::Restart);
-        self.enforce_low_memory_safety(&mut trace);
+        self.enforce_low_memory_safety(&mut trace)?;
         self.enforce_mode_population_cap()?;
         self.staged_evolution_after_cycle(staged_energy_before)?;
         self.advance_local_mode_after_cycle()?;
@@ -11503,6 +11575,20 @@ impl Engine {
         } else {
             Vec::new()
         };
+        let mut native_kills = Vec::new();
+        for &slot_index in &queues.deaths {
+            if let Some(organism) = self.slots[slot_index].organism.as_ref() {
+                let converts = self.config.corpse_decay.enabled
+                    && !organism.flags.corpse
+                    && !organism.flags.dead
+                    && organism.materials.body >= 0.5;
+                let id = OrganismId::new(slot_index as u32, self.slots[slot_index].generation);
+                if !converts && !native_kills.contains(&id) {
+                    native_kills.push(id);
+                }
+            }
+        }
+        let native_deaths = self.preflight_native_deaths(&native_kills, false)?;
         for slot_index in queues.deaths {
             let id = OrganismId::new(slot_index as u32, self.slots[slot_index].generation);
             if let Ok(organism) = self.slots.get(id) {
@@ -11547,6 +11633,7 @@ impl Engine {
                 );
             }
         }
+        self.commit_native_deaths(native_deaths);
         let mut available_births = self.available_robot_capacity();
         let mut vegetable_population = self.vegetable_population();
         for mut birth in queues.births {
@@ -12721,6 +12808,7 @@ impl Engine {
             schema_version: default_snapshot_schema_version(),
             tick: self.tick,
             native_cycle: self.native_cycle,
+            death_poffs_enabled: self.death_poffs_enabled,
             world_size: [self.config.world_width, self.config.world_height],
             organisms,
             corpses: self.corpse_views(),
@@ -13724,6 +13812,10 @@ fn default_ties_enabled() -> bool {
 
 fn default_true() -> bool {
     true
+}
+
+fn is_true(value: &bool) -> bool {
+    *value
 }
 
 fn default_species_templates() -> Vec<Option<SpeciesTemplate>> {

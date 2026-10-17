@@ -1,0 +1,939 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "prepared_for_batch61_staging": true,
+  "created_utc": "2026-10-17T11:23:32.634Z",
+  "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+  "scope": "Explicit sealed batch60 report evidence only. Complete85-file local proof directory plus17unique hosted paths (two receipts and15pinned log/metadata references). No directory-wide output sweep or package executables/libraries selected. Root is the sole Git stager.",
+  "total_files": 102,
+  "total_bytes": 4535929,
+  "groups": {
+    "local_proof_files": 85,
+    "local_proof_bytes": 3140109,
+    "hosted_unique_files": 17,
+    "hosted_receipts": 2,
+    "hosted_pinned_references": 15,
+    "hosted_native_job_logs": 7,
+    "hosted_bytes": 1395820
+  },
+  "validation": {
+    "case_insensitive_unique_paths": 102,
+    "all_explicit_pins_match_raw_hash_and_size": true,
+    "pin_mismatches": [],
+    "contained_paths": true,
+    "executable_or_library_files": 0,
+    "proof_subdirectories": []
+  },
+  "files": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-43d38a5.json",
+      "roles": [
+        "hosted60_diagnostics_receipt"
+      ],
+      "sha256": "7CF265DAACB05D80F3AE7DEBF409E12308A85322F7E2AD1B2FFD2648C07BD2ED",
+      "bytes": 14509
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-main-43d38a5.json",
+      "roles": [
+        "hosted60_main_receipt"
+      ],
+      "sha256": "65D9A9952807497F739D1C8D4CD66C7B690869E8A504A15E4E3431BAE2FE3E1A",
+      "bytes": 36651
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-body-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "D358E70674E7F2E803E181DA41148E3B9333D0017CA48469A18FDDD110019353",
+      "bytes": 468
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-body-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "E172B2C48394E4FE51D19350851C42DFAAE2DFD9701067BF5F24ADF0EF8D6372",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-body-100.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "2E388D83AA7B3387F4C6F411896BAF53A4F2554A990FB4172AE26596DF2183CD",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-checkpoints.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "26762BB0A1F1D0E2A2071476AF56297E1DE04E004AED49B758E9050F1C8DEFAE",
+      "bytes": 11838
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-chloroplast-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "B2E2185BA08BC934A496A887576B29ED9898A8CA98E0E49E61E5D87335BB0C48",
+      "bytes": 475
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-chloroplast-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "584E2E9B930ACA2D51E04407ABA8570B85DDF10AAEA0E346AB31E03AE9B0F2BA",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-contacts-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "216F1E19413322E54E3083A60D02900176CC15ABC3E6B6A433BC3A67721CF80E",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-contacts-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "BF04B65AEB60F9DB6B79527F8405CC054F3F3413FDE98E7D48D28B04485D49C9",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-contacts-100.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "1697F379B139763D177C1757947BF48EF7F10A953CF3976959040684C5CF1F6C",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-contacts-11.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "C852611E1CB49593CAC20FE5F7468A42739CCCAB688E439634B60CE65CE166F0",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-feeding-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "EB14AA49AA11EA32ACED270A5AE4772A97BDC387EAF81956A15655C115EFAFFF",
+      "bytes": 471
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-feeding-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "C4943F9073EA06B0DE494E2885A3BDE59DB10D32BCD5865F3DCA98873D4549A8",
+      "bytes": 475
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-feeding-100.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "96BEC34B942C192E0A0F2120987DC52C828CAC21CFE31E2BC9885A86BBD50568",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-fixed-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "881AB44EF92524A6AC7CBB3441C296C068E0C8648A502C818242783C8C9E09FC",
+      "bytes": 469
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-fixed-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "48C900F12843421B96A35897A484ED1E88A01973A25ABD177A9F4950C07DA660",
+      "bytes": 473
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-fixed-100.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "1B5107ED8CCCF6D58F9DF1CD776E93CC96EE6D2430C01948BB75A41105D20B67",
+      "bytes": 477
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-inputs.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "BE58C839D2AD6D978180D9981DDDFF234F1D40F48B3439FA1944FF07EE46E56F",
+      "bytes": 3050
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-movement-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "4B2F13B2139DB60F8AEC4E576CCC2A4A84D60414F1D913A38CA02D8DBE6C4BD9",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-movement-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "1B01FB65FF59FDA93E7B1277EDEF8EB71F34D52FCAD767C849F0B8B8F08C94DB",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-movement-100.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "3C54A3DD59A0127D1B5BB116FBF29514830F7DA8C1F1C9FC222492E88E33CFCD",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-movement-102.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "21FD02DC6D5119DF0B2A1F8A0FF6D7522B8AAD9597F0B5E64CB377AA0B744AB3",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-reproduction-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "341B89316AFE5A4203B259B6952E5EEA49E22F167C1ED0D9387F096271263D2F",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-reproduction-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "89D4BC3FE4ADFF0F416A9E5A6892EC51BB12E514048060BF8A53CFA84F568C25",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-reproduction-100.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "00316D28BC4F78BB90D476AAE66CDEE29A0D4FC83B3F2851306D76845BC10C00",
+      "bytes": 484
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-ties-1.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "5394E2ABB81A94A3561CA83CA2C42342438B01EDA5B3E440531D0C3B8D61358F",
+      "bytes": 468
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-ties-10.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DFD45844571AAB427AFADD39EF5139E928740FBE1DEFECE0C5B91CD70364E698",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/candidate-ties-100.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "2D7FF38D793DE39320F382C7DD7B27F7AE0533A4A3D8AE1DE19D9C3377A279AF",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/cli-build-identity.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "8D45A131991AA5B4D306C9E4A45811F4504EF6A16EFCCE80E63A6C1467C2027C",
+      "bytes": 143
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/cli-build.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "3EB122956228A74AA43E3C063A6248CA08B62999436440C942CA876006287870",
+      "bytes": 64
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/core.trx",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "B87113A05FCF57580CC8F2C88BFB383024E4C350D532220C58AD4AE2A0D9ED80",
+      "bytes": 491936
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/cpu-rust-workspace.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "B0EC7B5D6773505A7522FEF6F945BC05AB8E432348A2CA6FAEB4E588AAE8C6FE",
+      "bytes": 127420
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/desktop-core.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "B15B5BC00EB2AEFAF9C98F3DAB9D585EF60BDBCCC55C7C06D8781829DA2BF32B",
+      "bytes": 2152
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/desktop-test-build.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "85B37430F885E062F49028F855FB77072EF938E8E5054FE2CF5C10D211AF7151",
+      "bytes": 33990
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/format-check.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-additional-candidate-checkpoints.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "601280AF5DE3695A9377783E050AECDD35D6B92CD4582316E5683E6C93779D2E",
+      "bytes": 1821
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-additional-comparisons.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "ABCD5B012B3435E907AD8C1AA5175AEFEB02BD6765B7613F7315D23A23BCED71",
+      "bytes": 18273
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-body-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-body-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-body-100-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-chloroplast-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-chloroplast-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-contacts-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "67D90D695BBA45FB6B5D656D3D86E0C6C737204353F66A441C9B4AB72AE3170D",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-contacts-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "67D90D695BBA45FB6B5D656D3D86E0C6C737204353F66A441C9B4AB72AE3170D",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-contacts-100-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "67D90D695BBA45FB6B5D656D3D86E0C6C737204353F66A441C9B4AB72AE3170D",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-contacts-11-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "67D90D695BBA45FB6B5D656D3D86E0C6C737204353F66A441C9B4AB72AE3170D",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-feeding-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "58B7EBD91A27BD99408CEB095F44500D91F80F943E93DAC7B9F56C4F4787221E",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-feeding-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "47343D5ACC2F17281DF9E1DDC0CFB1C91BED3CF3087373A477C379A54F79B859",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-feeding-100-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "B78F2ACDEBA24CD31D4A559E88DB14EB3F090BE99511EE893B582A8F5865B4BC",
+      "bytes": 7732
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-fixed-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "75ABD74EA4EDB8850CA3DDCAEF217CDD72E95F3BE893F9CD1CA6A854BEE3C71C",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-fixed-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "75ABD74EA4EDB8850CA3DDCAEF217CDD72E95F3BE893F9CD1CA6A854BEE3C71C",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-fixed-100-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "75ABD74EA4EDB8850CA3DDCAEF217CDD72E95F3BE893F9CD1CA6A854BEE3C71C",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-movement-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-movement-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-movement-100-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-movement-102-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DCAA541A6D5178712996FFDD958D02BEB77BEE451AC0599CB1B478BA23B3A1DD",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-movement-comparisons.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "59C9A2EBD761E18B0A55E25C4AA59A203F192A5692FC367B19CBFA27BB8B06BF",
+      "bytes": 3711
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-reference-provenance.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "8FF496D81C98B9A0B7AC19DFAD8A31B010A97408ABD554FE8B26D53096D724CA",
+      "bytes": 11661
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-reproduction-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "607C4095525058A81C07A84A195B2BD0E43F5A57F5709368F4F2CDC73AFBF9D5",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-reproduction-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "677234EB83CC9D6AD61ACCD90FC0BC9FB503F195FFA8F0E5D62AA8E0A7D5FC46",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-reproduction-100-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "677234EB83CC9D6AD61ACCD90FC0BC9FB503F195FFA8F0E5D62AA8E0A7D5FC46",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-ties-1-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "E22FCF24A7C8BE146D3C7EF486566EEA747200F067AA12E23B70D0DF9871ACE4",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-ties-10-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "E22FCF24A7C8BE146D3C7EF486566EEA747200F067AA12E23B70D0DF9871ACE4",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/genuine-ties-100-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "E22FCF24A7C8BE146D3C7EF486566EEA747200F067AA12E23B70D0DF9871ACE4",
+      "bytes": 624
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/native-dll-identity-before.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DFE0C5E37716416592AAA22CC00ABAC8CAFFCCE5C576F2C972B9D0BF2764400C",
+      "bytes": 196
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/native-dll-identity.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DFE0C5E37716416592AAA22CC00ABAC8CAFFCCE5C576F2C972B9D0BF2764400C",
+      "bytes": 196
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/original-zero-cycle-compare.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "04FBE67851D86BEC1FB71B39C374456C2B084B75B3CDE418A648E1A2D6219C38",
+      "bytes": 626
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/original-zero-cycle-raw-preservation.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "828AA4359296799930A9FB8AEBB54311F85D2F5111343E28670E2BA5A0475506",
+      "bytes": 970
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/original-zero-cycle-replay.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "59E1B3A5238224C5A216505FECE9AB99366B1AA064A33C3E74E5056F55035EFB",
+      "bytes": 505
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/package-assets.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "882741E870837C486D54938151D4818A0118C84828FF719DF93EDDBCD856F6F8",
+      "bytes": 17538
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/package-smoke.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "DE7F7EEE107116C1F2E5C68F942EC3C80535AE6D039F2B9FCDB2AE32CE972B79",
+      "bytes": 116
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/package-smoke.stderr.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/preserved-wip-image-before.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "58E1EACA812EB424217D86D5C882D61981D961E0711D321E8B33F5C55B338C33",
+      "bytes": 124
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/preserved-wip-image.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "452634C182E385790B95FFC1321105A66E70966ACD74F9A4B9419C4DB7EE2917",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/qualification-summary.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary"
+      ],
+      "sha256": "8CD5A958315CE81FE587FBEC39B66CAB5A4B5738893BAA2B4672FA3CF5DF9B26",
+      "bytes": 69653
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/results.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "56F417D4F5046D22FB6FAF6E2DAA05CF5D427FBB123C8EF9667EF050D26B8B4C",
+      "bytes": 45686
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/run.lock",
+      "roles": [
+        "sealed_local60_proof"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/runner-identity.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "AD6E2588097FA1C62636E52C47D63EECF93ED56708C5B8FC143FDA858E870E37",
+      "bytes": 741
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/rust-target-results.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin",
+        "local60_rust_census"
+      ],
+      "sha256": "FB94B7C63ECB9EE010F8945BC71DF358A4058EEF60DDB074623B2EF5842A0AAD",
+      "bytes": 60260
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/source-check.stderr.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/source.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "D1218C0674D8B1C7C11F4A2CEFC8F886E891356AD7E5EB1FB7977EA436F43700",
+      "bytes": 105820
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/state.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "B104B5FBA9243DFDC7845C37A8AC61E7FDF75151C064436246419C8186E99950",
+      "bytes": 816
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/strict-clippy.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "3617220A0FDAEE4E8F75E5D19409CFD32237F8EA9C2FF4F4D74D5589F624D03C",
+      "bytes": 290
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/user-rust-cycle281.sim",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E",
+      "bytes": 2091837
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/windows-publish.log",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "BF820B0EDBF1C75F23D3E1EE28EFA0F1F4865854ECE5CCB776FCB3E2541B6201",
+      "bytes": 2752
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass60/workspace-target-expectations.json",
+      "roles": [
+        "sealed_local60_proof",
+        "local60_summary_pin"
+      ],
+      "sha256": "502E8F9B9E0BB6EE643BEEE02CFBBB10F25F8481EAC97423DAAFA81365A7FA3E",
+      "bytes": 855
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/api/artifacts-20261017T093406284.json",
+      "roles": [
+        "hosted60_diagnostics_pin"
+      ],
+      "sha256": "E338FB10E6740E1E43CDBE137DA3A22EC09F95D8097C5F247E751DE5F81F87B4",
+      "bytes": 34
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/api/jobs-20261017T093406284.json",
+      "roles": [
+        "hosted60_diagnostics_pin"
+      ],
+      "sha256": "86417351D1D7D157764D0A3E18B9F4C5A43604E35D4933A58DCB9EF798E371B2",
+      "bytes": 7502
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/api/run-20261017T093406284.json",
+      "roles": [
+        "hosted60_diagnostics_pin"
+      ],
+      "sha256": "3F79EED722884C121DD226FEF02B960457D7BA6F1B2B4AB208C7419A8A3578B1",
+      "bytes": 13180
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/logs/linux-x64-completed.log",
+      "roles": [
+        "hosted60_diagnostics_pin"
+      ],
+      "sha256": "4A382B969AC95071D21337460678092C5D17247F0AF28683FEFA9C34BCFDF0A3",
+      "bytes": 64770
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/logs/osx-arm64-completed.log",
+      "roles": [
+        "hosted60_diagnostics_pin"
+      ],
+      "sha256": "5861805F3509621EF5D266C37895C805F359900E6B161F36597AB7BFC454D896",
+      "bytes": 65463
+    },
+    {
+      "file": "output/hosted-diagnostics-43d38a5-agent/logs/osx-x64-completed.log",
+      "roles": [
+        "hosted60_diagnostics_pin"
+      ],
+      "sha256": "F44DACA28FD58B1BB9333ABA8359008BAC44D3B9FCF476C15F267FFA026AC2BB",
+      "bytes": 67956
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/api/artifacts-20261017T102527236.json",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "E338FB10E6740E1E43CDBE137DA3A22EC09F95D8097C5F247E751DE5F81F87B4",
+      "bytes": 34
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/api/jobs-20261017T102527236.json",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "D504119BE66F0B698559CD6064CDC0E17C253484385C882824DD362B2C88671E",
+      "bytes": 13310
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/api/run-20261017T102527236.json",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "7DE9ADFB118F8EEF7E2ADA65FEA2A43625ED7C397E352A3C664CF96AEAF0213D",
+      "bytes": 13169
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/linux-x64-completed.log",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "DAFED75B10FEA3BF45A0433B830C5A01986C77FD83111167C3C1007D50896E97",
+      "bytes": 208160
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/osx-arm64-completed.log",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "3A4DB511379FD3C4AF7B36A4FFEFB9FAC2C9D8E694A8F810C973DB0FBD1722DD",
+      "bytes": 208901
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/osx-x64-completed.log",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "D6F94C84C40192D30C8B129A3C090AE37F4C0759BD8176A044941CA4A2A15DC6",
+      "bytes": 209275
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/win-x64-completed.log",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "5F366C6E3E44F63C04306A6E32637A1C99E9F609FAB5269BAE36108DC07B8FC7",
+      "bytes": 210298
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/rust-target-results.json",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "4EBC8AC7EC376C8F03923E78DECB92886293BC8F8F3384F6F9E4C23039F88F6E",
+      "bytes": 240963
+    },
+    {
+      "file": "output/pass60-workspace-metadata.json",
+      "roles": [
+        "hosted60_main_pin"
+      ],
+      "sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+      "bytes": 21645
+    }
+  ],
+  "excluded": "Unreferenced output histories/candidates, package binaries and current batch61 runtime artifacts. The zero-byte historical run.lock is included because the complete sealed proof directory was requested; it is not a live qualification lease.",
+  "execution": {
+    "git_mutations": false,
+    "source_mutations": false,
+    "tests": false,
+    "builds": false,
+    "report_release_mutated": false
+  }
+}

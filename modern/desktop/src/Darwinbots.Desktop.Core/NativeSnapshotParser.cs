@@ -185,7 +185,8 @@ public static class NativeSnapshotParser
             value.Age,
             value.Range,
             value.Energy,
-            value.ImpactFlash)).ToArray();
+            value.ImpactFlash,
+            value.Color)).ToArray();
         var history = (native.History ?? []).Select(value => new HistorySampleSnapshot(
             value.Tick, value.Population, value.TotalEnergy, value.Births, value.Deaths, value.Mutations, value.ShotsFired)
         {
@@ -228,6 +229,7 @@ public static class NativeSnapshotParser
                 Profile = ParseMutationProfile(native.MutationProfile),
             },
             TiesEnabled = native.TiesEnabled ?? true,
+            DeathPoffsEnabled = native.DeathPoffsEnabled ?? true,
             RobotFixingAllowed = native.RobotFixingAllowed ?? true,
             AsexualReproductionAllowed = native.AsexualReproductionAllowed ?? true,
             PlayerBot = playerBot,
@@ -527,7 +529,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("history")] NativeHistorySample[]? History,
         [property: JsonPropertyName("ties")] NativeTie[]? Ties,
         [property: JsonPropertyName("phase_timings")] NativePhaseTimings? PhaseTimings,
-        [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode);
+        [property: JsonPropertyName("local_mode")] NativeLocalMode? LocalMode,
+        [property: JsonPropertyName("death_poffs_enabled")] bool? DeathPoffsEnabled = null);
 
     private sealed record NativePlayerBot(
         [property: JsonPropertyName("enabled")] bool Enabled,
@@ -707,7 +710,8 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("energy")] float Energy,
         [property: JsonPropertyName("kind")] int Kind,
         [property: JsonPropertyName("value")] int Value,
-        [property: JsonPropertyName("impact_flash")] bool ImpactFlash);
+        [property: JsonPropertyName("impact_flash")] bool ImpactFlash,
+        [property: JsonPropertyName("color")] uint? Color = null);
 
     private sealed record NativeHistorySample(
         [property: JsonPropertyName("tick")] ulong Tick,

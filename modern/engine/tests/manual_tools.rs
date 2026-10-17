@@ -1,4 +1,6 @@
-use darwinbots_engine::{Engine, EngineConfig, LegacyDna, PhysicsSettings, SpeciesDefinition};
+use darwinbots_engine::{
+    Engine, EngineConfig, LegacyDna, PhysicsSettings, SaveFile, SpeciesDefinition,
+};
 
 #[test]
 fn remove_many_rejects_the_whole_batch_before_mutating_any_slot() {
@@ -10,8 +12,14 @@ fn remove_many_rejects_the_whole_batch_before_mutating_any_slot() {
     let valid = engine
         .spawn(LegacyDna::parse("start\nstop").unwrap())
         .unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+    let snapshot = engine.snapshot().clone();
+    let publications = engine.snapshot_publication_count();
     assert!(engine.remove_many(&[valid, stale]).is_err());
     assert_eq!(engine.snapshot().organisms.len(), 1);
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    assert_eq!(engine.snapshot(), &snapshot);
+    assert_eq!(engine.snapshot_publication_count(), publications);
 }
 
 #[test]
@@ -28,6 +36,14 @@ fn remove_many_publishes_one_world_without_the_validated_batch() {
     let publications_after = engine.snapshot_publication_count();
     assert_eq!(publications_after, publications_before + 1);
     assert!(engine.snapshot().organisms.is_empty());
+    assert_eq!(engine.snapshot().shots.len(), 40);
+    assert!(
+        engine
+            .snapshot()
+            .shots
+            .iter()
+            .all(|shot| shot.kind == -100 && shot.age == 0)
+    );
 }
 
 #[test]

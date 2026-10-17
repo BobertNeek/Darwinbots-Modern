@@ -1,0 +1,601 @@
+﻿2026-10-17T09:25:06.0027970Z Current runner version: '2.337.0'
+2026-10-17T09:25:06.0088740Z ##[group]Runner Image Provisioner
+2026-10-17T09:25:06.0090350Z Hosted Compute Agent
+2026-10-17T09:25:06.0091380Z Version: 20261012.601
+2026-10-17T09:25:06.0092660Z Commit: f3dc54e1fb89da6852db922499a0233137369e1d
+2026-10-17T09:25:06.0093950Z Build Date: 2026-10-12T17:48:21Z
+2026-10-17T09:25:06.0095160Z Worker ID: {14bb8332-4a59-4fc4-87fc-fd7cdd695884}
+2026-10-17T09:25:06.0096390Z Region: westus
+2026-10-17T09:25:06.0097380Z Cloud: MacCloud
+2026-10-17T09:25:06.0098330Z ##[endgroup]
+2026-10-17T09:25:06.0101150Z ##[group]Operating System
+2026-10-17T09:25:06.0102220Z macOS
+2026-10-17T09:25:06.0103100Z 26.6.2
+2026-10-17T09:25:06.0103970Z 25G83
+2026-10-17T09:25:06.0104850Z ##[endgroup]
+2026-10-17T09:25:06.0105820Z ##[group]Runner Image
+2026-10-17T09:25:06.0106880Z Image: macos-26-arm64
+2026-10-17T09:25:06.0107910Z Version: 20261013.0424.1
+2026-10-17T09:25:06.0110320Z Included Software: https://github.com/actions/runner-images/blob/macos-26-arm64/20261013.0424/images/macos/macos-26-arm64-Readme.md
+2026-10-17T09:25:06.0113260Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-26-arm64%2F20261013.0424
+2026-10-17T09:25:06.0115120Z ##[endgroup]
+2026-10-17T09:25:06.0117130Z ##[group]GITHUB_TOKEN Permissions
+2026-10-17T09:25:06.0121370Z Contents: read
+2026-10-17T09:25:06.0122390Z Metadata: read
+2026-10-17T09:25:06.0123350Z ##[endgroup]
+2026-10-17T09:25:06.0130370Z Secret source: Actions
+2026-10-17T09:25:06.0132060Z Cache mode: write
+2026-10-17T09:25:06.0134660Z Prepare workflow directory
+2026-10-17T09:25:06.0513290Z Prepare all required actions
+2026-10-17T09:25:06.0585890Z Getting action download info
+2026-10-17T09:25:06.5215440Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-17T09:25:06.9810480Z Download action repository 'dtolnay/rust-toolchain@stable' (SHA:b725eda525362e7cf34af9a7243cac1e3f01a7ec)
+2026-10-17T09:25:07.3160410Z Download action repository 'actions/setup-dotnet@v4' (SHA:67a3573c9a986a3f9c594539f4ab511d57bb3ce9)
+2026-10-17T09:25:07.8569900Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-10-17T09:25:08.3036840Z Complete job name: rendered-desktop (macos-latest, osx-arm64)
+2026-10-17T09:25:08.3986980Z ##[group]Run actions/checkout@v4
+2026-10-17T09:25:08.3987960Z with:
+2026-10-17T09:25:08.3988450Z   repository: BobertNeek/Darwinbots-Modern
+2026-10-17T09:25:08.3991540Z   token: ***
+2026-10-17T09:25:08.3991960Z   ssh-strict: true
+2026-10-17T09:25:08.3992380Z   ssh-user: git
+2026-10-17T09:25:08.3992790Z   persist-credentials: true
+2026-10-17T09:25:08.3993260Z   clean: true
+2026-10-17T09:25:08.3993620Z   sparse-checkout-cone-mode: true
+2026-10-17T09:25:08.3994040Z   fetch-depth: 1
+2026-10-17T09:25:08.3994390Z   fetch-tags: false
+2026-10-17T09:25:08.3994740Z   show-progress: true
+2026-10-17T09:25:08.3995120Z   lfs: false
+2026-10-17T09:25:08.3995460Z   submodules: false
+2026-10-17T09:25:08.3995820Z   set-safe-directory: true
+2026-10-17T09:25:08.3996410Z   allow-unsafe-pr-checkout: false
+2026-10-17T09:25:08.3997130Z ##[endgroup]
+2026-10-17T09:25:09.2458970Z Syncing repository: BobertNeek/Darwinbots-Modern
+2026-10-17T09:25:09.2461380Z ##[group]Getting Git version info
+2026-10-17T09:25:09.2462640Z Working directory is '/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern'
+2026-10-17T09:25:09.2464320Z [command]/opt/homebrew/bin/git version
+2026-10-17T09:25:09.2903260Z git version 2.56.0
+2026-10-17T09:25:09.2936960Z ##[endgroup]
+2026-10-17T09:25:09.2951860Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/0d3cf568-03a9-4a1f-97d5-6d7208ce76f4/.gitconfig'
+2026-10-17T09:25:09.2964650Z Temporarily overriding HOME='/Users/runner/work/_temp/0d3cf568-03a9-4a1f-97d5-6d7208ce76f4' before making global git config changes
+2026-10-17T09:25:09.2968570Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-17T09:25:09.2971300Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern
+2026-10-17T09:25:09.3158630Z Deleting the contents of '/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern'
+2026-10-17T09:25:09.3167360Z ##[group]Initializing the repository
+2026-10-17T09:25:09.3179530Z [command]/opt/homebrew/bin/git init /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern
+2026-10-17T09:25:09.3567420Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-17T09:25:09.3569780Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-17T09:25:09.3571890Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-17T09:25:09.3574360Z hint: call:
+2026-10-17T09:25:09.3575340Z hint:
+2026-10-17T09:25:09.3578950Z hint: 	git config --global init.defaultBranch <name>
+2026-10-17T09:25:09.3580690Z hint:
+2026-10-17T09:25:09.3581980Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-17T09:25:09.3585710Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-17T09:25:09.3587870Z hint:
+2026-10-17T09:25:09.3588900Z hint: 	git branch -m <name>
+2026-10-17T09:25:09.3589840Z hint:
+2026-10-17T09:25:09.3591270Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-17T09:25:09.3594770Z Initialized empty Git repository in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/.git/
+2026-10-17T09:25:09.3598750Z [command]/opt/homebrew/bin/git remote add origin https://github.com/BobertNeek/Darwinbots-Modern
+2026-10-17T09:25:09.3733750Z ##[endgroup]
+2026-10-17T09:25:09.3736990Z ##[group]Disabling automatic garbage collection
+2026-10-17T09:25:09.3740020Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-10-17T09:25:09.3866860Z ##[endgroup]
+2026-10-17T09:25:09.3868640Z ##[group]Setting up auth
+2026-10-17T09:25:09.3871370Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-17T09:25:09.4002060Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-17T09:25:09.5929630Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-17T09:25:09.6042060Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-17T09:25:09.7824690Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-17T09:25:09.8166710Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-17T09:25:10.0184810Z [command]/opt/homebrew/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-17T09:25:10.0406410Z ##[endgroup]
+2026-10-17T09:25:10.0469980Z ##[group]Fetching the repository
+2026-10-17T09:25:10.0490330Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +43d38a55ac3e95c541bc9407bc0056b7cf45e351:refs/remotes/origin/codex/db24832-completion
+2026-10-17T09:25:12.3286480Z From https://github.com/BobertNeek/Darwinbots-Modern
+2026-10-17T09:25:12.3288360Z  * [new ref]         43d38a55ac3e95c541bc9407bc0056b7cf45e351 -> origin/codex/db24832-completion
+2026-10-17T09:25:12.3294200Z ##[endgroup]
+2026-10-17T09:25:12.3295200Z ##[group]Determining the checkout info
+2026-10-17T09:25:12.3313840Z ##[endgroup]
+2026-10-17T09:25:12.3323860Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-10-17T09:25:12.3466210Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-17T09:25:12.3570600Z ##[group]Checking out the ref
+2026-10-17T09:25:12.3574110Z [command]/opt/homebrew/bin/git checkout --progress --force -B codex/db24832-completion refs/remotes/origin/codex/db24832-completion
+2026-10-17T09:25:13.0893150Z Switched to a new branch 'codex/db24832-completion'
+2026-10-17T09:25:13.0998890Z branch 'codex/db24832-completion' set up to track 'origin/codex/db24832-completion'.
+2026-10-17T09:25:13.1294250Z ##[endgroup]
+2026-10-17T09:25:13.1301020Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-10-17T09:25:13.1461580Z 43d38a55ac3e95c541bc9407bc0056b7cf45e351
+2026-10-17T09:25:13.2528160Z ##[group]Run dtolnay/rust-toolchain@stable
+2026-10-17T09:25:13.2528660Z with:
+2026-10-17T09:25:13.2528910Z   toolchain: stable
+2026-10-17T09:25:13.2529200Z ##[endgroup]
+2026-10-17T09:25:13.2641030Z ##[start-action display=Parse toolchain version;id=__dtolnay_rust-toolchain.parse]
+2026-10-17T09:25:13.2812770Z ##[group]Run if [[ -z $toolchain ]]; then
+2026-10-17T09:25:13.2814130Z [36;1mif [[ -z $toolchain ]]; then[0m
+2026-10-17T09:25:13.2815830Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+2026-10-17T09:25:13.2818270Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+2026-10-17T09:25:13.2819230Z [36;1m  exit 1[0m
+2026-10-17T09:25:13.2820090Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+2026-10-17T09:25:13.2821520Z [36;1m  if [[ macOS == macOS ]]; then[0m
+2026-10-17T09:25:13.2822230Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-10-17T09:25:13.2823180Z [36;1m  else[0m
+2026-10-17T09:25:13.2823700Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-10-17T09:25:13.2824200Z [36;1m  fi[0m
+2026-10-17T09:25:13.2824590Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+2026-10-17T09:25:13.2825090Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+2026-10-17T09:25:13.2826980Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+2026-10-17T09:25:13.2828530Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+2026-10-17T09:25:13.2829730Z [36;1melse[0m
+2026-10-17T09:25:13.2830430Z [36;1m  delimiter=EOF[0m
+2026-10-17T09:25:13.2831220Z [36;1m  while [[ $toolchain == *$delimiter* ]]; do delimiter+=_; done[0m
+2026-10-17T09:25:13.2832580Z [36;1m  printf 'toolchain<<%s\n%s\n%s\n' "$delimiter" "$toolchain" "$delimiter" >> $GITHUB_OUTPUT[0m
+2026-10-17T09:25:13.2833610Z [36;1mfi[0m
+2026-10-17T09:25:13.2978820Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:13.2979370Z env:
+2026-10-17T09:25:13.2979680Z   toolchain: stable
+2026-10-17T09:25:13.2980040Z ##[endgroup]
+2026-10-17T09:25:13.4947200Z ##[end-action id=__dtolnay_rust-toolchain.parse;outcome=success;conclusion=success;duration_ms=230]
+2026-10-17T09:25:13.4952340Z ##[start-action display=Set $CARGO_HOME;id=__dtolnay_rust-toolchain.__run]
+2026-10-17T09:25:13.5055540Z ##[group]Run echo CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV
+2026-10-17T09:25:13.5056170Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV[0m
+2026-10-17T09:25:13.5151630Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:13.5151980Z ##[endgroup]
+2026-10-17T09:25:13.5828110Z ##[end-action id=__dtolnay_rust-toolchain.__run;outcome=success;conclusion=success;duration_ms=87]
+2026-10-17T09:25:13.5834430Z ##[start-action display=Install rustup if needed;id=__dtolnay_rust-toolchain.__run_2]
+2026-10-17T09:25:13.5883320Z ##[group]Run if ! command -v rustup &>/dev/null; then
+2026-10-17T09:25:13.5883750Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+2026-10-17T09:25:13.5884490Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y[0m
+2026-10-17T09:25:13.5885120Z [36;1m  echo "$CARGO_HOME/bin" >> $GITHUB_PATH[0m
+2026-10-17T09:25:13.5885760Z [36;1mfi[0m
+2026-10-17T09:25:13.5956640Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:13.5957000Z env:
+2026-10-17T09:25:13.5957190Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:13.5957430Z ##[endgroup]
+2026-10-17T09:25:13.6669230Z ##[end-action id=__dtolnay_rust-toolchain.__run_2;outcome=success;conclusion=success;duration_ms=83]
+2026-10-17T09:25:13.6676750Z ##[start-action display=Install rustup if needed on windows;id=__dtolnay_rust-toolchain.__run_3]
+2026-10-17T09:25:13.6694800Z ##[end-action id=__dtolnay_rust-toolchain.__run_3;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-17T09:25:13.6731610Z ##[start-action display=rustup toolchain install stable;id=__dtolnay_rust-toolchain.__run_4]
+2026-10-17T09:25:13.6771690Z ##[group]Run set -f  # split targets and components on commas and whitespace, without glob expansion
+2026-10-17T09:25:13.6772330Z [36;1mset -f  # split targets and components on commas and whitespace, without glob expansion[0m
+2026-10-17T09:25:13.6772760Z [36;1mflags=()[0m
+2026-10-17T09:25:13.6773010Z [36;1mfor t in ${targets//,/ }; do flags+=(--target "$t"); done[0m
+2026-10-17T09:25:13.6773360Z [36;1mfor c in ${components//,/ }; do flags+=(--component "$c"); done[0m
+2026-10-17T09:25:13.6773790Z [36;1mif [[ $toolchain == nightly && -n $components ]]; then flags+=(--allow-downgrade); fi[0m
+2026-10-17T09:25:13.6774170Z [36;1mlog=$(mktemp)[0m
+2026-10-17T09:25:13.6774360Z [36;1mtrap 'rm -f "$log"' EXIT[0m
+2026-10-17T09:25:13.6774600Z [36;1mfor attempt in 1 2 3 4 5; do[0m
+2026-10-17T09:25:13.6775090Z [36;1m  if rustup toolchain install "$toolchain" "${flags[@]}" --profile minimal --no-self-update --force-non-host 2>&1 | tee "$log"; then[0m
+2026-10-17T09:25:13.6775570Z [36;1m    break[0m
+2026-10-17T09:25:13.6775750Z [36;1m  else[0m
+2026-10-17T09:25:13.6775900Z [36;1m    status=$?[0m
+2026-10-17T09:25:13.6776090Z [36;1m  fi[0m
+2026-10-17T09:25:13.6776340Z [36;1m  if [[ $attempt == 5 ]] || ! grep -Fq 'checksum failed for ' "$log" \[0m
+2026-10-17T09:25:13.6776850Z [36;1m      || ! grep -Fq 'this is likely due to an ongoing update of the official release server' "$log"; then[0m
+2026-10-17T09:25:13.6777250Z [36;1m    exit "$status"[0m
+2026-10-17T09:25:13.6777440Z [36;1m  fi[0m
+2026-10-17T09:25:13.6777750Z [36;1m  echo "Retrying rustup toolchain install in 30 seconds (retry $attempt of 4)" >&2[0m
+2026-10-17T09:25:13.6778110Z [36;1m  sleep 30[0m
+2026-10-17T09:25:13.6778310Z [36;1mdone[0m
+2026-10-17T09:25:13.6818180Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:13.6818660Z env:
+2026-10-17T09:25:13.6818910Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:13.6819220Z   toolchain: stable
+2026-10-17T09:25:13.6819460Z   targets: 
+2026-10-17T09:25:13.6819650Z   components: 
+2026-10-17T09:25:13.6819880Z   RUSTUP_PERMIT_COPY_RENAME: 1
+2026-10-17T09:25:13.6820090Z ##[endgroup]
+2026-10-17T09:25:14.3519420Z info: syncing channel updates for stable-aarch64-apple-darwin
+2026-10-17T09:25:14.6901340Z info: latest update on 2026-10-15 for version 1.99.1 (58cf8f9c3 2026-10-13)
+2026-10-17T09:25:14.7129120Z info: removing previous version of component clippy
+2026-10-17T09:25:14.7206720Z info: removing previous version of component rustfmt
+2026-10-17T09:25:14.7240680Z info: removing previous version of component cargo
+2026-10-17T09:25:14.7347320Z info: removing previous version of component rust-std
+2026-10-17T09:25:14.7543660Z info: removing previous version of component rustc
+2026-10-17T09:25:14.7717770Z info: downloading 5 components
+2026-10-17T09:25:23.4698500Z 
+2026-10-17T09:25:23.5164350Z   stable-aarch64-apple-darwin updated - rustc 1.99.1 (58cf8f9c3 2026-10-13) (from rustc 1.99.0 (b940084d7 2026-09-28))
+2026-10-17T09:25:23.5166220Z 
+2026-10-17T09:25:23.5171010Z info: self-update is disabled for this build of rustup
+2026-10-17T09:25:23.5174810Z info: any updates to rustup will need to be fetched with your system package manager
+2026-10-17T09:25:23.5796880Z ##[end-action id=__dtolnay_rust-toolchain.__run_4;outcome=success;conclusion=success;duration_ms=9901]
+2026-10-17T09:25:23.5829290Z ##[start-action display=rustup default stable;id=__dtolnay_rust-toolchain.__run_5]
+2026-10-17T09:25:23.5864890Z ##[group]Run rustup default "$toolchain" --force-non-host
+2026-10-17T09:25:23.5865480Z [36;1mrustup default "$toolchain" --force-non-host[0m
+2026-10-17T09:25:23.5927560Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:23.5928350Z env:
+2026-10-17T09:25:23.5928700Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:23.5928970Z   toolchain: stable
+2026-10-17T09:25:23.5929260Z ##[endgroup]
+2026-10-17T09:25:23.7182590Z info: using existing install for stable-aarch64-apple-darwin
+2026-10-17T09:25:23.7214640Z 
+2026-10-17T09:25:23.7222930Z info: default toolchain set to stable-aarch64-apple-darwin
+2026-10-17T09:25:23.7488300Z   stable-aarch64-apple-darwin unchanged - rustc 1.99.1 (58cf8f9c3 2026-10-13)
+2026-10-17T09:25:23.7490780Z 
+2026-10-17T09:25:23.7498550Z ##[end-action id=__dtolnay_rust-toolchain.__run_5;outcome=success;conclusion=success;duration_ms=166]
+2026-10-17T09:25:23.7503060Z ##[start-action display=Create cachekey;id=__dtolnay_rust-toolchain.rustc-version]
+2026-10-17T09:25:23.7528580Z ##[group]Run DATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')
+2026-10-17T09:25:23.7529560Z [36;1mDATE=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+2026-10-17T09:25:23.7530230Z [36;1mHASH=$(rustc +"$toolchain" --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+2026-10-17T09:25:23.7531070Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+2026-10-17T09:25:23.7565860Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:23.7566280Z env:
+2026-10-17T09:25:23.7566660Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:23.7566960Z   toolchain: stable
+2026-10-17T09:25:23.7567290Z ##[endgroup]
+2026-10-17T09:25:23.9812790Z ##[end-action id=__dtolnay_rust-toolchain.rustc-version;outcome=success;conclusion=success;duration_ms=230]
+2026-10-17T09:25:23.9816490Z ##[start-action display=Disable incremental compilation;id=__dtolnay_rust-toolchain.__run_6]
+2026-10-17T09:25:23.9848910Z ##[group]Run if [ -z "${CARGO_INCREMENTAL+set}" ]; then
+2026-10-17T09:25:23.9849370Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+2026-10-17T09:25:23.9849880Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+2026-10-17T09:25:23.9850200Z [36;1mfi[0m
+2026-10-17T09:25:23.9889700Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:23.9890210Z env:
+2026-10-17T09:25:23.9891000Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:23.9891390Z ##[endgroup]
+2026-10-17T09:25:24.0329820Z ##[end-action id=__dtolnay_rust-toolchain.__run_6;outcome=success;conclusion=success;duration_ms=51]
+2026-10-17T09:25:24.0349160Z ##[start-action display=Enable colors in Cargo output;id=__dtolnay_rust-toolchain.__run_7]
+2026-10-17T09:25:24.0372360Z ##[group]Run if [ -z "${CARGO_TERM_COLOR+set}" ]; then
+2026-10-17T09:25:24.0372680Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+2026-10-17T09:25:24.0372960Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+2026-10-17T09:25:24.0373270Z [36;1mfi[0m
+2026-10-17T09:25:24.0408470Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:24.0408830Z env:
+2026-10-17T09:25:24.0409020Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:24.0409250Z   CARGO_INCREMENTAL: 0
+2026-10-17T09:25:24.0409470Z ##[endgroup]
+2026-10-17T09:25:24.0748340Z ##[end-action id=__dtolnay_rust-toolchain.__run_7;outcome=success;conclusion=success;duration_ms=39]
+2026-10-17T09:25:24.0752200Z ##[start-action display=Enable Cargo sparse registry;id=__dtolnay_rust-toolchain.__run_8]
+2026-10-17T09:25:24.0774240Z ##[group]Run # implemented in 1.66, stabilized in 1.68, made default in 1.70
+2026-10-17T09:25:24.0774780Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+2026-10-17T09:25:24.0775930Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+2026-10-17T09:25:24.0776720Z [36;1m  if rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+2026-10-17T09:25:24.0777520Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-10-17T09:25:24.0778150Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+2026-10-17T09:25:24.0778610Z [36;1m  elif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+2026-10-17T09:25:24.0779150Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-10-17T09:25:24.0779720Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+2026-10-17T09:25:24.0780010Z [36;1m  fi[0m
+2026-10-17T09:25:24.0780210Z [36;1mfi[0m
+2026-10-17T09:25:24.0814950Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:24.0815250Z env:
+2026-10-17T09:25:24.0815450Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:24.0815670Z   CARGO_INCREMENTAL: 0
+2026-10-17T09:25:24.0815860Z   CARGO_TERM_COLOR: always
+2026-10-17T09:25:24.0816100Z   toolchain: stable
+2026-10-17T09:25:24.0816320Z ##[endgroup]
+2026-10-17T09:25:24.2671020Z ##[end-action id=__dtolnay_rust-toolchain.__run_8;outcome=success;conclusion=success;duration_ms=191]
+2026-10-17T09:25:24.2677160Z ##[start-action display=Work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]
+2026-10-17T09:25:24.2714290Z ##[group]Run # https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation
+2026-10-17T09:25:24.2715090Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+2026-10-17T09:25:24.2715690Z [36;1mif rustc +"$toolchain" --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+2026-10-17T09:25:24.2716280Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+2026-10-17T09:25:24.2716600Z [36;1mfi[0m
+2026-10-17T09:25:24.2773230Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:24.2773660Z env:
+2026-10-17T09:25:24.2773850Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:24.2774150Z   CARGO_INCREMENTAL: 0
+2026-10-17T09:25:24.2775450Z   CARGO_TERM_COLOR: always
+2026-10-17T09:25:24.2775760Z   toolchain: stable
+2026-10-17T09:25:24.2775980Z ##[endgroup]
+2026-10-17T09:25:24.3658780Z ##[end-action id=__dtolnay_rust-toolchain.__run_9;outcome=success;conclusion=success;duration_ms=98]
+2026-10-17T09:25:24.3664740Z ##[start-action display=rustc +stable --version --verbose;id=__dtolnay_rust-toolchain.__run_10]
+2026-10-17T09:25:24.3693990Z ##[group]Run rustc +"$toolchain" --version --verbose
+2026-10-17T09:25:24.3706760Z [36;1mrustc +"$toolchain" --version --verbose[0m
+2026-10-17T09:25:24.3744500Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-17T09:25:24.3744830Z env:
+2026-10-17T09:25:24.3745020Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:24.3745320Z   CARGO_INCREMENTAL: 0
+2026-10-17T09:25:24.3745560Z   CARGO_TERM_COLOR: always
+2026-10-17T09:25:24.3745750Z   toolchain: stable
+2026-10-17T09:25:24.3745920Z ##[endgroup]
+2026-10-17T09:25:24.4525490Z rustc 1.99.1 (58cf8f9c3 2026-10-13)
+2026-10-17T09:25:24.4528190Z binary: rustc
+2026-10-17T09:25:24.4528990Z commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+2026-10-17T09:25:24.4529930Z commit-date: 2026-10-13
+2026-10-17T09:25:24.4531550Z host: aarch64-apple-darwin
+2026-10-17T09:25:24.4532620Z release: 1.99.1
+2026-10-17T09:25:24.4533520Z LLVM version: 23.1.1
+2026-10-17T09:25:24.4560510Z ##[end-action id=__dtolnay_rust-toolchain.__run_10;outcome=success;conclusion=success;duration_ms=89]
+2026-10-17T09:25:24.4793380Z ##[group]Run actions/setup-dotnet@v4
+2026-10-17T09:25:24.4794410Z with:
+2026-10-17T09:25:24.4794870Z   dotnet-version: 10.0.x
+2026-10-17T09:25:24.4796720Z   cache: false
+2026-10-17T09:25:24.4796920Z env:
+2026-10-17T09:25:24.4797150Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:24.4797470Z   CARGO_INCREMENTAL: 0
+2026-10-17T09:25:24.4797740Z   CARGO_TERM_COLOR: always
+2026-10-17T09:25:24.4797980Z ##[endgroup]
+2026-10-17T09:25:24.8288550Z (node:3922) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-17T09:25:24.8292660Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-17T09:25:24.8319940Z [command]/Users/runner/work/_actions/actions/setup-dotnet/v4/externals/install-dotnet.sh --skip-non-versioned-files --runtime dotnet --channel LTS
+2026-10-17T09:25:26.0244560Z dotnet-install: Attempting to download using aka.ms link https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.13/dotnet-runtime-10.0.13-osx-arm64.tar.gz
+2026-10-17T09:25:27.5915000Z dotnet-install: Remote file https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.13/dotnet-runtime-10.0.13-osx-arm64.tar.gz size is 33248881 bytes.
+2026-10-17T09:25:27.5920750Z dotnet-install: Extracting archive from https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.13/dotnet-runtime-10.0.13-osx-arm64.tar.gz
+2026-10-17T09:25:28.2421330Z dotnet-install: Downloaded file size is 33248881 bytes.
+2026-10-17T09:25:28.2423250Z dotnet-install: The remote and local file sizes are equal.
+2026-10-17T09:25:28.2857920Z dotnet-install: Installed version is 10.0.13
+2026-10-17T09:25:28.3072300Z dotnet-install: Adding to current process PATH: `/Users/runner/.dotnet`. Note: This change will be visible only when sourcing script.
+2026-10-17T09:25:28.3073490Z dotnet-install: Note that the script does not resolve dependencies during installation.
+2026-10-17T09:25:28.3074720Z dotnet-install: To check the list of dependencies, go to https://learn.microsoft.com/dotnet/core/install, select your operating system and check the "Dependencies" section.
+2026-10-17T09:25:28.3077110Z dotnet-install: Installation finished successfully.
+2026-10-17T09:25:28.3118800Z [command]/Users/runner/work/_actions/actions/setup-dotnet/v4/externals/install-dotnet.sh --skip-non-versioned-files --channel 10.0
+2026-10-17T09:25:29.2803980Z dotnet-install: Attempting to download using aka.ms link https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-osx-arm64.tar.gz
+2026-10-17T09:25:35.0261810Z dotnet-install: Remote file https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-osx-arm64.tar.gz size is 230833757 bytes.
+2026-10-17T09:25:35.0265490Z dotnet-install: Extracting archive from https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.402/dotnet-sdk-10.0.402-osx-arm64.tar.gz
+2026-10-17T09:25:41.4545760Z dotnet-install: Downloaded file size is 230833757 bytes.
+2026-10-17T09:25:41.4547140Z dotnet-install: The remote and local file sizes are equal.
+2026-10-17T09:25:42.0046770Z dotnet-install: Installed version is 10.0.402
+2026-10-17T09:25:42.0186830Z dotnet-install: Adding to current process PATH: `/Users/runner/.dotnet`. Note: This change will be visible only when sourcing script.
+2026-10-17T09:25:42.0188950Z dotnet-install: Note that the script does not resolve dependencies during installation.
+2026-10-17T09:25:42.0205440Z dotnet-install: To check the list of dependencies, go to https://learn.microsoft.com/dotnet/core/install, select your operating system and check the "Dependencies" section.
+2026-10-17T09:25:42.0206510Z dotnet-install: Installation finished successfully.
+2026-10-17T09:25:42.0715860Z ##[group]Run dotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release --blame-hang-timeout 5m --blame-hang-dump-type none --logger "trx;LogFileName=rendered-controls.trx" --results-directory artifacts/test-results
+2026-10-17T09:25:42.0718220Z [36;1mdotnet test modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release --blame-hang-timeout 5m --blame-hang-dump-type none --logger "trx;LogFileName=rendered-controls.trx" --results-directory artifacts/test-results[0m
+2026-10-17T09:25:42.0823060Z shell: /bin/bash -e {0}
+2026-10-17T09:25:42.0823810Z env:
+2026-10-17T09:25:42.0826220Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:25:42.0828510Z   CARGO_INCREMENTAL: 0
+2026-10-17T09:25:42.0829250Z   CARGO_TERM_COLOR: always
+2026-10-17T09:25:42.0830160Z   DOTNET_ROOT: /Users/runner/.dotnet
+2026-10-17T09:25:42.0830830Z   CARGO_BUILD_JOBS: 2
+2026-10-17T09:25:42.0831470Z   DARWINBOTS_GUI_AUDIT_DIR: /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/artifacts/gui-audit
+2026-10-17T09:25:42.0832470Z ##[endgroup]
+2026-10-17T09:25:44.4809750Z   Determining projects to restore...
+2026-10-17T09:25:44.8542880Z   Restored /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop.Core/Darwinbots.Desktop.Core.csproj (in 56 ms).
+2026-10-17T09:25:53.7689570Z   Restored /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj (in 8.97 sec).
+2026-10-17T09:25:54.0223620Z   Restored /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj (in 9.23 sec).
+2026-10-17T09:25:58.9190220Z   Darwinbots.Desktop.Core -> /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop.Core/bin/Release/net10.0/Darwinbots.Desktop.Core.dll
+2026-10-17T09:26:04.3625540Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs(55,41): warning CS0067: The event 'WorldViewport.OrganismDragCompleted' is never used [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj]
+2026-10-17T09:26:06.2854280Z /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml(167,18,167,18): Avalonia warning AVLN5001: 'TextBox.Watermark' is obsolete: Use PlaceholderText instead. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj]
+2026-10-17T09:26:06.2955150Z /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml(168,18,168,18): Avalonia warning AVLN5001: 'TextBox.Watermark' is obsolete: Use PlaceholderText instead. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj]
+2026-10-17T09:26:06.3063130Z /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Views/SetupWindow.axaml(107,26,107,26): Avalonia warning AVLN5001: 'TextBox.Watermark' is obsolete: Use PlaceholderText instead. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj]
+2026-10-17T09:26:06.4670500Z /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Views/DeleteConfirmationWindow.axaml : Avalonia warning AVLN3001: XAML resource "avares://Darwinbots.Desktop/Views/DeleteConfirmationWindow.axaml" won't be reachable via runtime loader, as no public constructor was found [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj]
+2026-10-17T09:26:07.4462930Z   Darwinbots.Desktop -> /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/src/Darwinbots.Desktop/bin/Release/net10.0/Darwinbots.Desktop.dll
+2026-10-17T09:26:08.9802110Z   [1m[92m    Updating[0m crates.io index
+2026-10-17T09:26:09.6028720Z   [1m[92m Downloading[0m crates ...
+2026-10-17T09:26:09.6577040Z   [1m[92m  Downloaded[0m dlib v0.5.3
+2026-10-17T09:26:09.6897790Z   [1m[92m  Downloaded[0m hexf-parse v0.2.1
+2026-10-17T09:26:09.7004110Z   [1m[92m  Downloaded[0m wgpu-core-deps-apple v29.0.4
+2026-10-17T09:26:09.7004940Z   [1m[92m  Downloaded[0m document-features v0.2.12
+2026-10-17T09:26:09.7219350Z   [1m[92m  Downloaded[0m equivalent v1.0.2
+2026-10-17T09:26:09.7222470Z   [1m[92m  Downloaded[0m gpu-descriptor v0.3.2
+2026-10-17T09:26:09.7359540Z   [1m[92m  Downloaded[0m pkg-config v0.3.33
+2026-10-17T09:26:09.7469860Z   [1m[92m  Downloaded[0m static_assertions v1.1.0
+2026-10-17T09:26:09.7478410Z   [1m[92m  Downloaded[0m unicode-ident v1.0.24
+2026-10-17T09:26:09.7533250Z   [1m[92m  Downloaded[0m zmij v1.0.21
+2026-10-17T09:26:09.7659450Z   [1m[92m  Downloaded[0m allocator-api2 v0.2.21
+2026-10-17T09:26:09.7672740Z   [1m[92m  Downloaded[0m arrayvec v0.7.8
+2026-10-17T09:26:09.7719700Z   [1m[92m  Downloaded[0m autocfg v1.5.1
+2026-10-17T09:26:09.7763920Z   [1m[92m  Downloaded[0m bit-set v0.9.1
+2026-10-17T09:26:09.7795460Z   [1m[92m  Downloaded[0m bit-vec v0.9.1
+2026-10-17T09:26:09.7907940Z   [1m[92m  Downloaded[0m bytemuck v1.25.1
+2026-10-17T09:26:09.8111110Z   [1m[92m  Downloaded[0m codespan-reporting v0.13.1
+2026-10-17T09:26:09.8440810Z   [1m[92m  Downloaded[0m crossbeam-deque v0.8.7
+2026-10-17T09:26:09.8490070Z   [1m[92m  Downloaded[0m crossbeam-epoch v0.9.20
+2026-10-17T09:26:09.8627650Z   [1m[92m  Downloaded[0m crossbeam-utils v0.8.22
+2026-10-17T09:26:09.8866700Z   [1m[92m  Downloaded[0m dispatch2 v0.3.1
+2026-10-17T09:26:09.9002180Z   [1m[92m  Downloaded[0m either v1.16.0
+2026-10-17T09:26:09.9119510Z   [1m[92m  Downloaded[0m errno v0.3.14
+2026-10-17T09:26:09.9201930Z   [1m[92m  Downloaded[0m fastrand v2.4.1
+2026-10-17T09:26:09.9203360Z   [1m[92m  Downloaded[0m foldhash v0.1.5
+2026-10-17T09:26:09.9241760Z   [1m[92m  Downloaded[0m foldhash v0.2.0
+2026-10-17T09:26:09.9329070Z   [1m[92m  Downloaded[0m getrandom v0.4.3
+2026-10-17T09:26:09.9501440Z   [1m[92m  Downloaded[0m gpu-allocator v0.28.0
+2026-10-17T09:26:09.9573560Z   [1m[92m  Downloaded[0m gpu-descriptor-types v0.2.0
+2026-10-17T09:26:09.9583180Z   [1m[92m  Downloaded[0m itoa v1.0.18
+2026-10-17T09:26:09.9671450Z   [1m[92m  Downloaded[0m ordered-float v5.3.0
+2026-10-17T09:26:09.9830570Z   [1m[92m  Downloaded[0m rayon v1.12.0
+2026-10-17T09:26:10.0206190Z   [1m[92m  Downloaded[0m wgpu-naga-bridge v29.0.4
+2026-10-17T09:26:10.0244890Z   [1m[92m  Downloaded[0m block2 v0.6.2
+2026-10-17T09:26:10.0278920Z   [1m[92m  Downloaded[0m glow v0.17.0
+2026-10-17T09:26:10.0436500Z   [1m[92m  Downloaded[0m half v2.7.1
+2026-10-17T09:26:10.0491560Z   [1m[92m  Downloaded[0m hashbrown v0.15.5
+2026-10-17T09:26:10.0799170Z   [1m[92m  Downloaded[0m hashbrown v0.16.1
+2026-10-17T09:26:10.0926580Z   [1m[92m  Downloaded[0m hashbrown v0.17.1
+2026-10-17T09:26:10.1162700Z   [1m[92m  Downloaded[0m indexmap v2.14.0
+2026-10-17T09:26:10.1413610Z   [1m[92m  Downloaded[0m lock_api v0.4.14
+2026-10-17T09:26:10.1520990Z   [1m[92m  Downloaded[0m objc2-encode v4.1.0
+2026-10-17T09:26:10.1552680Z   [1m[92m  Downloaded[0m objc2-metal v0.3.2
+2026-10-17T09:26:10.2169100Z   [1m[92m  Downloaded[0m once_cell v1.21.4
+2026-10-17T09:26:10.2429290Z   [1m[92m  Downloaded[0m pollster v0.4.0
+2026-10-17T09:26:10.2493930Z   [1m[92m  Downloaded[0m profiling v1.0.18
+2026-10-17T09:26:10.2550020Z   [1m[92m  Downloaded[0m raw-window-handle v0.6.2
+2026-10-17T09:26:10.2639730Z   [1m[92m  Downloaded[0m renderdoc-sys v1.1.0
+2026-10-17T09:26:10.2694270Z   [1m[92m  Downloaded[0m rustc-hash v1.1.0
+2026-10-17T09:26:10.2729060Z   [1m[92m  Downloaded[0m termcolor v1.4.1
+2026-10-17T09:26:10.2771650Z   [1m[92m  Downloaded[0m wayland-sys v0.31.11
+2026-10-17T09:26:10.2874060Z   [1m[92m  Downloaded[0m bitflags v2.13.0
+2026-10-17T09:26:10.3263400Z   [1m[92m  Downloaded[0m cfg-if v1.0.4
+2026-10-17T09:26:10.3327380Z   [1m[92m  Downloaded[0m cfg_aliases v0.2.1
+2026-10-17T09:26:10.3329090Z   [1m[92m  Downloaded[0m libloading v0.8.9
+2026-10-17T09:26:10.3425330Z   [1m[92m  Downloaded[0m litrs v1.0.0
+2026-10-17T09:26:10.3597850Z   [1m[92m  Downloaded[0m objc2-quartz-core v0.3.2
+2026-10-17T09:26:10.3674950Z   [1m[92m  Downloaded[0m presser v0.3.1
+2026-10-17T09:26:10.3790450Z   [1m[92m  Downloaded[0m raw-window-metal v1.1.0
+2026-10-17T09:26:10.3908850Z   [1m[92m  Downloaded[0m scopeguard v1.2.0
+2026-10-17T09:26:10.4127710Z   [1m[92m  Downloaded[0m thiserror v2.0.18
+2026-10-17T09:26:10.4402280Z   [1m[92m  Downloaded[0m bytemuck_derive v1.11.0
+2026-10-17T09:26:10.4608940Z   [1m[92m  Downloaded[0m khronos-egl v6.0.0
+2026-10-17T09:26:10.4680790Z   [1m[92m  Downloaded[0m parking_lot_core v0.9.12
+2026-10-17T09:26:10.4788900Z   [1m[92m  Downloaded[0m quote v1.0.46
+2026-10-17T09:26:10.4954030Z   [1m[92m  Downloaded[0m smallvec v1.15.2
+2026-10-17T09:26:10.4994040Z   [1m[92m  Downloaded[0m tempfile v3.27.0
+2026-10-17T09:26:10.5105740Z   [1m[92m  Downloaded[0m thiserror-impl v2.0.18
+2026-10-17T09:26:10.5162870Z   [1m[92m  Downloaded[0m log v0.4.33
+2026-10-17T09:26:10.5191730Z   [1m[92m  Downloaded[0m num-traits v0.2.19
+2026-10-17T09:26:10.5323150Z   [1m[92m  Downloaded[0m parking_lot v0.12.5
+2026-10-17T09:26:10.5405890Z   [1m[92m  Downloaded[0m proc-macro2 v1.0.106
+2026-10-17T09:26:10.5506550Z   [1m[92m  Downloaded[0m serde v1.0.228
+2026-10-17T09:26:10.5604740Z   [1m[92m  Downloaded[0m serde_core v1.0.228
+2026-10-17T09:26:10.5702050Z   [1m[92m  Downloaded[0m serde_derive v1.0.228
+2026-10-17T09:26:10.5887000Z   [1m[92m  Downloaded[0m spirv v0.4.0+sdk-1.4.341.0
+2026-10-17T09:26:10.5960570Z   [1m[92m  Downloaded[0m rayon-core v1.13.0
+2026-10-17T09:26:10.6117230Z   [1m[92m  Downloaded[0m zerocopy-derive v0.8.54
+2026-10-17T09:26:10.6597000Z   [1m[92m  Downloaded[0m memchr v2.8.3
+2026-10-17T09:26:10.7038320Z   [1m[92m  Downloaded[0m serde_json v1.0.150
+2026-10-17T09:26:10.7339440Z   [1m[92m  Downloaded[0m wgpu-types v29.0.4
+2026-10-17T09:26:10.7450280Z   [1m[92m  Downloaded[0m objc2-core-foundation v0.3.2
+2026-10-17T09:26:10.8133110Z   [1m[92m  Downloaded[0m libm v0.2.16
+2026-10-17T09:26:10.8618270Z   [1m[92m  Downloaded[0m objc2 v0.6.4
+2026-10-17T09:26:10.9030320Z   [1m[92m  Downloaded[0m wgpu v29.0.4
+2026-10-17T09:26:10.9623420Z   [1m[92m  Downloaded[0m zerocopy v0.8.54
+2026-10-17T09:26:11.0685100Z   [1m[92m  Downloaded[0m unicode-width v0.2.2
+2026-10-17T09:26:11.0887980Z   [1m[92m  Downloaded[0m objc2-foundation v0.3.2
+2026-10-17T09:26:11.1823890Z   [1m[92m  Downloaded[0m syn v2.0.118
+2026-10-17T09:26:11.2288290Z   [1m[92m  Downloaded[0m ash v0.38.0+1.3.281
+2026-10-17T09:26:11.3164420Z   [1m[92m  Downloaded[0m wgpu-core v29.0.4
+2026-10-17T09:26:11.3503380Z   [1m[92m  Downloaded[0m rustix v1.1.4
+2026-10-17T09:26:11.5281570Z   [1m[92m  Downloaded[0m wgpu-hal v29.0.4
+2026-10-17T09:26:11.5881260Z   [1m[92m  Downloaded[0m naga v29.0.4
+2026-10-17T09:26:11.6943300Z   [1m[92m  Downloaded[0m libc v0.2.186
+2026-10-17T09:26:12.0395710Z   [1m[92m   Compiling[0m proc-macro2 v1.0.106
+2026-10-17T09:26:12.0535420Z   [1m[92m   Compiling[0m quote v1.0.46
+2026-10-17T09:26:23.1924100Z   [1m[92m   Compiling[0m unicode-ident v1.0.24
+2026-10-17T09:26:23.5684790Z   [1m[92m   Compiling[0m bitflags v2.13.0
+2026-10-17T09:26:24.7946620Z   [1m[92m   Compiling[0m cfg_aliases v0.2.1
+2026-10-17T09:26:24.8691620Z   [1m[92m   Compiling[0m objc2 v0.6.4
+2026-10-17T09:26:25.0507950Z   [1m[92m   Compiling[0m syn v2.0.118
+2026-10-17T09:26:25.3526950Z   [1m[92m   Compiling[0m libc v0.2.186
+2026-10-17T09:26:26.3016630Z   [1m[92m   Compiling[0m objc2-encode v4.1.0
+2026-10-17T09:26:27.6905910Z   [1m[92m   Compiling[0m cfg-if v1.0.4
+2026-10-17T09:26:31.8583420Z   [1m[92m   Compiling[0m autocfg v1.5.1
+2026-10-17T09:26:32.1757460Z   [1m[92m   Compiling[0m libm v0.2.16
+2026-10-17T09:26:32.4796170Z   [1m[92m   Compiling[0m num-traits v0.2.19
+2026-10-17T09:26:32.7185530Z   [1m[92m   Compiling[0m zerocopy v0.8.54
+2026-10-17T09:26:33.5797640Z   [1m[92m   Compiling[0m zerocopy-derive v0.8.54
+2026-10-17T09:26:35.8508300Z   [1m[92m   Compiling[0m objc2-core-foundation v0.3.2
+2026-10-17T09:26:36.9433450Z   [1m[92m   Compiling[0m thiserror v2.0.18
+2026-10-17T09:26:37.8840810Z   [1m[92m   Compiling[0m objc2-foundation v0.3.2
+2026-10-17T09:26:44.1168760Z   [1m[92m   Compiling[0m thiserror-impl v2.0.18
+2026-10-17T09:26:45.0776570Z   [1m[92m   Compiling[0m bytemuck_derive v1.11.0
+2026-10-17T09:26:45.7073250Z   [1m[92m   Compiling[0m block2 v0.6.2
+2026-10-17T09:26:46.3519340Z   [1m[92m   Compiling[0m naga v29.0.4
+2026-10-17T09:26:46.5304700Z   [1m[92m   Compiling[0m hashbrown v0.17.1
+2026-10-17T09:26:46.7773990Z   [1m[92m   Compiling[0m equivalent v1.0.2
+2026-10-17T09:26:46.8624250Z   [1m[92m   Compiling[0m bit-vec v0.9.1
+2026-10-17T09:26:47.2950950Z   [1m[92m   Compiling[0m parking_lot_core v0.9.12
+2026-10-17T09:26:47.5874550Z   [1m[92m   Compiling[0m log v0.4.33
+2026-10-17T09:26:47.8145840Z   [1m[92m   Compiling[0m foldhash v0.2.0
+2026-10-17T09:26:47.8681630Z   [1m[92m   Compiling[0m once_cell v1.21.4
+2026-10-17T09:26:48.1399650Z   [1m[92m   Compiling[0m unicode-width v0.2.2
+2026-10-17T09:26:48.1473390Z   [1m[92m   Compiling[0m hashbrown v0.16.1
+2026-10-17T09:26:48.5883900Z   [1m[92m   Compiling[0m codespan-reporting v0.13.1
+2026-10-17T09:26:49.1776550Z   [1m[92m   Compiling[0m indexmap v2.14.0
+2026-10-17T09:26:50.1088860Z   [1m[92m   Compiling[0m bit-set v0.9.1
+2026-10-17T09:26:50.3179790Z   [1m[92m   Compiling[0m bytemuck v1.25.1
+2026-10-17T09:26:50.5026440Z   [1m[92m   Compiling[0m objc2-metal v0.3.2
+2026-10-17T09:26:50.8037280Z   [1m[92m   Compiling[0m half v2.7.1
+2026-10-17T09:26:51.3980610Z   [1m[92m   Compiling[0m crossbeam-utils v0.8.22
+2026-10-17T09:26:51.8342970Z   [1m[92m   Compiling[0m raw-window-handle v0.6.2
+2026-10-17T09:26:52.1088310Z   [1m[92m   Compiling[0m scopeguard v1.2.0
+2026-10-17T09:26:52.2506540Z   [1m[92m   Compiling[0m smallvec v1.15.2
+2026-10-17T09:26:52.4610550Z   [1m[92m   Compiling[0m arrayvec v0.7.8
+2026-10-17T09:26:52.6719180Z   [1m[92m   Compiling[0m rustc-hash v1.1.0
+2026-10-17T09:26:52.7534570Z   [1m[92m   Compiling[0m hexf-parse v0.2.1
+2026-10-17T09:26:57.4789720Z   [1m[92m   Compiling[0m objc2-quartz-core v0.3.2
+2026-10-17T09:26:59.0661910Z   [1m[92m   Compiling[0m lock_api v0.4.14
+2026-10-17T09:26:59.3062320Z   [1m[92m   Compiling[0m wgpu-types v29.0.4
+2026-10-17T09:27:04.1732150Z   [1m[92m   Compiling[0m wgpu-hal v29.0.4
+2026-10-17T09:27:04.7261820Z   [1m[92m   Compiling[0m crossbeam-epoch v0.9.20
+2026-10-17T09:27:05.8974300Z   [1m[92m   Compiling[0m wgpu-naga-bridge v29.0.4
+2026-10-17T09:27:06.0367950Z   [1m[92m   Compiling[0m parking_lot v0.12.5
+2026-10-17T09:27:06.9732940Z   [1m[92m   Compiling[0m raw-window-metal v1.1.0
+2026-10-17T09:27:07.2470340Z   [1m[92m   Compiling[0m crossbeam-deque v0.8.7
+2026-10-17T09:27:07.5217760Z   [1m[92m   Compiling[0m profiling v1.0.18
+2026-10-17T09:27:07.5616370Z   [1m[92m   Compiling[0m serde_core v1.0.228
+2026-10-17T09:27:17.5886010Z   [1m[92m   Compiling[0m wgpu-core v29.0.4
+2026-10-17T09:27:17.9550810Z   [1m[92m   Compiling[0m rayon-core v1.13.0
+2026-10-17T09:27:18.1041010Z   [1m[92m   Compiling[0m litrs v1.0.0
+2026-10-17T09:27:18.5243260Z   [1m[92m   Compiling[0m getrandom v0.4.3
+2026-10-17T09:27:18.8147070Z   [1m[92m   Compiling[0m zmij v1.0.21
+2026-10-17T09:27:19.2934510Z   [1m[92m   Compiling[0m rustix v1.1.4
+2026-10-17T09:27:19.7576870Z   [1m[92m   Compiling[0m document-features v0.2.12
+2026-10-17T09:27:20.3176180Z   [1m[92m   Compiling[0m wgpu-core-deps-apple v29.0.4
+2026-10-17T09:27:22.3728100Z   [1m[92m   Compiling[0m errno v0.3.14
+2026-10-17T09:27:22.4551060Z   [1m[92m   Compiling[0m wgpu v29.0.4
+2026-10-17T09:27:22.7817620Z   [1m[92m   Compiling[0m serde_json v1.0.150
+2026-10-17T09:27:22.9305640Z   [1m[92m   Compiling[0m serde v1.0.228
+2026-10-17T09:27:43.8443790Z   [1m[92m   Compiling[0m serde_derive v1.0.228
+2026-10-17T09:27:48.1969160Z   [1m[92m   Compiling[0m memchr v2.8.3
+2026-10-17T09:27:49.1878310Z   [1m[92m   Compiling[0m either v1.16.0
+2026-10-17T09:27:49.3703990Z   [1m[92m   Compiling[0m itoa v1.0.18
+2026-10-17T09:27:49.5420210Z   [1m[92m   Compiling[0m static_assertions v1.1.0
+2026-10-17T09:27:49.5888350Z   [1m[92m   Compiling[0m fastrand v2.4.1
+2026-10-17T09:27:49.7865620Z   [1m[92m   Compiling[0m tempfile v3.27.0
+2026-10-17T09:28:03.4779690Z   [1m[92m   Compiling[0m rayon v1.12.0
+2026-10-17T09:28:06.9958840Z   [1m[92m   Compiling[0m pollster v0.4.0
+2026-10-17T09:28:08.4293920Z   [1m[92m   Compiling[0m darwinbots-engine v0.1.0 (/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/engine)
+2026-10-17T09:29:18.4718060Z   [1m[92m    Finished[0m `release` profile [optimized] target(s) in 3m 10s
+2026-10-17T09:29:24.2844190Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/World09CommandsRenderedTests.cs(74,29): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2852180Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FinalToolsVisualRenderedTests.cs(218,17): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2856210Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FinalToolsVisualRenderedTests.cs(245,9): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2863490Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs(41,29): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2877750Z ##[error]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs(60,23): error CS0121: The call is ambiguous between the following methods or properties: 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(uint)' and 'Darwinbots.Desktop.ViewModels.MainWindowViewModel.Select(Darwinbots.Desktop.Core.OrganismKey)' [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2882710Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/HelpRecordingRenderedTests.cs(93,95): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2887720Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/HelpRecordingRenderedTests.cs(103,95): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2894530Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/TeleporterRenderedTests.cs(212,9): warning CS0618: 'Bitmap.Save(string, int?)' is obsolete: 'Use the overload accepting BitmapEncoderOptions instead.' [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2900110Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(120,17): warning CS8631: The type 'string?' cannot be used as type parameter 'T' in the generic type or method 'Assert.Equal<T>(ReadOnlySpan<T>, T[])'. Nullability of type argument 'string?' doesn't match constraint type 'System.IEquatable<string?>'. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2915300Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(132,17): warning CS8631: The type 'string?' cannot be used as type parameter 'T' in the generic type or method 'Assert.Equal<T>(ReadOnlySpan<T>, T[])'. Nullability of type argument 'string?' doesn't match constraint type 'System.IEquatable<string?>'. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2919280Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(136,33): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2927210Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs(818,21): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2940450Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs(988,13): warning CS8631: The type 'string?' cannot be used as type parameter 'T' in the generic type or method 'Assert.Equal<T>(ReadOnlySpan<T>, T[])'. Nullability of type argument 'string?' doesn't match constraint type 'System.IEquatable<string?>'. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2949990Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs(1466,29): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2953930Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(1004,17): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2957080Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs(1724,29): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2961730Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(1349,17): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2965810Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(1419,17): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2970910Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(1435,17): warning CS8602: Dereference of a possibly null reference. [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2976460Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs(194,17): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2984810Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeRobotFileIntegrationTests.cs(41,32): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.2990450Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeRobotFileIntegrationTests.cs(42,29): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3002980Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs(50,36): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3008260Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs(60,38): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3013570Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs(79,35): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3027400Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs(212,21): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3034450Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs(155,36): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3041200Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs(164,35): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3048890Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedWorldToolsCausalTests.cs(97,31): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3058140Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedWorldToolsCausalTests.cs(123,73): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3070870Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RobotConsoleRenderedTests.cs(62,34): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3079370Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RobotConsoleRenderedTests.cs(63,31): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3090680Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs(195,13): warning xUnit2013: Do not use Assert.Equal() to check for collection size. Use Assert.Single instead. (https://xunit.net/xunit.analyzers/rules/xUnit2013) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3098780Z ##[warning]/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs(1744,17): warning xUnit2013: Do not use Assert.Equal() to check for collection size. Use Assert.Single instead. (https://xunit.net/xunit.analyzers/rules/xUnit2013) [/Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj]
+2026-10-17T09:29:24.3560780Z ##[error]Process completed with exit code 1.
+2026-10-17T09:29:24.3806530Z ##[group]Run actions/upload-artifact@v4
+2026-10-17T09:29:24.3807160Z with:
+2026-10-17T09:29:24.3807420Z   name: desktop-diagnostics-osx-arm64
+2026-10-17T09:29:24.3807810Z   path: artifacts
+2026-10-17T09:29:24.3808340Z   if-no-files-found: ignore
+2026-10-17T09:29:24.3808760Z   compression-level: 6
+2026-10-17T09:29:24.3809050Z   overwrite: false
+2026-10-17T09:29:24.3809350Z   include-hidden-files: false
+2026-10-17T09:29:24.3809640Z env:
+2026-10-17T09:29:24.3809870Z   CARGO_HOME: /Users/runner/.cargo
+2026-10-17T09:29:24.3810220Z   CARGO_INCREMENTAL: 0
+2026-10-17T09:29:24.3810600Z   CARGO_TERM_COLOR: always
+2026-10-17T09:29:24.3811040Z   DOTNET_ROOT: /Users/runner/.dotnet
+2026-10-17T09:29:24.3811360Z ##[endgroup]
+2026-10-17T09:29:25.3773560Z (node:10728) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-17T09:29:25.3780640Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-17T09:29:25.3818010Z No files were found with the provided path: artifacts. No artifacts will be uploaded.
+2026-10-17T09:29:25.4025590Z Post job cleanup.
+2026-10-17T09:29:25.6869110Z [command]/opt/homebrew/bin/git version
+2026-10-17T09:29:25.7194400Z git version 2.56.0
+2026-10-17T09:29:25.7717110Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/cefb0cb1-8b40-486a-8bcd-afc7e5b8eb29/.gitconfig'
+2026-10-17T09:29:25.7717990Z Temporarily overriding HOME='/Users/runner/work/_temp/cefb0cb1-8b40-486a-8bcd-afc7e5b8eb29' before making global git config changes
+2026-10-17T09:29:25.7834200Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-17T09:29:25.7971810Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern
+2026-10-17T09:29:25.8477060Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-17T09:29:25.8824620Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-17T09:29:26.0901040Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-17T09:29:26.1003190Z http.https://github.com/.extraheader
+2026-10-17T09:29:26.1245290Z [command]/opt/homebrew/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-17T09:29:26.1363470Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-17T09:29:26.3383500Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-17T09:29:26.3625320Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-17T09:29:26.5510730Z Cleaning up orphan processes
+2026-10-17T09:29:27.0512680Z Terminate orphan process: pid (10696) (dotnet)
+2026-10-17T09:29:28.0706460Z Terminate orphan process: pid (5078) (VBCSCompiler)
+2026-10-17T09:29:28.1412120Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-dotnet@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

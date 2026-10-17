@@ -1,0 +1,195 @@
+{
+  "source": "native-roundtrip-pass60/source.json",
+  "status": "Fresh seven-case/21-output Rust candidates; genuine movement and additional control comparisons are recorded separately.",
+  "cases": [
+    {
+      "case": "movement",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle1.sim",
+      "output_sha256": "F0C94224D60926F863DD015FC884AC93EFAB8E6392F9ED6C501C8245A09D7173"
+    },
+    {
+      "case": "movement",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle10.sim",
+      "output_sha256": "66E473E595BBE146893F1722B15863107365859EA4113896747C1EA7F818CDAA"
+    },
+    {
+      "case": "movement",
+      "cycle": 100,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle100.sim",
+      "output_sha256": "E7C255272824FAEA49E4DEE0B69B165CB543DED93809CA45D7AA00C24578B309"
+    },
+    {
+      "case": "fixed",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle1.sim",
+      "output_sha256": "80155DF55842FA4B5B60A42240CD85B8C1184D6F07D85C3B5E68EC3599922A9A"
+    },
+    {
+      "case": "fixed",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle10.sim",
+      "output_sha256": "742EE79F3FB9CFC4F3E0C46E609C838A5E744BE7B47619A41E90F06D14E440F6"
+    },
+    {
+      "case": "fixed",
+      "cycle": 100,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+      "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle100.sim",
+      "output_sha256": "AB0F80F9BC1259BFE4FDEFAFBAC0121CA5F19B926F2360E35D6752C98D9FFA86"
+    },
+    {
+      "case": "contacts",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle1.sim",
+      "output_sha256": "D3EC1618739E836D61386E0322CFDB9B3A104655DDA61EB0B6C1A001FA490693"
+    },
+    {
+      "case": "contacts",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle10.sim",
+      "output_sha256": "DEDC038BA1A09ED5CCF48331749B1B31E0498E103B28520787A13627089337A0"
+    },
+    {
+      "case": "contacts",
+      "cycle": 100,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+      "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle100.sim",
+      "output_sha256": "9CB0493E1247CA477C0D08C75A16BDC012B0F2F93DB318E248DCD1C1AEA58742"
+    },
+    {
+      "case": "body",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle1.sim",
+      "output_sha256": "26C4B93B9BDDC7700163A8FD3A1FC3C1C462B620F21A5B0A863884598FDE99D3"
+    },
+    {
+      "case": "body",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle10.sim",
+      "output_sha256": "6634CE9C8842B7535CFD9ED47669359DC2CDA29D1DEA85FF549AFD417A766087"
+    },
+    {
+      "case": "body",
+      "cycle": 100,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+      "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle100.sim",
+      "output_sha256": "73D549B77E206F9A659E29CAE933C899A4F223A25B84BA2B5E4A82BA43957DCC"
+    },
+    {
+      "case": "ties",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle1.sim",
+      "output_sha256": "3B20F2240B2A1D4DEEB83A2C6D4DAEAB91F7B57592ABA16F2F5D8CEE35BE4559"
+    },
+    {
+      "case": "ties",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle10.sim",
+      "output_sha256": "07CCD34BFF33BD1CC88F2EBD45F028C2FB316335A4FB84BA81CDE948DDCF91E1"
+    },
+    {
+      "case": "ties",
+      "cycle": 100,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+      "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle100.sim",
+      "output_sha256": "027FEC065539EFD7A52195B14A801D31CFEEDA2352EB84473640A7A628A04A62"
+    },
+    {
+      "case": "feeding",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle1.sim",
+      "output_sha256": "509885D0168AEDB2E11A604A00BBD9CF6DDEFBC903DE55CD8F5B693D61F01E3C"
+    },
+    {
+      "case": "feeding",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle10.sim",
+      "output_sha256": "587B9C6F9D9D3B0A5E58BC4EC6529BF2F7C85CDB039C9FB36C19EB52D6B57363"
+    },
+    {
+      "case": "feeding",
+      "cycle": 100,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+      "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle100.sim",
+      "output_sha256": "DBE8C0966A7AC8C2353B6846708FC3760D493FF4273ECC7788D08A9CE4BB0CF6"
+    },
+    {
+      "case": "reproduction",
+      "cycle": 1,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle1.sim",
+      "output_sha256": "37429C80EF7DA7F705CD346D3D1A89280AB2B6B0272DB91A60C16177733180F0"
+    },
+    {
+      "case": "reproduction",
+      "cycle": 10,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle10.sim",
+      "output_sha256": "E044B22B876B725588E7547E95F39DF32A537D9B506E8E46730BDB547ED29A15"
+    },
+    {
+      "case": "reproduction",
+      "cycle": 100,
+      "exit_code": 0,
+      "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+      "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle100.sim",
+      "output_sha256": "A360D600504785E888F18B63B2B1522F81610B03CC91EA3C482329AFC62144A2"
+    }
+  ]
+}

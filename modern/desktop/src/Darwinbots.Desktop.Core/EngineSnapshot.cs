@@ -136,7 +136,8 @@ public sealed record NativeEnergyContextSnapshot(
 public sealed record NativeProcessCachesSnapshot(
     [property: System.Text.Json.Serialization.JsonPropertyName("light_availability")] double LightAvailability,
     [property: System.Text.Json.Serialization.JsonPropertyName("energy")] NativeEnergyContextSnapshot Energy,
-    [property: System.Text.Json.Serialization.JsonPropertyName("shots_this_cycle")] ulong ShotsThisCycle = 0)
+    [property: System.Text.Json.Serialization.JsonPropertyName("shots_this_cycle")] ulong ShotsThisCycle = 0,
+    [property: System.Text.Json.Serialization.JsonPropertyName("death_poffs_enabled")] bool DeathPoffsEnabled = true)
 {
     public static NativeProcessCachesSnapshot Empty => new(0, NativeEnergyContextSnapshot.Empty);
 }
@@ -257,7 +258,8 @@ public sealed record ShotSnapshot(
     uint Age,
     uint Range,
     float Energy,
-    bool ImpactFlash);
+    bool ImpactFlash,
+    uint? Color = null);
 public sealed record TieSnapshot(OrganismKey First, OrganismKey Second, float RestLength);
 public sealed partial record HistorySampleSnapshot(
     ulong Tick, int Population, long TotalEnergy, ulong Births, ulong Deaths, ulong Mutations, ulong ShotsFired);
@@ -302,6 +304,7 @@ public sealed record EngineSnapshot(
     public IReadOnlyList<SpeciesSnapshot> Species { get; init; } = [];
     public MutationSettingsSnapshot MutationSettings { get; init; } = MutationSettingsSnapshot.Default;
     public bool TiesEnabled { get; init; } = true;
+    public bool DeathPoffsEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;
     public bool AsexualReproductionAllowed { get; init; } = true;
     public PlayerBotSnapshot PlayerBot { get; init; } = PlayerBotSnapshot.Default;

@@ -57,7 +57,7 @@ public sealed class FindBestRenderedTests
                 await Flush();
                 // Pausing does not change Running: show the active search weight while paused.
                 await CheckWeightDialogAndCancel(window, menus, 29m);
-                model.Select(new(3, 2));
+                model.Select(new OrganismKey(3, 2));
                 var viewport = window.FindControl<WorldViewport>("Viewport")!;
                 viewport.SelectKey(new(3, 2));
                 Assert.Equal(new OrganismKey(3, 2), model.SelectedKey);

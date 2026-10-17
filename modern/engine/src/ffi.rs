@@ -119,6 +119,11 @@ enum EngineCommand {
     },
     RemoveMany {
         organisms: Vec<OrganismIdCommand>,
+        #[serde(default)]
+        suppress_death_poffs: bool,
+    },
+    SetDeathPoffsEnabled {
+        enabled: bool,
     },
     ImportSpecies {
         dna: String,
@@ -739,12 +744,21 @@ fn db_engine_command_batch_impl(
             EngineCommand::Remove { slot, generation } => engine
                 .remove(OrganismId::new(slot, generation))
                 .map(|_| serde_json::Value::Null),
-            EngineCommand::RemoveMany { organisms } => {
+            EngineCommand::SetDeathPoffsEnabled { enabled } => {
+                engine.set_death_poffs_enabled(enabled);
+                Ok(serde_json::Value::Null)
+            }
+            EngineCommand::RemoveMany {
+                organisms,
+                suppress_death_poffs,
+            } => {
                 let ids: Vec<_> = organisms
                     .into_iter()
                     .map(|organism| OrganismId::new(organism.slot, organism.generation))
                     .collect();
-                engine.remove_many(&ids).map(|_| serde_json::Value::Null)
+                engine
+                    .remove_many_with_death_poffs(&ids, suppress_death_poffs)
+                    .map(|_| serde_json::Value::Null)
             }
             EngineCommand::ImportSpecies {
                 dna,
@@ -1434,6 +1448,8 @@ mod tests {
         let fresh_caches =
             serde_json::to_value(fresh_process.read_native_process_caches()).unwrap();
         assert_eq!(fresh_caches["shots_this_cycle"], 0);
+        assert_eq!(fresh_caches["death_poffs_enabled"], true);
+        assert!(fresh_process.snapshot().death_poffs_enabled);
         assert_eq!(fresh_caches["energy"]["displayed"], 0);
         assert_eq!(fresh_caches["energy"]["current_index"], 0);
         assert_eq!(
@@ -1442,7 +1458,8 @@ mod tests {
         );
 
         let mut current = Engine::new_native(EngineConfig::testing()).unwrap();
-        let current_caches = native_cache_fixture(0.25, 109, 7, 37, 17);
+        let mut current_caches = native_cache_fixture(0.25, 109, 7, 37, 17);
+        current_caches.death_poffs_enabled = false;
         let current_context = serde_json::to_value(&current_caches).unwrap();
         current.set_native_process_caches(current_caches).unwrap();
         assert_eq!(
@@ -1486,6 +1503,7 @@ mod tests {
         current
             .set_native_process_caches(native_cache_fixture(0.375, 421, 29, 199, 17))
             .unwrap();
+        current.set_death_poffs_enabled(false);
         let before = SaveFile::encode(&current).unwrap();
         let invalid = b"invalid simulation";
         assert_ne!(
@@ -1504,7 +1522,8 @@ mod tests {
             .unwrap();
         engine.set_native_gaussian_spare(Some(1.25)).unwrap();
         engine.set_native_sun_change(22);
-        let caches = native_cache_fixture(0.375, 421, 29, 199, 17);
+        let mut caches = native_cache_fixture(0.375, 421, 29, 199, 17);
+        caches.death_poffs_enabled = false;
         let expected = serde_json::to_value(&caches).unwrap();
         engine.set_native_process_caches(caches).unwrap();
         let before = SaveFile::encode(&engine).unwrap();
@@ -1568,6 +1587,29 @@ mod tests {
         assert_eq!(status, DbStatus::Ok);
         assert_eq!(engine.snapshot().stats.native_shots_visited, Some(0));
         assert_eq!(engine.snapshot().tick, snapshot_before.tick);
+        let before_policy = serde_json::to_value(&engine).unwrap();
+        let publications = engine.snapshot_publication_count();
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_death_poffs_enabled","enabled":false},
+                {"type":"read_native_process_caches"}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert!(response["results"][0].is_null());
+        assert_eq!(response["results"][1]["death_poffs_enabled"], false);
+        assert!(!engine.snapshot().death_poffs_enabled);
+        let after_policy = serde_json::to_value(&engine).unwrap();
+        for key in ["native_random", "slots", "config", "tick", "native_cycle"] {
+            assert_eq!(after_policy[key], before_policy[key], "{key}");
+        }
+        assert_eq!(engine.snapshot_publication_count(), publications);
+        assert_eq!(after_policy["death_poffs_enabled"], false);
+        let resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        assert!(!resumed.snapshot().death_poffs_enabled);
+        assert!(!resumed.read_native_process_caches().death_poffs_enabled);
     }
 
     #[test]
@@ -1604,6 +1646,15 @@ mod tests {
             invalid["shots_this_cycle"] = count;
             invalid_cases.push(invalid);
         }
+        for flag in [
+            serde_json::Value::Null,
+            serde_json::json!(0),
+            serde_json::json!("false"),
+        ] {
+            let mut invalid = valid.clone();
+            invalid["death_poffs_enabled"] = flag;
+            invalid_cases.push(invalid);
+        }
         for invalid in invalid_cases {
             let before = SaveFile::encode(&engine).unwrap();
             let (status, response) = classic_test_batch(
@@ -1611,6 +1662,7 @@ mod tests {
                 serde_json::json!([
                     {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":42},
                     {"type":"set_native_process_caches","caches":valid},
+                    {"type":"set_death_poffs_enabled","enabled":false},
                     {"type":"set_native_process_caches","caches":invalid}
                 ]),
             );
@@ -1618,6 +1670,73 @@ mod tests {
             assert!(response.is_empty());
             assert_eq!(SaveFile::encode(&engine).unwrap(), before);
         }
+    }
+
+    #[test]
+    fn death_particle_command_batches_keep_late_failures_atomic_and_explicit_suppression_silent() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let first = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        let second = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [700.0, 500.0])
+            .unwrap();
+        let mut state = engine.db3s_v3_payload().unwrap();
+        state["slots"][second.slot() as usize]["organism"]["kinematics"]["velocity"] =
+            serde_json::json!([40000.0, 0.0]);
+        engine = Engine::restore(Engine::from_db3s_v3_payload(state).unwrap()).unwrap();
+        let before = SaveFile::encode(&engine).unwrap();
+        let snapshot = engine.snapshot().clone();
+        let publications = engine.snapshot_publication_count();
+        let backend = engine.backend();
+        let ids = serde_json::json!([
+            {"slot":first.slot(),"generation":first.generation()},
+            {"slot":second.slot(),"generation":second.generation()}
+        ]);
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_organism_energy","slot":first.slot(),"generation":first.generation(),"energy":42},
+                {"type":"set_death_poffs_enabled","enabled":true},
+                {"type":"remove_many","organisms":ids}
+            ]),
+        );
+        assert_eq!(status, DbStatus::EngineError);
+        assert!(response.is_empty());
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(engine.snapshot(), &snapshot);
+        assert_eq!(engine.snapshot_publication_count(), publications);
+        assert_eq!(engine.backend(), backend);
+        for command in [
+            serde_json::json!({"type":"set_death_poffs_enabled"}),
+            serde_json::json!({"type":"set_death_poffs_enabled","enabled":0}),
+            serde_json::json!({"type":"remove_many","organisms":ids,"suppress_death_poffs":"true"}),
+        ] {
+            let (status, response) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([
+                    {"type":"set_death_poffs_enabled","enabled":false}, command
+                ]),
+            );
+            assert_eq!(status, DbStatus::InvalidCommand);
+            assert!(response.is_empty());
+            assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        }
+        let random = serde_json::to_value(&engine).unwrap()["native_random"].clone();
+        let (status, _) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"remove_many","organisms":ids,"suppress_death_poffs":true}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(engine.population(), 0);
+        assert!(engine.snapshot().shots.is_empty());
+        assert!(engine.snapshot().death_poffs_enabled);
+        assert_eq!(
+            serde_json::to_value(&engine).unwrap()["native_random"],
+            random
+        );
     }
 
     #[test]

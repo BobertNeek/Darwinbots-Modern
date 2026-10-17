@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "created_utc": "2026-10-17T10:52:53.955Z",
+  "state": "source_and_prior_capture_observation_only_repair_not_executed",
+  "source_repository": "https://github.com/darwinbots/Darwinbots2",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "reference_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "original_source_diff_against_reference_head": "empty for all four files; independently observed with git diff before authoring",
+  "files": [
+    {
+      "file": "Darwinbots2/Globals.bas",
+      "original_git_blob": "5c8b8e323a9fb21d6eeb96624af2b0d53ae2db17",
+      "raw_sha256": "0F95654E35518102258439C10501A13B1973350218D287AAC7F0F806C141EC27",
+      "bytes": 17097
+    },
+    {
+      "file": "Darwinbots2/Robots.bas",
+      "original_git_blob": "c774c873e843ce2b9009520548982ea0e03a0e8d",
+      "raw_sha256": "9EF9C3F61B8CBD1206259F408335195F073153403A36A7563389FEE2E4201FB3",
+      "bytes": 116735
+    },
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "original_git_blob": "7c6e9f25864d8b154efc31c81ede3409118b3e87",
+      "raw_sha256": "5091B7196149EC219A66AC75EE0ED704B68D34F1DB763EDEC77C406ED226D408",
+      "bytes": 45635
+    },
+    {
+      "file": "Darwinbots2/Multibots.bas",
+      "original_git_blob": "487726fc7dfb63550eb296643e6fd86d1a83969f",
+      "raw_sha256": "82ECAC2BED12BA56D296EAC85E8CF17E5AB8C4C7203B19C297F004400CA14103",
+      "bytes": 5068
+    }
+  ],
+  "original_capture": {
+    "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim",
+    "sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+    "actual_cycle": 100,
+    "previously_observed_particles": {
+      "count": 20,
+      "kind": -100,
+      "zero_based_slots": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        0,
+        1,
+        2,
+        3
+      ],
+      "age": 8,
+      "range": 7,
+      "energy": 281,
+      "parent": 0,
+      "value": 0
+    },
+    "boundary": "Actual original capture. Planned port regression has not executed."
+  },
+  "contracts": {
+    "makepoff": "Globals.bas313..335: twenty packets, speed/x/y/color draw order,80 uniform draws,no Gaussian draw; RobSize120 yields distance240,energy281,range7.",
+    "kill_order": "Robots.bas2970..3020: tie cleanup and dead flag, makepoff unless nopoff, then referenced stored virus shot cleanup; original births precede queued kills after UpdateShots.",
+    "policy": "MDIForm1.nopoff is process runtime state; creation gate only. Existing particles remain drawn. Whole connected organism deletion temporarily suppresses creation.",
+    "rounding": "Single angle/trig result/velocity sums and position endpoints; checked ties-to-even Integer velocities, Long coordinates; DBrite uses /2 and Long ties-to-even rounding.",
+    "color_boundary": "Original COLORREF/BGR is converted by native_io.color into opaque internal ARGB; shot snapshot already publishes ARGB and native_sim_export.bgr converts back. Preserve public JSON color representation."
+  },
+  "planned_checks": "Exact original active and dormant packet fields, draw count/spare, enabled/disabled policy, source removal paths, state handoff, atomic removal failure, managed readback and rendering. None executed for61."
+}

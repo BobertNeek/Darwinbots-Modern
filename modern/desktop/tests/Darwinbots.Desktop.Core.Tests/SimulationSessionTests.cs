@@ -115,7 +115,7 @@ public sealed class SimulationSessionTests
         using var release = new ManualResetEventSlim();
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var engine = new FakeEngineClient { NativeGaussianSpare = 1.25f };
-        var caches = new NativeProcessCachesSnapshot(0.125, new(Enumerable.Range(0, 101).ToArray(), 4, 123), 17);
+        var caches = new NativeProcessCachesSnapshot(0.125, new(Enumerable.Range(0, 101).ToArray(), 4, 123), 17, false);
         engine.BeforeTick = () =>
         {
             started.SetResult();
@@ -147,6 +147,7 @@ public sealed class SimulationSessionTests
         Assert.Equal((byte)12, fullContext.SunChange);
         Assert.Same(caches, fullContext.Caches);
         Assert.Equal(17UL, fullContext.Caches.ShotsThisCycle);
+        Assert.False(fullContext.Caches.DeathPoffsEnabled);
         Assert.Equal(1ul, session.LatestSnapshot.Tick);
         Assert.Single(engine.ExecutionThreads);
         Assert.NotEqual(Environment.CurrentManagedThreadId, engine.ExecutionThreads.Single());
@@ -154,8 +155,10 @@ public sealed class SimulationSessionTests
         Assert.Single(engine.ExecutionThreads);
         engine.NativeGaussianSpare = null;
         Assert.Null(await session.ReadNativeGaussianSpareAsync());
-        engine.NativeProcessCaches = caches with { ShotsThisCycle = 0 };
-        Assert.Equal(0UL, (await session.ReadNativeProcessStateAsync()).Caches.ShotsThisCycle);
+        engine.NativeProcessCaches = caches with { ShotsThisCycle = 0, DeathPoffsEnabled = true };
+        var cleared = (await session.ReadNativeProcessStateAsync()).Caches;
+        Assert.Equal(0UL, cleared.ShotsThisCycle);
+        Assert.True(cleared.DeathPoffsEnabled);
         Assert.Equal(1ul, session.LatestSnapshot.Tick);
     }
 
@@ -229,8 +232,52 @@ public sealed class SimulationSessionTests
         await session.RemoveManyAsync(organisms);
 
         Assert.Equal(organisms, Assert.Single(engine.RemoveManyCalls));
+        Assert.False(Assert.Single(engine.RemoveManySuppressions));
         var executionThread = Assert.Single(engine.ExecutionThreads);
         Assert.NotEqual(callerThread, executionThread);
+    }
+
+    [Fact]
+    public async Task DeathParticlePolicyAndSuppressedDeletionWaitForTheEngineQueueAndPublishAcknowledgement()
+    {
+        using var release = new ManualResetEventSlim();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new FakeEngineClient();
+        engine.BeforeTick = () =>
+        {
+            started.SetResult();
+            if (!release.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Gated engine tick was not released.");
+        };
+        await using var session = new SimulationSession(engine);
+        var step = session.StepAsync();
+        Task policy;
+        Task removal;
+        OrganismKey[] requested = [new(3, 2), new(7, 5)];
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            policy = session.SetDeathPoffsEnabledAsync(false);
+            removal = session.RemoveManyAsync(requested, suppressDeathPoffs: true);
+            requested[0] = new(99, 99);
+            Assert.False(policy.IsCompleted);
+            Assert.False(removal.IsCompleted);
+            Assert.Empty(engine.DeathPoffsPolicies);
+        }
+        finally { release.Set(); }
+        await step;
+        await policy;
+        await removal;
+        Assert.Equal(new[] { false }, engine.DeathPoffsPolicies);
+        Assert.False(session.LatestSnapshot.DeathPoffsEnabled);
+        Assert.False((await session.ReadNativeProcessStateAsync()).Caches.DeathPoffsEnabled);
+        Assert.True(Assert.Single(engine.RemoveManySuppressions));
+        Assert.Equal(new OrganismKey[] { new(3, 2), new(7, 5) }, Assert.Single(engine.RemoveManyCalls));
+        Assert.Equal(1UL, session.LatestSnapshot.Tick);
+        Assert.NotEqual(Environment.CurrentManagedThreadId, Assert.Single(engine.ExecutionThreads));
+        await session.SetDeathPoffsEnabledAsync(true);
+        Assert.True(session.LatestSnapshot.DeathPoffsEnabled);
+        Assert.Equal(new[] { false, true }, engine.DeathPoffsPolicies);
+        Assert.Equal(1UL, session.LatestSnapshot.Tick);
     }
 
     [Fact]
@@ -420,6 +467,8 @@ internal sealed class FakeEngineClient : IEngineClient
     public float[]? LastInsertedPosition { get; private set; }
     public (uint Slot, uint Generation)? LastRemoved { get; private set; }
     public List<IReadOnlyList<OrganismKey>> RemoveManyCalls { get; } = [];
+    public List<bool> RemoveManySuppressions { get; } = [];
+    public List<bool> DeathPoffsPolicies { get; } = [];
     public float[]? LastMovePosition { get; private set; }
     public ObstacleSnapshot? LastObstacleAdded { get; private set; }
     public ObstacleSnapshot? LastObstacleUpdated { get; private set; }
@@ -478,7 +527,10 @@ internal sealed class FakeEngineClient : IEngineClient
     public EngineSnapshot Snapshot()
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
-        return new EngineSnapshot(_tick, _population, Backend, SnapshotOrganisms);
+        return new EngineSnapshot(_tick, _population, Backend, SnapshotOrganisms)
+        {
+            DeathPoffsEnabled = NativeProcessCaches.DeathPoffsEnabled,
+        };
     }
 
     public EngineCapabilities Capabilities() => new(1, Backend, false, null);
@@ -540,11 +592,19 @@ internal sealed class FakeEngineClient : IEngineClient
         _population = Math.Max(0, _population - 1);
     }
 
-    public void RemoveMany(IReadOnlyList<OrganismKey> organisms)
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => RemoveMany(organisms, false);
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs)
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);
         RemoveManyCalls.Add([.. organisms]);
+        RemoveManySuppressions.Add(suppressDeathPoffs);
         _population = Math.Max(0, _population - organisms.Count);
+    }
+    public void SetDeathPoffsEnabled(bool enabled)
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        DeathPoffsPolicies.Add(enabled);
+        NativeProcessCaches = NativeProcessCaches with { DeathPoffsEnabled = enabled };
     }
 
     public void Move(uint slot, uint generation, float[] position) => LastMovePosition = position;

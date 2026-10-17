@@ -343,6 +343,8 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Equal((byte)12, factory.Clients.Last().NativeSunChange);
                 AssertProcessCaches(ProcessCaches(202, 0.25), factory.CreatedSetups.Last().NativeProcessCaches!);
                 AssertProcessCaches(ProcessCaches(202, 0.25), factory.Clients.Last().NativeProcessCaches);
+                await WaitFor(() => Equals(Named<Button>(replacement, "ToolbarSlot13").Content, "POFFS OFF"));
+                Assert.True(Named<WorldViewport>(replacement, "Viewport").ShowDeathPoffs);
                 Assert.Same(factory, Field<IEngineClientFactory>(replacement, "_engineFactory"));
                 Assert.Same(storage, Field<IDesktopStorageService>(replacement, "_storage"));
                 Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeGaussianSpare);
@@ -405,7 +407,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeProcessCaches);
                 middleClient.NativeGaussianSpare = null;
                 middleClient.NativeSunChange = 2;
-                middleClient.NativeProcessCaches = ProcessCaches(-303, 0.5, 0);
+                middleClient.NativeProcessCaches = ProcessCaches(-303, 0.5, 0, true);
 
                 Named<Button>(replacement, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
@@ -416,9 +418,9 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Null(factory.Clients.Last().NativeGaussianSpare);
                 Assert.Equal((byte)2, factory.CreatedSetups.Last().NativeSunChange);
                 Assert.Equal((byte)2, factory.Clients.Last().NativeSunChange);
-                AssertProcessCaches(ProcessCaches(-303, 0.5, 0), factory.CreatedSetups.Last().NativeProcessCaches!);
-                AssertProcessCaches(ProcessCaches(-303, 0.5, 0), factory.Clients.Last().NativeProcessCaches);
-                AssertProcessCaches(ProcessCaches(-303, 0.5, 0), Assert.Single(middleClient.ProcessCachesReads));
+                AssertProcessCaches(ProcessCaches(-303, 0.5, 0, true), factory.CreatedSetups.Last().NativeProcessCaches!);
+                AssertProcessCaches(ProcessCaches(-303, 0.5, 0, true), factory.Clients.Last().NativeProcessCaches);
+                AssertProcessCaches(ProcessCaches(-303, 0.5, 0, true), Assert.Single(middleClient.ProcessCachesReads));
                 AssertReadBeforeDisposeWithoutTicks(middleClient, null);
                 Assert.Same(factory, Field<IEngineClientFactory>(finalWindow, "_engineFactory"));
                 Assert.Same(storage, Field<IDesktopStorageService>(finalWindow, "_storage"));
@@ -428,6 +430,9 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Equal(new float?[] { 1.25f, 2.5f, null }, factory.CreatedSetups.Select(value => value.NativeGaussianSpare));
                 Assert.Equal(new[] { 101, 202, -303 }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.Energy.Displayed));
                 Assert.Equal(new ulong[] { 11, 17, 0 }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.ShotsThisCycle));
+                Assert.Equal(new[] { false, false, true }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.DeathPoffsEnabled));
+                await WaitFor(() => Equals(Named<Button>(finalWindow, "ToolbarSlot13").Content, "POFFS ON"));
+                Assert.True(Named<WorldViewport>(finalWindow, "Viewport").ShowDeathPoffs);
                 Assert.All(storage.LastStartWrites, bytes =>
                 {
                     Assert.DoesNotContain("Gaussian", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
@@ -439,8 +444,8 @@ public sealed class RenderedControlSurfaceAuditTests
         }, CancellationToken.None);
     }
 
-    private static NativeProcessCachesSnapshot ProcessCaches(int marker, double light, ulong shotsThisCycle = 17) =>
-        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle);
+    private static NativeProcessCachesSnapshot ProcessCaches(int marker, double light, ulong shotsThisCycle = 17, bool deathPoffsEnabled = false) =>
+        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle, deathPoffsEnabled);
 
     private static void AssertProcessCaches(NativeProcessCachesSnapshot expected, NativeProcessCachesSnapshot actual)
     {
@@ -449,6 +454,7 @@ public sealed class RenderedControlSurfaceAuditTests
         Assert.Equal(expected.Energy.CurrentIndex, actual.Energy.CurrentIndex);
         Assert.Equal(expected.Energy.Displayed, actual.Energy.Displayed);
         Assert.Equal(expected.ShotsThisCycle, actual.ShotsThisCycle);
+        Assert.Equal(expected.DeathPoffsEnabled, actual.DeathPoffsEnabled);
     }
 
     private static void AssertReadBeforeDisposeWithoutTicks(AuditEngineClient client, float? expected)
@@ -2146,7 +2152,16 @@ internal sealed class AuditEngineClient : IEngineClient
         return DnaImportReport.Compatible;
     }
     public void Remove(uint slot, uint generation) => Calls.Enqueue($"Remove:{slot}:{generation}");
-    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => Calls.Enqueue($"RemoveMany:{string.Join(',', organisms.Select(value => $"{value.Slot}:{value.Generation}"))}");
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => RemoveMany(organisms, false);
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs)
+    {
+        Calls.Enqueue($"RemoveMany:{string.Join(',', organisms.Select(value => $"{value.Slot}:{value.Generation}"))}");
+    }
+    public void SetDeathPoffsEnabled(bool enabled)
+    {
+        NativeProcessCaches = NativeProcessCaches with { DeathPoffsEnabled = enabled };
+        Calls.Enqueue($"DeathPoffs:{enabled}");
+    }
     public void Move(uint slot, uint generation, float[] position) => Calls.Enqueue($"Move:{slot}:{generation}:{position[0]:0}:{position[1]:0}");
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position) { Calls.Enqueue($"Clone:{slot}:{generation}"); return new OrganismKey(40, 0); }
     public void ReplaceDna(uint slot, uint generation, string dna) => Calls.Enqueue($"ReplaceDna:{slot}:{generation}");
@@ -2243,6 +2258,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public EngineSnapshot Snapshot() => _snapshot with
     {
         Tick = _tick, NativeCycle = NativeCycle, Backend = _backend,
+        DeathPoffsEnabled = NativeProcessCaches.DeathPoffsEnabled,
         LocalMode = LocalModeForRead ?? _snapshot.LocalMode,
     };
     public void Dispose() => Calls.Enqueue("Dispose");

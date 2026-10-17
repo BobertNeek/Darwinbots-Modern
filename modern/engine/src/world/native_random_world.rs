@@ -137,6 +137,7 @@ impl Engine {
                 *random = Default::default();
                 self.vegetation_runtime = VegetationRuntime::fresh_native_process();
                 self.reset_native_energy_process();
+                self.set_death_poffs_enabled(true);
             }
         }
         self.initialize_native_start();
@@ -564,6 +565,9 @@ mod tests {
     fn native_cycle_automatic_both_dead_retries_same_round_without_awarding_a_result() {
         let (mut world, winner) =
             native_contest_world(42, LocalModeKind::Contest, crate::LeagueWorkflow::Direct);
+        // Explicit original toolbar NoPoff branch isolates this existing
+        // header-only RNG golden; enabled death draws have a separate control.
+        world.set_death_poffs_enabled(false);
         world
             .local_mode
             .config
@@ -615,6 +619,60 @@ mod tests {
         assert_eq!(world.local_mode.restart_count, 0);
         assert_eq!(world.native_cycle, Some(10));
         assert_eq!(world.read_native_gaussian_spare(), Some(1.25));
+    }
+
+    #[test]
+    fn native_f1_retry_seed_includes_eight_hundred_enabled_death_particle_draws() {
+        let (mut world, _) =
+            native_contest_world(42, LocalModeKind::Contest, crate::LeagueWorkflow::Direct);
+        world
+            .local_mode
+            .config
+            .as_mut()
+            .unwrap()
+            .restart_on_extinction = false;
+        world.config.vegetation.minimum_chloroplast_equivalents = 0;
+        for species in &mut world.species {
+            species.reseed = true;
+        }
+        world.set_native_gaussian_spare(Some(1.25)).unwrap();
+        world.start_local_mode().unwrap();
+        world.tick_many(9).unwrap();
+        let ids = world.slots.ids_in_slot_order();
+        assert_eq!(ids.len(), 10);
+        assert!(world.death_poffs_enabled);
+        // Source makepoff has4Rnd per20particles per10KillRobot calls.
+        // The primitive stream is independent of the production death planner.
+        let mut expected = world.native_random.clone().unwrap();
+        for _ in 0..800 {
+            expected.unit();
+        }
+        world.remove_many(&ids).unwrap();
+        assert_eq!(world.native_random.as_ref().unwrap(), &expected);
+        assert_eq!(
+            world
+                .projectiles
+                .snapshots()
+                .iter()
+                .filter(|shot| shot.kind == -100)
+                .count(),
+            200
+        );
+        let expected_seed =
+            (f64::from(expected.unit()) * f64::from(i32::MAX)).round_ties_even() as u64;
+        // StartSimul: Rnd(-1), Randomize(seed/100),3chartcolors+GUID,
+        // then9preparerob/loadrobs draws for each of the10new entrants.
+        expected.reseed_native_start(expected_seed);
+        for _ in 0..94 {
+            expected.unit();
+        }
+        world.tick().unwrap();
+        assert_eq!(world.config.seed, expected_seed);
+        assert_eq!(world.native_random.as_ref().unwrap(), &expected);
+        assert_eq!(world.read_native_gaussian_spare(), Some(1.25));
+        assert!(world.death_poffs_enabled);
+        assert_eq!(world.local_mode.current_round, 1);
+        assert!(world.local_mode.results.is_empty());
     }
 
     #[test]

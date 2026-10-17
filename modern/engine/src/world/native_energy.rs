@@ -71,6 +71,8 @@ impl NativeEnergyRuntime {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct NativeProcessCaches {
+    #[serde(default = "default_true")]
+    pub(crate) death_poffs_enabled: bool,
     pub(crate) light_availability: f64,
     pub(crate) energy: NativeEnergyRuntime,
     #[serde(default)]
@@ -131,6 +133,7 @@ impl Engine {
 
     pub(crate) fn read_native_process_caches(&self) -> NativeProcessCaches {
         NativeProcessCaches {
+            death_poffs_enabled: self.death_poffs_enabled,
             shots_this_cycle: self.stats.native_shots_visited.unwrap_or(0),
             light_availability: self.native_light_availability(),
             energy: self.native_energy.clone(),
@@ -154,6 +157,7 @@ impl Engine {
                 "native ShotsThisCycle exceeds Long range".into(),
             ));
         }
+        self.set_death_poffs_enabled(caches.death_poffs_enabled);
         self.set_native_light_availability(caches.light_availability);
         self.native_energy = caches.energy;
         self.stats.native_shots_visited = self
@@ -236,21 +240,25 @@ mod tests {
         let publications = world.snapshot_publication_count();
         for invalid in [
             NativeProcessCaches {
+                death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: f64::NAN,
                 energy: original.energy.clone(),
             },
             NativeProcessCaches {
+                death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: -0.1,
                 energy: original.energy.clone(),
             },
             NativeProcessCaches {
+                death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 1.1,
                 energy: original.energy.clone(),
             },
             NativeProcessCaches {
+                death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 0.75,
                 energy: NativeEnergyRuntime {
@@ -259,6 +267,7 @@ mod tests {
                 },
             },
             NativeProcessCaches {
+                death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 0.75,
                 energy: NativeEnergyRuntime {
@@ -267,6 +276,7 @@ mod tests {
                 },
             },
             NativeProcessCaches {
+                death_poffs_enabled: true,
                 shots_this_cycle: i32::MAX as u64 + 1,
                 light_availability: 0.75,
                 energy: original.energy.clone(),
@@ -349,6 +359,22 @@ mod tests {
         assert!(world.slots.get(ids[1]).unwrap().flags.exists);
         assert_eq!(world.native_energy.ring[0], 2_250);
         assert_eq!(world.snapshot().stats.native_energy_displayed, Some(0));
+        assert_eq!(world.stats.native_shots_visited, Some(0));
+        assert_eq!(world.snapshot().shots.len(), 20);
+        assert!(
+            world
+                .snapshot()
+                .shots
+                .iter()
+                .all(|shot| shot.kind == -100 && shot.age == 0)
+        );
+        world.tick().unwrap();
+        assert_eq!(world.stats.native_shots_visited, Some(20));
+        assert_eq!(world.native_energy.displayed, 2_250);
+        assert_eq!(
+            world.native_energy.ring[1], 2_150,
+            "ornamental281energy does not enter the -2shot energy sum"
+        );
     }
 
     #[test]
@@ -360,6 +386,7 @@ mod tests {
         let mut caches = world.read_native_process_caches();
         caches.light_availability = 0.125;
         caches.shots_this_cycle = 17;
+        caches.death_poffs_enabled = false;
         caches.energy.ring[4] = 321;
         caches.energy.current_index = 4;
         caches.energy.displayed = 123;
@@ -373,6 +400,7 @@ mod tests {
         restored.add_native_shot_energy(17.0).unwrap();
         restored.set_native_light_availability(0.75);
         restored.stats.native_shots_visited = Some(0);
+        restored.set_death_poffs_enabled(true);
         restored.restore_cycle_checkpoint(rollback);
         assert_eq!(restored.read_native_process_caches(), caches);
         for boundary in [
@@ -386,6 +414,7 @@ mod tests {
         assert_eq!(
             restored.read_native_process_caches(),
             NativeProcessCaches {
+                death_poffs_enabled: true,
                 shots_this_cycle: 0,
                 light_availability: 0.0,
                 energy: NativeEnergyRuntime::default()
@@ -404,6 +433,23 @@ mod tests {
             "light_availability":0.0,"energy":{"ring":vec![0;101],"current_index":0,"displayed":0}
         }))
         .unwrap();
+        assert!(old_context.death_poffs_enabled);
+        assert!(old.death_poffs_enabled);
+        assert!(old.snapshot().death_poffs_enabled);
+        assert!(Snapshot::default().death_poffs_enabled);
+        let mut old_snapshot = serde_json::to_value(old.snapshot()).unwrap();
+        old_snapshot
+            .as_object_mut()
+            .unwrap()
+            .remove("death_poffs_enabled");
+        let old_snapshot: Snapshot = serde_json::from_value(old_snapshot).unwrap();
+        assert!(old_snapshot.death_poffs_enabled);
+        assert!(
+            serde_json::to_value(&old)
+                .unwrap()
+                .get("death_poffs_enabled")
+                .is_none()
+        );
         assert_eq!(old_context.shots_this_cycle, 0);
         assert_eq!(old.read_native_process_caches().shots_this_cycle, 0);
         assert_eq!(old.native_energy, NativeEnergyRuntime::default());

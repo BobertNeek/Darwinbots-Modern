@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "authored_applied_formatted_ready_to_commit",
+  "utc": "2026-10-17T11:21:55.336Z",
+  "authoring_plan": "output/pass61-authoring-plan-final.json",
+  "authoring_plan_sha256": "60EC2595D2DBEEFDBF0F39B55805355909FDB54065C4E2145C7871432C660FBB",
+  "application_receipt": "output/pass61-application.json",
+  "application_sha256": "DADE032AE57BCA35056960176BA827ECB0526B519A6FE3426C7F916284874E28",
+  "formatter": {
+    "first_exit": 1,
+    "first_error": "Windows mapped-file lock",
+    "retry_exit": 0,
+    "changed_files": [
+      {
+        "file": "modern/engine/src/world.rs",
+        "pre_format_sha256": "37D854DB79F3CA553BBA520BD1B477904338A9D6D932CA4B41DB6C3B70D31B30",
+        "sha256": "A3376DF667E9C06C79D18E12A8CE01A72A5EB5D6F1E583D49B07E861186D399D",
+        "bytes": 583847
+      },
+      {
+        "file": "modern/engine/src/world/native_energy.rs",
+        "pre_format_sha256": "48825ABCF93061ECA119A0D3800FC10DD6EACBDF92FD9650B496FFEB80E7E0CA",
+        "sha256": "066B58BE64BB0377E1EE7E516BE3453E13DE6DEEF98D9621251C38DD8176BC57",
+        "bytes": 22066
+      },
+      {
+        "file": "modern/engine/src/world/native_random_world.rs",
+        "pre_format_sha256": "E47BAB63FF8CAF9C08BA2A60B0252B45976E5F598BA2AFA342DB43D57D269BA9",
+        "sha256": "88D1FD0D37D35FCB9275BA1CFD056025A8F3AF4DDBF40BF73F56D78814B38EDB",
+        "bytes": 70176
+      },
+      {
+        "file": "modern/engine/src/ffi.rs",
+        "pre_format_sha256": "27F85650791831E04F0A968311F54473B318F0FD81A8B3B86DDAB03691F164AB",
+        "sha256": "AE40A7C715D1E717FEC38BAA6C5C9B77BC931960BFE735D75338593A261A6ABF",
+        "bytes": 95244
+      },
+      {
+        "file": "modern/engine/src/world/staged_evolution.rs",
+        "pre_format_sha256": "064CAA7E64CCE7FFC519FDE2D74E0DD187EC2737DC009FEFDABDE97F41FC9D69",
+        "sha256": "38FBF7BB94B5F6B4A0BB54E2D07A65EE047175F46C1B29CF91B1A84C4C27C7A9",
+        "bytes": 73488
+      },
+      {
+        "file": "modern/engine/src/world/native_virus.rs",
+        "pre_format_sha256": "63965F702DFFE1FD7F3F3968084956DA8B7BDF1E0B7FD6AC81C3702F6039506C",
+        "sha256": "04BE8E8BE4BE7F7589362386BF32ED5773B75EAB3F6477F1967D379BBD63624E",
+        "bytes": 30130
+      },
+      {
+        "file": "modern/engine/src/world/native_corpses.rs",
+        "pre_format_sha256": "9C117A1200FE19500520C757071471C2DBFA3D91244665849FE025310DDF4750",
+        "sha256": "5D0528EDEAA56119BBAB47A278E2C3170712A9BE4183FA6FB219D412D7BDBD20",
+        "bytes": 36103
+      },
+      {
+        "file": "modern/engine/tests/db24832_genuine_feeding.rs",
+        "pre_format_sha256": "D271D2D796E81DDB9D5D2EF9A9D2CE9EE2C6B779FB09EA026E63EDF304975C9B",
+        "sha256": "954B45F8CF4C390EC49BA47A2474754EF6C78AB5F7A7D482E7F33C692F3BF52F",
+        "bytes": 30332
+      },
+      {
+        "file": "modern/engine/tests/manual_tools.rs",
+        "pre_format_sha256": "63F914E0A4E9B8B8757E4AE91DBFECFDD42345B935B29CAF3E35B32DB4359F96",
+        "sha256": "4DC5EF4DD6C46B9B223B36F6E4F53F1C823BF5A26728875802883EA977F42EAF",
+        "bytes": 6022
+      },
+      {
+        "file": "modern/engine/src/world/native_poffs.rs",
+        "pre_format_sha256": "9E070432F59C90AFDD895F4651C504FE4B30E0FA87DA00F3FC5DF22B8B436581",
+        "sha256": "E2D90C9F93823333C90F4CD77A0EA55BF72BCB8B763C9E26DEF8FD37E5812B9F",
+        "bytes": 16999
+      }
+    ]
+  },
+  "powershell_parse_errors": 0,
+  "comparison_probe": {
+    "path": "output/pass61-native-comparison-probe.json",
+    "cases_passed": 4
+  },
+  "unchanged_admission_helper": "output/native-qualification-admission53.ps1",
+  "unchanged_admission_probes": "Retained prior synthetic admission receipts; not rerun or claimed as fresh61 execution. New comparison logger probe ran4 cases."
+}

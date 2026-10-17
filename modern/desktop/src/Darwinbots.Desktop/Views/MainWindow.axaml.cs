@@ -513,12 +513,32 @@ public sealed partial class MainWindow : Window
         _viewModel.Status = Viewport.RenderSkins ? "ORGANISM SKINS ON" : "ORGANISM SKINS OFF";
     }
 
-    private void ToolbarNoPoffs_Click(object? sender, RoutedEventArgs e)
+    private async void ToolbarNoPoffs_Click(object? sender, RoutedEventArgs e)
     {
-        Viewport.ShowDeathPoffs = !Viewport.ShowDeathPoffs;
-        ToolbarSlot13.Content = Viewport.ShowDeathPoffs ? "POFFS ON" : "POFFS OFF";
-        AutomationProperties.SetName(ToolbarSlot13, Viewport.ShowDeathPoffs ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF");
-        _viewModel.Status = Viewport.ShowDeathPoffs ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF";
+        if (_session is not { } session)
+        {
+            _viewModel.Status = "ENGINE IS NOT READY";
+            return;
+        }
+        ToolbarSlot13.IsEnabled = false;
+        try
+        {
+            await session.SetDeathPoffsEnabledAsync(!session.LatestSnapshot.DeathPoffsEnabled);
+            SynchronizeDeathPoffPolicy(session.LatestSnapshot.DeathPoffsEnabled);
+            _viewModel.Status = session.LatestSnapshot.DeathPoffsEnabled ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF";
+        }
+        catch (Exception error)
+        {
+            SynchronizeDeathPoffPolicy(session.LatestSnapshot.DeathPoffsEnabled);
+            _viewModel.Status = $"DEATH EFFECTS UPDATE FAILED · {error.Message}";
+        }
+        finally { ToolbarSlot13.IsEnabled = true; }
+    }
+
+    private void SynchronizeDeathPoffPolicy(bool enabled)
+    {
+        ToolbarSlot13.Content = enabled ? "POFFS ON" : "POFFS OFF";
+        AutomationProperties.SetName(ToolbarSlot13, enabled ? "DEATH EFFECTS ON" : "DEATH EFFECTS OFF");
     }
 
     private void ToolbarNoGraphics_Click(object? sender, RoutedEventArgs e)
@@ -953,7 +973,7 @@ public sealed partial class MainWindow : Window
         var group = SelectedOrganismGroup();
         if (group.Count == 0) return LegacyCommandResult.Failure("SELECT A ROBOT FIRST");
         OrganismKey[] keys = [.. group.Select(value => new OrganismKey(value.Slot, value.Generation))];
-        await _session.RemoveManyAsync(keys);
+        await _session.RemoveManyAsync(keys, suppressDeathPoffs: true);
         _viewModel.ClearSelection();
         Viewport.SelectSlot(null);
         return LegacyCommandResult.Success($"ORGANISM KILLED · {keys.Length:N0} BOT(S)");
@@ -1936,6 +1956,7 @@ public sealed partial class MainWindow : Window
                     _playerBotEnabled = snapshot.PlayerBot.Enabled;
                     _playerBotBindings = snapshot.PlayerBot.Bindings;
                     _viewModel.Update(snapshot, _runtimeClock.Elapsed, _activeCostMultiplier);
+                    SynchronizeDeathPoffPolicy(snapshot.DeathPoffsEnabled);
                     if (snapshot.LocalMode.Evolution is { Phase: "complete" }) {
                         _runTimer.Stop();
                         _viewModel.Status = "ZEROBOT EVOLUTION COMPLETE";

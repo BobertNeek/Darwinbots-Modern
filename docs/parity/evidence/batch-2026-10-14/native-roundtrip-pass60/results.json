@@ -1,0 +1,1364 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 3.0459264,
+    "executable": "cargo.exe",
+    "arguments": [
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "log": "format-check.log",
+    "invocation_error": null
+  },
+  {
+    "step": "strict-clippy",
+    "exit_code": 0,
+    "seconds": 93.7788003,
+    "executable": "cargo.exe",
+    "arguments": [
+      "clippy",
+      "--release",
+      "--workspace",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "log": "strict-clippy.log",
+    "invocation_error": null
+  },
+  {
+    "step": "cpu-rust-workspace",
+    "exit_code": 101,
+    "seconds": 4421.1289427,
+    "executable": "cargo.exe",
+    "arguments": [
+      "test",
+      "--release",
+      "--workspace",
+      "--no-fail-fast",
+      "--",
+      "--skip",
+      "gpu",
+      "--skip",
+      "switch",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "log": "cpu-rust-workspace.log",
+    "invocation_error": null
+  },
+  {
+    "step": "cli-build",
+    "exit_code": 0,
+    "seconds": 12.6174104,
+    "executable": "cargo.exe",
+    "arguments": [
+      "build",
+      "--release",
+      "-p",
+      "darwinbots-cli"
+    ],
+    "log": "cli-build.log",
+    "invocation_error": null
+  },
+  {
+    "step": "original-zero-cycle-replay",
+    "exit_code": 0,
+    "seconds": 1.097944,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "modern/engine/tests/fixtures/db24832-original-user.sim",
+      "--until-cycle",
+      "281",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass60\\user-rust-cycle281.sim"
+    ],
+    "log": "original-zero-cycle-replay.log",
+    "invocation_error": null
+  },
+  {
+    "step": "original-zero-cycle-raw-file-preservation",
+    "exit_code": 0,
+    "log": "original-zero-cycle-raw-preservation.json",
+    "scope": "Validated raw file preservation only; runtime normalization is a separate CLI-test assertion."
+  },
+  {
+    "step": "original-zero-cycle-compare",
+    "exit_code": 0,
+    "seconds": 1.378942,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "modern/engine/tests/fixtures/db24832-original-user.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass60\\user-rust-cycle281.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "40"
+    ],
+    "log": "original-zero-cycle-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "original-zero-cycle-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 393316,
+    "log": "original-zero-cycle-compare.log",
+    "parse_error": null,
+    "scope": "Raw zero-step file preservation field coverage; not runtime parity."
+  },
+  {
+    "step": "candidate-movement-1",
+    "exit_code": 0,
+    "seconds": 0.1593921,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle1.sim"
+    ],
+    "log": "candidate-movement-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-movement-10",
+    "exit_code": 0,
+    "seconds": 0.1391742,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle10.sim"
+    ],
+    "log": "candidate-movement-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-movement-100",
+    "exit_code": 0,
+    "seconds": 0.165125,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "--until-cycle",
+      "100",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle100.sim"
+    ],
+    "log": "candidate-movement-100.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-fixed-1",
+    "exit_code": 0,
+    "seconds": 0.2461329,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle1.sim"
+    ],
+    "log": "candidate-fixed-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-fixed-10",
+    "exit_code": 0,
+    "seconds": 0.1421275,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle10.sim"
+    ],
+    "log": "candidate-fixed-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-fixed-100",
+    "exit_code": 0,
+    "seconds": 0.5685912,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+      "--until-cycle",
+      "100",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle100.sim"
+    ],
+    "log": "candidate-fixed-100.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-contacts-1",
+    "exit_code": 0,
+    "seconds": 0.2042512,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle1.sim"
+    ],
+    "log": "candidate-contacts-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-contacts-10",
+    "exit_code": 0,
+    "seconds": 0.1434818,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle10.sim"
+    ],
+    "log": "candidate-contacts-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-contacts-100",
+    "exit_code": 0,
+    "seconds": 0.1662982,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+      "--until-cycle",
+      "100",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle100.sim"
+    ],
+    "log": "candidate-contacts-100.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-body-1",
+    "exit_code": 0,
+    "seconds": 0.2944046,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle1.sim"
+    ],
+    "log": "candidate-body-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-body-10",
+    "exit_code": 0,
+    "seconds": 0.2678896,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle10.sim"
+    ],
+    "log": "candidate-body-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-body-100",
+    "exit_code": 0,
+    "seconds": 0.1901353,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+      "--until-cycle",
+      "100",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle100.sim"
+    ],
+    "log": "candidate-body-100.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-ties-1",
+    "exit_code": 0,
+    "seconds": 0.1515896,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle1.sim"
+    ],
+    "log": "candidate-ties-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-ties-10",
+    "exit_code": 0,
+    "seconds": 0.1709103,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle10.sim"
+    ],
+    "log": "candidate-ties-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-ties-100",
+    "exit_code": 0,
+    "seconds": 0.1775088,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+      "--until-cycle",
+      "100",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle100.sim"
+    ],
+    "log": "candidate-ties-100.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-feeding-1",
+    "exit_code": 0,
+    "seconds": 0.178956,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle1.sim"
+    ],
+    "log": "candidate-feeding-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-feeding-10",
+    "exit_code": 0,
+    "seconds": 0.1552295,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle10.sim"
+    ],
+    "log": "candidate-feeding-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-feeding-100",
+    "exit_code": 0,
+    "seconds": 0.1798342,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+      "--until-cycle",
+      "100",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle100.sim"
+    ],
+    "log": "candidate-feeding-100.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-reproduction-1",
+    "exit_code": 0,
+    "seconds": 0.1413118,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle1.sim"
+    ],
+    "log": "candidate-reproduction-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-reproduction-10",
+    "exit_code": 0,
+    "seconds": 0.1999594,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle10.sim"
+    ],
+    "log": "candidate-reproduction-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-reproduction-100",
+    "exit_code": 0,
+    "seconds": 0.1921098,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+      "--until-cycle",
+      "100",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle100.sim"
+    ],
+    "log": "candidate-reproduction-100.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-checkpoints-completeness",
+    "exit_code": 0,
+    "cases": 7,
+    "expected_outputs": 21,
+    "actual_rows": 21,
+    "log": "candidate-checkpoints.json"
+  },
+  {
+    "step": "candidate-movement-102",
+    "exit_code": 0,
+    "seconds": 0.2735984,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "--until-cycle",
+      "102",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle102.sim"
+    ],
+    "log": "candidate-movement-102.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-movement-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1232067,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-movement-cycle1-20261016.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-movement-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-movement-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-movement-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-movement-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1267177,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-movement-cycle10-20261016.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-movement-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-movement-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-movement-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-movement-100-compare",
+    "exit_code": 0,
+    "seconds": 0.1127219,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-movement-cycle100-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle100.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-movement-100-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-movement-100-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-movement-100-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-movement-102-compare",
+    "exit_code": 0,
+    "seconds": 0.1054498,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-movement-cycle102-20261016.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\movement-rust-cycle102.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-movement-102-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-movement-102-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-movement-102-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-movement-checkpoints-completeness",
+    "exit_code": 0,
+    "expected_outputs": 4,
+    "actual_rows": 4,
+    "log": "genuine-movement-comparisons.json"
+  },
+  {
+    "step": "candidate-chloroplast-1",
+    "exit_code": 0,
+    "seconds": 0.1540697,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-chloroplast-start-48032.sim",
+      "--until-cycle",
+      "1",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\chloroplast-rust-cycle1.sim"
+    ],
+    "log": "candidate-chloroplast-1.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-chloroplast-10",
+    "exit_code": 0,
+    "seconds": 0.1943696,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-chloroplast-start-48032.sim",
+      "--until-cycle",
+      "10",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\chloroplast-rust-cycle10.sim"
+    ],
+    "log": "candidate-chloroplast-10.log",
+    "invocation_error": null
+  },
+  {
+    "step": "candidate-contacts-11",
+    "exit_code": 0,
+    "seconds": 0.216451,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-replay",
+      "--simulation",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-contacts-start-48032.sim",
+      "--until-cycle",
+      "11",
+      "--output-sim",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle11.sim"
+    ],
+    "log": "candidate-contacts-11.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-additional-candidate-checkpoints-completeness",
+    "exit_code": 0,
+    "expected_outputs": 3,
+    "actual_rows": 3,
+    "log": "genuine-additional-candidate-checkpoints.json"
+  },
+  {
+    "step": "genuine-fixed-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1051391,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-fixed-cycle1-20261016.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-fixed-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-fixed-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1385,
+    "log": "genuine-fixed-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-body-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1226777,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-body-cycle1-20261016.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-body-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-body-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-body-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-chloroplast-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1473737,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-chloroplast-cycle1-20261016.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\chloroplast-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-chloroplast-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-chloroplast-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-chloroplast-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-chloroplast-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1006914,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-chloroplast-cycle10-20261016.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\chloroplast-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-chloroplast-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-chloroplast-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-chloroplast-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-feeding-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1197534,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-feeding-cycle1-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-feeding-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-feeding-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 2814,
+    "log": "genuine-feeding-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-feeding-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1111937,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-feeding-cycle10-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-feeding-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-feeding-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 3090,
+    "log": "genuine-feeding-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-ties-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1183619,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-ties-cycle1-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-ties-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-ties-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 2768,
+    "log": "genuine-ties-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-contacts-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1221899,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-contacts-cycle1-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-contacts-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-contacts-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 4115,
+    "log": "genuine-contacts-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-contacts-11-compare",
+    "exit_code": 0,
+    "seconds": 0.1144137,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-contacts-cycle11-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle11.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-contacts-11-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-contacts-11-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 4115,
+    "log": "genuine-contacts-11-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-contacts-100-compare",
+    "exit_code": 0,
+    "seconds": 0.1221936,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-contacts-cycle100-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle100.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-contacts-100-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-contacts-100-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 4115,
+    "log": "genuine-contacts-100-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-reproduction-1-compare",
+    "exit_code": 0,
+    "seconds": 0.1008522,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-reproduction-cycle1-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle1.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-reproduction-1-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-reproduction-1-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1387,
+    "log": "genuine-reproduction-1-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-reproduction-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1023994,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-reproduction-cycle10-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-reproduction-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-reproduction-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 2772,
+    "log": "genuine-reproduction-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-fixed-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1074766,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-fixed-cycle10-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-fixed-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-fixed-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1385,
+    "log": "genuine-fixed-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-fixed-100-compare",
+    "exit_code": 0,
+    "seconds": 0.1115412,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-fixed-cycle100-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\fixed-rust-cycle100.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-fixed-100-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-fixed-100-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1385,
+    "log": "genuine-fixed-100-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-body-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1054984,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-body-cycle10-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-body-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-body-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-body-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-body-100-compare",
+    "exit_code": 0,
+    "seconds": 0.1146579,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-body-cycle100-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\body-rust-cycle100.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-body-100-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-body-100-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 1379,
+    "log": "genuine-body-100-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-contacts-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1207342,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-contacts-cycle10-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\contacts-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-contacts-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-contacts-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 4115,
+    "log": "genuine-contacts-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-ties-10-compare",
+    "exit_code": 0,
+    "seconds": 0.1347117,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-ties-cycle10-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle10.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-ties-10-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-ties-10-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 2768,
+    "log": "genuine-ties-10-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-ties-100-compare",
+    "exit_code": 0,
+    "seconds": 0.1430459,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-ties-cycle100-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\ties-rust-cycle100.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-ties-100-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-ties-100-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 2768,
+    "log": "genuine-ties-100-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-feeding-100-compare",
+    "exit_code": 1,
+    "seconds": 0.1118439,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-feeding-cycle100-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\feeding-rust-cycle100.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-feeding-100-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-feeding-100-field-coverage",
+    "exit_code": 1,
+    "expected_compared_fields": 1684,
+    "log": "genuine-feeding-100-compare.log",
+    "parse_error": "Conversion from JSON failed with error: Additional text encountered after finished reading JSON content: d. Path '', line 2, position 0."
+  },
+  {
+    "step": "genuine-reproduction-100-compare",
+    "exit_code": 0,
+    "seconds": 0.1138044,
+    "executable": "./target/release/darwinbots-cli.exe",
+    "arguments": [
+      "native-compare",
+      "--left",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-reproduction-cycle100-20261017.sim",
+      "--right",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate60\\reproduction-rust-cycle100.sim",
+      "--absolute-tolerance",
+      "0",
+      "--relative-tolerance",
+      "0",
+      "--max-differences",
+      "100"
+    ],
+    "log": "genuine-reproduction-100-compare.log",
+    "invocation_error": null
+  },
+  {
+    "step": "genuine-reproduction-100-field-coverage",
+    "exit_code": 0,
+    "expected_compared_fields": 2772,
+    "log": "genuine-reproduction-100-compare.log",
+    "parse_error": null
+  },
+  {
+    "step": "genuine-additional-checkpoints-completeness",
+    "exit_code": 1,
+    "expected_outputs": 21,
+    "actual_rows": 21,
+    "log": "genuine-additional-comparisons.json"
+  },
+  {
+    "step": "desktop-core",
+    "exit_code": 0,
+    "seconds": 26.0113863,
+    "executable": "dotnet.exe",
+    "arguments": [
+      "test",
+      "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj",
+      "-c",
+      "Release",
+      "--logger",
+      "trx;LogFileName=core.trx",
+      "--results-directory",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass60",
+      "--disable-build-servers",
+      "-m:1",
+      "-nr:false",
+      "-p:UseSharedCompilation=false"
+    ],
+    "log": "desktop-core.log",
+    "invocation_error": null
+  },
+  {
+    "step": "desktop-test-build",
+    "exit_code": 1,
+    "seconds": 248.7676461,
+    "executable": "dotnet.exe",
+    "arguments": [
+      "build",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "-nr:false",
+      "-p:UseSharedCompilation=false"
+    ],
+    "log": "desktop-test-build.log",
+    "invocation_error": null
+  },
+  {
+    "step": "windows-publish",
+    "exit_code": 0,
+    "seconds": 15.5387804,
+    "executable": "dotnet.exe",
+    "arguments": [
+      "publish",
+      "modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj",
+      "-c",
+      "Release",
+      "-r",
+      "win-x64",
+      "--self-contained",
+      "false",
+      "-o",
+      "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\artifacts\\win-x64-native-roundtrip-pass60",
+      "--disable-build-servers",
+      "-m:1",
+      "-nr:false",
+      "-p:UseSharedCompilation=false"
+    ],
+    "log": "windows-publish.log",
+    "invocation_error": null
+  },
+  {
+    "step": "package-smoke",
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 1.9012197,
+    "log": "package-smoke.json",
+    "invocation_error": null
+  },
+  {
+    "step": "packaged-native-desktop",
+    "exit_code": 125,
+    "status": "not_run_dependency",
+    "reason": "Fresh Desktop test build failed."
+  },
+  {
+    "step": "package-assets",
+    "exit_code": 0,
+    "bots": 48,
+    "packaged_bots": 48,
+    "log": "package-assets.json"
+  },
+  {
+    "step": "preexisting-wip-image",
+    "exit_code": 0,
+    "log": "preserved-wip-image.json"
+  }
+]

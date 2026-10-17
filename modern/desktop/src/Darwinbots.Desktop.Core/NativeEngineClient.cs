@@ -235,14 +235,19 @@ public sealed partial class NativeEngineClient : IEngineClient
         }, "remove organism");
     }
 
-    public void RemoveMany(IReadOnlyList<OrganismKey> organisms)
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => RemoveMany(organisms, false);
+
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs)
     {
         ArgumentNullException.ThrowIfNull(organisms);
         if (organisms.Count == 0)
             throw new ArgumentException("At least one organism is required.", nameof(organisms));
         EnsureAlive();
-        ExecuteBatch(NativeCommandSerializer.CreateRemoveManyBatch(organisms), "remove organisms");
+        ExecuteBatch(NativeCommandSerializer.CreateRemoveManyBatch(organisms, suppressDeathPoffs), "remove organisms");
     }
+
+    public void SetDeathPoffsEnabled(bool enabled) => ExecuteBatch(
+        NativeCommandSerializer.CreateDeathPoffsBatch(enabled), "change death-particle creation");
 
     public void Move(uint slot, uint generation, float[] position)
     {

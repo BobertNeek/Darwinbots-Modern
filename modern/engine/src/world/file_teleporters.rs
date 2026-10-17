@@ -109,7 +109,7 @@ impl Engine {
                     if transfers.stage_export(&path, &bytes).is_err() {
                         continue;
                     }
-                    if self.remove_many(&members).is_ok() {
+                    if self.remove_many_with_death_poffs(&members, true).is_ok() {
                         sent = sent.saturating_add(1);
                         emitted_paths.push(path);
                     } else {
@@ -148,7 +148,7 @@ impl Engine {
                         continue;
                     }
                     if !transfer.living.is_empty() {
-                        self.remove_many(&transfer.living)?;
+                        self.remove_many_with_death_poffs(&transfer.living, true)?;
                     }
                     let mut archived = transfer.archived;
                     archived.sort_unstable();

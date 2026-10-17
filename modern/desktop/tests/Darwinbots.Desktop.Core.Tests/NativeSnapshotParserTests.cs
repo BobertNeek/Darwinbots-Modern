@@ -37,29 +37,58 @@ public sealed class NativeSnapshotParserTests
     public void ProcessCachesRoundTripTheirSourceShapeWithoutEnteringSavedSetup()
     {
         var ring = Enumerable.Range(0, 101).Select(value => value * 7).ToArray();
-        var caches = new NativeProcessCachesSnapshot(0.125, new(ring, 99, -123), 17);
+        var caches = new NativeProcessCachesSnapshot(0.125, new(ring, 99, -123), 17, false);
         var json = System.Text.Json.JsonSerializer.Serialize(caches);
         Assert.Contains("\"light_availability\":0.125", json);
         Assert.Contains("\"current_index\":99", json);
         Assert.Contains("\"shots_this_cycle\":17", json);
+        Assert.Contains("\"death_poffs_enabled\":false", json);
         var restored = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(json)!;
         Assert.Equal(caches.LightAvailability, restored.LightAvailability);
         Assert.Equal(ring, restored.Energy.Ring);
         Assert.Equal((byte)99, restored.Energy.CurrentIndex);
         Assert.Equal(-123, restored.Energy.Displayed);
         Assert.Equal(17UL, restored.ShotsThisCycle);
+        Assert.False(restored.DeathPoffsEnabled);
         var oldJson = System.Text.Json.JsonSerializer.Serialize(new { light_availability = 0.125, energy = caches.Energy });
         var oldCaches = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(oldJson)!;
         Assert.Equal(0UL, oldCaches.ShotsThisCycle);
+        Assert.True(oldCaches.DeathPoffsEnabled);
+        Assert.True(NativeProcessCachesSnapshot.Empty.DeathPoffsEnabled);
 
         var setup = new WorldSetupOptions { Seed = 42, NativeProcessCaches = caches };
         var savedSetup = System.Text.Json.JsonSerializer.Serialize(setup);
         Assert.DoesNotContain("NativeProcessCaches", savedSetup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("light_availability", savedSetup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("death_poffs_enabled", savedSetup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("native_energy", NativeCommandSerializer.SerializeEngineConfig(setup), StringComparison.OrdinalIgnoreCase);
         var loadedSetup = System.Text.Json.JsonSerializer.Deserialize<WorldSetupOptions>(savedSetup)!;
         Assert.Null(loadedSetup.NativeProcessCaches);
         Assert.Equal(42UL, loadedSetup.Seed);
+    }
+
+    [Fact]
+    public void DeathParticlePolicyAndShotArgbPreserveOldPayloadsAndExplicitZero()
+    {
+        Assert.True(EngineSnapshot.Empty.DeathPoffsEnabled);
+        foreach (var policy in new[] { "", ",\"death_poffs_enabled\":null", ",\"death_poffs_enabled\":true" })
+            Assert.True(NativeSnapshotParser.Parse("{\"tick\":1,\"organisms\":[]" + policy + "}", "CPU").DeathPoffsEnabled);
+        Assert.False(NativeSnapshotParser.Parse("{\"tick\":1,\"organisms\":[],\"death_poffs_enabled\":false}", "CPU").DeathPoffsEnabled);
+
+        // Native SIM import converts original COLORREF red255/blue16711680/black0
+        // to these existing opaque ARGB snapshot values before managed transport.
+        foreach (var (member, expected) in new (string, uint?)[]
+        {
+            ("", null), (",\"color\":null", null), (",\"color\":0", 0),
+            (",\"color\":4294901760", 0xffff0000),
+            (",\"color\":4278190335", 0xff0000ff),
+            (",\"color\":4278190080", 0xff000000),
+        })
+        {
+            var json = "{\"tick\":1,\"organisms\":[],\"shots\":[{\"owner\":{\"slot\":4,\"generation\":2},\"start\":[1,2],\"end\":[3,4],\"kind\":-100" + member + "}]}";
+            Assert.Equal(expected, Assert.Single(NativeSnapshotParser.Parse(json, "CPU").Shots).Color);
+        }
+        Assert.Null(new ShotSnapshot(new(4, 2), [1, 2], [3, 4], [0, 0], 42, 0, 0, 10, 1, false).Color);
     }
 
     [Fact]

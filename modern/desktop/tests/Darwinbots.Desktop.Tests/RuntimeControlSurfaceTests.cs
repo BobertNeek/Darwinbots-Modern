@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Automation;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -75,6 +76,7 @@ public sealed class RuntimeControlSurfaceTests
                 window.KeyRelease(Key.E, RawInputModifiers.Control, PhysicalKey.E, null);
                 await WaitFor(() => engine.Calls.Contains("RemoveMany:3:2"), () => string.Join(", ", engine.Calls));
                 Assert.Equal(["RemoveMany:3:2"], engine.Calls.Where(call => call.StartsWith("RemoveMany:", StringComparison.Ordinal)));
+                Assert.True(Assert.Single(engine.RemoveManySuppressions));
                 return 0;
             }
             finally
@@ -344,7 +346,6 @@ public sealed class RuntimeControlSurfaceTests
                 InvokeMenu(Core.LegacyMenus.LegacyCommandId.EGridMedium);
                 window.FindControl<Button>("ToolbarSlot11")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 window.FindControl<Button>("ToolbarSlot12")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                window.FindControl<Button>("ToolbarSlot13")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 window.FindControl<Button>("ToolbarSlot14")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 InvokeMenu(Core.LegacyMenus.LegacyCommandId.ViewRemoveBackground);
 
@@ -359,7 +360,7 @@ public sealed class RuntimeControlSurfaceTests
                 Assert.False(viewport.RenderWaste);
                 Assert.True(viewport.FlickerMode);
                 Assert.False(viewport.RenderSkins);
-                Assert.False(viewport.ShowDeathPoffs);
+                Assert.True(viewport.ShowDeathPoffs);
                 Assert.False(viewport.IsVisible);
 
                 var afterSave = await simulation.SaveAsync();
@@ -376,6 +377,47 @@ public sealed class RuntimeControlSurfaceTests
             {
                 window.Close();
             }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task PoffsToolbarUsesAcknowledgedCreationPolicyWithoutHidingExistingParticlesOrCorpses()
+    {
+        var snapshot = RecordingEngineClient.CreateSnapshot() with
+        {
+            Shots = [new ShotSnapshot(new(3, 2), [100, 200], [120, 220], [1, 1], -100, 0, 1, 10, 0, false, 0xffff0000)],
+            Corpses = [new CorpseSnapshot([200, 200], [0, 0], 10, 100, 2)],
+        };
+        var engine = new RecordingEngineClient(snapshot);
+        await using var simulation = new SimulationSession(engine);
+        await simulation.StepAsync(0);
+        var before = simulation.LatestSnapshot;
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = RuntimeWindow(simulation);
+            try
+            {
+                var viewport = window.FindControl<WorldViewport>("Viewport")!;
+                viewport.SetSnapshot(before);
+                var button = window.FindControl<Button>("ToolbarSlot13")!;
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => engine.Calls.Contains("DeathPoffs:False")
+                    && !simulation.LatestSnapshot.DeathPoffsEnabled && Equals(button.Content, "POFFS OFF"),
+                    () => string.Join(", ", engine.Calls));
+                Assert.Equal("DEATH EFFECTS OFF", AutomationProperties.GetName(button));
+                Assert.True(viewport.ShowDeathPoffs);
+                Assert.Equal(JsonSerializer.Serialize(before.Shots), JsonSerializer.Serialize(simulation.LatestSnapshot.Shots));
+                Assert.Equal(JsonSerializer.Serialize(before.Corpses), JsonSerializer.Serialize(simulation.LatestSnapshot.Corpses));
+                Assert.Equal(before.Tick, simulation.LatestSnapshot.Tick);
+                Assert.Equal(before.Population, simulation.LatestSnapshot.Population);
+                Assert.Equal(new[] { "Tick:0" }, engine.Calls.Where(value => value.StartsWith("Tick:", StringComparison.Ordinal)));
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => engine.Calls.Contains("DeathPoffs:True")
+                    && simulation.LatestSnapshot.DeathPoffsEnabled && Equals(button.Content, "POFFS ON"));
+                Assert.True(viewport.ShowDeathPoffs);
+                Assert.Equal("DEATH EFFECTS ON", AutomationProperties.GetName(button));
+            }
+            finally { window.Close(); }
         }, CancellationToken.None);
     }
 
@@ -1055,6 +1097,7 @@ public sealed class RuntimeControlSurfaceTests
                     .Invoke(window, null)!;
                 Assert.True(result.Succeeded, result.Status);
                 Assert.Equal(["RemoveMany:3:2,4:7"], engine.Calls.Where(call => call.StartsWith("Remove", StringComparison.Ordinal)));
+                Assert.True(Assert.Single(engine.RemoveManySuppressions));
                 Assert.Null(viewModel.SelectedSlot);
             }, CancellationToken.None);
         }
@@ -1889,14 +1932,17 @@ internal sealed class RecordingEngineClient : IEngineClient
     public ConcurrentQueue<(uint Slot, uint Generation, string Dna)> DnaReplacements { get; } = [];
     public ConcurrentQueue<(uint Slot, uint Generation)> DnaExports { get; } = [];
     public ConcurrentQueue<OrganismKey[]> ExportedGroups { get; } = [];
+    public ConcurrentQueue<bool> RemoveManySuppressions { get; } = [];
     public byte[] ExportedOrganismPayload { get; } = Encoding.ASCII.GetBytes("engine-owned organism fixture");
     public string Backend { get; private set; } = "CPU";
     private ulong _tick;
     private readonly EngineSnapshot _snapshot;
+    private bool _deathPoffsEnabled;
 
     public RecordingEngineClient(EngineSnapshot? snapshot = null)
     {
         _snapshot = snapshot ?? CreateSnapshot();
+        _deathPoffsEnabled = _snapshot.DeathPoffsEnabled;
     }
 
     public static EngineSnapshot CreateSnapshot() => new(0, 1, "CPU", [Organism])
@@ -1918,7 +1964,18 @@ internal sealed class RecordingEngineClient : IEngineClient
         return DnaImportReport.Compatible;
     }
     public void Remove(uint slot, uint generation) => Calls.Enqueue($"Remove:{slot}:{generation}");
-    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => Calls.Enqueue($"RemoveMany:{string.Join(',', organisms.Select(value => $"{value.Slot}:{value.Generation}"))}");
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms) => RemoveMany(organisms, false);
+    public void RemoveMany(IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs)
+    {
+        RemoveManySuppressions.Enqueue(suppressDeathPoffs);
+        Calls.Enqueue($"RemoveMany:{string.Join(',', organisms.Select(value => $"{value.Slot}:{value.Generation}"))}");
+    }
+    public void SetDeathPoffsEnabled(bool enabled)
+    {
+        _deathPoffsEnabled = enabled;
+        Calls.Enqueue($"DeathPoffs:{enabled}");
+    }
+    public NativeProcessCachesSnapshot ReadNativeProcessCaches() => NativeProcessCachesSnapshot.Empty with { DeathPoffsEnabled = _deathPoffsEnabled };
     public void Move(uint slot, uint generation, float[] position) => Calls.Enqueue($"Move:{slot}:{generation}:{position[0]:0}:{position[1]:0}");
     public OrganismKey CloneOrganism(uint slot, uint generation, float[] position)
     {
@@ -1991,6 +2048,7 @@ internal sealed class RecordingEngineClient : IEngineClient
             Tick = _tick,
             Backend = Backend,
             RestrictionOptions = RestrictionOptionsUpdate ?? _snapshot.RestrictionOptions,
+            DeathPoffsEnabled = _deathPoffsEnabled,
         };
     }
     public void Dispose() { }

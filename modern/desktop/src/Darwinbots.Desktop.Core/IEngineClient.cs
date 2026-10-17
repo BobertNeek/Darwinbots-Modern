@@ -11,6 +11,14 @@ public interface IEngineClient : IDisposable
     DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position);
     void Remove(uint slot, uint generation);
     void RemoveMany(IReadOnlyList<OrganismKey> organisms);
+    void RemoveMany(IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs)
+    {
+        if (suppressDeathPoffs)
+            throw new NotSupportedException("This engine client does not support suppressing death particles for a connected-organism deletion.");
+        RemoveMany(organisms);
+    }
+    void SetDeathPoffsEnabled(bool enabled) =>
+        throw new NotSupportedException("This engine client does not support changing death-particle creation.");
     void Move(uint slot, uint generation, float[] position);
     OrganismKey CloneOrganism(uint slot, uint generation, float[] position);
     void ReplaceDna(uint slot, uint generation, string dna);

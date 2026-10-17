@@ -6,8 +6,8 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class CommunityLeagueNativeTests
 {
-    private static NativeProcessCachesSnapshot EnergyCaches(int marker, double light, ulong shotsThisCycle = 17) =>
-        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle);
+    private static NativeProcessCachesSnapshot EnergyCaches(int marker, double light, ulong shotsThisCycle = 17, bool deathPoffsEnabled = false) =>
+        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle, deathPoffsEnabled);
 
     private static void AssertProcessCaches(NativeProcessCachesSnapshot expected, NativeProcessCachesSnapshot actual)
     {
@@ -16,6 +16,7 @@ public sealed class CommunityLeagueNativeTests
         Assert.Equal(expected.Energy.CurrentIndex, actual.Energy.CurrentIndex);
         Assert.Equal(expected.Energy.Displayed, actual.Energy.Displayed);
         Assert.Equal(expected.ShotsThisCycle, actual.ShotsThisCycle);
+        Assert.Equal(expected.DeathPoffsEnabled, actual.DeathPoffsEnabled);
     }
 
     [Fact]
@@ -369,6 +370,63 @@ public sealed class CommunityLeagueNativeTests
         Assert.Equal(nextCycle, loaded.Snapshot().NativeCycle);
     }
 
+    [Fact]
+    public void DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles()
+    {
+        var options = new WorldSetupOptions { Backend = "Cpu", Seed = 42, PopulationCapacity = 16 };
+        using var engine = new NativeEngineClient(options);
+        for (var index = 0; index < 4; index++)
+            engine.ImportDna("start stop", [1_000f + index * 500, 1_000f]);
+        var before = engine.Snapshot();
+        var actors = before.Organisms.ToArray();
+        Assert.Equal(4, actors.Length);
+        Assert.True(before.DeathPoffsEnabled);
+        var originalSave = engine.Save();
+        using var original = JsonDocument.Parse(originalSave.AsMemory(10));
+        engine.SetDeathPoffsEnabled(false);
+        Assert.False(engine.Snapshot().DeathPoffsEnabled);
+        Assert.False(engine.ReadNativeProcessCaches().DeathPoffsEnabled);
+        var disabledSave = engine.Save();
+        Assert.NotEqual(Convert.ToBase64String(originalSave), Convert.ToBase64String(disabledSave));
+        using (var disabled = JsonDocument.Parse(disabledSave.AsMemory(10)))
+        {
+            Assert.Equal(original.RootElement.GetProperty("tick").GetRawText(), disabled.RootElement.GetProperty("tick").GetRawText());
+            Assert.Equal(original.RootElement.GetProperty("native_random").GetRawText(), disabled.RootElement.GetProperty("native_random").GetRawText());
+            Assert.Equal(original.RootElement.GetProperty("config").GetRawText(), disabled.RootElement.GetProperty("config").GetRawText());
+        }
+        engine.Remove(actors[0].Slot, actors[0].Generation);
+        Assert.Empty(engine.Snapshot().Shots.Where(shot => shot.Kind == -100));
+        engine.SetDeathPoffsEnabled(true);
+        engine.Remove(actors[1].Slot, actors[1].Generation);
+        var particles = engine.Snapshot().Shots.Where(shot => shot.Kind == -100).ToArray();
+        Assert.Equal(20, particles.Length);
+        const uint originalColor = 0xFF62A844;
+        // Source DBrite rounds each (channel + 255) / 2 to Long, ties to even:
+        // (98, 168, 68) -> (176, 212, 162). Both source choices are valid.
+        const uint brighterColor = 0xFFB0D4A2;
+        Assert.Equal(originalColor, actors[1].Phenotype.Color);
+        Assert.All(particles, shot => Assert.True(
+            shot.Color == originalColor || shot.Color == brighterColor,
+            $"Unexpected native death-particle color {shot.Color:X8}."));
+        engine.SetDeathPoffsEnabled(false);
+        Assert.Equal(JsonSerializer.Serialize(particles), JsonSerializer.Serialize(engine.Snapshot().Shots.Where(shot => shot.Kind == -100).ToArray()));
+        var saved = engine.Save();
+        using var restored = new NativeEngineClient(options);
+        restored.Load(saved);
+        Assert.False(restored.Snapshot().DeathPoffsEnabled);
+        Assert.False(restored.ReadNativeProcessCaches().DeathPoffsEnabled);
+        Assert.Equal(saved, restored.Save());
+        Assert.Equal(JsonSerializer.Serialize(particles), JsonSerializer.Serialize(restored.Snapshot().Shots.Where(shot => shot.Kind == -100).ToArray()));
+        engine.SetDeathPoffsEnabled(true);
+        engine.RemoveMany([new(actors[2].Slot, actors[2].Generation)], suppressDeathPoffs: true);
+        Assert.Equal(particles.Length, engine.Snapshot().Shots.Count(shot => shot.Kind == -100));
+        Assert.True(engine.Snapshot().DeathPoffsEnabled);
+        engine.RemoveMany([new(actors[3].Slot, actors[3].Generation)]);
+        Assert.Equal(particles.Length * 2, engine.Snapshot().Shots.Count(shot => shot.Kind == -100));
+        Assert.Equal(before.Tick, engine.Snapshot().Tick);
+        Assert.Equal(before.NativeCycle, engine.Snapshot().NativeCycle);
+    }
+
     [Theory]
     [InlineData(0f)]
     [InlineData(1.25f)]
@@ -422,7 +480,7 @@ public sealed class CommunityLeagueNativeTests
         using var source = new NativeEngineClient(new WorldSetupOptions
         {
             Backend = "Cpu", Seed = 17, NativeGaussianSpare = savedHasSpare ? 2.5f : null, NativeSunChange = 7,
-            NativeProcessCaches = EnergyCaches(-456, 0.375, 21),
+            NativeProcessCaches = EnergyCaches(-456, 0.375, 21, true),
         });
         var modern = source.Save();
 
@@ -430,7 +488,7 @@ public sealed class CommunityLeagueNativeTests
 
         Assert.Equal(savedHasSpare ? 2.5f : (float?)null, inherited.ReadNativeGaussianSpare());
         Assert.Equal((byte)7, inherited.ReadNativeSunChange());
-        AssertProcessCaches(EnergyCaches(-456, 0.375, 21), inherited.ReadNativeProcessCaches());
+        AssertProcessCaches(EnergyCaches(-456, 0.375, 21, true), inherited.ReadNativeProcessCaches());
         Assert.Equal(modern, inherited.Save());
         Assert.Equal(0ul, inherited.Snapshot().Tick);
     }

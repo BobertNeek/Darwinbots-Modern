@@ -682,8 +682,20 @@ public sealed class WorldViewport : Control
         foreach (var shot in _snapshot.Shots)
         {
             if (!RenderWaste && shot.Kind == -4) continue;
-            if (!overlay.ShowShotImpacts && shot.ImpactFlash) continue;
-            var color = shot.Kind switch
+            var drawFlash = shot.ImpactFlash && overlay.ShowShotImpacts;
+            var color = drawFlash ? shot.Kind switch
+            {
+                -1 => Color.Parse("#FF0000"),
+                -2 => Color.Parse("#FFFFFF"),
+                -3 => Color.Parse("#0000FF"),
+                -4 => Color.Parse("#00FF00"),
+                -5 => Color.Parse("#FFFF00"),
+                -6 => Color.Parse("#FF00FF"),
+                -7 => Color.Parse("#00FFFF"),
+                _ => Color.Parse("#000000"),
+            } : shot.Color is { } savedColor
+                ? Color.FromUInt32(savedColor == 0 ? 0xff000000u : savedColor)
+                : shot.Kind switch
             {
                 -1 => Color.Parse("#FFFFFF"),
                 -2 => Color.Parse("#45A23D"),
@@ -692,12 +704,23 @@ public sealed class WorldViewport : Control
                 -5 => Color.Parse("#D9AA24"),
                 _ => ShotOwnerColor(shot.Owner),
             };
-            var pen = new Pen(new SolidColorBrush(color), shot.ImpactFlash ? 1.2 : 1.0);
             var end = new Point(shot.End[0] * scaleX + _pan.X, shot.End[1] * scaleY + _pan.Y);
-            if (shot.ImpactFlash)
+            if (shot.Kind == -100 && !drawFlash)
             {
+                // Original main.DrawShots uses PSet, with DrawWidth capped at two pixels.
+                // Creation policy never hides a particle already present in the world.
+                var visibleWorldWidth = Math.Max(1.0, _snapshot.WorldSize[0] / _zoom);
+                var width = Math.Clamp(Math.Floor(50.0 / (visibleWorldWidth / 120.0) + 1.0), 1.0, 2.0);
+                context.FillRectangle(new SolidColorBrush(color),
+                    new Rect(Math.Floor(end.X), Math.Floor(end.Y), width, width));
+                continue;
+            }
+            var pen = new Pen(new SolidColorBrush(color), drawFlash ? 1.2 : 1.0);
+            if (drawFlash)
+            {
+                var start = new Point(shot.Start[0] * scaleX + _pan.X, shot.Start[1] * scaleY + _pan.Y);
                 var radius = Math.Clamp(20.0 * Math.Min(scaleX, scaleY), 2.0, 8.0);
-                context.DrawEllipse(null, pen, end, radius, radius);
+                context.DrawEllipse(null, pen, start, radius, radius);
             }
             else
             {

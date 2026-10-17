@@ -270,6 +270,31 @@ public static class NativeCommandSerializer
         },
     };
 
+    public static object CreateRemoveManyBatch(IReadOnlyList<OrganismKey> organisms, bool suppressDeathPoffs)
+    {
+        // Preserve the existing ordinary removal JSON, including absent optional policy.
+        if (!suppressDeathPoffs) return CreateRemoveManyBatch(organisms);
+        return new
+        {
+            version = 1,
+            commands = new[]
+            {
+                new
+                {
+                    type = "remove_many",
+                    organisms = organisms.Select(value => new { slot = value.Slot, generation = value.Generation }).ToArray(),
+                    suppress_death_poffs = true,
+                },
+            },
+        };
+    }
+
+    public static object CreateDeathPoffsBatch(bool enabled) => new
+    {
+        version = 1,
+        commands = new[] { new { type = "set_death_poffs_enabled", enabled } },
+    };
+
     internal static object CreateSpeciesColorBatch(uint species, uint color) => new
     {
         version = 1,

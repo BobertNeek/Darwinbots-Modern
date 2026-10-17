@@ -777,7 +777,13 @@ mod tests {
         assert_eq!(corpse.materials.shell, shell);
         assert_eq!(corpse.materials.venom, venom);
         assert_eq!(corpse.program.dna.blocks(), dna);
-        assert!(returned.projectiles.snapshots().is_empty());
+        let particles = returned.projectiles.snapshots();
+        assert_eq!(particles.len(), 20);
+        assert!(
+            particles
+                .iter()
+                .all(|shot| shot.kind == -100 && shot.age == 2)
+        );
     }
 
     #[test]

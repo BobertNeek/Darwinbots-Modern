@@ -180,6 +180,53 @@ fn genuine_feeding_c1_proves_native_mutation_draws_mass_order_and_zero_shot_gene
 }
 
 #[test]
+fn genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots() {
+    let expected = NativeRecordFile::decode(ORIGINAL_FEEDING_C100).unwrap();
+    let expected = NativeSimulationTail::decode(&expected.tail).unwrap();
+    let mut engine = Engine::from_native_sim(START).unwrap();
+    engine.tick_many(100).unwrap();
+    let actual = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+    let actual = NativeSimulationTail::decode(&actual.tail).unwrap();
+    assert_eq!(expected.integer("total_cycles").unwrap(), 100);
+    assert_eq!(expected.integer("seed").unwrap(), 48032);
+    assert_eq!(expected.integer("shot_count").unwrap(), 100);
+    assert_eq!(actual.integer("shot_count").unwrap(), 100);
+    let dormant = (0..100)
+        .filter(|index| expected.integer(&format!("shot[{index}].kind")).unwrap() == -100)
+        .collect::<Vec<_>>();
+    assert_eq!(dormant, (0..=3).chain(84..=99).collect::<Vec<_>>());
+    for slot in dormant {
+        let prefix = format!("shot[{slot}].");
+        for (field, value) in [
+            ("exists", 0),
+            ("parent", 0),
+            ("age", 8),
+            ("range", 7),
+            ("energy", 281),
+            ("value", 0),
+        ] {
+            assert_eq!(
+                expected.number(&format!("{prefix}{field}")).unwrap(),
+                f64::from(value)
+            );
+        }
+        // Compare every saved dormant field, not merely the20slot offset:
+        // original positions, drift, colors and recycled-slot metadata matter.
+        for field in expected
+            .fields()
+            .iter()
+            .filter(|field| field.name.starts_with(&prefix) && !field.name.ends_with(".end"))
+        {
+            assert_native_value(
+                actual.value(&field.name).unwrap(),
+                &field.value,
+                &field.name,
+            );
+        }
+    }
+}
+
+#[test]
 fn genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches() {
     let mut continuous = Engine::from_native_sim(START).unwrap();
     continuous.tick_many(10).unwrap();

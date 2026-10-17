@@ -113,12 +113,35 @@ public sealed class Db2EnvironmentSettingsTests
         Assert.Equal(1, root.GetProperty("version").GetInt32());
         var command = Assert.Single(root.GetProperty("commands").EnumerateArray());
         Assert.Equal("remove_many", command.GetProperty("type").GetString());
+        Assert.False(command.TryGetProperty("suppress_death_poffs", out _));
+        Assert.Equal(json, JsonSerializer.Serialize(NativeCommandSerializer.CreateRemoveManyBatch(organisms, false)));
         var serializedOrganisms = command.GetProperty("organisms").EnumerateArray().ToArray();
         Assert.Equal(2, serializedOrganisms.Length);
         Assert.Equal(3U, serializedOrganisms[0].GetProperty("slot").GetUInt32());
         Assert.Equal(2U, serializedOrganisms[0].GetProperty("generation").GetUInt32());
         Assert.Equal(7U, serializedOrganisms[1].GetProperty("slot").GetUInt32());
         Assert.Equal(5U, serializedOrganisms[1].GetProperty("generation").GetUInt32());
+    }
+
+    [Fact]
+    public void DeathParticleCommandsUsePositivePolicyAndOnlyExplicitBulkSuppression()
+    {
+        foreach (var enabled in new[] { false, true })
+        {
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(NativeCommandSerializer.CreateDeathPoffsBatch(enabled)));
+            Assert.Equal(1, document.RootElement.GetProperty("version").GetInt32());
+            var command = Assert.Single(document.RootElement.GetProperty("commands").EnumerateArray());
+            Assert.Equal("set_death_poffs_enabled", command.GetProperty("type").GetString());
+            Assert.Equal(enabled, command.GetProperty("enabled").GetBoolean());
+            Assert.Equal(2, command.EnumerateObject().Count());
+        }
+        OrganismKey[] organisms = [new(3, 2), new(7, 5)];
+        using var suppressed = JsonDocument.Parse(JsonSerializer.Serialize(NativeCommandSerializer.CreateRemoveManyBatch(organisms, true)));
+        var removal = Assert.Single(suppressed.RootElement.GetProperty("commands").EnumerateArray());
+        Assert.Equal("remove_many", removal.GetProperty("type").GetString());
+        Assert.True(removal.GetProperty("suppress_death_poffs").GetBoolean());
+        Assert.Equal(new[] { 3U, 7U }, removal.GetProperty("organisms").EnumerateArray().Select(value => value.GetProperty("slot").GetUInt32()));
+        Assert.Equal(new[] { 2U, 5U }, removal.GetProperty("organisms").EnumerateArray().Select(value => value.GetProperty("generation").GetUInt32()));
     }
 
     [Fact]
