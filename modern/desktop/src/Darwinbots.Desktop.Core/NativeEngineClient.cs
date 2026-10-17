@@ -36,6 +36,8 @@ public sealed partial class NativeEngineClient : IEngineClient
                 ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_native_gaussian_spare", spare } } }, "inherit native Gaussian spare");
             if (options.NativeSunChange is { } sunChange && !(options.Vegetation.WeatherEnabled || options.Vegetation.SunOnRandom))
                 ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_native_sun_change", sun_change = sunChange } } }, "inherit native sun change");
+            if (options.NativeProcessCaches is { } caches)
+                ExecuteBatch(new { version = 1, commands = new[] { new { type = "set_native_process_caches", caches } } }, "inherit native process caches");
             UpdateMutationSettings(options.MutationSettings);
             SetTiesEnabled(options.TiesEnabled);
             UpdateLegacyRestrictions(options.RobotFixingAllowed, options.AsexualReproductionAllowed);
@@ -848,6 +850,16 @@ public sealed partial class NativeEngineClient : IEngineClient
         return ExecuteBatchForResult(
             new { version = 1, commands = new[] { new { type = "read_native_sun_change" } } },
             "read native sun change").GetProperty("results")[0].GetByte();
+    }
+
+    public NativeProcessCachesSnapshot ReadNativeProcessCaches()
+    {
+        EnsureAlive();
+        var result = ExecuteBatchForResult(
+            new { version = 1, commands = new[] { new { type = "read_native_process_caches" } } },
+            "read native process caches").GetProperty("results")[0];
+        return result.Deserialize<NativeProcessCachesSnapshot>()
+            ?? throw new InvalidDataException("The native engine returned no process caches.");
     }
 
     public byte[] Save()

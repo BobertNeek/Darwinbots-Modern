@@ -27,6 +27,8 @@ public sealed record WorldSetupOptions
     public float? NativeGaussianSpare { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
     public byte? NativeSunChange { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public NativeProcessCachesSnapshot? NativeProcessCaches { get; init; }
     public IReadOnlyList<string>? LegacySettingsFields { get; init; }
     public MutationSettingsUpdate MutationSettings { get; init; } = MutationSettingsUpdate.Default;
     public int PopulationCapacity { get; init; } = 25_000;

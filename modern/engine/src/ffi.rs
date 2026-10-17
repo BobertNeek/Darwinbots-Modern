@@ -1,4 +1,5 @@
 use crate::persistence::SaveFile;
+use crate::world::NativeProcessCaches;
 use crate::{Engine, EngineConfig, EngineError, LegacyOrganismFile, OrganismId, SpeciesDefinition};
 use serde::Deserialize;
 use std::{cell::RefCell, ptr, slice};
@@ -67,6 +68,10 @@ enum EngineCommand {
     ReadNativeSunChange,
     SetNativeSunChange {
         sun_change: u8,
+    },
+    ReadNativeProcessCaches,
+    SetNativeProcessCaches {
+        caches: NativeProcessCaches,
     },
     ConfigureLocalMode {
         config: crate::LocalModeConfig,
@@ -554,6 +559,7 @@ fn db_engine_command_batch_impl(
                 command,
                 EngineCommand::ReadNativeGaussianSpare
                     | EngineCommand::ReadNativeSunChange
+                    | EngineCommand::ReadNativeProcessCaches
                     | EngineCommand::ExportSpeciesTemplateDna { .. }
             )
         })
@@ -567,6 +573,9 @@ fn db_engine_command_batch_impl(
                 }
                 EngineCommand::ReadNativeSunChange => {
                     Ok(serde_json::json!(engine.read_native_sun_change()))
+                }
+                EngineCommand::ReadNativeProcessCaches => {
+                    Ok(serde_json::json!(engine.read_native_process_caches()))
                 }
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
@@ -622,6 +631,12 @@ fn db_engine_command_batch_impl(
                 engine.set_native_sun_change(sun_change);
                 Ok(serde_json::Value::Null)
             }
+            EngineCommand::ReadNativeProcessCaches => {
+                Ok(serde_json::json!(engine.read_native_process_caches()))
+            }
+            EngineCommand::SetNativeProcessCaches { caches } => engine
+                .set_native_process_caches(caches)
+                .map(|_| serde_json::Value::Null),
             EngineCommand::Tick { count } => {
                 if count > 1_000_000 {
                     return fail(DbStatus::InvalidCommand, "tick count exceeds batch limit");
@@ -1254,7 +1269,9 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
             if !bytes.starts_with(b"DB3S") {
                 loaded.retain_native_global_preferences(engine.configuration());
                 loaded.inherit_native_gaussian_spare(engine);
-                loaded.set_native_light_availability(engine.native_light_availability());
+                if let Err(error) = loaded.inherit_native_process_caches(engine) {
+                    return fail(DbStatus::EngineError, error);
+                }
             }
             *engine = loaded;
             DbStatus::Ok
@@ -1335,24 +1352,67 @@ mod tests {
     use super::*;
     use crate::{LegacyDna, SpeciesId};
 
+    fn native_cache_fixture(
+        light_availability: f64,
+        displayed: i32,
+        current_index: u8,
+        earlier_energy: i32,
+        shots_this_cycle: u64,
+    ) -> NativeProcessCaches {
+        let mut ring = vec![0_i32; 101];
+        ring[usize::from(current_index)] = 555;
+        ring[(usize::from(current_index) + 98) % 100] = earlier_energy;
+        ring[100] = -197;
+        serde_json::from_value(serde_json::json!({
+            "light_availability": light_availability,
+            "shots_this_cycle": shots_this_cycle,
+            "energy": {
+                "ring": ring,
+                "current_index": current_index,
+                "displayed": displayed,
+            }
+        }))
+        .unwrap()
+    }
+
     #[test]
     fn native_sim_load_inherits_process_light_while_db3s_restores_saved_light() {
         let mut saved = Engine::new_native(EngineConfig::testing()).unwrap();
         saved
             .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
             .unwrap();
-        saved.set_native_light_availability(0.75);
+        let saved_caches = native_cache_fixture(0.75, 1_007, 6, 900, 21);
+        let saved_context = serde_json::to_value(&saved_caches).unwrap();
+        saved.set_native_process_caches(saved_caches).unwrap();
         let original_bytes = saved.export_native_sim().unwrap();
         let fresh_process = Engine::from_native_sim(&original_bytes).unwrap();
         assert_eq!(fresh_process.native_light_availability(), 0.0);
+        let fresh_caches =
+            serde_json::to_value(fresh_process.read_native_process_caches()).unwrap();
+        assert_eq!(fresh_caches["shots_this_cycle"], 0);
+        assert_eq!(fresh_caches["energy"]["displayed"], 0);
+        assert_eq!(fresh_caches["energy"]["current_index"], 0);
+        assert_eq!(
+            fresh_caches["energy"]["ring"],
+            serde_json::json!(vec![0_i32; 101])
+        );
 
         let mut current = Engine::new_native(EngineConfig::testing()).unwrap();
-        current.set_native_light_availability(0.25);
+        let current_caches = native_cache_fixture(0.25, 109, 7, 37, 17);
+        let current_context = serde_json::to_value(&current_caches).unwrap();
+        current.set_native_process_caches(current_caches).unwrap();
         assert_eq!(
             db_engine_load(&mut current, original_bytes.as_ptr(), original_bytes.len()),
             DbStatus::Ok
         );
         assert_eq!(current.native_light_availability(), 0.25);
+        assert_eq!(
+            serde_json::to_value(current.read_native_process_caches()).unwrap(),
+            current_context
+        );
+        assert_eq!(current.snapshot().stats.native_energy_displayed, Some(109));
+        assert_eq!(current.snapshot().stats.native_energy_delta, Some(72));
+        assert_eq!(current.snapshot().stats.native_shots_visited, Some(17));
         assert_eq!(current.population(), 1);
 
         let modern_bytes = SaveFile::encode(&saved).unwrap();
@@ -1361,6 +1421,16 @@ mod tests {
             DbStatus::Ok
         );
         assert_eq!(current.native_light_availability(), 0.75);
+        assert_eq!(
+            serde_json::to_value(current.read_native_process_caches()).unwrap(),
+            saved_context
+        );
+        assert_eq!(
+            current.snapshot().stats.native_energy_displayed,
+            Some(1_007)
+        );
+        assert_eq!(current.snapshot().stats.native_energy_delta, Some(107));
+        assert_eq!(current.snapshot().stats.native_shots_visited, Some(21));
     }
 
     #[test]
@@ -1369,7 +1439,9 @@ mod tests {
         current
             .spawn_at(LegacyDna::parse("stop").unwrap(), [321.0, 654.0])
             .unwrap();
-        current.set_native_light_availability(0.375);
+        current
+            .set_native_process_caches(native_cache_fixture(0.375, 421, 29, 199, 17))
+            .unwrap();
         let before = SaveFile::encode(&current).unwrap();
         let invalid = b"invalid simulation";
         assert_ne!(
@@ -1378,6 +1450,130 @@ mod tests {
         );
         assert_eq!(current.native_light_availability(), 0.375);
         assert_eq!(SaveFile::encode(&current).unwrap(), before);
+    }
+
+    #[test]
+    fn process_cache_queries_leave_saved_world_rng_and_current_snapshot_unchanged() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [321.0, 654.0])
+            .unwrap();
+        engine.set_native_gaussian_spare(Some(1.25)).unwrap();
+        engine.set_native_sun_change(22);
+        let caches = native_cache_fixture(0.375, 421, 29, 199, 17);
+        let expected = serde_json::to_value(&caches).unwrap();
+        engine.set_native_process_caches(caches).unwrap();
+        let before = SaveFile::encode(&engine).unwrap();
+        for _ in 0..2 {
+            let (status, response) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([
+                    {"type":"read_native_gaussian_spare"},
+                    {"type":"read_native_sun_change"},
+                    {"type":"read_native_process_caches"}
+                ]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+            let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+            assert_eq!(response["results"][0], 1.25);
+            assert_eq!(response["results"][1], 22);
+            assert_eq!(response["results"][2], expected);
+            assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        }
+    }
+
+    #[test]
+    fn process_cache_command_updates_status_without_advancing_the_world_or_rng() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [321.0, 654.0])
+            .unwrap();
+        engine.set_native_gaussian_spare(Some(1.25)).unwrap();
+        engine.set_native_sun_change(22);
+        let before = serde_json::to_value(&engine).unwrap();
+        let snapshot_before = engine.snapshot().clone();
+        let expected = serde_json::to_value(native_cache_fixture(0.625, 109, 7, 37, 17)).unwrap();
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_native_process_caches","caches":expected},
+                {"type":"read_native_process_caches"}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert!(response["results"][0].is_null());
+        assert_eq!(response["results"][1], expected);
+        let after = serde_json::to_value(&engine).unwrap();
+        assert_eq!(after["native_random"], before["native_random"]);
+        assert_eq!(after["slots"], before["slots"]);
+        assert_eq!(after["config"], before["config"]);
+        assert_eq!(engine.snapshot().tick, snapshot_before.tick);
+        assert_eq!(engine.snapshot().native_cycle, snapshot_before.native_cycle);
+        assert_eq!(engine.snapshot().organisms, snapshot_before.organisms);
+        assert_eq!(engine.read_native_sun_change(), 22);
+        assert_eq!(engine.snapshot().stats.native_energy_displayed, Some(109));
+        assert_eq!(engine.snapshot().stats.native_energy_delta, Some(72));
+        assert_eq!(engine.snapshot().stats.native_shots_visited, Some(17));
+        let mut zero_shots = expected.clone();
+        zero_shots["shots_this_cycle"] = serde_json::json!(0);
+        let (status, _) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([{"type":"set_native_process_caches","caches":zero_shots}]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(engine.snapshot().stats.native_shots_visited, Some(0));
+        assert_eq!(engine.snapshot().tick, snapshot_before.tick);
+    }
+
+    #[test]
+    fn malformed_process_cache_commands_roll_back_the_entire_batch() {
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = engine
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [321.0, 654.0])
+            .unwrap();
+        engine
+            .set_native_process_caches(native_cache_fixture(0.375, 421, 29, 199, 17))
+            .unwrap();
+        let valid = serde_json::to_value(native_cache_fixture(0.625, 109, 7, 37, 17)).unwrap();
+        let mut invalid_cases = Vec::new();
+        for light in [-0.125, 1.125] {
+            let mut invalid = valid.clone();
+            invalid["light_availability"] = serde_json::json!(light);
+            invalid_cases.push(invalid);
+        }
+        for length in [0, 100, 102] {
+            let mut invalid = valid.clone();
+            invalid["energy"]["ring"] = serde_json::json!(vec![0_i32; length]);
+            invalid_cases.push(invalid);
+        }
+        for index in [-1, 100, 256] {
+            let mut invalid = valid.clone();
+            invalid["energy"]["current_index"] = serde_json::json!(index);
+            invalid_cases.push(invalid);
+        }
+        let mut invalid = valid.clone();
+        invalid["energy"]["ring"][0] = serde_json::json!(2_147_483_648_i64);
+        invalid_cases.push(invalid);
+        for count in [serde_json::json!(-1), serde_json::json!(2_147_483_648_u64)] {
+            let mut invalid = valid.clone();
+            invalid["shots_this_cycle"] = count;
+            invalid_cases.push(invalid);
+        }
+        for invalid in invalid_cases {
+            let before = SaveFile::encode(&engine).unwrap();
+            let (status, response) = classic_test_batch(
+                &mut engine,
+                serde_json::json!([
+                    {"type":"set_organism_energy","slot":id.slot(),"generation":id.generation(),"energy":42},
+                    {"type":"set_native_process_caches","caches":valid},
+                    {"type":"set_native_process_caches","caches":invalid}
+                ]),
+            );
+            assert_ne!(status, DbStatus::Ok);
+            assert!(response.is_empty());
+            assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        }
     }
 
     #[test]

@@ -11,7 +11,7 @@ pub(super) struct NativeCorpseTransfer {
 }
 
 impl Engine {
-    pub(super) fn decay_native_corpses(&mut self) {
+    pub(super) fn decay_native_corpses(&mut self) -> Result<(), EngineError> {
         for id in self.slots.ids_in_slot_order() {
             if !self
                 .slots
@@ -62,7 +62,7 @@ impl Engine {
                     20,
                 );
                 angle = (f64::from(angle) + f64::from(scatter) / 200.0) as f32;
-                let slot = self.projectiles.spawn(
+                let slot = self.projectiles.try_spawn(
                     ProjectileSpawn {
                         owner: id,
                         owner_position: robot.kinematics.position,
@@ -86,11 +86,13 @@ impl Engine {
                         dna_length: 0,
                     },
                     &self.config.shots,
-                );
+                )?;
                 // Decay calls newshot directly; it does not replace nrg with
                 // the explicit donation amount used by ManageShoot.
-                self.projectiles.energies[slot as usize] =
-                    self.projectiles.ranges[slot as usize] * 40.0;
+                if slot != u32::MAX {
+                    self.projectiles.energies[slot as usize] =
+                        self.projectiles.ranges[slot as usize] * 40.0;
+                }
                 self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
             }
             robot.materials.body = (f64::from(body) - f64::from(packet) / 10.0) as f32;
@@ -100,6 +102,7 @@ impl Engine {
                 self.config.fixed_bot_radii,
             );
         }
+        Ok(())
     }
 
     pub(super) fn become_native_corpse(&mut self, id: OrganismId) -> Result<(), EngineError> {

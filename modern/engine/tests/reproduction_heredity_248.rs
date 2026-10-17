@@ -13,7 +13,7 @@ const STAGED_MEMORY: [i32; 15] = [
 ];
 
 fn testing_engine() -> Engine {
-    Engine::new(EngineConfig {
+    let mut config = EngineConfig {
         organism_capacity: 64,
         world_width: 4_000.0,
         world_height: 3_000.0,
@@ -21,8 +21,13 @@ fn testing_engine() -> Engine {
         metabolism_cost: 0,
         vegetable_energy_per_tick: 0,
         ..EngineConfig::testing()
-    })
-    .unwrap()
+    };
+    // Vegs.FeedVeg feeds existing chloroplasts even when their command flag is
+    // disabled. Keep this birth-only fixture dark so its exact split, fee,
+    // radius and prior-energy assertions precede any photosynthesis changes.
+    config.vegetation.day_night_enabled = false;
+    config.vegetation.daytime = false;
+    Engine::new(config).unwrap()
 }
 
 fn frame_v3(payload: &Value) -> Vec<u8> {
@@ -117,8 +122,6 @@ fn configured_parent(
         payload["species"][0]["mutation_rate"] = json!(0.0);
         let robot = robot_value_mut(payload, parent);
         set_transfer_materials(robot);
-        // Keep this birth fixture independent of the end-of-cycle feeding pass.
-        robot["flags"]["can_use_chloroplasts"] = json!(false);
         set_hereditary_memory(robot);
         set_memory(&mut robot["program"]["memory"], 300, reproduction);
         robot["counters"]["generation"] = json!(generation);

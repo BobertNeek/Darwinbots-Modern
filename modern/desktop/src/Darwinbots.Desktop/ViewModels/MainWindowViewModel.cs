@@ -240,9 +240,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SetPanel(6, FormatElapsed(elapsed));
         SetPanel(7, $"{snapshot.MutationSettings.GlobalMultiplier.ToString("0.###", CultureInfo.InvariantCulture)}x");
         SetPanel(8, snapshot.LocalMode.RestartCount.ToString(CultureInfo.InvariantCulture));
-        SetPanel(9, shotsThisCycle.ToString(CultureInfo.InvariantCulture));
-        SetPanel(10, snapshot.Stats.TotalEnergy.ToString(CultureInfo.InvariantCulture));
-        SetPanel(11, energyDelta.ToString(CultureInfo.InvariantCulture));
+        SetPanel(9, (snapshot.Stats.NativeShotsVisited ?? shotsThisCycle).ToString(CultureInfo.InvariantCulture));
+        SetPanel(10, (snapshot.Stats.NativeEnergyDisplayed is { } nativeEnergy
+            ? nativeEnergy : snapshot.Stats.TotalEnergy).ToString(CultureInfo.InvariantCulture));
+        SetPanel(11, (snapshot.Stats.NativeEnergyDelta ?? energyDelta).ToString(CultureInfo.InvariantCulture));
         SetPanel(12, _costMultiplier.ToString("0.#####", CultureInfo.InvariantCulture));
         SetPanel(13, snapshot.Stats.FeedingEvents.ToString(CultureInfo.InvariantCulture));
         SetPanel(14, snapshot.Stats.IntentionalMovementEvents.ToString(CultureInfo.InvariantCulture));

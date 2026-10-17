@@ -1,7 +1,7 @@
 //! Actual original 2.48.32 fresh-load captures, not source-simulated oracle output.
 //! The fixtures prove listed live fields for these seeded deterministic load cases;
 //! native SIM does not contain arbitrary historical uniform/Gaussian state.
-use darwinbots_engine::native_binary::{NativeRecordFile, NativeSimulationTail};
+use darwinbots_engine::native_binary::{NativeRecordFile, NativeSimulationTail, NativeValue};
 use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SaveFile};
 
 const START: &[u8] = include_bytes!("fixtures/db24832-movement-start-48032.sim");
@@ -20,6 +20,28 @@ const ORIGINAL_CHLOROPLAST_C1: &[u8] =
     include_bytes!("fixtures/db24832-genuine-chloroplast-cycle1-20261016.sim");
 const ORIGINAL_CHLOROPLAST_C10: &[u8] =
     include_bytes!("fixtures/db24832-genuine-chloroplast-cycle10-20261016.sim");
+
+fn assert_exact_native_memory(actual: &[u8], expected: &[u8], cycle: i32) {
+    // Native memory contains cell zero and cells1..1000. Compare every word
+    // (and therefore every byte) while identifying the first causal address.
+    assert_eq!(actual.len(), 2002, "original C{cycle} actual memory length");
+    assert_eq!(
+        expected.len(),
+        2002,
+        "original C{cycle} expected memory length"
+    );
+    for (address, (actual, expected)) in actual
+        .chunks_exact(2)
+        .zip(expected.chunks_exact(2))
+        .enumerate()
+    {
+        assert_eq!(
+            i16::from_le_bytes(actual.try_into().unwrap()),
+            i16::from_le_bytes(expected.try_into().unwrap()),
+            "original C{cycle} memory{address}"
+        );
+    }
+}
 
 fn assert_genuine_movement_observation(engine: &Engine, reference: &[u8], cycle: i32) {
     let expected = NativeRecordFile::decode(reference).unwrap();
@@ -77,11 +99,19 @@ fn assert_genuine_movement_observation(engine: &Engine, reference: &[u8], cycle:
         "owner",
         "dna",
     ] {
-        assert_eq!(
-            actual.bytes(name).unwrap(),
-            expected.bytes(name).unwrap(),
-            "original C{cycle} {name}"
-        );
+        if name == "memory" {
+            assert_exact_native_memory(
+                actual.bytes(name).unwrap(),
+                expected.bytes(name).unwrap(),
+                cycle,
+            );
+        } else {
+            assert_eq!(
+                actual.bytes(name).unwrap(),
+                expected.bytes(name).unwrap(),
+                "original C{cycle} {name}"
+            );
+        }
     }
 }
 
@@ -211,6 +241,8 @@ fn assert_genuine_chloroplast_observation(
         (218, 1),
         (310, 20_000),
         (311, 1_000),
+        (336, 6),
+        (339, 1),
         (401, 0),
         (402, 0),
         (923, 0),
@@ -242,6 +274,10 @@ fn genuine_original_chloroplast_first_tick_preserves_disabled_dna_memory_across_
         if checkpoint_before_first_tick {
             engine = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
         }
+        let id = engine.snapshot().organisms[0].id;
+        // LoadRobot writes these even when later DNA execution is disabled.
+        assert_eq!(engine.memory_at(id, 336).unwrap(), 6);
+        assert_eq!(engine.memory_at(id, 339).unwrap(), 1);
         engine.tick().unwrap();
         assert_genuine_chloroplast_observation(
             &engine,
@@ -304,4 +340,33 @@ fn genuine_original_chloroplast_later_ticks_match_with_the_saved_light_cache() {
         SaveFile::encode(&resumed).unwrap(),
         SaveFile::encode(&continuous).unwrap()
     );
+}
+
+#[test]
+fn native_load_rebuilds_disabled_dna_length_and_genes_before_the_first_tick() {
+    let mut file = NativeRecordFile::decode(CHLOROPLAST_START).unwrap();
+    let mut memory = file.robots[0].bytes("memory").unwrap().to_vec();
+    for (address, value) in [(336_usize, -32_000_i16), (339, 12_345)] {
+        memory[address * 2..address * 2 + 2].copy_from_slice(&value.to_le_bytes());
+    }
+    file.robots[0]
+        .set_value("memory", NativeValue::Bytes(memory))
+        .unwrap();
+    let input = file.encode().unwrap();
+    for checkpoint_before_first_tick in [false, true] {
+        let mut engine = Engine::from_native_sim(&input).unwrap();
+        if checkpoint_before_first_tick {
+            let save = SaveFile::encode(&engine).unwrap();
+            engine = SaveFile::decode(&save).unwrap();
+            assert_eq!(SaveFile::encode(&engine).unwrap(), save);
+        }
+        let id = engine.snapshot().organisms[0].id;
+        assert!(!engine.organism(id).unwrap().flags.can_execute_dna);
+        assert_eq!(engine.memory_at(id, 336).unwrap(), 6);
+        assert_eq!(engine.memory_at(id, 339).unwrap(), 1);
+        // The same exact genuine C1 control proves that the load fix does not
+        // require executing DNA or discard any of the other saved VM cells.
+        engine.tick().unwrap();
+        assert_genuine_movement_observation(&engine, ORIGINAL_CHLOROPLAST_C1, 1);
+    }
 }

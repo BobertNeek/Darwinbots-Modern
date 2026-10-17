@@ -95,21 +95,26 @@ public sealed class SimulationSessionTests
         using var release = new ManualResetEventSlim();
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var engine = new FakeEngineClient { NativeGaussianSpare = 1.25f };
+        var caches = new NativeProcessCachesSnapshot(0.125, new(Enumerable.Range(0, 101).ToArray(), 4, 123), 17);
         engine.BeforeTick = () =>
         {
             started.SetResult();
             if (!release.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Gated engine tick was not released.");
             engine.NativeGaussianSpare = 2.5f;
             engine.NativeSunChange = 12;
+            engine.NativeProcessCaches = caches;
         };
         await using var session = new SimulationSession(engine);
         var step = session.StepAsync();
         Task<(float? GaussianSpare, byte SunChange)> read;
+        Task<NativeProcessStateSnapshot> fullRead;
         try
         {
             await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
             read = session.ReadNativeProcessContextAsync();
+            fullRead = session.ReadNativeProcessStateAsync();
             Assert.False(read.IsCompleted);
+            Assert.False(fullRead.IsCompleted);
         }
         finally { release.Set(); }
         await step;
@@ -117,6 +122,11 @@ public sealed class SimulationSessionTests
         var context = await read;
         Assert.Equal(2.5f, context.GaussianSpare);
         Assert.Equal((byte)12, context.SunChange);
+        var fullContext = await fullRead;
+        Assert.Equal(2.5f, fullContext.GaussianSpare);
+        Assert.Equal((byte)12, fullContext.SunChange);
+        Assert.Same(caches, fullContext.Caches);
+        Assert.Equal(17UL, fullContext.Caches.ShotsThisCycle);
         Assert.Equal(1ul, session.LatestSnapshot.Tick);
         Assert.Single(engine.ExecutionThreads);
         Assert.NotEqual(Environment.CurrentManagedThreadId, engine.ExecutionThreads.Single());
@@ -124,6 +134,8 @@ public sealed class SimulationSessionTests
         Assert.Single(engine.ExecutionThreads);
         engine.NativeGaussianSpare = null;
         Assert.Null(await session.ReadNativeGaussianSpareAsync());
+        engine.NativeProcessCaches = caches with { ShotsThisCycle = 0 };
+        Assert.Equal(0UL, (await session.ReadNativeProcessStateAsync()).Caches.ShotsThisCycle);
         Assert.Equal(1ul, session.LatestSnapshot.Tick);
     }
 
@@ -413,6 +425,12 @@ internal sealed class FakeEngineClient : IEngineClient
     public OrganismSnapshot[] SnapshotOrganisms { get; set; } = [];
     public float? NativeGaussianSpare { get; set; }
     public byte NativeSunChange { get; set; }
+    public NativeProcessCachesSnapshot NativeProcessCaches { get; set; } = NativeProcessCachesSnapshot.Empty;
+    public NativeProcessCachesSnapshot ReadNativeProcessCaches()
+    {
+        ExecutionThreads.Add(Environment.CurrentManagedThreadId);
+        return NativeProcessCaches;
+    }
     public byte ReadNativeSunChange()
     {
         ExecutionThreads.Add(Environment.CurrentManagedThreadId);

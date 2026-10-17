@@ -5,6 +5,107 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class NativeSnapshotParserTests
 {
+    [Fact]
+    public void NativeEnergyStatusDistinguishesMissingNullZeroAndSignedValues()
+    {
+        foreach (var json in new[]
+        {
+            "{\"tick\":1,\"organisms\":[]}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"total_energy\":99}}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"native_energy_displayed\":null,\"native_energy_delta\":null}}",
+        })
+        {
+            var stats = NativeSnapshotParser.Parse(json, "CPU").Stats;
+            Assert.Null(stats.NativeEnergyDisplayed);
+            Assert.Null(stats.NativeEnergyDelta);
+        }
+        foreach (var value in new[] { 0, -123, 456 })
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                tick = 1, organisms = Array.Empty<object>(),
+                stats = new { total_energy = 99, native_energy_displayed = value, native_energy_delta = (long)value },
+            });
+            var stats = NativeSnapshotParser.Parse(json, "CPU").Stats;
+            Assert.Equal<int?>(value, stats.NativeEnergyDisplayed);
+            Assert.Equal<long?>(value, stats.NativeEnergyDelta);
+            Assert.Equal(99L, stats.TotalEnergy);
+        }
+    }
+
+    [Fact]
+    public void ProcessCachesRoundTripTheirSourceShapeWithoutEnteringSavedSetup()
+    {
+        var ring = Enumerable.Range(0, 101).Select(value => value * 7).ToArray();
+        var caches = new NativeProcessCachesSnapshot(0.125, new(ring, 99, -123), 17);
+        var json = System.Text.Json.JsonSerializer.Serialize(caches);
+        Assert.Contains("\"light_availability\":0.125", json);
+        Assert.Contains("\"current_index\":99", json);
+        Assert.Contains("\"shots_this_cycle\":17", json);
+        var restored = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(json)!;
+        Assert.Equal(caches.LightAvailability, restored.LightAvailability);
+        Assert.Equal(ring, restored.Energy.Ring);
+        Assert.Equal((byte)99, restored.Energy.CurrentIndex);
+        Assert.Equal(-123, restored.Energy.Displayed);
+        Assert.Equal(17UL, restored.ShotsThisCycle);
+        var oldJson = System.Text.Json.JsonSerializer.Serialize(new { light_availability = 0.125, energy = caches.Energy });
+        var oldCaches = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(oldJson)!;
+        Assert.Equal(0UL, oldCaches.ShotsThisCycle);
+
+        var setup = new WorldSetupOptions { Seed = 42, NativeProcessCaches = caches };
+        var savedSetup = System.Text.Json.JsonSerializer.Serialize(setup);
+        Assert.DoesNotContain("NativeProcessCaches", savedSetup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("light_availability", savedSetup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("native_energy", NativeCommandSerializer.SerializeEngineConfig(setup), StringComparison.OrdinalIgnoreCase);
+        var loadedSetup = System.Text.Json.JsonSerializer.Deserialize<WorldSetupOptions>(savedSetup)!;
+        Assert.Null(loadedSetup.NativeProcessCaches);
+        Assert.Equal(42UL, loadedSetup.Seed);
+    }
+
+    [Fact]
+    public void MissingAndNullNativeShotCountsRemainAbsentForOlderSnapshots()
+    {
+        string[] payloads =
+        [
+            "{\"tick\":1,\"organisms\":[]}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":null}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"shots_fired\":9}}",
+            "{\"tick\":1,\"organisms\":[],\"stats\":{\"shots_fired\":9,\"native_shots_visited\":null}}",
+        ];
+        foreach (var json in payloads)
+            Assert.Null(NativeSnapshotParser.Parse(json, "CPU").Stats.NativeShotsVisited);
+
+        Assert.Null(SimulationStatsSnapshot.Empty.NativeShotsVisited);
+        Assert.Null(new SimulationStatsSnapshot(0, 0, 9, 0, 0, 0, 0).NativeShotsVisited);
+    }
+
+    [Fact]
+    public void NativeShotVisitsIncludingZeroRemainDistinctFromFiringAndVisibleTrails()
+    {
+        foreach (var visited in new[] { 0UL, 17UL })
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                tick = 24,
+                organisms = Array.Empty<object>(),
+                stats = new { shots_fired = 99, native_shots_visited = visited },
+                shots = new[]
+                {
+                    new { owner = new { slot = 4, generation = 2 }, start = new[] { 10f, 20f },
+                        end = new[] { 30f, 20f }, kind = -1, value = 25 },
+                    new { owner = new { slot = 5, generation = 2 }, start = new[] { 40f, 20f },
+                        end = new[] { 60f, 20f }, kind = -2, value = 80 },
+                },
+            });
+
+            var snapshot = NativeSnapshotParser.Parse(json, "CPU");
+
+            Assert.Equal<ulong?>(visited, snapshot.Stats.NativeShotsVisited);
+            Assert.Equal(99UL, snapshot.Stats.ShotsFired);
+            Assert.Equal(2, snapshot.Shots.Count);
+        }
+    }
+
     [Theory]
     [InlineData(-1)]
     [InlineData(0)]

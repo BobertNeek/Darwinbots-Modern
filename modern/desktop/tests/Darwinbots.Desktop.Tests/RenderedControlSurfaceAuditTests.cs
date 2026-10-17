@@ -304,7 +304,7 @@ public sealed class RenderedControlSurfaceAuditTests
             using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
             var original = new MainWindow([], new WorldSetupOptions
             {
-                NativeGaussianSpare = 1.25f, NativeSunChange = 7,
+                NativeGaussianSpare = 1.25f, NativeSunChange = 7, NativeProcessCaches = ProcessCaches(101, 0.125, 11),
                 Species = [new("Handoff", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
             }, factory, storage);
             try
@@ -313,8 +313,10 @@ public sealed class RenderedControlSurfaceAuditTests
                 await WaitFor(() => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Handoff"));
                 var oldClient = factory.Clients.Single();
                 Assert.Equal(1.25f, factory.CreatedSetups.Single().NativeGaussianSpare);
+                AssertProcessCaches(ProcessCaches(101, 0.125, 11), factory.CreatedSetups.Single().NativeProcessCaches!);
                 oldClient.NativeGaussianSpare = 2.5f;
                 oldClient.NativeSunChange = 12;
+                oldClient.NativeProcessCaches = ProcessCaches(202, 0.25);
                 Field<DispatcherTimer>(original, "_runTimer").Start();
                 if (useMenu)
                     ActivateMenu(Named<LegacyMenuBar>(original, "HistoricMenuBar")
@@ -327,6 +329,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.False(Field<DispatcherTimer>(original, "_runTimer").IsEnabled);
                 AssertReadBeforeDisposeWithoutTicks(oldClient, 2.5f);
                 Assert.Equal((byte)12, Assert.Single(oldClient.SunChangeReads));
+                AssertProcessCaches(ProcessCaches(202, 0.25), Assert.Single(oldClient.ProcessCachesReads));
                 if (Application.Current!.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                     Assert.Same(setup, lifetime.MainWindow);
 
@@ -338,12 +341,16 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Equal(2.5f, factory.Clients.Last().NativeGaussianSpare);
                 Assert.Equal((byte)12, factory.CreatedSetups.Last().NativeSunChange);
                 Assert.Equal((byte)12, factory.Clients.Last().NativeSunChange);
+                AssertProcessCaches(ProcessCaches(202, 0.25), factory.CreatedSetups.Last().NativeProcessCaches!);
+                AssertProcessCaches(ProcessCaches(202, 0.25), factory.Clients.Last().NativeProcessCaches);
                 Assert.Same(factory, Field<IEngineClientFactory>(replacement, "_engineFactory"));
                 Assert.Same(storage, Field<IDesktopStorageService>(replacement, "_storage"));
                 Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeGaussianSpare);
                 Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeSunChange);
+                Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeProcessCaches);
                 Assert.Null(typeof(MainWindow).GetField("_initialNativeGaussianSpare", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(replacement));
                 Assert.Null(typeof(MainWindow).GetField("_initialNativeSunChange", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(replacement));
+                Assert.Null(typeof(MainWindow).GetField("_initialNativeProcessCaches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(replacement));
                 Assert.False(setup.IsVisible);
                 Assert.True(replacement.IsVisible);
                 if (Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime replacedLifetime)
@@ -353,6 +360,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 {
                     Assert.DoesNotContain("Gaussian", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
                     Assert.DoesNotContain("NativeSunChange", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+                    Assert.DoesNotContain("NativeProcessCaches", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
                 });
             }
             finally { await CloseNavigationWindowsAsync(windows); }
@@ -370,7 +378,7 @@ public sealed class RenderedControlSurfaceAuditTests
             using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
             var original = new MainWindow([], new WorldSetupOptions
             {
-                NativeGaussianSpare = 1.25f, NativeSunChange = 7,
+                NativeGaussianSpare = 1.25f, NativeSunChange = 7, NativeProcessCaches = ProcessCaches(101, 0.125, 11),
                 Species = [new("Reset Handoff", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
             }, factory, storage);
             try
@@ -380,6 +388,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 var oldClient = factory.Clients.Single();
                 oldClient.NativeGaussianSpare = 2.5f;
                 oldClient.NativeSunChange = 12;
+                oldClient.NativeProcessCaches = ProcessCaches(202, 0.25);
                 Field<DispatcherTimer>(original, "_runTimer").Start();
                 Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => factory.Clients.Count == 2 && oldClient.Calls.Contains("Dispose"));
@@ -388,10 +397,15 @@ public sealed class RenderedControlSurfaceAuditTests
                 var middleClient = factory.Clients.Last();
                 Assert.Equal(2.5f, factory.CreatedSetups.Last().NativeGaussianSpare);
                 Assert.Equal((byte)12, factory.CreatedSetups.Last().NativeSunChange);
+                AssertProcessCaches(ProcessCaches(202, 0.25), factory.CreatedSetups.Last().NativeProcessCaches!);
+                AssertProcessCaches(ProcessCaches(202, 0.25), middleClient.NativeProcessCaches);
+                AssertProcessCaches(ProcessCaches(202, 0.25), Assert.Single(oldClient.ProcessCachesReads));
                 AssertReadBeforeDisposeWithoutTicks(oldClient, 2.5f);
                 Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeGaussianSpare);
+                Assert.Null(Field<WorldSetupOptions>(replacement, "_setup").NativeProcessCaches);
                 middleClient.NativeGaussianSpare = null;
                 middleClient.NativeSunChange = 2;
+                middleClient.NativeProcessCaches = ProcessCaches(-303, 0.5, 0);
 
                 Named<Button>(replacement, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
@@ -402,6 +416,9 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Null(factory.Clients.Last().NativeGaussianSpare);
                 Assert.Equal((byte)2, factory.CreatedSetups.Last().NativeSunChange);
                 Assert.Equal((byte)2, factory.Clients.Last().NativeSunChange);
+                AssertProcessCaches(ProcessCaches(-303, 0.5, 0), factory.CreatedSetups.Last().NativeProcessCaches!);
+                AssertProcessCaches(ProcessCaches(-303, 0.5, 0), factory.Clients.Last().NativeProcessCaches);
+                AssertProcessCaches(ProcessCaches(-303, 0.5, 0), Assert.Single(middleClient.ProcessCachesReads));
                 AssertReadBeforeDisposeWithoutTicks(middleClient, null);
                 Assert.Same(factory, Field<IEngineClientFactory>(finalWindow, "_engineFactory"));
                 Assert.Same(storage, Field<IDesktopStorageService>(finalWindow, "_storage"));
@@ -409,14 +426,29 @@ public sealed class RenderedControlSurfaceAuditTests
                 if (Application.Current!.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                     Assert.Same(finalWindow, lifetime.MainWindow);
                 Assert.Equal(new float?[] { 1.25f, 2.5f, null }, factory.CreatedSetups.Select(value => value.NativeGaussianSpare));
+                Assert.Equal(new[] { 101, 202, -303 }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.Energy.Displayed));
+                Assert.Equal(new ulong[] { 11, 17, 0 }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.ShotsThisCycle));
                 Assert.All(storage.LastStartWrites, bytes =>
                 {
                     Assert.DoesNotContain("Gaussian", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
                     Assert.DoesNotContain("NativeSunChange", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
+                    Assert.DoesNotContain("NativeProcessCaches", System.Text.Encoding.UTF8.GetString(bytes), StringComparison.OrdinalIgnoreCase);
                 });
             }
             finally { await CloseNavigationWindowsAsync(windows); }
         }, CancellationToken.None);
+    }
+
+    private static NativeProcessCachesSnapshot ProcessCaches(int marker, double light, ulong shotsThisCycle = 17) =>
+        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle);
+
+    private static void AssertProcessCaches(NativeProcessCachesSnapshot expected, NativeProcessCachesSnapshot actual)
+    {
+        Assert.Equal(expected.LightAvailability, actual.LightAvailability);
+        Assert.Equal(expected.Energy.Ring, actual.Energy.Ring);
+        Assert.Equal(expected.Energy.CurrentIndex, actual.Energy.CurrentIndex);
+        Assert.Equal(expected.Energy.Displayed, actual.Energy.Displayed);
+        Assert.Equal(expected.ShotsThisCycle, actual.ShotsThisCycle);
     }
 
     private static void AssertReadBeforeDisposeWithoutTicks(AuditEngineClient client, float? expected)
@@ -427,6 +459,8 @@ public sealed class RenderedControlSurfaceAuditTests
         Assert.True(read >= 0 && read < Array.IndexOf(calls, "Dispose"), string.Join(", ", calls));
         int sun = Array.IndexOf(calls, "ReadNativeSunChange");
         Assert.True(sun > read && sun < Array.IndexOf(calls, "Dispose"), string.Join(", ", calls));
+        int caches = Array.IndexOf(calls, "ReadNativeProcessCaches");
+        Assert.True(caches > sun && caches < Array.IndexOf(calls, "Dispose"), string.Join(", ", calls));
         Assert.DoesNotContain(calls, value => value.StartsWith("Tick:", StringComparison.Ordinal));
     }
 
@@ -441,7 +475,7 @@ public sealed class RenderedControlSurfaceAuditTests
             using var opened = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => windows.Add(window));
             var original = new MainWindow([], new WorldSetupOptions
             {
-                NativeGaussianSpare = 1.25f, NativeSunChange = 12,
+                NativeGaussianSpare = 1.25f, NativeSunChange = 12, NativeProcessCaches = ProcessCaches(101, 0.125, 11),
                 Species = [new("Creation Retry", "start stop", false, 0xff123456, 1, 1000, 0, false, 0)],
             }, factory, storage);
             try
@@ -451,6 +485,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Empty(factory.Clients);
                 Assert.Equal(1.25f, typeof(MainWindow).GetField("_initialNativeGaussianSpare", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(original));
                 Assert.Equal((byte)12, typeof(MainWindow).GetField("_initialNativeSunChange", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(original));
+                AssertProcessCaches(ProcessCaches(101, 0.125, 11), (NativeProcessCachesSnapshot)typeof(MainWindow).GetField("_initialNativeProcessCaches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(original)!);
                 Named<Button>(original, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(() => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Creation Retry"));
                 var retry = windows.OfType<MainWindow>().Single(value => value != original);
@@ -460,11 +495,14 @@ public sealed class RenderedControlSurfaceAuditTests
                 {
                     Assert.Equal(1.25f, options.NativeGaussianSpare);
                     Assert.Equal((byte)12, options.NativeSunChange);
+                    AssertProcessCaches(ProcessCaches(101, 0.125, 11), options.NativeProcessCaches!);
                 });
                 Assert.Null(typeof(MainWindow).GetField("_initialNativeGaussianSpare", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(retry));
                 Assert.Null(typeof(MainWindow).GetField("_initialNativeSunChange", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(retry));
+                Assert.Null(typeof(MainWindow).GetField("_initialNativeProcessCaches", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(retry));
                 retryClient.NativeGaussianSpare = 3.5f;
                 retryClient.NativeSunChange = 2;
+                retryClient.NativeProcessCaches = ProcessCaches(303, 0.5);
 
                 Named<Button>(retry, "ResetButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
@@ -474,6 +512,9 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Equal((byte)2, factory.CreatedSetups.Last().NativeSunChange);
                 AssertReadBeforeDisposeWithoutTicks(retryClient, 3.5f);
                 Assert.Equal((byte)2, Assert.Single(retryClient.SunChangeReads));
+                AssertProcessCaches(ProcessCaches(303, 0.5), Assert.Single(retryClient.ProcessCachesReads));
+                AssertProcessCaches(ProcessCaches(303, 0.5), factory.CreatedSetups.Last().NativeProcessCaches!);
+                AssertProcessCaches(ProcessCaches(303, 0.5), factory.Clients.Last().NativeProcessCaches);
             }
             finally { await CloseNavigationWindowsAsync(windows); }
         }, CancellationToken.None);
@@ -2012,6 +2053,7 @@ internal sealed class AuditEngineClientFactory(bool includeWorldObjects = true, 
             EncodeTickInSave = encodeTickInSave,
             NativeGaussianSpare = setup.NativeGaussianSpare,
             NativeSunChange = setup.NativeSunChange ?? 0,
+            NativeProcessCaches = setup.NativeProcessCaches ?? NativeProcessCachesSnapshot.Empty,
         };
         Clients.Enqueue(client);
         return client;
@@ -2060,6 +2102,15 @@ internal sealed class AuditEngineClient : IEngineClient
     public LocalModeSnapshot? LocalModeForRead { get; set; }
     public float? NativeGaussianSpare { get; set; }
     public byte NativeSunChange { get; set; }
+    public NativeProcessCachesSnapshot NativeProcessCaches { get; set; } = NativeProcessCachesSnapshot.Empty;
+    public ConcurrentQueue<NativeProcessCachesSnapshot> ProcessCachesReads { get; } = [];
+    public NativeProcessCachesSnapshot ReadNativeProcessCaches()
+    {
+        var caches = NativeProcessCaches;
+        ProcessCachesReads.Enqueue(caches);
+        Calls.Enqueue("ReadNativeProcessCaches");
+        return caches;
+    }
     public ConcurrentQueue<byte> SunChangeReads { get; } = [];
     public byte ReadNativeSunChange()
     {

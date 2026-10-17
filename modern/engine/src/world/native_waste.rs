@@ -13,7 +13,7 @@ fn alzheimer_write_count(total: f32, threshold: i32) -> usize {
 }
 
 impl Engine {
-    pub(super) fn waste_phase(&mut self) {
+    pub(super) fn waste_phase(&mut self) -> Result<(), EngineError> {
         let settings = self.config.waste;
         let mut packets = Vec::new();
         for id in self.phase_robot_ids() {
@@ -95,7 +95,7 @@ impl Engine {
             );
             angle = (f64::from(angle) + f64::from(scatter) / 200.0) as f32;
             let name = self.species[robot.identity.species.0 as usize].name.clone();
-            self.projectiles.spawn(
+            self.projectiles.try_spawn(
                 ProjectileSpawn {
                     owner,
                     owner_position: robot.kinematics.position,
@@ -119,12 +119,13 @@ impl Engine {
                     dna_length: 0,
                 },
                 &self.config.shots,
-            );
+            )?;
             robot
                 .materials
                 .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
+        Ok(())
     }
 }
 
@@ -154,7 +155,7 @@ mod tests {
             .unwrap();
         world.slots.get_mut(id).unwrap().materials.waste = 4_000.0;
         let before = world.slots.get(id).unwrap().program.clone();
-        world.waste_phase();
+        world.waste_phase().unwrap();
         let after = &world.slots.get(id).unwrap().program;
         assert_eq!(after.rng_state, before.rng_state);
         assert_eq!(after.memory.read(500), before.memory.read(500));
@@ -184,7 +185,7 @@ mod tests {
         robot.kinematics.velocity = [2.0, 0.0];
         robot.kinematics.actual_velocity = [3.0, 0.0];
         let radius = robot.materials.radius;
-        world.waste_phase();
+        world.waste_phase().unwrap();
         let robot = world.slots.get(id).unwrap();
         assert_eq!(robot.materials.energy, 998.0);
         assert_eq!(robot.materials.waste, 50.0);

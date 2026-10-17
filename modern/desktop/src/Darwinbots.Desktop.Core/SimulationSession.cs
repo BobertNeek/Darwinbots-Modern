@@ -344,6 +344,15 @@ public sealed class SimulationSession : IAsyncDisposable
         return context;
     }
 
+    public async Task<NativeProcessStateSnapshot> ReadNativeProcessStateAsync(CancellationToken cancellationToken = default)
+    {
+        NativeProcessStateSnapshot? context = null;
+        await Enqueue(engine => context = new NativeProcessStateSnapshot(
+            engine.ReadNativeGaussianSpare(), engine.ReadNativeSunChange(), engine.ReadNativeProcessCaches()),
+            cancellationToken).ConfigureAwait(false);
+        return context ?? throw new InvalidDataException("Engine returned no native process state.");
+    }
+
     public async Task<byte[]> SaveLegacyAsync(CancellationToken cancellationToken = default)
     {
         byte[]? save = null;

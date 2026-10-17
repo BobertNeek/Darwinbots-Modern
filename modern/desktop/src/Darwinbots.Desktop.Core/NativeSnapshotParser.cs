@@ -107,7 +107,10 @@ public static class NativeSnapshotParser
             native.Stats.IntentionalMovementEvents,
             native.Stats.ProjectileImpacts,
             native.Stats.ProjectileEffects,
-            native.Stats.PlantEnergyGenerated);
+            native.Stats.PlantEnergyGenerated,
+            native.Stats.NativeShotsVisited,
+            native.Stats.NativeEnergyDisplayed,
+            native.Stats.NativeEnergyDelta);
         var obstacles = (native.Obstacles ?? []).Select(value => new ObstacleSnapshot(value.Id, value.Minimum, value.Maximum)
         {
             Color = value.Color ?? 0xffb9bdb6u,
@@ -837,7 +840,10 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("intentional_movement_events")] ulong IntentionalMovementEvents,
         [property: JsonPropertyName("projectile_impacts")] ulong ProjectileImpacts,
         [property: JsonPropertyName("projectile_effects")] ulong ProjectileEffects,
-        [property: JsonPropertyName("plant_energy_generated")] ulong PlantEnergyGenerated);
+        [property: JsonPropertyName("plant_energy_generated")] ulong PlantEnergyGenerated,
+        [property: JsonPropertyName("native_shots_visited")] ulong? NativeShotsVisited = null,
+        [property: JsonPropertyName("native_energy_displayed")] int? NativeEnergyDisplayed = null,
+        [property: JsonPropertyName("native_energy_delta")] long? NativeEnergyDelta = null);
 
     private sealed record NativeRenderInstance(
         [property: JsonPropertyName("slot")] uint Slot,

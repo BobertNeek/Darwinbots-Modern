@@ -9,12 +9,28 @@ use support::db2_fixtures::{
     START_CHLR,
 };
 
+const MEM_DAYTIME: i32 = 218;
+
+// Old DB3S checkpoints without native_random keep the explicit legacy profile.
+fn legacy_profile(config: EngineConfig) -> Engine {
+    let encoded = SaveFile::encode(&Engine::new(config).unwrap()).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["native_random"] = serde_json::Value::Null;
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    SaveFile::decode(&save).unwrap()
+}
+
 #[test]
 fn chloroplast_sysvars_use_db2_memory_addresses() {
     assert_eq!(sysvar_address("chlr"), Some(MEM_CHLR));
     assert_eq!(sysvar_address("mkchlr"), Some(MEM_MAKE_CHLR));
     assert_eq!(sysvar_address("rmchlr"), Some(MEM_REMOVE_CHLR));
     assert_eq!(sysvar_address("light"), Some(MEM_LIGHT));
+    assert_eq!(sysvar_address("daytime"), Some(MEM_DAYTIME));
     assert_eq!(sysvar_address("availability"), Some(MEM_AVAILABILITY));
     assert_eq!(sysvar_address("sharechlr"), Some(MEM_SHARE_CHLR));
 }
@@ -250,7 +266,7 @@ fn vegetable_reproduction_is_throttled_near_the_population_cap() {
 
 #[test]
 fn full_chloroplast_plant_receives_db2_light_and_body_split() {
-    let mut engine = Engine::new(EngineConfig {
+    let mut engine = Engine::new_native(EngineConfig {
         metabolism_cost: 0,
         vegetable_energy_per_tick: 0,
         ..EngineConfig::testing()
@@ -274,12 +290,14 @@ fn full_chloroplast_plant_receives_db2_light_and_body_split() {
     let after = engine.organism(plant).unwrap();
     assert!(after.energy > before.energy);
     assert!(after.body > before.body);
-    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 1);
+    // ManageChlr reads the previous process LightAval before this late feed.
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 32_000);
+    assert_eq!(engine.memory_at(plant, MEM_DAYTIME).unwrap(), 1);
 }
 
 #[test]
 fn darkness_prevents_chloroplast_feeding() {
-    let mut engine = Engine::new(EngineConfig {
+    let mut engine = Engine::new_native(EngineConfig {
         metabolism_cost: 0,
         vegetable_energy_per_tick: 0,
         vegetation: VegetationSettings {
@@ -305,7 +323,9 @@ fn darkness_prevents_chloroplast_feeding() {
     engine.tick().unwrap();
 
     assert!(engine.organism(plant).unwrap().energy <= before);
-    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 0);
+    // Darkness skips FeedVeg, so availability stays at its fresh process image.
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 32_000);
+    assert_eq!(engine.memory_at(plant, MEM_DAYTIME).unwrap(), 0);
 }
 
 #[test]
@@ -489,9 +509,9 @@ fn repopulation_waits_for_cooldown_and_spawns_configured_batch() {
 }
 
 #[test]
-fn sunlight_intensity_scales_non_pond_photosynthesis() {
+fn legacy_profile_sunlight_intensity_scales_non_pond_photosynthesis() {
     fn energy_after_one_tick(sunlight_energy: i32) -> i32 {
-        let mut engine = Engine::new(EngineConfig {
+        let mut engine = legacy_profile(EngineConfig {
             metabolism_cost: 0,
             sunlight_energy,
             vegetation: VegetationSettings {
@@ -500,8 +520,7 @@ fn sunlight_intensity_scales_non_pond_photosynthesis() {
                 ..VegetationSettings::default()
             },
             ..EngineConfig::testing()
-        })
-        .unwrap();
+        });
         let vegetables = engine.register_species(SpeciesDefinition {
             vegetable: true,
             ..SpeciesDefinition::default()
@@ -525,8 +544,46 @@ fn sunlight_intensity_scales_non_pond_photosynthesis() {
 }
 
 #[test]
+fn native_non_pond_photosynthesis_uses_max_energy_without_a_sunlight_scalar() {
+    fn energy_after_one_tick(max_energy_per_tick: i32, sunlight_energy: i32) -> i32 {
+        let mut engine = Engine::new_native(EngineConfig {
+            metabolism_cost: 0,
+            sunlight_energy,
+            vegetation: VegetationSettings {
+                max_energy_per_tick,
+                feeding_to_body: 0.0,
+                ..VegetationSettings::default()
+            },
+            ..EngineConfig::testing()
+        })
+        .unwrap();
+        let vegetables = engine.register_species(SpeciesDefinition {
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let plant = engine
+            .spawn_species_at(
+                LegacyDna::parse("start\nstop").unwrap(),
+                vegetables,
+                [500.0, 500.0],
+            )
+            .unwrap();
+        engine.tick().unwrap();
+        engine.organism(plant).unwrap().energy
+    }
+
+    // Vegs.feedvegs takes the MaxEnergy Long directly when Pondmode is false.
+    let no_legacy_scalar = energy_after_one_tick(40, 0);
+    assert_eq!(no_legacy_scalar, energy_after_one_tick(40, 100));
+    assert_eq!(no_legacy_scalar, energy_after_one_tick(40, 200));
+    assert_eq!(energy_after_one_tick(0, 100), 1_000);
+    assert!(no_legacy_scalar > 1_000);
+}
+
+#[test]
 fn day_night_cycle_changes_after_the_configured_number_of_completed_cycles() {
-    let mut engine = Engine::new(EngineConfig {
+    let mut engine = Engine::new_native(EngineConfig {
+        fixed_bot_radii: true,
         metabolism_cost: 0,
         vegetation: VegetationSettings {
             day_night_enabled: true,
@@ -549,11 +606,15 @@ fn day_night_cycle_changes_after_the_configured_number_of_completed_cycles() {
         .unwrap();
 
     engine.tick().unwrap();
-    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 1);
+    assert_eq!(engine.memory_at(plant, MEM_DAYTIME).unwrap(), 1);
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 32_000);
     engine.tick().unwrap();
-    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 1);
+    assert_eq!(engine.memory_at(plant, MEM_DAYTIME).unwrap(), 1);
+    // Radius 60 in a 1000 by 1000 world: round(32000 - pi*60^2/1e6*32000).
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 31_638);
     engine.tick().unwrap();
-    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 0);
+    assert_eq!(engine.memory_at(plant, MEM_DAYTIME).unwrap(), 0);
+    assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 31_638);
 }
 
 #[test]
@@ -595,7 +656,8 @@ fn tides_reduce_photosynthetic_yield_at_high_tide() {
 #[test]
 fn total_energy_threshold_modes_apply_vb6_sun_overrides() {
     fn run(daytime: bool, mode: i32, sun_up: bool, sun_down: bool) -> (i32, bool) {
-        let mut engine = Engine::new(EngineConfig {
+        let mut engine = Engine::new_native(EngineConfig {
+            fixed_bot_radii: true,
             metabolism_cost: 0,
             vegetation: VegetationSettings {
                 daytime,
@@ -622,11 +684,21 @@ fn total_energy_threshold_modes_apply_vb6_sun_overrides() {
                 [500.0, 500.0],
             )
             .unwrap();
+        let before = engine.organism(plant).unwrap().energy;
         engine.tick().unwrap();
+        // Master reads the previous ring slot. Fresh displayed 0 equals SunDown 0,
+        // so the strict '>' check cannot suppress this first feed.
+        assert_eq!(engine.snapshot().stats.native_energy_displayed, Some(0));
+        assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 32_000);
+        assert_eq!(engine.memory_at(plant, MEM_DAYTIME).unwrap(), 1);
+        assert!(engine.organism(plant).unwrap().energy > before);
+        engine.tick().unwrap();
+        assert!(engine.snapshot().stats.native_energy_displayed.unwrap() > 0);
+        assert_eq!(engine.memory_at(plant, MEM_LIGHT).unwrap(), 31_638);
         let payload: serde_json::Value =
             serde_json::from_slice(&SaveFile::encode(&engine).unwrap()[10..]).unwrap();
         (
-            engine.memory_at(plant, MEM_LIGHT).unwrap(),
+            engine.memory_at(plant, MEM_DAYTIME).unwrap(),
             payload["config"]["vegetation"]["daytime"]
                 .as_bool()
                 .unwrap(),
@@ -640,8 +712,8 @@ fn total_energy_threshold_modes_apply_vb6_sun_overrides() {
 }
 
 #[test]
-fn weather_sun_band_controls_light_memory_for_wrapped_positions() {
-    let mut engine = Engine::new(EngineConfig {
+fn weather_sun_band_controls_daytime_independently_of_cached_light() {
+    let mut engine = Engine::new_native(EngineConfig {
         fixed_bot_radii: true,
         metabolism_cost: 0,
         vegetation: VegetationSettings {
@@ -683,6 +755,16 @@ fn weather_sun_band_controls_light_memory_for_wrapped_positions() {
 
     engine.tick().unwrap();
 
-    assert_eq!(engine.memory_at(inside, MEM_LIGHT).unwrap(), 1);
-    assert_eq!(engine.memory_at(outside, MEM_LIGHT).unwrap(), 0);
+    assert_eq!(engine.memory_at(inside, MEM_DAYTIME).unwrap(), 1);
+    assert_eq!(engine.memory_at(outside, MEM_DAYTIME).unwrap(), 0);
+    assert_eq!(engine.memory_at(inside, MEM_LIGHT).unwrap(), 32_000);
+    assert_eq!(engine.memory_at(outside, MEM_LIGHT).unwrap(), 32_000);
+
+    engine.tick().unwrap();
+
+    // Both actors sense the same prior occupied area, regardless of sun band.
+    assert_eq!(engine.memory_at(inside, MEM_LIGHT).unwrap(), 31_276);
+    assert_eq!(engine.memory_at(outside, MEM_LIGHT).unwrap(), 31_276);
+    assert_eq!(engine.memory_at(inside, MEM_DAYTIME).unwrap(), 1);
+    assert_eq!(engine.memory_at(outside, MEM_DAYTIME).unwrap(), 0);
 }

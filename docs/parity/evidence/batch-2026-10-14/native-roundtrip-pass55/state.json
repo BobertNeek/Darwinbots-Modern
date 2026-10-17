@@ -1,0 +1,24 @@
+{
+  "status": "needs_repair",
+  "step": "all",
+  "pid": 5580,
+  "utc": "2026-10-17T03:52:10.4801267Z",
+  "source_parent": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+  "comparison_base": "14961edfbb9c979ef7b07145bd95153517659211",
+  "source_manifest_sha256": "3E1E0C67173084E3F8D98583C07BDA8E7EA258B643380BE77C9B472C87F076DB",
+  "details": {
+    "failed_steps": [
+      "cpu-rust-workspace",
+      "original-zero-cycle-compare",
+      "original-zero-cycle-field-coverage",
+      "genuine-chloroplast-1-compare",
+      "genuine-chloroplast-1-field-coverage",
+      "genuine-chloroplast-10-compare",
+      "genuine-chloroplast-10-field-coverage",
+      "genuine-feeding-10-compare",
+      "genuine-feeding-10-field-coverage",
+      "genuine-additional-checkpoints-completeness"
+    ],
+    "scope": "All available ordinary CPU outcomes collected; root seals counts, summary and admission separately."
+  }
+}

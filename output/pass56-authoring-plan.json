@@ -1,0 +1,455 @@
+{
+  "schema_version": 1,
+  "batch": 56,
+  "state": "all_code_and_tests_authored_released_for_application_and_combined_checks",
+  "created_utc": "2026-10-17T03:44:12.8465643Z",
+  "source_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+  "all_initial_code_and_tests_authored": true,
+  "draft_product_execution": false,
+  "expected_distinct_rust_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 289,
+    "desktop": 193
+  },
+  "net_new_rust_tests_from_authoring_census": 59,
+  "net_new_managed_facts": 8,
+  "file_count": 48,
+  "releases": [
+    {
+      "file": "output/pass56-drafts/native-shots/metadata.json",
+      "sha256": "CE765252A844AD93E802478251CCACD37567D33690F38490D859BCD6DBD75447"
+    },
+    {
+      "file": "output/pass56-drafts/native-energy-hooks/metadata.json",
+      "sha256": "838E250481396D24F0653D06B25872144911B145EF6C5B544338CE32039BD807"
+    },
+    {
+      "file": "output/pass56-drafts/plant/metadata.json",
+      "sha256": "08B9D7B4157ACA4964BBA02DA112703266D4E0285F91543EBFA5984641174ECA"
+    },
+    {
+      "file": "output/pass56-drafts/vegetation-tests/metadata.json",
+      "sha256": "E19196D27FBFF1E008745972F1EFDB3836A500090355433D86318F0FA1834602"
+    },
+    {
+      "file": "output/pass56-drafts/reproduction-tests/metadata.json",
+      "sha256": "687DAA0ECC29837E685C2CA2F2C589E0CAD17789F4C6CE2626F0790E20CE9D32"
+    },
+    {
+      "file": "output/pass55-repair-drafts/native-zero-step/metadata.json",
+      "sha256": "B47B3EEC4C0DA7A81E9217E3C36A5C2041DC86021F4FD81F4C96098602B198C7"
+    },
+    {
+      "file": "output/pass56-drafts/native-energy/metadata-shots-counter.json",
+      "sha256": "CD66FCE3397ABD78A92D04418348CCF791E383704E4C6B0B390C412B2B496779"
+    },
+    {
+      "file": "output/pass56-drafts/ffi/metadata.json",
+      "sha256": "BC5AC3B7244F7B67D7271F80E66514F5C355E7674A6D60A7A10CDA7C73E60BD5"
+    },
+    {
+      "file": "output/pass56-drafts/native-shot-identity/metadata.json",
+      "sha256": "DA3D8375261E7E15B45696BAE44D1AA42A3901C4FB9EF99FBED383D7EF3BF5D3"
+    },
+    {
+      "file": "output/pass56-drafts/native-shot-owners/metadata.json",
+      "sha256": "74E8537574BC952D2D2E315F9DD20FE672B24E64BFA55AB583D50F5DC82C86F2"
+    },
+    {
+      "file": "output/pass56-drafts/harness/managed-test-counts-release.json",
+      "sha256": "FFFCF4544BB6ED94257A0342E344ED9D8A91CF135888F29E47B750C2FDE25279"
+    }
+  ],
+  "files": [
+    {
+      "target": "modern/cli/src/lib.rs",
+      "draft": "output/pass55-repair-drafts/native-zero-step/modern/cli/src/lib.rs",
+      "base_raw_sha256": "8D537DD330AA050F2E7C9356FFE1D15C32B8C77C0C339833B12FD87D254F1DA7",
+      "candidate_raw_sha256": "BE6D71ECDF152F3708850B246FBBCFCE07A2A27CEC5F97E6D12D1390372BFE9F",
+      "bytes": 18600,
+      "receipt": "output/pass55-repair-drafts/native-zero-step/metadata.json"
+    },
+    {
+      "target": "modern/cli/src/native_comparison.rs",
+      "draft": "output/pass55-repair-drafts/native-zero-step/modern/cli/src/native_comparison.rs",
+      "base_raw_sha256": "DC7CF837A8489187D67715204BFBF96ED2F67BED1AA778D7E9941DE97E90F83E",
+      "candidate_raw_sha256": "81A145E248C62B833CC127184B1D67DAD6B3F1C44F245394E24EC51505352721",
+      "bytes": 19702,
+      "receipt": "output/pass55-repair-drafts/native-zero-step/metadata.json"
+    },
+    {
+      "target": "modern/cli/tests/native_comparison.rs",
+      "draft": "output/pass55-repair-drafts/native-zero-step/modern/cli/tests/native_comparison.rs",
+      "base_raw_sha256": "F39C078B571E63EF928FD407C2009EE815E6CC3969A1E069CD9ED0A2AE709EEB",
+      "candidate_raw_sha256": "5710227149DF710028A8D47AF33D35D656B3EB6B3EDBD206C745F2716755F936",
+      "bytes": 11891,
+      "receipt": "output/pass55-repair-drafts/native-zero-step/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft": "output/pass56-drafts/native-energy-hooks/modern/engine/src/world.rs",
+      "base_raw_sha256": "B54034A1AB3F7074BEC27D3F61D7A59245092E223829CB55B79144D436D37CC8",
+      "candidate_raw_sha256": "F458E1DD6A1A94018B891CD6922C04267E815393C714E158AC5314B3EC793DC3",
+      "bytes": 592028,
+      "receipt": "output/pass56-drafts/native-energy-hooks/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "draft": "output/pass56-drafts/native-shot-owners/modern/engine/src/world/native_io.rs",
+      "base_raw_sha256": "91AC096F745FD118CE26BECD4F03354277872E8F0204FE3A7454C0C50D5CEDF3",
+      "candidate_raw_sha256": "CA509B7BBB4FD2BD8C323E8EEF87397E1B01D2D31DF076637BE2C92E21B86115",
+      "bytes": 62707,
+      "receipt": "output/pass56-drafts/native-shot-owners/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_random_world.rs",
+      "draft": "output/pass56-drafts/native-energy-hooks/modern/engine/src/world/native_random_world.rs",
+      "base_raw_sha256": "956A732F20D1B7195B8692A530431FCB0097CE89BD308E58731AD9B70B191C65",
+      "candidate_raw_sha256": "B43756637A1AE6486859F4F41A4C92FB0AFA0E2C97D9DD6B04F62E7D84FAAC51",
+      "bytes": 69317,
+      "receipt": "output/pass56-drafts/native-energy-hooks/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_reproduction.rs",
+      "draft": "output/pass56-drafts/native-shots/modern/engine/src/world/native_reproduction.rs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "DEB75F81ECB3502737D2AA4150A76527D81FC6A53B587510BF04E3C3723557D8",
+      "bytes": 7567,
+      "receipt": "output/pass56-drafts/native-shots/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/shot/projectile.rs",
+      "draft": "output/pass56-drafts/native-shots/modern/engine/src/shot/projectile.rs",
+      "base_raw_sha256": "258CBAA266F5E61199ADA4194FA53B4AC5ACD27CD67F6F12728520CEA6350CCD",
+      "candidate_raw_sha256": "0CFFB35BD4C651CA678196F58F2E2052E82FA629E9F1756D384A84002D0BDD0F",
+      "bytes": 55944,
+      "receipt": "output/pass56-drafts/native-shots/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "draft": "output/pass56-drafts/native-shot-owners/modern/engine/src/world/native_shots.rs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "CAEAE133428D844EB54EF3E01B49A90CD36C40A19AE7F676FFC3DA6451D94A3F",
+      "bytes": 35991,
+      "receipt": "output/pass56-drafts/native-shot-owners/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_virus.rs",
+      "draft": "output/pass56-drafts/native-shots/modern/engine/src/world/native_virus.rs",
+      "base_raw_sha256": "D5297B34EA737E87EBD90F739B1D2DCAABF2332AAAEF7A6729AAA7D462E8CAD8",
+      "candidate_raw_sha256": "29FA2A0EDB3405E32CB0DC3DFA23889D87FC953E00555D603E7BF496429969B6",
+      "bytes": 30158,
+      "receipt": "output/pass56-drafts/native-shots/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_pipeline.rs",
+      "draft": "output/pass56-drafts/native-energy-hooks/modern/engine/src/world/native_pipeline.rs",
+      "base_raw_sha256": "2FE2CA0EA011272BC90AC3DFAC19EAF881188B599A964ACE6195B756303E78F5",
+      "candidate_raw_sha256": "D92B84F51815FB677C64665F5DF01F3A5EC4D00FE85DF77159CDE956B2A1AF71",
+      "bytes": 28584,
+      "receipt": "output/pass56-drafts/native-energy-hooks/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_corpses.rs",
+      "draft": "output/pass56-drafts/native-shots/modern/engine/src/world/native_corpses.rs",
+      "base_raw_sha256": "E4A3FEE0B959C4054C92394C80036F0B95DB6A5CCB5E7FC22ACE318BA9F1140E",
+      "candidate_raw_sha256": "87B8EE8BFD84DAAB77F7E1C83B1C0731057A986561BB32ABDF8789F15F74FC3C",
+      "bytes": 36806,
+      "receipt": "output/pass56-drafts/native-shots/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_waste.rs",
+      "draft": "output/pass56-drafts/native-shots/modern/engine/src/world/native_waste.rs",
+      "base_raw_sha256": "5BF8D63F93D1B5EEC9A1D056C2018DB2D3FD06B64B19A604C0FE9BAB99DC7556",
+      "candidate_raw_sha256": "04C49D40BA6E4AF90A06280AFAAD1E4204B88967C967618FA33A5FA163F81ED2",
+      "bytes": 9161,
+      "receipt": "output/pass56-drafts/native-shots/metadata.json"
+    },
+    {
+      "target": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "draft": "output/pass56-drafts/native-shots/modern/engine/tests/db24832_genuine_feeding.rs",
+      "base_raw_sha256": "6457133EE2691611E0A7AC6C5684BAD14C830211625AD774F735433D626FFBA2",
+      "candidate_raw_sha256": "14483999C22DA86F22F51BECEE335A6379FC5027582B87F3585E3E2E9281D22A",
+      "bytes": 22020,
+      "receipt": "output/pass56-drafts/native-shots/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/stats.rs",
+      "draft": "output/pass56-drafts/native-energy/modern/engine/src/stats.rs",
+      "base_raw_sha256": "E27B3E6B17BE78621C56506E79D10E781C3FB1AD9A185F2BC7FACA09F8C6E587",
+      "candidate_raw_sha256": "0E8A981B2F975145229960504CB9D00CBADCAC094BDC5CB32001893AAE611AFC",
+      "bytes": 2682,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "base_raw_sha256": "89075FFDD5F8C147BB6FB8EF2F8F21696FE4390900C5A6E42548A6F349D50C06",
+      "candidate_raw_sha256": "7E5B2020F61B862757BE1E7DDF78206114338EC283DEA620F238457C67BB98BE",
+      "bytes": 12977,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "base_raw_sha256": "7F871E7202BA5DA5B6F6BA517C2745A0746F14E1FC1FA3335845217183749F69",
+      "candidate_raw_sha256": "1B5D13B9F8CF945AD31DF7C51EC8F75C4D73CA0FF8C15F6424C7B10C6CC0028B",
+      "bytes": 55376,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/ViewModels/MainWindowViewModel.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop/ViewModels/MainWindowViewModel.cs",
+      "base_raw_sha256": "FC4305AF0A0748A5BFE5EA631335052A8A816A31D52CC389B1E62786F6EBA60B",
+      "candidate_raw_sha256": "4F754301646B31FF08326A01258FDD5F56B1E8D031200A3D9248CD51398FE2E4",
+      "bytes": 17141,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "base_raw_sha256": "DFE85E12DC20588E854DB057BD9CD981BC9AF536E6B9E4DDC8CCC18A2CC61029",
+      "candidate_raw_sha256": "8E6964CF3812730FF007397F65CC21B5BFEBEF345B65C0D99EC1C839C75B600B",
+      "bytes": 22548,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/MainWindowViewModelTests.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/tests/Darwinbots.Desktop.Tests/MainWindowViewModelTests.cs",
+      "base_raw_sha256": "2C68A097E5A6B8382E9B608C07780C05FCCEE6DF0E034820913F9FEA50A9BB92",
+      "candidate_raw_sha256": "770658C5D9EE79B6C8C6303AC923DF34F7EE4AC94E35CCB8D5CD4829513CD900",
+      "bytes": 14243,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "base_raw_sha256": "E02DCAF5AE4C5CE3E421A219415B7BD98391195BA193969432A19286A97EAF5E",
+      "candidate_raw_sha256": "3CBB7EB300245787CF4F69DBFECE399BFC1AA71F7C35D50871BA0CED49A6449E",
+      "bytes": 4909,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "base_raw_sha256": "45563CF89CA9F84EC04FBB73742B35B5CB4500B4B3F25AE5BFF1FDD5300AD51D",
+      "candidate_raw_sha256": "BC9A4ACFC7F84D891FA603B93AD0165E8C577CD299CAC8350BACDDAA2F5B981E",
+      "bytes": 48232,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+      "base_raw_sha256": "9372084AC7579386C9F87096E38F879C471044BA97D7D45AC74AE329098493A3",
+      "candidate_raw_sha256": "B7DB1DE839D32B4193642853AF1453424F370CD54DE0EFC5629D77645EE05F08",
+      "bytes": 3861,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "base_raw_sha256": "F1ABDCA5233891DAA9ADC53A57AA3D2FF6F6CCC18986D4083FE9B8DC07034646",
+      "candidate_raw_sha256": "1C2BA3E71A069FC0850978DFB94957262F8DBC4AB7F0894535D3E537655F78E2",
+      "bytes": 22446,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/SetupWindow.axaml.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop/Views/SetupWindow.axaml.cs",
+      "base_raw_sha256": "D3293DD46F9B99F11DE39286C33D50F861BF3FE5EEF839E8B14A39DB8C31EBE0",
+      "candidate_raw_sha256": "CE5B484236B50E825377671FADB44AC946011CD459F0DF48621BE008A4C1FAB5",
+      "bytes": 21690,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_raw_sha256": "0318A909E9E6652423527CB78D641B1D21EE78F13A68214C9A66E43E2F503062",
+      "candidate_raw_sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51",
+      "bytes": 139997,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "base_raw_sha256": "AF9879641C34340EC5B69503B272FFC3CF85CF188D1B8528BEFFB5AE080775CD",
+      "candidate_raw_sha256": "17651D34D069686ECDAD94524ADAD51E90B3ECA0F44B49632D65A4050C9CD5D0",
+      "bytes": 25694,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "base_raw_sha256": "DA09D0707F57C8FB3D32D425E5AAB9F30BD8423916185D7FA4A4B03F46D44F05",
+      "candidate_raw_sha256": "A637955B25785A38FD23FAD7FC0130E0B20763FAE69AFC26DAD58A74C61911BA",
+      "bytes": 38517,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "draft": "output/pass56-drafts/native-energy/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_raw_sha256": "65DFDDEBCA353257AA9CB5B1B949FB1A08FB295C946BBDC5172310A96884A77E",
+      "candidate_raw_sha256": "D1CA26C38D13B06FD1D0C97363E78D75DE282E3D00E50F6D408AAB030D605E6F",
+      "bytes": 134808,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "draft": "output/pass56-drafts/native-energy/modern/engine/src/world/native_energy.rs",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "F216F555B266909285121053B8107F6C20F343D20F975754A61ECF3CF4330FE1",
+      "bytes": 17135,
+      "receipt": "output/pass56-drafts/native-energy/metadata-shots-counter.json"
+    },
+    {
+      "target": "modern/engine/tests/db24832_genuine_load_transients.rs",
+      "draft": "output/pass56-drafts/plant/modern/engine/tests/db24832_genuine_load_transients.rs",
+      "base_raw_sha256": "EA6B84028FF4EB219BB7CEA1F6439BABB88E58C96ED8BDE7533BDF7866C9716D",
+      "candidate_raw_sha256": "9ECFD3769C041B5F15812701A7C17102F5355CA9E7CBEA40F4094C380714A652",
+      "bytes": 15017,
+      "receipt": "output/pass56-drafts/plant/metadata.json"
+    },
+    {
+      "target": "modern/engine/tests/db2_final_engine_world.rs",
+      "draft": "output/pass56-drafts/plant/modern/engine/tests/db2_final_engine_world.rs",
+      "base_raw_sha256": "665C5FF8FAC30C45DB36F557DB5DC05BEB2F4DD5E79931BB3149F2074BF7E4C8",
+      "candidate_raw_sha256": "74C073BAA2DB157E4E7FBBBDB7EE47C7EF2E4D1CBAFC929D8AC9F78153AF3543",
+      "bytes": 10289,
+      "receipt": "output/pass56-drafts/plant/metadata.json"
+    },
+    {
+      "target": "modern/engine/tests/db2_vegetation.rs",
+      "draft": "output/pass56-drafts/vegetation-tests/modern/engine/tests/db2_vegetation.rs",
+      "base_raw_sha256": "9576DC99955FB186E110C8E8FC1E600C1C8315322F6AC87CCCD3C5ADA538BB80",
+      "candidate_raw_sha256": "B87336F2E38D8C7E059DF0FDE64C3D5E9EEAA39298D1186909529D6C5007F844",
+      "bytes": 26529,
+      "receipt": "output/pass56-drafts/vegetation-tests/metadata.json"
+    },
+    {
+      "target": "modern/engine/tests/environment_world.rs",
+      "draft": "output/pass56-drafts/vegetation-tests/modern/engine/tests/environment_world.rs",
+      "base_raw_sha256": "733A33BC7660E32701310040E5BAAC5B7D8307738257162D2AFC5D40363B7FC0",
+      "candidate_raw_sha256": "36E73224D18AC85E01472621CBF73F02421250DAC8AB1DE0BBDCA3EFBB14CFDB",
+      "bytes": 14080,
+      "receipt": "output/pass56-drafts/vegetation-tests/metadata.json"
+    },
+    {
+      "target": "modern/engine/src/ffi.rs",
+      "draft": "output/pass56-drafts/ffi/modern/engine/src/ffi.rs",
+      "base_raw_sha256": "3FB54C1CF3C181150238384CEF997185422FC68F7B49B5A89607853263461D7F",
+      "candidate_raw_sha256": "A4A69226E7DC6761F34E266EDCDA909BB13F2AE74799D798DD2FDF0BC981EAFE",
+      "bytes": 84185,
+      "receipt": "output/pass56-drafts/ffi/metadata.json"
+    },
+    {
+      "target": "modern/engine/tests/reproduction_heredity_248.rs",
+      "draft": "output/pass56-drafts/reproduction-tests/modern/engine/tests/reproduction_heredity_248.rs",
+      "base_raw_sha256": "D5B8086BF9A38255B5222DBBD1C347D9ECA5FFBABAC66C16A6F04AD34EB9146B",
+      "candidate_raw_sha256": "13D47B5ED345269B6AF3C9DC2256CB1FA4B3D56FD2E0CC4C399BB34CA81E1BF3",
+      "bytes": 39620,
+      "receipt": "output/pass56-drafts/reproduction-tests/metadata.json"
+    },
+    {
+      "target": "output/native-qualification-admission53.ps1",
+      "draft": "output/pass56-drafts/harness/native-qualification-admission53.ps1",
+      "base_raw_sha256": "8C81E24439DACD2DF72EEC8D615D1CB32A427085DAED664FF69CD5DBD4D73BC0",
+      "candidate_raw_sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+      "bytes": 39194,
+      "receipt": "output/pass56-drafts/harness/managed-test-counts-release.json"
+    },
+    {
+      "target": "output/test-native-admission56.ps1",
+      "draft": "output/pass56-drafts/harness/test-native-admission56.ps1",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "DDD99DCB5506B1C024AFE51A5E85D33198D0CFFF070E39853E01FCAAB5E659ED",
+      "bytes": 15791,
+      "receipt": "output/pass56-drafts/harness/managed-test-counts-release.json"
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass56.ps1",
+      "draft": "output/pass56-drafts/harness/qualify-native-roundtrip-pass56.ps1",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "D4E8D66083D7E57AD73126F92467A000A9336275EAE34B88D0C3AA397C33177A",
+      "bytes": 54809,
+      "receipt": "output/pass56-drafts/harness/managed-test-counts-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-contacts-start-48032.sim",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-contacts-start-48032.sim",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "bytes": 29805,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-genuine-capture-provenance.json",
+      "base_raw_sha256": "ECFB5A163559C8EAB224FA504154B2CFD68498F70E732AABC582F236CCD55098",
+      "candidate_raw_sha256": "739CBD3FB8528740F6CCB6B74988DB91126A5DE6D474A46FDB309C2C5A3C5F98",
+      "bytes": 9494,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle1-20261017.sim",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-genuine-contacts-cycle1-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "F7DA4A17D59977FC65BB32CC6BCE2AE4C8E28087672F997CE9629CFB20D202D0",
+      "bytes": 35764,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle100-20261017.sim",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-genuine-contacts-cycle100-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "C6AB7E5578162E576F37F3F1CCF738985015D9FD9C3AF155D5E561F02F9F378E",
+      "bytes": 35764,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle11-20261017.sim",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-genuine-contacts-cycle11-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "8821C6D5EB2077EFAE7597FB1D4EB8ADEE3DE687275528BAF7A79C0DC5AF05BB",
+      "bytes": 35764,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-genuine-reproduction-cycle1-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "A6F9DC7F78280AF622D35401ECF65CB1E6ADE344D2D150342E89B5556DA0E03A",
+      "bytes": 17086,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle10-20261017.sim",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-genuine-reproduction-cycle10-20261017.sim",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "4BCD08A85E121216B1BF49C4315FACEA7C985CCF691C147306A479BACE437B69",
+      "bytes": 26475,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/tests/fixtures/db24832-reproduction-start-48032.sim",
+      "draft": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass56-drafts\\contacts\\modern\\engine\\tests\\fixtures\\db24832-reproduction-start-48032.sim",
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "bytes": 11137,
+      "receipt": "output/pass56-drafts/contacts/contacts-long-release.json"
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "draft": "output/pass56-drafts/native-shot-owners/modern/engine/src/world/native_sim_export.rs",
+      "base_raw_sha256": "60877A0C0442293AA72FBA0E1957FED62C72B0C48945A4EB1E2CDCF6AE1EEEA2",
+      "candidate_raw_sha256": "A05C5B178C0736E5875471568F8CCC7F5DED659E032D321EBF424A988826D8E8",
+      "bytes": 55735,
+      "receipt": "output/pass56-drafts/native-shot-owners/metadata.json"
+    }
+  ],
+  "reference_census_repair_pending": false,
+  "updated_utc": "2026-10-17T04:21:11.1159962Z",
+  "original_reference_projection_fields": 34835,
+  "feeding_cycle10_reference_fields": 3090,
+  "normalized_engine_expected_differences": 981,
+  "all_code_and_tests_authored_utc": "2026-10-17T04:21:11.1078986Z"
+}

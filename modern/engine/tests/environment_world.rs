@@ -1,7 +1,20 @@
 use darwinbots_engine::{
-    Engine, EngineConfig, LegacyDna, Obstacle, ShapeShotPolicy, ShapeVisionPolicy,
+    Engine, EngineConfig, LegacyDna, Obstacle, SaveFile, ShapeShotPolicy, ShapeVisionPolicy,
     SpeciesDefinition, Teleporter, TeleporterFilters,
 };
+
+// Old DB3S checkpoints without native_random keep the explicit legacy profile.
+fn legacy_profile(config: EngineConfig) -> Engine {
+    let encoded = SaveFile::encode(&Engine::new(config).unwrap()).unwrap();
+    let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+    payload["native_random"] = serde_json::Value::Null;
+    let payload = serde_json::to_vec(&payload).unwrap();
+    let mut save = Vec::with_capacity(10 + payload.len());
+    save.extend_from_slice(&encoded[..6]);
+    save.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    save.extend_from_slice(&payload);
+    SaveFile::decode(&save).unwrap()
+}
 
 #[test]
 fn gravity_and_drag_affect_motion() {
@@ -182,27 +195,52 @@ fn brownian_motion_can_be_disabled_while_running() {
 
 #[test]
 fn complete_environment_settings_can_change_while_running() {
-    let mut engine = Engine::new(EngineConfig::testing()).unwrap();
-    engine
-        .update_environment(0, 10, 200, [0.0, 2.0], 0.5, 3.0)
-        .unwrap();
-    let vegetable = engine.register_species(SpeciesDefinition {
-        vegetable: true,
-        ..SpeciesDefinition::default()
-    });
-    let id = engine
-        .spawn_species_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            vegetable,
-            [300.0, 500.0],
-        )
-        .unwrap();
+    // Original nonpond feeding takes MaxEnergy directly. The retained legacy
+    // profile additionally scales yield by the updated sunlight scalar.
+    for (native, expected_energy, expected_generated) in [(true, 1_030, 19), (false, 1_050, 39)] {
+        let config = EngineConfig::testing();
+        let mut engine = if native {
+            Engine::new_native(config).unwrap()
+        } else {
+            legacy_profile(config)
+        };
+        engine
+            .update_environment(0, 10, 200, [0.0, 2.0], 0.5, 3.0)
+            .unwrap();
+        let settings: EngineConfig =
+            serde_json::from_value(engine.configuration_view().unwrap()["config"].clone()).unwrap();
+        assert_eq!(settings.metabolism_cost, 0);
+        assert_eq!(settings.vegetable_energy_per_tick, 10);
+        assert_eq!(settings.sunlight_energy, 200);
+        assert_eq!(settings.gravity, [0.0, 2.0]);
+        assert_eq!(settings.drag, 0.5);
+        assert_eq!(settings.brownian_motion, 3.0);
+        let vegetable = engine.register_species(SpeciesDefinition {
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let id = engine
+            .spawn_species_at(
+                LegacyDna::parse("start\nstop").unwrap(),
+                vegetable,
+                [300.0, 500.0],
+            )
+            .unwrap();
 
-    engine.tick().unwrap();
+        engine.tick().unwrap();
 
-    assert_eq!(engine.brownian_motion(), 3.0);
-    assert_eq!(engine.organism(id).unwrap().energy, 1_050);
-    assert_eq!(engine.snapshot().stats.plant_energy_generated, 39);
+        assert_eq!(engine.brownian_motion(), 3.0);
+        assert_eq!(
+            engine.organism(id).unwrap().energy,
+            expected_energy,
+            "native={native}"
+        );
+        assert_eq!(
+            engine.snapshot().stats.plant_energy_generated,
+            expected_generated,
+            "native={native}"
+        );
+    }
 }
 
 #[test]

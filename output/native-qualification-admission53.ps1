@@ -468,9 +468,18 @@ function Read-NativeFreshCpuAdmission55([string]$Repo, [string]$Source, [string]
     foreach ($field in @('passed', 'failed', 'ignored', 'filtered_out', 'expected_distinct_targets', 'total_distinct_targets')) {
         if ($summary.rust_cpu.$field -ne $Marker.rust_cpu.$field) { throw ('Fresh summary Rust result differs: ' + $field) }
     }
-    foreach ($managed in @(@{name='core';count=285}, @{name='desktop';count=189})) {
-        $name = $managed.name
-        $count = $managed.count
+    # Batch55 keeps its qualified fixed census. Later fresh batches declare their
+    # exact managed census in the same pinned manifest as their source inputs.
+    $managedTestCounts = @{core=285;desktop=189}
+    if ($batch -ge 56) {
+        foreach ($name in @('core', 'desktop')) {
+            $count = $manifest.expected_managed_test_counts.$name
+            Assert-FreshInteger55 $count ('manifest expected_managed_test_counts.' + $name) 1
+            $managedTestCounts[$name] = [int]$count
+        }
+    }
+    foreach ($name in @('core', 'desktop')) {
+        $count = $managedTestCounts[$name]
         $declared = $Marker.$name
         $sealed = $summary.$name
         if ($declared.source_head -cne $Source) { throw ('Fresh ' + $name + ' has the wrong origin.') }

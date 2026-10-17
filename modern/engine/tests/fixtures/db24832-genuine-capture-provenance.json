@@ -11,7 +11,7 @@
     "settings_sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
     "cycle_authority": "Source-framed total_cycles, saved seed and robot ages decoded from actual captured SIM bytes. Filenames and lagging status captions are not cycle evidence.",
     "rng_boundary": "Native SIM omits private VB6 Rnd/Gauss state. These controlled fresh-process captures do not prove arbitrary historical random continuation.",
-    "excluded": "Mistimed files named movement-original-cycle10.sim and feeding-original-cycle10.sim actually contain C1. They are not fixtures here. Actual movement C102 is not C100."
+    "excluded": "Mistimed files named movement-original-cycle10.sim and feeding-original-cycle10.sim actually contain C1. They are not fixtures here. Actual movement C102 is not C100. Mistimed reproduction-original-later.sim actually contains C1; its historical proof is preserved separately. Verified reproduction-original-later-verified.sim contains actual C10 and birth_cycle2."
   },
   "inputs": [
     {
@@ -61,6 +61,22 @@
       "cycle": 0,
       "seed": 48032,
       "case": "ties"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-contacts-start-48032.sim",
+      "bytes": 29805,
+      "sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "contacts"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-reproduction-start-48032.sim",
+      "bytes": 11137,
+      "sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "reproduction"
     }
   ],
   "captures": [
@@ -143,7 +159,76 @@
       "cycle": 1,
       "seed": 48032,
       "case": "ties"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle1-20261017.sim",
+      "bytes": 35764,
+      "sha256": "F7DA4A17D59977FC65BB32CC6BCE2AE4C8E28087672F997CE9629CFB20D202D0",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "contacts",
+      "robot_count": 3,
+      "expected_compared_fields": 4115
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim",
+      "bytes": 17086,
+      "sha256": "A6F9DC7F78280AF622D35401ECF65CB1E6ADE344D2D150342E89B5556DA0E03A",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "reproduction",
+      "robot_count": 1,
+      "expected_compared_fields": 1387
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle10-20261017.sim",
+      "bytes": 26475,
+      "sha256": "4BCD08A85E121216B1BF49C4315FACEA7C985CCF691C147306A479BACE437B69",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "reproduction",
+      "robot_count": 2,
+      "expected_compared_fields": 2772
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle11-20261017.sim",
+      "bytes": 35764,
+      "sha256": "8821C6D5EB2077EFAE7597FB1D4EB8ADEE3DE687275528BAF7A79C0DC5AF05BB",
+      "cycle": 11,
+      "seed": 48032,
+      "case": "contacts",
+      "robot_count": 3,
+      "expected_compared_fields": 4115
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle100-20261017.sim",
+      "bytes": 35764,
+      "sha256": "C6AB7E5578162E576F37F3F1CCF738985015D9FD9C3AF155D5E561F02F9F378E",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "contacts",
+      "robot_count": 3,
+      "expected_compared_fields": 4115
     }
   ],
-  "claim": "Independent original runtime references for these cases and actual counters. The fixtures alone do not certify complete port parity."
+  "claim": "Independent original runtime references for these cases and actual counters. The fixtures alone do not certify complete port parity.",
+  "history": [
+    {
+      "base_source_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+      "base_sha256": "ECFB5A163559C8EAB224FA504154B2CFD68498F70E732AABC582F236CCD55098",
+      "addition": "Batch56 drafts add contacts C1 and reproduction C1/C10; retain all six prior inputs and ten prior captures verbatim. Later contacts C11 is intentionally not included.",
+      "provenance_addenda": [
+        "output/pass56-drafts/contacts/provenance-addendum.json",
+        "output/pass56-drafts/contacts/reproduction-provenance-addendum.json"
+      ],
+      "comparison_status": "Expected field counts describe source-derived reference projection sizes; no batch56 engine/CLI comparisons or tests have run."
+    },
+    {
+      "base_source_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+      "previous_candidate_sha256": "85FD32ABA8630F3B2CD03828EF738A255C3B329A6EEA4883E692F68C015B1326",
+      "addition": "Root subsequently authorized two later contacts controls after field-framed verification of actual C11 and C100. This supersedes the prior history entry holding C11; all prior8inputs/13captures retained verbatim.",
+      "provenance_addendum": "output/pass56-drafts/contacts/contacts-long-release.json",
+      "comparison_status": "Genuine original references only; batch56 comparison/test execution remains pending."
+    }
+  ]
 }

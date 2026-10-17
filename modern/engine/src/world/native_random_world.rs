@@ -20,6 +20,7 @@ impl Engine {
     }
 
     pub(crate) fn initialize_native_load(&mut self) {
+        self.projectiles.reset_native_load_cursor();
         let random = self.native_random.get_or_insert_with(Default::default);
         random.reseed_native_start(self.config.seed);
         // main.frm startloaded draws all three chart colors, even UseOldColor.
@@ -30,6 +31,7 @@ impl Engine {
 
     fn initialize_native_start(&mut self) {
         self.initialize_native_load();
+        self.projectiles.reset_native_slots(50);
         let random = self.native_random.as_mut().unwrap();
         self.vegetation_runtime.initialize_native_start(
             self.config.vegetation.sun_on_random || self.config.vegetation.weather_enabled,
@@ -89,6 +91,7 @@ impl Engine {
     }
 
     pub(super) fn prepare_native_restart(&mut self, boundary: NativeStartBoundary) {
+        self.native_loaded_census_stage = None;
         if self.native_cycle.is_some()
             && self
                 .local_mode
@@ -133,6 +136,7 @@ impl Engine {
                 // Restarter.exe creates a new process with an empty gasdev cache.
                 *random = Default::default();
                 self.vegetation_runtime = VegetationRuntime::fresh_native_process();
+                self.reset_native_energy_process();
             }
         }
         self.initialize_native_start();

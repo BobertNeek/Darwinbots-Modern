@@ -46,6 +46,16 @@ use crate::physics::{
 #[path = "world/native_io.rs"]
 mod native_io;
 
+#[path = "world/native_reproduction.rs"]
+mod native_reproduction;
+
+#[path = "world/native_shots.rs"]
+mod native_shots;
+
+#[path = "world/native_energy.rs"]
+mod native_energy;
+pub(crate) use native_energy::NativeProcessCaches;
+
 #[path = "world/native_export.rs"]
 mod native_export;
 
@@ -1412,6 +1422,9 @@ impl From<Db3sV2SimulationStats> for SimulationStats {
             births: value.births,
             deaths: value.deaths,
             shots_fired: value.shots_fired,
+            native_shots_visited: None,
+            native_energy_displayed: None,
+            native_energy_delta: None,
             projectile_impacts: value.projectile_impacts,
             projectile_effects: value.projectile_effects,
             energy_harvested: value.energy_harvested,
@@ -2255,6 +2268,8 @@ struct EngineCycleCheckpoint {
     native_cycle: Option<i32>,
     native_population_census: Option<[usize; 2]>,
     native_senses_census: Option<NativeSensesCensus>,
+    native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
+    native_energy: native_energy::NativeEnergyRuntime,
     native_skin_timer_seconds: Option<[f32; 2]>,
 }
 
@@ -2289,6 +2304,11 @@ pub struct Engine {
     /// Frozen UpdateCounters totals for this cycle's later WriteSenses calls.
     #[serde(skip, default)]
     native_senses_census: Option<NativeSensesCensus>,
+    /// startloaded's pending totvegs=-1 and first displayed census sentinel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_loaded_census_stage: Option<native_reproduction::NativeLoadedCensusStage>,
+    #[serde(default)]
+    native_energy: native_energy::NativeEnergyRuntime,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_skin_timer_seconds: Option<[f32; 2]>,
     config: EngineConfig,
@@ -2582,6 +2602,8 @@ impl Engine {
             native_cycle: None,
             native_population_census: None,
             native_senses_census: None,
+            native_loaded_census_stage: None,
+            native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
         })
     }
@@ -2791,6 +2813,8 @@ impl Engine {
             native_cycle: None,
             native_population_census: None,
             native_senses_census: None,
+            native_loaded_census_stage: None,
+            native_energy: native_energy::NativeEnergyRuntime::default(),
             native_skin_timer_seconds: None,
         })
     }
@@ -4098,6 +4122,9 @@ impl Engine {
         self.native_tie_index = None;
         self.native_buckets = native_collisions::NativeBuckets::default();
         self.projectiles = ProjectilePool::default();
+        if self.native_random.is_some() {
+            self.projectiles.reset_native_slots(50);
+        }
         self.pending_projectile_requests.clear();
         self.pending_mutations.clear();
         self.corpses.clear();
@@ -5413,6 +5440,8 @@ impl Engine {
             native_cycle: self.native_cycle,
             native_population_census: self.native_population_census,
             native_senses_census: self.native_senses_census.clone(),
+            native_loaded_census_stage: self.native_loaded_census_stage,
+            native_energy: self.native_energy.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
         }
     }
@@ -5428,6 +5457,8 @@ impl Engine {
         self.native_cycle = checkpoint.native_cycle;
         self.native_population_census = checkpoint.native_population_census;
         self.native_senses_census = checkpoint.native_senses_census;
+        self.native_loaded_census_stage = checkpoint.native_loaded_census_stage;
+        self.native_energy = checkpoint.native_energy;
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
@@ -5515,6 +5546,7 @@ impl Engine {
             return Ok(trace.finish());
         }
         trace.phase(CyclePhase::Bookkeeping);
+        self.begin_native_energy_cycle()?;
         self.apply_survival_handicap();
         if self
             .tick
@@ -5536,12 +5568,13 @@ impl Engine {
 
         trace.phase(CyclePhase::ShotUpdate);
         let started = Instant::now();
-        self.projectile_update_phase(&mut trace);
+        self.projectile_update_phase(&mut trace)?;
         self.phase_timings.projectiles = elapsed_ms(started);
         trace.phase(CyclePhase::OldPositions);
         self.capture_previous_positions();
 
         trace.phase(CyclePhase::RobotPipeline);
+        self.advance_native_loaded_census();
         if let Some(census) = self.native_population_census.as_mut() {
             census[1] = census[0];
         }
@@ -5596,7 +5629,7 @@ impl Engine {
             self.native_senses_census = Some(self.current_native_senses_census());
         }
         self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
-        self.decay_corpses_phase();
+        self.decay_corpses_phase()?;
         if self.native_random.is_some() {
             if let Some(census) = self.native_population_census.as_mut() {
                 census[0] = self
@@ -5624,7 +5657,7 @@ impl Engine {
             self.trace_robot_phase(&mut trace, CyclePhase::Aim);
             self.aim_commands_phase();
             self.trace_robot_phase(&mut trace, CyclePhase::Virus);
-            self.virus_commands_phase();
+            self.virus_commands_phase()?;
             self.flush_native_disqualifications()?;
             self.trace_robot_phase(&mut trace, CyclePhase::PositionIntegration);
             let started = Instant::now();
@@ -6154,6 +6187,8 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        self.projectiles.validate_native_slots()?;
+        self.native_energy.validate()?;
         if !self.native_light_availability().is_finite()
             || !(0.0..=1.0).contains(&self.native_light_availability())
         {
@@ -9397,7 +9432,7 @@ impl Engine {
         Ok(keyed_batch)
     }
 
-    fn projectile_spawn_phase(&mut self) {
+    fn projectile_spawn_phase(&mut self) -> Result<(), EngineError> {
         for request in std::mem::take(&mut self.pending_projectile_requests) {
             let slot = request.owner_slot;
             let Some(owner) = self.slots[..]
@@ -9432,7 +9467,7 @@ impl Engine {
                 ),
                 _ => (0, 0),
             };
-            self.projectiles.spawn(
+            self.projectiles.try_spawn(
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),
                     owner_position: owner.kinematics.position,
@@ -9459,11 +9494,16 @@ impl Engine {
                     dna_length: 0,
                 },
                 &self.config.shots,
-            );
+            )?;
         }
+        Ok(())
     }
 
-    fn projectile_update_phase(&mut self, trace: &mut CycleRecorder) {
+    fn projectile_update_phase(&mut self, trace: &mut CycleRecorder) -> Result<(), EngineError> {
+        if self.native_random.is_some() {
+            return self.native_projectile_update_phase(trace);
+        }
+        self.stats.native_shots_visited = None;
         for shot in 0..self.projectiles.owners.len() {
             if self.projectiles.stored[shot]
                 && self.slots.get(self.projectiles.owners[shot]).is_err()
@@ -9477,6 +9517,7 @@ impl Engine {
             self.config.axis_topology(),
         );
         self.resolve_projectile_impacts(trace);
+        Ok(())
     }
 
     fn resolve_projectile_impacts(&mut self, trace: &mut CycleRecorder) {
@@ -9682,25 +9723,62 @@ impl Engine {
         projectile_range: f32,
         projectile_energy: f32,
     ) -> bool {
-        match target {
+        self.apply_projectile_effect_at_boundary(
+            owner,
+            target,
+            effect,
+            power,
+            toxin_power,
+            payload,
+            source_species_name,
+            toxin_memory_location,
+            toxin_memory_value,
+            projectile_position,
+            projectile_velocity,
+            projectile_range,
+            projectile_energy,
+            false,
+        )
+        .expect("the legacy/manual projectile boundary is infallible")
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn apply_projectile_effect_at_boundary(
+        &mut self,
+        owner: OrganismId,
+        target: ProjectileTarget,
+        effect: ProjectileEffect,
+        power: f32,
+        toxin_power: f32,
+        payload: Option<LegacyDna>,
+        source_species_name: Option<String>,
+        toxin_memory_location: i32,
+        toxin_memory_value: i32,
+        projectile_position: [f32; 2],
+        projectile_velocity: [f32; 2],
+        projectile_range: f32,
+        projectile_energy: f32,
+        native_boundary: bool,
+    ) -> Result<bool, EngineError> {
+        Ok(match target {
             ProjectileTarget::Obstacle => false,
             ProjectileTarget::Corpse(corpse) => {
                 if matches!(effect, ProjectileEffect::ReleaseBody) {
                     let (packet_value, target_velocity) = {
                         let Some(corpse_state) = self.corpses.get_mut(corpse) else {
-                            return false;
+                            return Ok(false);
                         };
                         let body = f64::from(
                             (corpse_state.body as f32 + corpse_state.body_fraction).max(0.0),
                         );
                         if body <= 0.0 {
-                            return false;
+                            return Ok(false);
                         }
                         let mut body_power = f64::from(power.max(0.0))
                             .min(32_000.0)
                             .min(body * 10.0 / 0.8);
                         if body_power <= 0.0 {
-                            return false;
+                            return Ok(false);
                         }
                         body_power = (body_power * 4.0).min(body * 10.0);
                         let remaining = (body - body_power / 10.0).clamp(0.0, 32_000.0) as f32;
@@ -9708,26 +9786,29 @@ impl Engine {
                         corpse_state.body_fraction = remaining - corpse_state.body as f32;
                         (body_power as f32, corpse_state.velocity)
                     };
-                    self.projectiles.spawn_energy_packet(
+                    self.spawn_return_energy_packet(
+                        native_boundary,
                         OrganismId::new(u32::MAX, u32::MAX),
                         projectile_position,
                         [
                             target_velocity[0] * 1.5 - projectile_velocity[0],
                             target_velocity[1] * 1.5 - projectile_velocity[1],
                         ],
+                        target_velocity,
+                        projectile_velocity,
                         projectile_range * 2.0,
                         packet_value,
-                    );
-                    return true;
+                    )?;
+                    return Ok(true);
                 }
                 let Some(corpse_state) = self.corpses.get_mut(corpse) else {
-                    return false;
+                    return Ok(false);
                 };
                 if !matches!(effect, ProjectileEffect::ReleaseEnergy) {
-                    return false;
+                    return Ok(false);
                 }
                 if corpse_state.energy <= 0 {
-                    return false;
+                    return Ok(false);
                 }
                 let mut packet = scale_tie_amount(power.max(0.0), 0.5);
                 let mut loss = scale_tie_amount(packet, 0.9);
@@ -9740,17 +9821,21 @@ impl Engine {
                     .max(0.0);
                 corpse_state.body = body.round_ties_even() as i32;
                 corpse_state.body_fraction = body - corpse_state.body as f32;
+                let target_velocity = corpse_state.velocity;
                 let velocity = [
-                    corpse_state.velocity[0] * 1.5 - projectile_velocity[0],
-                    corpse_state.velocity[1] * 1.5 - projectile_velocity[1],
+                    target_velocity[0] * 1.5 - projectile_velocity[0],
+                    target_velocity[1] * 1.5 - projectile_velocity[1],
                 ];
-                self.projectiles.spawn_energy_packet(
+                self.spawn_return_energy_packet(
+                    native_boundary,
                     OrganismId::new(u32::MAX, u32::MAX),
                     projectile_position,
                     velocity,
+                    target_velocity,
+                    projectile_velocity,
                     projectile_range * 2.0,
                     packet,
-                );
+                )?;
                 packet > 0.0
             }
             ProjectileTarget::Organism(target) => {
@@ -9759,7 +9844,7 @@ impl Engine {
                     .and_then(|slot| slot.organism.as_ref())
                     .is_none()
                 {
-                    return false;
+                    return Ok(false);
                 }
                 if self.slots[target].organism.as_ref().unwrap().flags.corpse
                     && matches!(
@@ -9769,7 +9854,7 @@ impl Engine {
                             | ProjectileEffect::Poison
                     )
                 {
-                    return false;
+                    return Ok(false);
                 }
                 match effect {
                     ProjectileEffect::Ornamental => false,
@@ -9782,22 +9867,23 @@ impl Engine {
                             .energy
                             <= 0.5
                         {
-                            return false;
+                            return Ok(false);
                         }
                         let power = if self.slots[target].organism.as_ref().unwrap().flags.corpse {
                             power * 0.5
                         } else {
                             power
                         };
-                        if self.fire_defensive_poison(
+                        if self.fire_defensive_poison_at_boundary(
                             target,
                             power,
                             DefensivePoisonRoute::ReleaseEnergy,
                             projectile_position,
                             projectile_velocity,
                             projectile_range,
-                        ) {
-                            return true;
+                            native_boundary,
+                        )? {
+                            return Ok(true);
                         }
                         let target_id =
                             OrganismId::new(target as u32, self.slots[target].generation);
@@ -9805,12 +9891,12 @@ impl Engine {
                             let target_robot = self.slots[target].organism.as_mut().unwrap();
                             let available = target_robot.materials.energy.max(0.0);
                             if available == 0.0 {
-                                return false;
+                                return Ok(false);
                             }
                             let mut packet_value = power.max(0.0);
                             let energy_loss = scale_tie_amount(packet_value, 0.90);
-                            if packet_value <= 0.0 || energy_loss <= 0.0 {
-                                return false;
+                            if !native_boundary && (packet_value <= 0.0 || energy_loss <= 0.0) {
+                                return Ok(false);
                             }
                             if energy_loss > available {
                                 packet_value = available;
@@ -9829,10 +9915,12 @@ impl Engine {
                             let lethal = target_robot.materials.energy <= 0.5
                                 || target_robot.materials.body <= 0.5;
                             target_robot.flags.dead |= lethal;
-                            target_robot.materials.publish_for_profile(
-                                &mut target_robot.program.memory,
-                                self.native_random.is_some(),
-                            );
+                            if !native_boundary {
+                                target_robot.materials.publish_for_profile(
+                                    &mut target_robot.program.memory,
+                                    self.native_random.is_some(),
+                                );
+                            }
                             (
                                 packet_value,
                                 target_robot.kinematics.actual_velocity,
@@ -9850,38 +9938,52 @@ impl Engine {
                             target_velocity[0] * 1.5 - projectile_velocity[0],
                             target_velocity[1] * 1.5 - projectile_velocity[1],
                         ];
-                        self.projectiles.spawn_energy_packet(
+                        self.spawn_return_energy_packet(
+                            native_boundary,
                             target_id,
                             projectile_position,
                             return_velocity,
+                            target_velocity,
+                            projectile_velocity,
                             projectile_range * 2.0,
                             packet_value,
-                        );
+                        )?;
                         true
                     }
                     ProjectileEffect::DonateEnergy => {
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
-                        let packet_energy = scale_tie_amount(power.max(0.0), 0.95);
-                        let packet_body = scale_tie_amount(power.max(0.0), 0.004);
-                        let packet_waste = scale_tie_amount(power.max(0.0), 0.01);
-                        let overflow =
-                            (target_robot.materials.energy + packet_energy - 32_000.0).max(0.0);
-                        target_robot.materials.energy =
-                            (target_robot.materials.energy + packet_energy).min(32_000.0);
-                        target_robot.materials.body =
-                            (target_robot.materials.body + packet_body + overflow * 0.10)
-                                .min(32_000.0);
+                        let donated = if native_boundary {
+                            let partial = if projectile_range < 0.00001 {
+                                0.0
+                            } else {
+                                power
+                            };
+                            native_shots::receive_energy(&mut target_robot.materials, partial)
+                        } else {
+                            let packet_energy = scale_tie_amount(power.max(0.0), 0.95);
+                            let packet_body = scale_tie_amount(power.max(0.0), 0.004);
+                            let packet_waste = scale_tie_amount(power.max(0.0), 0.01);
+                            let overflow =
+                                (target_robot.materials.energy + packet_energy - 32_000.0).max(0.0);
+                            target_robot.materials.energy =
+                                (target_robot.materials.energy + packet_energy).min(32_000.0);
+                            target_robot.materials.body =
+                                (target_robot.materials.body + packet_body + overflow * 0.10)
+                                    .min(32_000.0);
+                            target_robot.materials.waste += packet_waste;
+                            packet_energy
+                        };
                         target_robot.materials.radius = crate::physics::organism_radius(
                             target_robot.materials.body,
                             target_robot.materials.chloroplasts,
                             self.config.fixed_bot_radii,
                         );
-                        target_robot.materials.waste += packet_waste;
-                        target_robot.materials.publish_for_profile(
-                            &mut target_robot.program.memory,
-                            self.native_random.is_some(),
-                        );
-                        let donated = packet_energy;
+                        if !native_boundary {
+                            target_robot.materials.publish_for_profile(
+                                &mut target_robot.program.memory,
+                                self.native_random.is_some(),
+                            );
+                        }
                         self.stats.energy_donated =
                             self.stats.energy_donated.saturating_add(donated as u64);
                         self.stats.energy_harvested =
@@ -9893,7 +9995,7 @@ impl Engine {
                     }
                     ProjectileEffect::Venom => {
                         if toxin_power < 1.0 {
-                            return false;
+                            return Ok(false);
                         }
                         let target_species = self.slots[target]
                             .organism
@@ -9914,7 +10016,7 @@ impl Engine {
                                 .program
                                 .memory
                                 .write(825, resource_readback(target_robot.materials.venom));
-                            return true;
+                            return Ok(true);
                         }
                         let shell_before = target_robot.materials.shell.max(0.0);
                         let remaining = (toxin_power - 0.8 * shell_before).max(0.0);
@@ -9925,7 +10027,7 @@ impl Engine {
                             .memory
                             .write(823, resource_readback(target_robot.materials.shell));
                         if remaining < 1.0 {
-                            return shell_before != remaining_shell;
+                            return Ok(shell_before != remaining_shell);
                         }
                         target_robot.effects.paralysis_active = true;
                         target_robot.effects.paralysis_countdown =
@@ -9945,7 +10047,7 @@ impl Engine {
                     }
                     ProjectileEffect::Poison => {
                         if toxin_power < 1.0 {
-                            return false;
+                            return Ok(false);
                         }
                         let target_species = self.slots[target]
                             .organism
@@ -9966,7 +10068,7 @@ impl Engine {
                                 .program
                                 .memory
                                 .write(827, resource_readback(target_robot.materials.poison));
-                            return true;
+                            return Ok(true);
                         }
                         target_robot.effects.poisoning_active = true;
                         target_robot.effects.poisoning_countdown =
@@ -9990,30 +10092,36 @@ impl Engine {
                                 power,
                             );
                             if body_power <= 0.0 {
-                                target_robot.materials.publish_for_profile(
-                                    &mut target_robot.program.memory,
-                                    self.native_random.is_some(),
-                                );
-                                return shell_before != target_robot.materials.shell;
+                                if !native_boundary {
+                                    target_robot.materials.publish_for_profile(
+                                        &mut target_robot.program.memory,
+                                        self.native_random.is_some(),
+                                    );
+                                }
+                                return Ok(shell_before != target_robot.materials.shell);
                             }
                             let lethal = target_robot.materials.body <= 0.5
                                 || target_robot.materials.energy <= 0.5;
                             target_robot.flags.dead |= lethal;
-                            target_robot.materials.mass = derived_mass(
-                                target_robot.materials.body,
-                                target_robot.materials.shell,
-                                target_robot.materials.chloroplasts,
-                            )
-                            .clamp(1.0, 32_000.0);
+                            if !native_boundary {
+                                target_robot.materials.mass = derived_mass(
+                                    target_robot.materials.body,
+                                    target_robot.materials.shell,
+                                    target_robot.materials.chloroplasts,
+                                )
+                                .clamp(1.0, 32_000.0);
+                            }
                             target_robot.materials.radius = crate::physics::organism_radius(
                                 target_robot.materials.body,
                                 target_robot.materials.chloroplasts,
                                 self.config.fixed_bot_radii,
                             );
-                            target_robot.materials.publish_for_profile(
-                                &mut target_robot.program.memory,
-                                self.native_random.is_some(),
-                            );
+                            if !native_boundary {
+                                target_robot.materials.publish_for_profile(
+                                    &mut target_robot.program.memory,
+                                    self.native_random.is_some(),
+                                );
+                            }
                             (body_power, target_robot.kinematics.actual_velocity, lethal)
                         };
                         if lethal && let Ok(attacker) = self.slots.get_mut(owner) {
@@ -10029,21 +10137,24 @@ impl Engine {
                             target_velocity[0] * 1.5 - projectile_velocity[0],
                             target_velocity[1] * 1.5 - projectile_velocity[1],
                         ];
-                        self.projectiles.spawn_energy_packet(
+                        self.spawn_return_energy_packet(
+                            native_boundary,
                             target_id,
                             projectile_position,
                             return_velocity,
+                            target_velocity,
+                            projectile_velocity,
                             projectile_range * 2.0,
                             packet_value,
-                        );
+                        )?;
                         true
                     }
                     ProjectileEffect::AddGene => {
-                        let Some(dna) = payload else { return false };
+                        let Some(dna) = payload else { return Ok(false) };
                         self.infect_from_virus(target, dna, power)
                     }
                     ProjectileEffect::Sperm => {
-                        let Some(dna) = payload else { return false };
+                        let Some(dna) = payload else { return Ok(false) };
                         let target_robot = self.slots[target].organism.as_mut().unwrap();
                         target_robot.effects.stored_sperm = Some(StoredGeneticMaterial {
                             dna,
@@ -10055,17 +10166,18 @@ impl Engine {
                     }
                     ProjectileEffect::WriteMemory { address, value } => {
                         if address == 340 {
-                            return false;
+                            return Ok(false);
                         }
-                        if self.fire_defensive_poison(
+                        if self.fire_defensive_poison_at_boundary(
                             target,
                             projectile_energy / 2.0,
                             DefensivePoisonRoute::Information,
                             projectile_position,
                             projectile_velocity,
                             projectile_range,
-                        ) {
-                            return true;
+                            native_boundary,
+                        )? {
+                            return Ok(true);
                         }
                         self.slots[target]
                             .organism
@@ -10084,11 +10196,11 @@ impl Engine {
                     }
                 }
             }
-        }
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn fire_defensive_poison(
+    fn fire_defensive_poison_at_boundary(
         &mut self,
         target: usize,
         power: f32,
@@ -10096,11 +10208,12 @@ impl Engine {
         position: [f32; 2],
         incoming_velocity: [f32; 2],
         incoming_range: f32,
-    ) -> bool {
+        native_boundary: bool,
+    ) -> Result<bool, EngineError> {
         let power = power.max(0.0);
         let target_id = OrganismId::new(target as u32, self.slots[target].generation);
         let Some(target_robot) = self.slots[target].organism.as_mut() else {
-            return false;
+            return Ok(false);
         };
         let poison = target_robot.materials.poison.max(0.0);
         let qualifies = poison != 0.0
@@ -10109,12 +10222,21 @@ impl Engine {
                 DefensivePoisonRoute::ReleaseEnergy => poison > power,
             };
         if !qualifies {
-            return false;
+            return Ok(false);
         }
         let poison_spent = power * 0.9;
-        target_robot.materials.poison = poison - poison_spent;
+        target_robot.materials.poison = if native_boundary {
+            (f64::from(poison) - f64::from(power) * 0.9).max(0.0) as f32
+        } else {
+            poison - poison_spent
+        };
         if matches!(route, DefensivePoisonRoute::Information) {
-            target_robot.materials.waste += power * 0.1;
+            if native_boundary {
+                target_robot.materials.waste =
+                    (f64::from(target_robot.materials.waste) + f64::from(power) * 0.1) as f32;
+            } else {
+                target_robot.materials.waste += power * 0.1;
+            }
         }
         target_robot
             .program
@@ -10127,20 +10249,43 @@ impl Engine {
             .species
             .get(target_robot.identity.species.0 as usize)
             .map(|species| species.name.clone());
-        self.projectiles.spawn_defensive_poison(
-            target_id,
-            position,
-            incoming_velocity,
-            target_actual_velocity,
-            incoming_range,
-            power,
-            route,
-            source_species_name,
-            toxin_memory_location,
-            toxin_memory_value,
-        );
+        if native_boundary {
+            let velocity = match route {
+                DefensivePoisonRoute::Information => [-incoming_velocity[0], -incoming_velocity[1]],
+                DefensivePoisonRoute::ReleaseEnergy => {
+                    native_shots::returned_velocity(target_actual_velocity, incoming_velocity)
+                }
+            };
+            let distance = incoming_range
+                * match route {
+                    DefensivePoisonRoute::Information => 40.0,
+                    DefensivePoisonRoute::ReleaseEnergy => 80.0,
+                };
+            self.spawn_native_effect_packet(
+                target_id,
+                position,
+                velocity,
+                distance,
+                power,
+                -5,
+                0xffff_ff00,
+            )?;
+        } else {
+            self.projectiles.spawn_defensive_poison(
+                target_id,
+                position,
+                incoming_velocity,
+                target_actual_velocity,
+                incoming_range,
+                power,
+                route,
+                source_species_name,
+                toxin_memory_location,
+                toxin_memory_value,
+            );
+        }
         self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
-        true
+        Ok(true)
     }
 
     fn capture_previous_positions(&mut self) {
@@ -10831,7 +10976,11 @@ impl Engine {
 
     fn vegetation_feed_phase(&mut self) {
         let native = self.native_random.is_some();
-        let total_energy = self.total_simulation_energy();
+        let total_energy = if native {
+            i64::from(self.native_energy_displayed())
+        } else {
+            self.total_simulation_energy()
+        };
         let weather_seed = self.config.seed ^ self.tick.rotate_left(17);
         let daylight = self.vegetation_runtime.advance_daylight(
             &mut self.config.vegetation,
@@ -11015,6 +11164,9 @@ impl Engine {
 
     fn vegetation_repopulation_phase(&mut self) -> Result<(), EngineError> {
         let equivalents = self.refresh_native_chloroplast_population();
+        if self.native_loaded_census_blocks_births() {
+            return Ok(());
+        }
         if !self
             .vegetation_runtime
             .advance_repopulation(equivalents, &self.config.vegetation)
@@ -11120,9 +11272,9 @@ impl Engine {
         Ok(())
     }
 
-    fn decay_corpses_phase(&mut self) {
+    fn decay_corpses_phase(&mut self) -> Result<(), EngineError> {
         let mut packets = Vec::new();
-        self.decay_native_corpses();
+        self.decay_native_corpses()?;
         for corpse in &mut self.corpses {
             if let Some((kind, value)) = corpse.advance(
                 self.config.gravity,
@@ -11142,6 +11294,7 @@ impl Engine {
             corpse.body as f32 + corpse.body_fraction >= 0.5
                 && corpse.position.iter().all(|value| value.is_finite())
         });
+        Ok(())
     }
 
     fn prepare_lifecycle_queues(&mut self, trace: &mut CycleRecorder) -> LifecycleQueues {
@@ -11389,7 +11542,10 @@ impl Engine {
             }
             if native {
                 let equivalents = self.vegetation_runtime.native_chloroplast_population();
-                if vegetable_birth && equivalents > self.config.vegetable_population_cap {
+                let loaded_census_blocked = self.native_loaded_census_blocks_births();
+                if vegetable_birth
+                    && (equivalents > self.config.vegetable_population_cap || loaded_census_blocked)
+                {
                     continue;
                 }
                 // VB6 And is eager: every eligible animal also consumes this draw.
@@ -11403,6 +11559,11 @@ impl Engine {
                     && equivalents.saturating_mul(10)
                         > self.config.vegetable_population_cap.saturating_mul(9)
                 {
+                    continue;
+                }
+                // VB's eager And consumes the animal draw before this guard.
+                // A failed loaded-frame attempt leaves repro/mrepro untouched.
+                if loaded_census_blocked {
                     continue;
                 }
             }
@@ -12437,6 +12598,7 @@ impl Engine {
     }
 
     fn publish_snapshot(&mut self) {
+        self.project_native_energy_stats();
         if self.native_random.is_some() {
             // Rendering and editor refreshes must not execute VB6 TieData or
             // consume/replace the saved duplex tie commands before a cycle.
@@ -14557,14 +14719,14 @@ mod native_publication55_tests {
                 robot.materials.waste = 20.0;
             }
             world.publish_core_senses_phase();
-            world.waste_phase();
+            world.waste_phase().unwrap();
             for id in [first, second] {
                 assert_eq!(
                     world.slots.get(id).unwrap().program.memory.read(10),
                     if native { 4 } else { 350 }
                 );
             }
-            world.virus_commands_phase();
+            world.virus_commands_phase().unwrap();
             for id in [first, second] {
                 assert_eq!(
                     world.slots.get(id).unwrap().program.memory.read(10),

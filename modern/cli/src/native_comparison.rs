@@ -335,16 +335,135 @@ mod tests {
     use super::*;
 
     #[test]
-    fn zero_cycle_original_round_trip_preserves_all_compared_live_fields() {
+    fn native_record_codec_preserves_original_bytes_and_all_compared_live_fields() {
         let original = include_bytes!("../../engine/tests/fixtures/db24832-original-user.sim");
+        let encoded = NativeRecordFile::decode(original)
+            .unwrap()
+            .encode()
+            .unwrap();
+        assert_eq!(encoded, original.as_slice());
+        let report = compare(original, &encoded, 0.0, 0.0, 30).unwrap();
+        assert_eq!(report["compared_fields"], 393316);
+        assert_eq!(report["difference_count"], 0, "{report}");
+        assert_eq!(report["passed"], true);
+    }
+
+    #[test]
+    fn native_load_matches_original_owner_rate_and_shot_parent_projection_transforms() {
+        let original = include_bytes!("../../engine/tests/fixtures/db24832-original-user.sim");
+        // Independent expected projection image from HDRoutines.LoadRobotBody
+        // 1709/1970 and RemapAllShots422-441. No engine export constructs it.
+        // Keep original robot/tie coordinates: translate the source-loaded shot
+        // parent back into those coordinates after applying the packed-slot map.
+        let mut expected = NativeRecordFile::decode(original).unwrap();
+        let original_slots: Vec<_> = expected
+            .robots
+            .iter()
+            .map(|robot| robot.word("old_slot").unwrap())
+            .collect();
+        let old_to_packed: BTreeMap<_, _> = original_slots
+            .iter()
+            .enumerate()
+            .map(|(index, slot)| (i32::from(*slot), i32::try_from(index + 1).unwrap()))
+            .collect();
+        assert_eq!(old_to_packed.len(), expected.robots.len());
+        let mut expected_tail = NativeSimulationTail::decode(&expected.tail).unwrap();
+        let mut changed_parents = 0;
+        let mut changed_stored = 0;
+        for index in 0..expected_tail.integer("shot_count").unwrap() {
+            let prefix = format!("shot[{index}]");
+            if expected_tail.integer(&format!("{prefix}.exists")).unwrap() == 0 {
+                continue;
+            }
+            let parent_field = format!("{prefix}.parent");
+            let saved_parent = expected_tail.integer(&parent_field).unwrap();
+            let loaded_parent = if let Some(packed) = old_to_packed.get(&saved_parent) {
+                *packed
+            } else {
+                // The original retains an unmatched numeric parent but releases
+                // a stored shot, even if that number now names a packed actor.
+                let stored_field = format!("{prefix}.stored");
+                changed_stored += usize::from(expected_tail.integer(&stored_field).unwrap() != 0);
+                expected_tail
+                    .set_value(&stored_field, NativeValue::Word(0))
+                    .unwrap();
+                saved_parent
+            };
+            let projection_parent = usize::try_from(loaded_parent)
+                .ok()
+                .and_then(|slot| slot.checked_sub(1))
+                .and_then(|index| original_slots.get(index))
+                .copied()
+                .map(i32::from)
+                .unwrap_or(saved_parent);
+            changed_parents += usize::from(projection_parent != saved_parent);
+            expected_tail
+                .set_value(
+                    &parent_field,
+                    NativeValue::Word(i16::try_from(projection_parent).unwrap()),
+                )
+                .unwrap();
+        }
+        expected.tail = expected_tail.encode().unwrap();
+        assert_eq!((changed_parents, changed_stored), (1, 0));
+        let mut changed_owners = 0;
+        let mut changed_rates = 0;
+        for robot in &mut expected.robots {
+            if robot.bytes("owner").unwrap().is_empty() {
+                robot
+                    .set_value("owner_length", NativeValue::Word(5))
+                    .unwrap();
+                robot
+                    .set_value("owner", NativeValue::Bytes(b"Local".to_vec()))
+                    .unwrap();
+                changed_owners += 1;
+            }
+            if robot.word("sunbelt").unwrap() == 0 {
+                let mut rates = robot.bytes("mutation_rates").unwrap().to_vec();
+                for index in [4, 8, 9, 10] {
+                    let offset = index * 4;
+                    if f32::from_le_bytes(rates[offset..offset + 4].try_into().unwrap()) != 0.0 {
+                        changed_rates += 1;
+                    }
+                    rates[offset..offset + 4].copy_from_slice(&0.0_f32.to_le_bytes());
+                }
+                robot
+                    .set_value("mutation_rates", NativeValue::Bytes(rates))
+                    .unwrap();
+            }
+        }
+        assert_eq!((changed_owners, changed_rates), (196, 784));
+        let expected_bytes = expected.encode().unwrap();
+        let expected_transform = compare(original, &expected_bytes, 0.0, 0.0, 981).unwrap();
+        assert_eq!(expected_transform["compared_fields"], 393316);
+        assert_eq!(
+            expected_transform["difference_count"], 981,
+            "{expected_transform}"
+        );
+        assert_eq!(expected_transform["truncated"], false);
+
         let mut engine = Engine::from_native_sim(original).unwrap();
         for _ in 0..3 {
             engine
                 .update_recording_settings(*engine.recording_settings())
                 .unwrap();
         }
-        let report = compare(original, &engine.export_native_sim().unwrap(), 0.0, 0.0, 30).unwrap();
-        assert!(report["compared_fields"].as_u64().unwrap() > 390_000);
+        let actual_bytes = engine.export_native_sim().unwrap();
+        let actual_transform = compare(original, &actual_bytes, 0.0, 0.0, 981).unwrap();
+        assert_eq!(actual_transform["compared_fields"], 393316);
+        assert_eq!(
+            actual_transform["difference_count"], 981,
+            "{actual_transform}"
+        );
+        assert_eq!(actual_transform["truncated"], false);
+        // Every observed difference must equal the independent source transform,
+        // including its exact original/new value; unknown fields cannot pass.
+        assert_eq!(
+            actual_transform["differences"],
+            expected_transform["differences"]
+        );
+        let report = compare(&expected_bytes, &actual_bytes, 0.0, 0.0, 30).unwrap();
+        assert_eq!(report["compared_fields"], 393316);
         assert_eq!(report["difference_count"], 0, "{report}");
         assert_eq!(report["passed"], true);
     }

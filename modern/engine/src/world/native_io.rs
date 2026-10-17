@@ -414,6 +414,7 @@ impl Engine {
         engine.refresh_native_chloroplast_population();
         engine.native_origin = Some(file);
         engine.initialize_native_load();
+        engine.mark_native_loaded_census();
         Self::restore(engine)
     }
 
@@ -508,6 +509,17 @@ impl Engine {
         robot.kinematics.angular_torque = r.single("angular_torque")?;
         robot.buoyancy = r.single("buoyancy")?;
         robot.flags.exists = boolean(r, "exists")?;
+        if robot.flags.exists {
+            // LoadRobot refreshes these even when DisableDNA skips the VM.
+            robot
+                .program
+                .memory
+                .write(MEM_DNA_LENGTH, robot.program.dna.blocks().len() as i32);
+            robot
+                .program
+                .memory
+                .write(MEM_GENES, robot.program.dna.gene_count());
+        }
         robot.flags.corpse = boolean(r, "corpse")?;
         robot.flags.dead = boolean(r, "dead")?;
         robot.flags.fixed = boolean(r, "fixed")?;
@@ -770,12 +782,18 @@ impl Engine {
             let p = format!("shot[{i}].");
             let n = |name: &str| t.number(&(p.clone() + name)).map(|v| v as f32);
             let w = |name: &str| t.integer(&(p.clone() + name));
-            owners.push(
+            let parent = w("parent")? as i16;
+            // RemapAllShots only remaps existing shots; an unknown numeric parent
+            // remains a literal slot (possibly naming a different packed occupant).
+            let owner = if w("exists")? != 0 {
                 slots
-                    .get(&(w("parent")? as i16))
+                    .get(&parent)
                     .copied()
-                    .unwrap_or(OrganismId::new(u32::MAX, 0)),
-            );
+                    .filter(|&owner| self.slots.get(owner).is_ok_and(|robot| robot.flags.exists))
+            } else {
+                None
+            };
+            owners.push(owner.unwrap_or_else(|| native_shots::owner_from_literal_slot(parent)));
             positions.push([n("x")?, n("y")?]);
             previous.push([n("old_x")?, n("old_y")?]);
             velocities.push([n("vx")?, n("vy")?]);
@@ -812,6 +830,8 @@ impl Engine {
             free,
         );
         self.projectiles.ranges = ranges;
+        // ReadSim retains saved maxshotarray; an empty old format uses100.
+        self.projectiles.pool_capacity = if count == 0 { 100 } else { count };
         for i in 0..count {
             let p = format!("shot[{i}].");
             let w = |name: &str| t.integer(&(p.clone() + name));
@@ -821,7 +841,12 @@ impl Engine {
             self.projectiles.toxin_memory_values[i] = w("memory_value")?;
             self.projectiles.colors[i] = color(w("color")?);
             self.projectiles.source_vegetables[i] = w("vegetable")? != 0;
-            self.projectiles.stored[i] = w("stored")? != 0;
+            let remapped_parent = slots
+                .get(&(w("parent")? as i16))
+                .copied()
+                .is_some_and(|owner| self.slots.get(owner).is_ok_and(|robot| robot.flags.exists));
+            self.projectiles.stored[i] =
+                w("stored")? != 0 && (!self.projectiles.alive[i] || remapped_parent);
             self.projectiles.gene_numbers[i] = w("gene_number")?;
             self.projectiles.dna_lengths[i] =
                 nonnegative(w("dna_length")?, "shot DNA length")? as u32;

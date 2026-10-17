@@ -63,7 +63,7 @@ impl Engine {
         true
     }
 
-    pub(super) fn virus_commands_phase(&mut self) {
+    pub(super) fn virus_commands_phase(&mut self) -> Result<(), EngineError> {
         let mut disqualified = Vec::new();
         let costs = self.active_dna_costs();
         let multiplier = costs.dynamic_multiplier(self.cost_population());
@@ -129,7 +129,7 @@ impl Engine {
                         .iter()
                         .filter(|block| block.class != TokenClass::End)
                         .count();
-                    self.projectiles.spawn(
+                    let created = self.projectiles.try_spawn(
                         ProjectileSpawn {
                             owner,
                             owner_position: robot.kinematics.position,
@@ -153,15 +153,26 @@ impl Engine {
                             dna_length: length as u32,
                         },
                         &self.config.shots,
-                    );
-                    robot.materials.energy = (f64::from(robot.materials.energy)
-                        - length as f64 * costs.dna_copy * multiplier)
-                        as f32;
-                    robot.effects.stored_virus = Some(StoredGeneticMaterial {
-                        dna: gene,
-                        source: Some(owner),
-                    });
-                    robot.effects.virus_build_timer = length.saturating_mul(2).min(32_000) as i32;
+                    )?;
+                    if created != u32::MAX {
+                        robot.materials.energy = (f64::from(robot.materials.energy)
+                            - length as f64 * costs.dna_copy * multiplier)
+                            as f32;
+                        robot.effects.stored_virus = Some(StoredGeneticMaterial {
+                            dna: gene,
+                            source: Some(owner),
+                        });
+                        robot.effects.virus_build_timer =
+                            length.saturating_mul(2).min(32_000) as i32;
+                    } else {
+                        robot.effects.stored_virus = None;
+                        robot.effects.virus_build_timer = 0;
+                    }
+                } else if self.native_random.is_some() {
+                    // copygene failed after FirstSlot/newshot, including a zero slot.
+                    self.projectiles.fail_native_virus_attempt()?;
+                    robot.effects.stored_virus = None;
+                    robot.effects.virus_build_timer = 0;
                 }
             }
             if !prohibited && shoot != 0 && robot.effects.virus_build_timer == 1 {
@@ -171,7 +182,7 @@ impl Engine {
                     && let Some(stored) = robot.effects.stored_virus.as_ref()
                 {
                     shot = Some(
-                        self.projectiles.spawn(
+                        self.projectiles.try_spawn(
                             ProjectileSpawn {
                                 owner,
                                 owner_position: robot.kinematics.position,
@@ -200,10 +211,10 @@ impl Engine {
                                     .count() as u32,
                             },
                             &self.config.shots,
-                        ),
+                        )?,
                     );
                 }
-                if let Some(shot) = shot {
+                if let Some(shot) = shot.filter(|slot| *slot != u32::MAX) {
                     let command = if shoot < 0 { 1 } else { shoot };
                     let power = (f64::from(command) * 20.0).min(32_000.0) as f32;
                     let fee = costs.shot_formation * multiplier;
@@ -245,6 +256,7 @@ impl Engine {
         for (id, action) in disqualified {
             self.native_disqualify_action(id, action);
         }
+        Ok(())
     }
 }
 
@@ -320,7 +332,7 @@ mod tests {
         let mut expected = world.native_random.clone().unwrap();
         expected.integer(-2, 2);
         expected.integer(-20, 20);
-        world.virus_commands_phase();
+        world.virus_commands_phase().unwrap();
         assert_eq!(world.native_random.as_ref().unwrap(), &expected);
         assert!(world.projectiles.live_slots().is_empty());
     }
@@ -387,8 +399,8 @@ mod tests {
     #[test]
     fn native_save_retains_exact_copied_gene_and_native_loading_resets_the_timer() {
         let (mut engine, id) = maker();
-        engine.virus_commands_phase();
-        engine.virus_commands_phase();
+        engine.virus_commands_phase().unwrap();
+        engine.virus_commands_phase().unwrap();
         assert_eq!(
             engine
                 .slots
@@ -428,7 +440,7 @@ mod tests {
         let (mut engine, id) = maker();
         engine.config.dna_costs.dna_copy = 0.125;
         engine.config.dna_costs.global_multiplier = 2.0;
-        engine.virus_commands_phase();
+        engine.virus_commands_phase().unwrap();
         let robot = engine.slots.get(id).unwrap();
         assert_eq!(robot.effects.virus_build_timer, 10);
         assert_eq!(robot.materials.energy, 998.75);
@@ -446,7 +458,7 @@ mod tests {
             ),
             (-7, 1, 1, 5)
         );
-        engine.virus_commands_phase();
+        engine.virus_commands_phase().unwrap();
         assert_eq!(engine.projectiles.len(), 1);
         assert_eq!(engine.slots.get(id).unwrap().materials.energy, 998.75);
         assert_eq!(engine.slots.get(id).unwrap().effects.virus_build_timer, 9);
@@ -470,7 +482,7 @@ mod tests {
             (2000, 32_000.0, 1011.0, 3603.0),
         ] {
             let (mut engine, id) = maker();
-            engine.virus_commands_phase();
+            engine.virus_commands_phase().unwrap();
             engine.config.dna_costs.shot_formation = 3.0;
             engine.config.dna_costs.global_multiplier = 0.5;
             let robot = engine.slots.get_mut(id).unwrap();
@@ -478,7 +490,7 @@ mod tests {
             robot.materials.energy = 8000.0;
             robot.program.memory.write(338, request);
             let mut engine = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
-            engine.virus_commands_phase();
+            engine.virus_commands_phase().unwrap();
             assert_eq!(engine.projectiles.len(), 1);
             assert_eq!(engine.projectiles.energies[0], energy);
             assert_eq!(engine.projectiles.ranges[0], range);
@@ -500,7 +512,7 @@ mod tests {
     #[test]
     fn stored_shots_move_without_colliding_aging_or_expiring() {
         let (mut engine, id) = maker();
-        engine.virus_commands_phase();
+        engine.virus_commands_phase().unwrap();
         let original_position = engine.projectiles.positions[0];
         for _ in 0..100 {
             engine
@@ -519,11 +531,11 @@ mod tests {
     fn plants_discard_chloroplasts_before_copying_and_disabled_dna_freezes_the_timer() {
         let (mut engine, id) = maker();
         engine.slots.get_mut(id).unwrap().materials.chloroplasts = 0.5;
-        engine.virus_commands_phase();
+        engine.virus_commands_phase().unwrap();
         assert_eq!(engine.projectiles.len(), 0);
         assert_eq!(engine.slots.get(id).unwrap().materials.chloroplasts, 0.0);
         assert_eq!(engine.slots.get(id).unwrap().program.memory.read(335), 1);
-        engine.virus_commands_phase();
+        engine.virus_commands_phase().unwrap();
         let robot = engine.slots.get_mut(id).unwrap();
         assert_eq!(robot.effects.virus_build_timer, 10);
         robot.flags.can_execute_dna = false;
@@ -538,7 +550,7 @@ mod tests {
             let robot = engine.slots.get_mut(id).unwrap();
             robot.program.memory.write(335, request);
             robot.program.memory.write(340, 99);
-            engine.virus_commands_phase();
+            engine.virus_commands_phase().unwrap();
             let robot = engine.slots.get(id).unwrap();
             assert_eq!(engine.projectiles.len(), 0);
             assert_eq!(robot.program.memory.read(335), request);
@@ -550,13 +562,13 @@ mod tests {
     #[test]
     fn older_gene_only_save_can_fire_without_creating_a_second_gene() {
         let (mut engine, id) = maker();
-        engine.virus_commands_phase();
+        engine.virus_commands_phase().unwrap();
         engine.projectiles = ProjectilePool::default();
         let robot = engine.slots.get_mut(id).unwrap();
         robot.effects.virus_build_timer = 1;
         robot.program.memory.write(338, 1);
         let mut restored = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
-        restored.virus_commands_phase();
+        restored.virus_commands_phase().unwrap();
         assert_eq!(restored.projectiles.len(), 1);
         assert!(!restored.projectiles.stored[0]);
         assert_eq!(restored.projectiles.dna_lengths[0], 5);
@@ -568,6 +580,101 @@ mod tests {
                 .effects
                 .stored_virus
                 .is_none()
+        );
+    }
+    #[test]
+    fn native_zero_makevirus_keeps_draws_but_skips_copy_cost_and_build_state() {
+        let (mut engine, id) = maker();
+        engine.config.dna_costs.dna_copy = 0.125;
+        engine.config.dna_costs.global_multiplier = 2.0;
+        engine.projectiles.reset_native_slots(200);
+        engine.projectiles.compact_native_slots(0);
+        let energy = engine.slots.get(id).unwrap().materials.energy;
+        let mut expected = engine.native_random.clone().unwrap();
+        expected.integer(-2, 2);
+        expected.integer(-20, 20);
+        engine.virus_commands_phase().unwrap();
+        let robot = engine.slots.get(id).unwrap();
+        assert_eq!(engine.native_random.as_ref().unwrap(), &expected);
+        assert_eq!(robot.materials.energy, energy);
+        assert_eq!(robot.effects.virus_build_timer, 0);
+        assert!(robot.effects.stored_virus.is_none());
+        assert_eq!(robot.program.memory.read(335), 1);
+        assert!(engine.projectiles.snapshots().is_empty());
+        let mut engine = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        engine.virus_commands_phase().unwrap();
+        let robot = engine.slots.get(id).unwrap();
+        assert_eq!(robot.materials.energy, energy - 1.25);
+        assert_eq!(robot.effects.virus_build_timer, 10);
+        assert!(engine.projectiles.stored[0]);
+        assert_eq!(engine.projectiles.dna_lengths[0], 5);
+    }
+
+    #[test]
+    fn native_failed_copygene_releases_zero_slot_and_preserves_source_draws() {
+        let (mut engine, id) = maker();
+        engine.projectiles.reset_native_slots(200);
+        engine.projectiles.compact_native_slots(0);
+        engine
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .program
+            .memory
+            .write(335, 32000);
+        let energy = engine.slots.get(id).unwrap().materials.energy;
+        let mut expected = engine.native_random.clone().unwrap();
+        for _ in 0..2 {
+            expected.integer(-2, 2);
+            expected.integer(-20, 20);
+        }
+        engine.virus_commands_phase().unwrap();
+        engine
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .program
+            .memory
+            .write(335, 1);
+        engine.virus_commands_phase().unwrap();
+        let robot = engine.slots.get(id).unwrap();
+        // Failed copygene released slot zero; the next valid copy still receives zero.
+        assert_eq!(engine.native_random.as_ref().unwrap(), &expected);
+        assert_eq!(robot.materials.energy, energy);
+        assert_eq!(robot.effects.virus_build_timer, 0);
+        assert!(robot.effects.stored_virus.is_none());
+        assert!(engine.projectiles.snapshots().is_empty());
+        engine.virus_commands_phase().unwrap();
+        assert!(engine.projectiles.stored[0]);
+    }
+
+    #[test]
+    fn native_zero_stored_virus_fallback_cannot_fire_charge_or_consume_an_angle() {
+        let (mut engine, id) = maker();
+        let gene = engine.slots.get(id).unwrap().program.dna.gene(1).unwrap();
+        engine.projectiles.reset_native_slots(200);
+        engine.projectiles.compact_native_slots(0);
+        let robot = engine.slots.get_mut(id).unwrap();
+        robot.program.memory.write(335, 0);
+        robot.program.memory.write(338, 2000);
+        robot.effects.virus_build_timer = 1;
+        robot.effects.stored_virus = Some(StoredGeneticMaterial {
+            dna: gene,
+            source: Some(id),
+        });
+        let energy = robot.materials.energy;
+        let random = engine.native_random.clone();
+        engine.virus_commands_phase().unwrap();
+        let robot = engine.slots.get(id).unwrap();
+        assert_eq!(robot.materials.energy, energy);
+        assert_eq!(engine.native_random, random);
+        assert_eq!(engine.stats.shots_fired, 0);
+        assert!(engine.projectiles.snapshots().is_empty());
+        assert!(robot.effects.stored_virus.is_none());
+        assert_eq!(robot.effects.virus_build_timer, 0);
+        assert_eq!(
+            [335, 337, 338].map(|cell| robot.program.memory.read(cell)),
+            [0; 3]
         );
     }
 }

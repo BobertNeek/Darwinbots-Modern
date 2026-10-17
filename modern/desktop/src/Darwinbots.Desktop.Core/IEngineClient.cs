@@ -79,4 +79,5 @@ public interface IEngineClient : IDisposable
     WorldConfiguration? ReadConfiguration() => null;
     float? ReadNativeGaussianSpare() => null;
     byte ReadNativeSunChange() => 0;
+    NativeProcessCachesSnapshot ReadNativeProcessCaches() => NativeProcessCachesSnapshot.Empty;
 }

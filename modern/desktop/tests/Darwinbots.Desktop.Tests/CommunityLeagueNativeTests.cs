@@ -6,6 +6,18 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class CommunityLeagueNativeTests
 {
+    private static NativeProcessCachesSnapshot EnergyCaches(int marker, double light, ulong shotsThisCycle = 17) =>
+        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle);
+
+    private static void AssertProcessCaches(NativeProcessCachesSnapshot expected, NativeProcessCachesSnapshot actual)
+    {
+        Assert.Equal(expected.LightAvailability, actual.LightAvailability);
+        Assert.Equal(expected.Energy.Ring, actual.Energy.Ring);
+        Assert.Equal(expected.Energy.CurrentIndex, actual.Energy.CurrentIndex);
+        Assert.Equal(expected.Energy.Displayed, actual.Energy.Displayed);
+        Assert.Equal(expected.ShotsThisCycle, actual.ShotsThisCycle);
+    }
+
     [Fact]
     public async Task PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna()
     {
@@ -365,7 +377,8 @@ public sealed class CommunityLeagueNativeTests
     {
         var options = new WorldSetupOptions { Backend = "Cpu", Seed = 42 };
         using var independent = new NativeEngineClient(options);
-        using var inherited = new NativeEngineClient(options with { NativeGaussianSpare = spare, NativeSunChange = 12 });
+        var caches = EnergyCaches(123, 0.125);
+        using var inherited = new NativeEngineClient(options with { NativeGaussianSpare = spare, NativeSunChange = 12, NativeProcessCaches = caches });
         using var baseline = JsonDocument.Parse(independent.Save().AsMemory(10));
         using var handoff = JsonDocument.Parse(inherited.Save().AsMemory(10));
         Assert.Equal(baseline.RootElement.GetProperty("native_random").GetProperty("state").GetUInt32(),
@@ -377,6 +390,9 @@ public sealed class CommunityLeagueNativeTests
         Assert.Null(independent.ReadNativeGaussianSpare());
         Assert.Equal((byte)12, inherited.ReadNativeSunChange());
         Assert.Equal((byte)0, independent.ReadNativeSunChange());
+        AssertProcessCaches(caches, inherited.ReadNativeProcessCaches());
+        AssertProcessCaches(caches, inherited.ReadNativeProcessCaches());
+        AssertProcessCaches(NativeProcessCachesSnapshot.Empty, independent.ReadNativeProcessCaches());
         Assert.Equal(saved, inherited.Save());
         Assert.Equal(0ul, inherited.Snapshot().Tick);
     }
@@ -389,6 +405,7 @@ public sealed class CommunityLeagueNativeTests
         using var inherited = new NativeEngineClient(new WorldSetupOptions
         {
             Backend = "Cpu", Seed = 42, NativeGaussianSpare = 1.25f, NativeSunChange = 12,
+            NativeProcessCaches = EnergyCaches(123, 0.125),
         });
         const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -400,9 +417,12 @@ public sealed class CommunityLeagueNativeTests
         inherited.Load(original);
         Assert.Equal(1.25f, inherited.ReadNativeGaussianSpare());
         Assert.Equal(reference.ReadNativeSunChange(), inherited.ReadNativeSunChange());
+        AssertProcessCaches(EnergyCaches(123, 0.125), inherited.ReadNativeProcessCaches());
+        AssertProcessCaches(NativeProcessCachesSnapshot.Empty, reference.ReadNativeProcessCaches());
         using var source = new NativeEngineClient(new WorldSetupOptions
         {
             Backend = "Cpu", Seed = 17, NativeGaussianSpare = savedHasSpare ? 2.5f : null, NativeSunChange = 7,
+            NativeProcessCaches = EnergyCaches(-456, 0.375, 21),
         });
         var modern = source.Save();
 
@@ -410,6 +430,7 @@ public sealed class CommunityLeagueNativeTests
 
         Assert.Equal(savedHasSpare ? 2.5f : (float?)null, inherited.ReadNativeGaussianSpare());
         Assert.Equal((byte)7, inherited.ReadNativeSunChange());
+        AssertProcessCaches(EnergyCaches(-456, 0.375, 21), inherited.ReadNativeProcessCaches());
         Assert.Equal(modern, inherited.Save());
         Assert.Equal(0ul, inherited.Snapshot().Tick);
     }

@@ -181,7 +181,7 @@ impl Engine {
                 self.trace_robot_phase(trace, CyclePhase::Aim);
                 self.aim_commands_phase();
                 self.trace_robot_phase(trace, CyclePhase::Virus);
-                self.virus_commands_phase();
+                self.virus_commands_phase()?;
                 self.flush_native_disqualifications()?;
                 if self.slots.get(id).is_err() {
                     continue;
@@ -269,6 +269,7 @@ impl Engine {
                     continue;
                 };
                 if robot.flags.hidden {
+                    self.add_native_actor_energy(id)?;
                     continue;
                 }
                 let old_chloroplasts = f64::from(robot.materials.chloroplasts);
@@ -296,10 +297,10 @@ impl Engine {
                     continue;
                 }
                 self.trace_robot_phase(trace, CyclePhase::Waste);
-                self.waste_phase();
+                self.waste_phase()?;
                 self.trace_robot_phase(trace, CyclePhase::Shot);
                 self.prepare_projectile_requests_phase();
-                self.projectile_spawn_phase();
+                self.projectile_spawn_phase()?;
                 if !self
                     .flush_disqualification_for_actor(&mut population, &mut chloroplast_total)?
                 {
@@ -352,6 +353,7 @@ impl Engine {
                         self.slots.get_mut(id)?.flags.dead = true;
                         births.deaths.append(&mut lifecycle.deaths);
                         self.trace_robot_phase(trace, CyclePhase::TotalEnergy);
+                        self.add_native_actor_energy(id)?;
                         continue;
                     }
                     let before_death = f64::from(self.slots.get(id)?.materials.chloroplasts);
@@ -368,6 +370,7 @@ impl Engine {
                     chloroplast_total = chloroplast_total.max(0.0);
                 }
                 self.trace_robot_phase(trace, CyclePhase::TotalEnergy);
+                self.add_native_actor_energy(id)?;
             }
             Ok(births)
         })();

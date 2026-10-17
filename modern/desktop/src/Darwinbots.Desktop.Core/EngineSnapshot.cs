@@ -117,10 +117,32 @@ public sealed record SimulationStatsSnapshot(
     ulong IntentionalMovementEvents = 0,
     ulong ProjectileImpacts = 0,
     ulong ProjectileEffects = 0,
-    ulong PlantEnergyGenerated = 0)
+    ulong PlantEnergyGenerated = 0,
+    ulong? NativeShotsVisited = null,
+    int? NativeEnergyDisplayed = null,
+    long? NativeEnergyDelta = null)
 {
     public static SimulationStatsSnapshot Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
 }
+
+public sealed record NativeEnergyContextSnapshot(
+    [property: System.Text.Json.Serialization.JsonPropertyName("ring")] int[] Ring,
+    [property: System.Text.Json.Serialization.JsonPropertyName("current_index")] byte CurrentIndex,
+    [property: System.Text.Json.Serialization.JsonPropertyName("displayed")] int Displayed)
+{
+    public static NativeEnergyContextSnapshot Empty => new(new int[101], 0, 0);
+}
+
+public sealed record NativeProcessCachesSnapshot(
+    [property: System.Text.Json.Serialization.JsonPropertyName("light_availability")] double LightAvailability,
+    [property: System.Text.Json.Serialization.JsonPropertyName("energy")] NativeEnergyContextSnapshot Energy,
+    [property: System.Text.Json.Serialization.JsonPropertyName("shots_this_cycle")] ulong ShotsThisCycle = 0)
+{
+    public static NativeProcessCachesSnapshot Empty => new(0, NativeEnergyContextSnapshot.Empty);
+}
+
+public sealed record NativeProcessStateSnapshot(
+    float? GaussianSpare, byte SunChange, NativeProcessCachesSnapshot Caches);
 
 public sealed record RenderInstanceSnapshot(
     uint Slot,

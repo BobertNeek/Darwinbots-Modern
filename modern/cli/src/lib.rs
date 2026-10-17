@@ -21,6 +21,7 @@ struct Arguments {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Replay a genuine DB2 simulation on the Rust CPU engine.
+    /// A validated zero-tick replay preserves the original file bytes.
     NativeReplay {
         #[arg(long)]
         simulation: PathBuf,
@@ -129,7 +130,8 @@ where
             until_cycle,
             output_sim,
         } => {
-            let mut engine = Engine::from_native_sim(&fs::read(&simulation)?)?;
+            let input_bytes = fs::read(&simulation)?;
+            let mut engine = Engine::from_native_sim(&input_bytes)?;
             let start = engine
                 .snapshot()
                 .native_cycle
@@ -151,13 +153,22 @@ where
             if simulation == output_sim {
                 return Err("replay output must not replace its input simulation".into());
             }
-            native_comparison::write_new(&output_sim, &engine.export_native_sim()?)?;
+            // A zero-update file replay is a validated lossless copy. Loading
+            // a runtime still applies original LoadRobotBody normalization;
+            // positive updates always export that actual live engine state.
+            let output_bytes = if ticks == 0 {
+                input_bytes
+            } else {
+                engine.export_native_sim()?
+            };
+            native_comparison::write_new(&output_sim, &output_bytes)?;
             serde_json::to_writer(
                 &mut output,
                 &json!({ "start_cycle": start,
                 "end_cycle": end, "ticks": ticks, "processed_tick": engine.snapshot().tick,
                 "backend": "Cpu",
                 "output_sim": output_sim, "population": engine.population(),
+                "output_image": if ticks == 0 { "unchanged_input" } else { "engine_native_export" },
                 "rng_boundary": native_comparison::RNG_BOUNDARY }),
             )?;
         }

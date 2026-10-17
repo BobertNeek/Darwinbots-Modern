@@ -25,12 +25,18 @@ fn set_vegetation_runtime(
     sun_position: f32,
     sun_range: f32,
     sun_change: u8,
+    native: bool,
 ) -> Engine {
     let encoded = SaveFile::encode(engine).unwrap();
     let mut payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
     payload["vegetation_runtime"]["sun_position"] = serde_json::json!(sun_position);
     payload["vegetation_runtime"]["sun_range"] = serde_json::json!(sun_range);
     payload["vegetation_runtime"]["sun_change"] = serde_json::json!(sun_change);
+    if !native {
+        // An explicit pre-native saved state exercises the retained smooth
+        // feeding contract. Engine::new itself now selects native behavior.
+        payload["native_random"] = serde_json::Value::Null;
+    }
     let payload = serde_json::to_vec(&payload).unwrap();
     let mut save = Vec::with_capacity(10 + payload.len());
     save.extend_from_slice(&encoded[..6]);
@@ -41,64 +47,80 @@ fn set_vegetation_runtime(
 
 #[test]
 fn eco_03_pond_depth_moving_sun_band_and_tide_reduce_authoritative_feed() {
-    let mut config = quiet_config();
-    config.fixed_bot_radii = true;
-    config.vegetable_energy_per_tick = 0;
-    config.vegetation = VegetationSettings {
-        pond_mode: true,
-        sun_on_random: true,
-        light_intensity: 100.0,
-        gradient: 1.0,
-        max_energy_per_tick: 40,
-        feeding_to_body: 0.0,
-        tides: 4,
-        ..VegetationSettings::default()
-    };
-    let mut engine = Engine::new(config).unwrap();
-    let vegetables = engine.register_species(SpeciesDefinition {
-        vegetable: true,
-        ..SpeciesDefinition::default()
-    });
-    let shallow = engine
-        .spawn_species_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            vegetables,
+    for native in [true, false] {
+        let mut config = quiet_config();
+        config.world_height = 4_000.0;
+        config.fixed_bot_radii = true;
+        config.vegetable_energy_per_tick = 0;
+        config.vegetation = VegetationSettings {
+            pond_mode: true,
+            sun_on_random: true,
+            light_intensity: 100.0,
+            gradient: 1.0,
+            max_energy_per_tick: 40,
+            feeding_to_body: 0.0,
+            tides: 4,
+            ..VegetationSettings::default()
+        };
+        let mut engine = Engine::new(config).unwrap();
+        let vegetables = engine.register_species(SpeciesDefinition {
+            vegetable: true,
+            ..SpeciesDefinition::default()
+        });
+        let [shallow, same_native_band, deep, dark] = [
             [100.0, 100.0],
-        )
-        .unwrap();
-    let deep = engine
-        .spawn_species_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            vegetables,
             [100.0, 900.0],
-        )
-        .unwrap();
-    let dark = engine
-        .spawn_species_at(
-            LegacyDna::parse("start\nstop").unwrap(),
-            vegetables,
+            [100.0, 2_900.0],
             [500.0, 100.0],
-        )
-        .unwrap();
-    let mut engine = set_vegetation_runtime(&engine, 0.1, 0.0, 10);
+        ]
+        .map(|position| {
+            engine
+                .spawn_species_at(
+                    LegacyDna::parse("start\nstop").unwrap(),
+                    vegetables,
+                    position,
+                )
+                .unwrap()
+        });
+        let mut engine = set_vegetation_runtime(&engine, 0.1, 0.0, 10, native);
+        engine.tick().unwrap();
+        let initial = engine.organism(shallow).unwrap().energy;
+        engine.tick().unwrap();
 
-    engine.tick().unwrap();
-    let initial = engine.organism(shallow).unwrap().energy;
-    engine.tick().unwrap();
-
-    let shallow_energy = engine.organism(shallow).unwrap().energy;
-    let deep_energy = engine.organism(deep).unwrap().energy;
-    let dark_energy = engine.organism(dark).unwrap().energy;
-    let encoded = SaveFile::encode(&engine).unwrap();
-    let payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
-    let sun_position = payload["vegetation_runtime"]["sun_position"]
-        .as_f64()
-        .unwrap() as f32;
-
-    assert!(sun_position < 0.1, "sun band did not move: {sun_position}");
-    assert!(shallow_energy > deep_energy);
-    assert!(deep_energy > initial);
-    assert_eq!(dark_energy, initial);
+        let shallow_energy = engine.organism(shallow).unwrap().energy;
+        let same_band_energy = engine.organism(same_native_band).unwrap().energy;
+        let deep_energy = engine.organism(deep).unwrap().energy;
+        let dark_energy = engine.organism(dark).unwrap().energy;
+        let encoded = SaveFile::encode(&engine).unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&encoded[10..]).unwrap();
+        assert_eq!(!payload["native_random"].is_null(), native);
+        let sun_position = payload["vegetation_runtime"]["sun_position"]
+            .as_f64()
+            .unwrap();
+        assert!(sun_position < 0.1, "sun band did not move: {sun_position}");
+        // Vegs.bas228 assigns depth to Long: y100 and y900 both round to1;
+        // y2900 rounds to2. The explicit legacy profile remains continuous.
+        if native {
+            assert_eq!(shallow_energy, same_band_energy, "native same-depth band");
+        } else {
+            assert!(
+                shallow_energy > same_band_energy,
+                "legacy depth remains continuous"
+            );
+        }
+        assert!(
+            same_band_energy > deep_energy,
+            "native={native}: deeper water must attenuate feeding"
+        );
+        assert!(
+            deep_energy > initial,
+            "native={native}: tidal light still feeds the deep plant"
+        );
+        assert_eq!(
+            dark_energy, initial,
+            "native={native}: unlit plant must not gain food"
+        );
+    }
 }
 
 #[test]

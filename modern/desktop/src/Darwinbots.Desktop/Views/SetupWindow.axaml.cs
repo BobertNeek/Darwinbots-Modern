@@ -13,6 +13,7 @@ public sealed partial class SetupWindow : Window
     private readonly IDesktopStorageService _storage;
     private readonly float? _nativeGaussianSpare;
     private readonly byte? _nativeSunChange;
+    private readonly NativeProcessCachesSnapshot? _nativeProcessCaches;
     private readonly SimulationSettingsWorkflow _workflow;
     private EnvironmentUpdate _environment = EnvironmentUpdate.Default;
     private GlobalSettings _globalSettings = new();
@@ -29,11 +30,12 @@ public sealed partial class SetupWindow : Window
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _nativeGaussianSpare = nativeGaussianSpare;
         _nativeSunChange = nativeSunChange;
+        _nativeProcessCaches = nativeProcessCaches;
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
         DataContext = this;
@@ -141,7 +143,7 @@ public sealed partial class SetupWindow : Window
     }
 
     private void PublishWorld(WorldSetupOptions options) =>
-        WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange });
+        WorldCreated?.Invoke(options with { NativeGaussianSpare = _nativeGaussianSpare, NativeSunChange = _nativeSunChange, NativeProcessCaches = _nativeProcessCaches });
 
     private WorldSetupOptions ReadSetupOptions()
     {

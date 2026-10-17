@@ -1,0 +1,3231 @@
+{
+  "schema_version": 1,
+  "batch": 55,
+  "source_commit": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+  "workflow": "Modern cross-platform",
+  "run_id": 38995006547,
+  "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547",
+  "branch": "codex/db24832-completion",
+  "event": "push",
+  "sealed_utc": "2026-10-17T02:37:35.626Z",
+  "state": "needs_repair",
+  "all_four_normal_outcomes_collected": true,
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "normal_jobs": [
+    {
+      "id": 117285526626,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T02:27:52Z",
+      "completed_at": "2026-10-17T02:32:07Z",
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526626"
+    },
+    {
+      "id": 117285526727,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T02:27:48Z",
+      "completed_at": "2026-10-17T02:34:46Z",
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526727"
+    },
+    {
+      "id": 117285526732,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T02:27:48Z",
+      "completed_at": "2026-10-17T02:31:17Z",
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526732"
+    },
+    {
+      "id": 117285526782,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T02:27:48Z",
+      "completed_at": "2026-10-17T02:32:44Z",
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526782"
+    }
+  ],
+  "aggregate": {
+    "rust": {
+      "actual_full_workspace_invocations": 4,
+      "successful_workspace_invocations": 0,
+      "completed_targets": 4,
+      "passed": 52,
+      "failed": 4,
+      "ignored": 4,
+      "filtered_out": 0,
+      "counts_are_actual_complete_log_summaries": true
+    },
+    "core": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "total": 0,
+      "evidence": "Complete dotnet console summaries; this workflow does not publish Core TRXs.",
+      "platforms_with_actual_summaries": 0,
+      "platforms_without_execution": 4
+    },
+    "desktop": {
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "total": 0,
+      "all_results_executed_without_skips": false,
+      "actual_trx_files": 0,
+      "platforms_without_execution": 4
+    },
+    "named_dna_export_tests": {
+      "present": 0,
+      "passed": 0,
+      "failed": 0,
+      "missing": 12,
+      "scope": "Only actual Desktop TRX results count. Absent results after a Rust gate failure mean not run, not passing or failing Desktop tests."
+    },
+    "new_startup_robot_file_tests": {
+      "present": 0,
+      "passed": 0,
+      "failed": 0,
+      "missing": 12,
+      "scope": "Only actual Desktop TRX results count. Absent results after a Rust gate failure mean not run, not passing or failing Desktop tests."
+    },
+    "gui_frames": 0
+  },
+  "artifacts": {
+    "api_available_count": 0,
+    "downloaded_count": 0,
+    "all_available_artifacts_downloaded": true,
+    "extracted_file_count": 0,
+    "inventory": {
+      "file": "output/hosted-main-1b059f4-agent/artifact-files.json",
+      "sha256": "DE3EFB4C58CE8A59263FD4C67947A3D10EA1E7BEBFD9829F6380ADB6C9D8C16B",
+      "bytes": 399
+    },
+    "metadata": [],
+    "published_packages": [],
+    "missing_packages": [
+      "win-x64",
+      "linux-x64",
+      "osx-x64",
+      "osx-arm64"
+    ],
+    "archive_digest_scope": "GitHub API archive digests are recorded as remote metadata. Every extracted file is locally hashed; no local ZIP-byte digest is claimed."
+  },
+  "source_asset_contract": {
+    "expected_bots": 48,
+    "policy": "Installer/bots/**/*.txt text eol=crlf",
+    "source_baseline": {
+      "file": "output/hosted-main-1b059f4-agent/windows-source-bots.json",
+      "sha256": "F42404BFDE737472BF59BF794FFCCB79A2FD78474152A256383105EAD856D064",
+      "bytes": 41520
+    },
+    "current_windows_sources_crlf_only": true,
+    "working_source_raw_matches_committed_blobs": 23,
+    "committed_LF_blobs_with_CRLF_checkout": 25,
+    "verified_packages": [],
+    "scope": "Raw Windows checkout identity, committed Git blob identity, and LF-normalized equivalence are separate facts. Normalized equality is not raw-byte identity. Package assets are required to match the CRLF checkout bytes on every platform."
+  },
+  "platform_results": [
+    {
+      "rid": "win-x64",
+      "job": {
+        "completedAt": "2026-10-17T02:32:44Z",
+        "conclusion": "failure",
+        "databaseId": 117285526782,
+        "name": "verify-and-package (windows-latest, win-x64)",
+        "startedAt": "2026-10-17T02:27:48Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T02:27:50Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T02:27:49Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:27:56Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T02:27:50Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:15Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T02:27:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:36Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T02:28:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T02:28:36Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:41Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:43Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T02:32:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:43Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T02:32:43Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526782"
+      },
+      "rust": {
+        "command": "cargo test --release --workspace",
+        "totals": {
+          "completedTargets": 1,
+          "passed": 13,
+          "failed": 1,
+          "ignored": 1,
+          "measured": 0,
+          "filtered": 0
+        },
+        "targets": [
+          {
+            "kind": "test",
+            "label": "unittests src\\lib.rs",
+            "binary": "target\\release\\deps\\darwinbots_cli-963c5cad04dda9b0.exe",
+            "declared": 15,
+            "outcome": "FAILED",
+            "ignoredTests": [
+              {
+                "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+                "reason": "requires an idle physical GPU; run with --ignored on the GPU qualification host"
+              }
+            ],
+            "failedTests": [
+              "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields"
+            ],
+            "panicLines": [
+              "2026-10-17T02:32:41.2983284Z thread 'native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields' (1728) panicked at modern\\cli\\src\\native_comparison.rs:348:9:",
+              "2026-10-17T02:32:41.2989826Z assertion `left == right` failed: {\"absolute_tolerance\":0.0,\"compared_fields\":393316,\"coverage_boundary\":\"Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.\",\"difference_count\":980,\"differences\":[{\"field\":\"robot.10.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.102.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.103.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.104.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.105.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.11.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}}],\"passed\":false,\"relative_tolerance\":0.0,\"rng_boundary\":\"Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.\",\"truncated\":true}"
+            ],
+            "passed": 13,
+            "failed": 1,
+            "ignored": 1,
+            "measured": 0,
+            "filtered": 0,
+            "seconds": 1.1
+          }
+        ],
+        "startedTargetsWithoutSummary": [],
+        "cargoHeaderInterleavingCount": 0,
+        "attribution": "Cargo target headers, stdout declarations and result summaries paired in their own sequence. Declared counts and failed/ignored test names verified for each completed summary. A failing normal workspace command can stop before later targets.",
+        "distinct_target_identities": 1,
+        "failure_comparisons": [
+          {
+            "absolute_tolerance": 0,
+            "compared_fields": 393316,
+            "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+            "difference_count": 980,
+            "differences": [
+              {
+                "field": "robot.10.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.102.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.103.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.104.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.105.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.11.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              }
+            ],
+            "passed": false,
+            "relative_tolerance": 0,
+            "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+            "truncated": true
+          }
+        ]
+      },
+      "core": null,
+      "desktop_console": null,
+      "desktop_trx": null,
+      "dna_export_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "startup_robot_file_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "publish_conclusion": "skipped",
+      "smoke_conclusion": "skipped",
+      "packaged_cpu_smoke": null,
+      "artifact_audit": {
+        "dna_export_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "startup_robot_file_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "platform": "win-x64",
+        "sourceHead": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+        "collectedUtc": "2026-10-17T02:37:14.2403908Z",
+        "packageAvailable": false,
+        "packagePath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-win-x64",
+        "packageFileCount": null,
+        "nativeLibraries": [],
+        "packagedBotCount": null,
+        "botCount": 0,
+        "rawWindowsExactCount": 0,
+        "rawCommittedBlobExactCount": 0,
+        "lfNormalizedEquivalentCount": 0,
+        "normalizedLfMatchesCommittedBlobCount": 0,
+        "botMismatches": [],
+        "bots": [],
+        "guiAuditAvailable": false,
+        "guiPath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-gui-audit-win-x64",
+        "trx": null,
+        "screenshots": [],
+        "scope": "Only downloaded artifacts verified. Missing package/TRX/native hashes remain unavailable; no previous platform artifacts substituted. Headless PNGs do not prove native visible interaction."
+      },
+      "execution": {
+        "rust_command_attempted": true,
+        "rust_command_conclusion": "failure",
+        "remaining_rust_targets": "Only emitted target summaries are counted; cargo without --no-fail-fast can stop before later targets.",
+        "core": "not run; blocked by preceding Rust failure",
+        "desktop": "not run; no TRX emitted",
+        "package": "not published; preceding gate failed"
+      }
+    },
+    {
+      "rid": "linux-x64",
+      "job": {
+        "completedAt": "2026-10-17T02:31:17Z",
+        "conclusion": "failure",
+        "databaseId": 117285526732,
+        "name": "verify-and-package (ubuntu-latest, linux-x64)",
+        "startedAt": "2026-10-17T02:27:48Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T02:27:49Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T02:27:48Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:27:51Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T02:27:49Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:03Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T02:27:51Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:10Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T02:28:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T02:28:10Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:31:15Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T02:31:15Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526732"
+      },
+      "rust": {
+        "command": "cargo test --release --workspace",
+        "totals": {
+          "completedTargets": 1,
+          "passed": 13,
+          "failed": 1,
+          "ignored": 1,
+          "measured": 0,
+          "filtered": 0
+        },
+        "targets": [
+          {
+            "kind": "test",
+            "label": "unittests src/lib.rs",
+            "binary": "target/release/deps/darwinbots_cli-1956191e99649b9c",
+            "declared": 15,
+            "outcome": "FAILED",
+            "ignoredTests": [
+              {
+                "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+                "reason": "requires an idle physical GPU; run with --ignored on the GPU qualification host"
+              }
+            ],
+            "failedTests": [
+              "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields"
+            ],
+            "panicLines": [
+              "2026-10-17T02:31:15.4994561Z thread 'native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields' (6542) panicked at modern/cli/src/native_comparison.rs:348:9:",
+              "2026-10-17T02:31:15.5008544Z assertion `left == right` failed: {\"absolute_tolerance\":0.0,\"compared_fields\":393316,\"coverage_boundary\":\"Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.\",\"difference_count\":980,\"differences\":[{\"field\":\"robot.10.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.102.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.103.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.104.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.105.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.11.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}}],\"passed\":false,\"relative_tolerance\":0.0,\"rng_boundary\":\"Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.\",\"truncated\":true}"
+            ],
+            "passed": 13,
+            "failed": 1,
+            "ignored": 1,
+            "measured": 0,
+            "filtered": 0,
+            "seconds": 2.06
+          }
+        ],
+        "startedTargetsWithoutSummary": [],
+        "cargoHeaderInterleavingCount": 0,
+        "attribution": "Cargo target headers, stdout declarations and result summaries paired in their own sequence. Declared counts and failed/ignored test names verified for each completed summary. A failing normal workspace command can stop before later targets.",
+        "distinct_target_identities": 1,
+        "failure_comparisons": [
+          {
+            "absolute_tolerance": 0,
+            "compared_fields": 393316,
+            "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+            "difference_count": 980,
+            "differences": [
+              {
+                "field": "robot.10.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.102.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.103.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.104.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.105.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.11.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              }
+            ],
+            "passed": false,
+            "relative_tolerance": 0,
+            "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+            "truncated": true
+          }
+        ]
+      },
+      "core": null,
+      "desktop_console": null,
+      "desktop_trx": null,
+      "dna_export_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "startup_robot_file_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "publish_conclusion": "skipped",
+      "smoke_conclusion": "skipped",
+      "packaged_cpu_smoke": null,
+      "artifact_audit": {
+        "dna_export_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "startup_robot_file_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "platform": "linux-x64",
+        "sourceHead": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+        "collectedUtc": "2026-10-17T02:37:15.2551860Z",
+        "packageAvailable": false,
+        "packagePath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-linux-x64",
+        "packageFileCount": null,
+        "nativeLibraries": [],
+        "packagedBotCount": null,
+        "botCount": 0,
+        "rawWindowsExactCount": 0,
+        "rawCommittedBlobExactCount": 0,
+        "lfNormalizedEquivalentCount": 0,
+        "normalizedLfMatchesCommittedBlobCount": 0,
+        "botMismatches": [],
+        "bots": [],
+        "guiAuditAvailable": false,
+        "guiPath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-gui-audit-linux-x64",
+        "trx": null,
+        "screenshots": [],
+        "scope": "Only downloaded artifacts verified. Missing package/TRX/native hashes remain unavailable; no previous platform artifacts substituted. Headless PNGs do not prove native visible interaction."
+      },
+      "execution": {
+        "rust_command_attempted": true,
+        "rust_command_conclusion": "failure",
+        "remaining_rust_targets": "Only emitted target summaries are counted; cargo without --no-fail-fast can stop before later targets.",
+        "core": "not run; blocked by preceding Rust failure",
+        "desktop": "not run; no TRX emitted",
+        "package": "not published; preceding gate failed"
+      }
+    },
+    {
+      "rid": "osx-x64",
+      "job": {
+        "completedAt": "2026-10-17T02:34:46Z",
+        "conclusion": "failure",
+        "databaseId": 117285526727,
+        "name": "verify-and-package (macos-15-intel, osx-x64)",
+        "startedAt": "2026-10-17T02:27:48Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T02:27:52Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T02:27:49Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:27:58Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T02:27:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:14Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T02:27:58Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:39Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T02:28:14Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:42Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T02:28:39Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:42Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T02:34:42Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:42Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T02:34:42Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:43Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T02:34:42Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:43Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T02:34:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:43Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T02:34:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:43Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T02:34:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:43Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T02:34:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:44Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T02:34:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:34:44Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T02:34:44Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526727"
+      },
+      "rust": {
+        "command": "cargo test --release --workspace",
+        "totals": {
+          "completedTargets": 1,
+          "passed": 13,
+          "failed": 1,
+          "ignored": 1,
+          "measured": 0,
+          "filtered": 0
+        },
+        "targets": [
+          {
+            "kind": "test",
+            "label": "unittests src/lib.rs",
+            "binary": "target/release/deps/darwinbots_cli-dc96abc3d1c2ef03",
+            "declared": 15,
+            "outcome": "FAILED",
+            "ignoredTests": [
+              {
+                "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+                "reason": "requires an idle physical GPU; run with --ignored on the GPU qualification host"
+              }
+            ],
+            "failedTests": [
+              "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields"
+            ],
+            "panicLines": [
+              "2026-10-17T02:34:42.3949800Z thread 'native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields' (53096) panicked at modern/cli/src/native_comparison.rs:348:9:",
+              "2026-10-17T02:34:42.3994510Z assertion `left == right` failed: {\"absolute_tolerance\":0.0,\"compared_fields\":393316,\"coverage_boundary\":\"Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.\",\"difference_count\":980,\"differences\":[{\"field\":\"robot.10.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.102.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.103.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.104.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.105.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.11.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}}],\"passed\":false,\"relative_tolerance\":0.0,\"rng_boundary\":\"Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.\",\"truncated\":true}"
+            ],
+            "passed": 13,
+            "failed": 1,
+            "ignored": 1,
+            "measured": 0,
+            "filtered": 0,
+            "seconds": 9.02
+          }
+        ],
+        "startedTargetsWithoutSummary": [],
+        "cargoHeaderInterleavingCount": 0,
+        "attribution": "Cargo target headers, stdout declarations and result summaries paired in their own sequence. Declared counts and failed/ignored test names verified for each completed summary. A failing normal workspace command can stop before later targets.",
+        "distinct_target_identities": 1,
+        "failure_comparisons": [
+          {
+            "absolute_tolerance": 0,
+            "compared_fields": 393316,
+            "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+            "difference_count": 980,
+            "differences": [
+              {
+                "field": "robot.10.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.102.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.103.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.104.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.105.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.11.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              }
+            ],
+            "passed": false,
+            "relative_tolerance": 0,
+            "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+            "truncated": true
+          }
+        ]
+      },
+      "core": null,
+      "desktop_console": null,
+      "desktop_trx": null,
+      "dna_export_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "startup_robot_file_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "publish_conclusion": "skipped",
+      "smoke_conclusion": "skipped",
+      "packaged_cpu_smoke": null,
+      "artifact_audit": {
+        "dna_export_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "startup_robot_file_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "platform": "osx-x64",
+        "sourceHead": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+        "collectedUtc": "2026-10-17T02:37:16.3249120Z",
+        "packageAvailable": false,
+        "packagePath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-osx-x64",
+        "packageFileCount": null,
+        "nativeLibraries": [],
+        "packagedBotCount": null,
+        "botCount": 0,
+        "rawWindowsExactCount": 0,
+        "rawCommittedBlobExactCount": 0,
+        "lfNormalizedEquivalentCount": 0,
+        "normalizedLfMatchesCommittedBlobCount": 0,
+        "botMismatches": [],
+        "bots": [],
+        "guiAuditAvailable": false,
+        "guiPath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-gui-audit-osx-x64",
+        "trx": null,
+        "screenshots": [],
+        "scope": "Only downloaded artifacts verified. Missing package/TRX/native hashes remain unavailable; no previous platform artifacts substituted. Headless PNGs do not prove native visible interaction."
+      },
+      "execution": {
+        "rust_command_attempted": true,
+        "rust_command_conclusion": "failure",
+        "remaining_rust_targets": "Only emitted target summaries are counted; cargo without --no-fail-fast can stop before later targets.",
+        "core": "not run; blocked by preceding Rust failure",
+        "desktop": "not run; no TRX emitted",
+        "package": "not published; preceding gate failed"
+      }
+    },
+    {
+      "rid": "osx-arm64",
+      "job": {
+        "completedAt": "2026-10-17T02:32:07Z",
+        "conclusion": "failure",
+        "databaseId": 117285526626,
+        "name": "verify-and-package (macos-latest, osx-arm64)",
+        "startedAt": "2026-10-17T02:27:52Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T02:27:55Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T02:27:53Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:27:59Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T02:27:55Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:08Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T02:27:59Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:28:17Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T02:28:08Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:02Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T02:28:17Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:02Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T02:32:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:02Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T02:32:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:03Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T02:32:02Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:03Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T02:32:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:03Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T02:32:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:03Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T02:32:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:03Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T02:32:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:04Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T02:32:03Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T02:32:05Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T02:32:04Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547/job/117285526626"
+      },
+      "rust": {
+        "command": "cargo test --release --workspace",
+        "totals": {
+          "completedTargets": 1,
+          "passed": 13,
+          "failed": 1,
+          "ignored": 1,
+          "measured": 0,
+          "filtered": 0
+        },
+        "targets": [
+          {
+            "kind": "test",
+            "label": "unittests src/lib.rs",
+            "binary": "target/release/deps/darwinbots_cli-caa479a8d928cf76",
+            "declared": 15,
+            "outcome": "FAILED",
+            "ignoredTests": [
+              {
+                "name": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter",
+                "reason": "requires an idle physical GPU; run with --ignored on the GPU qualification host"
+              }
+            ],
+            "failedTests": [
+              "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields"
+            ],
+            "panicLines": [
+              "2026-10-17T02:32:02.8370470Z thread 'native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields' (26696) panicked at modern/cli/src/native_comparison.rs:348:9:",
+              "2026-10-17T02:32:02.8380960Z assertion `left == right` failed: {\"absolute_tolerance\":0.0,\"compared_fields\":393316,\"coverage_boundary\":\"Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.\",\"difference_count\":980,\"differences\":[{\"field\":\"robot.10.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.10.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.102.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.102.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.103.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.103.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.104.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.104.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.105.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.105.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}},{\"field\":\"robot.11.mutation_rates.10\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.4\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.8\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.mutation_rates.9\",\"left\":189000.0,\"right\":0.0},{\"field\":\"robot.11.owner\",\"left\":{\"Bytes\":[]},\"right\":{\"Bytes\":[76,111,99,97,108]}}],\"passed\":false,\"relative_tolerance\":0.0,\"rng_boundary\":\"Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.\",\"truncated\":true}"
+            ],
+            "passed": 13,
+            "failed": 1,
+            "ignored": 1,
+            "measured": 0,
+            "filtered": 0,
+            "seconds": 2.06
+          }
+        ],
+        "startedTargetsWithoutSummary": [],
+        "cargoHeaderInterleavingCount": 0,
+        "attribution": "Cargo target headers, stdout declarations and result summaries paired in their own sequence. Declared counts and failed/ignored test names verified for each completed summary. A failing normal workspace command can stop before later targets.",
+        "distinct_target_identities": 1,
+        "failure_comparisons": [
+          {
+            "absolute_tolerance": 0,
+            "compared_fields": 393316,
+            "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+            "difference_count": 980,
+            "differences": [
+              {
+                "field": "robot.10.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.10.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.102.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.102.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.103.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.103.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.104.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.104.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.105.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.105.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              },
+              {
+                "field": "robot.11.mutation_rates.10",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.4",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.8",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.mutation_rates.9",
+                "left": 189000,
+                "right": 0
+              },
+              {
+                "field": "robot.11.owner",
+                "left": {
+                  "Bytes": []
+                },
+                "right": {
+                  "Bytes": [
+                    76,
+                    111,
+                    99,
+                    97,
+                    108
+                  ]
+                }
+              }
+            ],
+            "passed": false,
+            "relative_tolerance": 0,
+            "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+            "truncated": true
+          }
+        ]
+      },
+      "core": null,
+      "desktop_console": null,
+      "desktop_trx": null,
+      "dna_export_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "startup_robot_file_results": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+          "present": false,
+          "outcome": null,
+          "error": null
+        },
+        {
+          "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+          "present": false,
+          "outcome": null,
+          "error": null
+        }
+      ],
+      "publish_conclusion": "skipped",
+      "smoke_conclusion": "skipped",
+      "packaged_cpu_smoke": null,
+      "artifact_audit": {
+        "dna_export_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "startup_robot_file_results": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "present": false,
+            "outcome": null,
+            "error": null
+          },
+          {
+            "test_name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "present": false,
+            "outcome": null,
+            "error": null
+          }
+        ],
+        "platform": "osx-arm64",
+        "sourceHead": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+        "collectedUtc": "2026-10-17T02:37:17.3904833Z",
+        "packageAvailable": false,
+        "packagePath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-osx-arm64",
+        "packageFileCount": null,
+        "nativeLibraries": [],
+        "packagedBotCount": null,
+        "botCount": 0,
+        "rawWindowsExactCount": 0,
+        "rawCommittedBlobExactCount": 0,
+        "lfNormalizedEquivalentCount": 0,
+        "normalizedLfMatchesCommittedBlobCount": 0,
+        "botMismatches": [],
+        "bots": [],
+        "guiAuditAvailable": false,
+        "guiPath": "output/hosted-main-1b059f4-agent/artifacts/darwinbots-gui-audit-osx-arm64",
+        "trx": null,
+        "screenshots": [],
+        "scope": "Only downloaded artifacts verified. Missing package/TRX/native hashes remain unavailable; no previous platform artifacts substituted. Headless PNGs do not prove native visible interaction."
+      },
+      "execution": {
+        "rust_command_attempted": true,
+        "rust_command_conclusion": "failure",
+        "remaining_rust_targets": "Only emitted target summaries are counted; cargo without --no-fail-fast can stop before later targets.",
+        "core": "not run; blocked by preceding Rust failure",
+        "desktop": "not run; no TRX emitted",
+        "package": "not published; preceding gate failed"
+      }
+    }
+  ],
+  "actual_rust_failures": [
+    {
+      "rid": "win-x64",
+      "target": "target\\release\\deps\\darwinbots_cli-963c5cad04dda9b0.exe",
+      "test": "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields",
+      "assertion_comparisons": [
+        {
+          "absolute_tolerance": 0,
+          "compared_fields": 393316,
+          "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+          "difference_count": 980,
+          "differences": [
+            {
+              "field": "robot.10.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.102.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.103.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.104.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.105.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.11.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            }
+          ],
+          "passed": false,
+          "relative_tolerance": 0,
+          "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+          "truncated": true
+        }
+      ]
+    },
+    {
+      "rid": "linux-x64",
+      "target": "target/release/deps/darwinbots_cli-1956191e99649b9c",
+      "test": "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields",
+      "assertion_comparisons": [
+        {
+          "absolute_tolerance": 0,
+          "compared_fields": 393316,
+          "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+          "difference_count": 980,
+          "differences": [
+            {
+              "field": "robot.10.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.102.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.103.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.104.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.105.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.11.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            }
+          ],
+          "passed": false,
+          "relative_tolerance": 0,
+          "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+          "truncated": true
+        }
+      ]
+    },
+    {
+      "rid": "osx-x64",
+      "target": "target/release/deps/darwinbots_cli-dc96abc3d1c2ef03",
+      "test": "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields",
+      "assertion_comparisons": [
+        {
+          "absolute_tolerance": 0,
+          "compared_fields": 393316,
+          "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+          "difference_count": 980,
+          "differences": [
+            {
+              "field": "robot.10.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.102.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.103.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.104.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.105.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.11.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            }
+          ],
+          "passed": false,
+          "relative_tolerance": 0,
+          "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+          "truncated": true
+        }
+      ]
+    },
+    {
+      "rid": "osx-arm64",
+      "target": "target/release/deps/darwinbots_cli-caa479a8d928cf76",
+      "test": "native_comparison::tests::zero_cycle_original_round_trip_preserves_all_compared_live_fields",
+      "assertion_comparisons": [
+        {
+          "absolute_tolerance": 0,
+          "compared_fields": 393316,
+          "coverage_boundary": "Live robot scalars, DNA, memory, mutation profiles, skin, epigenetic staging, decoded tie parameters and active shot slots. Private display definitions, ancestor history, logs, graph series and GUI state are excluded. Active shots are matched by saved slot.",
+          "difference_count": 980,
+          "differences": [
+            {
+              "field": "robot.10.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.10.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.102.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.102.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.103.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.103.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.104.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.104.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.105.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.105.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            },
+            {
+              "field": "robot.11.mutation_rates.10",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.4",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.8",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.mutation_rates.9",
+              "left": 189000,
+              "right": 0
+            },
+            {
+              "field": "robot.11.owner",
+              "left": {
+                "Bytes": []
+              },
+              "right": {
+                "Bytes": [
+                  76,
+                  111,
+                  99,
+                  97,
+                  108
+                ]
+              }
+            }
+          ],
+          "passed": false,
+          "relative_tolerance": 0,
+          "rng_boundary": "Original .sim files omit VB6 Rnd/Gauss state. Matching deterministic cases is evidence for their compared fields only; random trajectories need an independently captured RNG state.",
+          "truncated": true
+        }
+      ]
+    }
+  ],
+  "actual_desktop_failures": [],
+  "acceptance_remaining": [
+    "Resolve and requalify the actual win-x64 MAIN job failure recorded below.",
+    "Publish, smoke-test and audit the missing win-x64 package.",
+    "Collect an actual win-x64 Desktop TRX.",
+    "Resolve and requalify the actual linux-x64 MAIN job failure recorded below.",
+    "Publish, smoke-test and audit the missing linux-x64 package.",
+    "Collect an actual linux-x64 Desktop TRX.",
+    "Resolve and requalify the actual osx-x64 MAIN job failure recorded below.",
+    "Publish, smoke-test and audit the missing osx-x64 package.",
+    "Collect an actual osx-x64 Desktop TRX.",
+    "Resolve and requalify the actual osx-arm64 MAIN job failure recorded below.",
+    "Publish, smoke-test and audit the missing osx-arm64 package.",
+    "Collect an actual osx-arm64 Desktop TRX."
+  ],
+  "evidence": [
+    {
+      "file": "output/hosted-main-1b059f4-agent/api/initial-run.json",
+      "sha256": "553266954593CEA3251709222E6C0B1B73320C423C1DD20A02252030DAE02613",
+      "bytes": 9842
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/api/final-run.json",
+      "sha256": "6EE6D1AD52F59F6CA3CFC883BDDA501B50013D16B116CB84D977BA339D18F312",
+      "bytes": 10783
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/api/final-artifacts.json",
+      "sha256": "244563F989470892C537C9A4622920AF0D228EE4528F7D00C64A06D6CD95856C",
+      "bytes": 32
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/api/committed-bot-tree.json",
+      "sha256": "EACE8EC573E091E0A23EFBBD3EE8C092D82823EABC9DDB12638155C75A345D93",
+      "bytes": 386507
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/windows-source-bots.json",
+      "sha256": "F42404BFDE737472BF59BF794FFCCB79A2FD78474152A256383105EAD856D064",
+      "bytes": 41520
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/artifact-files.json",
+      "sha256": "DE3EFB4C58CE8A59263FD4C67947A3D10EA1E7BEBFD9829F6380ADB6C9D8C16B",
+      "bytes": 399
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/win-x64-gh.log",
+      "sha256": "4D38B86CE6DEED1F1659DF06C27F540592C52AE32FEDD7CE8D6808E507B91408",
+      "bytes": 55678
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/win-x64-completed.log",
+      "sha256": "4D38B86CE6DEED1F1659DF06C27F540592C52AE32FEDD7CE8D6808E507B91408",
+      "bytes": 55678
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-win-x64-job-check.json",
+      "sha256": "1DFB2B1F8C794F9B2DFC609C0731FF6156F113721698C3241F1BE31BE28414D5",
+      "bytes": 5310
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-win-x64-artifact-check.json",
+      "sha256": "56EB2CD955417834102803B93777AE7E0BE807846A44204B3D9DD1E5A99B0D0B",
+      "bytes": 2403
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/linux-x64-gh.log",
+      "sha256": "8400C40995D19B2537AA92C1238C75BED8E07DAA610511EF39E9B2E40EC8A6BF",
+      "bytes": 53853
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/linux-x64-completed.log",
+      "sha256": "8400C40995D19B2537AA92C1238C75BED8E07DAA610511EF39E9B2E40EC8A6BF",
+      "bytes": 53853
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-linux-x64-job-check.json",
+      "sha256": "F0E252E9446E508D920B5A11C16DB4B4736C2AC6A664A2B3040C4DC0F1EDF24F",
+      "bytes": 5304
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-linux-x64-artifact-check.json",
+      "sha256": "56FDE7531D2DA3269B386A2E5ABEF03EEA68CB86D31BCDC2F6F479989443FBA8",
+      "bytes": 2409
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/osx-x64-gh.log",
+      "sha256": "2D11CD7374E53446C0C684A5AE72E5499343FAF823C91777C9081B6BAB309AE8",
+      "bytes": 54690
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/osx-x64-completed.log",
+      "sha256": "2D11CD7374E53446C0C684A5AE72E5499343FAF823C91777C9081B6BAB309AE8",
+      "bytes": 54690
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-osx-x64-job-check.json",
+      "sha256": "A7401D849227E7F5E780AA2E1435A6070BDD0351B73BF6F118DD9DC4452E3E6B",
+      "bytes": 5301
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-osx-x64-artifact-check.json",
+      "sha256": "4090AF30CC245DC98F7FBEA2BA2A3527E08F7441A085B247339F2E882122B46A",
+      "bytes": 2403
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/osx-arm64-gh.log",
+      "sha256": "F5463F12AAE50619D38E1D509DEAB355A1E0753743CA6A1BCF8341DE9606F024",
+      "bytes": 54470
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/logs/osx-arm64-completed.log",
+      "sha256": "F5463F12AAE50619D38E1D509DEAB355A1E0753743CA6A1BCF8341DE9606F024",
+      "bytes": 54470
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-osx-arm64-job-check.json",
+      "sha256": "6F4A56E9A0B3E678371D6D15F72F1B0431B4C25471748FB0D136D6D02C60AF7F",
+      "bytes": 5305
+    },
+    {
+      "file": "output/hosted-main-1b059f4-agent/platform-osx-arm64-artifact-check.json",
+      "sha256": "3D967E309180211CA84D796F1D429B43B080A1B77C769152322EBD4E2BAAF37A",
+      "bytes": 2409
+    }
+  ],
+  "proof_scope": {
+    "local_product_tests_or_builds_run_by_collector": false,
+    "local_package_or_native_library_execution": false,
+    "native_desktop_or_browser_input": false,
+    "source_harness_manifest_HEAD_or_index_changed": false,
+    "workflows_dispatched_retried_or_cancelled": false,
+    "prior_artifacts_substituted": false,
+    "diagnostic_runs_substituted": false,
+    "physical_gpu_qualification": false,
+    "genuine_original_runtime_comparison": false,
+    "visible_native_interaction_proof": false,
+    "native_library_identity": "Each downloaded platform package native library was directly hashed. This workflow does not emit separate target/test-output native-library hashes, so no direct cross-directory byte-identity claim is made here.",
+    "gui": "Headless test frames and actual Desktop TRX outcomes; these are not native visible desktop interaction proof.",
+    "logs": "Complete completed-job log text retrieved through gh api repos/BobertNeek/Darwinbots-Modern/actions/jobs/<id>/logs. CLI text saved as UTF8; derived timestamp-body logs strip any job/step prefix, and ANSI is removed only in parsing.",
+    "completion": "This receipt qualifies only these hosted checks for the exact source commit. It does not establish full parity with the original runtime or discharge separate original-reference, physical GPU, capacity, or visible desktop acceptance."
+  }
+}

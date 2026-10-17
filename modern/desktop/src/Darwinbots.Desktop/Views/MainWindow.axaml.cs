@@ -64,6 +64,7 @@ public sealed partial class MainWindow : Window
     private readonly WorldSetupOptions _setup;
     private float? _initialNativeGaussianSpare;
     private byte? _initialNativeSunChange;
+    private NativeProcessCachesSnapshot? _initialNativeProcessCaches;
     private readonly ObservableCollection<SpeciesImport> _insertionSpecies = [];
     private GlobalSettings _globalSettings;
     private ulong? _lastGraphRefreshTick;
@@ -128,9 +129,10 @@ public sealed partial class MainWindow : Window
         IDesktopStorageService storage)
     {
         _startupArguments = arguments.ToArray();
-        _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null };
+        _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
         _initialNativeGaussianSpare = setup.NativeGaussianSpare;
         _initialNativeSunChange = setup.NativeSunChange;
+        _initialNativeProcessCaches = setup.NativeProcessCaches;
         _globalSettings = setup.GlobalSettings;
         _safemodeBackup = setup.GlobalSettings.Main.SafeMode || setup.Recording.SafeModeBackup;
         _startupBots = new StartupDnaWorkflow(
@@ -966,19 +968,21 @@ public sealed partial class MainWindow : Window
         await _advanceGate.WaitAsync();
         try
         {
-            // gasdev's spare and SunChange belong to the original process.
-            // Capture both after earlier queued work, before disposing this world.
+            // Native caches belong to the original process. Capture them after
+            // earlier queued work, before disposing this world.
             var spare = _initialNativeGaussianSpare;
             var sunChange = _initialNativeSunChange;
+            var caches = _initialNativeProcessCaches;
             if (_session is not null)
             {
-                var context = await _session.ReadNativeProcessContextAsync();
+                var context = await _session.ReadNativeProcessStateAsync();
                 spare = context.GaussianSpare;
                 sunChange = context.SunChange;
+                caches = context.Caches;
             }
             if (openSetup)
             {
-                var setupWindow = new SetupWindow(_storage, spare, sunChange);
+                var setupWindow = new SetupWindow(_storage, spare, sunChange, caches);
                 setupWindow.WorldCreated += options =>
                 {
                     var replacement = new MainWindow(_startupArguments, options, _engineFactory, _storage);
@@ -992,7 +996,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    CreateNextWorldSetup() with { NativeGaussianSpare = spare, NativeSunChange = sunChange }, _engineFactory, _storage);
+                    CreateNextWorldSetup() with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1906,11 +1910,13 @@ public sealed partial class MainWindow : Window
             {
                 NativeGaussianSpare = _initialNativeGaussianSpare,
                 NativeSunChange = _initialNativeSunChange,
+                NativeProcessCaches = _initialNativeProcessCaches,
             };
             _activeCostMultiplier = worldSetup.GlobalSettings.Costs.GlobalMultiplier;
             _session = new SimulationSession(_engineFactory.Create(worldSetup));
             _initialNativeGaussianSpare = null;
             _initialNativeSunChange = null;
+            _initialNativeProcessCaches = null;
             _insertion = new WorldInsertionController(_session);
             _session.SnapshotPublished += snapshot =>
             {
