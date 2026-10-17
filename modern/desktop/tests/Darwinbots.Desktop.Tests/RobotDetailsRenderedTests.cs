@@ -1,4 +1,6 @@
 using Avalonia.Headless;
+using Avalonia.Controls;
+using Avalonia.VisualTree;
 using Darwinbots.Desktop.Core;
 using Darwinbots.Desktop.Views;
 using Xunit;
@@ -44,6 +46,13 @@ public sealed class RobotDetailsRenderedTests
         };
         var snapshot = new EngineSnapshot(12, 1, "CPU", [organism])
         {
+            Shots =
+            [
+                new ShotSnapshot(new(7, 3), [10, 10], [20, 10], [0, 0], -1, 0, 1, 10, 1, false),
+                new ShotSnapshot(new(7, 3), [10, 20], [20, 20], [0, 0], -7, 0, 1, 10, 1, false) { Stored = true },
+                new ShotSnapshot(new(7, 3), [10, 30], [20, 30], [0, 0], -1, 0, 1, 10, 1, true) { Alive = false },
+                new ShotSnapshot(new(8, 3), [10, 40], [20, 40], [0, 0], -1, 0, 1, 10, 1, false),
+            ],
             Species = [
                 new SpeciesSnapshot("Unassigned", false, 0xff858982, 0, false),
                 new SpeciesSnapshot("Audit Bot", false, 0xff239ac0, 0, false),
@@ -60,6 +69,10 @@ public sealed class RobotDetailsRenderedTests
                 Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
 
                 Assert.Equal("LIVE · TICK 12 · 2 GENE FRAMES", window.ActivationSummary);
+                // Keep the prior live-owned count: include its stored packet,
+                // exclude the dead flash and another robot's live packet.
+                Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
+                    block => block.Text?.Contains("SHOTS          2", StringComparison.Ordinal) == true);
                 using var frame = window.CaptureRenderedFrame();
                 Assert.NotNull(frame);
                 Assert.True(frame.PixelSize.Width >= 900);

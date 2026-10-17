@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "complete_authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T12:47:53.889Z",
+  "owner": "/root/review_46_failures",
+  "base_source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pinned_files": 636
+  },
+  "files": [
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "kind": "production",
+      "base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "BD63CB4BD9894BCE8FE88A978A8B4F47E9B1BB19890FB3E933AC212020E3AB61",
+        "bytes": 13179,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+        "sha256": "2EB86EC5B54AC8DEC5D30F5C1A527633E48B7B00DC62DF129A04BCD775D4C5FB",
+        "bytes": 13269
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "kind": "production",
+      "base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "11C5C37BCCF2E4FDCC4281A3B250E7071E504ECEB9655EA41769F407199C30FC",
+        "bytes": 55749,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "sha256": "65A72147F58927941514590922FEADDBF49ACB60822B770CA2C4D0C8B7FC9107",
+        "bytes": 56004
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "kind": "production",
+      "base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "9290BBEAB7BC0F0AF016C6DE54BA33FFBADB6470AADB1864F1AA53B614F4DF6D",
+        "bytes": 40123,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+        "sha256": "1D6D8E66E6D0E6EC88F8B118B55B2A834EC06564F6F0AFC877F2D2CB84AB7EFE",
+        "bytes": 40476
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/RobotDetailsWindow.cs",
+      "kind": "production",
+      "base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "4E340F2512FC9A22AAAC1EEF09015F9BE01EE4E2C8677BC5BB8C8F1A795B7D8E",
+        "bytes": 13448,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop/Views/RobotDetailsWindow.cs",
+        "sha256": "19302117F6BA6E7F3C8338E36D0437F0616A62C5F932054F44C335B84C9912EA",
+        "bytes": 13462
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "kind": "test",
+      "base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "93C66BB428772C627872DEBDC89EF0A0531636072ACBD48473FA6806BC6C36B3",
+        "bytes": 24340,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+        "sha256": "20F09FE6C9F2F4D7179F91913B4AFA0E4F824E1CBA29110E99BCCFCBEB4FF1F8",
+        "bytes": 26869
+      },
+      "added_fact_rows": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "kind": "test",
+      "base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "1748A21EE85DB2B615777F6CAEC92396033F0C58B9C6F0BD07EE152609BD9BB9",
+        "bytes": 16006,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+        "sha256": "F0BB6CE0FD26A287FBFF5CBFAB1B05EE5F71C55283EB20AFAA7C9545BCB84FE1",
+        "bytes": 22413
+      },
+      "added_fact_rows": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RobotDetailsRenderedTests.cs",
+      "kind": "test",
+      "base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "0E292F0A53B98DAC875615F91C315E17C0C6A5E916295744889D45736BD24D31",
+        "bytes": 2986,
+        "manifest_pin_verified": true
+      },
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RobotDetailsRenderedTests.cs",
+        "sha256": "6357C23F4BC23FB59E5FD42559F327B42B78B54C102985591FE4EE5416F21231",
+        "bytes": 3866
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    }
+  ],
+  "scope": {
+    "existing_files": 7,
+    "production_files": 4,
+    "test_files": 3,
+    "active_files_changed": false,
+    "commands_or_abi_changes": false,
+    "added_dependencies": false,
+    "ui_redesign": false
+  },
+  "contract": {
+    "managed_record": "Alive=true and Stored=false are additive init body properties. Existing11 positional constructor/deconstruct values, optional Color and old constructors remain unchanged.",
+    "wire": "NativeSnapshotParser retains every shot; missing alive defaultsTrue, missing stored defaultsFalse, snake-case values explicitly forwarded.",
+    "render": "Flash branch precedes alive/stored gating and uses solid typed palette at Start. Normal paint requiresAlive&&!Stored; present Color including0 uses endpoint PSet width1..2. Missing Color retains legacy owner/kind trail fallback. Existing radius/sizing clamp unchanged.",
+    "counts": "RobotDetails preserves live-owned count including live stored packets while excluding inactive flash display entries; main status remains stats-driven."
+  },
+  "test_census": {
+    "net_new_core_fact_rows": 1,
+    "net_new_desktop_fact_rows": 1,
+    "existing_theory_and_inline_rows_unchanged": true,
+    "expected_core": 313,
+    "expected_desktop": 214,
+    "new_core_facts": [
+      "ShotStateFlagsPreserveLegacyConstructorDeconstructionAndExplicitPacketStates"
+    ],
+    "new_desktop_facts": [
+      "ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible"
+    ],
+    "existing_facts_extended": [
+      "ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+      "NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+      "RobotDetailsRendersLiveFactsMemoryAndActivationTimeline"
+    ]
+  },
+  "assertions": {
+    "old_payload_and_eleven_component_deconstruction": true,
+    "all_eight_alive_stored_flash_flag_combinations": true,
+    "saved_white_exact_rgb_at_end_60_60": true,
+    "white_trail_midpoint_50_60_forbidden": true,
+    "corpse_rgb_133_137_130_unchanged": true,
+    "flash_palette_nine_kinds_including_minus100": true,
+    "solid_flash_center_rgb_tolerance_per_channel": 3,
+    "normal_endpoints_and_no_native_travel_line": true,
+    "old_color_absent_owner_trail_pixel_aligned_for_exact_rgb": true,
+    "robot_details_live_stored_included_dead_flash_and_foreign_owner_excluded": true,
+    "previous_colour_assertion_tolerance_loosened": false
+  },
+  "authored_rendered_artifact_names": [
+    "world-shot-existence-storage-flashes.png",
+    "world-shot-existence-storage-normal.png"
+  ],
+  "artifact_limit": "Names are authored only; no images or rendered evidence were generated during this code phase.",
+  "source_references": [
+    {
+      "file": "Darwinbots2/main.frm",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+      "bytes": 104816,
+      "lines": [
+        953,
+        970
+      ],
+      "purpose": "Flash independent of exist/stored, solid FillStyle/FillColor at previousposition, nonflash existing nonstored endpoint PSet."
+    }
+  ],
+  "rust_dependency": {
+    "owner": "/root/seeding_tournament_ui",
+    "contract": "Rust ShotSnapshot.alive serde-defaulttrue; snapshot projection alive||impact_flash; existingstored preserved; native next-visit flash clear applies regardless prioralive.",
+    "managed_changes_do_not_modify_pool_or_simulation": true
+  },
+  "static_review": [
+    "All seven raw base bytes match frozen636-file manifest.",
+    "Only the named seven candidate paths and this metadata are written; initial source/candidates and prior evidence are preserved.",
+    "Strict RGBA uses converted RGBA8888 and tolerance3 without accepting swapped primaries; existing loose flash threshold tightened.",
+    "Exact corpse fill assertion and all unrelated test assertions retained.",
+    "Source62 qualification and compilation remain required."
+  ],
+  "execution": {
+    "active_apply": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "ui": false,
+    "gpu": false,
+    "git": false,
+    "subagents_spawned": false
+  },
+  "ownership": "All seven managed candidates released to root for independent review and later combined application/qualification."
+}

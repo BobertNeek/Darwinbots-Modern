@@ -1,0 +1,1725 @@
+{
+  "scope": "unchanged61 CPU diagnostic after all94 ordinary and7 hosted outcomes; no qualification/admission",
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "dll_sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+  "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+  "trace": [
+    {
+      "cycle": 0,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 4535603
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 0,
+          "energy": 20000.0,
+          "body": 1000.0,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": null
+          }
+        },
+        {
+          "slot": 1,
+          "age": 0,
+          "energy": 20000.0,
+          "body": 1000.0,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": null
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 1,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 7737051
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 1,
+          "energy": 20000.0,
+          "body": 1000.0,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 1,
+          "energy": 20000.0,
+          "body": 1000.0,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 2,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 10291969
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 2,
+          "energy": 20000.0,
+          "body": 1000.0,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 2,
+          "energy": 20000.0,
+          "body": 1000.0,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 3,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 2646839
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 3,
+          "energy": 20000.0,
+          "body": 1000.0,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 3,
+          "energy": 19344.0625,
+          "body": 992.7117919921875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 4,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 13198589
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 4,
+          "energy": 21385.37109375,
+          "body": 1005.8331298828125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 4,
+          "energy": 18687.0625,
+          "body": 985.4118041992188,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 5,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 1688019
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 5,
+          "energy": 22082.671875,
+          "body": 1008.7691040039062,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 5,
+          "energy": 18026.462890625,
+          "body": 978.07177734375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 6,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 5762873
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 6,
+          "energy": 22781.87109375,
+          "body": 1011.7130737304688,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 6,
+          "energy": 17364.0625,
+          "body": 970.7117919921875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 7,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 13928111
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 7,
+          "energy": 23482.970703125,
+          "body": 1014.6651000976562,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 7,
+          "energy": 16699.86328125,
+          "body": 963.331787109375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 8,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 6858165
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 8,
+          "energy": 24185.970703125,
+          "body": 1017.6251220703125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 8,
+          "energy": 16033.86328125,
+          "body": 955.9317626953125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 9,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 9260491
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 9,
+          "energy": 24890.87109375,
+          "body": 1020.5931396484375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 9,
+          "energy": 15366.0634765625,
+          "body": 948.5117797851562,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 10,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 15451249
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 10,
+          "energy": 25597.671875,
+          "body": 1023.5691528320312,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 10,
+          "energy": 14696.4638671875,
+          "body": 941.07177734375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 11,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 3077739
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 11,
+          "energy": 26306.37109375,
+          "body": 1026.5531005859375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 11,
+          "energy": 14025.0634765625,
+          "body": 933.6117553710938,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 12,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 12055569
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 12,
+          "energy": 27016.970703125,
+          "body": 1029.5450439453125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 12,
+          "energy": 13351.86328125,
+          "body": 926.1317749023438,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 13,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 7180743
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 13,
+          "energy": 27729.470703125,
+          "body": 1032.5450439453125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 13,
+          "energy": 12676.86328125,
+          "body": 918.6317749023438,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 14,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 6454541
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 14,
+          "energy": 28443.87109375,
+          "body": 1035.5531005859375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 14,
+          "energy": 12000.0634765625,
+          "body": 911.1117553710938,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 15,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 8046435
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 15,
+          "energy": 29160.171875,
+          "body": 1038.569091796875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 15,
+          "energy": 11321.4638671875,
+          "body": 903.57177734375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 16,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 12600905
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 16,
+          "energy": 29878.37109375,
+          "body": 1041.5931396484375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 16,
+          "energy": 10641.0634765625,
+          "body": 896.0117797851562,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 17,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 11006783
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 17,
+          "energy": 30598.470703125,
+          "body": 1044.6251220703125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 17,
+          "energy": 9958.86328125,
+          "body": 888.4317626953125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 18,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 10505157
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 18,
+          "energy": 31320.470703125,
+          "body": 1047.6651611328125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 18,
+          "energy": 9274.86328125,
+          "body": 880.831787109375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 19,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 8434011
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 19,
+          "energy": 32000.0,
+          "body": 1055.1502685546875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 19,
+          "energy": 8589.0634765625,
+          "body": 873.2117919921875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 20,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 11651457
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 20,
+          "energy": 32000.0,
+          "body": 1131.083251953125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 20,
+          "energy": 7898.763671875,
+          "body": 865.5418090820312,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 21,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 12124667
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 21,
+          "energy": 32000.0,
+          "body": 1211.96630859375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 21,
+          "energy": 7163.4638671875,
+          "body": 857.371826171875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 22,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 4350241
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 22,
+          "energy": 32000.0,
+          "body": 1298.1953125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 22,
+          "energy": 6379.56396484375,
+          "body": 848.6618041992188,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 23,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 2204759
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 23,
+          "energy": 32000.0,
+          "body": 1390.0672607421875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 23,
+          "energy": 5544.36376953125,
+          "body": 839.3817749023438,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 24,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 10672413
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 24,
+          "energy": 32000.0,
+          "body": 1487.978271484375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 24,
+          "energy": 4654.263671875,
+          "body": 829.4917602539062,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 25,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 815347
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 25,
+          "energy": 32000.0,
+          "body": 1592.4232177734375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 25,
+          "energy": 3704.763671875,
+          "body": 818.9417724609375,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 26,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 9150809
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 26,
+          "energy": 32000.0,
+          "body": 1703.69921875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 26,
+          "energy": 2693.16357421875,
+          "body": 807.7017822265625,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 27,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 5358543
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 27,
+          "energy": 32000.0,
+          "body": 1822.30126953125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 27,
+          "energy": 1614.963623046875,
+          "body": 795.7218017578125,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 28,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 3847637
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 28,
+          "energy": 32000.0,
+          "body": 1948.7242431640625,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        },
+        {
+          "slot": 1,
+          "age": 28,
+          "energy": 465.66357421875,
+          "body": 782.9517822265625,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 869227,
+              "location": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 29,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 11521081
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 29,
+          "energy": 32000.0,
+          "body": 1994.824951171875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 30,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 2137426
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 30,
+          "energy": 32000.0,
+          "body": 1994.824951171875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 31,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 5669747
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 31,
+          "energy": 32000.0,
+          "body": 1994.824951171875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cycle": 32,
+      "native_random": {
+        "gaussian_spare": null,
+        "state": 10830388
+      },
+      "actors": [
+        {
+          "slot": 0,
+          "age": 32,
+          "energy": 32000.0,
+          "body": 1994.824951171875,
+          "dead": false,
+          "mutation": {
+            "mutation_metadata": {
+              "detailed_log": [],
+              "last_mutation_cycle": null,
+              "last_mutation_kind": null,
+              "mutation_class_counts": {},
+              "native_last_mutations": 0,
+              "subspecies": 0,
+              "total_mutations": 0
+            },
+            "point2_mutation_schedule": null,
+            "point_mutation_schedule": {
+              "cycle": 416564,
+              "location": 8
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

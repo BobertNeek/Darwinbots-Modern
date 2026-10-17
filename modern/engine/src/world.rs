@@ -1737,6 +1737,7 @@ impl From<Db3sV2ShotSnapshot> for ShotSnapshot {
             energy: value.energy,
             kind: value.kind,
             value: value.value,
+            alive: true,
             impact_flash: value.impact_flash,
             color: value.color,
             source_vegetable: value.source_vegetable,
@@ -11286,10 +11287,14 @@ impl Engine {
         if self.native_loaded_census_blocks_births() {
             return Ok(());
         }
-        if !self
-            .vegetation_runtime
-            .advance_repopulation(equivalents, &self.config.vegetation)
-        {
+        let repopulate = if self.native_random.is_some() {
+            self.vegetation_runtime
+                .advance_native_repopulation(equivalents, &self.config.vegetation)?
+        } else {
+            self.vegetation_runtime
+                .advance_repopulation(equivalents, &self.config.vegetation)
+        };
+        if !repopulate {
             return Ok(());
         }
         let classic_table = self.classic_native_species_table();

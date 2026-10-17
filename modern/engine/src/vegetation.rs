@@ -34,6 +34,10 @@ pub(crate) struct DaylightState {
 #[serde(default)]
 pub(crate) struct VegetationRuntime {
     repopulation_counter: u64,
+    /// Native Vegs.cooldown is a signed process-global Long. None preserves
+    /// the nonnegative credit saved by older DB3S versions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_repopulation_counter: Option<i32>,
     day_night_counter: u64,
     sun_position: f64,
     sun_range: f64,
@@ -52,6 +56,7 @@ impl Default for VegetationRuntime {
     fn default() -> Self {
         Self {
             repopulation_counter: 0,
+            native_repopulation_counter: None,
             day_night_counter: 0,
             sun_position: 0.5,
             sun_range: 1.0,
@@ -295,6 +300,67 @@ impl VegetationRuntime {
         self.native_chloroplast_population = population;
     }
 
+    pub(crate) fn native_repopulation_counter(&self) -> Result<i32, crate::EngineError> {
+        match self.native_repopulation_counter {
+            Some(counter) => Ok(counter),
+            None => i32::try_from(self.repopulation_counter).map_err(|_| {
+                crate::EngineError::Invariant(
+                    "native repopulation counter exceeds Long range".into(),
+                )
+            }),
+        }
+    }
+
+    pub(crate) fn set_native_repopulation_counter(&mut self, counter: i32) {
+        self.native_repopulation_counter = Some(counter);
+    }
+
+    pub(crate) fn initialize_native_loaded_repopulation(
+        &mut self,
+        cooldown: u64,
+    ) -> Result<(), crate::EngineError> {
+        let cooldown = i32::try_from(cooldown).map_err(|_| {
+            crate::EngineError::Invariant("native repopulation cooldown exceeds Long range".into())
+        })?;
+        // main.startloaded1507; StartSimul does not reset this process global.
+        self.native_repopulation_counter = Some(-cooldown);
+        Ok(())
+    }
+
+    pub(crate) fn advance_native_repopulation(
+        &mut self,
+        chloroplast_equivalents: usize,
+        settings: &VegetationSettings,
+    ) -> Result<bool, crate::EngineError> {
+        // Master392-393 does not call VegsRepopulate above the minimum.
+        // Its existing signed credit/debt must therefore remain untouched.
+        if chloroplast_equivalents >= settings.minimum_chloroplast_equivalents {
+            return Ok(false);
+        }
+        let cooldown = i32::try_from(settings.repopulation_cooldown).map_err(|_| {
+            crate::EngineError::Invariant("native repopulation cooldown exceeds Long range".into())
+        })?;
+        let mut counter = self
+            .native_repopulation_counter()?
+            .checked_add(1)
+            .ok_or_else(|| {
+                crate::EngineError::Invariant(
+                    "native repopulation counter exceeds Long range".into(),
+                )
+            })?;
+        let repopulate = counter >= cooldown;
+        if repopulate {
+            // A zero source cooldown subtracts zero; it does not become one.
+            counter = counter.checked_sub(cooldown).ok_or_else(|| {
+                crate::EngineError::Invariant(
+                    "native repopulation counter exceeds Long range".into(),
+                )
+            })?;
+        }
+        self.native_repopulation_counter = Some(counter);
+        Ok(repopulate)
+    }
+
     pub(crate) fn advance_repopulation(
         &mut self,
         chloroplast_equivalents: usize,
@@ -378,9 +444,76 @@ mod native_weather_tests {
     use super::*;
 
     #[test]
+    fn native_repopulation_retains_signed_credit_and_zero_cooldown_without_changing_portable_counter()
+     {
+        let settings = VegetationSettings {
+            minimum_chloroplast_equivalents: 50,
+            repopulation_cooldown: 10,
+            ..VegetationSettings::default()
+        };
+        // Old DB3S has only this unsigned credit; reading it must be pure.
+        let mut runtime = VegetationRuntime::from_legacy_wire_parts(7, 23);
+        let old_bytes = serde_json::to_vec(&runtime).unwrap();
+        assert_eq!(runtime.native_repopulation_counter().unwrap(), 7);
+        assert_eq!(serde_json::to_vec(&runtime).unwrap(), old_bytes);
+        assert!(!runtime.advance_native_repopulation(50, &settings).unwrap());
+        assert_eq!(serde_json::to_vec(&runtime).unwrap(), old_bytes);
+        assert!(!runtime.advance_native_repopulation(0, &settings).unwrap());
+        assert_eq!(runtime.native_repopulation_counter().unwrap(), 8);
+        let credit = serde_json::to_vec(&runtime).unwrap();
+        assert!(!runtime.advance_native_repopulation(100, &settings).unwrap());
+        assert_eq!(serde_json::to_vec(&runtime).unwrap(), credit);
+        let mut resumed: VegetationRuntime = serde_json::from_slice(&credit).unwrap();
+        assert!(!resumed.advance_native_repopulation(0, &settings).unwrap());
+        assert_eq!(resumed.native_repopulation_counter().unwrap(), 9);
+        assert!(resumed.advance_native_repopulation(0, &settings).unwrap());
+        assert_eq!(resumed.native_repopulation_counter().unwrap(), 0);
+
+        let zero = VegetationSettings {
+            repopulation_cooldown: 0,
+            ..settings.clone()
+        };
+        resumed.set_native_repopulation_counter(0);
+        for expected in [1, 2] {
+            assert!(resumed.advance_native_repopulation(0, &zero).unwrap());
+            assert_eq!(resumed.native_repopulation_counter().unwrap(), expected);
+        }
+        resumed.set_native_repopulation_counter(i32::MAX);
+        let before_overflow = serde_json::to_vec(&resumed).unwrap();
+        assert!(resumed.advance_native_repopulation(0, &zero).is_err());
+        assert_eq!(serde_json::to_vec(&resumed).unwrap(), before_overflow);
+        let oversized = VegetationSettings {
+            repopulation_cooldown: u64::MAX,
+            ..settings.clone()
+        };
+        assert!(resumed.advance_native_repopulation(0, &oversized).is_err());
+        assert_eq!(serde_json::to_vec(&resumed).unwrap(), before_overflow);
+        let mut invalid_old = VegetationRuntime::from_legacy_wire_parts(u64::MAX, 0);
+        let invalid_bytes = serde_json::to_vec(&invalid_old).unwrap();
+        assert!(invalid_old.native_repopulation_counter().is_err());
+        assert!(
+            invalid_old
+                .advance_native_repopulation(0, &settings)
+                .is_err()
+        );
+        assert_eq!(serde_json::to_vec(&invalid_old).unwrap(), invalid_bytes);
+
+        let mut portable = VegetationRuntime::from_legacy_wire_parts(7, 23);
+        assert!(!portable.advance_repopulation(50, &settings));
+        assert_eq!(portable.repopulation_counter, 0);
+        for _ in 0..9 {
+            assert!(!portable.advance_repopulation(0, &settings));
+        }
+        assert!(portable.advance_repopulation(0, &settings));
+        assert_eq!(portable.repopulation_counter, 0);
+        assert_eq!(portable.native_repopulation_counter, None);
+    }
+
+    #[test]
     fn sun_change_accessors_touch_only_the_existing_process_byte() {
         let mut runtime = VegetationRuntime {
             repopulation_counter: 17,
+            native_repopulation_counter: None,
             day_night_counter: 23,
             sun_position: 0.125,
             sun_range: 0.75,
@@ -422,6 +555,7 @@ mod native_weather_tests {
     fn native_start_initializes_sun_from_the_post_chart_cursor_without_resetting_counters() {
         let mut runtime = VegetationRuntime {
             repopulation_counter: 17,
+            native_repopulation_counter: None,
             day_night_counter: 23,
             sun_position: 0.125,
             sun_range: 0.75,
@@ -452,6 +586,7 @@ mod native_weather_tests {
     fn native_start_without_random_sun_preserves_change_counters_and_random_cursor() {
         let mut runtime = VegetationRuntime {
             repopulation_counter: 17,
+            native_repopulation_counter: None,
             day_night_counter: 23,
             sun_position: 0.125,
             sun_range: 0.75,

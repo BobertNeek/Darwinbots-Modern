@@ -6,8 +6,11 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class CommunityLeagueNativeTests
 {
-    private static NativeProcessCachesSnapshot EnergyCaches(int marker, double light, ulong shotsThisCycle = 17, bool deathPoffsEnabled = false) =>
-        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle, deathPoffsEnabled);
+    private static NativeProcessCachesSnapshot EnergyCaches(int marker, double light, ulong shotsThisCycle = 17, bool deathPoffsEnabled = false, int repopulationCounter = 0) =>
+        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle, deathPoffsEnabled)
+        {
+            RepopulationCounter = repopulationCounter,
+        };
 
     private static void AssertProcessCaches(NativeProcessCachesSnapshot expected, NativeProcessCachesSnapshot actual)
     {
@@ -17,6 +20,7 @@ public sealed class CommunityLeagueNativeTests
         Assert.Equal(expected.Energy.Displayed, actual.Energy.Displayed);
         Assert.Equal(expected.ShotsThisCycle, actual.ShotsThisCycle);
         Assert.Equal(expected.DeathPoffsEnabled, actual.DeathPoffsEnabled);
+        Assert.Equal(expected.RepopulationCounter, actual.RepopulationCounter);
     }
 
     [Fact]
@@ -435,7 +439,7 @@ public sealed class CommunityLeagueNativeTests
     {
         var options = new WorldSetupOptions { Backend = "Cpu", Seed = 42 };
         using var independent = new NativeEngineClient(options);
-        var caches = EnergyCaches(123, 0.125);
+        var caches = EnergyCaches(123, 0.125, repopulationCounter: -17);
         using var inherited = new NativeEngineClient(options with { NativeGaussianSpare = spare, NativeSunChange = 12, NativeProcessCaches = caches });
         using var baseline = JsonDocument.Parse(independent.Save().AsMemory(10));
         using var handoff = JsonDocument.Parse(inherited.Save().AsMemory(10));
@@ -450,7 +454,7 @@ public sealed class CommunityLeagueNativeTests
         Assert.Equal((byte)0, independent.ReadNativeSunChange());
         AssertProcessCaches(caches, inherited.ReadNativeProcessCaches());
         AssertProcessCaches(caches, inherited.ReadNativeProcessCaches());
-        AssertProcessCaches(NativeProcessCachesSnapshot.Empty, independent.ReadNativeProcessCaches());
+        AssertProcessCaches(NativeProcessCachesSnapshot.Empty with { RepopulationCounter = 0 }, independent.ReadNativeProcessCaches());
         Assert.Equal(saved, inherited.Save());
         Assert.Equal(0ul, inherited.Snapshot().Tick);
     }
@@ -463,7 +467,7 @@ public sealed class CommunityLeagueNativeTests
         using var inherited = new NativeEngineClient(new WorldSetupOptions
         {
             Backend = "Cpu", Seed = 42, NativeGaussianSpare = 1.25f, NativeSunChange = 12,
-            NativeProcessCaches = EnergyCaches(123, 0.125),
+            NativeProcessCaches = EnergyCaches(123, 0.125, repopulationCounter: int.MinValue),
         });
         const string relative = "modern/engine/tests/fixtures/db24832-original-user.sim";
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -475,12 +479,16 @@ public sealed class CommunityLeagueNativeTests
         inherited.Load(original);
         Assert.Equal(1.25f, inherited.ReadNativeGaussianSpare());
         Assert.Equal(reference.ReadNativeSunChange(), inherited.ReadNativeSunChange());
-        AssertProcessCaches(EnergyCaches(123, 0.125), inherited.ReadNativeProcessCaches());
-        AssertProcessCaches(NativeProcessCachesSnapshot.Empty, reference.ReadNativeProcessCaches());
+        // startloaded resets this source process global to -RepopCooldown.
+        // Other process caches still inherit; the incoming Long minimum must not win.
+        var loadedCounter = -checked((int)reference.ReadConfiguration().Environment.Vegetation.RepopulationCooldown);
+        Assert.NotEqual(int.MinValue, loadedCounter);
+        AssertProcessCaches(EnergyCaches(123, 0.125, repopulationCounter: loadedCounter), inherited.ReadNativeProcessCaches());
+        AssertProcessCaches(NativeProcessCachesSnapshot.Empty with { RepopulationCounter = loadedCounter }, reference.ReadNativeProcessCaches());
         using var source = new NativeEngineClient(new WorldSetupOptions
         {
             Backend = "Cpu", Seed = 17, NativeGaussianSpare = savedHasSpare ? 2.5f : null, NativeSunChange = 7,
-            NativeProcessCaches = EnergyCaches(-456, 0.375, 21, true),
+            NativeProcessCaches = EnergyCaches(-456, 0.375, 21, true, repopulationCounter: 23),
         });
         var modern = source.Save();
 
@@ -488,7 +496,7 @@ public sealed class CommunityLeagueNativeTests
 
         Assert.Equal(savedHasSpare ? 2.5f : (float?)null, inherited.ReadNativeGaussianSpare());
         Assert.Equal((byte)7, inherited.ReadNativeSunChange());
-        AssertProcessCaches(EnergyCaches(-456, 0.375, 21, true), inherited.ReadNativeProcessCaches());
+        AssertProcessCaches(EnergyCaches(-456, 0.375, 21, true, repopulationCounter: 23), inherited.ReadNativeProcessCaches());
         Assert.Equal(modern, inherited.Save());
         Assert.Equal(0ul, inherited.Snapshot().Tick);
     }

@@ -92,6 +92,95 @@ public sealed class NativeSnapshotParserTests
     }
 
     [Fact]
+    public void ShotStateFlagsPreserveLegacyConstructorDeconstructionAndExplicitPacketStates()
+    {
+        var legacy = new ShotSnapshot(new(4, 2), [1, 2], [3, 4], [5, 6], -2, 7, 8, 9, 10, false, 0xffffffff);
+        Assert.True(legacy.Alive);
+        Assert.False(legacy.Stored);
+        var (owner, start, end, velocity, kind, value, age, range, energy, flash, color) = legacy;
+        Assert.Equal(new OrganismKey(4, 2), owner);
+        Assert.Same(legacy.Start, start);
+        Assert.Same(legacy.End, end);
+        Assert.Same(legacy.Velocity, velocity);
+        Assert.Equal(-2, kind);
+        Assert.Equal(7, value);
+        Assert.Equal(8U, age);
+        Assert.Equal(9U, range);
+        Assert.Equal(10f, energy);
+        Assert.False(flash);
+        Assert.Equal<uint?>(0xffffffff, color);
+
+        const string oldPayload = "{\"tick\":1,\"organisms\":[],\"shots\":[{\"owner\":{\"slot\":4,\"generation\":2},\"start\":[1,2],\"end\":[3,4],\"kind\":-2}]}";
+        var oldShot = Assert.Single(NativeSnapshotParser.Parse(oldPayload, "CPU").Shots);
+        Assert.True(oldShot.Alive);
+        Assert.False(oldShot.Stored);
+        Assert.False(oldShot.ImpactFlash);
+        Assert.Null(oldShot.Color);
+
+        foreach (var alive in new[] { false, true })
+        foreach (var stored in new[] { false, true })
+        foreach (var impact in new[] { false, true })
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                tick = 1, organisms = Array.Empty<object>(),
+                shots = new[]
+                {
+                    new { owner = new { slot = 4, generation = 2 }, start = new[] { 1, 2 },
+                        end = new[] { 3, 4 }, kind = -2, alive, stored, impact_flash = impact, color = 0u },
+                },
+            });
+            var shot = Assert.Single(NativeSnapshotParser.Parse(json, "CPU").Shots);
+            Assert.Equal(alive, shot.Alive);
+            Assert.Equal(stored, shot.Stored);
+            Assert.Equal(impact, shot.ImpactFlash);
+            Assert.Equal<uint?>(0, shot.Color);
+        }
+        var changed = legacy with { Alive = false, Stored = true };
+        var resumed = System.Text.Json.JsonSerializer.Deserialize<ShotSnapshot>(
+            System.Text.Json.JsonSerializer.Serialize(changed))!;
+        Assert.False(resumed.Alive);
+        Assert.True(resumed.Stored);
+        Assert.True(legacy.Alive);
+        Assert.False(legacy.Stored);
+    }
+
+    [Fact]
+    public void RepopulationCounterCachesKeepMissingNullAndSignedLongValuesOutsideSavedSetup()
+    {
+        var legacy = new NativeProcessCachesSnapshot(0.125, NativeEnergyContextSnapshot.Empty, 17, false);
+        Assert.Null(legacy.RepopulationCounter);
+        var (light, energy, shots, poffs) = legacy;
+        Assert.Equal(0.125, light);
+        Assert.Same(legacy.Energy, energy);
+        Assert.Equal(17UL, shots);
+        Assert.False(poffs);
+        Assert.Null(NativeProcessCachesSnapshot.Empty.RepopulationCounter);
+        var oldJson = System.Text.Json.JsonSerializer.Serialize(legacy);
+        Assert.DoesNotContain("repopulation_counter", oldJson, StringComparison.Ordinal);
+        foreach (var json in new[] { oldJson, oldJson[..^1] + ",\"repopulation_counter\":null}" })
+            Assert.Null(System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(json)!.RepopulationCounter);
+
+        foreach (var invalid in new[] { "-2147483649", "2147483648" })
+            Assert.Throws<System.Text.Json.JsonException>(() =>
+                System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(oldJson[..^1] + ",\"repopulation_counter\":" + invalid + "}"));
+
+        foreach (var counter in new[] { int.MinValue, -10, 0, 17, int.MaxValue })
+        {
+            var caches = legacy with { RepopulationCounter = counter };
+            var json = System.Text.Json.JsonSerializer.Serialize(caches);
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            Assert.Equal(counter, document.RootElement.GetProperty("repopulation_counter").GetInt32());
+            var resumed = System.Text.Json.JsonSerializer.Deserialize<NativeProcessCachesSnapshot>(json)!;
+            Assert.Equal<int?>(counter, resumed.RepopulationCounter);
+            Assert.Null(legacy.RepopulationCounter);
+            var setup = new WorldSetupOptions { NativeProcessCaches = caches };
+            Assert.DoesNotContain("repopulation_counter", System.Text.Json.JsonSerializer.Serialize(setup), StringComparison.Ordinal);
+            Assert.DoesNotContain("repopulation_counter", NativeCommandSerializer.SerializeEngineConfig(setup), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void MissingAndNullNativeShotCountsRemainAbsentForOlderSnapshots()
     {
         string[] payloads =

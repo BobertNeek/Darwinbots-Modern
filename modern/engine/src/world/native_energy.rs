@@ -77,6 +77,8 @@ pub(crate) struct NativeProcessCaches {
     pub(crate) energy: NativeEnergyRuntime,
     #[serde(default)]
     pub(crate) shots_this_cycle: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) repopulation_counter: Option<i32>,
 }
 
 impl Engine {
@@ -131,13 +133,18 @@ impl Engine {
         self.project_native_energy_stats();
     }
 
-    pub(crate) fn read_native_process_caches(&self) -> NativeProcessCaches {
-        NativeProcessCaches {
+    pub(crate) fn read_native_process_caches(&self) -> Result<NativeProcessCaches, EngineError> {
+        Ok(NativeProcessCaches {
             death_poffs_enabled: self.death_poffs_enabled,
             shots_this_cycle: self.stats.native_shots_visited.unwrap_or(0),
             light_availability: self.native_light_availability(),
             energy: self.native_energy.clone(),
-        }
+            repopulation_counter: if self.native_random.is_some() {
+                Some(self.vegetation_runtime.native_repopulation_counter()?)
+            } else {
+                None
+            },
+        })
     }
 
     pub(crate) fn set_native_process_caches(
@@ -157,6 +164,10 @@ impl Engine {
                 "native ShotsThisCycle exceeds Long range".into(),
             ));
         }
+        if let Some(counter) = caches.repopulation_counter {
+            self.vegetation_runtime
+                .set_native_repopulation_counter(counter);
+        }
         self.set_death_poffs_enabled(caches.death_poffs_enabled);
         self.set_native_light_availability(caches.light_availability);
         self.native_energy = caches.energy;
@@ -172,11 +183,15 @@ impl Engine {
         Ok(())
     }
 
-    pub(crate) fn inherit_native_process_caches(
+    pub(crate) fn inherit_native_process_caches_after_sim_load(
         &mut self,
         previous: &Self,
     ) -> Result<(), EngineError> {
-        self.set_native_process_caches(previous.read_native_process_caches())
+        let mut caches = previous.read_native_process_caches()?;
+        // startloaded explicitly resets Vegs.cooldown even in the same process.
+        // Other process caches survive loading the original SIM format.
+        caches.repopulation_counter = None;
+        self.set_native_process_caches(caches)
     }
 }
 
@@ -232,7 +247,7 @@ mod tests {
     #[test]
     fn invalid_context_rejects_process_cache_parts_without_mutation_or_randomness() {
         let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
-        let mut original = world.read_native_process_caches();
+        let mut original = world.read_native_process_caches().unwrap();
         original.shots_this_cycle = 17;
         world.set_native_process_caches(original.clone()).unwrap();
         let save = crate::SaveFile::encode(&world).unwrap();
@@ -283,7 +298,7 @@ mod tests {
             },
         ] {
             assert!(world.set_native_process_caches(invalid).is_err());
-            assert_eq!(world.read_native_process_caches(), original);
+            assert_eq!(world.read_native_process_caches().unwrap(), original);
             assert_eq!(crate::SaveFile::encode(&world).unwrap(), save);
             assert_eq!(serde_json::to_value(world.snapshot()).unwrap(), snapshot);
             assert_eq!(world.snapshot_publication_count(), publications);
@@ -383,17 +398,26 @@ mod tests {
         world
             .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
             .unwrap();
-        let mut caches = world.read_native_process_caches();
+        let mut caches = world.read_native_process_caches().unwrap();
         caches.light_availability = 0.125;
         caches.shots_this_cycle = 17;
         caches.death_poffs_enabled = false;
+        caches.repopulation_counter = Some(-7);
         caches.energy.ring[4] = 321;
         caches.energy.current_index = 4;
         caches.energy.displayed = 123;
         world.set_native_process_caches(caches.clone()).unwrap();
         let checkpoint = crate::SaveFile::encode(&world).unwrap();
+        assert_eq!(
+            world
+                .read_native_process_caches()
+                .unwrap()
+                .repopulation_counter,
+            Some(-7)
+        );
+        assert_eq!(crate::SaveFile::encode(&world).unwrap(), checkpoint);
         let mut restored = crate::SaveFile::decode(&checkpoint).unwrap();
-        assert_eq!(restored.read_native_process_caches(), caches);
+        assert_eq!(restored.read_native_process_caches().unwrap(), caches);
         assert_eq!(restored.snapshot().stats.native_shots_visited, Some(17));
         let rollback = restored.cycle_checkpoint();
         restored.begin_native_energy_cycle().unwrap();
@@ -401,21 +425,25 @@ mod tests {
         restored.set_native_light_availability(0.75);
         restored.stats.native_shots_visited = Some(0);
         restored.set_death_poffs_enabled(true);
+        restored
+            .vegetation_runtime
+            .set_native_repopulation_counter(123);
         restored.restore_cycle_checkpoint(rollback);
-        assert_eq!(restored.read_native_process_caches(), caches);
+        assert_eq!(restored.read_native_process_caches().unwrap(), caches);
         for boundary in [
             native_random_world::NativeStartBoundary::ConfiguredStart,
             native_random_world::NativeStartBoundary::SameProcessRound,
         ] {
             restored.prepare_native_restart(boundary);
-            assert_eq!(restored.read_native_process_caches(), caches);
+            assert_eq!(restored.read_native_process_caches().unwrap(), caches);
         }
         restored.prepare_native_restart(native_random_world::NativeStartBoundary::ExternalProcess);
         assert_eq!(
-            restored.read_native_process_caches(),
+            restored.read_native_process_caches().unwrap(),
             NativeProcessCaches {
                 death_poffs_enabled: true,
                 shots_this_cycle: 0,
+                repopulation_counter: Some(0),
                 light_availability: 0.0,
                 energy: NativeEnergyRuntime::default()
             }
@@ -451,7 +479,17 @@ mod tests {
                 .is_none()
         );
         assert_eq!(old_context.shots_this_cycle, 0);
-        assert_eq!(old.read_native_process_caches().shots_this_cycle, 0);
+        assert_eq!(old_context.repopulation_counter, None);
+        assert_eq!(
+            old.read_native_process_caches()
+                .unwrap()
+                .repopulation_counter,
+            Some(0)
+        );
+        assert_eq!(
+            old.read_native_process_caches().unwrap().shots_this_cycle,
+            0
+        );
         assert_eq!(old.native_energy, NativeEnergyRuntime::default());
         let frame = |payload: &serde_json::Value| {
             let encoded = serde_json::to_vec(payload).unwrap();
@@ -512,7 +550,7 @@ mod tests {
         assert_eq!(world.native_energy, state);
         assert_eq!(world.stats.native_energy_displayed, None);
         assert_eq!(world.stats.native_energy_delta, None);
-        let mut legacy_context = world.read_native_process_caches();
+        let mut legacy_context = world.read_native_process_caches().unwrap();
         legacy_context.shots_this_cycle = 17;
         world.set_native_process_caches(legacy_context).unwrap();
         assert_eq!(world.stats.native_shots_visited, None);

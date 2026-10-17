@@ -81,6 +81,8 @@ mod tests {
         let robot = world.slots.get_mut(target).unwrap();
         robot.materials.energy = 10.0;
         robot.materials.body = 100.0;
+        // Preserve the return packet while leaving room for KillRobot's 20 poffs.
+        world.projectiles.reset_native_slots(100);
         assert!(world.apply_projectile_effect(
             owner,
             ProjectileTarget::Organism(target.slot() as usize),

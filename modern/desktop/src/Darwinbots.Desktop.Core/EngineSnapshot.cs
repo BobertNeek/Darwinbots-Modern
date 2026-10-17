@@ -139,6 +139,10 @@ public sealed record NativeProcessCachesSnapshot(
     [property: System.Text.Json.Serialization.JsonPropertyName("shots_this_cycle")] ulong ShotsThisCycle = 0,
     [property: System.Text.Json.Serialization.JsonPropertyName("death_poffs_enabled")] bool DeathPoffsEnabled = true)
 {
+    [System.Text.Json.Serialization.JsonPropertyName("repopulation_counter")]
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? RepopulationCounter { get; init; }
+
     public static NativeProcessCachesSnapshot Empty => new(0, NativeEnergyContextSnapshot.Empty);
 }
 
@@ -259,7 +263,11 @@ public sealed record ShotSnapshot(
     uint Range,
     float Energy,
     bool ImpactFlash,
-    uint? Color = null);
+    uint? Color = null)
+{
+    public bool Alive { get; init; } = true;
+    public bool Stored { get; init; }
+}
 public sealed record TieSnapshot(OrganismKey First, OrganismKey Second, float RestLength);
 public sealed partial record HistorySampleSnapshot(
     ulong Tick, int Population, long TotalEnergy, ulong Births, ulong Deaths, ulong Mutations, ulong ShotsFired);

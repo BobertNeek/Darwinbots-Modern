@@ -683,6 +683,9 @@ public sealed class WorldViewport : Control
         {
             if (!RenderWaste && shot.Kind == -4) continue;
             var drawFlash = shot.ImpactFlash && overlay.ShowShotImpacts;
+            // DrawShots tests flash before exist/stored; a dead or stored packet
+            // may still display its one-cycle impact at the previous position.
+            if (!drawFlash && (!shot.Alive || shot.Stored)) continue;
             var color = drawFlash ? shot.Kind switch
             {
                 -1 => Color.Parse("#FF0000"),
@@ -705,9 +708,9 @@ public sealed class WorldViewport : Control
                 _ => ShotOwnerColor(shot.Owner),
             };
             var end = new Point(shot.End[0] * scaleX + _pan.X, shot.End[1] * scaleY + _pan.Y);
-            if (shot.Kind == -100 && !drawFlash)
+            if (!drawFlash && shot.Color is not null)
             {
-                // Original main.DrawShots uses PSet, with DrawWidth capped at two pixels.
+                // Native saved-color shots use source PSet, with DrawWidth capped at two pixels.
                 // Creation policy never hides a particle already present in the world.
                 var visibleWorldWidth = Math.Max(1.0, _snapshot.WorldSize[0] / _zoom);
                 var width = Math.Clamp(Math.Floor(50.0 / (visibleWorldWidth / 120.0) + 1.0), 1.0, 2.0);
@@ -720,7 +723,8 @@ public sealed class WorldViewport : Control
             {
                 var start = new Point(shot.Start[0] * scaleX + _pan.X, shot.Start[1] * scaleY + _pan.Y);
                 var radius = Math.Clamp(20.0 * Math.Min(scaleX, scaleY), 2.0, 8.0);
-                context.DrawEllipse(null, pen, start, radius, radius);
+                // Source FillStyle0/FillColor produces a solid typed-color flash.
+                context.DrawEllipse(new SolidColorBrush(color), pen, start, radius, radius);
             }
             else
             {

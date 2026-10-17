@@ -281,7 +281,7 @@ public sealed class RobotDetailsWindow : Window
             $"SKIN           {organism.Phenotype.Skin.Length:N0} points · COLOR #{organism.Phenotype.Color & 0x00ffffff:X6}",
             $"EYES           {organism.Vision.Eyes.Length:N0} · FOCUS {organism.Vision.FocusEye:N0}",
             $"TIES           {snapshot.Ties.Count(tie => tie.First == _focus || tie.Second == _focus):N0}",
-            $"SHOTS          {snapshot.Shots.Count(shot => shot.Owner == _focus):N0}",
+            $"SHOTS          {snapshot.Shots.Count(shot => shot.Alive && shot.Owner == _focus):N0}",
             $"NEW / TOTAL M.  {organism.NewMutations:N0} / {organism.TotalMutations:N0}",
             $"SUBSPECIES     {organism.Subspecies:N0}",
             $"LAST MUTATION  {organism.LastMutationKind ?? "NONE"} @ {organism.LastMutationCycle?.ToString("N0") ?? "-"}",

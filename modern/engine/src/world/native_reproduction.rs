@@ -38,6 +38,88 @@ mod tests {
         include_bytes!("../../tests/fixtures/db24832-reproduction-start-48032.sim");
 
     #[test]
+    fn native_load_repopulation_waits_until_c21_and_preserves_negative_db3s_delay_and_caller_draws()
+    {
+        let mut input = crate::NativeRecordFile::decode(REPRODUCTION_START).unwrap();
+        input.robots.clear();
+        let mut tail = crate::NativeSimulationTail::decode(&input.tail).unwrap();
+        for (field, value) in [
+            ("minimum_plants", 50),
+            ("repop_amount", 10),
+            ("repop_cooldown", 10),
+        ] {
+            tail.set_value(field, crate::NativeValue::Word(value))
+                .unwrap();
+        }
+        input.tail = tail.encode().unwrap();
+        let mut continuous = Engine::from_native_sim(&input.encode().unwrap()).unwrap();
+        assert!(continuous.species.iter().all(|species| !species.vegetable));
+        assert!(!continuous.config.vegetation.weather_enabled);
+        assert!(!continuous.config.vegetation.sun_on_random);
+        assert_eq!(
+            continuous
+                .read_native_process_caches()
+                .unwrap()
+                .repopulation_counter,
+            Some(-10)
+        );
+        let mut resumed =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&continuous).unwrap()).unwrap();
+        let initial_random = continuous.native_random.clone().unwrap();
+        let mut expected_random = initial_random.clone();
+        let mut expected_counter = -10;
+        for cycle in 1..=31 {
+            if cycle > 1 {
+                expected_counter += 1;
+                if expected_counter >= 10 {
+                    expected_counter -= 10;
+                }
+            }
+            // C1 is the loaded-census guard. The 20th eligible call is C21,
+            // not C11; no eligible species still evaluates two caller Randoms
+            // for each of the ten requested plants (Vegs28-36/Globals338ff).
+            if cycle == 21 || cycle == 31 {
+                for _ in 0..20 {
+                    expected_random.unit();
+                }
+            }
+            for world in [&mut continuous, &mut resumed] {
+                world.tick().unwrap();
+                assert_eq!(world.native_cycle, Some(cycle));
+                assert_eq!(world.population(), 0);
+                assert_eq!(world.stats.reseeds, 0);
+                assert_eq!(
+                    world
+                        .read_native_process_caches()
+                        .unwrap()
+                        .repopulation_counter,
+                    Some(expected_counter)
+                );
+                assert_eq!(world.native_random.as_ref(), Some(&expected_random));
+            }
+            if cycle == 7 {
+                let saved = crate::SaveFile::encode(&resumed).unwrap();
+                assert_eq!(expected_counter, -4);
+                let payload = resumed.db3s_v3_payload().unwrap();
+                assert_eq!(
+                    payload["vegetation_runtime"]["native_repopulation_counter"],
+                    -4
+                );
+                resumed = crate::SaveFile::decode(&saved).unwrap();
+                assert_eq!(crate::SaveFile::encode(&resumed).unwrap(), saved);
+            }
+            if cycle == 11 {
+                assert_eq!(continuous.native_random.as_ref(), Some(&initial_random));
+                assert_eq!(expected_counter, 0);
+            }
+            assert_eq!(
+                crate::SaveFile::encode(&continuous).unwrap(),
+                crate::SaveFile::encode(&resumed).unwrap()
+            );
+        }
+    }
+
+    #[test]
     fn loaded_first_frame_retains_the_request_and_checkpoint_until_next_birth_attempt() {
         let mut world = Engine::from_native_sim(REPRODUCTION_START).unwrap();
         assert_eq!(
@@ -140,17 +222,27 @@ mod tests {
         world.config.vegetation.minimum_chloroplast_equivalents = 1;
         world.config.vegetation.repopulation_cooldown = 1_000;
         let before = serde_json::to_value(&world.vegetation_runtime).unwrap();
+        let loaded_counter = world
+            .vegetation_runtime
+            .native_repopulation_counter()
+            .unwrap();
+        assert_eq!(loaded_counter, -10);
         world.vegetation_repopulation_phase().unwrap();
         let blocked = serde_json::to_value(&world.vegetation_runtime).unwrap();
         assert_eq!(
             blocked["repopulation_counter"],
             before["repopulation_counter"]
         );
+        assert_eq!(blocked["native_repopulation_counter"], loaded_counter);
         assert_eq!(world.vegetation_runtime.native_chloroplast_population(), 0);
         world.native_loaded_census_stage = None;
         world.vegetation_repopulation_phase().unwrap();
         let next = serde_json::to_value(&world.vegetation_runtime).unwrap();
-        assert_eq!(next["repopulation_counter"], serde_json::json!(1));
+        assert_eq!(
+            next["native_repopulation_counter"],
+            serde_json::json!(loaded_counter + 1)
+        );
+        assert_eq!(next["repopulation_counter"], before["repopulation_counter"]);
     }
 
     #[test]

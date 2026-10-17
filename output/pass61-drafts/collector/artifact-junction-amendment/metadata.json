@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "authored_unexecuted_collector_artifact_junction_amendment_for_root_review",
+  "created_utc": "2026-10-17T12:47:47.480Z",
+  "owner": "/root/recover_46_inventory",
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pins": 636
+  },
+  "predecessor": {
+    "candidate_path": "output/pass61-drafts/collector/collect-native-roundtrip-pass61.mjs",
+    "candidate_raw_sha256": "B5178915DA7F5014B0BDA6890C19530F88AA54B9D3428DB3359C3054AFEE6724",
+    "candidate_bytes": 44606,
+    "metadata_path": "output/pass61-drafts/collector/metadata.json",
+    "metadata_raw_sha256": "897753A8A6CDA31F8C0E5C9574A8A8C5D28473EA2D8360777F66A2137639B3CB",
+    "preserved_unchanged": true,
+    "root_execution_report": {
+      "closed_runner_exit": 1,
+      "collector_aborted_before_either_output": true,
+      "error": "Real path is outside the worktree: target/release/darwinbots-cli.exe",
+      "reason": "The existing target junction stores these two actual61 build artifacts outside the checkout."
+    }
+  },
+  "files": [
+    {
+      "candidate_path": "output/pass61-drafts/collector/artifact-junction-amendment/collect-native-roundtrip-pass61.mjs",
+      "candidate_raw_sha256": "D50EC31975DC5977272AA33D6D13C0F97D5A34B4D486475559B1F64D9961F443",
+      "candidate_bytes": 48226,
+      "new_file": true
+    }
+  ],
+  "invocation": {
+    "executable": "node.exe",
+    "arguments": [
+      "output/pass61-drafts/collector/artifact-junction-amendment/collect-native-roundtrip-pass61.mjs",
+      "--repo",
+      "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+      "--runner-exit-code",
+      "1"
+    ],
+    "root_review_and_execution_only": true
+  },
+  "exact_read_only_artifact_exception": {
+    "logical_junction": "target",
+    "required_junction_realpath": "C:/Users/PC/AppData/Local/Temp/db24832-audit-20261011-cc16cb4/target",
+    "junction_lstat_must_be_symbolic_link": true,
+    "junction_and_final_realpaths_verified_before_and_after_hashing": true,
+    "case_insensitive_windows_path_equality_only": true,
+    "arbitrary_external_paths_or_filenames_allowed": false,
+    "source_proof_reference_or_output_path_exceptions": false,
+    "artifacts": [
+      {
+        "file": "target/release/darwinbots-cli.exe",
+        "bytes": 12399104,
+        "sha256": "BB4AEC9155CFC306A9261A8B27883D9BDDF8A82D62D675C57B884DB36ADEF3E0",
+        "expected_realpath": "C:/Users/PC/AppData/Local/Temp/db24832-audit-20261011-cc16cb4/target/release/darwinbots-cli.exe"
+      },
+      {
+        "file": "target/release/darwinbots_engine.dll",
+        "bytes": 12471296,
+        "sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+        "expected_realpath": "C:/Users/PC/AppData/Local/Temp/db24832-audit-20261011-cc16cb4/target/release/darwinbots_engine.dll"
+      }
+    ],
+    "pinned_identity_receipts": [
+      {
+        "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/cli-build-identity.json",
+        "raw_sha256": "1A01DC1242D0AD7B792283BFB95ACE72A598D5DDED45BDA4CE0939D459E5B50A",
+        "bytes": 143
+      },
+      {
+        "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/native-dll-identity-before.json",
+        "raw_sha256": "FDB3B1B044159F70FB7E0C48CA04FA2667BC7F66A5F67AC45530A58234FA9356",
+        "bytes": 258
+      },
+      {
+        "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/native-dll-identity.json",
+        "raw_sha256": "FDB3B1B044159F70FB7E0C48CA04FA2667BC7F66A5F67AC45530A58234FA9356",
+        "bytes": 258
+      }
+    ],
+    "receipt_raw_hashes_and_actual_artifact_sha_values_are_literal_in_candidate": true,
+    "package_and_desktop_dll_paths_use_unchanged_strict_verifier": true
+  },
+  "changes": [
+    "Added separate exact-two-build-artifact helper; generic owned/raw/fileInfo/verifyIdentity and source/proof/reference validation remain byte-for-byte unchanged.",
+    "Target CLI and target nativeDLL identity checks use only the exact authorized helper; package and Desktop DLL identities remain strictly contained.",
+    "Final pre-seal artifact reverify dispatches only the exact two allowlisted paths to the same helper, revalidating junction/realpaths/receipt rawhashes/content; owned artifacts use the strict verifier.",
+    "Existing all94 terminal/actual runner exit/PID absence/frozen HEAD/636pins/proof snapshot/25references/PNG/failure/null semantics/exclusive two-output guards retained."
+  ],
+  "static_review": {
+    "text_readback_only": true,
+    "unchanged_strict_helpers": {
+      "owned_and_raw": true,
+      "fileInfo": true,
+      "source_guard": true,
+      "strict_identity": true
+    },
+    "exact_external_artifact_names": 2,
+    "write_operation_sites": 2,
+    "only_writes_are_original_two_exclusive_owned_receipts": true,
+    "final_artifact_reverify_added": true,
+    "qualification_success_not_assumed": true
+  },
+  "output_policy": {
+    "only_new_files": [
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/rust-target-results.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/qualification-summary.json"
+    ],
+    "exclusive_create": true,
+    "overwrite_existing": false,
+    "canonical_summary_json_created": false,
+    "cpu_ready_or_hardware_admission_created": false,
+    "valid_failed_run_receipts_supported": true,
+    "collector_exit0_means": "Evidence sealed; qualification outcome remains in the receipt."
+  },
+  "authoring_observations": {
+    "target_junction_and_two_final_realpaths_matched_exact_allowed_paths": true,
+    "two_actual_artifact_hashes_match_actual61_identity_receipts": true,
+    "neither_output_receipt_existed_at_authoring": true
+  },
+  "execution": {
+    "amended_candidate_executed": false,
+    "javascript_parser": false,
+    "product_commands": false,
+    "builds": false,
+    "tests": false,
+    "formatter": false,
+    "ui": false,
+    "gpu": false,
+    "git_mutation": false,
+    "active_source_or_report_edits": false,
+    "existing_receipts_modified": false
+  }
+}

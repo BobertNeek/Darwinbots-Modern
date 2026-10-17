@@ -654,7 +654,7 @@ impl ProjectilePool {
     pub(crate) fn snapshots(&self) -> Vec<ShotSnapshot> {
         let mut snapshots = Vec::with_capacity(self.len());
         for (slot, alive) in self.alive.iter().enumerate() {
-            if *alive {
+            if *alive || self.impact_flash[slot] {
                 snapshots.push(ShotSnapshot {
                     owner: self.owners[slot],
                     start: self.previous_positions[slot],
@@ -665,6 +665,7 @@ impl ProjectilePool {
                     energy: self.energies[slot],
                     kind: self.kinds[slot],
                     value: self.values[slot],
+                    alive: *alive,
                     impact_flash: self.impact_flash[slot],
                     color: self.colors.get(slot).copied().unwrap_or_default(),
                     source_vegetable: self
@@ -1256,6 +1257,56 @@ mod native_boundary_tests {
             839,
             0xffff_ffff,
         )
+    }
+
+    #[test]
+    fn native_snapshots_distinguish_flight_live_flash_and_dead_flash_with_legacy_alive_default() {
+        let mut pool = ProjectilePool::default();
+        pool.reset_native_slots(100);
+        for index in 0..4 {
+            let slot =
+                packet(&mut pool, [100.0 + index as f32, 200.0], [0.0; 2], 400.0).unwrap() as usize;
+            assert_eq!(slot, index);
+        }
+        for (slot, (alive, flash)) in [(true, false), (true, true), (false, true), (false, false)]
+            .into_iter()
+            .enumerate()
+        {
+            pool.alive[slot] = alive;
+            pool.impact_flash[slot] = flash;
+        }
+        let snapshots = pool.snapshots();
+        assert_eq!(snapshots.len(), 3);
+        assert_eq!(
+            snapshots
+                .iter()
+                .map(|shot| (shot.end, shot.alive, shot.impact_flash))
+                .collect::<Vec<_>>(),
+            vec![
+                ([100.0, 200.0], true, false),
+                ([101.0, 200.0], true, true),
+                ([102.0, 200.0], false, true),
+            ]
+        );
+        let encoded = serde_json::to_value(&snapshots).unwrap();
+        assert_eq!(encoded[2]["alive"], false);
+        assert_eq!(encoded[2]["impact_flash"], true);
+        assert_eq!(
+            serde_json::from_value::<Vec<ShotSnapshot>>(encoded.clone()).unwrap(),
+            snapshots
+        );
+        let mut legacy = encoded[2].clone();
+        assert_eq!(
+            legacy.as_object_mut().unwrap().remove("alive"),
+            Some(serde_json::Value::Bool(false))
+        );
+        let legacy: ShotSnapshot = serde_json::from_value(legacy).unwrap();
+        assert!(
+            legacy.alive,
+            "pre-field snapshot rows denoted existing shots"
+        );
+        assert!(legacy.impact_flash);
+        assert_eq!(legacy.end, [102.0, 200.0]);
     }
 
     #[test]

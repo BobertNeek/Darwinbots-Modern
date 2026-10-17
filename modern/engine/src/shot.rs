@@ -22,6 +22,8 @@ pub struct ShotSnapshot {
     pub energy: f32,
     pub kind: i32,
     pub value: i32,
+    #[serde(default = "default_alive")]
+    pub alive: bool,
     #[serde(default)]
     pub impact_flash: bool,
     #[serde(default)]
@@ -42,4 +44,8 @@ pub struct ShotSnapshot {
     pub dna_length: u32,
     #[serde(default)]
     pub payload: Option<LegacyDna>,
+}
+
+const fn default_alive() -> bool {
+    true
 }

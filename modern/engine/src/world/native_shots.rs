@@ -264,6 +264,9 @@ impl Engine {
             }
             if self.projectiles.impact_flash[shot] {
                 self.projectiles.deactivate(shot as u32);
+                // Shots.UpdateShots310-314 clears flash even when an obstacle
+                // or another source action already set exist=False.
+                self.projectiles.impact_flash[shot] = false;
                 self.projectiles.dna_lengths[shot] = 0;
                 self.projectiles.payloads[shot] = None;
             }
@@ -460,6 +463,76 @@ mod native_loop_tests {
             .native_projectile_update_phase(&mut CycleRecorder::disabled(1))
             .unwrap();
         world.publish_snapshot();
+    }
+
+    #[test]
+    fn native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s() {
+        for was_alive in [false, true] {
+            let (mut world, owner, _) = feeding_world(100);
+            let shot = feeding_shot(&mut world, owner);
+            let dna = LegacyDna::parse("start 123 900 store stop").unwrap();
+            world.projectiles.kinds[shot] = -7;
+            world.projectiles.stored[shot] = true;
+            world.projectiles.dna_lengths[shot] = dna.blocks().len() as u32;
+            world.projectiles.payloads[shot] = Some(dna);
+            world.projectiles.gene_numbers[shot] = 3;
+            world.projectiles.ages[shot] = 6;
+            world.projectiles.alive[shot] = was_alive;
+            world.projectiles.impact_flash[shot] = true;
+            world.publish_snapshot();
+            assert_eq!(world.snapshot().shots.len(), 1);
+            assert_eq!(world.snapshot().shots[0].alive, was_alive);
+            assert!(world.snapshot().shots[0].impact_flash);
+            assert!(world.snapshot().shots[0].payload.is_some());
+            let random = world.native_random.clone();
+            let positions = world.projectiles.positions.clone();
+            let previous_positions = world.projectiles.previous_positions.clone();
+            let ages = world.projectiles.ages.clone();
+            let free_slots = world.projectiles.free_slots.clone();
+            let saved = crate::SaveFile::encode(&world).unwrap();
+            let mut restored = crate::SaveFile::decode(&saved).unwrap();
+            assert_eq!(crate::SaveFile::encode(&restored).unwrap(), saved);
+            assert_eq!(world.snapshot().shots, restored.snapshot().shots);
+            for state in [&mut world, &mut restored] {
+                phase(state);
+                // Shots310-314 runs before the exist check, so neither old
+                // flash state is visited, moved, aged, or charged to the RNG.
+                assert!(!state.projectiles.alive[shot]);
+                assert!(!state.projectiles.impact_flash[shot]);
+                assert_eq!(state.projectiles.dna_lengths[shot], 0);
+                assert!(state.projectiles.payloads[shot].is_none());
+                assert_eq!(state.stats.native_shots_visited, Some(0));
+                assert_eq!(state.stats.projectile_impacts, 0);
+                assert_eq!(state.native_random, random);
+                assert_eq!(state.projectiles.positions, positions);
+                assert_eq!(state.projectiles.previous_positions, previous_positions);
+                assert_eq!(state.projectiles.ages, ages);
+                assert!(state.projectiles.stored[shot]);
+                assert_eq!(state.projectiles.gene_numbers[shot], 3);
+                let mut expected_free = free_slots.clone();
+                if was_alive {
+                    expected_free.push(shot as u32);
+                }
+                assert_eq!(state.projectiles.free_slots, expected_free);
+                assert!(state.snapshot().shots.is_empty());
+            }
+            assert_eq!(
+                crate::SaveFile::encode(&world).unwrap(),
+                crate::SaveFile::encode(&restored).unwrap()
+            );
+            for state in [&mut world, &mut restored] {
+                let free_slots = state.projectiles.free_slots.clone();
+                phase(state);
+                assert_eq!(state.projectiles.free_slots, free_slots);
+                assert_eq!(state.stats.native_shots_visited, Some(0));
+                assert_eq!(state.native_random, random);
+                assert!(state.snapshot().shots.is_empty());
+            }
+            assert_eq!(
+                crate::SaveFile::encode(&world).unwrap(),
+                crate::SaveFile::encode(&restored).unwrap()
+            );
+        }
     }
 
     #[test]

@@ -1,0 +1,2567 @@
+{
+  "schema_version": 3,
+  "batch": 61,
+  "sealed_utc": "2026-10-17T12:48:28.687Z",
+  "state": "needs_repair",
+  "ordinary_outcomes_complete": true,
+  "all_ordinary_outcomes_passed": false,
+  "all_available_ordinary_outcomes_collected": true,
+  "all_ordinary_product_invocations_executed": true,
+  "runner_terminal_utc": "2026-10-17T12:41:40.3895047Z",
+  "runner_completion": {
+    "pid": 49648,
+    "process_verified_absent": true,
+    "exit_code": 1,
+    "exit_code_provenance": "Explicit actual closed-session exit supplied by root; terminal state/outcomes independently agree."
+  },
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "source_manifest_sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+  "source_validation": {
+    "raw_pin_count": 636,
+    "distinct_case_insensitive_pins": 636,
+    "raw_pin_mismatches": 0,
+    "invalid_or_outside_workspace_pins": 0,
+    "all_pins_reverified_utc": "2026-10-17T12:48:28.329Z",
+    "actual_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+    "source_and_proof_manifest_hashes_match": true,
+    "preexisting_wip_image_unchanged": true,
+    "png_sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "png_bytes": 26541
+  },
+  "source_validation_at_collection_start": {
+    "raw_pin_count": 636,
+    "distinct_case_insensitive_pins": 636,
+    "raw_pin_mismatches": 0,
+    "invalid_or_outside_workspace_pins": 0,
+    "all_pins_reverified_utc": "2026-10-17T12:48:26.944Z",
+    "actual_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+    "source_and_proof_manifest_hashes_match": true
+  },
+  "ordinary_steps": {
+    "expected": 94,
+    "total": 94,
+    "distinct": 94,
+    "passed": 89,
+    "nonzero": 5,
+    "nonzero_non_dependency": 5,
+    "dependency_not_run": 0
+  },
+  "format_passed": true,
+  "strict_clippy_passed": true,
+  "strict_clippy": {
+    "step": "strict-clippy",
+    "exit_code": 0,
+    "seconds": 79.9760878,
+    "executable": "cargo.exe",
+    "arguments": [
+      "clippy",
+      "--release",
+      "--workspace",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "log": "strict-clippy.log",
+    "invocation_error": null,
+    "stderr_log": null
+  },
+  "rust": {
+    "passed": 1040,
+    "failed": 4,
+    "ignored": 0,
+    "measured": 0,
+    "filtered_out": 27
+  },
+  "rust_targets": 68,
+  "rust_counts_complete": true,
+  "rust_failed_targets": [
+    {
+      "package": "darwinbots-engine",
+      "kind": "lib",
+      "name": "darwinbots_engine",
+      "cargo_kinds": [
+        "cdylib",
+        "rlib"
+      ],
+      "source": "modern/engine/src/lib.rs",
+      "header_line": 186,
+      "header": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_engine-92c50bc16611c615.exe)",
+      "failed_test_rows": [
+        {
+          "name": "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+          "log_line": 432
+        },
+        {
+          "name": "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping",
+          "log_line": 622
+        }
+      ],
+      "result": "FAILED",
+      "passed": 522,
+      "failed": 2,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 7,
+      "seconds": 44.37,
+      "summary_line": 730,
+      "summary": "test result: FAILED. 522 passed; 2 failed; 0 ignored; 0 measured; 7 filtered out; finished in 44.37s",
+      "running_tests": 524,
+      "running_test_count_matches": true
+    },
+    {
+      "package": "darwinbots-engine",
+      "kind": "test",
+      "name": "db24832_genuine_feeding",
+      "cargo_kinds": [
+        "test"
+      ],
+      "source": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "header_line": 840,
+      "header": "Running tests\\db24832_genuine_feeding.rs (target\\release\\deps\\db24832_genuine_feeding-aa18f8f26e528034.exe)",
+      "failed_test_rows": [
+        {
+          "name": "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+          "log_line": 851
+        },
+        {
+          "name": "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches",
+          "log_line": 857
+        }
+      ],
+      "result": "FAILED",
+      "passed": 7,
+      "failed": 2,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 0,
+      "seconds": 1.42,
+      "summary_line": 870,
+      "summary": "test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.42s",
+      "running_tests": 9,
+      "running_test_count_matches": true
+    }
+  ],
+  "rust_failed_test_names": [
+    "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+    "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping",
+    "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+    "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+  ],
+  "rust_failure_diagnostics": [
+    {
+      "test_name": "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+      "source": "modern\\engine\\src\\world\\native_feeding.rs:109:22",
+      "log_line": 430,
+      "excerpt": "thread 'world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death' (28804) panicked at modern\\engine\\src\\world\\native_feeding.rs:109:22:\ncalled `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")\ntest world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death ... FAILED\ntest world::native_fitness::tests::ancestry_cycles_remain_bounded_at_the_original_ten_descendant_levels ... ok\ntest world::native_fitness::tests::manual_find_best_excludes_literal_corpse_filename_without_filtering_descendants ... ok\ntest world::native_fitness::tests::manual_zerobot_selection_rounds_child_investment_before_the_cancer_threshold ... ok\ntest world::native_fitness::tests::native_family_scores_preserve_single_products_and_double_accumulation_order ... ok\ntest world::native_graphs::tests::closed_genetic_graphs_do_not_consume_eligible_mutation_counters ... ok"
+    },
+    {
+      "test_name": "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping",
+      "source": "modern\\engine\\src\\world\\native_sim_export.rs:902:30",
+      "log_line": 620,
+      "excerpt": "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (43208) panicked at modern\\engine\\src\\world\\native_sim_export.rs:902:30:\ncalled `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")\ntest world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping ... FAILED\ntest world::native_sim_export::tests::native_unknown_parent_keeps_literal_slot_and_can_name_a_packed_current_occupant ... ok\ntest world::native_sim_export::tests::native_unrecognized_signed_parent_bits_survive_while_remap_releases_stored_shots ... ok\ntest world::native_sim_export::tests::native_waste_threshold_mapping_preserves_load_fallback_and_disabled_intent ... ok\ntest world::native_speciation::tests::normalized_defaults_are_dna_length_times_the_native_per_base_setting ... ok\ntest world::native_speciation::tests::strict_threshold_preserves_pose_and_skin_and_resets_native_mutations ... ok"
+    },
+    {
+      "test_name": "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+      "source": "modern\\engine\\tests\\db24832_genuine_feeding.rs:40:13",
+      "log_line": 846,
+      "excerpt": "thread 'genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots' (48908) panicked at modern\\engine\\tests\\db24832_genuine_feeding.rs:40:13:\nassertion `left == right` failed: shot[0].x\n  left: 8277.0\n right: 8288.0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots ... FAILED\n\nthread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (46964) panicked at modern\\engine\\tests\\db24832_genuine_feeding.rs:40:13:"
+    },
+    {
+      "test_name": "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches",
+      "source": "modern\\engine\\tests\\db24832_genuine_feeding.rs:40:13",
+      "log_line": 853,
+      "excerpt": "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (46964) panicked at modern\\engine\\tests\\db24832_genuine_feeding.rs:40:13:\nassertion `left == right` failed: original pair C100 shot[62].x\n  left: 8574.191\n right: 8577.136\ntest genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches ... FAILED\ntest genuine_feeding_c1_proves_native_mutation_draws_mass_order_and_zero_shot_gene ... ok\ntest genuine_reproduction_c10_and_c100_preserve_birth_at_c2_and_saved_continuation ... ok\ntest genuine_reproduction_c1_retains_the_request_without_a_newborn_across_checkpoints ... ok"
+    }
+  ],
+  "rust_invocation": {
+    "fresh_full_workspace_invocation": true,
+    "hardware_filtered": true,
+    "exit_code": 101,
+    "seconds": 3941.868148,
+    "counts_inherited": false
+  },
+  "rust_receipt": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/rust-target-results.json",
+  "rust_receipt_sha256": "140004E81F7D8F63B3781179195CBDB2740186DDBCF04593F82F2042D87AD568",
+  "managed": {
+    "core": {
+      "status": "executed",
+      "passed": 312,
+      "failed": 0,
+      "total": 312,
+      "executed": 312,
+      "skipped": 0,
+      "result_rows": 312,
+      "failed_tests": [],
+      "counter_arithmetic_consistent": true,
+      "result_rows_match_counters": true,
+      "expected_source_test_count": 312,
+      "expected_row_count_matches": true,
+      "invocation_exit_code": 0,
+      "trx": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/core.trx",
+      "trx_sha256": "9B3804B21E257E77702B4114C3C1832EFDD275D9F5D389F114BCF49708458084"
+    },
+    "desktop": {
+      "status": "executed",
+      "passed": 212,
+      "failed": 1,
+      "total": 213,
+      "executed": 213,
+      "skipped": 0,
+      "result_rows": 213,
+      "failed_tests": [
+        {
+          "test_name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+          "outcome": "Failed",
+          "duration": "00:00:00.2178381",
+          "message": "A saved white energy shot used the old green fallback.",
+          "stack_trace": "   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.<>c.<ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible>b__1_0() in C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\desktop\\tests\\Darwinbots.Desktop.Tests\\WorldShotRenderedTests.cs:line 168\r\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass9_0.<Dispatch>b__0()\r\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\r\n--- End of stack trace from previous location ---\r\n   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible() in C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\desktop\\tests\\Darwinbots.Desktop.Tests\\WorldShotRenderedTests.cs:line 94\r\n--- End of stack trace from previous location ---"
+        }
+      ],
+      "counter_arithmetic_consistent": true,
+      "result_rows_match_counters": true,
+      "expected_source_test_count": 213,
+      "expected_row_count_matches": true,
+      "invocation_exit_code": 1,
+      "trx": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/desktop.trx",
+      "trx_sha256": "24D8A334C4FC93A235E9450B12A0C8ECB5934A2F6A46FC4A2C38BB2DBF56FEE2",
+      "build_exit_code": 0,
+      "compile_diagnostics": []
+    }
+  },
+  "genuine": {
+    "expected_controls": 25,
+    "controls": 25,
+    "actual_rows": 25,
+    "controls_with_parseable_reports": 25,
+    "passed": 24,
+    "failed": 1,
+    "failed_or_unproven": 1,
+    "expected_original_only_projected_fields": 55849,
+    "matched_controls_compared_fields": 54165,
+    "actual_union_compared_fields_parseable_controls": 55849,
+    "actual_union_compared_fields_all_controls": 55849,
+    "compared_fields_sum": 55849,
+    "canonical_matrix_captures": 21,
+    "canonical_matrix_total": 21,
+    "extra_controls": [
+      "movementC102",
+      "contactsC11",
+      "chloroplastC1",
+      "chloroplastC10"
+    ],
+    "all_original_and_fresh_output_hashes_reverified": true,
+    "differences_parseable_controls": 75,
+    "absolute_tolerance": 0,
+    "relative_tolerance": 0,
+    "checkpoints": [
+      {
+        "case": "movement",
+        "cycle": 1,
+        "runner_receipt": {
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim",
+          "original_sha256": "766F386C392C59834A3390A2C726D3E2F8DB695FE5B05A932A593D0DCCD010E3",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\movement-rust-cycle1.sim",
+          "rust_output_sha256": "F0C94224D60926F863DD015FC884AC93EFAB8E6392F9ED6C501C8245A09D7173",
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-movement-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-1-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "movement",
+        "cycle": 10,
+        "runner_receipt": {
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle10-20261016.sim",
+          "original_sha256": "DA23FCBE0B725FCF134F7FA25022951E600088603126BFB6E327027FF23465A2",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\movement-rust-cycle10.sim",
+          "rust_output_sha256": "66E473E595BBE146893F1722B15863107365859EA4113896747C1EA7F818CDAA",
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-movement-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-10-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "movement",
+        "cycle": 100,
+        "runner_receipt": {
+          "cycle": 100,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle100-20261017.sim",
+          "original_sha256": "D1F078B57BC1DDF4690DBEF24CC5945FC925755293060A8561FB7E82A1100202",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\movement-rust-cycle100.sim",
+          "rust_output_sha256": "E7C255272824FAEA49E4DEE0B69B165CB543DED93809CA45D7AA00C24578B309",
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-movement-100-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-100-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-100-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "movement",
+        "cycle": 102,
+        "runner_receipt": {
+          "cycle": 102,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle102-20261016.sim",
+          "original_sha256": "2BB48F9883CA05E5771989CB08056BAC737E1EE50F148A8B234FF894EAF37B5B",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\movement-rust-cycle102.sim",
+          "rust_output_sha256": "36F3840B0DBB16E5218BDEDDC347598F63F19DF8B53182D935A15AC5A6F32F1A",
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-movement-102-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-102-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-102-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "fixed",
+        "cycle": 1,
+        "runner_receipt": {
+          "case": "fixed",
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle1-20261016.sim",
+          "original_sha256": "01360A500B63AAD15D96384A25E792AB7C50CAB630497017F7C1214D00535BF4",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\fixed-rust-cycle1.sim",
+          "rust_output_sha256": "80155DF55842FA4B5B60A42240CD85B8C1184D6F07D85C3B5E68EC3599922A9A",
+          "expected_compared_fields": 1385,
+          "compared_fields": 1385,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-fixed-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1385,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-1-compare.log",
+          "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "body",
+        "cycle": 1,
+        "runner_receipt": {
+          "case": "body",
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-body-cycle1-20261016.sim",
+          "original_sha256": "0F6EBE616D67BA8FAA45372BE1F0DB0FACEC2994DCC1632953F31634E9A847E5",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\body-rust-cycle1.sim",
+          "rust_output_sha256": "26C4B93B9BDDC7700163A8FD3A1FC3C1C462B620F21A5B0A863884598FDE99D3",
+          "expected_compared_fields": 1379,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-body-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-1-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "chloroplast",
+        "cycle": 1,
+        "runner_receipt": {
+          "case": "chloroplast",
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle1-20261016.sim",
+          "original_sha256": "50DD4B01A0E0E0A19D3E79896B85127A41897BCA8762F8EBF020C63A78DA3170",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\chloroplast-rust-cycle1.sim",
+          "rust_output_sha256": "5A2ADDA715E640293EDF86C4E4F8BFAA23200E2A1D44BA7ABBA8ADB6EB030858",
+          "expected_compared_fields": 1379,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-chloroplast-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-1-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "chloroplast",
+        "cycle": 10,
+        "runner_receipt": {
+          "case": "chloroplast",
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle10-20261016.sim",
+          "original_sha256": "569F1272D28A876B3F140420193E5A767B6E9B2B0853B5E36D39513655A4BCCE",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\chloroplast-rust-cycle10.sim",
+          "rust_output_sha256": "1D4BDC51CEA523E4B478E208EC2FFB1A5E137221BEDF0219089B8BF6E91A7931",
+          "expected_compared_fields": 1379,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-chloroplast-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-10-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "feeding",
+        "cycle": 1,
+        "runner_receipt": {
+          "case": "feeding",
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle1-20261017.sim",
+          "original_sha256": "0D0655818BECF73E1722E0A56AEBE05C4D083C0CC60C2C7F6F6A0DFEAD844337",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\feeding-rust-cycle1.sim",
+          "rust_output_sha256": "509885D0168AEDB2E11A604A00BBD9CF6DDEFBC903DE55CD8F5B693D61F01E3C",
+          "expected_compared_fields": 2814,
+          "compared_fields": 2814,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-feeding-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 2814,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-1-compare.log",
+          "sha256": "316AB540FABEBFBE4DAFBDB2759BFB13EFFBC9F7C7B136AD392E004C84E5DC9A",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "feeding",
+        "cycle": 10,
+        "runner_receipt": {
+          "case": "feeding",
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle10-20261017.sim",
+          "original_sha256": "A82ABBC5FA3E851A5F4E7506B8497FABA985ABDE24509DC6905B2F2D1F3C79CF",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\feeding-rust-cycle10.sim",
+          "rust_output_sha256": "587B9C6F9D9D3B0A5E58BC4EC6529BF2F7C85CDB039C9FB36C19EB52D6B57363",
+          "expected_compared_fields": 3090,
+          "compared_fields": 3090,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-feeding-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 3090,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-10-compare.log",
+          "sha256": "38ABB2EE6505243886CB98849AFC27A00C5590CA9FD2FE08B8AA71661E0FBFE8",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "ties",
+        "cycle": 1,
+        "runner_receipt": {
+          "case": "ties",
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle1-20261017.sim",
+          "original_sha256": "B1E4223FEF34CDA7FC1C7E1661B086751D83515AB387C0DF596AA2728CA6501D",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\ties-rust-cycle1.sim",
+          "rust_output_sha256": "3B20F2240B2A1D4DEEB83A2C6D4DAEAB91F7B57592ABA16F2F5D8CEE35BE4559",
+          "expected_compared_fields": 2768,
+          "compared_fields": 2768,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-ties-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 2768,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-1-compare.log",
+          "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "contacts",
+        "cycle": 1,
+        "runner_receipt": {
+          "case": "contacts",
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle1-20261017.sim",
+          "original_sha256": "F7DA4A17D59977FC65BB32CC6BCE2AE4C8E28087672F997CE9629CFB20D202D0",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle1.sim",
+          "rust_output_sha256": "D3EC1618739E836D61386E0322CFDB9B3A104655DDA61EB0B6C1A001FA490693",
+          "expected_compared_fields": 4115,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-contacts-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-1-compare.log",
+          "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "contacts",
+        "cycle": 11,
+        "runner_receipt": {
+          "case": "contacts",
+          "cycle": 11,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle11-20261017.sim",
+          "original_sha256": "8821C6D5EB2077EFAE7597FB1D4EB8ADEE3DE687275528BAF7A79C0DC5AF05BB",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle11.sim",
+          "rust_output_sha256": "8F7B5742EC5C6ACA9C950C298E27CEBA3321B53267A0DEC319F3394F55305CF5",
+          "expected_compared_fields": 4115,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-contacts-11-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-11-compare.log",
+          "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-11-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "contacts",
+        "cycle": 100,
+        "runner_receipt": {
+          "case": "contacts",
+          "cycle": 100,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle100-20261017.sim",
+          "original_sha256": "C6AB7E5578162E576F37F3F1CCF738985015D9FD9C3AF155D5E561F02F9F378E",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle100.sim",
+          "rust_output_sha256": "9CB0493E1247CA477C0D08C75A16BDC012B0F2F93DB318E248DCD1C1AEA58742",
+          "expected_compared_fields": 4115,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-contacts-100-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-100-compare.log",
+          "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-100-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "reproduction",
+        "cycle": 1,
+        "runner_receipt": {
+          "case": "reproduction",
+          "cycle": 1,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim",
+          "original_sha256": "A6F9DC7F78280AF622D35401ECF65CB1E6ADE344D2D150342E89B5556DA0E03A",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\reproduction-rust-cycle1.sim",
+          "rust_output_sha256": "37429C80EF7DA7F705CD346D3D1A89280AB2B6B0272DB91A60C16177733180F0",
+          "expected_compared_fields": 1387,
+          "compared_fields": 1387,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-reproduction-1-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1387,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-1-compare.log",
+          "sha256": "0096252C5112563F6EF42EFBDB54B49586BF684A3B3E7194B0540209108F9C78",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-1-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "reproduction",
+        "cycle": 10,
+        "runner_receipt": {
+          "case": "reproduction",
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle10-20261017.sim",
+          "original_sha256": "4BCD08A85E121216B1BF49C4315FACEA7C985CCF691C147306A479BACE437B69",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\reproduction-rust-cycle10.sim",
+          "rust_output_sha256": "E044B22B876B725588E7547E95F39DF32A537D9B506E8E46730BDB547ED29A15",
+          "expected_compared_fields": 2772,
+          "compared_fields": 2772,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-reproduction-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 2772,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-10-compare.log",
+          "sha256": "A2CC03A8209561A163A2F919147A35373FE1EE77F75DE2171D13B2E076A526FF",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "fixed",
+        "cycle": 10,
+        "runner_receipt": {
+          "case": "fixed",
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle10-20261017.sim",
+          "original_sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\fixed-rust-cycle10.sim",
+          "rust_output_sha256": "742EE79F3FB9CFC4F3E0C46E609C838A5E744BE7B47619A41E90F06D14E440F6",
+          "expected_compared_fields": 1385,
+          "compared_fields": 1385,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-fixed-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1385,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-10-compare.log",
+          "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "fixed",
+        "cycle": 100,
+        "runner_receipt": {
+          "case": "fixed",
+          "cycle": 100,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle100-20261017.sim",
+          "original_sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\fixed-rust-cycle100.sim",
+          "rust_output_sha256": "AB0F80F9BC1259BFE4FDEFAFBAC0121CA5F19B926F2360E35D6752C98D9FFA86",
+          "expected_compared_fields": 1385,
+          "compared_fields": 1385,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-fixed-100-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1385,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-100-compare.log",
+          "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-100-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "body",
+        "cycle": 10,
+        "runner_receipt": {
+          "case": "body",
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-body-cycle10-20261017.sim",
+          "original_sha256": "B3373F593FBFB6C60D7A0F9BDB2D3F0936C274567655E8F0029F809189246E95",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\body-rust-cycle10.sim",
+          "rust_output_sha256": "6634CE9C8842B7535CFD9ED47669359DC2CDA29D1DEA85FF549AFD417A766087",
+          "expected_compared_fields": 1379,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-body-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-10-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "body",
+        "cycle": 100,
+        "runner_receipt": {
+          "case": "body",
+          "cycle": 100,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-body-cycle100-20261017.sim",
+          "original_sha256": "9657E8D3917AAFD3DE87E3B409D90EBEFA1F811356EF0DA9225BAEFD18CB89C9",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\body-rust-cycle100.sim",
+          "rust_output_sha256": "73D549B77E206F9A659E29CAE933C899A4F223A25B84BA2B5E4A82BA43957DCC",
+          "expected_compared_fields": 1379,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-body-100-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 1379,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-100-compare.log",
+          "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-100-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "contacts",
+        "cycle": 10,
+        "runner_receipt": {
+          "case": "contacts",
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle10-20261017.sim",
+          "original_sha256": "DE73B60672D17B3C5C8FADCF1DD37F2C917B9D63C3F161BA26978FC989249453",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle10.sim",
+          "rust_output_sha256": "DEDC038BA1A09ED5CCF48331749B1B31E0498E103B28520787A13627089337A0",
+          "expected_compared_fields": 4115,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-contacts-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 4115,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-10-compare.log",
+          "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "ties",
+        "cycle": 10,
+        "runner_receipt": {
+          "case": "ties",
+          "cycle": 10,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle10-20261017.sim",
+          "original_sha256": "1065E95C9F8B3BDE99773ABB90AD8C37D5DE3D8B56351C32EAE531A7F5959AD0",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\ties-rust-cycle10.sim",
+          "rust_output_sha256": "07CCD34BFF33BD1CC88F2EBD45F028C2FB316335A4FB84BA81CDE948DDCF91E1",
+          "expected_compared_fields": 2768,
+          "compared_fields": 2768,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-ties-10-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 2768,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-10-compare.log",
+          "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-10-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "ties",
+        "cycle": 100,
+        "runner_receipt": {
+          "case": "ties",
+          "cycle": 100,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle100-20261017.sim",
+          "original_sha256": "6AC8CA1E1ACC3FBE443DC6D9006BAA3A615D402362D1495CC57E37EEC3EE5D00",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\ties-rust-cycle100.sim",
+          "rust_output_sha256": "027FEC065539EFD7A52195B14A801D31CFEEDA2352EB84473640A7A628A04A62",
+          "expected_compared_fields": 2768,
+          "compared_fields": 2768,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-ties-100-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 2768,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-100-compare.log",
+          "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-100-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      },
+      {
+        "case": "feeding",
+        "cycle": 100,
+        "runner_receipt": {
+          "case": "feeding",
+          "cycle": 100,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 1,
+          "passed": false,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle100-20261017.sim",
+          "original_sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\feeding-rust-cycle100.sim",
+          "rust_output_sha256": "43398EF63DEEBF083F9C8163679C1CF1E3441DDE4094556BAAEBC4B847EDBD18",
+          "expected_compared_fields": 1684,
+          "compared_fields": 1684,
+          "difference_count": 75,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-feeding-100-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": false,
+          "compared_fields": 1684,
+          "difference_count": 75,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 75,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": false,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-100-compare.log",
+          "sha256": "E102F5C1060B6CA002AAD9B7FC7E64179DBCFB76DF5EB498E474C86576B7D2A7",
+          "bytes": 6910
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-100-compare.stderr.log",
+          "sha256": "7BFB4BD82811A6312624B345C9E6FB25F42B1971FB31B92933AF7F36BB0E2168",
+          "bytes": 66
+        }
+      },
+      {
+        "case": "reproduction",
+        "cycle": 100,
+        "runner_receipt": {
+          "case": "reproduction",
+          "cycle": 100,
+          "candidate_exit_code": 0,
+          "compare_exit_code": 0,
+          "passed": true,
+          "original": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle100-20261017.sim",
+          "original_sha256": "DEFBB6F511E8753F44B4FD5BC6D1629FFFCA3CEBEA1E6D7BA81D175AEC3BA234",
+          "rust_output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\reproduction-rust-cycle100.sim",
+          "rust_output_sha256": "A360D600504785E888F18B63B2B1522F81610B03CC91EA3C482329AFC62144A2",
+          "expected_compared_fields": 2772,
+          "compared_fields": 2772,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "log": "genuine-reproduction-100-compare.log",
+          "parse_error": null
+        },
+        "execution_status": "executed",
+        "collector_parsed_report": {
+          "passed": true,
+          "compared_fields": 2772,
+          "difference_count": 0,
+          "absolute_tolerance": 0,
+          "relative_tolerance": 0,
+          "retained_difference_rows": 0,
+          "truncated": false,
+          "parse_boundary": "entire_separate_stdout_json"
+        },
+        "collector_parse_error": null,
+        "collector_passed": true,
+        "original_hash_reverified": true,
+        "output_hash_reverified": true,
+        "comparison_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-100-compare.log",
+          "sha256": "A2CC03A8209561A163A2F919147A35373FE1EE77F75DE2171D13B2E076A526FF",
+          "bytes": 623
+        },
+        "stderr_log": {
+          "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-100-compare.stderr.log",
+          "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+          "bytes": 0
+        }
+      }
+    ],
+    "missing_reference_keys": [],
+    "boundary": "Counts come from separate stdout JSON even on nonzero comparison exits. Raw runner rows and separate stderr hashes remain preserved.55849 is the original-only expectation, never substituted for observed union fields."
+  },
+  "fresh_seven_case_candidates": {
+    "cases": 7,
+    "expected_outputs": 21,
+    "actual_outputs": 21,
+    "distinct_case_cycle_keys": 21,
+    "all_exit_codes_zero": true,
+    "all_fresh_output_hashes_reverified": true,
+    "rows": [
+      {
+        "case": "movement",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+        "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\movement-rust-cycle1.sim",
+        "output_sha256": "F0C94224D60926F863DD015FC884AC93EFAB8E6392F9ED6C501C8245A09D7173"
+      },
+      {
+        "case": "movement",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+        "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\movement-rust-cycle10.sim",
+        "output_sha256": "66E473E595BBE146893F1722B15863107365859EA4113896747C1EA7F818CDAA"
+      },
+      {
+        "case": "movement",
+        "cycle": 100,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+        "input_sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\movement-rust-cycle100.sim",
+        "output_sha256": "E7C255272824FAEA49E4DEE0B69B165CB543DED93809CA45D7AA00C24578B309"
+      },
+      {
+        "case": "fixed",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+        "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\fixed-rust-cycle1.sim",
+        "output_sha256": "80155DF55842FA4B5B60A42240CD85B8C1184D6F07D85C3B5E68EC3599922A9A"
+      },
+      {
+        "case": "fixed",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+        "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\fixed-rust-cycle10.sim",
+        "output_sha256": "742EE79F3FB9CFC4F3E0C46E609C838A5E744BE7B47619A41E90F06D14E440F6"
+      },
+      {
+        "case": "fixed",
+        "cycle": 100,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+        "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\fixed-rust-cycle100.sim",
+        "output_sha256": "AB0F80F9BC1259BFE4FDEFAFBAC0121CA5F19B926F2360E35D6752C98D9FFA86"
+      },
+      {
+        "case": "contacts",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+        "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle1.sim",
+        "output_sha256": "D3EC1618739E836D61386E0322CFDB9B3A104655DDA61EB0B6C1A001FA490693"
+      },
+      {
+        "case": "contacts",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+        "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle10.sim",
+        "output_sha256": "DEDC038BA1A09ED5CCF48331749B1B31E0498E103B28520787A13627089337A0"
+      },
+      {
+        "case": "contacts",
+        "cycle": 100,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+        "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle100.sim",
+        "output_sha256": "9CB0493E1247CA477C0D08C75A16BDC012B0F2F93DB318E248DCD1C1AEA58742"
+      },
+      {
+        "case": "body",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+        "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\body-rust-cycle1.sim",
+        "output_sha256": "26C4B93B9BDDC7700163A8FD3A1FC3C1C462B620F21A5B0A863884598FDE99D3"
+      },
+      {
+        "case": "body",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+        "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\body-rust-cycle10.sim",
+        "output_sha256": "6634CE9C8842B7535CFD9ED47669359DC2CDA29D1DEA85FF549AFD417A766087"
+      },
+      {
+        "case": "body",
+        "cycle": 100,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+        "input_sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\body-rust-cycle100.sim",
+        "output_sha256": "73D549B77E206F9A659E29CAE933C899A4F223A25B84BA2B5E4A82BA43957DCC"
+      },
+      {
+        "case": "ties",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+        "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\ties-rust-cycle1.sim",
+        "output_sha256": "3B20F2240B2A1D4DEEB83A2C6D4DAEAB91F7B57592ABA16F2F5D8CEE35BE4559"
+      },
+      {
+        "case": "ties",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+        "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\ties-rust-cycle10.sim",
+        "output_sha256": "07CCD34BFF33BD1CC88F2EBD45F028C2FB316335A4FB84BA81CDE948DDCF91E1"
+      },
+      {
+        "case": "ties",
+        "cycle": 100,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+        "input_sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\ties-rust-cycle100.sim",
+        "output_sha256": "027FEC065539EFD7A52195B14A801D31CFEEDA2352EB84473640A7A628A04A62"
+      },
+      {
+        "case": "feeding",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+        "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\feeding-rust-cycle1.sim",
+        "output_sha256": "509885D0168AEDB2E11A604A00BBD9CF6DDEFBC903DE55CD8F5B693D61F01E3C"
+      },
+      {
+        "case": "feeding",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+        "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\feeding-rust-cycle10.sim",
+        "output_sha256": "587B9C6F9D9D3B0A5E58BC4EC6529BF2F7C85CDB039C9FB36C19EB52D6B57363"
+      },
+      {
+        "case": "feeding",
+        "cycle": 100,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+        "input_sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\feeding-rust-cycle100.sim",
+        "output_sha256": "43398EF63DEEBF083F9C8163679C1CF1E3441DDE4094556BAAEBC4B847EDBD18"
+      },
+      {
+        "case": "reproduction",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+        "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\reproduction-rust-cycle1.sim",
+        "output_sha256": "37429C80EF7DA7F705CD346D3D1A89280AB2B6B0272DB91A60C16177733180F0"
+      },
+      {
+        "case": "reproduction",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+        "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\reproduction-rust-cycle10.sim",
+        "output_sha256": "E044B22B876B725588E7547E95F39DF32A537D9B506E8E46730BDB547ED29A15"
+      },
+      {
+        "case": "reproduction",
+        "cycle": 100,
+        "exit_code": 0,
+        "input": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+        "input_sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\reproduction-rust-cycle100.sim",
+        "output_sha256": "A360D600504785E888F18B63B2B1522F81610B03CC91EA3C482329AFC62144A2"
+      }
+    ],
+    "parse_error": null
+  },
+  "additional_candidates": {
+    "rows": [
+      {
+        "case": "chloroplast",
+        "cycle": 1,
+        "exit_code": 0,
+        "input": "modern/engine/tests/fixtures/db24832-chloroplast-start-48032.sim",
+        "input_sha256": "CB85F10215164C18EB8D8E73A98C2B365B91FE5F7F2BB52E4F2789B7D1E38859",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\chloroplast-rust-cycle1.sim",
+        "output_sha256": "5A2ADDA715E640293EDF86C4E4F8BFAA23200E2A1D44BA7ABBA8ADB6EB030858"
+      },
+      {
+        "case": "chloroplast",
+        "cycle": 10,
+        "exit_code": 0,
+        "input": "modern/engine/tests/fixtures/db24832-chloroplast-start-48032.sim",
+        "input_sha256": "CB85F10215164C18EB8D8E73A98C2B365B91FE5F7F2BB52E4F2789B7D1E38859",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\chloroplast-rust-cycle10.sim",
+        "output_sha256": "1D4BDC51CEA523E4B478E208EC2FFB1A5E137221BEDF0219089B8BF6E91A7931"
+      },
+      {
+        "case": "contacts",
+        "cycle": 11,
+        "exit_code": 0,
+        "input": "modern/engine/tests/fixtures/db24832-contacts-start-48032.sim",
+        "input_sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+        "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\contacts-rust-cycle11.sim",
+        "output_sha256": "8F7B5742EC5C6ACA9C950C298E27CEBA3321B53267A0DEC319F3394F55305CF5"
+      }
+    ],
+    "parse_error": null
+  },
+  "raw_zero": {
+    "status": "executed",
+    "compared_fields": 393316,
+    "differences": 0,
+    "passed": true,
+    "exact_raw_bytes": true,
+    "input_sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E",
+    "output_sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E",
+    "parse_error": null,
+    "comparison_log": {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-compare.log",
+      "sha256": "2C265516068DEB8904D8FE81DC04A21E169507D1A3ABA4849857932E41F3DE38",
+      "bytes": 625
+    },
+    "stderr_log": {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    "boundary": "Validated raw file preservation only; native Engine load normalization is separate."
+  },
+  "package": {
+    "published": true,
+    "smoke": {
+      "status": "passed",
+      "backend": "CPU",
+      "ticks": 13,
+      "population": 1,
+      "movement": true,
+      "save_resume": true,
+      "bundled_bots": 48
+    },
+    "smoke_parse_error": null,
+    "assets": 48,
+    "packaged_assets": 48,
+    "asset_mismatches": [],
+    "all48_packaged_asset_hashes_reverified": true,
+    "target_package_native_dll_identity_matched": true,
+    "native_dll_identity_matched": true,
+    "native_dll_sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+    "production_native_build_completed": true,
+    "all_packaged_asset_hashes_reverified": true,
+    "desktop_native_dll_qualified": true,
+    "dll_identity_before": {
+      "target_release": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+      "package": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+      "desktop": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A"
+    },
+    "dll_identity_after": {
+      "target_release": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+      "package": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+      "desktop": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A"
+    },
+    "final_artifact_hashes": [
+      {
+        "file": "target/release/darwinbots-cli.exe",
+        "realpath": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-audit-20261011-cc16cb4\\target\\release\\darwinbots-cli.exe",
+        "sha256": "BB4AEC9155CFC306A9261A8B27883D9BDDF8A82D62D675C57B884DB36ADEF3E0",
+        "bytes": 12399104,
+        "read_only_exact_build_artifact_exception": true
+      },
+      {
+        "file": "target/release/darwinbots_engine.dll",
+        "realpath": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-audit-20261011-cc16cb4\\target\\release\\darwinbots_engine.dll",
+        "sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+        "bytes": 12471296,
+        "read_only_exact_build_artifact_exception": true
+      },
+      {
+        "file": "artifacts/win-x64-native-roundtrip-pass61/darwinbots_engine.dll",
+        "sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+        "bytes": 12471296
+      },
+      {
+        "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/bin/Release/net10.0/darwinbots_engine.dll",
+        "sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+        "bytes": 12471296
+      }
+    ],
+    "final_artifact_hashes_reverified_before_sealing": true
+  },
+  "failed_steps": [
+    {
+      "step": "cpu-rust-workspace",
+      "exit_code": 101,
+      "seconds": 3941.868148,
+      "executable": "cargo.exe",
+      "arguments": [
+        "test",
+        "--release",
+        "--workspace",
+        "--no-fail-fast",
+        "--",
+        "--skip",
+        "gpu",
+        "--skip",
+        "switch",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "log": "cpu-rust-workspace.log",
+      "invocation_error": null,
+      "stderr_log": null
+    },
+    {
+      "step": "genuine-feeding-100-compare",
+      "exit_code": 1,
+      "seconds": 0.1110124,
+      "executable": "./target/release/darwinbots-cli.exe",
+      "arguments": [
+        "native-compare",
+        "--left",
+        "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\modern\\engine\\tests\\fixtures\\db24832-genuine-feeding-cycle100-20261017.sim",
+        "--right",
+        "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate61\\feeding-rust-cycle100.sim",
+        "--absolute-tolerance",
+        "0",
+        "--relative-tolerance",
+        "0",
+        "--max-differences",
+        "100"
+      ],
+      "log": "genuine-feeding-100-compare.log",
+      "invocation_error": null,
+      "stderr_log": "genuine-feeding-100-compare.stderr.log"
+    },
+    {
+      "step": "genuine-feeding-100-field-coverage",
+      "exit_code": 1,
+      "expected_compared_fields": 1684,
+      "log": "genuine-feeding-100-compare.log",
+      "parse_error": null
+    },
+    {
+      "step": "genuine-additional-checkpoints-completeness",
+      "exit_code": 1,
+      "expected_outputs": 21,
+      "actual_rows": 21,
+      "log": "genuine-additional-comparisons.json"
+    },
+    {
+      "step": "packaged-native-desktop",
+      "exit_code": 1,
+      "seconds": 142.7646806,
+      "executable": "dotnet.exe",
+      "arguments": [
+        "test",
+        "modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj",
+        "-c",
+        "Release",
+        "--no-build",
+        "--blame-hang-timeout",
+        "10m",
+        "--blame-hang-dump-type",
+        "none",
+        "--logger",
+        "trx;LogFileName=desktop.trx",
+        "--results-directory",
+        "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass61",
+        "--disable-build-servers",
+        "-m:1",
+        "-nr:false",
+        "-p:UseSharedCompilation=false"
+      ],
+      "log": "packaged-native-desktop.log",
+      "invocation_error": null,
+      "stderr_log": null
+    }
+  ],
+  "collector_validation_issues": [],
+  "repair_drafts_authored_by_collector": false,
+  "admission_created": false,
+  "gpu_or_capacity_executed_by_this_cpu_runner": false,
+  "evidence": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-body-1.log",
+      "sha256": "3C073BE2C11191E5CA7EF8FEC6E164AAEF2C8D27A600EAAD9397674406853FB4",
+      "bytes": 468
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-body-10.log",
+      "sha256": "6FB54C5F488655EE356EDD076EEE68AD842BF5F605D8570916156FE444AD664B",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-body-100.log",
+      "sha256": "27D1B4C1B7563281100EB4ACD5849F9C63B8A9DC5ACA1AA96188411206B30297",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-checkpoints.json",
+      "sha256": "00ACB86BCF4558E2E70EB7E57C3758DF18C43A307FB111F6CE0AAA7AC75E0757",
+      "bytes": 11838
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-chloroplast-1.log",
+      "sha256": "53DF9FC789B11A1314C2CA5270ECD79F116A9AB6FB297A2CB9D382D27C3BB7F3",
+      "bytes": 475
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-chloroplast-10.log",
+      "sha256": "1327CD7F84E0A8B18ED8EA0D8B48416B84E0AF4F3571CE824BF1CF05F93BBEDF",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-1.log",
+      "sha256": "5F92A4ADDC2B971252D168FF0B5A4FD1E58D5CBD765DF69BBE56BDE0EE0CAA82",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-10.log",
+      "sha256": "BACA1EEE50C17F8C621E8CC5F701E2B264E66A2361C976457A26FB9630988626",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-100.log",
+      "sha256": "4766E43C626E2EBCE805B195C04DB5D91E251B4CE54F41778259A043E1598749",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-contacts-11.log",
+      "sha256": "D629D50724195B7DB8A867C62B136A1FBBC9A14683D906C047923625FA5B0B03",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-feeding-1.log",
+      "sha256": "33B5D7838DF8B586C43D2D053F66B890B8A2B03667D52DF6403EE67589C39CE9",
+      "bytes": 471
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-feeding-10.log",
+      "sha256": "58B370AC5A31538B129DB07DEC004EED4C96FDFEF5ED2DD703CB86E011AD0A39",
+      "bytes": 475
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-feeding-100.log",
+      "sha256": "9ACC9332D005F3534D6809C3BB1A419F87627C23D68AD46D5981E2BC4317EEAA",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-fixed-1.log",
+      "sha256": "42808E140E9B4660F033971E253C94CF72CFFC1703FD97C8C445069DED3FDD29",
+      "bytes": 469
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-fixed-10.log",
+      "sha256": "8AFF18F3A9111B20C459DE47637BE18EC5145EB1ECBBC2E62AF24D2A69DA4F60",
+      "bytes": 473
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-fixed-100.log",
+      "sha256": "26CB6878618A46767F2CA37FBE6AEF29DAE2C013344F5AEBA85FB5AE907B1884",
+      "bytes": 477
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-inputs.json",
+      "sha256": "BE58C839D2AD6D978180D9981DDDFF234F1D40F48B3439FA1944FF07EE46E56F",
+      "bytes": 3050
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-1.log",
+      "sha256": "FC7B21487385908D740256A0A8E47B5C84E34791653CA523FC841B42DD69DA36",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-10.log",
+      "sha256": "35A0BE0A00A632CA5F67EEE4886CB5E7A16BC94E1D7DAF30BE9801DCA7EE1E4E",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-100.log",
+      "sha256": "07DC999ECF66D538467F8C7DB364AF4750163DF37BA0F923984098894932C58C",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-movement-102.log",
+      "sha256": "9F6D2721F60B47278857C327705AA1ABE365EE545302654F83A614FE20FD6C57",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-reproduction-1.log",
+      "sha256": "35E312AA7A3D957AC63D4F05FF423CB8EC8A5F9DC99C29EF9E2EC20247DAA943",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-reproduction-10.log",
+      "sha256": "CB80607C6C8C5E929FFEF15088CACE09673CB23A6761961D1B1E7D1445D805F6",
+      "bytes": 480
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-reproduction-100.log",
+      "sha256": "5C54193C870C83625A3B1F7F43ADF4332E44977F86E5757D4526C79434937A92",
+      "bytes": 484
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-ties-1.log",
+      "sha256": "57E1D097BEFD5F4493D3EA6FB32C02D50784BD9A1992D9AA8C2EFAF444760CF7",
+      "bytes": 468
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-ties-10.log",
+      "sha256": "B72C6DAA1CC9A72BEFBC2FB68E9C80666641B80057EBF02EE97E740A39248D0C",
+      "bytes": 472
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/candidate-ties-100.log",
+      "sha256": "A36FCCC03CD9446A29A936D21039929FDF40E9F8236C694EE5F30A817F797746",
+      "bytes": 476
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/cli-build-identity.json",
+      "sha256": "1A01DC1242D0AD7B792283BFB95ACE72A598D5DDED45BDA4CE0939D459E5B50A",
+      "bytes": 143
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/cli-build.log",
+      "sha256": "ECAA2636DEA4C89C69F7CB36EA3BC82BB4F5B12C4B28BB1ECE38189B5EF076A8",
+      "bytes": 63
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/core.trx",
+      "sha256": "9B3804B21E257E77702B4114C3C1832EFDD275D9F5D389F114BCF49708458084",
+      "bytes": 496769
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/cpu-rust-workspace.log",
+      "sha256": "98CF65135905A7B818F1F79002FFA0CE4C6B40ACE999FD2A62AF079E5957F45E",
+      "bytes": 129071
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/desktop-core.log",
+      "sha256": "45BE4E053FE21D9B0A057F97E4BE713AFF5DA754E455FB31EA19B42FEC3CDC60",
+      "bytes": 2152
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/desktop-test-build.log",
+      "sha256": "CB315A53E7DF0A618427A6C804EA332CE6C947C1F166380808E53DA50499581F",
+      "bytes": 34061
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/desktop.trx",
+      "sha256": "24D8A334C4FC93A235E9450B12A0C8ECB5934A2F6A46FC4A2C38BB2DBF56FEE2",
+      "bytes": 340139
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/format-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-additional-candidate-checkpoints.json",
+      "sha256": "9168EE793F2B6CBC5F5E36EDBF3E675054A10E1C6D3579C599A0792231E409FF",
+      "bytes": 1821
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-additional-comparisons.json",
+      "sha256": "C1A6DD8ACB21CA8B9A6F05F4DF91FEACC0586E38C911BA8F61BEB5B304E99331",
+      "bytes": 18137
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-1-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-10-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-100-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-body-100-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-1-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-10-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-chloroplast-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-1-compare.log",
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-10-compare.log",
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-100-compare.log",
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-100-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-11-compare.log",
+      "sha256": "FA8CAEA09ECA0F1734ADDA00A096DEC82E65EA510F534665F4E465F57271081A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-contacts-11-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-1-compare.log",
+      "sha256": "316AB540FABEBFBE4DAFBDB2759BFB13EFFBC9F7C7B136AD392E004C84E5DC9A",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-10-compare.log",
+      "sha256": "38ABB2EE6505243886CB98849AFC27A00C5590CA9FD2FE08B8AA71661E0FBFE8",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-100-compare.log",
+      "sha256": "E102F5C1060B6CA002AAD9B7FC7E64179DBCFB76DF5EB498E474C86576B7D2A7",
+      "bytes": 6910
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-feeding-100-compare.stderr.log",
+      "sha256": "7BFB4BD82811A6312624B345C9E6FB25F42B1971FB31B92933AF7F36BB0E2168",
+      "bytes": 66
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-1-compare.log",
+      "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-10-compare.log",
+      "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-100-compare.log",
+      "sha256": "28BC38001BD910746704B8098D84A4325CB9E8F74FC3DC1EE270D963F8309DA9",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-fixed-100-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-1-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-10-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-100-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-100-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-102-compare.log",
+      "sha256": "E651F1636DA4A22023FC0BEF86E2660F4C7E64E8EA02B697CE865C0DC66D86DE",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-102-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-movement-comparisons.json",
+      "sha256": "D595C3887BA30425658AF8F12B365573B1E8536A409FA86D7CD1DEB90E995DDA",
+      "bytes": 3711
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reference-provenance.json",
+      "sha256": "721F8E66102DD8350EFA68B37FEBBFF004897A1A5DE40AF5CF5922DBFDDF226D",
+      "bytes": 11661
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-1-compare.log",
+      "sha256": "0096252C5112563F6EF42EFBDB54B49586BF684A3B3E7194B0540209108F9C78",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-10-compare.log",
+      "sha256": "A2CC03A8209561A163A2F919147A35373FE1EE77F75DE2171D13B2E076A526FF",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-100-compare.log",
+      "sha256": "A2CC03A8209561A163A2F919147A35373FE1EE77F75DE2171D13B2E076A526FF",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-reproduction-100-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-1-compare.log",
+      "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-1-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-10-compare.log",
+      "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-10-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-100-compare.log",
+      "sha256": "E2F793860C50A0FA938D1C1EC1824A6F9E075F59ABD10694F1AD1B158157DB6B",
+      "bytes": 623
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/genuine-ties-100-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/accessibility-preferences.png",
+      "sha256": "ADF7CB154537371AF1024E65D05F27FB448DDE6267F88ED39D3E1C5A9F0EC95B",
+      "bytes": 79783
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/advanced-initial.png",
+      "sha256": "EFC4CBDB17AB87F60999F7817D9D496A43DEFF7C084711FCF2749376DE33221E",
+      "bytes": 56309
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/db24832-world06-shape-editor.png",
+      "sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+      "bytes": 26541
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/dna-exercised.png",
+      "sha256": "297705B85067242A818BD613438FC2BC63D21306990078BC88EBB344858FCEAE",
+      "bytes": 11938
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/dna-initial.png",
+      "sha256": "EF9FC8ED05D412C321D3CCB42596709609D7A4460B4591F11E341DA858978C99",
+      "bytes": 9264
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/feeding-settings-controls.png",
+      "sha256": "5AC7CC75EFE5B4E4CF68D1A0ECF61E23A9F06ED27C4343B1C04F4A4253B770C6",
+      "bytes": 48561
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/final-tools-visual.png",
+      "sha256": "4A2C707748B131DA57FA0752CF6597086D842FDB100FB3B6DE4B10B738364FDB",
+      "bytes": 17732
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/global-settings-find-best-weight.png",
+      "sha256": "51BCB137FDDF146E802193664973D44D114A06CFFC3E2D37845900D0D4BE7888",
+      "bytes": 48214
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/global-settings-four-tabs.png",
+      "sha256": "708F87E0A9C331183634187481A5E6CFA7B38270A99456ACEB3F585518E81181",
+      "bytes": 48228
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/global-settings-recognition-fudging.png",
+      "sha256": "AA0FFBF8F6832DEE93980AE1418534FDE71C233D00F6C9700EA4AACB4B11F096",
+      "bytes": 36672
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/graph-inline-history.png",
+      "sha256": "39A1E883663A6233F0BB00602233263562362BB23991E7848E42C68B5392314E",
+      "bytes": 136418
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/io05-autosave-safemode-recovery.png",
+      "sha256": "DAEC25263D751C29BB39581420FFA9E4B8AC79C8AFA657A9617B997BC3FE4EB4",
+      "bytes": 92448
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/menu-05-robot-find-best.png",
+      "sha256": "0B865FBAFB7CFC047D6C605CCB923CE2ECE779C05181CDEF7692119E72F783F6",
+      "bytes": 86876
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-species-graph.png",
+      "sha256": "D9892EC6DA6605D1E21EBB06DFAAFD1B837C80C22488BDECAD27B19038BD024F",
+      "bytes": 12602
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/robot-details.png",
+      "sha256": "C3315D810C6A8B0D0FAA3FF178AB052B3CB6081399F979A0FB8C4315881D8B1A",
+      "bytes": 71526
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/run-01-classic-reset.png",
+      "sha256": "44DAAEF5AD2368F2A9FC96F02615B77AB706DFC7BBD66CB066604540F33E1D3A",
+      "bytes": 87817
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-before-kill.png",
+      "sha256": "8C3B3074BA0497EB2B89C272933DC27F0E9257DD21872692F8DC8A7FB5900555",
+      "bytes": 90485
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-exercised.png",
+      "sha256": "EE6FEF1196B73969369325FF91489E4F59A1B39DDCFF245F73AF6D8959C67B13",
+      "bytes": 115954
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-header-wide-1280.png",
+      "sha256": "014D689DB26A265368CB288EC20E0259F865EDADB3C61969BED9799851629773",
+      "bytes": 88789
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-header-wide-1500.png",
+      "sha256": "C5128FB9C4A6E4B8CFC84534D51FB13560FBA9324B57C56B418A4266CC3728B1",
+      "bytes": 90893
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/runtime-initial.png",
+      "sha256": "AB1575F014D7D9DADBB7E67203126802FCBD20E982E8F96C7F3FE7B56CBBFC3C",
+      "bytes": 89697
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/set-01-setup-working-copy.png",
+      "sha256": "92B44129C39B714C97FFB4EFEA10C43871558F50236C92FFD728503B4809A7CC",
+      "bytes": 70444
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/set07-restart-league.png",
+      "sha256": "FF17B130D56DD5B64925B5918FCF78B15523163B583959058BBA343A529EB4BF",
+      "bytes": 103635
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/setup-exercised.png",
+      "sha256": "5962D934C8C2C3D97F91DCC0A36270C0E2799E466BBE9434558C8850C4DC3CC2",
+      "bytes": 75373
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/setup-initial.png",
+      "sha256": "855E7C9F54701B816673D25CFA929E423F7ECC5462E8B1D1E4F1590BB256169E",
+      "bytes": 69932
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/shell-dashboard-1500x900.png",
+      "sha256": "8F85E39256FC64C533B88D56BC5E0A5C3581B5C18E61EABE229BB224B9FB1B5C",
+      "bytes": 85980
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/teleporter-editor-exercised.png",
+      "sha256": "60B3450BA1D7F4E105DE5F0AB33486779F22CE3EBCE588D60D2FAE91994D9CC7",
+      "bytes": 39299
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/toolbar-1280x900.png",
+      "sha256": "C74B0E83ED650DC2D7E6D277F220BF095AC4C3B8D978BF02527E2F784FAD693F",
+      "bytes": 87429
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-insertion-exercised.png",
+      "sha256": "B5889EFCF63D738F097718C189532F49F60D554B3F5EF25E8752D6C15FA6F974",
+      "bytes": 78133
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-shot-flash-palette.png",
+      "sha256": "EC14F0CCF5E0530B7D7BB8E36377D978C744EA21EC8BEB61043C12E4146EB7BC",
+      "bytes": 6982
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-shot-impacts-off-retains-shots.png",
+      "sha256": "C8DD3F98D3D9CC3F618D90FD9A9E2F962425CC63F8C1FF7C1FCE9E68EBE955FE",
+      "bytes": 3590
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/gui/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/native-dll-identity-before.json",
+      "sha256": "FDB3B1B044159F70FB7E0C48CA04FA2667BC7F66A5F67AC45530A58234FA9356",
+      "bytes": 258
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/native-dll-identity.json",
+      "sha256": "FDB3B1B044159F70FB7E0C48CA04FA2667BC7F66A5F67AC45530A58234FA9356",
+      "bytes": 258
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-compare.log",
+      "sha256": "2C265516068DEB8904D8FE81DC04A21E169507D1A3ABA4849857932E41F3DE38",
+      "bytes": 625
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-compare.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-raw-preservation.json",
+      "sha256": "A77FCFCE2E14D60EFBC86F889A5E2A3412F582E57F63659BE8C00E2A9BF1C6BD",
+      "bytes": 970
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/original-zero-cycle-replay.log",
+      "sha256": "7A9FFCDB2D93296D8AD2B7AABA49074CFF95C2EC9BF2FBD7F11379B83E0FD54D",
+      "bytes": 505
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/package-assets.json",
+      "sha256": "882741E870837C486D54938151D4818A0118C84828FF719DF93EDDBCD856F6F8",
+      "bytes": 17538
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/package-smoke.json",
+      "sha256": "DE7F7EEE107116C1F2E5C68F942EC3C80535AE6D039F2B9FCDB2AE32CE972B79",
+      "bytes": 116
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/package-smoke.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/packaged-native-desktop.log",
+      "sha256": "24FE90E8395DFD7C643D8F4385AD52C95981048FEF4BDE2F7BB042B3659C87CF",
+      "bytes": 1908
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/preserved-wip-image-before.json",
+      "sha256": "58E1EACA812EB424217D86D5C882D61981D961E0711D321E8B33F5C55B338C33",
+      "bytes": 124
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/preserved-wip-image.json",
+      "sha256": "452634C182E385790B95FFC1321105A66E70966ACD74F9A4B9419C4DB7EE2917",
+      "bytes": 479
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/results.json",
+      "sha256": "15DB53B4E944FA70097C1B63FCFF62FE708E271500750FB69DE46F888182383A",
+      "bytes": 48627
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/runner-identity.json",
+      "sha256": "C542568C046C6DC03229E46F4488E1019660F0FC254ADB08B63692C7922BF8DE",
+      "bytes": 741
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/rust-target-results.json",
+      "sha256": "140004E81F7D8F63B3781179195CBDB2740186DDBCF04593F82F2042D87AD568",
+      "bytes": 64299
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/source-check.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "bytes": 0
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/source.json",
+      "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+      "bytes": 109886
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/state.json",
+      "sha256": "EE64AAF22D456969882FDE3FBDEB0F27B5915B1A85A2967218E3A611FBA80241",
+      "bytes": 787
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/strict-clippy.log",
+      "sha256": "6DA1793768D7DA459259115DEFF58D826F43770EA4AE4381B9B2370FDE581DC7",
+      "bytes": 290
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/user-rust-cycle281.sim",
+      "sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E",
+      "bytes": 2091837
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/windows-publish.log",
+      "sha256": "BB2E7000ED75CA50FE5B27ADE372DDB646BA51C0205180032B2548E8E033738D",
+      "bytes": 2752
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/workspace-target-expectations.json",
+      "sha256": "8157D021E9FED67C621F1BBA982175B1A59CD447DE9532E68D58D73855B6C53B",
+      "bytes": 855
+    }
+  ],
+  "boundary": "Source61 ordinary CPU evidence only. Dependency/no-terminal-TRX counts remain null. No canonical summary.json, CPU-ready/hardware admission, physical GPU proof or port-completion claim is created."
+}

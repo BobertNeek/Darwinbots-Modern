@@ -595,9 +595,9 @@ fn db_engine_command_batch_impl(
                 EngineCommand::ReadNativeSunChange => {
                     Ok(serde_json::json!(engine.read_native_sun_change()))
                 }
-                EngineCommand::ReadNativeProcessCaches => {
-                    Ok(serde_json::json!(engine.read_native_process_caches()))
-                }
+                EngineCommand::ReadNativeProcessCaches => engine
+                    .read_native_process_caches()
+                    .map(|caches| serde_json::json!(caches)),
                 EngineCommand::ExportSpeciesTemplateDna { species } => engine
                     .export_species_template_dna(crate::SpeciesId(*species))
                     .map(|dna| serde_json::json!({ "dna": dna })),
@@ -662,9 +662,9 @@ fn db_engine_command_batch_impl(
                 engine.set_native_sun_change(sun_change);
                 Ok(serde_json::Value::Null)
             }
-            EngineCommand::ReadNativeProcessCaches => {
-                Ok(serde_json::json!(engine.read_native_process_caches()))
-            }
+            EngineCommand::ReadNativeProcessCaches => engine
+                .read_native_process_caches()
+                .map(|caches| serde_json::json!(caches)),
             EngineCommand::SetNativeProcessCaches { caches } => engine
                 .set_native_process_caches(caches)
                 .map(|_| serde_json::Value::Null),
@@ -1327,7 +1327,7 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
             if !bytes.starts_with(b"DB3S") {
                 loaded.retain_native_global_preferences(engine.configuration());
                 loaded.inherit_native_gaussian_spare(engine);
-                if let Err(error) = loaded.inherit_native_process_caches(engine) {
+                if let Err(error) = loaded.inherit_native_process_caches_after_sim_load(engine) {
                     return fail(DbStatus::EngineError, error);
                 }
             }
@@ -1424,6 +1424,7 @@ mod tests {
         serde_json::from_value(serde_json::json!({
             "light_availability": light_availability,
             "shots_this_cycle": shots_this_cycle,
+            "repopulation_counter": 0,
             "energy": {
                 "ring": ring,
                 "current_index": current_index,
@@ -1446,8 +1447,10 @@ mod tests {
         let fresh_process = Engine::from_native_sim(&original_bytes).unwrap();
         assert_eq!(fresh_process.native_light_availability(), 0.0);
         let fresh_caches =
-            serde_json::to_value(fresh_process.read_native_process_caches()).unwrap();
+            serde_json::to_value(fresh_process.read_native_process_caches().unwrap()).unwrap();
         assert_eq!(fresh_caches["shots_this_cycle"], 0);
+        assert_eq!(saved.configuration().vegetation.repopulation_cooldown, 10);
+        assert_eq!(fresh_caches["repopulation_counter"], -10);
         assert_eq!(fresh_caches["death_poffs_enabled"], true);
         assert!(fresh_process.snapshot().death_poffs_enabled);
         assert_eq!(fresh_caches["energy"]["displayed"], 0);
@@ -1460,15 +1463,18 @@ mod tests {
         let mut current = Engine::new_native(EngineConfig::testing()).unwrap();
         let mut current_caches = native_cache_fixture(0.25, 109, 7, 37, 17);
         current_caches.death_poffs_enabled = false;
-        let current_context = serde_json::to_value(&current_caches).unwrap();
+        current_caches.repopulation_counter = Some(17);
+        let mut current_context = serde_json::to_value(&current_caches).unwrap();
         current.set_native_process_caches(current_caches).unwrap();
         assert_eq!(
             db_engine_load(&mut current, original_bytes.as_ptr(), original_bytes.len()),
             DbStatus::Ok
         );
         assert_eq!(current.native_light_availability(), 0.25);
+        // startloaded resets only this process counter to the newly loaded delay.
+        current_context["repopulation_counter"] = serde_json::json!(-10);
         assert_eq!(
-            serde_json::to_value(current.read_native_process_caches()).unwrap(),
+            serde_json::to_value(current.read_native_process_caches().unwrap()).unwrap(),
             current_context
         );
         assert_eq!(current.snapshot().stats.native_energy_displayed, Some(109));
@@ -1483,7 +1489,7 @@ mod tests {
         );
         assert_eq!(current.native_light_availability(), 0.75);
         assert_eq!(
-            serde_json::to_value(current.read_native_process_caches()).unwrap(),
+            serde_json::to_value(current.read_native_process_caches().unwrap()).unwrap(),
             saved_context
         );
         assert_eq!(
@@ -1609,7 +1615,12 @@ mod tests {
         assert_eq!(after_policy["death_poffs_enabled"], false);
         let resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
         assert!(!resumed.snapshot().death_poffs_enabled);
-        assert!(!resumed.read_native_process_caches().death_poffs_enabled);
+        assert!(
+            !resumed
+                .read_native_process_caches()
+                .unwrap()
+                .death_poffs_enabled
+        );
     }
 
     #[test]

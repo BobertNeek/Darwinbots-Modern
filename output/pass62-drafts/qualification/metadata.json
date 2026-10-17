@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "complete_authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T12:50:35.347Z",
+  "owner": "/root/recover_46_inventory",
+  "base_source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "files": [
+    {
+      "target_path": "output/qualify-native-roundtrip-pass62.ps1",
+      "new_file": true,
+      "base_path": "output/qualify-native-roundtrip-pass61.ps1",
+      "base_raw_sha256": "FD5AC09FE6BA7C6B986C96E875BEA8DEAB5331D1CFBA40AE388129652E0AC730",
+      "base_bytes": 58366,
+      "candidate_path": "output/pass62-drafts/qualification/candidate/output/qualify-native-roundtrip-pass62.ps1",
+      "candidate_raw_sha256": "C75F20122582DDD4EC357C3674C1F4784E5B4C1A95BE56F8E2D371661DBDE118",
+      "candidate_bytes": 58462
+    }
+  ],
+  "scope": {
+    "ordinary_outcomes": 94,
+    "rust_targets": 68,
+    "genuine_controls": 25,
+    "reference_only_fields": 55849,
+    "namespace_only_runner_derivation": true,
+    "comparison_stdout_stderr_logger_unchanged": true,
+    "source_and_proof_path": "native-roundtrip-pass62",
+    "candidate_directory": "output/native-oracle-candidate62",
+    "stop_marker": "output/STOP-native-pass62",
+    "cpu_state": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass62/state.json",
+    "managed_counts_from_final_manifest": true
+  },
+  "execution_gate": "Do not execute this provisional draft. All62 code/tests and C100 amendments must be finalized/reviewed/applied/frozen; exact final source manifest requires all62_code_and_tests_authored_frozen. Root owns application/commit/checks.",
+  "execution": {
+    "candidate_executed": false,
+    "powershell_parser": false,
+    "formatter": false,
+    "builds": false,
+    "tests": false,
+    "product_commands": false,
+    "ui": false,
+    "gpu": false,
+    "git_mutation": false,
+    "active_source_or_report_edits": false
+  },
+  "finalized_utc": "2026-10-17T13:11:55.305Z",
+  "declared_counts": {
+    "core": 314,
+    "desktop": 214,
+    "rust_targets": 68,
+    "rust_added_tests_vs61": 4,
+    "ordinary_local_outcomes": 94
+  }
+}

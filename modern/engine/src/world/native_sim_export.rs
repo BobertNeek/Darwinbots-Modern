@@ -895,6 +895,8 @@ mod tests {
         engine
             .spawn_at(LegacyDna::parse("stop").unwrap(), [900.0; 2])
             .unwrap();
+        // Both genuine removals below retain the packet and allocate 20 poffs.
+        engine.projectiles.reset_native_slots(100);
         let shot = engine
             .projectiles
             .spawn_energy_packet(owner, [700.0; 2], [0.0; 2], 10.0, 50.0)

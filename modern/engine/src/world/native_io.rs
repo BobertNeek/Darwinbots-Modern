@@ -333,6 +333,11 @@ impl Engine {
             "sun_position": tail.number("sun_position")?, "sun_range": tail.number("sun_range")?,
             "sun_change": tail.integer("sun_change")?, "repopulation_counter": 0,
         }))?;
+        engine
+            .vegetation_runtime
+            .initialize_native_loaded_repopulation(
+                engine.config.vegetation.repopulation_cooldown,
+            )?;
         engine.species.clear();
         engine.species_templates.clear();
         engine.subspecies_counters.clear();

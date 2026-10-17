@@ -431,6 +431,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.Equal(new[] { 101, 202, -303 }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.Energy.Displayed));
                 Assert.Equal(new ulong[] { 11, 17, 0 }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.ShotsThisCycle));
                 Assert.Equal(new[] { false, false, true }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.DeathPoffsEnabled));
+                Assert.Equal(new int?[] { 101, 202, -303 }, factory.CreatedSetups.Select(value => value.NativeProcessCaches!.RepopulationCounter));
                 await WaitFor(() => Equals(Named<Button>(finalWindow, "ToolbarSlot13").Content, "POFFS ON"));
                 Assert.True(Named<WorldViewport>(finalWindow, "Viewport").ShowDeathPoffs);
                 Assert.All(storage.LastStartWrites, bytes =>
@@ -445,7 +446,10 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     private static NativeProcessCachesSnapshot ProcessCaches(int marker, double light, ulong shotsThisCycle = 17, bool deathPoffsEnabled = false) =>
-        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle, deathPoffsEnabled);
+        new(light, new(Enumerable.Range(0, 101).Select(value => value * 7).ToArray(), 4, marker), shotsThisCycle, deathPoffsEnabled)
+        {
+            RepopulationCounter = marker,
+        };
 
     private static void AssertProcessCaches(NativeProcessCachesSnapshot expected, NativeProcessCachesSnapshot actual)
     {
@@ -455,6 +459,7 @@ public sealed class RenderedControlSurfaceAuditTests
         Assert.Equal(expected.Energy.Displayed, actual.Energy.Displayed);
         Assert.Equal(expected.ShotsThisCycle, actual.ShotsThisCycle);
         Assert.Equal(expected.DeathPoffsEnabled, actual.DeathPoffsEnabled);
+        Assert.Equal(expected.RepopulationCounter, actual.RepopulationCounter);
     }
 
     private static void AssertReadBeforeDisposeWithoutTicks(AuditEngineClient client, float? expected)

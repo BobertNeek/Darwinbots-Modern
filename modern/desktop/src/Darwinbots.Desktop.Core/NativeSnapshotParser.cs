@@ -186,7 +186,11 @@ public static class NativeSnapshotParser
             value.Range,
             value.Energy,
             value.ImpactFlash,
-            value.Color)).ToArray();
+            value.Color)
+        {
+            Alive = value.Alive,
+            Stored = value.Stored,
+        }).ToArray();
         var history = (native.History ?? []).Select(value => new HistorySampleSnapshot(
             value.Tick, value.Population, value.TotalEnergy, value.Births, value.Deaths, value.Mutations, value.ShotsFired)
         {
@@ -711,7 +715,11 @@ public static class NativeSnapshotParser
         [property: JsonPropertyName("kind")] int Kind,
         [property: JsonPropertyName("value")] int Value,
         [property: JsonPropertyName("impact_flash")] bool ImpactFlash,
-        [property: JsonPropertyName("color")] uint? Color = null);
+        [property: JsonPropertyName("color")] uint? Color = null)
+    {
+        [JsonPropertyName("alive")] public bool Alive { get; init; } = true;
+        [JsonPropertyName("stored")] public bool Stored { get; init; }
+    }
 
     private sealed record NativeHistorySample(
         [property: JsonPropertyName("tick")] ulong Tick,

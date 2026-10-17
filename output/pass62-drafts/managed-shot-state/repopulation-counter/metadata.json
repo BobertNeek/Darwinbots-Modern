@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "complete_authored_unapplied_unexecuted_counter_amendment",
+  "created_utc": "2026-10-17T13:00:11.024Z",
+  "base_source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pinned_files": 636
+  },
+  "preserved_initial_release": {
+    "file": "output/pass62-drafts/managed-shot-state/metadata.json",
+    "sha256": "165ABE3C3B02508BF15D5751B960E63FFC35D53832F6F62259E9E0633F6C6F23",
+    "bytes": 9671
+  },
+  "files": [
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "kind": "production",
+      "active_base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "BD63CB4BD9894BCE8FE88A978A8B4F47E9B1BB19890FB3E933AC212020E3AB61",
+        "bytes": 13179,
+        "manifest_pin_verified": true
+      },
+      "derived_from": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+        "sha256": "2EB86EC5B54AC8DEC5D30F5C1A527633E48B7B00DC62DF129A04BCD775D4C5FB",
+        "bytes": 13269
+      },
+      "supersedes_prior_candidate": true,
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+        "sha256": "95F3D3E595D45AD89AC442FCED4DD963F9FD4D153C7B72FD8D13E08A930DE3FD",
+        "bytes": 13531
+      },
+      "added_fact_rows_vs_frozen": 0,
+      "added_fact_rows_this_amendment": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "kind": "test",
+      "active_base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "93C66BB428772C627872DEBDC89EF0A0531636072ACBD48473FA6806BC6C36B3",
+        "bytes": 24340,
+        "manifest_pin_verified": true
+      },
+      "derived_from": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+        "sha256": "20F09FE6C9F2F4D7179F91913B4AFA0E4F824E1CBA29110E99BCCFCBEB4FF1F8",
+        "bytes": 26869
+      },
+      "supersedes_prior_candidate": true,
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+        "sha256": "702CABA3B759583DC42FF5530F5226A9C25907BA0CBF5F83F82305E2095B939C",
+        "bytes": 29141
+      },
+      "added_fact_rows_vs_frozen": 2,
+      "added_fact_rows_this_amendment": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "kind": "test",
+      "active_base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "9BF58294FE960915DBD04012EF61D2707CB2083ABB036C2FD7F92266E05BEB84",
+        "bytes": 29987,
+        "manifest_pin_verified": true
+      },
+      "derived_from": {
+        "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "sha256": "9BF58294FE960915DBD04012EF61D2707CB2083ABB036C2FD7F92266E05BEB84",
+        "bytes": 29987
+      },
+      "supersedes_prior_candidate": false,
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "sha256": "44C4A6969176F0344DD16C846A5B876A3342AFF0758777D44A79ED35BDDE0655",
+        "bytes": 30209
+      },
+      "added_fact_rows_vs_frozen": 0,
+      "added_fact_rows_this_amendment": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "kind": "test",
+      "active_base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "8257981DB3983DA766CC0DF0BCF0F7C8191AD2090B48A9BBB9C5ECEDF7BF7F25",
+        "bytes": 46066,
+        "manifest_pin_verified": true
+      },
+      "derived_from": {
+        "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "sha256": "8257981DB3983DA766CC0DF0BCF0F7C8191AD2090B48A9BBB9C5ECEDF7BF7F25",
+        "bytes": 46066
+      },
+      "supersedes_prior_candidate": false,
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "sha256": "02BA40A2845D70016E15425A1308281F3D5BA1C157F5C5E111E184707C13C779",
+        "bytes": 46818
+      },
+      "added_fact_rows_vs_frozen": 0,
+      "added_fact_rows_this_amendment": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "kind": "test",
+      "active_base": {
+        "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+        "sha256": "7364A34B585FC794D7EF2BC56D966627ACBF6532A0EEC01C6FF0D784DAD479EC",
+        "bytes": 136337,
+        "manifest_pin_verified": true
+      },
+      "derived_from": {
+        "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "sha256": "7364A34B585FC794D7EF2BC56D966627ACBF6532A0EEC01C6FF0D784DAD479EC",
+        "bytes": 136337
+      },
+      "supersedes_prior_candidate": false,
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/repopulation-counter/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "sha256": "756B50A34FB8EA56AAB9CDF56E1439E8F6BD4DCE1805D2A9AA836F11EB79F154",
+        "bytes": 136632
+      },
+      "added_fact_rows_vs_frozen": 0,
+      "added_fact_rows_this_amendment": 0,
+      "theory_rows_unchanged": true
+    }
+  ],
+  "scope": {
+    "amendment_paths": 5,
+    "production_paths": 1,
+    "test_paths": 4,
+    "superseded_initial_paths": 2,
+    "new_paths_vs_initial_release": 3,
+    "final_managed_union_paths": 10
+  },
+  "remaining_initial_candidates": [
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "sha256": "65A72147F58927941514590922FEADDBF49ACB60822B770CA2C4D0C8B7FC9107",
+        "bytes": 56004
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+        "sha256": "1D6D8E66E6D0E6EC88F8B118B55B2A834EC06564F6F0AFC877F2D2CB84AB7EFE",
+        "bytes": 40476
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/RobotDetailsWindow.cs",
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/src/Darwinbots.Desktop/Views/RobotDetailsWindow.cs",
+        "sha256": "19302117F6BA6E7F3C8338E36D0437F0616A62C5F932054F44C335B84C9912EA",
+        "bytes": 13462
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+        "sha256": "F0BB6CE0FD26A287FBFF5CBFAB1B05EE5F71C55283EB20AFAA7C9545BCB84FE1",
+        "bytes": 22413
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RobotDetailsRenderedTests.cs",
+      "candidate": {
+        "file": "output/pass62-drafts/managed-shot-state/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RobotDetailsRenderedTests.cs",
+        "sha256": "6357C23F4BC23FB59E5FD42559F327B42B78B54C102985591FE4EE5416F21231",
+        "bytes": 3866
+      }
+    }
+  ],
+  "contract": {
+    "wire": "repopulation_counter is optional signedInt32. Managed nullable init body property preserves existing4 positional cache constructor/deconstruct values; null is omitted when serializing, absent/null readsNone.",
+    "transport": "NativeEngineClient already directly serializes/deserializes NativeProcessCachesSnapshot, so no new serializer/client/config/session/UI production logic is needed.",
+    "same_process": "New/reset handoff retains the current native counter through the existing queued process-cache channel. None means no incoming counter authority.",
+    "native_sim": "Source startloaded resets cooldown=-RepopCooldown. Rust masks incoming repopulation_counter on nativeSIM inheritance, retaining other process caches. Managed native-load control uses incoming int.MinValue and checks the exact negated decoded header cooldown.",
+    "db3s": "Full DB3S restores its own saved counter, tested with positive23 and full Save byte equality. Fresh native readsSome0; portable and legacy missing context remainNone."
+  },
+  "test_census": {
+    "added_core_rows_this_amendment": 1,
+    "added_desktop_rows_this_amendment": 0,
+    "total_core_rows_added_vs61": 2,
+    "total_desktop_rows_added_vs61": 1,
+    "expected_core": 314,
+    "expected_desktop": 214,
+    "theory_and_inline_rows_unchanged": true,
+    "new_fact": "RepopulationCounterCachesKeepMissingNullAndSignedLongValuesOutsideSavedSetup",
+    "extended_existing_rows": [
+      "NativeProcessContextReadWaitsForEarlierWorkOnTheSameEngineThread Fact",
+      "NewClientInheritsOnlyItsExplicitGaussianSpareWithoutDrawingOrCouplingClients existing3 Theory rows",
+      "NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState existing2 Theory rows",
+      "NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices existing2 Theory rows",
+      "ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears Fact",
+      "Other existing rendered cache helper users now assert the added independent field; no new row"
+    ]
+  },
+  "assertions": [
+    "Cache missing/null remainsNone; serialization omits null, exact -2147483648/-10/0/17/2147483647 roundtrip, outsideInt32 values reject.",
+    "The new cache property is absent from saved Setup and EngineConfig.",
+    "Existing serialized engine New handoff retains-17 without RNG draw/read mutation and leaves independent fresh0.",
+    "NativeSIM resets incoming Long minimum to exactly negative saved header cooldown while other cache values are preserved.",
+    "DB3S loads its own positive23 counter and full encoded bytes remain identical.",
+    "Queued read after gated tick preserves-10 then0 with unchanged single-engine-thread/clock assertions.",
+    "Existing rendered New/reset handoffs retain101/202/-303 counter values without replaying initial context."
+  ],
+  "source_references": [
+    {
+      "file": "Darwinbots2/Vegs.bas",
+      "sha256": "0AF2A56CBD7FD14D67BC4AA7C6488470CE3C1B59C6739B6576F6DB15A929419E",
+      "bytes": 12059,
+      "lines": [
+        9,
+        36
+      ],
+      "purpose": "Public Long process-global cooldown, increment/threshold/subtraction cadence."
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+      "bytes": 104816,
+      "lines": [
+        1505,
+        1508
+      ],
+      "purpose": "startloaded assigns negativeRepCooldown."
+    }
+  ],
+  "rust_coordination": {
+    "owner": "/root/seeding_tournament_ui",
+    "read": "Native read returnsSome(checked effective signedLong), portableNone.",
+    "set": "Some overrides native runtime; None leaves current counter.",
+    "native_sim_handoff": "Masks counterNone before inheriting other old process caches.",
+    "execution_not_claimed": true
+  },
+  "verification": {
+    "all5_frozen_bases_match": true,
+    "all_derived_initial_candidates_preserved": true,
+    "static_only": true,
+    "active_apply": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "ui": false,
+    "gpu": false,
+    "git": false,
+    "subagents_spawned": false
+  },
+  "ownership": "All five amendment candidates released to root. Apply their overrides to the initial7 release; retain remaining5 original candidates unchanged. Final managed union10 paths, expectedCore314/Desktop214."
+}

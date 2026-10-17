@@ -115,7 +115,10 @@ public sealed class SimulationSessionTests
         using var release = new ManualResetEventSlim();
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var engine = new FakeEngineClient { NativeGaussianSpare = 1.25f };
-        var caches = new NativeProcessCachesSnapshot(0.125, new(Enumerable.Range(0, 101).ToArray(), 4, 123), 17, false);
+        var caches = new NativeProcessCachesSnapshot(0.125, new(Enumerable.Range(0, 101).ToArray(), 4, 123), 17, false)
+        {
+            RepopulationCounter = -10,
+        };
         engine.BeforeTick = () =>
         {
             started.SetResult();
@@ -148,6 +151,7 @@ public sealed class SimulationSessionTests
         Assert.Same(caches, fullContext.Caches);
         Assert.Equal(17UL, fullContext.Caches.ShotsThisCycle);
         Assert.False(fullContext.Caches.DeathPoffsEnabled);
+        Assert.Equal<int?>(-10, fullContext.Caches.RepopulationCounter);
         Assert.Equal(1ul, session.LatestSnapshot.Tick);
         Assert.Single(engine.ExecutionThreads);
         Assert.NotEqual(Environment.CurrentManagedThreadId, engine.ExecutionThreads.Single());
@@ -155,10 +159,11 @@ public sealed class SimulationSessionTests
         Assert.Single(engine.ExecutionThreads);
         engine.NativeGaussianSpare = null;
         Assert.Null(await session.ReadNativeGaussianSpareAsync());
-        engine.NativeProcessCaches = caches with { ShotsThisCycle = 0, DeathPoffsEnabled = true };
+        engine.NativeProcessCaches = caches with { ShotsThisCycle = 0, DeathPoffsEnabled = true, RepopulationCounter = 0 };
         var cleared = (await session.ReadNativeProcessStateAsync()).Caches;
         Assert.Equal(0UL, cleared.ShotsThisCycle);
         Assert.True(cleared.DeathPoffsEnabled);
+        Assert.Equal<int?>(0, cleared.RepopulationCounter);
         Assert.Equal(1ul, session.LatestSnapshot.Tick);
     }
 
