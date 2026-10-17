@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -361,21 +362,7 @@ public sealed partial class MainWindow : Window
                 ToolTipText = "Darwinbots Modern",
                 IsVisible = !_globalSettings.Main.HideTray,
             };
-            var menu = new NativeMenu();
-            var restore = new NativeMenuItem("Restore Darwinbots");
-            restore.Click += (_, _) => RestoreFromTray();
-            _trayIgnoreErrorsItem = new NativeMenuItem("Ignore errors")
-            {
-                ToggleType = MenuItemToggleType.CheckBox,
-                IsChecked = _diagnostics.IgnoreErrors,
-            };
-            _trayIgnoreErrorsItem.Click += (_, _) => SetIgnoreErrors(!_diagnostics.IgnoreErrors);
-            var exit = new NativeMenuItem("Exit");
-            exit.Click += (_, _) => Close();
-            menu.Add(restore);
-            menu.Add(_trayIgnoreErrorsItem);
-            menu.Add(exit);
-            trayIcon.Menu = menu;
+            trayIcon.Menu = CreateTrayMenu();
             trayIcon.Clicked += (_, _) => RestoreFromTray();
 
             var icons = new TrayIcons();
@@ -388,6 +375,37 @@ public sealed partial class MainWindow : Window
             // Tray support is optional on headless and desktop environments without a tray host.
             _trayIcon = null;
         }
+    }
+
+    private NativeMenu CreateTrayMenu()
+    {
+        var information = new NativeMenu();
+        foreach (var index in new[] { 5, 7, 1, 2, 3, 4 })
+        {
+            var statistic = new NativeMenuItem { IsEnabled = false };
+            statistic.Bind(NativeMenuItem.HeaderProperty, new Binding(nameof(StatusPanelViewModel.Display))
+            {
+                Source = _viewModel.StatusPanels[index],
+            });
+            information.Add(statistic);
+        }
+
+        var menu = new NativeMenu();
+        menu.Add(new NativeMenuItem("Show Information") { Menu = information });
+        var restore = new NativeMenuItem("Restore Darwinbots");
+        restore.Click += (_, _) => RestoreFromTray();
+        menu.Add(restore);
+        _trayIgnoreErrorsItem = new NativeMenuItem("Ignore errors")
+        {
+            ToggleType = MenuItemToggleType.CheckBox,
+            IsChecked = _diagnostics.IgnoreErrors,
+        };
+        _trayIgnoreErrorsItem.Click += (_, _) => SetIgnoreErrors(!_diagnostics.IgnoreErrors);
+        menu.Add(_trayIgnoreErrorsItem);
+        var exit = new NativeMenuItem("Exit");
+        exit.Click += (_, _) => Close();
+        menu.Add(exit);
+        return menu;
     }
 
     private static WindowIcon CreateTrayIcon()

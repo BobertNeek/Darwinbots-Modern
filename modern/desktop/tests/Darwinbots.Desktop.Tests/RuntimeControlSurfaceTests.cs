@@ -24,6 +24,53 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class RuntimeControlSurfaceTests
 {
     [Fact]
+    public async Task TrayInformationTracksLiveStatisticsAndClearsThemAfterLoadingAnEmptyWorld()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            try
+            {
+                var menu = (NativeMenu)typeof(MainWindow)
+                    .GetMethod("CreateTrayMenu", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .Invoke(window, null)!;
+                Assert.Equal(["Show Information", "Restore Darwinbots", "Ignore errors", "Exit"],
+                    menu.Items.Cast<NativeMenuItem>().Select(item => item.Header));
+                var information = ((NativeMenuItem)menu.Items[0]).Menu!;
+                var statistics = information.Items.Cast<NativeMenuItem>().ToArray();
+                Assert.Equal(6, statistics.Length);
+                Assert.All(statistics, item => Assert.False(item.IsEnabled));
+
+                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
+                viewModel.Update(new EngineSnapshot(75, 2, "CPU",
+                [
+                    new OrganismSnapshot(1, 0, [100f, 100f], [0f, 0f], 100, 0, Chloroplasts: 4),
+                    new OrganismSnapshot(2, 0, [200f, 200f], [0f, 0f], 100, 0, Vegetable: true, Chloroplasts: 8),
+                ])
+                {
+                    NativeCycle = 42,
+                    MutationSettings = new(true, 2.5f),
+                    Stats = SimulationStatsSnapshot.Empty with { Births = 9 },
+                });
+                await WaitFor(() => statistics[0].Header == "Cycles 42");
+                Assert.Equal(["Cycles 42", "Mut 2.5x", "Tot 2", "Bots 1", "Chlr 12", "Born 9"],
+                    statistics.Select(item => item.Header));
+
+                viewModel.Update(new EngineSnapshot(1, 0, "CPU", [])
+                {
+                    NativeCycle = 0,
+                    MutationSettings = new(false, 0),
+                });
+                await WaitFor(() => statistics[0].Header == "Cycles 0");
+                Assert.Equal(["Cycles 0", "Mut 0x", "Tot 0", "Bots 0", "Chlr 0", "Born 0"],
+                    statistics.Select(item => item.Header));
+                return 0;
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task HistoricShortcutMenuItemsOwnAndDispatchConflictingGestures()
     {
         var engine = new RecordingEngineClient();
