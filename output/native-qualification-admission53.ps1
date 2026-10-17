@@ -9,6 +9,9 @@ function Read-NativeCpuAdmission53([string]$Repo, [string]$Source) {
     $markerBytes = [IO.File]::ReadAllBytes($path)
     $markerHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($markerBytes))
     $marker = [Text.UTF8Encoding]::new($false, $true).GetString($markerBytes) | ConvertFrom-Json
+    if ($marker.schema_version -eq 5) {
+        return Read-NativeFreshCpuAdmission55 $repoAbsolute $Source $path $markerHash $marker
+    }
     if ($marker.schema_version -ne 4 -or $marker.source_head -cne $Source -or
         $marker.qualification_method -cne 'source_equivalent_full_cpu52_plus_fresh_cli53_and_desktop_package') {
         throw 'Schema4 exact-final-source CPU52 plus fresh CLI53 qualification is required.'
@@ -307,4 +310,239 @@ function Enter-NativeQualificationLease53([string]$Repo, [string]$Source, [strin
         $stream.Flush($true)
         return $stream
     } catch { $stream.Dispose(); throw }
+}
+
+# Schema4 above remains the retained52/freshCLI53 route. Schema5 requires a
+# new full workspace at this exact source, with fresh Core/Desktop/package.
+function Read-NativeFreshCpuAdmission55([string]$Repo, [string]$Source, [string]$MarkerPath, [string]$MarkerHash, $Marker) {
+    $prefix = $Repo + [IO.Path]::DirectorySeparatorChar
+    function Assert-FreshInteger55($Value, [string]$Label, [long]$Minimum = 0) {
+        if ($null -eq $Value -or $Value -is [bool] -or $Value -isnot [ValueType] -or
+            ![double]::IsFinite([double]$Value) -or $Value -lt $Minimum -or
+            $Value -gt [int]::MaxValue -or [Math]::Truncate([double]$Value) -ne $Value) {
+            throw ('Missing or invalid integer: ' + $Label)
+        }
+    }
+    function Assert-FreshTrue55($Value, [string]$Label) {
+        if ($Value -isnot [bool] -or $Value -ne $true) { throw ('Fresh qualification requires typed true: ' + $Label) }
+    }
+    function Assert-FreshRustCounts55($Counts, [string]$Label, [bool]$RequirePass) {
+        foreach ($field in @('passed', 'failed', 'ignored', 'filtered_out')) {
+            Assert-FreshInteger55 $Counts.$field ($Label + ':' + $field)
+        }
+        if ($Counts.failed -ne 0 -or $Counts.ignored -ne 0 -or ($RequirePass -and $Counts.passed -le 0)) {
+            throw ($Label + ' has failed, ignored, or missing passing tests.')
+        }
+    }
+    function Resolve-FreshPin55($Pin) {
+        if ($Pin.file -isnot [string] -or [string]::IsNullOrWhiteSpace($Pin.file) -or
+            [IO.Path]::IsPathRooted($Pin.file) -or $Pin.sha256 -isnot [string] -or $Pin.sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+            throw 'Fresh qualification requires relative paths and exact SHA256 pins.'
+        }
+        $absolute = [IO.Path]::GetFullPath((Join-Path $Repo $Pin.file))
+        if (!$absolute.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) -or
+            !(Test-Path -LiteralPath $absolute -PathType Leaf)) { throw ('Fresh pin escapes the checkout or is missing: ' + $Pin.file) }
+        $bytes = [IO.File]::ReadAllBytes($absolute)
+        $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))
+        if ($hash -ne $Pin.sha256) { throw ('Fresh evidence/source pin changed: ' + $Pin.file) }
+        return [ordered]@{path=$absolute;sha256=$hash;bytes=$bytes}
+    }
+    $allPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $evidence = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    $sources = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+    Assert-FreshInteger55 $Marker.batch 'batch' 55
+    $batch = [int]$Marker.batch
+    if ($Marker.source_head -cne $Source -or
+        $Marker.qualification_method -cne 'fresh_full_cpu_workspace_and_core_desktop_package') {
+        throw 'Schema5 requires a fresh full CPU workspace at the exact final source.'
+    }
+    foreach ($flag in @('cpu_workspace_passed', 'core_passed', 'desktop_passed', 'package_passed',
+            'source_qualification_passed', 'core_fresh_invocation', 'desktop_fresh_invocation',
+            'package_fresh_invocation', 'source_qualification_fresh_invocation')) {
+        Assert-FreshTrue55 $Marker.$flag $flag
+    }
+    Assert-FreshInteger55 $Marker.source_file_count 'source_file_count' 156
+    if (@($Marker.source_files).Count -ne $Marker.source_file_count -or @($Marker.evidence).Count -lt 6) {
+        throw 'Fresh qualification is missing source or sealed evidence pins.'
+    }
+    foreach ($pin in @($Marker.evidence)) {
+        $resolved = Resolve-FreshPin55 $pin
+        if (!$allPaths.Add($resolved.path)) { throw 'Duplicate canonical fresh evidence/source path.' }
+        $evidence.Add($resolved.path, $resolved)
+    }
+    foreach ($pin in @($Marker.source_files)) {
+        $resolved = Resolve-FreshPin55 $pin
+        if (!$allPaths.Add($resolved.path)) { throw 'Duplicate canonical fresh evidence/source path.' }
+        $sources.Add($resolved.path, $resolved.sha256)
+    }
+    function Read-FreshEvidence55($Pin, [string]$Label) {
+        $resolved = Resolve-FreshPin55 $Pin
+        if (!$evidence.ContainsKey($resolved.path) -or $evidence[$resolved.path].sha256 -ne $Pin.sha256) {
+            throw ('Fresh evidence must be pinned explicitly: ' + $Label)
+        }
+        return $resolved
+    }
+    function Read-FreshJson55($Pin, [string]$Label) {
+        $resolved = Read-FreshEvidence55 $Pin $Label
+        return ([Text.UTF8Encoding]::new($false, $true).GetString($resolved.bytes) | ConvertFrom-Json)
+    }
+    $proof = 'docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass' + $batch + '/'
+    if ($Marker.source_manifest.file -cne ('output/native-roundtrip-pass' + $batch + '-source.json') -or
+        $Marker.rust_result.file -cne ($proof + 'rust-target-results.json') -or
+        $Marker.summary.file -cne ($proof + 'summary.json') -or
+        $Marker.core.trx.file -cne ($proof + 'core.trx') -or
+        $Marker.desktop.trx.file -cne ($proof + 'desktop.trx') -or
+        $Marker.genuine_movement.file -cne ($proof + 'genuine-movement-comparisons.json')) {
+        throw 'Fresh qualification must use its own canonical source/Rust/summary/TRX/original-comparison receipts.'
+    }
+    $manifest = Read-FreshJson55 $Marker.source_manifest 'source manifest'
+    if ($manifest.parent_head -cne $Source -or $manifest.qualification_state -cne ('all' + $batch + '_code_and_tests_authored_frozen') -or
+        @($manifest.files).Count -ne $sources.Count) { throw 'Fresh source manifest has the wrong origin or source set.' }
+    $manifestPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($pin in @($manifest.files)) {
+        $resolved = Resolve-FreshPin55 $pin
+        if (!$manifestPaths.Add($resolved.path) -or !$sources.ContainsKey($resolved.path) -or $sources[$resolved.path] -ne $resolved.sha256) {
+            throw 'Fresh source pins differ from the exact frozen manifest.'
+        }
+    }
+    $rust = Read-FreshJson55 $Marker.rust_result 'full Rust target result'
+    if ($rust.schema_version -ne 1 -or $rust.batch -ne $batch -or $rust.state -cne 'passed' -or $rust.source_head -cne $Source -or
+        $rust.source_manifest.file -cne $Marker.source_manifest.file -or $rust.source_manifest.sha256 -ne $Marker.source_manifest.sha256) {
+        throw 'Fresh Rust target receipt has the wrong origin or manifest.'
+    }
+    Assert-FreshTrue55 $rust.full_workspace_passed 'Rust full_workspace_passed'
+    Assert-FreshTrue55 $rust.invocation.fresh_full_workspace_invocation 'Rust fresh_full_workspace_invocation'
+    Assert-FreshTrue55 $rust.invocation.hardware_filtered 'Rust hardware_filtered'
+    Assert-FreshInteger55 $rust.invocation.exit_code 'Rust exit_code'
+    if ($rust.invocation.exit_code -ne 0 -or
+        (@($rust.command) -join '|') -cne 'test|--release|--workspace|--no-fail-fast|--|--skip|gpu|--skip|switch|--nocapture|--test-threads=1') {
+        throw 'Fresh Rust requires the successful full hardware-filtered workspace invocation.'
+    }
+    Assert-FreshInteger55 $rust.expected_distinct_targets 'Rust expected targets' 67
+    Assert-FreshInteger55 $rust.total_distinct_targets 'Rust actual targets' 67
+    if ($rust.total_distinct_targets -ne $rust.expected_distinct_targets -or @($rust.all_targets).Count -ne $rust.total_distinct_targets) {
+        throw 'Fresh Rust must contain every expected distinct target.'
+    }
+    $targetKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $sums = @{passed=[long]0;failed=[long]0;ignored=[long]0;filtered_out=[long]0}
+    foreach ($target in @($rust.all_targets)) {
+        if ($target.package -isnot [string] -or [string]::IsNullOrWhiteSpace($target.package) -or
+            $target.name -isnot [string] -or [string]::IsNullOrWhiteSpace($target.name) -or
+            $target.kind -cnotin @('lib', 'bin', 'test', 'doctest')) { throw 'Fresh Rust target identity is invalid.' }
+        $name = if ($target.kind -ceq 'lib' -and $target.package -ceq 'darwinbots-cli' -and
+            $target.name -cin @('darwinbots-cli', 'darwinbots_cli')) { 'darwinbots-cli' } else { $target.name }
+        $key = $target.package + ':' + $target.kind + ':' + $name
+        if (!$targetKeys.Add($key) -or $target.status -cne 'ok') { throw ('Duplicate or unsuccessful fresh Rust target: ' + $key) }
+        Assert-FreshRustCounts55 $target ('Fresh Rust target ' + $key) $false
+        foreach ($field in @('passed', 'failed', 'ignored', 'filtered_out')) { $sums[$field] += [long]$target.$field }
+    }
+    if (!$targetKeys.Contains('darwinbots-cli:lib:darwinbots-cli') -or
+        !$targetKeys.Contains('darwinbots-engine:test:db24832_genuine_load_transients')) {
+        throw 'Fresh Rust is missing the CLI library or new genuine native-load integration target.'
+    }
+    foreach ($cpu in @($rust.counts, $Marker.rust_cpu)) {
+        Assert-FreshRustCounts55 $cpu 'Fresh Rust aggregate' $true
+        foreach ($field in @('passed', 'failed', 'ignored', 'filtered_out')) {
+            if ($cpu.$field -ne $sums[$field]) { throw ('Fresh Rust aggregate differs from actual target rows: ' + $field) }
+        }
+    }
+    Assert-FreshTrue55 $Marker.rust_cpu.fresh_full_workspace_invocation 'marker fresh_full_workspace_invocation'
+    Assert-FreshTrue55 $Marker.rust_cpu.hardware_filtered 'marker hardware_filtered'
+    if ($Marker.rust_cpu.expected_distinct_targets -ne $rust.expected_distinct_targets -or
+        $Marker.rust_cpu.total_distinct_targets -ne $rust.total_distinct_targets) { throw 'Fresh marker Rust target counts differ from the actual receipt.' }
+    $summary = Read-FreshJson55 $Marker.summary 'summary'
+    if ($summary.schema_version -ne 1 -or $summary.batch -ne $batch -or $summary.source_head -cne $Source -or
+        $summary.source_manifest.file -cne $Marker.source_manifest.file -or $summary.source_manifest.sha256 -ne $Marker.source_manifest.sha256) {
+        throw 'Fresh summary has the wrong origin or manifest.'
+    }
+    foreach ($flag in @('all_ordinary_local_outcomes_collected', 'local_cpu_passed', 'source_inputs_unchanged')) {
+        Assert-FreshTrue55 $summary.$flag ('summary ' + $flag)
+    }
+    foreach ($field in @('format_exit_code', 'strict_clippy_exit_code')) {
+        Assert-FreshInteger55 $summary.$field ('summary ' + $field)
+        if ($summary.$field -ne 0) { throw ('Fresh summary failed ' + $field) }
+    }
+    Assert-FreshTrue55 $summary.rust_cpu.fresh_full_workspace_invocation 'summary fresh_full_workspace_invocation'
+    Assert-FreshTrue55 $summary.rust_cpu.hardware_filtered 'summary hardware_filtered'
+    Assert-FreshRustCounts55 $summary.rust_cpu 'Fresh summary Rust aggregate' $true
+    foreach ($field in @('passed', 'failed', 'ignored', 'filtered_out', 'expected_distinct_targets', 'total_distinct_targets')) {
+        if ($summary.rust_cpu.$field -ne $Marker.rust_cpu.$field) { throw ('Fresh summary Rust result differs: ' + $field) }
+    }
+    foreach ($managed in @(@{name='core';count=285}, @{name='desktop';count=189})) {
+        $name = $managed.name
+        $count = $managed.count
+        $declared = $Marker.$name
+        $sealed = $summary.$name
+        if ($declared.source_head -cne $Source) { throw ('Fresh ' + $name + ' has the wrong origin.') }
+        Assert-FreshTrue55 $declared.fresh_invocation ($name + ' marker fresh_invocation')
+        Assert-FreshTrue55 $sealed.fresh_invocation ($name + ' summary fresh_invocation')
+        foreach ($field in @('passed', 'failed', 'skipped', 'total')) {
+            $expected = if ($field -in @('passed', 'total')) { $count } else { 0 }
+            Assert-FreshInteger55 $declared.$field ($name + ':' + $field)
+            Assert-FreshInteger55 $sealed.$field ($name + ' summary:' + $field)
+            if ($declared.$field -ne $expected -or $sealed.$field -ne $expected) { throw ('Fresh ' + $name + ' counts do not match the executed test set.') }
+        }
+        $trx = Read-FreshEvidence55 $declared.trx ($name + ' TRX')
+        $stream = [IO.MemoryStream]::new($trx.bytes, $false)
+        $settings = [Xml.XmlReaderSettings]::new()
+        $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
+        $settings.XmlResolver = $null
+        $reader = $null
+        try {
+            $reader = [Xml.XmlReader]::Create($stream, $settings)
+            $document = [Xml.XmlDocument]::new()
+            $document.XmlResolver = $null
+            $document.Load($reader)
+        } finally { if ($null -ne $reader) { $reader.Dispose() }; $stream.Dispose() }
+        $resultSummary = $document.SelectSingleNode("/*[local-name()='TestRun']/*[local-name()='ResultSummary']")
+        $counters = if ($null -ne $resultSummary) { $resultSummary.SelectSingleNode("*[local-name()='Counters']") } else { $null }
+        $rows = $document.SelectNodes("/*[local-name()='TestRun']/*[local-name()='Results']/*[local-name()='UnitTestResult']")
+        if ($null -eq $resultSummary -or $null -eq $counters -or $resultSummary.GetAttribute('outcome') -cnotin @('Completed', 'Passed') -or
+            $rows.Count -ne $count -or @($rows | Where-Object { $_.GetAttribute('outcome') -cne 'Passed' }).Count) {
+            throw ('Fresh ' + $name + ' TRX contains a failed, skipped, missing, or unexpected result despite its counters.')
+        }
+        $executionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($row in $rows) {
+            $id = $row.GetAttribute('executionId')
+            if ([string]::IsNullOrWhiteSpace($id) -or !$executionIds.Add($id)) { throw ('Fresh ' + $name + ' TRX has missing/duplicate execution identities.') }
+        }
+        foreach ($field in @('total', 'executed', 'passed', 'failed', 'error', 'timeout', 'aborted', 'inconclusive',
+                'passedButRunAborted', 'notRunnable', 'notExecuted', 'disconnected', 'warning', 'completed', 'inProgress', 'pending')) {
+            $value = $counters.GetAttribute($field)
+            $expected = if ($field -in @('total', 'executed', 'passed')) { $count } else { 0 }
+            if ($value -notmatch '^\d+$' -or [long]$value -ne $expected) { throw ('Fresh ' + $name + ' TRX counters do not match its executed passing results.') }
+        }
+    }
+    Assert-FreshTrue55 $summary.desktop.exact_package_native_dll 'Desktop exact_package_native_dll'
+    Assert-FreshTrue55 $summary.package.fresh_invocation 'package fresh_invocation'
+    Assert-FreshInteger55 $summary.package.publish_exit_code 'package publish_exit_code'
+    Assert-FreshInteger55 $summary.package.assets 'package assets'
+    Assert-FreshInteger55 $summary.package.asset_mismatches 'package asset_mismatches'
+    if ($summary.package.publish_exit_code -ne 0 -or $summary.package.smoke.status -cne 'passed' -or
+        $summary.package.smoke.backend -cne 'CPU' -or $summary.package.assets -ne 48 -or $summary.package.asset_mismatches -ne 0) {
+        throw 'Fresh package publish, CPU smoke, or all 48 bot assets did not pass.'
+    }
+    $dll = $summary.package.native_dll_identity
+    if ($dll.target_release -notmatch '^[0-9a-fA-F]{64}$' -or $dll.target_release -ne $dll.package -or $dll.target_release -ne $dll.desktop) {
+        throw 'Fresh package/Desktop/target native DLL identities differ.'
+    }
+    $genuine = Read-FreshJson55 $Marker.genuine_movement 'genuine movement comparisons'
+    Assert-FreshTrue55 $genuine.passed 'genuine movement passed'
+    if ($genuine.schema_version -ne 1 -or $genuine.batch -ne $batch -or $genuine.source_head -cne $Source -or $genuine.source_manifest_sha256 -ne $Marker.source_manifest.sha256 -or
+        (@($genuine.expected_cycles) -join '|') -cne '1|10|102' -or @($genuine.checkpoints).Count -ne 3) { throw 'Fresh genuine movement receipt has the wrong origin or checkpoints.' }
+    $cycles = [Collections.Generic.HashSet[int]]::new()
+    foreach ($row in @($genuine.checkpoints)) {
+        Assert-FreshInteger55 $row.cycle 'genuine movement cycle' 1
+        if ($row.cycle -notin @(1,10,102) -or !$cycles.Add([int]$row.cycle)) { throw 'Fresh genuine movement cycles must be distinct C1/C10/C102.' }
+        Assert-FreshTrue55 $row.passed 'genuine movement checkpoint passed'
+        foreach ($field in @('candidate_exit_code', 'compare_exit_code', 'difference_count', 'absolute_tolerance', 'relative_tolerance')) {
+            Assert-FreshInteger55 $row.$field ('genuine movement ' + $field)
+            if ($row.$field -ne 0) { throw ('Fresh genuine movement failed ' + $field) }
+        }
+        if ($row.compared_fields -ne 1379) { throw 'Fresh genuine movement must compare every expected live field.' }
+        $original = Resolve-FreshPin55 @{file=$row.original;sha256=$row.original_sha256}
+        if (!$sources.ContainsKey($original.path) -or $sources[$original.path] -ne $original.sha256) { throw 'Fresh original capture is not one of the frozen source fixtures.' }
+    }
+    foreach ($pin in @($summary.evidence)) { $null = Read-FreshEvidence55 $pin 'summary evidence' }
+    return [ordered]@{path=$MarkerPath;sha256=$MarkerHash;marker=$Marker;rust_result=$rust;summary=$summary}
 }

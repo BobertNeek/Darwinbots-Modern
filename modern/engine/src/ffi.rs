@@ -1254,6 +1254,7 @@ fn db_engine_load_impl(engine: *mut Engine, save_data: *const u8, save_len: usiz
             if !bytes.starts_with(b"DB3S") {
                 loaded.retain_native_global_preferences(engine.configuration());
                 loaded.inherit_native_gaussian_spare(engine);
+                loaded.set_native_light_availability(engine.native_light_availability());
             }
             *engine = loaded;
             DbStatus::Ok
@@ -1333,6 +1334,51 @@ fn ffi_guard(operation: &str, action: impl FnOnce() -> DbStatus) -> DbStatus {
 mod tests {
     use super::*;
     use crate::{LegacyDna, SpeciesId};
+
+    #[test]
+    fn native_sim_load_inherits_process_light_while_db3s_restores_saved_light() {
+        let mut saved = Engine::new_native(EngineConfig::testing()).unwrap();
+        saved
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0, 500.0])
+            .unwrap();
+        saved.set_native_light_availability(0.75);
+        let original_bytes = saved.export_native_sim().unwrap();
+        let fresh_process = Engine::from_native_sim(&original_bytes).unwrap();
+        assert_eq!(fresh_process.native_light_availability(), 0.0);
+
+        let mut current = Engine::new_native(EngineConfig::testing()).unwrap();
+        current.set_native_light_availability(0.25);
+        assert_eq!(
+            db_engine_load(&mut current, original_bytes.as_ptr(), original_bytes.len()),
+            DbStatus::Ok
+        );
+        assert_eq!(current.native_light_availability(), 0.25);
+        assert_eq!(current.population(), 1);
+
+        let modern_bytes = SaveFile::encode(&saved).unwrap();
+        assert_eq!(
+            db_engine_load(&mut current, modern_bytes.as_ptr(), modern_bytes.len()),
+            DbStatus::Ok
+        );
+        assert_eq!(current.native_light_availability(), 0.75);
+    }
+
+    #[test]
+    fn invalid_load_preserves_process_light_and_the_existing_world() {
+        let mut current = Engine::new_native(EngineConfig::testing()).unwrap();
+        current
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [321.0, 654.0])
+            .unwrap();
+        current.set_native_light_availability(0.375);
+        let before = SaveFile::encode(&current).unwrap();
+        let invalid = b"invalid simulation";
+        assert_ne!(
+            db_engine_load(&mut current, invalid.as_ptr(), invalid.len()),
+            DbStatus::Ok
+        );
+        assert_eq!(current.native_light_availability(), 0.375);
+        assert_eq!(SaveFile::encode(&current).unwrap(), before);
+    }
 
     #[test]
     fn invalid_find_best_weight_preserves_the_entire_command_batch() {

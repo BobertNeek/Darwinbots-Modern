@@ -283,7 +283,13 @@ impl ProjectilePool {
             self.colors.push(request.color);
             self.source_vegetables.push(request.source_vegetable);
             self.stored.push(request.stored);
-            self.gene_numbers.push(request.gene_number);
+            // newshot sets genenum only for an actual virus. A new ordinary
+            // slot starts at zero; its DNA execution gene is unrelated metadata.
+            self.gene_numbers.push(if request.kind == -7 {
+                request.gene_number
+            } else {
+                0
+            });
             self.dna_lengths.push(request.dna_length);
         } else {
             self.owners[slot] = request.owner;
@@ -304,7 +310,10 @@ impl ProjectilePool {
             self.colors[slot] = request.color;
             self.source_vegetables[slot] = request.source_vegetable;
             self.stored[slot] = request.stored;
-            self.gene_numbers[slot] = request.gene_number;
+            // An ordinary shot reuses the existing slot without clearing genenum.
+            if request.kind == -7 {
+                self.gene_numbers[slot] = request.gene_number;
+            }
             self.dna_lengths[slot] = request.dna_length;
         }
         slot as u32
@@ -397,7 +406,7 @@ impl ProjectilePool {
             self.colors[slot] = 0;
             self.source_vegetables[slot] = false;
             self.stored[slot] = false;
-            self.gene_numbers[slot] = 0;
+            // createshot leaves a reused slot's genenum unchanged.
             self.dna_lengths[slot] = 0;
         }
         slot as u32
@@ -479,7 +488,7 @@ impl ProjectilePool {
             self.colors[slot] = 0;
             self.source_vegetables[slot] = false;
             self.stored[slot] = false;
-            self.gene_numbers[slot] = 0;
+            // createshot leaves a reused slot's genenum unchanged.
             self.dna_lengths[slot] = 0;
         }
         slot as u32
@@ -673,6 +682,77 @@ fn normalize_kind(kind: i32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn gene_request(kind: i32, gene_number: i32) -> ProjectileSpawn {
+        ProjectileSpawn {
+            owner: OrganismId::new(1, 0),
+            owner_position: [500.0; 2],
+            owner_velocity: [0.0; 2],
+            owner_actual_velocity: [0.0; 2],
+            correct_position: true,
+            owner_radius: 60.0,
+            owner_virtual_body: 1000.0,
+            range_multiplier: 1.0,
+            angle: 0.0,
+            kind,
+            value: gene_number as f32,
+            payload: None,
+            source_species_name: Some("source.txt".into()),
+            toxin_memory_location: 0,
+            toxin_memory_value: 0,
+            color: 0,
+            source_vegetable: false,
+            stored: kind == -7,
+            gene_number,
+            dna_length: 0,
+        }
+    }
+
+    #[test]
+    fn fresh_ordinary_shots_do_not_copy_the_current_dna_execution_gene() {
+        for kind in [1, -1, -2, -3, -4, -6, -8, -100] {
+            let mut pool = ProjectilePool::default();
+            let slot = pool.spawn(gene_request(kind, 17), &ShotSettings::default()) as usize;
+            assert_eq!(pool.gene_numbers[slot], 0, "ordinary raw shot kind {kind}");
+        }
+    }
+
+    #[test]
+    fn only_new_virus_replaces_a_reused_slot_gene_and_packets_preserve_it() {
+        let mut pool = ProjectilePool::default();
+        let settings = ShotSettings::default();
+        let virus = pool.spawn(gene_request(-7, 3), &settings);
+        assert_eq!(pool.gene_numbers[virus as usize], 3);
+        pool.deactivate(virus);
+        let ordinary = pool.spawn(gene_request(-1, 99), &settings);
+        assert_eq!(ordinary, virus);
+        assert_eq!(pool.gene_numbers[ordinary as usize], 3);
+        pool.deactivate(ordinary);
+        let packet =
+            pool.spawn_energy_packet(OrganismId::new(1, 0), [500.0; 2], [0.0; 2], 1.0, 10.0);
+        assert_eq!(packet, virus);
+        assert_eq!(pool.gene_numbers[packet as usize], 3);
+        pool.deactivate(packet);
+        let poison = pool.spawn_defensive_poison(
+            OrganismId::new(1, 0),
+            [500.0; 2],
+            [1.0; 2],
+            [0.0; 2],
+            1.0,
+            10.0,
+            DefensivePoisonRoute::Information,
+            None,
+            0,
+            0,
+        );
+        assert_eq!(poison, virus);
+        assert_eq!(pool.gene_numbers[poison as usize], 3);
+        pool.deactivate(poison);
+        let save = serde_json::to_vec(&pool).unwrap();
+        let mut resumed: ProjectilePool = serde_json::from_slice(&save).unwrap();
+        let next = resumed.spawn(gene_request(-7, 5), &settings);
+        assert_eq!(next, virus);
+        assert_eq!(resumed.gene_numbers[next as usize], 5);
+    }
 
     #[test]
     fn feeding_power_uses_fixed_or_proportional_original_settings_without_changing_toxins() {

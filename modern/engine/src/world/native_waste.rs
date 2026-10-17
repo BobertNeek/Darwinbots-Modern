@@ -59,7 +59,9 @@ impl Engine {
                 }
             }
             robot.materials.permanent_waste = robot.materials.permanent_waste.min(32_000.0);
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
         }
         let costs = self.active_dna_costs();
         let flat_cost = costs.action_cost_for(
@@ -118,7 +120,9 @@ impl Engine {
                 },
                 &self.config.shots,
             );
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
             self.stats.shots_fired = self.stats.shots_fired.saturating_add(1);
         }
     }

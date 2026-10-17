@@ -237,7 +237,9 @@ impl Engine {
                 }
                 robot.program.memory.write(340, 0);
             }
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
             publish_reproductive_readbacks(robot);
         }
         for (id, action) in disqualified {

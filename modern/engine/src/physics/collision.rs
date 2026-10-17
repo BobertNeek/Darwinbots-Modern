@@ -118,6 +118,34 @@ pub(crate) fn resolve_collisions(
     pairs: &[(usize, usize)],
     elasticity: f32,
 ) {
+    // Keep the modern collision contract's minimum mass of one. Native loads
+    // separately retain a not-yet-visited robot's unsaved zero mass.
+    let clamped = masses.iter().any(|mass| *mass < 1.0).then(|| {
+        masses
+            .iter()
+            .map(|mass| mass.clamp(1.0, 32_000.0))
+            .collect::<Vec<_>>()
+    });
+    resolve_native_collisions(
+        positions,
+        velocities,
+        radii,
+        clamped.as_deref().unwrap_or(masses),
+        fixed,
+        pairs,
+        elasticity,
+    );
+}
+
+pub(crate) fn resolve_native_collisions(
+    positions: &mut [[f32; 2]],
+    velocities: &mut [[f32; 2]],
+    radii: &[f32],
+    masses: &[f32],
+    fixed: &[bool],
+    pairs: &[(usize, usize)],
+    elasticity: f32,
+) {
     // Physics.Repel3, including its gradual separation, projection damping and
     // finite fixed-bot mass. VectorScalar's native Single clamp is intentional.
     let elasticity = elasticity.clamp(0.0, 1.0);
@@ -145,12 +173,12 @@ pub(crate) fn resolve_collisions(
             .get(first)
             .copied()
             .unwrap_or(1.0)
-            .clamp(1.0, 32_000.0);
+            .clamp(0.0, 32_000.0);
         let second_mass = masses
             .get(second)
             .copied()
             .unwrap_or(1.0)
-            .clamp(1.0, 32_000.0);
+            .clamp(0.0, 32_000.0);
         let first_fixed = fixed.get(first).copied().unwrap_or(false);
         let second_fixed = fixed.get(second).copied().unwrap_or(false);
         let overlap = minimum_distance - distance;
@@ -235,7 +263,70 @@ pub(crate) fn resolve_collisions(
 
 #[cfg(test)]
 mod native_contact_tests {
-    use super::resolve_collisions;
+    use super::{resolve_collisions, resolve_native_collisions};
+    #[test]
+    fn native_first_pair_can_observe_an_unvisited_zero_mass() {
+        let mut positions = [[0.0, 0.0], [100.0, 0.0]];
+        let mut velocities = [[0.0; 2]; 2];
+        resolve_native_collisions(
+            &mut positions,
+            &mut velocities,
+            &[60.0; 2],
+            &[1.0, 0.0],
+            &[false; 2],
+            &[(0, 1)],
+            0.0,
+        );
+        assert_eq!(positions, [[-10.0, 0.0], [110.0, 0.0]]);
+        assert_eq!(velocities, [[0.0, 0.0], [0.000002, 0.0]]);
+    }
+
+    #[test]
+    fn modern_collision_retains_its_minimum_mass_when_native_loads_allow_zero() {
+        let mut positions = [[0.0, 0.0], [100.0, 0.0]];
+        let mut velocities = [[0.0; 2]; 2];
+        resolve_collisions(
+            &mut positions,
+            &mut velocities,
+            &[60.0; 2],
+            &[1.0, 0.0],
+            &[false; 2],
+            &[(0, 1)],
+            0.0,
+        );
+        assert_eq!(positions, [[-10.0, 0.0], [110.0, 0.0]]);
+        assert_eq!(velocities, [[-0.000001, 0.0], [0.000001, 0.0]]);
+    }
+
+    #[test]
+    fn initialized_native_masses_keep_the_existing_collision_results() {
+        for elasticity in [0.0, 0.5, 1.0] {
+            let mut modern_positions = [[0.0, 0.0], [100.0, 0.0]];
+            let mut modern_velocities = [[10.0, 0.0], [-10.0, 0.0]];
+            let mut native_positions = modern_positions;
+            let mut native_velocities = modern_velocities;
+            resolve_collisions(
+                &mut modern_positions,
+                &mut modern_velocities,
+                &[60.0; 2],
+                &[1.0, 20.0],
+                &[false; 2],
+                &[(0, 1)],
+                elasticity,
+            );
+            resolve_native_collisions(
+                &mut native_positions,
+                &mut native_velocities,
+                &[60.0; 2],
+                &[1.0, 20.0],
+                &[false; 2],
+                &[(0, 1)],
+                elasticity,
+            );
+            assert_eq!(modern_positions, native_positions);
+            assert_eq!(modern_velocities, native_velocities);
+        }
+    }
 
     #[test]
     fn moving_contacts_keep_native_compression_and_projection_damping() {

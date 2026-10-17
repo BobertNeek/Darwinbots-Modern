@@ -191,6 +191,18 @@ impl RobotMaterials {
         (self.energy - prior.0, self.body - prior.1)
     }
 
+    pub(crate) fn apply_native_plant_delta(
+        &mut self,
+        delta: f32,
+        feeding_to_body: f32,
+    ) -> (f32, f32) {
+        // FeedVeg caps only the upper bound; ManageDeath handles depletion.
+        let prior = (self.energy, self.body);
+        self.energy = (self.energy + delta * (1.0 - feeding_to_body)).min(32_000.0);
+        self.body = (self.body + delta * feeding_to_body / 10.0).min(32_000.0);
+        (self.energy - prior.0, self.body - prior.1)
+    }
+
     pub(crate) fn decay_chloroplasts(&mut self) -> f32 {
         let prior = self.chloroplasts;
         let chloroplasts = f64::from(prior);
@@ -328,6 +340,10 @@ impl RobotMaterials {
     }
 
     pub fn publish(&self, memory: &mut VmMemory) {
+        self.publish_for_profile(memory, false);
+    }
+
+    pub(crate) fn publish_for_profile(&self, memory: &mut VmMemory, native: bool) {
         let runtime = SysvarRuntime::new();
         runtime.publish(
             PhaseReadbacks::Materials(MaterialReadbacks {
@@ -358,7 +374,10 @@ impl RobotMaterials {
                 values: vec![
                     (MEM_AIM as u16, self.aim),
                     (19, self.aim),
-                    (MEM_MASS as u16, resource_readback(self.mass * 100.0)),
+                    (
+                        MEM_MASS as u16,
+                        resource_readback(if native { self.mass } else { self.mass * 100.0 }),
+                    ),
                     (MEM_PAIN as u16, self.pain),
                     (MEM_PLEASURE as u16, self.pleasure),
                 ],
@@ -478,5 +497,49 @@ mod native_material_tests {
         assert_eq!(materials.shell, 10.0);
         assert_eq!(materials.energy, 997.75);
         assert_eq!(materials.waste, 2.5);
+    }
+}
+
+#[cfg(test)]
+mod native_publication55_tests {
+    use super::*;
+
+    #[test]
+    fn native_mass_readback_rounds_the_single_mass_without_modern_scaling() {
+        // Robots.UpdatePosition assigns Single mass directly to Integer mem(10).
+        for (mass, expected) in [(1.0, 1), (2.5, 2), (3.5, 4), (31_999.5, 32_000)] {
+            let materials = RobotMaterials {
+                mass,
+                ..Default::default()
+            };
+            let mut memory = VmMemory::default();
+            materials.publish_for_profile(&mut memory, true);
+            assert_eq!(memory.read(MEM_MASS), expected);
+            materials.publish(&mut memory);
+            assert_eq!(memory.read(MEM_MASS), resource_readback(mass * 100.0));
+        }
+    }
+}
+
+#[cfg(test)]
+mod native_feed_caps55_tests {
+    use super::*;
+
+    #[test]
+    fn native_feed_leaves_negative_resources_for_death_processing_and_caps_only_above() {
+        let mut native = RobotMaterials {
+            energy: 10.0,
+            body: 1.0,
+            ..Default::default()
+        };
+        let mut modern = native.clone();
+        native.apply_native_plant_delta(-100.0, 0.5);
+        modern.apply_plant_delta(-100.0, 0.5);
+        assert_eq!((native.energy, native.body), (-40.0, -4.0));
+        assert_eq!((modern.energy, modern.body), (0.0, 0.0));
+        native.energy = 31_999.0;
+        native.body = 31_999.0;
+        native.apply_native_plant_delta(100.0, 0.5);
+        assert_eq!((native.energy, native.body), (32_000.0, 32_000.0));
     }
 }

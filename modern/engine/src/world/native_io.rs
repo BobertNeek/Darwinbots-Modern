@@ -311,7 +311,10 @@ impl Engine {
         engine.ties_enabled = tail.integer("disable_ties")? == 0;
         engine.robot_fixing_allowed = tail.integer("disable_fixing")? == 0;
         engine.asexual_reproduction_allowed = tail.integer("disable_asexual")? == 0;
-        engine.mutations_enabled = tail.integer("disable_mutations")? == 0;
+        // HDRoutines reads a 16-bit Boolean then clears values outside 0..=1.
+        // Canonical VB True (-1) therefore resets DisableMutations to False;
+        // only the noncanonical raw +1 value survives as disabled.
+        engine.mutations_enabled = tail.integer("disable_mutations")? != 1;
         engine.global_mutation_multiplier = tail.number("mutation_multiplier")? as f32;
         engine.next_absolute_id =
             nonnegative(tail.integer("max_absolute_id")?, "max absolute ID")?.saturating_add(1);
@@ -447,8 +450,9 @@ impl Engine {
         let materials = BiologyState {
             energy,
             body,
-            previous_energy: energy,
-            previous_body: body,
+            // LoadRobotBody does not save onrg/obody; a fresh robot starts at zero.
+            previous_energy: 0.0,
+            previous_body: 0.0,
             waste: r.single("waste")?,
             permanent_waste: r.single("permanent_waste")?,
             shell: r.single("shell")?,
@@ -482,6 +486,9 @@ impl Engine {
         }
         robot.identity.species_file = name;
         robot.identity.owner = text(r.bytes("owner")?);
+        if robot.identity.owner.is_empty() {
+            robot.identity.owner = "Local".to_owned();
+        }
         robot.identity.tag = text(r.bytes("tag")?)
             .trim_end_matches(['\0', ' '])
             .to_owned();
@@ -489,6 +496,9 @@ impl Engine {
         robot.identity.parent_absolute_id = r.long("parent")? as u32 as u64;
         robot.identity.simulation_id = r.long("simulation_id")? as u32 as u64;
         robot.set_heading(r.single("aim")?);
+        // The saved angle is restored, but LoadRobotBody leaves its unsaved
+        // aimvector at the freshly allocated zero value until SetAimFunc.
+        robot.kinematics.aim_vector = [0.0; 2];
         robot.kinematics.velocity = [r.single("velocity_x")?, r.single("velocity_y")?];
         robot.kinematics.actual_velocity = [
             r.single("actual_velocity_x")?,
@@ -539,6 +549,18 @@ impl Engine {
             i32::from(r.word("point_policy")?),
             i32::from(r.word("copy_error_policy")?),
         )?;
+        // HDRoutines.LoadRobotBody clears only these rates in pre-sunbelt saves.
+        // Their shape parameters and the other mutation settings remain intact.
+        if !boolean(r, "sunbelt")? {
+            for rate in [
+                &mut robot.program.mutation_profile.point2,
+                &mut robot.program.mutation_profile.copy_error2,
+                &mut robot.program.mutation_profile.amplification,
+                &mut robot.program.mutation_profile.translocation,
+            ] {
+                rate.one_in = 0.0;
+            }
+        }
         robot.program.mutation_metadata.total_mutations = r.word("mutations")? as u16 as u64;
         robot.program.mutation_metadata.native_last_mutations =
             r.word("last_mutation")? as u16 as u64;
@@ -587,11 +609,9 @@ impl Engine {
                 source: None,
             });
         }
-        robot.materials.mass = derived_mass(
-            robot.materials.body,
-            robot.materials.shell,
-            robot.materials.chloroplasts,
-        );
+        // Mass is not saved by LoadRobotBody. CalcMass initializes each actor
+        // in slot order; earlier collisions can still see an unvisited zero mass.
+        robot.materials.mass = 0.0;
         // HDRoutines calculates radius after body, before loading chloroplasts.
         robot.materials.radius =
             crate::physics::organism_radius(robot.materials.body, 0.0, self.config.fixed_bot_radii);
@@ -896,6 +916,104 @@ mod tests {
     use crate::SaveFile;
 
     const ORIGINAL: &[u8] = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+    const MOVEMENT_START: &[u8] =
+        include_bytes!("../../tests/fixtures/db24832-movement-start-48032.sim");
+
+    #[test]
+    fn native_load_restores_angle_but_zeroes_unsaved_direction_and_resource_history() {
+        let mut file = NativeRecordFile::decode(MOVEMENT_START).unwrap();
+        file.robots[0].set_single("aim", 1.25).unwrap();
+        let input = file.encode().unwrap();
+        let loaded = Engine::from_native_sim(&input).unwrap();
+        let first = loaded.slots[0].organism.as_ref().unwrap();
+        assert_eq!(first.heading(), 1.25);
+        assert_eq!(first.kinematics.aim_vector, [0.0; 2]);
+        assert_eq!(first.materials.previous_energy, 0.0);
+        assert_eq!(first.materials.previous_body, 0.0);
+        assert_eq!(first.materials.mass, 0.0);
+        assert_eq!(first.identity.owner, "Local");
+        // Retained origin is the input, including its empty owner and old rates.
+        assert_eq!(
+            loaded.native_origin.as_ref().unwrap().encode().unwrap(),
+            input
+        );
+        let save = SaveFile::encode(&loaded).unwrap();
+        let resumed = SaveFile::decode(&save).unwrap();
+        assert_eq!(SaveFile::encode(&resumed).unwrap(), save);
+        let first = resumed.slots[0].organism.as_ref().unwrap();
+        assert_eq!(first.heading(), 1.25);
+        assert_eq!(first.kinematics.aim_vector, [0.0; 2]);
+        assert_eq!(first.materials.previous_energy, 0.0);
+        assert_eq!(first.materials.previous_body, 0.0);
+        assert_eq!(first.materials.mass, 0.0);
+        assert_eq!(first.identity.owner, "Local");
+    }
+
+    #[test]
+    fn native_load_retains_nonempty_owner_and_only_disables_pre_sunbelt_rates() {
+        for sunbelt in [false, true] {
+            let mut file = NativeRecordFile::decode(MOVEMENT_START).unwrap();
+            let record = &mut file.robots[0];
+            record
+                .set_value("sunbelt", NativeValue::Word(if sunbelt { -1 } else { 0 }))
+                .unwrap();
+            record
+                .set_value("owner_length", NativeValue::Word(8))
+                .unwrap();
+            record
+                .set_value("owner", NativeValue::Bytes(b"Someone ".to_vec()))
+                .unwrap();
+            let mut rates = record.bytes("mutation_rates").unwrap().to_vec();
+            let mut shapes = record.bytes("mutation_shapes").unwrap().to_vec();
+            for index in 0..11 {
+                rates[index * 4..index * 4 + 4]
+                    .copy_from_slice(&(1000.0 + index as f32).to_le_bytes());
+                shapes[index * 8..index * 8 + 4]
+                    .copy_from_slice(&(index as f32 + 0.25).to_le_bytes());
+                shapes[index * 8 + 4..index * 8 + 8]
+                    .copy_from_slice(&(index as f32 + 0.5).to_le_bytes());
+            }
+            record
+                .set_value("mutation_rates", NativeValue::Bytes(rates.clone()))
+                .unwrap();
+            record
+                .set_value("mutation_shapes", NativeValue::Bytes(shapes.clone()))
+                .unwrap();
+            let input = file.encode().unwrap();
+            let engine = Engine::from_native_sim(&input).unwrap();
+            assert_eq!(
+                engine.slots[0].organism.as_ref().unwrap().identity.owner,
+                "Someone "
+            );
+            let output = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+            let live = &output.robots[0];
+            if !sunbelt {
+                for index in [4, 8, 9, 10] {
+                    rates[index * 4..index * 4 + 4].copy_from_slice(&0.0_f32.to_le_bytes());
+                }
+            }
+            assert_eq!(live.bytes("mutation_rates").unwrap(), rates);
+            assert_eq!(live.bytes("mutation_shapes").unwrap(), shapes);
+            assert_eq!(
+                live.word("point_policy").unwrap(),
+                file.robots[0].word("point_policy").unwrap()
+            );
+            assert_eq!(
+                live.word("copy_error_policy").unwrap(),
+                file.robots[0].word("copy_error_policy").unwrap()
+            );
+            assert_eq!(live.word("sunbelt").unwrap(), if sunbelt { -1 } else { 0 });
+            assert_eq!(
+                engine.native_origin.as_ref().unwrap().encode().unwrap(),
+                input
+            );
+            let resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+            assert_eq!(
+                resumed.export_native_sim().unwrap(),
+                engine.export_native_sim().unwrap()
+            );
+        }
+    }
 
     fn original_with_contest_flags(f1: bool, restart: bool) -> Vec<u8> {
         let mut file = NativeRecordFile::decode(ORIGINAL).unwrap();
@@ -1229,5 +1347,41 @@ mod tests {
         bytes[454..458].copy_from_slice(&f32::NAN.to_le_bytes());
         assert!(Engine::from_native_sim(&bytes).is_err());
         assert!(Engine::from_native_sim(&ORIGINAL[..ORIGINAL.len() - 1]).is_err());
+    }
+    #[test]
+    fn native_disable_mutations_load_reproduces_the_original_boolean_guard() {
+        // Get preserves the raw Integer-sized field before HDRoutines' CInt
+        // range check. Only +1 survives. The genuine canonical -1 case below
+        // is observed; malformed raw words are source-derived boundary tests.
+        for (saved, enabled) in [
+            (0, true),
+            (-1, true),
+            (1, false),
+            (2, true),
+            (-32768, true),
+            (32767, true),
+        ] {
+            let mut file = NativeRecordFile::decode(MOVEMENT_START).unwrap();
+            let mut tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            tail.set_value("disable_mutations", NativeValue::Word(saved))
+                .unwrap();
+            file.tail = tail.encode().unwrap();
+            let input = file.encode().unwrap();
+            let engine = Engine::from_native_sim(&input).unwrap();
+            assert_eq!(
+                engine.mutations_enabled, enabled,
+                "saved raw Boolean {saved}"
+            );
+            assert_eq!(
+                engine.native_origin.as_ref().unwrap().encode().unwrap(),
+                input
+            );
+            let save = SaveFile::encode(&engine).unwrap();
+            let resumed = SaveFile::decode(&save).unwrap();
+            assert_eq!(resumed.mutations_enabled, enabled);
+            assert_eq!(SaveFile::encode(&resumed).unwrap(), save);
+            // Native re-export canonicalizes Boolean +1 to -1. That malformed
+            // input is not a claim of original native-file round-trip parity.
+        }
     }
 }

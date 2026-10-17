@@ -2240,6 +2240,12 @@ struct DynamicCostRuntimeState {
     countdown: i32,
 }
 
+#[derive(Clone, Debug, Default)]
+struct NativeSensesCensus {
+    total: usize,
+    living_by_name: HashMap<String, usize>,
+}
+
 struct EngineCycleCheckpoint {
     checkpoint: CycleCheckpoint,
     native_random: Option<crate::native_random::NativeRandom>,
@@ -2248,6 +2254,7 @@ struct EngineCycleCheckpoint {
     native_sim_guid: Option<i32>,
     native_cycle: Option<i32>,
     native_population_census: Option<[usize; 2]>,
+    native_senses_census: Option<NativeSensesCensus>,
     native_skin_timer_seconds: Option<[f32; 2]>,
 }
 
@@ -2279,6 +2286,9 @@ pub struct Engine {
     /// Original mode1 UpdateCounters census and its one-cycle delayed display.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_population_census: Option<[usize; 2]>,
+    /// Frozen UpdateCounters totals for this cycle's later WriteSenses calls.
+    #[serde(skip, default)]
+    native_senses_census: Option<NativeSensesCensus>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_skin_timer_seconds: Option<[f32; 2]>,
     config: EngineConfig,
@@ -2571,6 +2581,7 @@ impl Engine {
             native_sim_guid: None,
             native_cycle: None,
             native_population_census: None,
+            native_senses_census: None,
             native_skin_timer_seconds: None,
         })
     }
@@ -2779,6 +2790,7 @@ impl Engine {
             native_sim_guid: None,
             native_cycle: None,
             native_population_census: None,
+            native_senses_census: None,
             native_skin_timer_seconds: None,
         })
     }
@@ -4212,7 +4224,10 @@ impl Engine {
                     organism.flags.vegetable = false;
                     organism.materials.energy = organism.materials.energy.max(1.0);
                     organism.materials.synchronize_energy();
-                    organism.materials.publish(&mut organism.program.memory);
+                    organism.materials.publish_for_profile(
+                        &mut organism.program.memory,
+                        self.native_random.is_some(),
+                    );
                     organism.program.memory.write(
                         MEM_XPOS,
                         native_sensing::position_word(
@@ -4296,7 +4311,9 @@ impl Engine {
         let normalized = aim.rem_euclid(1257);
         let organism = self.slots.get_mut(id)?;
         organism.materials.aim = normalized;
-        organism.materials.publish(&mut organism.program.memory);
+        organism
+            .materials
+            .publish_for_profile(&mut organism.program.memory, self.native_random.is_some());
         self.publish_snapshot();
         Ok(())
     }
@@ -4598,7 +4615,7 @@ impl Engine {
                 self.native_random.is_some(),
             ),
         );
-        initial_biology.publish(&mut memory);
+        initial_biology.publish_for_profile(&mut memory, self.native_random.is_some());
         let mut state = RobotState::new(
             dna,
             memory,
@@ -5242,7 +5259,9 @@ impl Engine {
                     .program
                     .memory
                     .write(MEM_NRG, resource_readback(parent.materials.energy));
-                parent.materials.publish(&mut parent.program.memory);
+                parent
+                    .materials
+                    .publish_for_profile(&mut parent.program.memory, self.native_random.is_some());
                 child_materials
             };
             let child_organism = self.slots.get_mut(child)?;
@@ -5251,9 +5270,10 @@ impl Engine {
                 .program
                 .memory
                 .write(MEM_NRG, resource_readback(child_organism.materials.energy));
-            child_organism
-                .materials
-                .publish(&mut child_organism.program.memory);
+            child_organism.materials.publish_for_profile(
+                &mut child_organism.program.memory,
+                self.native_random.is_some(),
+            );
         }
         self.record_offspring([Some(first), second]);
         self.propagate_descendant_count([Some(first), second]);
@@ -5392,6 +5412,7 @@ impl Engine {
             native_sim_guid: self.native_sim_guid,
             native_cycle: self.native_cycle,
             native_population_census: self.native_population_census,
+            native_senses_census: self.native_senses_census.clone(),
             native_skin_timer_seconds: self.native_skin_timer_seconds,
         }
     }
@@ -5406,6 +5427,7 @@ impl Engine {
         self.native_sim_guid = checkpoint.native_sim_guid;
         self.native_cycle = checkpoint.native_cycle;
         self.native_population_census = checkpoint.native_population_census;
+        self.native_senses_census = checkpoint.native_senses_census;
         self.native_skin_timer_seconds = checkpoint.native_skin_timer_seconds;
         let checkpoint = checkpoint.checkpoint;
         self.config = checkpoint.config;
@@ -5570,6 +5592,9 @@ impl Engine {
         }
 
         self.trace_robot_phase(&mut trace, CyclePhase::SpeciesCounts);
+        if self.native_random.is_some() {
+            self.native_senses_census = Some(self.current_native_senses_census());
+        }
         self.trace_robot_phase(&mut trace, CyclePhase::CorpseDecay);
         self.decay_corpses_phase();
         if self.native_random.is_some() {
@@ -6129,6 +6154,13 @@ impl Engine {
     }
 
     pub fn validate_invariants(&self) -> Result<(), EngineError> {
+        if !self.native_light_availability().is_finite()
+            || !(0.0..=1.0).contains(&self.native_light_availability())
+        {
+            return Err(EngineError::Invariant(
+                "invalid native light availability cache".into(),
+            ));
+        }
         self.config.advanced_mutation.native_delta2.validate()?;
         if !self
             .config
@@ -6240,7 +6272,10 @@ impl Engine {
                         "slot {index} has a non-finite resource store"
                     )));
                 }
-                if !robot.flags.corpse && robot.materials.energy <= 0.0 {
+                if self.native_random.is_none()
+                    && !robot.flags.corpse
+                    && robot.materials.energy <= 0.0
+                {
                     return Err(EngineError::Invariant(format!(
                         "live slot {index} has non-positive energy"
                     )));
@@ -6480,6 +6515,32 @@ impl Engine {
         }
     }
 
+    pub(crate) fn native_light_availability(&self) -> f64 {
+        self.vegetation_runtime.native_light_availability()
+    }
+
+    pub(crate) fn set_native_light_availability(&mut self, availability: f64) {
+        self.vegetation_runtime
+            .set_native_light_availability(availability);
+    }
+
+    fn current_native_senses_census(&self) -> NativeSensesCensus {
+        let mut census = NativeSensesCensus::default();
+        for robot in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+            if !robot.flags.exists || robot.flags.hidden {
+                continue;
+            }
+            census.total += 1;
+            if !robot.flags.corpse {
+                *census
+                    .living_by_name
+                    .entry(native_census_filename(robot, &self.species).to_owned())
+                    .or_default() += 1;
+            }
+        }
+        census
+    }
+
     fn movement_commands_phase(&mut self) {
         let runtime = SysvarRuntime::new();
         let settings = &self.config.physics;
@@ -6535,10 +6596,27 @@ impl Engine {
                 robot.materials.shell,
                 robot.materials.chloroplasts,
             );
-            let mut movement = MovementState::default();
-            apply_voluntary_impulse(&mut movement, input, mass, settings);
-            robot.kinematics.pending_velocity = movement.velocity;
-            let amount = f64::from(voluntary_cost_magnitude(input, mass, settings));
+            let amount = if self.native_random.is_some()
+                && robot.kinematics.aim_radians == Some(input.aim_radians)
+            {
+                // LoadRobotBody restores aim, but not its vector. SetAimFunc
+                // populates that cache only after this first NetForces pass.
+                let (impulse, magnitude) = native_cached_voluntary_movement(
+                    input,
+                    robot.kinematics.aim_vector,
+                    robot.materials.mass,
+                    settings,
+                );
+                robot.kinematics.pending_velocity = impulse;
+                f64::from(magnitude)
+            } else {
+                // Bare typed spawns and an explicit integer aim edit have no
+                // authoritative native cache; retain their existing behavior.
+                let mut movement = MovementState::default();
+                apply_voluntary_impulse(&mut movement, input, mass, settings);
+                robot.kinematics.pending_velocity = movement.velocity;
+                f64::from(voluntary_cost_magnitude(input, mass, settings))
+            };
             settle_simulation_cost(
                 robot,
                 costs.action_cost_for(SimulationCostAction::Movement, amount, population),
@@ -6576,7 +6654,9 @@ impl Engine {
                 unreachable!("aim phase must return aim commands")
             };
             native_aim::apply(robot, commands, costs.rotation, rotation_multiplier);
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
         }
     }
 
@@ -6664,7 +6744,9 @@ impl Engine {
                 transaction_costs,
                 multibot_divisor,
             );
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
         }
         for (id, action) in actions {
             self.native_disqualify_action(id, action);
@@ -6691,7 +6773,9 @@ impl Engine {
                     .memory
                     .write(12, if timer > 32_000 { -32_000 } else { timer });
             } else {
-                robot.materials.publish(&mut robot.program.memory);
+                robot
+                    .materials
+                    .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
             }
             runtime.publish(
                 PhaseReadbacks::Core(CoreReadbacks {
@@ -6707,6 +6791,12 @@ impl Engine {
 
     fn publish_core_senses_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let fallback_census = (self.native_random.is_some() && self.native_senses_census.is_none())
+            .then(|| self.current_native_senses_census());
+        let native_census = self
+            .native_senses_census
+            .as_ref()
+            .or(fallback_census.as_ref());
         let daytime = i32::from(self.config.vegetation.daytime);
         let max_velocity = sensor_value(self.config.physics.max_velocity);
         let robot_fixing_allowed = self.robot_fixing_allowed;
@@ -6728,7 +6818,26 @@ impl Engine {
             robot.materials.pain = resource_readback(prior - robot.materials.energy);
             robot.materials.pleasure = resource_readback(robot.materials.energy - prior);
             robot.materials.previous_energy = robot.materials.energy;
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
+            if let Some(census) = native_census {
+                native_sensing::publish_integer(
+                    &mut robot.program.memory,
+                    401,
+                    census.total.min(i16::MAX as usize) as i32,
+                );
+                let species = census
+                    .living_by_name
+                    .get(native_census_filename(robot, &self.species))
+                    .copied()
+                    .unwrap_or(0);
+                native_sensing::publish_integer(
+                    &mut robot.program.memory,
+                    402,
+                    species.min(32_000) as i32,
+                );
+            }
             let (body_gain, body_loss) = robot.materials.consume_body_change();
             let [
                 velocity_scalar,
@@ -8826,14 +8935,18 @@ impl Engine {
             {
                 let second = self.slots[second_slot].organism.as_mut().unwrap();
                 second.materials.slime = (second.materials.slime - 20.0).max(0.0);
-                second.materials.publish(&mut second.program.memory);
+                second
+                    .materials
+                    .publish_for_profile(&mut second.program.memory, self.native_random.is_some());
                 continue;
             }
             if let Some(second) = self.slots[second_slot].organism.as_mut()
                 && second.materials.slime > 0.0
             {
                 second.materials.slime = (second.materials.slime - 20.0).max(0.0);
-                second.materials.publish(&mut second.program.memory);
+                second
+                    .materials
+                    .publish_for_profile(&mut second.program.memory, self.native_random.is_some());
             }
             let first = OrganismId::new(first_slot as u32, self.slots[first_slot].generation);
             let second = OrganismId::new(second_slot as u32, self.slots[second_slot].generation);
@@ -8880,9 +8993,10 @@ impl Engine {
             );
             if let Some(first_robot) = self.slots[first_slot].organism.as_mut() {
                 settle_simulation_cost(first_robot, tie_cost);
-                first_robot
-                    .materials
-                    .publish(&mut first_robot.program.memory);
+                first_robot.materials.publish_for_profile(
+                    &mut first_robot.program.memory,
+                    self.native_random.is_some(),
+                );
             }
             self.stats.ties_created = self.stats.ties_created.saturating_add(1);
             if trace.is_enabled() {
@@ -9069,7 +9183,9 @@ impl Engine {
             let value = value.clamp(-32_000.0, 32_000.0);
             settle_simulation_cost(attacker, shot_cost.min(available_energy));
             attacker.materials.energy = attacker.materials.energy.max(0.0);
-            attacker.materials.publish(&mut attacker.program.memory);
+            attacker
+                .materials
+                .publish_for_profile(&mut attacker.program.memory, self.native_random.is_some());
             let mut angle = attacker.heading();
             if commands.backshot != 0 {
                 angle -= std::f32::consts::PI;
@@ -9713,9 +9829,10 @@ impl Engine {
                             let lethal = target_robot.materials.energy <= 0.5
                                 || target_robot.materials.body <= 0.5;
                             target_robot.flags.dead |= lethal;
-                            target_robot
-                                .materials
-                                .publish(&mut target_robot.program.memory);
+                            target_robot.materials.publish_for_profile(
+                                &mut target_robot.program.memory,
+                                self.native_random.is_some(),
+                            );
                             (
                                 packet_value,
                                 target_robot.kinematics.actual_velocity,
@@ -9760,9 +9877,10 @@ impl Engine {
                             self.config.fixed_bot_radii,
                         );
                         target_robot.materials.waste += packet_waste;
-                        target_robot
-                            .materials
-                            .publish(&mut target_robot.program.memory);
+                        target_robot.materials.publish_for_profile(
+                            &mut target_robot.program.memory,
+                            self.native_random.is_some(),
+                        );
                         let donated = packet_energy;
                         self.stats.energy_donated =
                             self.stats.energy_donated.saturating_add(donated as u64);
@@ -9872,9 +9990,10 @@ impl Engine {
                                 power,
                             );
                             if body_power <= 0.0 {
-                                target_robot
-                                    .materials
-                                    .publish(&mut target_robot.program.memory);
+                                target_robot.materials.publish_for_profile(
+                                    &mut target_robot.program.memory,
+                                    self.native_random.is_some(),
+                                );
                                 return shell_before != target_robot.materials.shell;
                             }
                             let lethal = target_robot.materials.body <= 0.5
@@ -9891,9 +10010,10 @@ impl Engine {
                                 target_robot.materials.chloroplasts,
                                 self.config.fixed_bot_radii,
                             );
-                            target_robot
-                                .materials
-                                .publish(&mut target_robot.program.memory);
+                            target_robot.materials.publish_for_profile(
+                                &mut target_robot.program.memory,
+                                self.native_random.is_some(),
+                            );
                             (body_power, target_robot.kinematics.actual_velocity, lethal)
                         };
                         if lethal && let Ok(attacker) = self.slots.get_mut(owner) {
@@ -10688,7 +10808,29 @@ impl Engine {
         organisms.saturating_add(corpses).saturating_add(shots)
     }
 
+    fn refresh_native_light_availability(&mut self) {
+        // Vegs.bas: ScreenArea is Double, TotalRobotArea is Single, and PI
+        // is Single. Preserve the assignment back to Single for every robot.
+        let mut screen_area =
+            f64::from(self.config.world_width) * f64::from(self.config.world_height);
+        for obstacle in &self.obstacles {
+            let width = (obstacle.maximum[0] - obstacle.minimum[0]).max(0.0);
+            let height = (obstacle.maximum[1] - obstacle.minimum[1]).max(0.0);
+            screen_area -= f64::from(width * height);
+        }
+        let mut robot_area = 0.0_f32;
+        for robot in self.slots.iter().filter_map(|slot| slot.organism.as_ref()) {
+            if robot.flags.exists && !robot.flags.hidden {
+                robot_area = (f64::from(robot_area)
+                    + f64::from(robot.materials.radius).powi(2) * f64::from(std::f32::consts::PI))
+                    as f32;
+            }
+        }
+        self.set_native_light_availability((f64::from(robot_area) / screen_area.max(1.0)).min(1.0));
+    }
+
     fn vegetation_feed_phase(&mut self) {
+        let native = self.native_random.is_some();
         let total_energy = self.total_simulation_energy();
         let weather_seed = self.config.seed ^ self.tick.rotate_left(17);
         let daylight = self.vegetation_runtime.advance_daylight(
@@ -10698,6 +10840,10 @@ impl Engine {
             self.native_random.as_mut(),
         );
         let daytime = daylight.feed_this_cycle;
+        if native && daytime {
+            // FeedVeg skips this assignment entirely on non-feeding cycles.
+            self.refresh_native_light_availability();
+        }
         let world_area = self.config.world_width.max(0.0) * self.config.world_height.max(0.0);
         let obstacle_area: f32 = self
             .obstacles
@@ -10729,7 +10875,19 @@ impl Engine {
             let Some(organism) = self.slots[slot].organism.as_mut() else {
                 continue;
             };
-            if !organism.flags.can_use_chloroplasts {
+            if native
+                && (!organism.flags.exists
+                    || organism.flags.hidden
+                    || organism.materials.energy <= 0.0)
+            {
+                continue;
+            }
+            if native {
+                // FeedVeg clears this for every eligible robot before the
+                // day/night early exit, including actors with DNA disabled.
+                organism.program.memory.write(MEM_DAYTIME, 0);
+            }
+            if !native && !organism.flags.can_use_chloroplasts {
                 organism.program.memory.write(MEM_LIGHT, 0);
                 continue;
             }
@@ -10744,20 +10902,37 @@ impl Engine {
                 .stats
                 .plant_body_produced
                 .saturating_add(waste_body_gain.max(0.0) as u64);
-            if organism.materials.energy <= 0.0 {
-                organism.program.memory.write(MEM_LIGHT, 0);
-                organism.materials.publish(&mut organism.program.memory);
+            if native && !daytime {
                 continue;
             }
-            let feeding = self.vegetation_runtime.feed(PlantLightInput {
+            if organism.materials.energy <= 0.0 {
+                if !native {
+                    organism.program.memory.write(MEM_LIGHT, 0);
+                }
+                organism.materials.publish_for_profile(
+                    &mut organism.program.memory,
+                    self.native_random.is_some(),
+                );
+                continue;
+            }
+            let feeding_input = PlantLightInput {
                 daytime,
-                sunlit: !(settings.weather_enabled || settings.sun_on_random)
-                    || is_in_sun_band(
+                sunlit: if native {
+                    native_is_in_sun_band(
                         organism.kinematics.position[0],
                         self.config.world_width,
                         daylight.sun_position,
                         daylight.sun_range,
-                    ),
+                    )
+                } else {
+                    !(settings.weather_enabled || settings.sun_on_random)
+                        || is_in_sun_band(
+                            organism.kinematics.position[0],
+                            self.config.world_width,
+                            daylight.sun_position,
+                            daylight.sun_range,
+                        )
+                },
                 chloroplasts: organism.materials.chloroplasts,
                 age: organism.counters.age,
                 total_robot_area,
@@ -10767,20 +10942,39 @@ impl Engine {
                 light_intensity,
                 depth: organism.kinematics.position[1] / 2_000.0 + 1.0,
                 gradient: settings.gradient.max(0.0),
-            });
-            organism
-                .program
-                .memory
-                .write(MEM_LIGHT, i32::from(feeding.light));
+            };
+            let feeding = if native {
+                self.vegetation_runtime.feed_native(feeding_input)
+            } else {
+                self.vegetation_runtime.feed(feeding_input)
+            };
+            if native {
+                organism
+                    .program
+                    .memory
+                    .write(MEM_DAYTIME, i32::from(feeding.light));
+            }
+            if !native {
+                organism
+                    .program
+                    .memory
+                    .write(MEM_LIGHT, i32::from(feeding.light));
+            }
             let _availability = feeding.availability;
             let tide_factor = if settings.tides == 0 {
                 1.0
             } else {
                 (1.0 - tide_scaling).clamp(0.0, 1.0)
             };
-            let (energy_gain, body_gain) = organism
-                .materials
-                .apply_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body);
+            let (energy_gain, body_gain) = if native {
+                organism
+                    .materials
+                    .apply_native_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body)
+            } else {
+                organism
+                    .materials
+                    .apply_plant_delta(feeding.delta * tide_factor, settings.feeding_to_body)
+            };
             if organism.materials.chloroplasts > 0.0 {
                 organism.materials.radius = crate::physics::organism_radius(
                     organism.materials.body,
@@ -10805,11 +10999,17 @@ impl Engine {
                 .stats
                 .plant_body_produced
                 .saturating_add(body_gain.max(0.0) as u64);
-            organism
-                .program
-                .memory
-                .write(MEM_NRG, resource_readback(organism.materials.energy));
-            organism.materials.publish(&mut organism.program.memory);
+            if !native {
+                // Original FeedVeg changes resources/radius, but WriteSenses
+                // has already run; resource memory remains its earlier image.
+                organism
+                    .program
+                    .memory
+                    .write(MEM_NRG, resource_readback(organism.materials.energy));
+                organism
+                    .materials
+                    .publish_for_profile(&mut organism.program.memory, false);
+            }
         }
     }
 
@@ -11059,7 +11259,9 @@ impl Engine {
             let loss = previous_energy - energy;
             if energy > 3_000.0 && loss > previous_energy / 2.0 {
                 robot.materials.energy = 0.0;
-                robot.materials.publish(&mut robot.program.memory);
+                robot
+                    .materials
+                    .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
             }
         }
     }
@@ -11412,9 +11614,10 @@ impl Engine {
                         .write(19, child_organism.materials.aim);
                     child_organism.program.memory.write(468, 32_000);
                 } else {
-                    child_organism
-                        .materials
-                        .publish(&mut child_organism.program.memory);
+                    child_organism.materials.publish_for_profile(
+                        &mut child_organism.program.memory,
+                        self.native_random.is_some(),
+                    );
                     child_organism.program.memory.write(
                         MEM_READ_BUOYANCY,
                         (child_organism.buoyancy * 32_000.0).round_ties_even() as i32,
@@ -11551,9 +11754,10 @@ impl Engine {
                     charged_copy_cost = true;
                 }
                 if !native_birth {
-                    parent_organism
-                        .materials
-                        .publish(&mut parent_organism.program.memory);
+                    parent_organism.materials.publish_for_profile(
+                        &mut parent_organism.program.memory,
+                        self.native_random.is_some(),
+                    );
                 }
             }
             if charged_copy_cost {
@@ -12349,6 +12553,13 @@ impl Engine {
     }
 
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
+        if !engine.native_light_availability().is_finite()
+            || !(0.0..=1.0).contains(&engine.native_light_availability())
+        {
+            return Err(EngineError::InvalidSave(
+                "invalid native light availability cache".into(),
+            ));
+        }
         if engine.native_cycle.is_some_and(|cycle| cycle < -1) {
             return Err(EngineError::InvalidSave(
                 "native cycle cannot precede -1".into(),
@@ -12460,6 +12671,56 @@ impl Engine {
     }
 }
 
+fn native_census_filename<'a>(robot: &'a RobotState, species: &'a [SpeciesDefinition]) -> &'a str {
+    if !robot.identity.species_file.is_empty() {
+        &robot.identity.species_file
+    } else {
+        // The bare typed spawn API has no original FName yet.
+        species
+            .get(robot.identity.species.0 as usize)
+            .map_or("", |entry| entry.name.as_str())
+    }
+}
+
+fn native_cached_voluntary_movement(
+    input: MovementInput,
+    aim: [f32; 2],
+    mass: f32,
+    settings: &PhysicsSettings,
+) -> ([f32; 2], f32) {
+    // Common.VectorScalar clamps its ByRef vector before multiplying it.
+    let scalar = |vector: &mut [f32; 2], scale: f32| {
+        let scale = scale.clamp(-32_000.0, 32_000.0);
+        *vector = (*vector).map(|value| value.clamp(-32_000.0, 32_000.0));
+        [vector[0] * scale, vector[1] * scale]
+    };
+    let magnitude = |vector: [f32; 2]| {
+        let minimum = vector[0].abs().min(vector[1].abs());
+        let maximum = vector[0].abs().max(vector[1].abs());
+        if maximum < 0.00001 {
+            0.0
+        } else {
+            (f64::from(maximum) * (1.0 + f64::from(minimum / maximum).powi(2)).sqrt()) as f32
+        }
+    };
+    let mut direction = [
+        (i64::from(input.up) - i64::from(input.down)) as f32,
+        (i64::from(input.left) - i64::from(input.right)) as f32,
+    ];
+    let direction = scalar(&mut direction, if input.new_move { 1.0 } else { mass });
+    let mut acceleration = [
+        aim[0] * direction[0] + aim[1] * direction[1],
+        aim[0] * direction[1] - aim[1] * direction[0],
+    ];
+    let speed = magnitude(acceleration);
+    if speed > settings.max_velocity {
+        acceleration = scalar(&mut acceleration, settings.max_velocity / speed);
+    }
+    // This ByRef call also clamps acceleration before the energy calculation.
+    let impulse = scalar(&mut acceleration, settings.movement_efficiency);
+    (impulse, magnitude(acceleration))
+}
+
 fn apply_restriction_column(robot: &mut RobotState, column: &RestrictionColumn) {
     robot.kinematics.native_fixed_state = None;
     robot.flags.fixed = column.fixed_in_place;
@@ -12523,8 +12784,12 @@ fn apply_tie_resource(
     if result.is_some() {
         source.materials.previous_energy = source.materials.energy;
         target.materials.previous_energy = target.materials.energy;
-        source.materials.publish(&mut source.program.memory);
-        target.materials.publish(&mut target.program.memory);
+        source
+            .materials
+            .publish_for_profile(&mut source.program.memory, native.is_some());
+        target
+            .materials
+            .publish_for_profile(&mut target.program.memory, native.is_some());
         source.materials.mass = derived_mass(
             source.materials.body,
             source.materials.shell,
@@ -13188,6 +13453,26 @@ fn strip_numeric_species_prefix(name: &str) -> &str {
 fn zerobot_seed_score(robot: &RobotState) -> i64 {
     (f64::from(robot.materials.energy.max(0.0)) + f64::from(robot.materials.body.max(0.0)) * 10.0)
         .round_ties_even() as i64
+}
+
+fn native_is_in_sun_band(x: f32, world_width: f32, sun_position: f64, sun_range: f64) -> bool {
+    let width = f64::from(world_width);
+    let half = (0.25 + sun_range.powi(3) * 0.75) / 2.0;
+    // The source stores all four endpoints as Long and compares raw pos.x.
+    let start = ((sun_position - half) * width).round_ties_even();
+    let stop = ((sun_position + half) * width).round_ties_even();
+    let mut start2 = start;
+    let mut stop2 = stop;
+    if start < 0.0 {
+        start2 = width + start;
+        stop2 = width;
+    }
+    if stop > width {
+        stop2 = stop - width;
+        start2 = 0.0;
+    }
+    let x = f64::from(x);
+    (x >= start2 && x <= stop2) || (x >= start && x <= stop)
 }
 
 fn is_in_sun_band(x: f32, world_width: f32, sun_position: f64, sun_range: f64) -> bool {
@@ -14108,5 +14393,438 @@ mod tests {
                 case.name
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod native_publication55_tests {
+    use super::*;
+
+    fn inert(world: &mut Engine, position: [f32; 2]) -> OrganismId {
+        world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), position)
+            .unwrap()
+    }
+
+    #[test]
+    fn first_native_tick_publishes_current_mass_census_and_previous_feed_light() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = inert(&mut world, [500.0; 2]);
+        assert_eq!(world.native_light_availability(), 0.0);
+        world.tick().unwrap();
+        let robot = world.slots.get(id).unwrap();
+        assert_eq!(robot.program.memory.read(10), 1);
+        assert_eq!(robot.program.memory.read(401), 1);
+        assert_eq!(robot.program.memory.read(402), 1);
+        assert_eq!(robot.program.memory.read(923), 32_000);
+        let previous_feed = world.native_light_availability();
+        assert!(previous_feed > 0.0 && previous_feed < 1.0);
+        world.tick().unwrap();
+        assert_eq!(
+            world.slots.get(id).unwrap().program.memory.read(923),
+            (32_000.0 - previous_feed * 32_000.0).round_ties_even() as i32
+        );
+    }
+
+    #[test]
+    fn native_census_includes_corpses_in_total_and_latches_living_filename_counts() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let first = inert(&mut world, [100.0; 2]);
+        let corpse = inert(&mut world, [300.0; 2]);
+        let disabled = inert(&mut world, [500.0; 2]);
+        let hidden = inert(&mut world, [700.0; 2]);
+        let alias = inert(&mut world, [900.0; 2]);
+        let alias_species = world.register_species(SpeciesDefinition {
+            name: "different registry entry".into(),
+            ..SpeciesDefinition::default()
+        });
+        for id in [first, corpse, alias] {
+            world.slots.get_mut(id).unwrap().identity.species_file = "first.txt".into();
+        }
+        world.slots.get_mut(corpse).unwrap().flags.corpse = true;
+        world.slots.get_mut(disabled).unwrap().flags.can_execute_dna = false;
+        world.slots.get_mut(disabled).unwrap().identity.species_file = "other.txt".into();
+        world.slots.get_mut(hidden).unwrap().flags.hidden = true;
+        world.slots.get_mut(alias).unwrap().identity.species = alias_species;
+        // Original UpdateCounters groups FName, rather than the registry index.
+        world.native_senses_census = Some(world.current_native_senses_census());
+        world.slots.get_mut(alias).unwrap().flags.corpse = true;
+        world.publish_core_senses_phase();
+        let memory = &world.slots.get(first).unwrap().program.memory;
+        assert_eq!(memory.read(401), 4);
+        assert_eq!(memory.read(402), 2);
+        world.native_senses_census = Some(world.current_native_senses_census());
+        world.publish_core_senses_phase();
+        assert_eq!(world.slots.get(first).unwrap().program.memory.read(402), 1);
+    }
+
+    #[test]
+    fn cached_zero_aim_suppresses_impulse_and_cost_until_the_aim_phase() {
+        let mut config = EngineConfig::testing();
+        config.physics.movement_efficiency = 1.0;
+        config.physics.max_velocity = 100.0;
+        config.dna_costs.movement = 1.0;
+        let mut world = Engine::new_native(config).unwrap();
+        let id = inert(&mut world, [500.0; 2]);
+        let robot = world.slots.get_mut(id).unwrap();
+        robot.set_heading(0.0);
+        robot.kinematics.aim_vector = [0.0; 2];
+        robot.materials.energy = 1_000.0;
+        robot.materials.mass = 1.0;
+        robot.program.memory.write(1, 6);
+        world.movement_commands_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().kinematics.pending_velocity,
+            [0.0; 2]
+        );
+        assert_eq!(world.slots.get(id).unwrap().materials.energy, 1_000.0);
+        world.aim_commands_phase();
+        world.movement_commands_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().kinematics.pending_velocity,
+            [6.0, 0.0]
+        );
+        assert_eq!(world.slots.get(id).unwrap().materials.energy, 994.0);
+    }
+
+    #[test]
+    fn bare_and_explicit_integer_aim_routes_retain_their_effective_heading() {
+        let mut config = EngineConfig::testing();
+        config.physics.movement_efficiency = 1.0;
+        config.physics.max_velocity = 100.0;
+        let mut world = Engine::new_native(config).unwrap();
+        let id = inert(&mut world, [500.0; 2]);
+        assert_eq!(world.slots.get(id).unwrap().kinematics.aim_radians, None);
+        world.slots.get_mut(id).unwrap().program.memory.write(1, 6);
+        world.movement_commands_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().kinematics.pending_velocity,
+            [6.0, 0.0]
+        );
+        world.slots.get_mut(id).unwrap().set_heading(0.0);
+        world.set_organism_aim(id, 314).unwrap();
+        let heading = 314.0_f32 / 200.0;
+        world.movement_commands_phase();
+        assert_eq!(
+            world.slots.get(id).unwrap().kinematics.pending_velocity,
+            [6.0 * heading.cos(), -6.0 * heading.sin()]
+        );
+    }
+
+    #[test]
+    fn native_cached_dot_cross_and_clipping_determine_both_impulse_and_cost() {
+        let settings = PhysicsSettings {
+            max_velocity: 4.0,
+            movement_efficiency: 0.5,
+            ..PhysicsSettings::default()
+        };
+        let input = MovementInput {
+            up: 3,
+            left: 4,
+            new_move: true,
+            ..MovementInput::default()
+        };
+        assert_eq!(
+            native_cached_voluntary_movement(input, [0.0; 2], 1.0, &settings),
+            ([0.0; 2], 0.0)
+        );
+        assert_eq!(
+            native_cached_voluntary_movement(input, [2.0, 0.0], 1.0, &settings),
+            ([1.2, 1.6], 4.0)
+        );
+        let zero_cache = [0.000001, 0.0];
+        assert_eq!(
+            native_cached_voluntary_movement(input, zero_cache, 1.0, &settings).1,
+            0.0
+        );
+    }
+
+    #[test]
+    fn late_waste_and_virus_publications_keep_native_mass_and_modern_scaling() {
+        for native in [false, true] {
+            let mut config = EngineConfig::testing();
+            config.waste.alzheimer_threshold = 0;
+            config.waste.defecation_threshold = 10;
+            let mut world = Engine::new(config).unwrap();
+            if !native {
+                world.native_random = None;
+            }
+            let first = inert(&mut world, [200.0; 2]);
+            let second = inert(&mut world, [800.0; 2]);
+            for id in [first, second] {
+                let robot = world.slots.get_mut(id).unwrap();
+                robot.materials.mass = 3.5;
+                robot.materials.waste = 20.0;
+            }
+            world.publish_core_senses_phase();
+            world.waste_phase();
+            for id in [first, second] {
+                assert_eq!(
+                    world.slots.get(id).unwrap().program.memory.read(10),
+                    if native { 4 } else { 350 }
+                );
+            }
+            world.virus_commands_phase();
+            for id in [first, second] {
+                assert_eq!(
+                    world.slots.get(id).unwrap().program.memory.read(10),
+                    if native { 4 } else { 350 }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn feed_cache_uses_single_robot_area_and_excludes_only_missing_or_hidden_robots() {
+        let mut config = EngineConfig::testing();
+        config.world_width = 1_000.0;
+        config.world_height = 1_000.0;
+        let mut world = Engine::new_native(config).unwrap();
+        let first = inert(&mut world, [100.0; 2]);
+        let corpse = inert(&mut world, [300.0; 2]);
+        let hidden = inert(&mut world, [500.0; 2]);
+        let missing = inert(&mut world, [700.0; 2]);
+        for id in [first, corpse, hidden, missing] {
+            world.slots.get_mut(id).unwrap().materials.radius = 100.0;
+        }
+        world.slots.get_mut(corpse).unwrap().flags.corpse = true;
+        world.slots.get_mut(hidden).unwrap().flags.hidden = true;
+        world.slots.get_mut(missing).unwrap().flags.exists = false;
+        world
+            .obstacles
+            .push(Obstacle::new(1, [0.0; 2], [200.0, 500.0]));
+        world.refresh_native_light_availability();
+        // Two source Single area assignments: each radius=100, PI=Single.
+        assert_eq!(
+            world.native_light_availability(),
+            62_831.855_468_75 / 900_000.0
+        );
+        world.set_native_light_availability(0.125);
+        world.config.vegetation.daytime = false;
+        world.config.vegetation.day_night_enabled = false;
+        world.config.vegetation.sun_up_enabled = false;
+        world.config.vegetation.sun_down_enabled = false;
+        world
+            .slots
+            .get_mut(first)
+            .unwrap()
+            .program
+            .memory
+            .write(923, 12_345);
+        world.vegetation_feed_phase();
+        assert_eq!(world.native_light_availability(), 0.125);
+        assert_eq!(
+            world.slots.get(first).unwrap().program.memory.read(923),
+            12_345
+        );
+    }
+
+    #[test]
+    fn light_cache_survives_db3s_and_rollback_but_resets_for_external_process() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        inert(&mut world, [500.0; 2]);
+        world.set_native_light_availability(0.125);
+        world.native_senses_census = Some(world.current_native_senses_census());
+        let checkpoint = world.cycle_checkpoint();
+        world.set_native_light_availability(0.75);
+        world.native_senses_census = None;
+        world.restore_cycle_checkpoint(checkpoint);
+        assert_eq!(world.native_light_availability(), 0.125);
+        assert_eq!(world.native_senses_census.as_ref().unwrap().total, 1);
+        let mut restored =
+            crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+        assert_eq!(restored.native_light_availability(), 0.125);
+        assert!(restored.native_senses_census.is_none());
+        for boundary in [
+            native_random_world::NativeStartBoundary::ConfiguredStart,
+            native_random_world::NativeStartBoundary::SameProcessRound,
+        ] {
+            restored.prepare_native_restart(boundary);
+            assert_eq!(restored.native_light_availability(), 0.125);
+        }
+        restored.prepare_native_restart(native_random_world::NativeStartBoundary::ExternalProcess);
+        assert_eq!(restored.native_light_availability(), 0.0);
+    }
+
+    #[test]
+    fn malformed_persisted_light_cache_is_rejected() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        world.set_native_light_availability(1.25);
+        assert!(world.validate_invariants().is_err());
+        assert!(crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod native_feed_eligibility55_tests {
+    use super::*;
+
+    #[test]
+    fn native_feed_excludes_hidden_and_missing_area_but_no_chloroplast_commands_still_feed() {
+        let mut config = EngineConfig::testing();
+        config.vegetation.max_energy_per_tick = 7;
+        config.vegetation.feeding_to_body = 0.0;
+        config.vegetable_energy_per_tick = 0;
+        let mut world = Engine::new_native(config).unwrap();
+        let mut ids = Vec::new();
+        for x in [1.0, 2.0, 3.0] {
+            let id = world
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [x, 0.5])
+                .unwrap();
+            let robot = world.slots.get_mut(id).unwrap();
+            robot.materials.energy = 1_000.0;
+            robot.materials.chloroplasts = 16_000.0;
+            robot.materials.radius = 1.0;
+            robot.program.memory.write(MEM_DAYTIME, 12_345);
+            ids.push(id);
+        }
+        let visible = ids[0];
+        let hidden = ids[1];
+        let missing = ids[2];
+        world.slots.get_mut(visible).unwrap().flags.no_chloroplasts = true;
+        world
+            .slots
+            .get_mut(visible)
+            .unwrap()
+            .flags
+            .can_use_chloroplasts = false;
+        world.slots.get_mut(hidden).unwrap().flags.hidden = true;
+        world.slots.get_mut(hidden).unwrap().materials.radius = 1_000.0;
+        world.slots.get_mut(missing).unwrap().flags.exists = false;
+        world.slots.get_mut(missing).unwrap().materials.radius = 1_000.0;
+        // One Single PI area divided by exactly twice that Single PI gives0.5.
+        world.config.world_width = std::f32::consts::PI * 2.0;
+        world.config.world_height = 1.0;
+        world.vegetation_feed_phase();
+        assert_eq!(world.native_light_availability(), 0.5);
+        assert_eq!(world.slots.get(visible).unwrap().materials.energy, 1_002.0);
+        assert_eq!(
+            world
+                .slots
+                .get(visible)
+                .unwrap()
+                .program
+                .memory
+                .read(MEM_NRG),
+            1_000
+        );
+        assert_eq!(world.slots.get(hidden).unwrap().materials.energy, 1_000.0);
+        assert_eq!(world.slots.get(missing).unwrap().materials.energy, 1_000.0);
+        assert_eq!(
+            world
+                .slots
+                .get(visible)
+                .unwrap()
+                .program
+                .memory
+                .read(MEM_DAYTIME),
+            1
+        );
+        for id in [hidden, missing] {
+            assert_eq!(
+                world
+                    .slots
+                    .get(id)
+                    .unwrap()
+                    .program
+                    .memory
+                    .read(MEM_DAYTIME),
+                12_345
+            );
+        }
+        world.slots.get_mut(visible).unwrap().flags.can_execute_dna = false;
+        world.config.vegetation.daytime = false;
+        world.vegetation_feed_phase();
+        assert_eq!(
+            world
+                .slots
+                .get(visible)
+                .unwrap()
+                .program
+                .memory
+                .read(MEM_DAYTIME),
+            0
+        );
+        assert_eq!(world.slots.get(visible).unwrap().materials.energy, 1_002.0);
+    }
+}
+
+#[cfg(test)]
+mod native_sun_band55_tests {
+    use super::*;
+
+    #[test]
+    fn native_sun_band_uses_long_endpoints_inclusive_edges_and_unwrapped_position() {
+        for (x, expected) in [(37.75, false), (38.0, true), (62.0, true), (62.25, false)] {
+            assert_eq!(native_is_in_sun_band(x, 100.0, 0.5, 0.0), expected);
+        }
+        for (x, expected) in [
+            (87.75, false),
+            (88.0, true),
+            (12.0, true),
+            (12.25, false),
+            (112.0, false),
+        ] {
+            assert_eq!(native_is_in_sun_band(x, 100.0, 0.0, 0.0), expected);
+        }
+        assert!(is_in_sun_band(37.75, 100.0, 0.5, 0.0));
+    }
+}
+
+#[cfg(test)]
+mod native_feed_depletion55_tests {
+    use super::*;
+
+    #[test]
+    fn native_feed_depletion_survives_checkpoint_until_next_cycle_death() {
+        for fraction in [0.0, 1.0] {
+            let mut config = EngineConfig::testing();
+            config.vegetation.max_energy_per_tick = 0;
+            config.vegetation.feeding_to_body = fraction;
+            config.vegetable_energy_per_tick = 0;
+            config.corpse_decay.enabled = false;
+            let mut world = Engine::new_native(config).unwrap();
+            world.mutations_enabled = false;
+            let id = world
+                .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+                .unwrap();
+            let robot = world.slots.get_mut(id).unwrap();
+            robot.materials.energy = 1.0;
+            robot.materials.body = 1.0;
+            robot.materials.chloroplasts = 32_000.0;
+            robot.counters.age = 1_000_000;
+            world.vegetation_feed_phase();
+            let materials = &world.slots.get(id).unwrap().materials;
+            let depleted = (materials.energy, materials.body);
+            if fraction == 0.0 {
+                assert!(depleted.0 < 0.0);
+            } else {
+                assert!(depleted.1 < 0.0);
+            }
+            world.publish_snapshot();
+            world.validate_invariants().unwrap();
+            let mut resumed =
+                crate::SaveFile::decode(&crate::SaveFile::encode(&world).unwrap()).unwrap();
+            resumed.validate_invariants().unwrap();
+            assert_eq!(resumed.slots.get(id).unwrap().materials.energy, depleted.0);
+            assert_eq!(resumed.slots.get(id).unwrap().materials.body, depleted.1);
+            resumed.tick().unwrap();
+            assert!(resumed.organism(id).is_err());
+            assert_eq!(resumed.population(), 0);
+            resumed.validate_invariants().unwrap();
+        }
+    }
+
+    #[test]
+    fn native_nonfinite_energy_and_modern_nonpositive_energy_still_reject() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        world.slots.get_mut(id).unwrap().materials.energy = f32::NEG_INFINITY;
+        assert!(world.validate_invariants().is_err());
+        world.slots.get_mut(id).unwrap().materials.energy = -1.0;
+        world.native_random = None;
+        assert!(world.validate_invariants().is_err());
     }
 }

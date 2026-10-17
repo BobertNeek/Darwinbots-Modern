@@ -303,7 +303,7 @@ impl Engine {
                 robot_is_fixed(first, self.robot_fixing_allowed),
                 robot_is_fixed(second, self.robot_fixing_allowed),
             ];
-            crate::physics::resolve_collisions(
+            crate::physics::resolve_native_collisions(
                 &mut positions,
                 &mut velocities,
                 &radii,

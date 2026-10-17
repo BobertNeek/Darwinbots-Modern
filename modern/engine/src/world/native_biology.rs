@@ -37,12 +37,17 @@ impl Engine {
                     self.config.fixed_bot_radii,
                 );
             }
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
         }
     }
 
     pub(super) fn chloroplast_phase(&mut self) {
         let runtime = SysvarRuntime::new();
+        let native_light = self.native_random.is_some().then(|| {
+            (32_000.0 - self.native_light_availability() * 32_000.0).round_ties_even() as i32
+        });
         let costs = self.active_dna_costs();
         let multiplier = costs.dynamic_multiplier(self.cost_population());
         let total_chloroplasts = self.phase_chloroplast_total();
@@ -80,13 +85,18 @@ impl Engine {
             if robot.materials.chloroplasts > 0.0 && robot.counters.chloroplast_share_delay > 0 {
                 robot.counters.chloroplast_share_delay -= 1;
             }
+            if let Some(light) = native_light {
+                native_sensing::publish_integer(&mut robot.program.memory, MEM_LIGHT as u16, light);
+            }
             robot.materials.decay_chloroplasts();
             robot.materials.radius = crate::physics::organism_radius(
                 robot.materials.body,
                 robot.materials.chloroplasts,
                 self.config.fixed_bot_radii,
             );
-            robot.materials.publish(&mut robot.program.memory);
+            robot
+                .materials
+                .publish_for_profile(&mut robot.program.memory, self.native_random.is_some());
         }
     }
 
@@ -298,5 +308,43 @@ mod tests {
                 .is_empty()
         );
         assert_eq!(engine.slots.get(id).unwrap().program.memory.read(300), 50);
+    }
+}
+
+#[cfg(test)]
+mod native_light_publication55_tests {
+    use super::*;
+
+    #[test]
+    fn manage_chloroplasts_publishes_cached_double_light_only_for_eligible_actors() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        for (availability, expected) in [(0.0, 32_000), (0.125, 28_000), (1.0, 0)] {
+            world.set_native_light_availability(availability);
+            world.chloroplast_phase();
+            assert_eq!(
+                world.slots.get(id).unwrap().program.memory.read(923),
+                expected
+            );
+        }
+        for skip in 0..3 {
+            let robot = world.slots.get_mut(id).unwrap();
+            robot.flags.corpse = skip == 0;
+            robot.flags.can_execute_dna = skip != 1;
+            robot.flags.no_chloroplasts = skip == 2;
+            robot.program.memory.write(923, 12_345);
+            world.chloroplast_phase();
+            assert_eq!(
+                world.slots.get(id).unwrap().program.memory.read(923),
+                12_345
+            );
+            world.vegetation_feed_phase();
+            assert_eq!(
+                world.slots.get(id).unwrap().program.memory.read(923),
+                12_345
+            );
+        }
     }
 }

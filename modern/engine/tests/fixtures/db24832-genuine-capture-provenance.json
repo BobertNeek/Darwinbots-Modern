@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "version": "Darwinbots 2.48.32",
+    "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+    "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c"
+  },
+  "capture_method": {
+    "original_process": "Fresh separate original executable process for each case; prepared native SIM loaded with actual toolbar Pause then toolbar Load.",
+    "startup": "Verified runtime and 48 bot files, existing Simple Simulation.set preseeded as settings/lastexit.set. No prior SIM loaded, no StartNew, no robot selection or console.",
+    "settings_sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+    "cycle_authority": "Source-framed total_cycles, saved seed and robot ages decoded from actual captured SIM bytes. Filenames and lagging status captions are not cycle evidence.",
+    "rng_boundary": "Native SIM omits private VB6 Rnd/Gauss state. These controlled fresh-process captures do not prove arbitrary historical random continuation.",
+    "excluded": "Mistimed files named movement-original-cycle10.sim and feeding-original-cycle10.sim actually contain C1. They are not fixtures here. Actual movement C102 is not C100."
+  },
+  "inputs": [
+    {
+      "file": "modern/engine/tests/fixtures/db24832-movement-start-48032.sim",
+      "bytes": 11113,
+      "sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-fixed-start-48032.sim",
+      "bytes": 11119,
+      "sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "fixed"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-body-start-48032.sim",
+      "bytes": 11105,
+      "sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "body"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-chloroplast-start-48032.sim",
+      "bytes": 11113,
+      "sha256": "CB85F10215164C18EB8D8E73A98C2B365B91FE5F7F2BB52E4F2789B7D1E38859",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "chloroplast"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-feeding-start-48032.sim",
+      "bytes": 20498,
+      "sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "feeding"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-ties-start-48032.sim",
+      "bytes": 20489,
+      "sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "ties"
+    }
+  ],
+  "captures": [
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim",
+      "bytes": 17062,
+      "sha256": "766F386C392C59834A3390A2C726D3E2F8DB695FE5B05A932A593D0DCCD010E3",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle10-20261016.sim",
+      "bytes": 17062,
+      "sha256": "DA23FCBE0B725FCF134F7FA25022951E600088603126BFB6E327027FF23465A2",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle102-20261016.sim",
+      "bytes": 17062,
+      "sha256": "2BB48F9883CA05E5771989CB08056BAC737E1EE50F148A8B234FF894EAF37B5B",
+      "cycle": 102,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle1-20261016.sim",
+      "bytes": 17068,
+      "sha256": "01360A500B63AAD15D96384A25E792AB7C50CAB630497017F7C1214D00535BF4",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "fixed"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle1-20261016.sim",
+      "bytes": 17054,
+      "sha256": "0F6EBE616D67BA8FAA45372BE1F0DB0FACEC2994DCC1632953F31634E9A847E5",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "body"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle1-20261016.sim",
+      "bytes": 17062,
+      "sha256": "50DD4B01A0E0E0A19D3E79896B85127A41897BCA8762F8EBF020C63A78DA3170",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "chloroplast"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle10-20261016.sim",
+      "bytes": 17062,
+      "sha256": "569F1272D28A876B3F140420193E5A767B6E9B2B0853B5E36D39513655A4BCCE",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "chloroplast"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle1-20261017.sim",
+      "bytes": 26488,
+      "sha256": "0D0655818BECF73E1722E0A56AEBE05C4D083C0CC60C2C7F6F6A0DFEAD844337",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "feeding"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle10-20261017.sim",
+      "bytes": 26956,
+      "sha256": "A82ABBC5FA3E851A5F4E7506B8497FABA985ABDE24509DC6905B2F2D1F3C79CF",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "feeding"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle1-20261017.sim",
+      "bytes": 26443,
+      "sha256": "B1E4223FEF34CDA7FC1C7E1661B086751D83515AB387C0DF596AA2728CA6501D",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "ties"
+    }
+  ],
+  "claim": "Independent original runtime references for these cases and actual counters. The fixtures alone do not certify complete port parity."
+}
