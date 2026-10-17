@@ -1,0 +1,509 @@
+{
+  "schema_version": 1,
+  "status": "read_only_conditional_hardware_plan_not_admission",
+  "created_utc": "2026-10-17T07:25:06.433Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+  "source_snapshot": {
+    "head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+    "manifest": "output/native-roundtrip-pass58-source.json",
+    "manifest_sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "pins": 540,
+    "reviewed_files": [
+      {
+        "file": "output/qualify-gpu-native-final53.ps1",
+        "sha256": "18FEAD1CB0653289643A6A844041964872C8126F03AC5A899D62BCAA3ADFAA21",
+        "bytes": 25613,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "output/qualify-capacity-final53.ps1",
+        "sha256": "15F9CD4857DB3A8DFBB270ECE2A03BCD2B54ACC752B3AFD9952F20BF571D2355",
+        "bytes": 23032,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "output/native-qualification-admission53.ps1",
+        "sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+        "bytes": 39194,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "Installer/bots/Animal_Minimalis.txt",
+        "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5",
+        "bytes": 606,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "modern/engine/src/world/cached_radius.rs",
+        "sha256": "21E1FF741E3C15FA33B25834DDA0FB56F3BF90E77E36EAC54774E69A8D91BA4C",
+        "bytes": 6957,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "modern/engine/src/world.rs",
+        "sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+        "bytes": 580098,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "modern/cli/src/probe.rs",
+        "sha256": "45C4C192AF418514861200812A5F61CCAA0C38EE47DAED1278F21821F5708256",
+        "bytes": 22535,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "modern/engine/tests/db24832_starter_movement.rs",
+        "sha256": "957CFAFCAEBF5CBF8F62ED831F17FBD246AA519B08AD34A2A67DE9C64E435F98",
+        "bytes": 3550,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "modern/engine/tests/gpu_ffi.rs",
+        "sha256": "DD67C89D425AF9C3A38445853679616BCD8071199DBA32B2029F689C2DA1086B",
+        "bytes": 60327,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "modern/engine/tests/w4_evolution_gpu.rs",
+        "sha256": "3CACAB4F43B49312C19D5F373E960AFCE02AAF9A5C329E0E3CB00D776067C497",
+        "bytes": 9280,
+        "source58_pin_matches": true
+      },
+      {
+        "file": "modern/engine/tests/native_continuation_qualification.rs",
+        "sha256": "789A032ED4EB4058D038FAAC2C3EA1C00D2CD418DB6696CB24F55C93A7FC8CE7",
+        "bytes": 8495,
+        "source58_pin_matches": true
+      }
+    ],
+    "current_source_cpu_marker": "docs/parity/evidence/batch-2026-10-14/gpu-8018c200690e/cpu-ready.json",
+    "current_source_cpu_marker_present": false
+  },
+  "resource_boundary": {
+    "root_is_sole_gpu_and_computer_use_owner": true,
+    "a_life_has_priority": true,
+    "a_life_required_resource_release_must_be_explicit": true,
+    "a_life_release_observed_by_this_review": false,
+    "missing_transient_trainer_process_is_not_release_evidence": true,
+    "preserve_bob_dot": true,
+    "bob_is_not_a_chat": true,
+    "no_trainer_or_bob_process_is_to_be_killed_or_reconfigured": true,
+    "no_resource_or_process_or_device_probe_performed": true,
+    "root_must_serialize_native_gui_input_and_hardware_work": true,
+    "reason": "These runners share only a Darwinbots worktree lease, not a global A-Life/Bob scheduler. Native or human input during GPU/capacity work invalidates that attempt. Nighttime/off-PC status alone does not prove A-Life has relinquished the GPU."
+  },
+  "prerequisites": [
+    {
+      "id": "source_cpu",
+      "requirement": "All ordinary final-source CPU, strictClippy, Core, exact-DLL Desktop, fresh package/smoke/48assets/reference outcomes must be sealed green before a matching cpu-ready marker is created. Failed58 Desktop and hosted successes alone do not qualify a source."
+    },
+    {
+      "id": "admission_format",
+      "requirement": "Read-NativeCpuAdmission53 accepts schema5 fresh_full_cpu_workspace_and_core_desktop_package at exactly the supplied SourceCommit, with pinned source/evidence, actual typed full Rust target receipts, actual fresh passing managed TRXs, package identities/assets/CPU smoke and genuine movementC1/C10/C102. Dynamic batch>=56 managed census is taken from its pinned manifest; current58 expects307/197."
+    },
+    {
+      "id": "no_invented_projection",
+      "requirement": "Schema4 remains only the specific retained-fullCPU52+freshCLI53/Desktop/package method. There is no implemented generic retained58Rust+freshDesktop59 admission route; do not fabricate its booleans or relabel old receipts."
+    },
+    {
+      "id": "worker_closure",
+      "requirement": "Root must first close and verify positively owned qualification/build/test workers, then launch exactly one hardware/capacity runner. This review did not inspect or stop processes."
+    },
+    {
+      "id": "a_life_release",
+      "requirement": "Obtain explicit A-Life release of GPU and any required CPU resources; preserve learner/trainer checkpoint and Bob dot. No missing-process shortcut, priority change or trainer cancellation is authorized by this plan."
+    },
+    {
+      "id": "idle",
+      "requirement": "At least300seconds of observed Windows idle at each task admission. Root must avoid GUI/CUA input during a task; input interruption is retained and never silently retried."
+    },
+    {
+      "id": "qualified_cli",
+      "requirement": "Capacity requires the existing target/release/darwinbots-cli.exe SHA to equal cli_sha256 from the sealed same-source proof/cli-build-identity.json(build_exit_code0, bound source.json). Do not self-certify a currently found binary by passing its unqualified hash."
+    }
+  ],
+  "gpu_runner": {
+    "file": "output/qualify-gpu-native-final53.ps1",
+    "sha256": "18FEAD1CB0653289643A6A844041964872C8126F03AC5A899D62BCAA3ADFAA21",
+    "parameters": {
+      "SourceCommit": "mandatory exact lowercase40hex admitted commit",
+      "IdleSeconds": "default300; values below300 rejected",
+      "Groups": "optional nonempty unique subset; defaults all six groups in fixed source order"
+    },
+    "serial_policy": {
+      "process_priority": "BelowNormal",
+      "cargo_build_jobs": 1,
+      "rust_test_threads": 1,
+      "rayon_threads": 1,
+      "cache_receipt_reuse": false
+    },
+    "groups": [
+      {
+        "group": "physical-library",
+        "expected_physical_cases": 7,
+        "minimum_passing_guard": 7,
+        "timeout_seconds": 1800,
+        "cargo_arguments": [
+          "test",
+          "--release",
+          "-p",
+          "darwinbots-engine",
+          "--lib",
+          "--no-fail-fast",
+          "--",
+          "--ignored",
+          "--nocapture",
+          "--test-threads=1"
+        ]
+      },
+      {
+        "group": "physical-cli",
+        "expected_physical_cases": 1,
+        "minimum_passing_guard": 1,
+        "timeout_seconds": 1800,
+        "cargo_arguments": [
+          "test",
+          "--release",
+          "-p",
+          "darwinbots-cli",
+          "--lib",
+          "--no-fail-fast",
+          "--",
+          "--ignored",
+          "--nocapture",
+          "--test-threads=1"
+        ]
+      },
+      {
+        "group": "physical-integration",
+        "expected_physical_cases": 3,
+        "minimum_passing_guard": 3,
+        "timeout_seconds": 1800,
+        "cargo_arguments": [
+          "test",
+          "--release",
+          "-p",
+          "darwinbots-engine",
+          "--test",
+          "db24832_starter_movement",
+          "--test",
+          "gpu_ffi",
+          "--test",
+          "w4_evolution_gpu",
+          "--no-fail-fast",
+          "--",
+          "--ignored",
+          "--nocapture",
+          "--test-threads=1"
+        ]
+      },
+      {
+        "group": "physical-native-continuation",
+        "expected_physical_cases": 1,
+        "minimum_passing_guard": 1,
+        "timeout_seconds": 7200,
+        "cargo_arguments": [
+          "test",
+          "--release",
+          "-p",
+          "darwinbots-engine",
+          "--test",
+          "native_continuation_qualification",
+          "--no-fail-fast",
+          "--",
+          "--ignored",
+          "--nocapture",
+          "--test-threads=1"
+        ]
+      },
+      {
+        "group": "portable-gpu",
+        "expected_physical_cases": 0,
+        "minimum_passing_guard": 1,
+        "timeout_seconds": 3600,
+        "cargo_arguments": [
+          "test",
+          "--release",
+          "--workspace",
+          "--no-fail-fast",
+          "gpu",
+          "--",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "scope": "Ordinary nonignored portable GPU contracts. Record actual emitted targets/counts/adapters/fallback behavior; no physical qualification is inferred from this group."
+      },
+      {
+        "group": "backend-switches",
+        "expected_physical_cases": 0,
+        "minimum_passing_guard": 1,
+        "timeout_seconds": 1800,
+        "cargo_arguments": [
+          "test",
+          "--release",
+          "--workspace",
+          "--no-fail-fast",
+          "switch",
+          "--",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "scope": "Ordinary CPU/GPU backend transition contracts. Record actual terminal outcomes; hardware identity/fallback boundaries remain separate from physical12."
+      }
+    ],
+    "physical_total": 12,
+    "physical_test_sources": [
+      {
+        "group": "physical-library",
+        "file": "modern/engine/src/world/cached_radius.rs",
+        "line": 104,
+        "test": "world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu"
+      },
+      {
+        "group": "physical-library",
+        "file": "modern/engine/src/world.rs",
+        "line": 14037,
+        "test": "world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once"
+      },
+      {
+        "group": "physical-library",
+        "file": "modern/engine/src/world.rs",
+        "line": 14202,
+        "test": "world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason"
+      },
+      {
+        "group": "physical-library",
+        "file": "modern/engine/src/world.rs",
+        "line": 14230,
+        "test": "world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled"
+      },
+      {
+        "group": "physical-library",
+        "file": "modern/engine/src/world.rs",
+        "line": 14248,
+        "test": "world::tests::gpu_failure_does_not_partially_advance_the_cycle"
+      },
+      {
+        "group": "physical-library",
+        "file": "modern/engine/src/world.rs",
+        "line": 14282,
+        "test": "world::tests::gpu_in_backend_failure_allows_later_tick_with_trace"
+      },
+      {
+        "group": "physical-library",
+        "file": "modern/engine/src/world.rs",
+        "line": 14310,
+        "test": "world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic"
+      },
+      {
+        "group": "physical-cli",
+        "file": "modern/cli/src/probe.rs",
+        "line": 427,
+        "test": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter"
+      },
+      {
+        "group": "physical-integration",
+        "file": "modern/engine/tests/db24832_starter_movement.rs",
+        "line": 101,
+        "test": "untouched_starter_animal_moves_on_physical_gpu"
+      },
+      {
+        "group": "physical-integration",
+        "file": "modern/engine/tests/gpu_ffi.rs",
+        "line": 311,
+        "test": "physical_gpu_fuses_grid_sensing_integration_and_render_preparation"
+      },
+      {
+        "group": "physical-integration",
+        "file": "modern/engine/tests/w4_evolution_gpu.rs",
+        "line": 174,
+        "test": "physical_gpu_phase2_ecological_differential_has_adapter_receipt"
+      },
+      {
+        "group": "physical-native-continuation",
+        "file": "modern/engine/tests/native_continuation_qualification.rs",
+        "line": 180,
+        "test": "physical_gpu_original_world_long_continuation_matches_cpu_and_repeated_save_resume"
+      }
+    ],
+    "physical_adapter_boundary": "Physical test source requires DiscreteGpu or IntegratedGpu and emits device receipts. Submission-failure library cases deliberately exercise expected CPU retry/fail-stop contracts after a physical start; those intentional transitions are not a software-adapter substitute for physical evidence.",
+    "guards": {
+      "source": "Exact HEAD plus guarded tracked diff/untracked closure; marker/evidence/runner/helper/Cargo hashes are rechecked. Root must not edit protected source or evidence while it runs.",
+      "idle": "Waits for300seconds, then captures last-input tick after source checks and rechecks idle before launch.",
+      "input": "Checks input with500ms loop interval plus guard cost; records early stop reason, kills only its owned Cargo tree, performs final input observation, and stops later selected groups. No auto retry on input.",
+      "stop_markers": [
+        "docs/parity/evidence/batch-2026-10-14/gpu-<source12>/STOP",
+        "<new GPU run directory>/STOP"
+      ],
+      "logs": "Bounded writer-quiescent same-byte UTF8/hash capture. Locked/missing/invalid logs, cleanup/provenance errors or missing terminal summaries cannot pass.",
+      "failure_collection": "Ordinary test failures collect all selected groups; input/source/STOP/runner/evidence failure terminates admission to later groups. Unselected groups have no fresh result."
+    },
+    "outputs": "Fresh docs/parity/evidence/batch-2026-10-14/gpu-<source12>/run-<UTC>-<UUID> with run.json,state.json,per-group logs/receipts,binary hashes and summary.json."
+  },
+  "capacity_runner": {
+    "file": "output/qualify-capacity-final53.ps1",
+    "sha256": "15F9CD4857DB3A8DFBB270ECE2A03BCD2B54ACC752B3AFD9952F20BF571D2355",
+    "parameters": {
+      "SourceCommit": "mandatory40hex admitted commit",
+      "QualifiedCliSha256": "mandatory64hex same-source qualified CLI receipt value",
+      "Backend": "Cpu(default) or Gpu",
+      "Populations": "defaults1000,4000,8000,32000; optional nonempty unique selection",
+      "IdleSeconds": "300minimum; no wait/retry for a task admitted while busy"
+    },
+    "plans": [
+      {
+        "population": 1000,
+        "ticks": 2000,
+        "timeout_seconds": 1200
+      },
+      {
+        "population": 4000,
+        "ticks": 300,
+        "timeout_seconds": 1800
+      },
+      {
+        "population": 8000,
+        "ticks": 100,
+        "timeout_seconds": 2400
+      },
+      {
+        "population": 32000,
+        "ticks": 30,
+        "timeout_seconds": 7200
+      }
+    ],
+    "workload": {
+      "bot": "Installer/bots/Animal_Minimalis.txt",
+      "seed": 24832,
+      "initial_energy": 10000,
+      "backend_explicit": true,
+      "external_trainer": false,
+      "normal_mutations_enabled": true,
+      "rayon_threads": 1,
+      "priority": "BelowNormal",
+      "warmup": 0
+    },
+    "passing_requirements": [
+      "Actual report backend exactly equals requested backend.",
+      "Cpu report contains explicit gpu_adapter:null. Gpu report contains a named backend/device receipt of typeDiscreteGpu orIntegratedGpu; CPU/software fallback cannot qualify Gpu.",
+      "Actual ticks and finaltick equal requested cycles.",
+      "Actual starting/final population,candidate cohort populations equal requested count; births/deaths/candidate births/deaths/starting and final vegetation counts are0.",
+      "Each actual elapsed_seconds is finite and at least60. A short completed cycle count is reported insufficient_sustained_duration, not a pass."
+    ],
+    "guards": {
+      "provenance": "Qualified CLI hash, source HEAD/diff/untracked closure, source/evidence/runner/helper/workloadDNA hashes; provenance is rechecked while running every5seconds.",
+      "input": "Polls500ms while the owned CLI runs, stops the current owned CLI on input, and checks input again after exit/before receipt. It does not retry the interrupted plan. Later plans each recheck idle and normally become deferred_pc_in_use; there is no explicit run-global input block as in the GPU runner.",
+      "stop": "Only the fresh capacity directory STOP is checked. STOP/source failures set blockedReason so later tasks become not_run_after_guard_failure.",
+      "ordinary_failures": "Other failed/timed-out/insufficient plans remain explicit; later selected plans can still collect normal outcomes."
+    },
+    "outputs": "Fresh docs/parity/evidence/batch-2026-10-14/capacity-<cpu|gpu>-pass53-<source12>-<UTC>-<UUID8> with manifest.json,per-population stdout/stderr/receipt and summary.json.",
+    "claim_boundary": "Headless sustained selected-population throughput only; no rendered FPS, original-runtime parity, trainer or unselected population claim."
+  },
+  "shared_lease": {
+    "file": "output/native-qualification50.lock",
+    "scope": "Same Darwinbots worktree GPU/capacity runners, including older runner versions that use this identity.",
+    "mechanism": "OpenOrCreate ReadWrite FileShare.None stream; stale file content alone is not an active lease.",
+    "lifetime": "No explicit final lease Dispose is present in the runners. Launch each invocation in a separate fresh pwsh process, wait for exit and owned worker closure before the next; process exit releases the OS handle.",
+    "do_not": "Do not delete or force-release a held lease, dot-source runners, assume a persistent session has released its stream, or treat this lease as A-Life/Bob resource arbitration."
+  },
+  "shortest_serial_sequence": {
+    "status": "UNEXECUTED conditional plan only",
+    "fill_values": {
+      "SourceCommit": "<ADMITTED_FULL_40_HEX_LOWERCASE_SHA>",
+      "QualifiedCliSha256": "<CLI_SHA256_FROM_SEALED_SAME_SOURCE_CLI_BUILD_IDENTITY>"
+    },
+    "launch_policy": "Root launches each payload as a new hidden pwsh.exe process, serially. Wait for process exit and sealed normal outcomes/owned worker closure before moving on. Do not start the next after an input/provenance/owner STOP without fresh root admission and300seconds idle.",
+    "payloads": [
+      {
+        "order": 1,
+        "label": "all six GPU groups",
+        "executable": "pwsh.exe",
+        "arguments": [
+          "-NoProfile",
+          "-NonInteractive",
+          "-File",
+          "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\qualify-gpu-native-final53.ps1",
+          "-SourceCommit",
+          "<ADMITTED_FULL_40_HEX_LOWERCASE_SHA>",
+          "-IdleSeconds",
+          "300"
+        ]
+      },
+      {
+        "order": 2,
+        "label": "all four CPU capacities",
+        "executable": "pwsh.exe",
+        "arguments": [
+          "-NoProfile",
+          "-NonInteractive",
+          "-File",
+          "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\qualify-capacity-final53.ps1",
+          "-SourceCommit",
+          "<ADMITTED_FULL_40_HEX_LOWERCASE_SHA>",
+          "-QualifiedCliSha256",
+          "<CLI_SHA256_FROM_SEALED_SAME_SOURCE_CLI_BUILD_IDENTITY>",
+          "-Backend",
+          "Cpu",
+          "-IdleSeconds",
+          "300"
+        ]
+      },
+      {
+        "order": 3,
+        "label": "all four GPU capacities",
+        "executable": "pwsh.exe",
+        "arguments": [
+          "-NoProfile",
+          "-NonInteractive",
+          "-File",
+          "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\qualify-capacity-final53.ps1",
+          "-SourceCommit",
+          "<ADMITTED_FULL_40_HEX_LOWERCASE_SHA>",
+          "-QualifiedCliSha256",
+          "<CLI_SHA256_FROM_SEALED_SAME_SOURCE_CLI_BUILD_IDENTITY>",
+          "-Backend",
+          "Gpu",
+          "-IdleSeconds",
+          "300"
+        ]
+      }
+    ],
+    "selected_group_recovery": "If user input interrupts a group, preserve its failed/stopped attempt. A later fresh run may select only the still-unqualified groups via-Groups after new root resource/idle admission; it does not reuse a passing status from an interrupted attempt."
+  },
+  "rendered_checkpoints": {
+    "physical_render_preparation": "gpu_ffi physical integration checks GPU grid/sensing/integration/render preparation; it is not a visible packaged window/FPS walkthrough.",
+    "headless_managed": "Current hosted58 actual fullDesktop197 per platform is196pass/1archive failure, with59fixed-clock fixture drafted. Headless Avalonia screenshots/control dispatch do not complete visible acceptance.",
+    "visible_packaged_app": "After final CPU/managed/package qualification and appropriate resource release, root separately performs the exact-DLL packaged walkthrough with actual viewport/backend/stat/settings/console/menu/save observations and retained frames. Do it between hardware runs, not during a lease-owned task that must stop on UI input.",
+    "original_reference": "Original console/canonical/mode observations remain separate. Do not conflate renderer/capacity passes with original-runtime agreement."
+  },
+  "source_anchors": [
+    {
+      "file": "output/qualify-gpu-native-final53.ps1",
+      "lines": "1-32,50-82,146-161,194-247,251-320,324-375"
+    },
+    {
+      "file": "output/qualify-capacity-final53.ps1",
+      "lines": "1-50,169-216,265-319,329-374,395-442"
+    },
+    {
+      "file": "output/native-qualification-admission53.ps1",
+      "lines": "3-26,301-316,353-418,458-556"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "lines": "14017-14032",
+      "rule": "Physical submission-failure helper verifies device type/name/backend before injecting the failure."
+    }
+  ],
+  "execution": {
+    "scripts_executed": false,
+    "source_parser": false,
+    "builds_or_tests": false,
+    "device_probe": false,
+    "process_or_resource_availability_probe": false,
+    "ui_or_native_helper": false,
+    "git_action": false,
+    "source_or_pin_write": false
+  },
+  "no_current_hardware_admission_claim": true
+}

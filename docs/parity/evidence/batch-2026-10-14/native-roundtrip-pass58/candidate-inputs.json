@@ -1,0 +1,79 @@
+{
+  "status": "Prepared39 input identities only. No earlier runtime outcomes retained and no genuine original-runtime oracle claimed.",
+  "manifest": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\manifest.json",
+  "manifest_sha256": "49F44CE37573A9C41EB419C15C5B0359474697FA4BC82DD70BF86B25F0DD8BA9",
+  "previous_input_identity_receipt": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass49\\candidate-checkpoints.json",
+  "previous_input_identity_receipt_sha256": "29C1B410F6A3F5B063FFC91474A9765E8D744EFB73E03404B39FE74BB5202092",
+  "cases": [
+    {
+      "case": "movement",
+      "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\movement-start.sim",
+      "sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "checkpoints": [
+        1,
+        10,
+        100
+      ]
+    },
+    {
+      "case": "fixed",
+      "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\fixed-start.sim",
+      "sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "checkpoints": [
+        1,
+        10,
+        100
+      ]
+    },
+    {
+      "case": "contacts",
+      "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\contacts-start.sim",
+      "sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "checkpoints": [
+        1,
+        10,
+        100
+      ]
+    },
+    {
+      "case": "body",
+      "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\body-start.sim",
+      "sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "checkpoints": [
+        1,
+        10,
+        100
+      ]
+    },
+    {
+      "case": "ties",
+      "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\ties-start.sim",
+      "sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "checkpoints": [
+        1,
+        10,
+        100
+      ]
+    },
+    {
+      "case": "feeding",
+      "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\feeding-start.sim",
+      "sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "checkpoints": [
+        1,
+        10,
+        100
+      ]
+    },
+    {
+      "case": "reproduction",
+      "file": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\native-oracle-candidate39\\reproduction-start.sim",
+      "sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "checkpoints": [
+        1,
+        10,
+        100
+      ]
+    }
+  ]
+}

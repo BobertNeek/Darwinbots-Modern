@@ -1942,7 +1942,7 @@ internal sealed class AuditStorageService : IDesktopStorageService
 {
     public IReadOnlyList<DesktopTextFile> DnaFiles { get; init; } = [];
     public string? PickedSimulationPath { get; init; }
-    public byte[]? OpenedSimulation { get; init; }
+    public byte[]? OpenedSimulation { get; set; }
     public DesktopSettings? SettingsToOpen { get; init; }
     public string? LatestAutosave { get; init; }
     public byte[]? SavedSimulation { get; private set; }
@@ -2099,6 +2099,7 @@ internal sealed class AuditEngineClient : IEngineClient
     public WorldConfiguration? ReadConfiguration() => ConfigurationForRead;
     public int? NativeCycle { get; set; }
     public Func<uint, int?, int?>? AdvanceNativeCycle { get; set; }
+    public bool RejectLoads { get; set; }
     public LocalModeSnapshot? LocalModeForRead { get; set; }
     public float? NativeGaussianSpare { get; set; }
     public byte NativeSunChange { get; set; }
@@ -2231,7 +2232,11 @@ internal sealed class AuditEngineClient : IEngineClient
     public void SetOrganismAim(uint slot, uint generation, int aim) => Calls.Enqueue($"Aim:{slot}:{generation}:{aim}");
     public byte[] Save() { Calls.Enqueue("Save"); return EncodeTickInSave ? BitConverter.GetBytes(_tick) : [1, 2, 3, 4]; }
     public byte[] SaveWithoutMutations() { Calls.Enqueue("SaveWithoutMutations"); return [4, 3, 2, 1]; }
-    public void Load(byte[] save) => Calls.Enqueue("Load");
+    public void Load(byte[] save)
+    {
+        Calls.Enqueue("Load");
+        if (RejectLoads) throw new InvalidDataException("Controlled audit load rejection.");
+    }
     public EngineSnapshot Snapshot() => _snapshot with
     {
         Tick = _tick, NativeCycle = NativeCycle, Backend = _backend,

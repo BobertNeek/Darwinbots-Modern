@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "status": "all_six_targets_applied_before_any59_checks",
+  "applied_utc": "2026-10-17T07:27:26.920Z",
+  "base_source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "plan": "output/pass59-authoring-plan-final.json",
+  "plan_sha256": "6E37585FF0D08E0477AF1BECAF6386E10C1A6836F8A564B57DB4D1F0F0F823F3",
+  "backup": "output/pass59-preapply-backup/receipt.json",
+  "backup_sha256": "2C89F5B849545B3C8AB95F15069BBB5E205667867E44E7489E825D81D7E4701B",
+  "files": [
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "sha256": "88E84C7B2B33F8874A2A08B417F4011AA97B716B00F4A5B04CBFD73A50528404",
+      "bytes": 17778
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "91C05D457EF91E4668CEA84DB6115FFB4C195916E6E80A4CFCF8E04E83FE9FC0",
+      "bytes": 141332
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "sha256": "DC444FF48FDE4F6659A66FA025EC678391B1CBDB954ACE307A8E573BAA61C892",
+      "bytes": 3205
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "sha256": "6EFD984357CF8FEF685A4213A5098C2781C180D9F0B733088CFBEC5476626282",
+      "bytes": 37466
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "9D696B47A5B5E556DCE77FE5065E03050DE6FBE73F44D6C3184FD86ACA53AA9C",
+      "bytes": 134964
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass59.ps1",
+      "sha256": "8634D4615BE92606F0E1CB4C5206D6783A496EAA57A10F5BCFEC85415F9F103E",
+      "bytes": 54809
+    }
+  ],
+  "port_builds_or_tests_run": false,
+  "formatters_or_code_parsers_run": false,
+  "unrelated_png_sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9"
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "created_utc": "2026-10-17T07:28:22.644Z",
+  "all_six_targets_applied_before_checks": true,
+  "format_exit_code": 0,
+  "powershell_parser_errors": 0,
+  "metadata_exit_code": 0,
+  "git_diff_check_exit_code": 0,
+  "fetched_upstream_master_ancestor_exit_code": 0,
+  "workspace_metadata": {
+    "file": "output/pass59-workspace-metadata.json",
+    "sha256": "7C9419C86589B5AEF5DCF3294A4CECD7D6E684482126CB3AC54C6A830D54D604",
+    "expected_distinct_rust_targets": 68,
+    "exact_target_set_matches58": true
+  },
+  "expected_managed_test_counts": {
+    "core": 307,
+    "desktop": 206
+  },
+  "isolated_admission_probes": {
+    "schema5_passed": 23,
+    "schema4_historical_passed": 8,
+    "retained_unchanged_helper_and_probe_evidence": "output/pass58-authoring-checks.json",
+    "retained_receipt_sha256": "6C8BC93837052DBCF080A235A11AB094DB9743D606F96056910378D77019F407",
+    "rerun": false,
+    "historical_schema4_is_not_current_source_equivalence": true
+  },
+  "product_builds_or_tests_executed": false,
+  "source_raw_hashes_verified": 6,
+  "unrelated_png_sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9"
+}

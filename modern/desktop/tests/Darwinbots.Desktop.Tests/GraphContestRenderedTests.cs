@@ -18,6 +18,251 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class GraphContestRenderedTests
 {
     [Fact]
+    public async Task EvolutionDefaultGraphsOpenActualNativeSeriesWithoutReplacingManualCharts()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var snapshot = EngineSnapshot.Empty with { History = [
+                new HistorySampleSnapshot(100, 5, 0, 0, 0, 0, 0) { SpeciesGraphs = [
+                    new("Alga.txt", 0xff00a040, new Dictionary<string, double> { ["population"] = 2, ["average_mutations"] = 1.2, ["total_energy"] = 4.5 }),
+                    new("Animal.txt", 0xffd03020, new Dictionary<string, double> { ["population"] = 3, ["average_mutations"] = 2.3, ["total_energy"] = 6.7 }),
+                ] },
+                new HistorySampleSnapshot(200, 5, 0, 0, 0, 0, 0) { SpeciesGraphs = [
+                    new("Alga.txt", 0xff00a040, new Dictionary<string, double> { ["population"] = 4, ["average_mutations"] = 1.8, ["total_energy"] = 5.5 }),
+                    new("Animal.txt", 0xffd03020, new Dictionary<string, double> { ["population"] = 1, ["average_mutations"] = 3.4, ["total_energy"] = 7.8 }),
+                ] },
+            ] };
+            var suite = new GraphSuiteWindow(snapshot);
+            try
+            {
+                suite.Show();
+                Assert.Empty(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                var view = suite.FindControl<GraphSuiteView>("GraphView")!;
+                var open = view.FindControl<Button>("OpenGraphButton")!;
+                suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.AverageAge);
+                open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var manualWindow = Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                var manual = suite.ViewModel.RunningGraphs.ToArray();
+                var selected = GraphCatalog.For(GraphMetric.AverageDnaLength);
+                suite.ViewModel.SelectedChoice = selected;
+
+                suite.OpenEvolutionGraphs();
+                Assert.Equal(4, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+                Assert.Equal(8, suite.ViewModel.RunningGraphs.Count);
+                Assert.Same(selected, suite.ViewModel.SelectedChoice);
+                Assert.Contains(manualWindow, suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                Assert.All(manual, graph => Assert.Contains(graph, suite.ViewModel.RunningGraphs));
+                foreach (var metric in new[] { GraphMetric.Population, GraphMetric.AverageMutations, GraphMetric.TotalEnergy })
+                {
+                    Assert.Equal(2, suite.ViewModel.RunningGraphs.Count(graph => graph.Metric == metric));
+                    Assert.All(suite.ViewModel.RunningGraphs.Where(graph => graph.Metric == metric), graph =>
+                    {
+                        Assert.Equal(new ulong[] { 100, 200 }, graph.Samples.Select(sample => sample.Tick));
+                        Assert.Equal(graph.SpeciesName == "Alga.txt" ? 0xff00a040u : 0xffd03020u, graph.Color);
+                    });
+                }
+                Assert.Equal(new[] { 2d, 4d }, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.Population && graph.SpeciesName == "Alga.txt").Samples.Select(sample => sample.Value));
+                Assert.Equal(new[] { 2.3, 3.4 }, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.AverageMutations && graph.SpeciesName == "Animal.txt").Samples.Select(sample => sample.Value));
+                Assert.Equal(new[] { 6.7, 7.8 }, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.TotalEnergy && graph.SpeciesName == "Animal.txt").Samples.Select(sample => sample.Value));
+                var retained = suite.ViewModel.RunningGraphs.ToArray();
+                suite.OpenEvolutionGraphs();
+                Assert.Equal(retained, suite.ViewModel.RunningGraphs.ToArray());
+                Assert.Equal(4, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Assert.All(suite.OwnedWindows.OfType<GraphSeriesWindow>(), graph =>
+                {
+                    Assert.True(graph.IsVisible);
+                    Assert.True(graph.FindControl<GraphSeriesChart>("SeriesChart")!.Bounds.Width > 0);
+                });
+            }
+            finally { suite.Close(); }
+            await Task.CompletedTask;
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(LocalModeKind.SimpleSurvival, EvolutionMode.SimpleSurvival)]
+    [InlineData(LocalModeKind.EcoSurvival, EvolutionMode.Eco)]
+    public async Task PublishedEvolutionStartsRestartsAndLoadResultsPreserveDefaultGraphBoundaries(LocalModeKind kind, EvolutionMode mode)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var storage = new AuditStorageService { OpenedSimulation = [1, 2, 3, 4] };
+            var window = new MainWindow([], new WorldSetupOptions(), factory, storage);
+            try
+            {
+                window.Show();
+                await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null && !factory.Clients.IsEmpty, () => "Audit world was not initialized.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                var engine = factory.Clients.First();
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                var evolution = EvolutionGraphMode(kind, mode, true, "evolving");
+                engine.LocalModeForRead = evolution with { Status = LocalModeStatus.Configured };
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.Empty(window.OwnedWindows.OfType<GraphSuiteWindow>());
+
+                engine.LocalModeForRead = evolution;
+                await session.StartLocalModeAsync();
+                await FlushGraphPresentationAsync();
+                var suite = Assert.Single(window.OwnedWindows.OfType<GraphSuiteWindow>());
+                Assert.Equal(3, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+                Assert.Equal(new[] { GraphMetric.Population, GraphMetric.AverageMutations, GraphMetric.TotalEnergy }, suite.ViewModel.RunningGraphs.Select(graph => graph.Metric));
+                var population = suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.Population);
+                var graphView = suite.FindControl<GraphSuiteView>("GraphView")!;
+                suite.ViewModel.SelectedChoice = GraphCatalog.For(GraphMetric.AverageAge);
+                graphView.FindControl<Button>("OpenGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var manual = suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.AverageAge);
+                var selected = GraphCatalog.For(GraphMetric.AverageDnaLength);
+                suite.ViewModel.SelectedChoice = selected;
+
+                suite.OwnedWindows.OfType<GraphSeriesWindow>().Single(graph => TryField<GraphSeriesViewModel>(graph, "_graph")!.Metric == GraphMetric.AverageMutations).Close();
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.DoesNotContain(suite.ViewModel.RunningGraphs, graph => graph.Metric == GraphMetric.AverageMutations);
+                Assert.Equal(3, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+
+                engine.LocalModeForRead = evolution with { RestartCount = 2 };
+                await session.RestartLocalModeAsync();
+                await FlushGraphPresentationAsync();
+                Assert.Equal(4, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+                Assert.Same(population, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.Population));
+                Assert.Same(manual, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.AverageAge));
+                Assert.Same(selected, suite.ViewModel.SelectedChoice);
+
+                suite.OwnedWindows.OfType<GraphSeriesWindow>().Single(graph => TryField<GraphSeriesViewModel>(graph, "_graph")!.Metric == GraphMetric.TotalEnergy).Close();
+                var buttonLoadCount = engine.Calls.Count(call => call == "Load");
+                window.FindControl<Button>("LoadButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => engine.Calls.Count(call => call == "Load") == buttonLoadCount + 1 && suite.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 4, () => "Loading the same evolving checkpoint did not reopen its missing default graph.");
+                await FlushGraphPresentationAsync();
+                Assert.Single(window.OwnedWindows.OfType<GraphSuiteWindow>());
+                Assert.Same(population, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.Population));
+                Assert.Same(manual, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.AverageAge));
+                Assert.Same(selected, suite.ViewModel.SelectedChoice);
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.Equal(4, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+
+                // A rejected engine Load publishes nothing. Its next ordinary
+                // snapshot must not undo the player's closed-chart choice.
+                suite.OwnedWindows.OfType<GraphSeriesWindow>().Single(graph => TryField<GraphSeriesViewModel>(graph, "_graph")!.Metric == GraphMetric.AverageMutations).Close();
+                var menu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
+                var loadItem = menu.FindCommandItem(LegacyCommandId.FileLoadSimulation)!;
+                var viewModel = TryField<Darwinbots.Desktop.ViewModels.MainWindowViewModel>(window, "_viewModel")!;
+                var failedLoadCount = engine.Calls.Count(call => call == "Load");
+                var previousMode = session.LatestSnapshot.LocalMode;
+                engine.RejectLoads = true;
+                loadItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status.Contains("Controlled audit load rejection.", StringComparison.Ordinal), () => viewModel.Status);
+                Assert.Equal(failedLoadCount + 1, engine.Calls.Count(call => call == "Load"));
+                Assert.Equal(previousMode, session.LatestSnapshot.LocalMode);
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.DoesNotContain(suite.ViewModel.RunningGraphs, graph => graph.Metric == GraphMetric.AverageMutations);
+                Assert.Equal(3, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+                Assert.Same(population, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.Population));
+                Assert.Same(manual, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.AverageAge));
+                Assert.Same(selected, suite.ViewModel.SelectedChoice);
+
+                // Cancel both normal pickers without reaching engine.Load.
+                engine.RejectLoads = false;
+                storage.OpenedSimulation = null;
+                var canceledLoadCount = engine.Calls.Count(call => call == "Load");
+                loadItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status == "CANCELED", () => viewModel.Status);
+                window.FindControl<Button>("LoadButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await FlushGraphPresentationAsync();
+                Assert.Equal(canceledLoadCount, engine.Calls.Count(call => call == "Load"));
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.DoesNotContain(suite.ViewModel.RunningGraphs, graph => graph.Metric == GraphMetric.AverageMutations);
+                Assert.Equal(3, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+                Assert.Same(population, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.Population));
+                Assert.Same(manual, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.AverageAge));
+                Assert.Same(selected, suite.ViewModel.SelectedChoice);
+
+                // Successful legacy-menu load shares the button's success-only
+                // boundary, opens the missing default once, and keeps all others.
+                storage.OpenedSimulation = [1, 2, 3, 4];
+                loadItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => viewModel.Status == "LOADED" && suite.OwnedWindows.OfType<GraphSeriesWindow>().Count() == 4, () => viewModel.Status);
+                await FlushGraphPresentationAsync();
+                Assert.Equal(canceledLoadCount + 1, engine.Calls.Count(call => call == "Load"));
+                Assert.Equal(4, suite.ViewModel.RunningGraphs.Count);
+                Assert.Single(suite.ViewModel.RunningGraphs.Where(graph => graph.Metric == GraphMetric.AverageMutations));
+                Assert.Same(population, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.Population));
+                Assert.Same(manual, suite.ViewModel.RunningGraphs.Single(graph => graph.Metric == GraphMetric.AverageAge));
+                Assert.Same(selected, suite.ViewModel.SelectedChoice);
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.Equal(4, suite.OwnedWindows.OfType<GraphSeriesWindow>().Count());
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(LocalModeKind.SimpleSurvival, EvolutionMode.SimpleSurvival, false, "evolving")]
+    [InlineData(LocalModeKind.EcoSurvival, EvolutionMode.Eco, false, "evolving")]
+    [InlineData(LocalModeKind.Zerobot, EvolutionMode.Zerobot, true, "evolving")]
+    [InlineData(LocalModeKind.SimpleSurvival, EvolutionMode.SimpleSurvival, true, "testing")]
+    [InlineData(LocalModeKind.EcoSurvival, EvolutionMode.Eco, true, "testing")]
+    [InlineData(LocalModeKind.Contest, EvolutionMode.SimpleSurvival, true, "evolving")]
+    public async Task NoneligibleEvolutionSnapshotsKeepAutomaticGraphsClosedAndManualChooserUsable(LocalModeKind kind, EvolutionMode mode, bool autoGraphs, string phase)
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var factory = new AuditEngineClientFactory();
+            var window = new MainWindow([], new WorldSetupOptions(), factory, new AuditStorageService());
+            try
+            {
+                window.Show();
+                await WaitFor(() => TryField<SimulationSession>(window, "_session") is not null && !factory.Clients.IsEmpty, () => "Audit world was not initialized.");
+                var session = TryField<SimulationSession>(window, "_session")!;
+                var engine = factory.Clients.First();
+                engine.LocalModeForRead = EvolutionGraphMode(kind, mode, autoGraphs, phase);
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.Empty(window.OwnedWindows.OfType<GraphSuiteWindow>());
+                window.FindControl<Button>("GraphsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var suite = Assert.Single(window.OwnedWindows.OfType<GraphSuiteWindow>());
+                Assert.Empty(suite.ViewModel.RunningGraphs);
+                suite.FindControl<GraphSuiteView>("GraphView")!.FindControl<Button>("OpenGraphButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var manual = Assert.Single(suite.ViewModel.RunningGraphs);
+                Assert.Equal(GraphMetric.Population, manual.Metric);
+                Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+                await session.RefreshSnapshotAsync();
+                await FlushGraphPresentationAsync();
+                Assert.Same(manual, Assert.Single(suite.ViewModel.RunningGraphs));
+                Assert.Single(suite.OwnedWindows.OfType<GraphSeriesWindow>());
+            }
+            finally { window.Close(); }
+        }, CancellationToken.None);
+    }
+
+    private static LocalModeSnapshot EvolutionGraphMode(LocalModeKind kind, EvolutionMode mode, bool autoGraphs, string phase) =>
+        LocalModeSnapshot.Idle with
+        {
+            Status = LocalModeStatus.Running,
+            Kind = kind,
+            RestartCount = 1,
+            Configuration = LocalModeConfig.Default with
+            {
+                Kind = kind,
+                StagedEvolution = new(mode, "start\nstop", 10, 100, false, 32_000, autoGraphs),
+            },
+            Evolution = new(0, phase, true, 10, 100, 0, 0, 0),
+        };
+
+    private static async Task FlushGraphPresentationAsync()
+    {
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, Avalonia.Threading.DispatcherPriority.Background);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+    }
+
+    [Fact]
     public async Task SpeciesGraphWindowRendersDistinctNativeColorsAndClosingStopsQueries()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>

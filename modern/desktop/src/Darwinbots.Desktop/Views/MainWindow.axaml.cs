@@ -68,6 +68,7 @@ public sealed partial class MainWindow : Window
     private readonly ObservableCollection<SpeciesImport> _insertionSpecies = [];
     private GlobalSettings _globalSettings;
     private ulong? _lastGraphRefreshTick;
+    private (LocalModeKind Kind, uint RestartCount)? _automaticEvolutionGraphBoundary;
     private readonly IEngineClientFactory _engineFactory;
     private readonly IDesktopStorageService _storage;
     private bool _tickInFlight;
@@ -1067,8 +1068,7 @@ public sealed partial class MainWindow : Window
         if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
         if (await _storage.OpenSimulationAsync(this) is not { } save)
             return LegacyCommandResult.Cancel();
-        await _session.LoadAsync(save);
-        await SynchronizeLoadedWorldAsync();
+        await LoadSimulationAsync(save);
         return LegacyCommandResult.Success("LOADED");
     }
 
@@ -1942,6 +1942,7 @@ public sealed partial class MainWindow : Window
                         _lastGraphRefreshTick = snapshot.Tick;
                     }
                     _toolWindows.PublishSnapshot(snapshot, updateGraphs);
+                    if (!loading) SynchronizeAutomaticEvolutionGraphs(snapshot);
                     BuoyancyWarning.IsVisible = !_globalSettings.Main.SuppressBuoyancy
                         && (_liveEnvironment.Gravity[1] == 0 || !_liveEnvironment.Vegetation.PondMode || _liveEnvironment.WrapY)
                         && snapshot.Organisms.Any(robot => robot.Memory.Any(cell => cell.Address == 315 && cell.Value > 0));
@@ -2492,8 +2493,6 @@ public sealed partial class MainWindow : Window
         {
             await _session.StartLocalModeAsync();
             _runTimer.Start();
-            if (_viewModel.LocalMode.StagedEvolution is { AutoGraphs: true, Mode: not EvolutionMode.Zerobot })
-                Graphs_Click(this, new RoutedEventArgs());
             _viewModel.Status = "LOCAL MODE RUNNING";
         }
         catch (Exception error) { _viewModel.Status = $"LOCAL MODE START FAILED · {error.Message}"; }
@@ -2853,6 +2852,10 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            // A rejected load publishes no snapshot and must keep user-closed
+            // graphs closed. Loading publications defer this until success.
+            _automaticEvolutionGraphBoundary = null;
+            SynchronizeAutomaticEvolutionGraphs(_session.LatestSnapshot);
             await SynchronizeLoadedWorldAsync();
         }
         finally
@@ -2908,8 +2911,9 @@ public sealed partial class MainWindow : Window
         if (_session is not null) await _session.DisposeAsync();
     }
 
-    private void Graphs_Click(object? sender, RoutedEventArgs e)
-    {
+    private void Graphs_Click(object? sender, RoutedEventArgs e) => ShowGraphSuite();
+
+    private GraphSuiteWindow ShowGraphSuite() =>
         _toolWindows.ShowOrActivate(
             "graph-suite",
             () =>
@@ -2918,6 +2922,27 @@ public sealed partial class MainWindow : Window
                 window.SamplingChanged += ConfigureGraphSampling;
                 return window;
             });
+
+    private void SynchronizeAutomaticEvolutionGraphs(EngineSnapshot snapshot)
+    {
+        // MDIForm1.fixcam opens these graphs for restart modes 4/5, not the
+        // F1 testing phase (6) or Zerobot search/testing (7/8).
+        if (snapshot.LocalMode is not {
+            Status: LocalModeStatus.Running,
+            Kind: LocalModeKind.SimpleSurvival or LocalModeKind.EcoSurvival,
+            Configuration: { StagedEvolution: { AutoGraphs: true, Mode: EvolutionMode.SimpleSurvival or EvolutionMode.Eco } },
+            Evolution: { Phase: "evolving" },
+        })
+        {
+            _automaticEvolutionGraphBoundary = null;
+            return;
+        }
+        var boundary = (snapshot.LocalMode.Kind, snapshot.LocalMode.RestartCount);
+        if (_automaticEvolutionGraphBoundary is { } previous && previous == boundary) return;
+        _automaticEvolutionGraphBoundary = boundary;
+        var suite = ShowGraphSuite();
+        suite.SetSnapshot(snapshot);
+        suite.OpenEvolutionGraphs();
     }
 
     private async void ConfigureGraphSampling(GraphSamplingSettings settings)

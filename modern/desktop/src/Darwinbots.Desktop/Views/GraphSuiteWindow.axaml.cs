@@ -37,6 +37,23 @@ public sealed partial class GraphSuiteWindow : Window, IPersistentSnapshotToolWi
 
     public void SetSnapshot(EngineSnapshot snapshot) => GraphView.SetSnapshot(snapshot);
 
+    public void OpenEvolutionGraphs()
+    {
+        // MDIForm1.frm 1724-1727: keep existing charts and open the three
+        // original evolution defaults without changing the manual chooser.
+        var selected = ViewModel.SelectedChoice;
+        try
+        {
+            foreach (var metric in new[] { GraphMetric.Population, GraphMetric.AverageMutations, GraphMetric.TotalEnergy })
+            {
+                if (ViewModel.RunningGraphs.Any(graph => graph.Metric == metric)) continue;
+                ViewModel.SelectedChoice = GraphCatalog.For(metric);
+                if (ViewModel.OpenSelectedGraph() is { } graph) OpenGraphWindow(graph);
+            }
+        }
+        finally { ViewModel.SelectedChoice = selected; }
+    }
+
     private void OpenGraphWindow(GraphSeriesViewModel graph)
     {
         var series = ViewModel.RunningGraphs.Where(value => value.Metric == graph.Metric).ToArray();

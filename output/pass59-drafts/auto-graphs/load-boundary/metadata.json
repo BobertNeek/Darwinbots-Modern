@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "state": "superseding_authored_unapplied_unexecuted",
+  "owner": "/root/seeding_tournament_ui",
+  "base_source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass58-source.json",
+    "sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "pins": 540
+  },
+  "scope": "AutoGraphs opens original default actual series on Simple/Eco evolving startup boundaries; no engine or graph formula changes.",
+  "files": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_raw_sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51",
+      "base_bytes": 139997,
+      "raw_before": "raw-before/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate": "candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate_raw_sha256": "91C05D457EF91E4668CEA84DB6115FFB4C195916E6E80A4CFCF8E04E83FE9FC0",
+      "candidate_bytes": 141332,
+      "previous_candidate_sha256": "98A612516C139207A31FF78E86908613CFB5EC7E0BE9CE39AE0C4C13F7C2BDD7"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "base_raw_sha256": "B3233613BC5D26AA272607D14BED0AC49E6159EB4FD9DF2C2F4064D8097D7930",
+      "base_bytes": 2447,
+      "raw_before": "raw-before/modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "candidate": "candidate/modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "candidate_raw_sha256": "DC444FF48FDE4F6659A66FA025EC678391B1CBDB954ACE307A8E573BAA61C892",
+      "candidate_bytes": 3205,
+      "previous_candidate_sha256": "DC444FF48FDE4F6659A66FA025EC678391B1CBDB954ACE307A8E573BAA61C892"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "base_raw_sha256": "BB317DB484F4908EB5F7B5C6E94FD3ADBB3C1F9C4B0CB9437A1FC90E7D0F7C97",
+      "base_bytes": 19752,
+      "raw_before": "raw-before/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "candidate": "candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "candidate_raw_sha256": "6EFD984357CF8FEF685A4213A5098C2781C180D9F0B733088CFBEC5476626282",
+      "candidate_bytes": 37466,
+      "previous_candidate_sha256": "2763EE27B12FDAD284885D10ABBF6DC7C860B82F42962FD88EB235C3630E9206"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_raw_sha256": "D1CA26C38D13B06FD1D0C97363E78D75DE282E3D00E50F6D408AAB030D605E6F",
+      "base_bytes": 134808,
+      "raw_before": "raw-before/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate": "candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate_raw_sha256": "9D696B47A5B5E556DCE77FE5065E03050DE6FBE73F44D6C3184FD86ACA53AA9C",
+      "candidate_bytes": 134964,
+      "previous_candidate_sha256": null
+    }
+  ],
+  "source_contract": [
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "lines": "1692-1728",
+      "fact": "fixcam startup: y_graphs plus restart modes4/5 opens population, average mutations, total species energy."
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "lines": "1191;2123-2127;2174-2198",
+      "fact": "StartSimul resets camfix; first startup loop calls fixcam once; NewGraph keeps an existing chart, shows it and feeds its first sample."
+    },
+    {
+      "file": "Darwinbots2/Evo.bas",
+      "lines": "533-568",
+      "fact": "F1 testing mode6 transitions back to evolving mode4 on win/loss; Zerobot7/8 is outside the default graph gate."
+    }
+  ],
+  "implementation": {
+    "mode_gate": "Running SimpleSurvival/EcoSurvival with persisted auto_graphs=true, source Simple/Eco configuration and phase evolving.",
+    "boundary": "First eligible published snapshot or changed(kind,restart_count). Publications captured while common Load is in flight defer automatic graph opening. After session.LoadAsync succeeds, reset/open once from its committed LatestSnapshot. A rejected load and a canceled picker leave the existing boundary intact; subsequent ordinary publication does not reopen closed defaults.",
+    "defaults": [
+      "Population",
+      "AverageMutations",
+      "TotalEnergy"
+    ],
+    "preservation": "Open only missing metrics. Keep existing chart objects/history and manual chooser selection. Closing a graph does not reopen it on an ordinary snapshot; next eligible startup/restart/load reopens only missing defaults.",
+    "manual": "Graphs button still opens/activates the chooser without opening a chart.",
+    "publication": "Open after queued native snapshot presentation, including automatic process-style restarts. Remove the old Start handler empty-chooser special case.",
+    "load_routes": "Toolbar and legacy menu share existing LoadSimulationAsync. This is the only production path consolidation; engine/session persistence and loading algorithms unchanged."
+  },
+  "regressions": [
+    {
+      "name": "EvolutionDefaultGraphsOpenActualNativeSeriesWithoutReplacingManualCharts",
+      "cases": 1,
+      "checks": "Real owned chart windows; exact original three metrics; two species, native colors, exact sampled values; existing manual chart and chooser selection preserved; no duplicates on repeat."
+    },
+    {
+      "name": "PublishedEvolutionStartsRestartsAndLoadResultsPreserveDefaultGraphBoundaries",
+      "cases": 2,
+      "checks": "Both Simple/Eco: configured no-open, published start actual3windows, refresh respects close, restart opens missing only, successful LoadButton reopens exactlyone missing metric, rejected legacy-menu load leaves unchanged committed mode/closed default/existing chart objects/chooser selection intact after ordinary refresh, both canceled pickers never invoke engine.Load or reopen defaults, successful legacy-menu load reopens exactlyone missing default without duplicates; existing manual/default chart objects and selection retained."
+    },
+    {
+      "name": "NoneligibleEvolutionSnapshotsKeepAutomaticGraphsClosedAndManualChooserUsable",
+      "cases": 6,
+      "checks": "Disabled Simple/Eco, Zerobot, Simple/Eco F1 testing, ordinary contest do not auto-open; actual manual Graphs/Open route still works and stays intact on refresh."
+    }
+  ],
+  "static_census": {
+    "original_file_facts": 2,
+    "original_file_theories": 0,
+    "candidate_file_facts": 3,
+    "candidate_file_theories": 2,
+    "candidate_inline_data_cases": 8,
+    "net_new_desktop_cases": 9,
+    "net_new_core_cases": 0,
+    "net_new_rust_cases": 0,
+    "new_test_targets": 0,
+    "retained_net_new_desktop_cases": 9,
+    "supersession_additional_cases": 0,
+    "seam_file_fact_delta": 0,
+    "seam_file_theory_delta": 0,
+    "expected_core": 307,
+    "expected_desktop": 206,
+    "expected_rust_targets": 68
+  },
+  "active_bases_verified_unchanged": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51",
+      "current_sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "base_sha256": "B3233613BC5D26AA272607D14BED0AC49E6159EB4FD9DF2C2F4064D8097D7930",
+      "current_sha256": "B3233613BC5D26AA272607D14BED0AC49E6159EB4FD9DF2C2F4064D8097D7930"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "base_sha256": "BB317DB484F4908EB5F7B5C6E94FD3ADBB3C1F9C4B0CB9437A1FC90E7D0F7C97",
+      "current_sha256": "BB317DB484F4908EB5F7B5C6E94FD3ADBB3C1F9C4B0CB9437A1FC90E7D0F7C97"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base_sha256": "D1CA26C38D13B06FD1D0C97363E78D75DE282E3D00E50F6D408AAB030D605E6F",
+      "current_sha256": "D1CA26C38D13B06FD1D0C97363E78D75DE282E3D00E50F6D408AAB030D605E6F"
+    }
+  ],
+  "checks": {
+    "source_read_and_static_review_only": true,
+    "formatter_run": false,
+    "parser_run": false,
+    "build_run": false,
+    "tests_run": false,
+    "product_run": false,
+    "ui_run": false,
+    "gpu_run": false,
+    "git_mutated": false
+  },
+  "qualification": "Quarantine-only supersession: all4candidates include the complete prior AutoGraphs implementation plus load failure/cancel correction. Source58 active540pins remain unchanged. No compile, parser, formatting, test or product execution is claimed.",
+  "previous_release": {
+    "file": "output/pass59-drafts/auto-graphs/metadata.json",
+    "sha256": "B1DA1926CFD4F4C6C358C73918AAB841B4DFAB090B2C20A154CE77728046C321",
+    "preserved_unchanged": true,
+    "reason": "Root static review identified pre-await load-boundary reset could reopen user-closed defaults after rejected load; success-only correction and failure/cancellation regression added."
+  },
+  "test_only_seams": {
+    "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+    "changes": [
+      "AuditStorageService.OpenedSimulation is settable to represent canceled picker after earlier success.",
+      "AuditEngineClient.RejectLoads causes Load to throw before any fake state change; existing default behavior unchanged."
+    ],
+    "new_tests_or_rows_in_seam_file": 0
+  },
+  "load_ordering_source": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "lines": "370-374,393-425",
+      "rule": "Enqueue Load; successful Action then Snapshot/LatestSnapshot/Event then completion; an exception completes faulted without snapshot publication."
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "lines": "1065-1072,1921-1945,2819-2825,2847-2862",
+      "rule": "Storage cancel returns before common load. UI snapshot posts capture loading flag on event dispatch. Loading presentations defer auto-opening; success resumes on UI context and opens from committed LatestSnapshot."
+    }
+  ]
+}
