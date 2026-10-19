@@ -1,0 +1,7 @@
+{
+  "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+  "runner": "output/qualify-native-roundtrip-pass65.ps1",
+  "exit_code": 0,
+  "exit_code_observed": true,
+  "observed_utc": "2026-10-19T09:16:06.4121379Z"
+}

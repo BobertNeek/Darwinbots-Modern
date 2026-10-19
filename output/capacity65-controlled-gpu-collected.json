@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+  "sealed_utc": "2026-10-19T13:54:23.059Z",
+  "status": "passed",
+  "backend": "Gpu",
+  "cli_sha256": "571D35B61F7F86816C1A45240F1FB44E604023EE99C7BC3AADE88FE7488CE89F",
+  "physical_adapter": {
+    "backend": "Vulkan",
+    "device_type": "DiscreteGpu",
+    "name": "NVIDIA GeForce RTX 3050"
+  },
+  "scope": "Sustained controlled-mover headless whole-probe throughput with one worker. No rendered-frame, ecology or speedup claim; prior-source CPU timings are not a current-source performance comparison.",
+  "tasks": [
+    {
+      "population": 1000,
+      "ticks": 2000,
+      "elapsed_seconds": 110.6578954,
+      "ticks_per_second": 18.073721651496363,
+      "population_held": true,
+      "births": 0,
+      "deaths": 0,
+      "movement_events": 1998186
+    },
+    {
+      "population": 4000,
+      "ticks": 300,
+      "elapsed_seconds": 122.0675787,
+      "ticks_per_second": 2.4576550398963555,
+      "population_held": true,
+      "births": 0,
+      "deaths": 0,
+      "movement_events": 1200000
+    },
+    {
+      "population": 8000,
+      "ticks": 100,
+      "elapsed_seconds": 128.1704206,
+      "ticks_per_second": 0.7802112182504611,
+      "population_held": true,
+      "births": 0,
+      "deaths": 0,
+      "movement_events": 800000
+    },
+    {
+      "population": 32000,
+      "ticks": 30,
+      "elapsed_seconds": 532.7152312,
+      "ticks_per_second": 0.05631526609896564,
+      "population_held": true,
+      "births": 0,
+      "deaths": 0,
+      "movement_events": 959943
+    }
+  ],
+  "evidence": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-1000.receipt.json",
+      "sha256": "D41E8194C35E63A8FB1D94CAD0FE5137ECFF2B27A47DF283FF17BBEC92DD4E49"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-1000.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-1000.stdout.json",
+      "sha256": "AFFCC7113137CEFEB75F9D046BA3E750E93C17717DA8B514594C9032102D1D3B"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-32000.receipt.json",
+      "sha256": "AF0402F7793D8D46692CDF24B570649A61073DED5799D088516DDB133FC593B7"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-32000.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-32000.stdout.json",
+      "sha256": "16913135850D1B24DA68176ECA90D0C9BB269833F8CCF7CA79480F06CA3661FC"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-4000.receipt.json",
+      "sha256": "BA4158845B7115B4F2251569CDE5C44BD23BF3C4297FD6E03E734B10F891E545"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-4000.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-4000.stdout.json",
+      "sha256": "8CD1F0C8814CECDD42EC0740DF0C838F0094A8F2C84A2068F6624378EF872C71"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-8000.receipt.json",
+      "sha256": "7A1D1BF869C944E4EE8D2A7FE1ABF1773A15D5ABF91EFCA91D88CEE4532E68BB"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-8000.stderr.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/gpu-8000.stdout.json",
+      "sha256": "DAD084DB256BA50ECE5D8B7E1FF718642F89EE48FDE63D8EEB2CE57B3C26E14C"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/manifest.json",
+      "sha256": "C8CB7BB82B6FD004BBA83F84038BF85229DE9D755E2C1921DCEDE6CE0E0102F2"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/capacity-gpu-controlled64-73e350297f54-20261019T120003941-0b70a90e/summary.json",
+      "sha256": "6ED7BDE67F34D178FCD365968C304AFEDB0E6D41E9199557CC2B75285150763E"
+    },
+    {
+      "file": "output/capacity65-controlled-gpu-retry1-observed-exit.json",
+      "sha256": "17EB1B97FECCC4C9FF259454BFB2DC11FE572E8517C61171958A7F30670A2CA9"
+    },
+    {
+      "file": "output/capacity65-controlled-gpu-retry1-start.json",
+      "sha256": "5877DF8068D6AAAD29553E2D5ADAE2057414D480D236A00305BC97000E60DE20"
+    },
+    {
+      "file": "output/capacity65-cli-qualified.json",
+      "sha256": "09B68FE0CEB9FF17E3038F21E0AB71CDDA4732C4E6E1EDC3341D87248E12A426"
+    },
+    {
+      "file": "output/capacity65-cli-restoration.json",
+      "sha256": "9F7117C33A89EFC2E4FB6E68EDB43AF5DF1CD2D149B76C95B1606DA50DE05A35"
+    },
+    {
+      "file": "output/capacity65-controlled-gpu-alife-release-observation.json",
+      "sha256": "3A66C6B2DDBD866EA5D8F60E5B57AD60E328D2C99A49A085D40396E4394A53D5"
+    }
+  ]
+}

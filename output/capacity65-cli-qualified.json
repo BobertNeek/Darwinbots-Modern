@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+  "qualified_utc": "2026-10-19T11:59:38.1223854Z",
+  "qualification": "Fresh cargo build at unchanged admitted source plus exact zero-tolerance movement replay against sealed CPU65 control",
+  "cli_sha256": "571D35B61F7F86816C1A45240F1FB44E604023EE99C7BC3AADE88FE7488CE89F",
+  "cpu_ready_sha256": "84799C3A07568BB00C8B4B164D43B46466D1BD5B4BABA0E61319D490BBF15486",
+  "fresh_build_receipt": "output/capacity65-cli-restoration.json",
+  "fresh_build_receipt_sha256": "9F7117C33A89EFC2E4FB6E68EDB43AF5DF1CD2D149B76C95B1606DA50DE05A35",
+  "replay_exit_code": 0,
+  "compare_exit_code": 0,
+  "compared_fields": 1379,
+  "difference_count": 0,
+  "absolute_tolerance": 0.0,
+  "relative_tolerance": 0.0,
+  "exact_saved_bytes": true,
+  "prior_cpu65_cli_sha256": "F8F1D8E65B1567CC1F178CFCFFFD143888A2632C1EC2FDB969065F8CD0E2B0DA",
+  "boundary": "Current CLI is a newly built artifact, not the original CPU65 binary. Original full-suite and physical qualification evidence remains unchanged at the exact same source. This focused check does not repeat the full CPU suite."
+}
