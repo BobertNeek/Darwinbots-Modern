@@ -12798,6 +12798,8 @@ impl Engine {
                 .get(slot)
                 .and_then(|slot| slot.organism.as_ref())
             {
+                // Native wall handling can defer bounds correction until the next cycle.
+                instance.position = organism.kinematics.position;
                 instance.radius = organism.materials.radius;
                 instance.generation = self.slots[slot].generation;
                 instance.aim = organism.materials.aim;
@@ -13838,6 +13840,30 @@ const fn default_snapshot_schema_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn render_readout_publication_preserves_native_edge_positions() {
+        let original = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let mut world = Engine::from_native_sim(original).unwrap();
+        world.tick().unwrap();
+        let expected = world.snapshot().clone();
+        let mut readout = expected.render_instances.clone();
+        for instance in &mut readout {
+            for (position, bound) in instance.position.iter_mut().zip(expected.world_size) {
+                *position = position.clamp(0.0, bound);
+            }
+        }
+        assert_ne!(
+            readout, expected.render_instances,
+            "the original world must exercise deferred native boundary correction"
+        );
+
+        // Exercise the same publication boundary as the GPU sensing readback,
+        // retaining the complete CPU snapshot as the independent reference.
+        world.pending_gpu_render_instances = Some(readout);
+        world.publish_snapshot();
+        assert_eq!(world.snapshot(), &expected);
+    }
 
     #[test]
     fn native_lifelong_mutation_retains_own_memory_and_cached_census() {
