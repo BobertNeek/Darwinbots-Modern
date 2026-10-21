@@ -128,7 +128,9 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
         ? $"CANDIDATES SCORED · {population.PopulationSeeds.Count}"
         : CurrentRound == 0
         ? "NOT STARTED"
-        : $"ROUND {CurrentRound} / {MaximumRounds}";
+        : Kind is LocalModeKind.League or LocalModeKind.Contest
+        ? $"ROUND {CurrentRound} · {(MaximumRounds == 0 ? "ADAPTIVE" : $"FIRST TO {MaximumRounds} WINS")}"
+        : $"ROUND {CurrentRound} / {Math.Max(MinimumRounds, MaximumRounds)}";
 
     public string CycleLabel => Series is { IsPopulationCensus: true }
         ? $"CYCLE {(_nativeCycle is { } cycle ? cycle.ToString("N0") : CycleInRound.ToString("N0"))} / 2,000"
@@ -264,7 +266,7 @@ public sealed class LocalModeViewModel : INotifyPropertyChanged
             Raise(nameof(UsesInitialLadder));
             Raise(nameof(CanExportClassicTournament));
         }
-        if (name is nameof(Status) or nameof(CurrentRound) or nameof(MaximumRounds)
+        if (name is nameof(Status) or nameof(CurrentRound) or nameof(MaximumRounds) or nameof(MinimumRounds) or nameof(Kind)
             or nameof(CycleInRound) or nameof(MaximumCycles) or nameof(Adjudication))
         {
             Raise(nameof(StatusLabel));

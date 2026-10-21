@@ -6,6 +6,35 @@ namespace Darwinbots.Desktop.Tests;
 
 public sealed class LocalModeWorkflowTests
 {
+    [Theory]
+    [InlineData(LocalModeKind.SimpleSurvival)]
+    [InlineData(LocalModeKind.EcoSurvival)]
+    [InlineData(LocalModeKind.Zerobot)]
+    public void SurvivalRoundReadbackUsesTheEffectiveMinimumAndCap(LocalModeKind kind)
+    {
+        var model = new LocalModeViewModel();
+        model.Observe(new LocalModeSnapshot(LocalModeStatus.Completed, kind, LeaguePreset.F1,
+            5, 1, 100, 100, 0, [], null, new())
+        {
+            Configuration = LocalModeConfig.Default with { Kind = kind, MinimumRounds = 5 },
+        });
+        Assert.Equal("ROUND 5 / 5", model.RoundLabel);
+        var notifications = new List<string?>();
+        model.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+        model.MinimumRounds = 8;
+        Assert.Equal("ROUND 5 / 8", model.RoundLabel);
+        Assert.Contains(nameof(model.RoundLabel), notifications);
+    }
+
+    [Fact]
+    public void AdaptiveContestReadbackDoesNotPresentZeroAsARoundLimit()
+    {
+        var model = new LocalModeViewModel();
+        model.Observe(new LocalModeSnapshot(LocalModeStatus.Running, LocalModeKind.Contest, LeaguePreset.F1,
+            7, 0, 100, 100, 0, [], null, new()));
+        Assert.Equal("ROUND 7 · ADAPTIVE", model.RoundLabel);
+    }
+
     [Fact]
     public void ClassicPhasesKeepPopulationArchivesAndExposeOnlyActualCompetitiveActions()
     {
@@ -175,7 +204,7 @@ public sealed class LocalModeWorkflowTests
             [],
             null,
             config.Restrictions));
-        Assert.Equal("ROUND 1 / 2", viewModel.LocalMode.RoundLabel);
+        Assert.Equal("ROUND 1 · FIRST TO 2 WINS", viewModel.LocalMode.RoundLabel);
         Assert.Equal("RUNNING", viewModel.LocalMode.StatusLabel);
 
         viewModel.LocalMode.Observe(new LocalModeSnapshot(

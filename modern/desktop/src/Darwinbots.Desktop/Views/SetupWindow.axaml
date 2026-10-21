@@ -124,8 +124,8 @@
         <TextBlock Classes="section" Text="WORLD SETTINGS" FontSize="15" Margin="0,0,0,8"/>
         <TextBlock Text="BACKEND" FontWeight="Bold"/><ComboBox x:Name="Backend" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Cpu"/><ComboBoxItem Content="Gpu"/></ComboBox>
         <TextBlock Text="WORLD SIZE" FontWeight="Bold" Margin="0,10,0,0"/>
-        <Grid ColumnDefinitions="*,12,*"><NumericUpDown x:Name="WorldWidth" Value="16000" Minimum="1000" Maximum="1000000"/><TextBlock Grid.Column="1" Text="×" HorizontalAlignment="Center" VerticalAlignment="Center"/><NumericUpDown Grid.Column="2" x:Name="WorldHeight" Value="12000" Minimum="1000" Maximum="1000000"/></Grid>
-        <TextBlock Text="RANDOM SEED" FontWeight="Bold" Margin="0,10,0,0"/><Grid ColumnDefinitions="*,Auto"><NumericUpDown x:Name="Seed" Value="1" Minimum="1" Maximum="9223372036854775807"/><Button Grid.Column="1" x:Name="ChangeSeedButton" Content="CHANGE" Margin="8,0,0,0" Click="ChangeSeed_Click"/></Grid>
+        <StackPanel Spacing="4"><TextBlock Text="Width" FontSize="10"/><NumericUpDown x:Name="WorldWidth" Value="16000" Minimum="1000" Maximum="1000000"/><TextBlock Text="Height" FontSize="10"/><NumericUpDown x:Name="WorldHeight" Value="12000" Minimum="1000" Maximum="1000000"/></StackPanel>
+        <TextBlock Text="RANDOM SEED" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="Seed" Value="1" Minimum="1" Maximum="9223372036854775807" FontSize="12"/><Button x:Name="ChangeSeedButton" Content="CHANGE" Click="ChangeSeed_Click"/>
         <TextBlock Text="POPULATION CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="PopulationCap" Value="25000" Minimum="100" Maximum="1000000" Increment="1000"/>
         <TextBlock Text="VEGETABLE CAP" FontWeight="Bold" Margin="0,10,0,0"/><NumericUpDown x:Name="VegetablePopulationCap" Value="500" Minimum="0" Maximum="1000000" Increment="50"/>
         <TextBlock Text="Maximum living vegetables" Foreground="#6F716D" FontSize="12"/>
@@ -137,7 +137,7 @@
         <Button x:Name="AdvancedSettingsButton" Content="⚙  ADVANCED SETTINGS" Margin="0,18,0,0" Click="Advanced_Click"/>
         <Button x:Name="GlobalSettingsButton" Content="☷  GLOBAL SETTINGS" Click="GlobalSettings_Click"/>
         <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="LoadSettingsButton" Content="LOAD SETTINGS" Click="LoadSettings_Click"/><Button x:Name="SaveSettingsButton" Content="SAVE SETTINGS" Click="SaveSettings_Click"/></StackPanel>
-        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6"><Button x:Name="StartNewButton" Content="START NEW" Click="StartNew_Click"/><Button x:Name="ChangeButton" Grid.Column="1" Content="CHANGE" Click="Change_Click"/><Button x:Name="CancelButton" Grid.Column="2" Content="CANCEL" Click="Cancel_Click"/></Grid>
+        <WrapPanel><Button x:Name="StartNewButton" Content="START NEW" Margin="0,0,6,6" Click="StartNew_Click"/><Button x:Name="ChangeButton" Content="CHANGE" Margin="0,0,6,6" Click="Change_Click"/><Button x:Name="CancelButton" Content="CANCEL" Margin="0,0,0,6" Click="Cancel_Click"/></WrapPanel>
         <Button x:Name="CreateWorldButton" Content="▶  CREATE WORLD" Background="#4C7D30" Foreground="White" FontWeight="Bold" FontSize="18" Height="58" Margin="0,12,0,0" Click="CreateWorld_Click"/>
         <Button x:Name="RecoverButton" Content="RECOVER LATEST AUTOSAVE" Click="Recover_Click"/>
       </StackPanel></ScrollViewer>

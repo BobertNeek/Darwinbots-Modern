@@ -14,6 +14,89 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class ModeSettingsRenderedTests
 {
     [Fact]
+    public async Task SetupSidebarShowsCompleteDimensionsSeedAndStartAction()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var setup = new SetupWindow(new AuditStorageService());
+            ShowForInteraction(setup, 1280, 820);
+            try
+            {
+                foreach (var name in new[] { "WorldWidth", "WorldHeight", "Seed" })
+                {
+                    var number = Named<NumericUpDown>(setup, name);
+                    number.Value = number.Maximum;
+                    number.BringIntoView();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    var editor = Assert.Single(number.GetVisualDescendants().OfType<TextBox>());
+                    var text = new TextBlock { Text = editor.Text, FontFamily = editor.FontFamily, FontSize = editor.FontSize };
+                    text.Measure(Size.Infinity);
+                    Assert.True(editor.Bounds.Width - editor.Padding.Left - editor.Padding.Right >= text.DesiredSize.Width,
+                        $"{name} clips {editor.Text}: editor {editor.Bounds.Width}, text {text.DesiredSize.Width}.");
+                }
+                var start = Named<Button>(setup, "StartNewButton");
+                start.BringIntoView();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var label = new TextBlock { Text = start.Content?.ToString(), FontFamily = start.FontFamily, FontSize = start.FontSize };
+                label.Measure(Size.Infinity);
+                Assert.True(start.Bounds.Width - start.Padding.Left - start.Padding.Right >= label.DesiredSize.Width,
+                    "The START NEW label is clipped at the normal sidebar width.");
+            }
+            finally { setup.Close(); }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ModeSidebarLeavesRoomForCompleteValuesAndActionLabels()
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var main = new MainWindow([], new WorldSetupOptions(),
+                new AuditEngineClientFactory(), new AuditStorageService());
+            ShowForInteraction(main, 1280, 820);
+            try
+            {
+                Named<Expander>(main, "LeagueExpander").IsExpanded = true;
+                foreach (var name in new[] { "ModeMinimumRounds", "ModeMaximumRounds", "ModeMaximumCycles", "ModePopulationCap", "ModeEnergyHandicap" })
+                {
+                    var number = Named<NumericUpDown>(main, name);
+                    number.Value = number.Maximum;
+                    number.BringIntoView();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    var editor = Assert.Single(number.GetVisualDescendants().OfType<TextBox>());
+                    var text = new TextBlock { Text = editor.Text, FontFamily = editor.FontFamily, FontSize = editor.FontSize };
+                    text.Measure(Size.Infinity);
+                    Assert.True(editor.Bounds.Width - editor.Padding.Left - editor.Padding.Right >= text.DesiredSize.Width,
+                        $"{name} clips {editor.Text}: editor {editor.Bounds.Width}, text {text.DesiredSize.Width}.");
+                }
+                foreach (var name in new[] { "ConfigureModeButton", "StartModeButton", "RestartModeButton", "AdjudicateModeButton" })
+                {
+                    var button = Named<Button>(main, name);
+                    button.BringIntoView();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    var text = new TextBlock { Text = button.Content?.ToString(), FontFamily = button.FontFamily, FontSize = button.FontSize };
+                    text.Measure(Size.Infinity);
+                    Assert.True(button.Bounds.Width - button.Padding.Left - button.Padding.Right >= text.DesiredSize.Width,
+                        $"{name} clips its action label.");
+                }
+                var kinds = Named<ComboBox>(main, "LocalModeKindSelector");
+                kinds.SelectedIndex = 2;
+                kinds.BringIntoView();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                var label = new TextBlock { Text = "SIMPLE SURVIVAL", FontFamily = kinds.FontFamily, FontSize = kinds.FontSize };
+                label.Measure(Size.Infinity);
+                Assert.True(kinds.Bounds.Width - kinds.Padding.Left - kinds.Padding.Right - 32 >= label.DesiredSize.Width,
+                    $"The selected survival mode label is clipped: control {kinds.Bounds.Width}, padding {kinds.Padding}, text {label.DesiredSize.Width}.");
+            }
+            finally
+            {
+                foreach (var owned in main.OwnedWindows.ToArray()) owned.Close();
+                main.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public async Task RestartLeagueAndOfflineModeSurfacesRenderTogether()
     {
         await DesktopTestApplication.Session.Dispatch(async () =>
