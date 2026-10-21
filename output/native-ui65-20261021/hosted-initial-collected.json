@@ -1,0 +1,175 @@
+{
+  "source_head": "0e57519e809e38736ce5090cae84e13c24951b44",
+  "collected_utc": "2026-10-21T09:47:14.503690+00:00",
+  "workflows": {
+    "main": {
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "verify-and-package (macos-latest, osx-arm64)",
+          "conclusion": "success",
+          "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39572329105/job/119129317837",
+          "managed": [
+            {
+              "step": "Test desktop core",
+              "passed": 314,
+              "failed": 0,
+              "skipped": 0,
+              "total": 314
+            },
+            {
+              "step": "Test rendered desktop controls",
+              "passed": 221,
+              "failed": 0,
+              "skipped": 0,
+              "total": 221
+            }
+          ],
+          "rust": {
+            "targets": 68,
+            "passed": 1064,
+            "failed": 0,
+            "ignored": 12,
+            "filtered": 0
+          }
+        },
+        {
+          "name": "verify-and-package (ubuntu-latest, linux-x64)",
+          "conclusion": "success",
+          "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39572329105/job/119129318052",
+          "managed": [
+            {
+              "step": "Test desktop core",
+              "passed": 314,
+              "failed": 0,
+              "skipped": 0,
+              "total": 314
+            },
+            {
+              "step": "Test rendered desktop controls",
+              "passed": 221,
+              "failed": 0,
+              "skipped": 0,
+              "total": 221
+            }
+          ],
+          "rust": {
+            "targets": 68,
+            "passed": 1064,
+            "failed": 0,
+            "ignored": 12,
+            "filtered": 0
+          }
+        },
+        {
+          "name": "verify-and-package (macos-15-intel, osx-x64)",
+          "conclusion": "success",
+          "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39572329105/job/119129318058",
+          "managed": [
+            {
+              "step": "Test desktop core",
+              "passed": 314,
+              "failed": 0,
+              "skipped": 0,
+              "total": 314
+            },
+            {
+              "step": "Test rendered desktop controls",
+              "passed": 221,
+              "failed": 0,
+              "skipped": 0,
+              "total": 221
+            }
+          ],
+          "rust": {
+            "targets": 68,
+            "passed": 1064,
+            "failed": 0,
+            "ignored": 12,
+            "filtered": 0
+          }
+        },
+        {
+          "name": "verify-and-package (windows-latest, win-x64)",
+          "conclusion": "success",
+          "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39572329105/job/119129318151",
+          "managed": [
+            {
+              "step": "Test desktop core",
+              "passed": 314,
+              "failed": 0,
+              "skipped": 0,
+              "total": 314
+            },
+            {
+              "step": "Test rendered desktop controls",
+              "passed": 221,
+              "failed": 0,
+              "skipped": 0,
+              "total": 221
+            }
+          ],
+          "rust": {
+            "targets": 68,
+            "passed": 1064,
+            "failed": 0,
+            "ignored": 12,
+            "filtered": 0
+          }
+        }
+      ],
+      "log_sha256": "DB553E5990737B6DA4BB16618CCBB0CF845D5CE3CA01F92CBEA0100BAF4AD2ED"
+    },
+    "diagnostics": {
+      "conclusion": "failure",
+      "jobs": [
+        {
+          "name": "rendered-desktop (macos-latest, osx-arm64)",
+          "conclusion": "success",
+          "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39572329089/job/119129317665",
+          "managed": [
+            {
+              "step": "Diagnose rendered desktop controls",
+              "passed": 221,
+              "failed": 0,
+              "skipped": 0,
+              "total": 221
+            }
+          ],
+          "rust": null
+        },
+        {
+          "name": "rendered-desktop (macos-15-intel, osx-x64)",
+          "conclusion": "failure",
+          "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39572329089/job/119129318064",
+          "managed": [
+            {
+              "step": "Diagnose rendered desktop controls",
+              "passed": 220,
+              "failed": 1,
+              "skipped": 0,
+              "total": 221
+            }
+          ],
+          "rust": null
+        },
+        {
+          "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+          "conclusion": "success",
+          "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39572329089/job/119129318239",
+          "managed": [
+            {
+              "step": "Diagnose rendered desktop controls",
+              "passed": 221,
+              "failed": 0,
+              "skipped": 0,
+              "total": 221
+            }
+          ],
+          "rust": null
+        }
+      ],
+      "log_sha256": "97F67CE5E923239FB080B6D50275DA98A7EE8BE37DC621ED7BD80314F5286D86"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "source_head": "5f0f7d800adc2439e0dd09bc2bd913f0bca4b494",
+  "collected_utc": "2026-10-21T10:03:16.589395+00:00",
+  "run_id": 39579819052,
+  "all_3_passed": true,
+  "jobs": [
+    {
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "conclusion": "success",
+      "counts": {
+        "failed": 0,
+        "passed": 221,
+        "skipped": 0,
+        "total": 221
+      },
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39579819052/job/119154367520"
+    },
+    {
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "conclusion": "success",
+      "counts": {
+        "failed": 0,
+        "passed": 221,
+        "skipped": 0,
+        "total": 221
+      },
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39579819052/job/119154368021"
+    },
+    {
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "conclusion": "success",
+      "counts": {
+        "failed": 0,
+        "passed": 221,
+        "skipped": 0,
+        "total": 221
+      },
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39579819052/job/119154368054"
+    }
+  ],
+  "raw_log_sha256": "7B654D9D84BD516C35392B515D94516EDCA250073588D437B2645EB79346E695",
+  "fixture_only_change": true,
+  "original_failed_receipt_preserved": "output/native-ui65-20261021/hosted-initial-collected.json"
+}
