@@ -19,7 +19,8 @@ public sealed class ControlSurfaceBindingTests
     {
         var surfaces = new[]
         {
-            new Surface("MainWindow.axaml", typeof(MainWindow), 62),
+            // The retained ignore-errors toggle replaces the redundant toolbar button handler.
+            new Surface("MainWindow.axaml", typeof(MainWindow), 61),
             new Surface("SetupWindow.axaml", typeof(SetupWindow), 22),
             new Surface("AdvancedSettingsWindow.axaml", typeof(AdvancedSettingsWindow), 3),
             new Surface("GlobalSettingsWindow.axaml", typeof(GlobalSettingsWindow), 3),
