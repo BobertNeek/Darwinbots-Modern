@@ -186,8 +186,6 @@ public sealed partial class MainWindow : Window
         _liveEnvironment = setup.ToEnvironmentUpdate();
         SynchronizeSafemodePreference(_safemodeBackup);
         SynchronizeRecordingPreferences();
-        ToolbarSlot24.Content = "IGNORE OFF";
-        AutomationProperties.SetName(ToolbarSlot24, "IGNORE ERRORS OFF");
         LocalModeKindSelector.SelectedIndex = setup.StartingMode is StartingMode.Zerobots or StartingMode.ZerobotsAndVegetables ? 4 : 0;
         LocalModePreset.SelectedIndex = 0;
         ThemeSelector.SelectedIndex = (int)DesktopUiPreferences.Theme;
@@ -417,8 +415,7 @@ public sealed partial class MainWindow : Window
     private void SetIgnoreErrors(bool enabled)
     {
         _diagnostics.SetIgnoreErrors(enabled);
-        ToolbarSlot24.Content = enabled ? "IGNORE ON" : "IGNORE OFF";
-        AutomationProperties.SetName(ToolbarSlot24, enabled ? "IGNORE ERRORS ON" : "IGNORE ERRORS OFF");
+        AutomationProperties.SetName(IgnoreErrorsToggle, enabled ? "IGNORE ERRORS ON" : "IGNORE ERRORS OFF");
         if (IgnoreErrorsToggle.IsChecked != enabled)
             IgnoreErrorsToggle.IsChecked = enabled;
         if (_trayIgnoreErrorsItem is not null)

@@ -1115,8 +1115,8 @@ public sealed class RenderedControlSurfaceAuditTests
                 ShowForInteraction(window, width, 900);
                 await WaitFor(() => !factory.Clients.IsEmpty);
                 var load = Named<Button>(window, "LoadButton");
-                var header = load.GetVisualAncestors().OfType<Viewbox>().First();
-                foreach (var button in header.GetVisualDescendants().OfType<Button>())
+                var toolbar = load.GetVisualAncestors().OfType<ScrollViewer>().First();
+                foreach (var button in toolbar.GetVisualDescendants().OfType<Button>())
                     button.FontSize = 16;
                 Named<Button>(window, "BackendButton").Content = "GPU · INTEGRATED / METAL";
                 Capture(window, $"runtime-header-wide-{width}.png");
@@ -1129,6 +1129,59 @@ public sealed class RenderedControlSurfaceAuditTests
                 window.Close();
             }
             return 0;
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(760)]
+    [InlineData(1280)]
+    [InlineData(1920)]
+    public async Task RuntimeUsesOneScrollableToolbarWithoutDuplicateTransportActions(int width)
+    {
+        await DesktopTestApplication.Session.Dispatch(() =>
+        {
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            try
+            {
+                ShowForInteraction(window, width, 900);
+                var toolbar = Named<StackPanel>(window, "LegacyToolbar");
+                var scroller = Named<ScrollViewer>(window, "LegacyToolbarScroller");
+                var shell = Named<Border>(window, "RuntimeToolbarShell");
+                Assert.Equal(Avalonia.Layout.Orientation.Horizontal, toolbar.Orientation);
+                Assert.Equal(0, Grid.GetRow(shell));
+                Assert.Equal(0, Named<Grid>(window, "MainSurfaceGrid").RowDefinitions[1].ActualHeight);
+                Assert.True(scroller.Extent.Width > scroller.Viewport.Width);
+
+                var buttons = toolbar.Children.OfType<Button>().ToArray();
+                foreach (var action in new[] { "RUN", "PAUSE", "STEP", "LOAD", "SAVE", "GRAPHS", "CONTEST RESULTS", "TRAY" })
+                    Assert.Single(buttons, button => Equals(button.Content, action));
+
+                foreach (var name in new[]
+                {
+                    "RunButton", "PauseButton", "StepButton", "ImportButton", "RuntimeSpeed", "BackendButton",
+                    "ToolbarSlot09", "ToolbarSlot10", "ToolbarSlot11", "ToolbarSlot12", "ToolbarSlot13", "ToolbarSlot14",
+                    "ToolbarSlot16", "ToolbarSlot17", "ToolbarSlot18", "ToolbarSlot21", "IgnoreErrorsToggle",
+                })
+                    Assert.Contains(toolbar, Named<Control>(window, name).GetVisualAncestors());
+
+                foreach (var obsoleteDuplicate in new[] { "ToolbarSlot02", "ToolbarSlot03", "ToolbarSlot05", "ToolbarSlot06", "ToolbarSlot07", "ToolbarSlot19", "ToolbarSlot23", "ToolbarSlot24", "ContestIndicator" })
+                    Assert.Null(window.FindControl<Control>(obsoleteDuplicate));
+
+                // The transport style is 34px high; ordinary buttons use the
+                // theme height and are centered in the same toolbar row.
+                var runButton = Named<Button>(window, "RunButton");
+                var graphicsButton = Named<Button>(window, "ToolbarSlot14");
+                var run = runButton.TranslatePoint(new Point(runButton.Bounds.Width / 2, runButton.Bounds.Height / 2), window);
+                var graphics = graphicsButton.TranslatePoint(new Point(graphicsButton.Bounds.Width / 2, graphicsButton.Bounds.Height / 2), window);
+                Assert.True(run.HasValue && graphics.HasValue);
+                Assert.InRange(Math.Abs(run.Value.Y - graphics.Value.Y), 0, 1);
+                Assert.True(Named<WorldViewport>(window, "Viewport").Bounds.Height > 250);
+                Capture(window, $"single-runtime-toolbar-{width}.png");
+            }
+            finally
+            {
+                window.Close();
+            }
         }, CancellationToken.None);
     }
 
@@ -1321,14 +1374,14 @@ public sealed class RenderedControlSurfaceAuditTests
                         () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Audit Species"),
                         () => "Audit engine did not import the toolbar test species.");
 
-                    var toolbar = Named<UniformGrid>(window, "LegacyToolbar");
+                    var toolbar = Named<StackPanel>(window, "LegacyToolbar");
                     var slots = toolbar.GetVisualDescendants()
                         .Where(control => control.Name?.StartsWith("ToolbarSlot", StringComparison.Ordinal) == true)
                         .OrderBy(control => control.Name)
                         .ToArray();
-                    Assert.Equal(24, slots.Length);
+                    Assert.Equal(16, slots.Length);
                     Assert.Equal(5, slots.OfType<Border>().Count());
-                    Assert.Equal(18, slots.OfType<Button>().Count());
+                    Assert.Equal(10, slots.OfType<Button>().Count());
                     Assert.Single(slots.OfType<ComboBox>());
                     Assert.All(slots, slot => Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(slot))));
 
@@ -1358,21 +1411,22 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.True(Named<Border>(window, "RuntimeOverlay").IsVisible);
                     Assert.Contains("INSERTION", Named<TextBlock>(window, "OverlayText").Text, StringComparison.OrdinalIgnoreCase);
 
-                    Click(window, Named<Button>(window, "ToolbarSlot19"));
+                    Click(window, Named<Button>(window, "GraphsButton"));
                     await WaitFor(
                         () => window.OwnedWindows.OfType<GraphSuiteWindow>().Any(),
                         () => "Graph toolbar slot did not open the graph suite.");
                     window.OwnedWindows.OfType<GraphSuiteWindow>().Single().Close();
 
-                    Click(window, Named<Button>(window, "ContestIndicator"));
+                    Click(window, Named<Button>(window, "ContestResultsButton"));
                     await WaitFor(
                         () => window.OwnedWindows.OfType<ContestResultsWindow>().Any(),
                         () => "Contest indicator did not open contest results.");
                     window.OwnedWindows.OfType<ContestResultsWindow>().Single().Close();
 
-                    Click(window, Named<Button>(window, "ToolbarSlot24"));
+                    Click(window, Named<CheckBox>(window, "IgnoreErrorsToggle"));
                     Assert.True(Field<OfflineDiagnosticRecovery>(window, "_diagnostics").IgnoreErrors);
-                    Assert.Contains("ON", Named<Button>(window, "ToolbarSlot24").Content?.ToString(), StringComparison.Ordinal);
+                    Assert.True(Named<CheckBox>(window, "IgnoreErrorsToggle").IsChecked);
+                    Assert.Contains("ON", AutomationProperties.GetName(Named<CheckBox>(window, "IgnoreErrorsToggle")), StringComparison.Ordinal);
                 }
                 finally
                 {

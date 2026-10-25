@@ -46,7 +46,7 @@ public sealed class AccessibilityRouteRenderedTests
                 visionCommand.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 Assert.NotEqual(visionBefore, window.FindControl<CheckBox>("ShowVisionToggle")!.IsChecked);
 
-                var toolbar = window.FindControl<UniformGrid>("LegacyToolbar")!;
+                var toolbar = window.FindControl<StackPanel>("LegacyToolbar")!;
                 var toolbarButtons = toolbar.GetVisualDescendants()
                     .Where(control => control.Name?.StartsWith("ToolbarSlot", StringComparison.Ordinal) == true)
                     .OfType<Button>()
@@ -60,7 +60,7 @@ public sealed class AccessibilityRouteRenderedTests
                 });
 
                 var firstToolbarButton = window.FindControl<Button>("ToolbarSlot01")!;
-                var secondToolbarButton = window.FindControl<Button>("ToolbarSlot02")!;
+                var secondToolbarButton = window.FindControl<Button>("LoadButton")!;
                 Assert.True(KeyboardNavigation.GetTabIndex(firstToolbarButton) < KeyboardNavigation.GetTabIndex(secondToolbarButton));
                 Assert.True(firstToolbarButton.Focus());
                 Press(window, Key.Tab, PhysicalKey.Tab);

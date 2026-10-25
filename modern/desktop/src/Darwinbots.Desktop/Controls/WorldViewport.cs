@@ -75,7 +75,8 @@ public sealed class WorldViewport : Control
     public bool ShowResourceGauges { get => _showResourceGauges; set { _showResourceGauges = value; InvalidateVisual(); } }
     public bool HasBackgroundImage => _backgroundImage is not null;
     public WorldOverlayProjection OverlayProjection => WorldOverlayProjection.Create(
-        _visibleOrganisms,
+        _selectedKey is { } selected && _organismsByKey.TryGetValue(selected, out var organism)
+            ? organism : null,
         _showMovementVectors,
         _showShotImpacts,
         _showResourceGauges,
@@ -285,6 +286,9 @@ public sealed class WorldViewport : Control
         var center = ScreenPoint(position, scaleX, scaleY);
         var radiusScale = Math.Min(scaleX, scaleY);
         var radius = Math.Clamp(instance.Radius * radiusScale * _zoom, 1.5, 28.0);
+        // Cull before allocating body/skin/heading drawing resources. Include
+        // the selection outline and heading so partially visible bots remain.
+        if (!IsOnScreen(center, radius + 7)) return;
         var organism = _organismsByKey.GetValueOrDefault(KeyOf(instance));
         if (organism?.IsHidden == true) return;
         var color = organism is not null && _rgbMemoryMonitor is { } monitor
@@ -411,6 +415,7 @@ public sealed class WorldViewport : Control
         {
             if (organism.IsHidden) continue;
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
+            if (!IsOnScreen(center, 6)) continue;
             var color = _rgbMemoryMonitor is { } monitor
                 ? Color.FromUInt32(RgbMemoryMonitor.ColorFor(organism, monitor).ToArgb())
                 : Color.FromUInt32(organism.Phenotype.Color);
@@ -816,19 +821,14 @@ public sealed class WorldViewport : Control
         double scaleY,
         WorldOverlayProjection overlay)
     {
-        if (!overlay.ShowMovementVectors) return;
-        var stride = _visibleOrganisms.Count > 20_000 ? 8 : _visibleOrganisms.Count > 5_000 ? 3 : 1;
+        if (!overlay.ShowMovementVectors || _selectedKey is not { } selected
+            || !_organismsByKey.TryGetValue(selected, out var organism) || organism.IsHidden) return;
         var pen = new Pen(new SolidColorBrush(Color.Parse("#A5239AC0")), 0.9);
-        for (var index = 0; index < _visibleOrganisms.Count; index += stride)
-        {
-            var organism = _visibleOrganisms[index];
-            if (organism.IsHidden) continue;
-            var start = ScreenPoint(organism.Position, scaleX, scaleY);
-            var end = new Point(
-                start.X + organism.Velocity[0] * scaleX * _zoom * 12,
-                start.Y + organism.Velocity[1] * scaleY * _zoom * 12);
-            context.DrawLine(pen, start, end);
-        }
+        var start = ScreenPoint(organism.Position, scaleX, scaleY);
+        var end = new Point(
+            start.X + organism.Velocity[0] * scaleX * _zoom * 12,
+            start.Y + organism.Velocity[1] * scaleY * _zoom * 12);
+        context.DrawLine(pen, start, end);
     }
 
     private void DrawResourceGauges(
@@ -837,21 +837,16 @@ public sealed class WorldViewport : Control
         double scaleY,
         WorldOverlayProjection overlay)
     {
-        if (!overlay.ShowResourceGauges) return;
-        var stride = _visibleOrganisms.Count > 10_000 ? 6 : _visibleOrganisms.Count > 3_000 ? 2 : 1;
-        for (var index = 0; index < _visibleOrganisms.Count; index += stride)
-        {
-            var organism = _visibleOrganisms[index];
-            if (organism.IsHidden) continue;
+        if (!overlay.ShowResourceGauges || overlay.Gauges.Count == 0
+            || !_organismsByKey.TryGetValue(overlay.Gauges[0].Organism, out var organism)) return;
             var center = ScreenPoint(organism.Position, scaleX, scaleY);
+            if (!IsOnScreen(center, 160)) return;
             var width = 26.0;
             var origin = new Point(center.X - width / 2, center.Y - 17);
-            var gaugeStart = index * 3;
-            var gaugeEnd = Math.Min(gaugeStart + 3, overlay.Gauges.Count);
-            for (var gaugeIndex = gaugeStart; gaugeIndex < gaugeEnd; gaugeIndex++)
+            for (var gaugeIndex = 0; gaugeIndex < overlay.Gauges.Count; gaugeIndex++)
             {
                 var gauge = overlay.Gauges[gaugeIndex];
-                var row = gaugeIndex - gaugeStart;
+                var row = gaugeIndex;
                 var rowOrigin = new Point(origin.X, origin.Y + row * 6);
                 context.FillRectangle(
                     new SolidColorBrush(Color.Parse("#A0D0CEC5")),
@@ -868,8 +863,11 @@ public sealed class WorldViewport : Control
                     new SolidColorBrush(Color.Parse(gauge.Color)));
                 context.DrawText(text, new Point(origin.X + width + 4, rowOrigin.Y - 2));
             }
-        }
     }
+
+    private bool IsOnScreen(Point center, double extent) =>
+        center.X + extent >= 0 && center.Y + extent >= 0
+        && center.X - extent <= Bounds.Width && center.Y - extent <= Bounds.Height;
 
     private void DrawEnergyGrid(DrawingContext context)
     {

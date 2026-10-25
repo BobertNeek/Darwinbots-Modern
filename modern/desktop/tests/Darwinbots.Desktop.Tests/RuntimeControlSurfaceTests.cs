@@ -1068,7 +1068,7 @@ public sealed class RuntimeControlSurfaceTests
                 var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
                 var beforeSave = session.LatestSnapshot;
 
-                window.FindControl<Button>("ToolbarSlot03")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.FindControl<Button>("SaveButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(
                     () => storage.SavedSimulation is not null && viewModel.Status == "SAVED",
                     () => $"Save did not reach the rendered status surface. Requests: {storage.SaveRequests}; Status: {viewModel.Status}");
@@ -1081,7 +1081,7 @@ public sealed class RuntimeControlSurfaceTests
                     () => "The live session did not mutate after the save.");
 
                 storage.OpenedSimulation = savedBytes;
-                window.FindControl<Button>("ToolbarSlot02")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.FindControl<Button>("LoadButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await WaitFor(
                     () => viewModel.Status == "LOADED" && session.LatestSnapshot.Tick == beforeSave.Tick,
                     () => $"Load did not restore the saved state. Tick: {session.LatestSnapshot.Tick}; Status: {viewModel.Status}");

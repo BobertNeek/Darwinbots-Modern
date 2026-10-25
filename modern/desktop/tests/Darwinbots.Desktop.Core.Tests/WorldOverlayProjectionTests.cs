@@ -10,9 +10,11 @@ public sealed class WorldOverlayProjectionTests
     {
         var visible = new OrganismSnapshot(1, 1, [100, 100], [0, 0], 500, 0);
         var hidden = visible with { Slot = 2, IsHidden = true };
-        var projection = WorldOverlayProjection.Create([hidden, visible], true, true, true, false);
+        var projection = WorldOverlayProjection.Create(visible, true, true, true, false);
         Assert.Equal(3, projection.Gauges.Count);
         Assert.All(projection.Gauges, gauge => Assert.Equal(1U, gauge.Organism.Slot));
+        Assert.Empty(WorldOverlayProjection.Create(hidden, true, true, true, false).Gauges);
+        Assert.Empty(WorldOverlayProjection.Create(null, true, true, true, false).Gauges);
     }
 
     [Fact]
@@ -32,10 +34,10 @@ public sealed class WorldOverlayProjectionTests
             Poison: 6);
 
         var projection = WorldOverlayProjection.Create(
-            [organism],
+            organism,
             showMovementVectors: false,
             showShotImpacts: true,
-            showResourceGauges: false,
+            showResourceGauges: true,
             hasBackgroundImage: true);
 
         Assert.Collection(
@@ -64,7 +66,8 @@ public sealed class WorldOverlayProjectionTests
 
         Assert.False(projection.ShowMovementVectors);
         Assert.True(projection.ShowShotImpacts);
-        Assert.False(projection.ShowResourceGauges);
+        Assert.True(projection.ShowResourceGauges);
         Assert.True(projection.HasBackgroundImage);
+        Assert.Empty(WorldOverlayProjection.Create(organism, false, true, false, true).Gauges);
     }
 }
