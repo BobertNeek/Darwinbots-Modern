@@ -939,7 +939,7 @@ public sealed partial class NativeEngineClient : IEngineClient
             }
             var bytes = new byte[checked((int)buffer.Length)];
             Marshal.Copy(buffer.Data, bytes, 0, bytes.Length);
-            return NativeSnapshotParser.Parse(Encoding.UTF8.GetString(bytes), Backend);
+            return NativeSnapshotParser.Parse(bytes, Backend);
         }
         finally
         {
