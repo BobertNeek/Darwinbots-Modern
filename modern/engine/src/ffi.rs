@@ -1980,6 +1980,95 @@ mod tests {
     }
 
     #[test]
+    fn cpu_command_candidate_preserves_session_inspection_but_real_load_resets_transients() {
+        let mut continuous = Engine::new_native(EngineConfig::testing()).unwrap();
+        continuous
+            .spawn_at(
+                LegacyDna::parse("start 1 .up store stop").unwrap(),
+                [500.0, 500.0],
+            )
+            .unwrap();
+        let (status, _) = classic_test_batch(
+            &mut continuous,
+            serde_json::json!([
+                {"type":"set_native_restart_seed","seed":125,"skin_timer_seconds":[1.125,1.375]},
+                {"type":"tick","count":10}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        assert_eq!(
+            continuous.snapshot().organisms[0].activation_history.len(),
+            10
+        );
+        assert!(
+            !continuous.snapshot().organisms[0]
+                .activation_bitmap
+                .is_empty()
+        );
+
+        let checkpoint = SaveFile::encode(&continuous).unwrap();
+        let mut resumed = SaveFile::decode(&checkpoint).unwrap();
+        // DB3S intentionally omits these three inspector-only program fields.
+        // Saving does not clear the live session; actually loading starts a new
+        // inspection history without changing persisted simulation state.
+        assert_eq!(
+            continuous.snapshot().organisms[0].activation_history.len(),
+            10
+        );
+        assert!(
+            resumed.snapshot().organisms[0]
+                .activation_history
+                .is_empty()
+        );
+        assert!(resumed.snapshot().organisms[0].activation_bitmap.is_empty());
+        assert!(resumed.snapshot().organisms[0].debug_text.is_empty());
+        assert_eq!(SaveFile::encode(&resumed).unwrap(), checkpoint);
+
+        for engine in [&mut continuous, &mut resumed] {
+            let (status, _) = classic_test_batch(
+                engine,
+                serde_json::json!([
+                    {"type":"set_native_restart_seed","seed":125,"skin_timer_seconds":[1.125,1.375]},
+                    {"type":"tick","count":3}
+                ]),
+            );
+            assert_eq!(status, DbStatus::Ok);
+        }
+        let live = &continuous.snapshot().organisms[0];
+        let loaded = &resumed.snapshot().organisms[0];
+        assert_eq!(live.activation_history.len(), 13);
+        assert_eq!(loaded.activation_history.len(), 3);
+        assert_eq!(
+            &live.activation_history[10..],
+            loaded.activation_history.as_slice()
+        );
+        assert_eq!(live.activation_bitmap, loaded.activation_bitmap);
+        assert_eq!(live.debug_text, loaded.debug_text);
+        assert_eq!(
+            SaveFile::encode(&continuous).unwrap(),
+            SaveFile::encode(&resumed).unwrap()
+        );
+
+        let without_session_history = |engine: &Engine| {
+            let mut organisms = serde_json::to_value(&engine.snapshot().organisms).unwrap();
+            for organism in organisms.as_array_mut().unwrap() {
+                assert!(
+                    organism
+                        .as_object_mut()
+                        .unwrap()
+                        .remove("activation_history")
+                        .is_some()
+                );
+            }
+            organisms
+        };
+        assert_eq!(
+            without_session_history(&continuous),
+            without_session_history(&resumed)
+        );
+    }
+
+    #[test]
     fn cpu_command_candidate_keeps_a_late_failure_atomic_after_native_clock_edit_and_tick() {
         let mut engine = populated_native_cpu_candidate_fixture();
         let before = SaveFile::encode(&engine).unwrap();
