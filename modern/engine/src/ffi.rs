@@ -632,12 +632,16 @@ fn db_engine_command_batch_impl(
     }
     let mut command_results = Vec::with_capacity(batch.commands.len());
     let committed_engine = engine;
-    let mut candidate = match SaveFile::encode(committed_engine) {
-        Ok(bytes) => match SaveFile::decode(&bytes) {
-            Ok(candidate) => candidate,
+    let mut candidate = match committed_engine.fork_cpu_command_candidate() {
+        Ok(Some(candidate)) => candidate,
+        Ok(None) => match SaveFile::encode(committed_engine) {
+            Ok(bytes) => match SaveFile::decode(&bytes) {
+                Ok(candidate) => candidate,
+                Err(error) => return fail(DbStatus::EngineError, error.to_string()),
+            },
             Err(error) => return fail(DbStatus::EngineError, error.to_string()),
         },
-        Err(error) => return fail(DbStatus::EngineError, error.to_string()),
+        Err(error) => return fail(DbStatus::EngineError, error),
     };
     let engine = &mut candidate;
 
@@ -1910,6 +1914,93 @@ mod tests {
             assert_eq!(db_buffer_free(&mut buffer), DbStatus::Ok);
         }
         (status, result)
+    }
+
+    fn populated_native_cpu_candidate_fixture() -> Engine {
+        let original = include_bytes!("../tests/fixtures/db24832-original-user.sim");
+        let mut engine = Engine::from_native_sim(original).unwrap();
+        assert_eq!(engine.backend(), crate::BackendKind::Cpu);
+        assert!(engine.population() > 100);
+        engine.set_native_gaussian_spare(Some(1.25)).unwrap();
+        engine.set_native_sun_change(22);
+        engine
+            .set_native_process_caches(native_cache_fixture(0.375, 421, 29, 199, 17))
+            .unwrap();
+        engine
+            .set_native_restart_inputs(125, Some([1.125, 1.375]))
+            .unwrap();
+        engine.tick().unwrap();
+        engine
+    }
+
+    #[test]
+    fn cpu_command_candidate_clones_native_state_and_current_inspection_without_a_reload() {
+        let engine = populated_native_cpu_candidate_fixture();
+        let before = SaveFile::encode(&engine).unwrap();
+        let mut candidate = engine.fork_cpu_command_candidate().unwrap().unwrap();
+        assert_eq!(SaveFile::encode(&candidate).unwrap(), before);
+        assert_eq!(
+            serde_json::to_value(&candidate).unwrap(),
+            serde_json::to_value(&engine).unwrap()
+        );
+        assert_eq!(
+            serde_json::to_value(candidate.snapshot()).unwrap(),
+            serde_json::to_value(engine.snapshot()).unwrap()
+        );
+        let selected = candidate.snapshot().organisms[0].id;
+        candidate.set_organism_energy(selected, 777).unwrap();
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        assert_ne!(SaveFile::encode(&candidate).unwrap(), before);
+    }
+
+    #[test]
+    fn cpu_command_candidate_clocked_ticks_match_the_serialized_reference_state() {
+        let mut engine = populated_native_cpu_candidate_fixture();
+        // This is the previous generic batch transaction's save/restore path.
+        let mut reference = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+        reference
+            .set_native_restart_inputs(162, Some([2.125, 2.375]))
+            .unwrap();
+        reference.tick_many(2).unwrap();
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_native_restart_seed","seed":162,"skin_timer_seconds":[2.125,2.375]},
+                {"type":"tick","count":2}
+            ]),
+        );
+        assert_eq!(status, DbStatus::Ok);
+        let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
+        assert_eq!(response["tick"], engine.snapshot().tick);
+        assert_eq!(response["results"], serde_json::json!([null, null]));
+        assert_eq!(
+            SaveFile::encode(&engine).unwrap(),
+            SaveFile::encode(&reference).unwrap()
+        );
+    }
+
+    #[test]
+    fn cpu_command_candidate_keeps_a_late_failure_atomic_after_native_clock_edit_and_tick() {
+        let mut engine = populated_native_cpu_candidate_fixture();
+        let before = SaveFile::encode(&engine).unwrap();
+        let snapshot_before = serde_json::to_value(engine.snapshot()).unwrap();
+        let selected = engine.snapshot().organisms[0].id;
+        let (status, response) = classic_test_batch(
+            &mut engine,
+            serde_json::json!([
+                {"type":"set_native_restart_seed","seed":999,"skin_timer_seconds":[5,6]},
+                {"type":"set_organism_energy","slot":selected.slot(),"generation":selected.generation(),"energy":42},
+                {"type":"tick","count":1},
+                {"type":"export_species_template_dna","species":4294967295u32}
+            ]),
+        );
+        assert_ne!(status, DbStatus::Ok);
+        assert!(response.is_empty());
+        assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+        assert_eq!(
+            serde_json::to_value(engine.snapshot()).unwrap(),
+            snapshot_before
+        );
     }
 
     #[test]
