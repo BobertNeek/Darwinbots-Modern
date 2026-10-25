@@ -16,16 +16,15 @@ public sealed record WorldOverlayProjection(
     bool HasBackgroundImage)
 {
     public static WorldOverlayProjection Create(
-        IEnumerable<OrganismSnapshot> organisms,
+        OrganismSnapshot? selectedOrganism,
         bool showMovementVectors,
         bool showShotImpacts,
         bool showResourceGauges,
         bool hasBackgroundImage)
     {
-        var gauges = new List<OverlayGaugeProjection>();
-        foreach (var organism in organisms)
+        var gauges = new List<OverlayGaugeProjection>(3);
+        if (showResourceGauges && selectedOrganism is { IsHidden: false } organism)
         {
-            if (organism.IsHidden) continue;
             var key = new OrganismKey(organism.Slot, organism.Generation);
             AddGauge(gauges, key, "ENERGY", Math.Max(0, organism.Energy), "#45A23D", 20_000);
             AddGauge(gauges, key, "BODY", Math.Max(0, organism.Body), "#E26722", 1_000);

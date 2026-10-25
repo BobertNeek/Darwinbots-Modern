@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-25",
+  "backend": "CPU",
+  "scope": "Recreated populated fixture, not the original application or the user evolved screenshot world",
+  "fixture": {
+    "population": 2132,
+    "species": [
+      {
+        "name": "Alga Minimalis",
+        "count": 51
+      },
+      {
+        "name": "Fruit_Fliesv0.21",
+        "count": 2081
+      }
+    ],
+    "bytes": 21375585,
+    "sha256": "392516D0ABF047E730793F17F7E82EF634F6A492700D3222CFD2B346FFA53F1F",
+    "fixed_host_clock": true
+  },
+  "native": {
+    "baseline_dll_sha256": "EB13AA54BC6456A30F7F3CD5F8AA56CDC4ECE43CECD27B67066F19E4FFEF6C1E",
+    "candidate_dll_sha256": "BB8DBD3A1F6EDC6C34CE91C439F9006BDABE6B228B666D0DC14177E6D911B523",
+    "baseline_samples": [
+      {
+        "index": 0,
+        "Tick": 1,
+        "Population": 2305,
+        "tick_ms": 5176.2907,
+        "native_snapshot_ms": 44.4102,
+        "snapshot_utf8_bytes": 13391840,
+        "transfer_ms": 12.8746,
+        "managed_parse_ms": 376.6918
+      },
+      {
+        "index": 1,
+        "Tick": 2,
+        "Population": 2330,
+        "tick_ms": 5631.137,
+        "native_snapshot_ms": 49.9263,
+        "snapshot_utf8_bytes": 13933557,
+        "transfer_ms": 8.6083,
+        "managed_parse_ms": 257.4731
+      },
+      {
+        "index": 2,
+        "Tick": 3,
+        "Population": 2338,
+        "tick_ms": 5410.2052,
+        "native_snapshot_ms": 50.8301,
+        "snapshot_utf8_bytes": 13963780,
+        "transfer_ms": 8.7692,
+        "managed_parse_ms": 293.5744
+      }
+    ],
+    "candidate_samples": [
+      {
+        "index": 0,
+        "Tick": 1,
+        "Population": 2305,
+        "tick_ms": 236.2462,
+        "native_snapshot_ms": 49.1669,
+        "snapshot_utf8_bytes": 13391864,
+        "transfer_ms": 13.4294,
+        "managed_parse_ms": 483.5801
+      },
+      {
+        "index": 1,
+        "Tick": 2,
+        "Population": 2330,
+        "tick_ms": 235.1099,
+        "native_snapshot_ms": 51.8685,
+        "snapshot_utf8_bytes": 14015194,
+        "transfer_ms": 7.8953,
+        "managed_parse_ms": 251.592
+      },
+      {
+        "index": 2,
+        "Tick": 3,
+        "Population": 2338,
+        "tick_ms": 228.0556,
+        "native_snapshot_ms": 57.0743,
+        "snapshot_utf8_bytes": 14133602,
+        "transfer_ms": 8.1651,
+        "managed_parse_ms": 279.5368
+      }
+    ],
+    "final_save_sha256": "652058D7314B29F92EAC6F7C27765EBB6EDBAA0A912BE7E2DF08CEE04B9115AC",
+    "final_saves_byte_equal": true
+  },
+  "headless_viewport": {
+    "baseline": {
+      "scope": "CPU headless rendering of a recreated populated fixture, not simulation throughput or original-game speed",
+      "Tick": 0,
+      "Population": 2132,
+      "zoom": 9.32,
+      "viewport_width": 1280,
+      "viewport_height": 720,
+      "gauges": 6396,
+      "samples": 7,
+      "ui_apply_median_ms": 0.3442,
+      "render_capture_median_ms": 488.1233,
+      "ui_thread_allocated_median_bytes": 55404272
+    },
+    "candidate": {
+      "scope": "CPU headless rendering of a recreated populated fixture, not simulation throughput or original-game speed",
+      "Tick": 0,
+      "Population": 2132,
+      "zoom": 9.32,
+      "viewport_width": 1280,
+      "viewport_height": 720,
+      "gauges": 3,
+      "samples": 7,
+      "ui_apply_median_ms": 0.5036,
+      "render_capture_median_ms": 21.4097,
+      "ui_thread_allocated_median_bytes": 571112
+    }
+  },
+  "package": {
+    "name": "win-x64-selected-overlay-performance-20261025",
+    "managed_dll_sha256": "2E8D06273BCF5558B75386C5779A5745FA9E9106B0ABCF2254AA602A0C85A2A7",
+    "core_dll_sha256": "275E3D991F24D00426EEB93B26B90D5153C658702C8F028BB5C8C3EC89088511",
+    "native_dll_sha256": "BB8DBD3A1F6EDC6C34CE91C439F9006BDABE6B228B666D0DC14177E6D911B523",
+    "exe_sha256": "455CC3EA2425136F1C18A50FEAD59CCAF7CBFC5680224758EF949282C37DF9DF",
+    "declared_assets": 33,
+    "missing_assets": 0,
+    "bundled_bot_files": 48,
+    "smoke": {
+      "status": "passed",
+      "backend": "CPU",
+      "ticks": 13,
+      "population": 1,
+      "movement": true,
+      "save_resume": true,
+      "persistent_save_bytes_equal": true,
+      "inspection_history_boundary": true,
+      "bundled_bots": 48
+    }
+  },
+  "limits": [
+    "No original Darwinbots performance comparison",
+    "No measurement of the user evolved 2132-organism world or later 180-organism world",
+    "No GPU performance or native graphics qualification",
+    "Phase diagnostics are partial; tick time excludes snapshot JSON transfer and managed parse",
+    "Headless render/capture is not live FPS"
+  ],
+  "checks": {
+    "rust_ffi": {
+      "passed": 20,
+      "failed": 0,
+      "ignored": 0
+    },
+    "package_smoke_exit": 0,
+    "rendered_native_integration": {
+      "passed": 121,
+      "failed": 0
+    },
+    "core_projection": {
+      "passed": 2,
+      "failed": 0
+    },
+    "viewport_edge_cases": 8
+  }
+}

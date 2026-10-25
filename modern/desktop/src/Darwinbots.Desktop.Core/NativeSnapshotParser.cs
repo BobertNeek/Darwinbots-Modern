@@ -13,8 +13,20 @@ public static class NativeSnapshotParser
     public static EngineSnapshot Parse(string json, string backend)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
-        var native = JsonSerializer.Deserialize<NativeSnapshot>(json, Options)
-            ?? throw new InvalidDataException("The native engine returned an empty snapshot.");
+        return Project(JsonSerializer.Deserialize<NativeSnapshot>(json, Options), backend);
+    }
+
+    public static EngineSnapshot Parse(ReadOnlySpan<byte> utf8Json, string backend)
+    {
+        if (utf8Json.IsEmpty || utf8Json.IndexOfAnyExcept(" \t\r\n"u8) < 0)
+            throw new ArgumentException("Snapshot JSON cannot be empty or whitespace.", nameof(utf8Json));
+        return Project(JsonSerializer.Deserialize<NativeSnapshot>(utf8Json, Options), backend);
+    }
+
+    private static EngineSnapshot Project(NativeSnapshot? native, string backend)
+    {
+        if (native is null)
+            throw new InvalidDataException("The native engine returned an empty snapshot.");
         var organisms = (native.Organisms ?? []).Select(organism => new OrganismSnapshot(
             organism.Id.Slot,
             organism.Id.Generation,

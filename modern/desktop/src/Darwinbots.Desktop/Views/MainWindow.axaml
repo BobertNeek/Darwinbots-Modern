@@ -10,73 +10,57 @@
          KeyDown="MainWindow_KeyDown" SizeChanged="MainWindow_SizeChanged">
   <Grid RowDefinitions="34,*" Background="{DynamicResource WindowBrush}">
     <controls:LegacyMenuBar x:Name="HistoricMenuBar" Grid.Row="0" />
-  <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="58,Auto,*,170,62,40" ColumnDefinitions="250,*,280">
-    <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-      <Viewbox Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-      <Grid MinWidth="1500" ColumnDefinitions="190,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="16,10">
-        <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="25" VerticalAlignment="Center" />
-        <Button x:Name="RunButton" Grid.Column="1" Classes="transport" Content="▶  RUN" Background="#3F8E34" Foreground="White" Click="Run_Click" />
-        <Button x:Name="PauseButton" Grid.Column="2" Classes="transport" Content="Ⅱ  PAUSE" Margin="4,0,0,0" Click="Pause_Click" />
-        <Button x:Name="StepButton" Grid.Column="3" Classes="transport" Content="▶| STEP" Margin="4,0,0,0" Click="Step_Click" />
-        <Button Grid.Column="4" x:Name="TurboButton" Height="34" Content="TURBO" Margin="4,0,0,0" Click="Turbo_Click" />
-        <Button x:Name="ImportButton" Grid.Column="5" Height="34" Content="IMPORT BOT" Margin="6,0,0,0" Click="Import_Click" />
-        <Button x:Name="ResetButton" Grid.Column="6" Height="34" Content="RESET" Margin="4,0,0,0" ToolTip.Tip="Reset simulation" AutomationProperties.Name="RESET SIMULATION" AutomationProperties.HelpText="Stop the current simulation and start a fresh local world." Click="Reset_Click" />
-          <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4" Margin="6,0,0,0">
-          <ComboBox x:Name="RuntimeSpeed" Width="84" Height="34" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1×"/><ComboBoxItem Content="5×"/><ComboBoxItem Content="20×"/><ComboBoxItem Content="MAX"/></ComboBox>
-          <Button x:Name="BackendButton" Height="34" Content="{Binding Backend}" Click="SwitchBackend_Click" />
-           <Button x:Name="SunButton" Height="34" Content="SUN ON" ToolTip.Tip="Toggle the simulation sun" AutomationProperties.Name="SUN ON" AutomationProperties.HelpText="Toggle daytime sunlight in the local simulation." Click="Sun_Click" />
-           <Button x:Name="InternetButton" Height="34" Content="INTERNET OFFLINE" IsEnabled="False" ToolTip.Tip="Online play is disabled in this local-only build." AutomationProperties.Name="INTERNET OFFLINE" AutomationProperties.HelpText="Historical internet controls remain visible but disabled and inert." />
-          <Button x:Name="ContestIndicator" Height="34" Content="CONTEST RESULTS" ToolTip.Tip="Open local contest results" AutomationProperties.Name="CONTEST RESULTS" AutomationProperties.HelpText="Open local contest results. Online play is disabled." Click="ContestResults_Click" />
-          <Button x:Name="GraphsButton" Height="34" Content="GRAPHS" Click="Graphs_Click" />
-          <Button x:Name="ContestResultsButton" Height="34" Content="CONTEST" Click="ContestResults_Click" />
-          <Button x:Name="SaveButton" Height="34" Content="SAVE" Click="Save_Click" />
-          <Button x:Name="LoadButton" Height="34" Content="LOAD" Click="Load_Click" />
-          <CheckBox x:Name="IgnoreErrorsToggle" Content="IGNORE ERRORS" VerticalContentAlignment="Center" IsCheckedChanged="IgnoreErrors_Changed" />
-          <Button x:Name="TrayButton" Height="34" Content="TRAY" Click="HideToTray_Click" />
+  <Grid x:Name="MainSurfaceGrid" Grid.Row="1" RowDefinitions="Auto,0,*,170,62,40" ColumnDefinitions="250,*,280">
+    <Border x:Name="RuntimeToolbarShell" Grid.Row="0" Grid.ColumnSpan="3" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift, DIN Alternate, sans-serif" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" Margin="6,0,12,0" />
+        <ScrollViewer x:Name="LegacyToolbarScroller" Grid.Column="1" Height="48" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
+        <StackPanel x:Name="LegacyToolbar" Orientation="Horizontal" Spacing="4" Height="34" HorizontalAlignment="Left">
+          <Button x:Name="ToolbarSlot01" Content="NEW" ToolTip.Tip="Create a new simulation" AutomationProperties.Name="NEW SIMULATION" AutomationProperties.HelpText="Open the new simulation setup." KeyboardNavigation.TabIndex="0" Click="ToolbarNew_Click" />
+          <Button x:Name="LoadButton" Content="LOAD" ToolTip.Tip="Load a simulation" AutomationProperties.Name="LOAD SIMULATION" AutomationProperties.HelpText="Load an offline simulation file." KeyboardNavigation.TabIndex="1" Click="Load_Click" />
+          <Button x:Name="SaveButton" Content="SAVE" ToolTip.Tip="Save the simulation" AutomationProperties.Name="SAVE SIMULATION" AutomationProperties.HelpText="Save the current offline simulation." KeyboardNavigation.TabIndex="2" Click="Save_Click" />
+          <Border x:Name="ToolbarSlot04" Width="1" Margin="4,3" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 1" AutomationProperties.HelpText="Toolbar separator" />
+          <Button x:Name="RunButton" Classes="transport" Content="RUN" Background="#3F8E34" Foreground="White" ToolTip.Tip="Run the simulation" AutomationProperties.Name="PLAY SIMULATION" AutomationProperties.HelpText="Run the Rust-backed simulation." KeyboardNavigation.TabIndex="3" Click="Run_Click" />
+          <Button x:Name="StepButton" Classes="transport" Content="STEP" ToolTip.Tip="Advance one simulation step" AutomationProperties.Name="STEP SIMULATION" AutomationProperties.HelpText="Advance the simulation by the selected batch." KeyboardNavigation.TabIndex="4" Click="Step_Click" />
+          <Button x:Name="PauseButton" Classes="transport" Content="PAUSE" ToolTip.Tip="Pause the simulation" AutomationProperties.Name="STOP SIMULATION" AutomationProperties.HelpText="Pause the simulation clock." KeyboardNavigation.TabIndex="5" Click="Pause_Click" />
+          <Button x:Name="TurboButton" Content="TURBO" KeyboardNavigation.TabIndex="6" Click="Turbo_Click" />
+          <ComboBox x:Name="RuntimeSpeed" Width="84" KeyboardNavigation.TabIndex="7" SelectionChanged="Speed_Changed"><ComboBoxItem Content="1x"/><ComboBoxItem Content="5x"/><ComboBoxItem Content="20x"/><ComboBoxItem Content="MAX"/></ComboBox>
+          <Button x:Name="BackendButton" Content="{Binding Backend}" KeyboardNavigation.TabIndex="8" Click="SwitchBackend_Click" />
+          <Button x:Name="ImportButton" Content="IMPORT BOT" KeyboardNavigation.TabIndex="9" Click="Import_Click" />
+          <Button x:Name="ResetButton" Content="RESET" ToolTip.Tip="Reset simulation" AutomationProperties.Name="RESET SIMULATION" AutomationProperties.HelpText="Stop the current simulation and start a fresh local world." KeyboardNavigation.TabIndex="10" Click="Reset_Click" />
+          <Border x:Name="ToolbarSlot08" Width="1" Margin="4,3" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 2" AutomationProperties.HelpText="Toolbar separator" />
+          <Button x:Name="SunButton" Content="SUN ON" ToolTip.Tip="Toggle the simulation sun" AutomationProperties.Name="SUN ON" AutomationProperties.HelpText="Toggle daytime sunlight in the local simulation." KeyboardNavigation.TabIndex="11" Click="Sun_Click" />
+          <Button x:Name="GraphsButton" Content="GRAPHS" ToolTip.Tip="Open graph suite" AutomationProperties.Name="OPEN GRAPHS" AutomationProperties.HelpText="Open the nonmodal local graph suite." KeyboardNavigation.TabIndex="12" Click="Graphs_Click" />
+          <Button x:Name="ContestResultsButton" Content="CONTEST RESULTS" ToolTip.Tip="Open local contest results" AutomationProperties.Name="CONTEST RESULTS" AutomationProperties.HelpText="Open local contest results. Online play is disabled." KeyboardNavigation.TabIndex="13" Click="ContestResults_Click" />
+          <Button x:Name="InternetButton" Content="INTERNET OFFLINE" IsEnabled="False" ToolTip.Tip="Online play is disabled in this local-only build." AutomationProperties.Name="INTERNET OFFLINE" AutomationProperties.HelpText="Historical internet controls remain visible but disabled and inert." KeyboardNavigation.TabIndex="14" />
+          <Button x:Name="TrayButton" Content="TRAY" ToolTip.Tip="Hide the window to the tray" AutomationProperties.Name="STEALTH TRAY MODE" AutomationProperties.HelpText="Hide the shell while the local simulation continues." KeyboardNavigation.TabIndex="15" Click="HideToTray_Click" />
+          <CheckBox x:Name="IgnoreErrorsToggle" Content="IGNORE ERRORS" VerticalContentAlignment="Center" AutomationProperties.Name="IGNORE ERRORS OFF" AutomationProperties.HelpText="Toggle the offline engine error recovery mode." KeyboardNavigation.TabIndex="16" IsCheckedChanged="IgnoreErrors_Changed" />
+          <Button x:Name="ToolbarSlot09" Content="15 CPS OFF" ToolTip.Tip="Limit speed to 15 cycles per second" AutomationProperties.Name="15 CPS LIMIT OFF" AutomationProperties.HelpText="Toggle the legacy 15 cycles per second limit." KeyboardNavigation.TabIndex="17" Click="ToolbarLimit_Click" />
+          <Button x:Name="ToolbarSlot10" Content="FAST OFF" ToolTip.Tip="Toggle fast mode" AutomationProperties.Name="FAST MODE OFF" AutomationProperties.HelpText="Toggle the fast simulation speed." KeyboardNavigation.TabIndex="18" Click="ToolbarFast_Click" />
+          <Button x:Name="ToolbarSlot11" Content="FLICKER OFF" ToolTip.Tip="Toggle flicker mode" AutomationProperties.Name="FLICKER MODE OFF" AutomationProperties.HelpText="Toggle reduced-detail alternating rendering." KeyboardNavigation.TabIndex="19" Click="ToolbarFlicker_Click" />
+          <Button x:Name="ToolbarSlot12" Content="SKINS ON" ToolTip.Tip="Toggle organism skins" AutomationProperties.Name="ORGANISM SKINS ON" AutomationProperties.HelpText="Show or hide organism skin details." KeyboardNavigation.TabIndex="20" Click="ToolbarNoSkin_Click" />
+          <Button x:Name="ToolbarSlot13" Content="POFFS ON" ToolTip.Tip="Toggle death-particle creation" AutomationProperties.Name="DEATH EFFECTS ON" AutomationProperties.HelpText="Create particles when robots die. Existing particles and corpses remain visible." KeyboardNavigation.TabIndex="21" Click="ToolbarNoPoffs_Click" />
+          <Button x:Name="ToolbarSlot14" Content="GRAPHICS ON" ToolTip.Tip="Toggle world rendering" AutomationProperties.Name="WORLD GRAPHICS ON" AutomationProperties.HelpText="Suspend or restore playfield rendering while the simulation runs." KeyboardNavigation.TabIndex="22" Click="ToolbarNoGraphics_Click" />
+          <Border x:Name="ToolbarSlot15" Width="1" Margin="4,3" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 3" AutomationProperties.HelpText="Toolbar separator" />
+          <Button x:Name="ToolbarSlot16" Content="INSERT" ToolTip.Tip="Toggle robot insertion mode" AutomationProperties.Name="INSERTION MODE" AutomationProperties.HelpText="Toggle insertion mode, then click an empty playfield position." KeyboardNavigation.TabIndex="23" Click="InsertSpecies_Click" />
+          <ComboBox x:Name="ToolbarSlot17" Width="120" PlaceholderText="SPECIES" ToolTip.Tip="Species used by insertion mode" AutomationProperties.Name="INSERTION SPECIES" AutomationProperties.HelpText="Choose the species used by insertion mode." KeyboardNavigation.TabIndex="24" SelectionChanged="ToolbarSpecies_Changed">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:CompileBindings="False"><TextBlock Text="{Binding Name}" /></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Button x:Name="ToolbarSlot18" Content="BEST" ToolTip.Tip="Find the most successful robot family" AutomationProperties.Name="FIND BEST ROBOT" AutomationProperties.HelpText="Select the living animal with the strongest family, using the configured energy weighting." KeyboardNavigation.TabIndex="25" Click="ToolbarFindBest_Click" />
+          <Border x:Name="ToolbarSlot20" Width="1" Margin="4,3" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 4" AutomationProperties.HelpText="Toolbar separator" />
+          <Button x:Name="ToolbarSlot21" Content="SNAPSHOT" ToolTip.Tip="Capture all living robots" AutomationProperties.Name="LIVING SNAPSHOT" AutomationProperties.HelpText="Save a snapshot of all living robots." KeyboardNavigation.TabIndex="26" Click="ToolbarSnapshot_Click" />
+          <Border x:Name="ToolbarSlot22" Width="1" Margin="4,3" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 5" AutomationProperties.HelpText="Toolbar separator" />
         </StackPanel>
-        <StackPanel Grid.Column="8" Margin="8,0,0,0" VerticalAlignment="Center">
+        </ScrollViewer>
+        <StackPanel Grid.Column="2" Margin="12,0,6,0" VerticalAlignment="Center">
           <TextBlock Classes="section" Text="CYCLE" />
           <TextBlock x:Name="CycleValue" Text="{Binding CycleLabel}" FontWeight="Bold" FontSize="16" AutomationProperties.Name="Simulation cycle" />
           <TextBlock Text="{Binding TicksPerSecond, StringFormat='{}{0:0.0} t/s'}" FontSize="11" Foreground="#69716D"/>
           <TextBlock Text="{Binding SnapshotsPerSecond, StringFormat='{}{0:0.0} snap/s'}" FontSize="10" Foreground="#69716D"/>
         </StackPanel>
       </Grid>
-      </Viewbox>
-    </Border>
-
-    <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource ToolbarBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,2">
-      <ScrollViewer x:Name="LegacyToolbarScroller" Height="48" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden">
-      <UniformGrid x:Name="LegacyToolbar" Rows="1" Columns="24" Width="1440" Height="30" HorizontalAlignment="Left">
-        <Button x:Name="ToolbarSlot01" Content="NEW" ToolTip.Tip="Create a new simulation" AutomationProperties.Name="NEW SIMULATION" AutomationProperties.HelpText="Open the new simulation setup." KeyboardNavigation.TabIndex="0" Click="ToolbarNew_Click" />
-        <Button x:Name="ToolbarSlot02" Content="LOAD" ToolTip.Tip="Load a simulation" AutomationProperties.Name="LOAD SIMULATION" AutomationProperties.HelpText="Load an offline simulation file." KeyboardNavigation.TabIndex="1" Click="Load_Click" />
-        <Button x:Name="ToolbarSlot03" Content="SAVE" ToolTip.Tip="Save the simulation" AutomationProperties.Name="SAVE SIMULATION" AutomationProperties.HelpText="Save the current offline simulation." KeyboardNavigation.TabIndex="2" Click="Save_Click" />
-        <Border x:Name="ToolbarSlot04" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 1" AutomationProperties.HelpText="Toolbar separator" />
-        <Button x:Name="ToolbarSlot05" Content="PLAY" ToolTip.Tip="Run the simulation" AutomationProperties.Name="PLAY SIMULATION" AutomationProperties.HelpText="Run the Rust-backed simulation." KeyboardNavigation.TabIndex="3" Click="Run_Click" />
-        <Button x:Name="ToolbarSlot06" Content="STEP" ToolTip.Tip="Advance one simulation step" AutomationProperties.Name="STEP SIMULATION" AutomationProperties.HelpText="Advance the simulation by the selected batch." KeyboardNavigation.TabIndex="4" Click="Step_Click" />
-        <Button x:Name="ToolbarSlot07" Content="STOP" ToolTip.Tip="Pause the simulation" AutomationProperties.Name="STOP SIMULATION" AutomationProperties.HelpText="Pause the simulation clock." KeyboardNavigation.TabIndex="5" Click="Pause_Click" />
-        <Border x:Name="ToolbarSlot08" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 2" AutomationProperties.HelpText="Toolbar separator" />
-        <Button x:Name="ToolbarSlot09" Content="15 CPS OFF" ToolTip.Tip="Limit speed to 15 cycles per second" AutomationProperties.Name="15 CPS LIMIT OFF" AutomationProperties.HelpText="Toggle the legacy 15 cycles per second limit." KeyboardNavigation.TabIndex="6" Click="ToolbarLimit_Click" />
-        <Button x:Name="ToolbarSlot10" Content="FAST OFF" ToolTip.Tip="Toggle fast mode" AutomationProperties.Name="FAST MODE OFF" AutomationProperties.HelpText="Toggle the fast simulation speed." KeyboardNavigation.TabIndex="7" Click="ToolbarFast_Click" />
-        <Button x:Name="ToolbarSlot11" Content="FLICKER OFF" ToolTip.Tip="Toggle flicker mode" AutomationProperties.Name="FLICKER MODE OFF" AutomationProperties.HelpText="Toggle reduced-detail alternating rendering." KeyboardNavigation.TabIndex="8" Click="ToolbarFlicker_Click" />
-        <Button x:Name="ToolbarSlot12" Content="SKINS ON" ToolTip.Tip="Toggle organism skins" AutomationProperties.Name="ORGANISM SKINS ON" AutomationProperties.HelpText="Show or hide organism skin details." KeyboardNavigation.TabIndex="9" Click="ToolbarNoSkin_Click" />
-        <Button x:Name="ToolbarSlot13" Content="POFFS ON" ToolTip.Tip="Toggle death-particle creation" AutomationProperties.Name="DEATH EFFECTS ON" AutomationProperties.HelpText="Create particles when robots die. Existing particles and corpses remain visible." KeyboardNavigation.TabIndex="10" Click="ToolbarNoPoffs_Click" />
-        <Button x:Name="ToolbarSlot14" Content="GRAPHICS ON" ToolTip.Tip="Toggle world rendering" AutomationProperties.Name="WORLD GRAPHICS ON" AutomationProperties.HelpText="Suspend or restore playfield rendering while the simulation runs." KeyboardNavigation.TabIndex="11" Click="ToolbarNoGraphics_Click" />
-        <Border x:Name="ToolbarSlot15" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 3" AutomationProperties.HelpText="Toolbar separator" />
-        <Button x:Name="ToolbarSlot16" Content="INSERT" ToolTip.Tip="Toggle robot insertion mode" AutomationProperties.Name="INSERTION MODE" AutomationProperties.HelpText="Toggle insertion mode, then click an empty playfield position." KeyboardNavigation.TabIndex="12" Click="InsertSpecies_Click" />
-        <ComboBox x:Name="ToolbarSlot17" PlaceholderText="SPECIES" ToolTip.Tip="Species used by insertion mode" AutomationProperties.Name="INSERTION SPECIES" AutomationProperties.HelpText="Choose the species used by insertion mode." KeyboardNavigation.TabIndex="13" SelectionChanged="ToolbarSpecies_Changed">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:CompileBindings="False"><TextBlock Text="{Binding Name}" /></DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-        <Button x:Name="ToolbarSlot18" Content="BEST" ToolTip.Tip="Find the most successful robot family" AutomationProperties.Name="FIND BEST ROBOT" AutomationProperties.HelpText="Select the living animal with the strongest family, using the configured energy weighting." KeyboardNavigation.TabIndex="14" Click="ToolbarFindBest_Click" />
-        <Button x:Name="ToolbarSlot19" Content="GRAPH" ToolTip.Tip="Open graph suite" AutomationProperties.Name="OPEN GRAPHS" AutomationProperties.HelpText="Open the nonmodal local graph suite." KeyboardNavigation.TabIndex="15" Click="Graphs_Click" />
-        <Border x:Name="ToolbarSlot20" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 4" AutomationProperties.HelpText="Toolbar separator" />
-        <Button x:Name="ToolbarSlot21" Content="SNAPSHOT" ToolTip.Tip="Capture all living robots" AutomationProperties.Name="LIVING SNAPSHOT" AutomationProperties.HelpText="Save a snapshot of all living robots." KeyboardNavigation.TabIndex="16" Click="ToolbarSnapshot_Click" />
-        <Border x:Name="ToolbarSlot22" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 5" AutomationProperties.HelpText="Toolbar separator" />
-        <Button x:Name="ToolbarSlot23" Content="STEALTH" ToolTip.Tip="Hide the window to the tray" AutomationProperties.Name="STEALTH TRAY MODE" AutomationProperties.HelpText="Hide the shell while the local simulation continues." KeyboardNavigation.TabIndex="17" Click="HideToTray_Click" />
-        <Button x:Name="ToolbarSlot24" Content="IGNORE OFF" ToolTip.Tip="Toggle ignored engine errors" AutomationProperties.Name="IGNORE ERRORS OFF" AutomationProperties.HelpText="Toggle the offline engine error recovery mode." KeyboardNavigation.TabIndex="18" Click="ToolbarIgnoreErrors_Click" />
-      </UniformGrid>
-      </ScrollViewer>
     </Border>
 
     <Border x:Name="SpeciesPanel" Grid.Row="2" Grid.Column="0" Classes="panel" Margin="8,8,4,4">

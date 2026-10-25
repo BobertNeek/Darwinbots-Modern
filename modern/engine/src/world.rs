@@ -5852,6 +5852,85 @@ impl Engine {
         &self.snapshot
     }
 
+    /// Fork an atomic command candidate without serializing and reloading a live
+    /// CPU world. The CPU backend has no device state; GPU ownership continues
+    /// to use the existing save/restore transaction path.
+    pub(crate) fn fork_cpu_command_candidate(&self) -> Result<Option<Self>, EngineError> {
+        if !matches!(self.physics, RuntimePhysics::Cpu(_)) {
+            return Ok(None);
+        }
+        self.validate_invariants()?;
+        Ok(Some(Self {
+            native_buckets: self.native_buckets.clone(),
+            native_phase: self.native_phase.as_ref().map(|phase| {
+                native_pipeline::NativeRobotPhase {
+                    actor: phase.actor,
+                    cost_population: phase.cost_population,
+                    chloroplast_total: phase.chloroplast_total,
+                    radius_bound: phase.radius_bound,
+                }
+            }),
+            pending_disqualifications: self.pending_disqualifications.clone(),
+            native_tie_index: self.native_tie_index.clone(),
+            native_random: self.native_random.clone(),
+            graph_sampling: self.graph_sampling.clone(),
+            dynamic_cost_state: self.dynamic_cost_state.clone(),
+            native_origin: self.native_origin.clone(),
+            native_f1: self.native_f1,
+            native_sim_guid: self.native_sim_guid,
+            native_cycle: self.native_cycle,
+            native_population_census: self.native_population_census,
+            native_senses_census: self.native_senses_census.clone(),
+            native_loaded_census_stage: self.native_loaded_census_stage,
+            native_energy: self.native_energy.clone(),
+            native_skin_timer_seconds: self.native_skin_timer_seconds,
+            death_poffs_enabled: self.death_poffs_enabled,
+            config: self.config.clone(),
+            slots: self.slots.clone(),
+            tick: self.tick,
+            snapshot: self.snapshot.clone(),
+            stats: self.stats.clone(),
+            capabilities: self.capabilities.clone(),
+            physics: RuntimePhysics::Cpu(CpuPhysicsBackend),
+            #[cfg(test)]
+            forced_sensing_error_for_tests: self.forced_sensing_error_for_tests.clone(),
+            spatial: self.spatial.clone(),
+            sensing_spatial: self.sensing_spatial.clone(),
+            pending_mutations: self.pending_mutations.clone(),
+            ties: self.ties.clone(),
+            species: self.species.clone(),
+            species_templates: self.species_templates.clone(),
+            mutations_enabled: self.mutations_enabled,
+            global_mutation_multiplier: self.global_mutation_multiplier,
+            default_mutation_profile: self.default_mutation_profile.clone(),
+            subspecies_counters: self.subspecies_counters.clone(),
+            ties_enabled: self.ties_enabled,
+            robot_fixing_allowed: self.robot_fixing_allowed,
+            asexual_reproduction_allowed: self.asexual_reproduction_allowed,
+            player_bot: self.player_bot.clone(),
+            restriction_options: self.restriction_options.clone(),
+            local_mode: self.local_mode.clone(),
+            next_lineage_id: self.next_lineage_id,
+            speciation_fork_interval: self.speciation_fork_interval,
+            next_absolute_id: self.next_absolute_id,
+            native_insertion_sequence: self.native_insertion_sequence,
+            zerobot_checkpoint: self.zerobot_checkpoint.clone(),
+            zerobot_checkpoint_score: self.zerobot_checkpoint_score,
+            obstacles: self.obstacles.clone(),
+            teleporters: self.teleporters.clone(),
+            file_teleporters: self.file_teleporters.clone(),
+            corpses: self.corpses.clone(),
+            projectiles: self.projectiles.clone(),
+            vegetation_runtime: self.vegetation_runtime.clone(),
+            pending_projectile_requests: self.pending_projectile_requests.clone(),
+            history: self.history.clone(),
+            phase_timings: self.phase_timings.clone(),
+            pending_gpu_render_instances: self.pending_gpu_render_instances.clone(),
+            pending_gpu_collision_pairs: self.pending_gpu_collision_pairs.clone(),
+            snapshot_publication_count: self.snapshot_publication_count,
+        }))
+    }
+
     /// Returns the number of snapshots published since construction or load for diagnostics.
     pub fn snapshot_publication_count(&self) -> u64 {
         self.snapshot_publication_count
