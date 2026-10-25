@@ -6,11 +6,23 @@ This directory separates current product evidence from historical design records
 
 | Document | Purpose |
 | --- | --- |
-| [Verification ledger](../modern/docs/verification.md) | Current merged test, packaging, compatibility, and performance evidence |
-| [DB2 defaults and sysvars audit](verification/db2-defaults-and-sysvars-audit.md) | Source-backed default values and the complete DB2 2.48 sysvar mapping result |
-| [Rendered GUI parity report](parity/gui-parity-report.md) | Scope, limits, and results of the 109-control rendered interaction audit |
-| [Control-surface matrix](parity/control-surface-matrix.md) | Human-readable inventory of every current desktop control |
-| [Machine-readable control matrix](parity/control-surface-matrix.json) | Structured source for audit validation and automation |
+| [October 21 offline completion report](parity/db24832-completion-report-2026-10-21.html) | Completed functional offline scope, critical native Windows walkthrough and explicit observation limits |
+| [Verification ledger](../modern/docs/verification.md) | Exact engine/UI/test revisions, retained qualification, package identity and delivery status on the completion branch |
+| [Completion receipt](../output/native-ui65-20261021/completion.json) | Structured native observations, focused repairs, hosted results and package hashes |
+| [Detailed October parity audit](parity/db24832-parity-report-2026-10-14.html) | Detailed feature evidence and preserved earlier checkpoints; follow its link to the October 21 conclusion |
+
+The completed work is on `codex/db24832-completion`, separate from `master`. The only published release currently contains legacy reference inputs. Completion of the agreed offline work is not a claim of universal historical-file compatibility, identical arbitrary trajectories or a manual walkthrough of every menu on every operating system.
+
+## Earlier audits
+
+These records retain their original scope and dates. Their old open findings and inventory counts are not the current completion checklist.
+
+| Document | Purpose |
+| --- | --- |
+| [DB2 defaults and sysvars audit](verification/db2-defaults-and-sysvars-audit.md) | Source-backed default values and DB2 2.48 sysvar mapping |
+| [Rendered GUI parity report](parity/gui-parity-report.md) | Earlier 109-control rendered interaction audit and its limits |
+| [Control-surface matrix](parity/control-surface-matrix.md) | Human-readable inventory from that audit baseline |
+| [Machine-readable control matrix](parity/control-surface-matrix.json) | Structured audit inventory used by the validator |
 
 ## Reproducible verification
 
