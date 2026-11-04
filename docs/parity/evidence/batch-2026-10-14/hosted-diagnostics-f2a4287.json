@@ -1,0 +1,102 @@
+{
+  "schema_version": 3,
+  "batch": 57,
+  "state": "not_scheduled_by_path_filter",
+  "sealed_utc": "2026-10-17T04:41:43.516Z",
+  "repository": "BobertNeek/Darwinbots-Modern",
+  "source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "source_commit": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "parent_commit": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "workflow": {
+    "file": ".github/workflows/modern-desktop-diagnostics.yml",
+    "name": "Desktop platform diagnostics",
+    "source": {
+      "file": ".github/workflows/modern-desktop-diagnostics.yml",
+      "sha256": "8A015ADC60FAB8E1A90AB469FAB9890259C7E93367B610116E14D861311AFA91",
+      "bytes": 1782
+    },
+    "trigger": "push with exact path filter; manual dispatch supported but deliberately not performed",
+    "run_id": null,
+    "url": null,
+    "status": "not_scheduled",
+    "conclusion": null
+  },
+  "new_diagnostics_run_id": null,
+  "new_diagnostics_test_counts": null,
+  "all_three_normal_outcomes_collected": false,
+  "overall_passed": null,
+  "automatic_run_absence": {
+    "observed": true,
+    "reason": "The57 commit changes only one Rust product line plus documentation/evidence/qualification files. No diagnostics workflow filter path or C# file changed from9be8474. Exact-SHA discovery contains only automatic MAIN.",
+    "push_filter_paths": [
+      ".github/workflows/modern-desktop-diagnostics.yml",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestApplication.cs",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestSessionTests.cs",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml"
+    ],
+    "matched_paths": [],
+    "actual_changed_files": [
+      "docs/parity/db24832-parity-report-2026-10-14.html",
+      "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-9be8474.json",
+      "docs/parity/evidence/batch-2026-10-14/hosted-main-9be8474.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/core.trx",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/preserved-wip-image.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/qualification-failure-summary.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/results.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/runner-identity.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/source.json",
+      "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/state.json",
+      "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "modern/engine/src/world/native_shots.rs",
+      "output/pass57-authoring-checks.json",
+      "output/pass57-drafts/qualification/metadata.json",
+      "output/pass57-drafts/shot-compile/metadata.json",
+      "output/pass57-promotion.json",
+      "output/pass57-workspace-metadata.json",
+      "output/qualify-native-roundtrip-pass57.ps1"
+    ],
+    "manual_dispatch_performed": false
+  },
+  "source_boundary": {
+    "csharp_and_rendered_fixture_inputs_changed": false,
+    "engine_inputs_changed": true,
+    "overall_runtime_equivalence_claim": false,
+    "previous_failed56_promoted": false,
+    "note": "No diagnostics57 run or test result exists. The failed56 run is historical evidence only; unchanged C# fixtures do not certify current native runtime behavior."
+  },
+  "pending_fresh_main_coverage": {
+    "run_id": 39003277798,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39003277798",
+    "source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+    "workflow_name": "Modern cross-platform",
+    "status_at_sealing": "in_progress",
+    "actual_current_test_counts": null,
+    "note": "Fresh managed tests/package remain conditional on the current Rust gate and will be recorded separately in the MAIN57 receipt."
+  },
+  "evidence": {
+    "initial_discovery": {
+      "file": "output/hosted-diagnostics-f2a4287-agent/initial-run-discovery.json",
+      "sha256": "7EDEF304FD38582E9122C450819AF3F6F3B084E18085C9A2DF087ACA2D46716A",
+      "bytes": 424
+    },
+    "final_discovery": {
+      "file": "output/hosted-diagnostics-f2a4287-agent/final-run-discovery.json",
+      "sha256": "A31211C93D62F4AC0E43AE8CD493855120CD19E48AC721611C51C6448D18E68B",
+      "bytes": 387
+    },
+    "commit_changes": {
+      "file": "output/hosted-diagnostics-f2a4287-agent/commit-file-changes.json",
+      "sha256": "61837F9EB024B092A81DCADA0BC04BE4207938B927003A7408C85836CD4EA676",
+      "bytes": 3099
+    }
+  },
+  "execution_boundary": {
+    "local_product_build_or_test": false,
+    "ui_or_gpu": false,
+    "source_or_git_mutation": false,
+    "manual_dispatch_or_retry": false,
+    "previous_receipts_modified": false
+  },
+  "claim_boundary": "This records why no diagnostics57 workflow was scheduled. It is not a successful test result, runtime-equivalence certificate, local CPU admission, original-executable proof, or hardware qualification."
+}

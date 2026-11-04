@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "batch": 56,
+  "sealed_utc": "2026-10-17T04:31:22.4330813Z",
+  "state": "needs_repair",
+  "local_ordinary_outcomes_complete": true,
+  "source_head": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "source_manifest_sha256": "041F0281CA61D3B795D4AFE35BF4DFD508D982B79BB9B62900A5B1FF25D95855",
+  "source_file_count": 501,
+  "format_passed": true,
+  "strict_clippy_passed": false,
+  "compile_error": {
+    "code": "E0609",
+    "file": "modern/engine/src/world/native_shots.rs",
+    "line": 71,
+    "field": "EngineConfig.max_velocity",
+    "correct_field": "EngineConfig.physics.max_velocity",
+    "affected_invocations": [
+      "strict-clippy",
+      "cpu-rust-workspace",
+      "cli-build",
+      "desktop-test-build",
+      "windows-publish"
+    ]
+  },
+  "rust": {
+    "invocation_exit_code": 101,
+    "compiled": false,
+    "actual_executed_targets": 0,
+    "actual_test_results": 0,
+    "passed": 0,
+    "failed": 0,
+    "expected_targets": 68,
+    "boundary": "Compilation failed before any Rust test execution; prior55 results are not inherited."
+  },
+  "managed": {
+    "core": {
+      "passed": 289,
+      "failed": 0,
+      "skipped": 0,
+      "total": 289,
+      "fresh": true,
+      "trx_sha256": "E623CD31BED6B1F9F4056D3CDD474CC006AE3955094798B8DC8E00A50BA27621"
+    },
+    "desktop": {
+      "executed": false,
+      "reason": "Fresh native-engine build dependency failed.",
+      "expected": 193
+    }
+  },
+  "genuine": {
+    "available_original_references": 15,
+    "comparisons_executed": 0,
+    "reason": "Fresh CLI compilation failed."
+  },
+  "raw_zero": {
+    "executed": false,
+    "reason": "Fresh CLI compilation failed."
+  },
+  "package": {
+    "published": false,
+    "smoke_executed": false,
+    "assets_check_executed": false,
+    "native_desktop_executed": false,
+    "stale_dll_reused": false,
+    "reason": "Desktop project invokes fresh cargo build; it failed E0609/MSB3073. No earlier package/native library was admitted."
+  },
+  "executed_step_count": 8,
+  "dependent_step_count": 35,
+  "failed_steps": [
+    {
+      "step": "strict-clippy",
+      "exit_code": 101
+    },
+    {
+      "step": "cpu-rust-workspace",
+      "exit_code": 101
+    },
+    {
+      "step": "cli-build",
+      "exit_code": 101
+    },
+    {
+      "step": "desktop-test-build",
+      "exit_code": 1
+    },
+    {
+      "step": "windows-publish",
+      "exit_code": 1
+    }
+  ],
+  "hosted": "Exact9be8474 automatic MAIN/diagnostics still being collected independently.",
+  "cpu_admission_created": false,
+  "hardware_executed": false,
+  "desktop_automation_executed": false,
+  "wip_png_unchanged": true,
+  "evidence": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/source.json",
+      "sha256": "041F0281CA61D3B795D4AFE35BF4DFD508D982B79BB9B62900A5B1FF25D95855"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/state.json",
+      "sha256": "CB8518C903732FBD9411A0604111BEEF9C6F7AA416C363AF9DEE24EB00A1C7E8"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/results.json",
+      "sha256": "5A9B1C3402C6AC21511946C6C96F5439AF435B1341B9DA749D14F37A76D43E08"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/runner-identity.json",
+      "sha256": "67DEFB0F788AEEC6487EEB09AC7CBEAA2A403C00F9527B1F4F4F7AAD2A6816BE"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/format-check.log",
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/strict-clippy.log",
+      "sha256": "EC195229482CF2760585A38733FFC31AF6382CEE5BB7AC3DEFF8FE0574DCDC19"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/cpu-rust-workspace.log",
+      "sha256": "83DA7CDB0B211992A9CBA6DB60D0A024523BEC38C4C927C7DE6CDEB766318AE7"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/cli-build.log",
+      "sha256": "83DA7CDB0B211992A9CBA6DB60D0A024523BEC38C4C927C7DE6CDEB766318AE7"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/desktop-core.log",
+      "sha256": "F2F7C3E7CEF7D82E7DB64B2B9D0E2B1B9FC7B4CCFC8E0497217733D89952E5D4"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/core.trx",
+      "sha256": "E623CD31BED6B1F9F4056D3CDD474CC006AE3955094798B8DC8E00A50BA27621"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/desktop-test-build.log",
+      "sha256": "0825771D53EABDD2234F9C5F48726AAD09FA0070C4342C00298AF0B6755D610E"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/windows-publish.log",
+      "sha256": "B5C39BEAA996222A9D8355F52289F6B370ECC108EC08B1731FA231833804371B"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/preserved-wip-image.json",
+      "sha256": "452634C182E385790B95FFC1321105A66E70966ACD74F9A4B9419C4DB7EE2917"
+    }
+  ]
+}

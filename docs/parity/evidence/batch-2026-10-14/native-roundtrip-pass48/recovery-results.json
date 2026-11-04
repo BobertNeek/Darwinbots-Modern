@@ -1,0 +1,26 @@
+[
+  {
+    "step": "recovery-desktop-test-build",
+    "exit_code": 0,
+    "seconds": 277.8151196,
+    "log": "recovery-desktop-test-build.log"
+  },
+  {
+    "step": "recovery-packaged-native-desktop",
+    "exit_code": 0,
+    "seconds": 118.8121783,
+    "log": "recovery-packaged-native-desktop.log"
+  },
+  {
+    "step": "retained-production-equivalence",
+    "exit_code": 0,
+    "baseline_batch": 47,
+    "recovery_only": true,
+    "byte_identical_source_files": 74,
+    "changed_test_only_files": 2,
+    "core_passed": 234,
+    "assets": 48,
+    "package_smoke_ticks": 13,
+    "strict_zero_fields": 393316
+  }
+]

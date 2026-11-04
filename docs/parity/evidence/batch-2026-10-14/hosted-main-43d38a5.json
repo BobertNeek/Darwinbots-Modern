@@ -1,0 +1,1054 @@
+{
+  "schema_version": 2,
+  "batch": 60,
+  "sealed_utc": "2026-10-17T10:26:27.196Z",
+  "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass60-source.json",
+    "sha256": "D1218C0674D8B1C7C11F4A2CEFC8F886E891356AD7E5EB1FB7977EA436F43700",
+    "pinned_files": 613
+  },
+  "workflow": "Modern cross-platform",
+  "workflow_file": ".github/workflows/modern-cross-platform.yml",
+  "run": {
+    "id": 39021030725,
+    "html_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39021030725",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T09:24:53Z",
+    "updated_at": "2026-10-17T10:24:50Z",
+    "head_sha": "43d38a55ac3e95c541bc9407bc0056b7cf45e351"
+  },
+  "all_jobs_terminal": true,
+  "state": "needs_repair",
+  "jobs": [
+    {
+      "job_id": 117362709199,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T09:24:56Z",
+      "completed_at": "2026-10-17T09:41:04Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T09:24:57Z",
+          "completed_at": "2026-10-17T09:24:59Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T09:24:59Z",
+          "completed_at": "2026-10-17T09:25:02Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T09:25:02Z",
+          "completed_at": "2026-10-17T09:25:09Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T09:25:09Z",
+          "completed_at": "2026-10-17T09:25:19Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T09:25:19Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:02Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T09:41:02Z",
+          "completed_at": "2026-10-17T09:41:03Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T09:41:03Z",
+          "completed_at": "2026-10-17T09:41:03Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1049,
+          "failed": 2,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "counts": {
+              "passed": 516,
+              "failed": 1,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles"
+            ]
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "counts": {
+              "passed": 7,
+              "failed": 1,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ]
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-43d38a5-agent/rust-target-results.json",
+          "sha256": "4EBC8AC7EC376C8F03923E78DECB92886293BC8F8F3384F6F9E4C23039F88F6E",
+          "bytes": 240963
+        },
+        "log": {
+          "file": "output/hosted-main-43d38a5-agent/logs/linux-x64-completed.log",
+          "sha256": "DAFED75B10FEA3BF45A0433B830C5A01986C77FD83111167C3C1007D50896E97",
+          "bytes": 208160
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1137,
+            "lines": [
+              "---- world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles stdout ----",
+              "",
+              "thread 'world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles' (6980) panicked at modern/engine/src/world/staged_evolution.rs:1774:9:",
+              "assertion `left == right` failed",
+              "  left: 1",
+              " right: 42",
+              ""
+            ]
+          },
+          {
+            "line": 1274,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (7106) panicked at modern/engine/tests/db24832_genuine_feeding.rs:130:5:",
+              "assertion `left == right` failed",
+              "  left: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54]",
+              " right: [62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74]",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117362709295,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T09:24:57Z",
+      "completed_at": "2026-10-17T10:24:49Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T09:24:58Z",
+          "completed_at": "2026-10-17T09:25:01Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T09:25:01Z",
+          "completed_at": "2026-10-17T09:25:05Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T09:25:05Z",
+          "completed_at": "2026-10-17T09:25:21Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T09:25:21Z",
+          "completed_at": "2026-10-17T09:25:34Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T09:25:34Z",
+          "completed_at": "2026-10-17T10:24:41Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T10:24:41Z",
+          "completed_at": "2026-10-17T10:24:41Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T10:24:41Z",
+          "completed_at": "2026-10-17T10:24:41Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T10:24:41Z",
+          "completed_at": "2026-10-17T10:24:45Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T10:24:45Z",
+          "completed_at": "2026-10-17T10:24:45Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T10:24:45Z",
+          "completed_at": "2026-10-17T10:24:45Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T10:24:45Z",
+          "completed_at": "2026-10-17T10:24:45Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T10:24:45Z",
+          "completed_at": "2026-10-17T10:24:45Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T10:24:45Z",
+          "completed_at": "2026-10-17T10:24:46Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T10:24:46Z",
+          "completed_at": "2026-10-17T10:24:47Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1049,
+          "failed": 2,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "counts": {
+              "passed": 516,
+              "failed": 1,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles"
+            ]
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "counts": {
+              "passed": 7,
+              "failed": 1,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ]
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-43d38a5-agent/rust-target-results.json",
+          "sha256": "4EBC8AC7EC376C8F03923E78DECB92886293BC8F8F3384F6F9E4C23039F88F6E",
+          "bytes": 240963
+        },
+        "log": {
+          "file": "output/hosted-main-43d38a5-agent/logs/osx-x64-completed.log",
+          "sha256": "D6F94C84C40192D30C8B129A3C090AE37F4C0759BD8176A044941CA4A2A15DC6",
+          "bytes": 209275
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1145,
+            "lines": [
+              "---- world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles stdout ----",
+              "",
+              "thread 'world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles' (79386) panicked at modern/engine/src/world/staged_evolution.rs:1774:9:",
+              "assertion `left == right` failed",
+              "  left: 1",
+              " right: 42",
+              ""
+            ]
+          },
+          {
+            "line": 1282,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (81107) panicked at modern/engine/tests/db24832_genuine_feeding.rs:130:5:",
+              "assertion `left == right` failed",
+              "  left: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54]",
+              " right: [62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74]",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117362709323,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "platform": "win-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T09:24:57Z",
+      "completed_at": "2026-10-17T10:01:09Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T09:24:58Z",
+          "completed_at": "2026-10-17T09:25:00Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T09:25:00Z",
+          "completed_at": "2026-10-17T09:25:08Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T09:25:08Z",
+          "completed_at": "2026-10-17T09:25:30Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T09:25:30Z",
+          "completed_at": "2026-10-17T09:26:01Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T09:26:01Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:04Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T10:01:04Z",
+          "completed_at": "2026-10-17T10:01:07Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T10:01:07Z",
+          "completed_at": "2026-10-17T10:01:07Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1049,
+          "failed": 2,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "counts": {
+              "passed": 516,
+              "failed": 1,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles"
+            ]
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "counts": {
+              "passed": 7,
+              "failed": 1,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ]
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-43d38a5-agent/rust-target-results.json",
+          "sha256": "4EBC8AC7EC376C8F03923E78DECB92886293BC8F8F3384F6F9E4C23039F88F6E",
+          "bytes": 240963
+        },
+        "log": {
+          "file": "output/hosted-main-43d38a5-agent/logs/win-x64-completed.log",
+          "sha256": "5F366C6E3E44F63C04306A6E32637A1C99E9F609FAB5269BAE36108DC07B8FC7",
+          "bytes": 210298
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1151,
+            "lines": [
+              "---- world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles stdout ----",
+              "",
+              "thread 'world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles' (7692) panicked at modern\\engine\\src\\world\\staged_evolution.rs:1774:9:",
+              "assertion `left == right` failed",
+              "  left: 1",
+              " right: 42",
+              ""
+            ]
+          },
+          {
+            "line": 1288,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (8760) panicked at modern\\engine\\tests\\db24832_genuine_feeding.rs:130:5:",
+              "assertion `left == right` failed",
+              "  left: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54]",
+              " right: [62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74]",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117362709385,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T09:25:01Z",
+      "completed_at": "2026-10-17T09:49:48Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T09:25:02Z",
+          "completed_at": "2026-10-17T09:25:03Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T09:25:03Z",
+          "completed_at": "2026-10-17T09:25:06Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T09:25:06Z",
+          "completed_at": "2026-10-17T09:25:13Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T09:25:13Z",
+          "completed_at": "2026-10-17T09:25:21Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T09:25:21Z",
+          "completed_at": "2026-10-17T09:49:42Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T09:49:42Z",
+          "completed_at": "2026-10-17T09:49:42Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T09:49:42Z",
+          "completed_at": "2026-10-17T09:49:42Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T09:49:42Z",
+          "completed_at": "2026-10-17T09:49:43Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T09:49:43Z",
+          "completed_at": "2026-10-17T09:49:43Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T09:49:43Z",
+          "completed_at": "2026-10-17T09:49:43Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T09:49:43Z",
+          "completed_at": "2026-10-17T09:49:43Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T09:49:43Z",
+          "completed_at": "2026-10-17T09:49:43Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T09:49:43Z",
+          "completed_at": "2026-10-17T09:49:44Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T09:49:44Z",
+          "completed_at": "2026-10-17T09:49:46Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1049,
+          "failed": 2,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "counts": {
+              "passed": 516,
+              "failed": 1,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles"
+            ]
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "counts": {
+              "passed": 7,
+              "failed": 1,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "failed_tests": [
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ]
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-43d38a5-agent/rust-target-results.json",
+          "sha256": "4EBC8AC7EC376C8F03923E78DECB92886293BC8F8F3384F6F9E4C23039F88F6E",
+          "bytes": 240963
+        },
+        "log": {
+          "file": "output/hosted-main-43d38a5-agent/logs/osx-arm64-completed.log",
+          "sha256": "3A4DB511379FD3C4AF7B36A4FFEFB9FAC2C9D8E694A8F810C973DB0FBD1722DD",
+          "bytes": 208901
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1140,
+            "lines": [
+              "---- world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles stdout ----",
+              "",
+              "thread 'world::staged_evolution::tests::configured_staged_after_cycle_preserves_full_save_rng_and_clocks_at_fifty_cycles' (45384) panicked at modern/engine/src/world/staged_evolution.rs:1774:9:",
+              "assertion `left == right` failed",
+              "  left: 1",
+              " right: 42",
+              ""
+            ]
+          },
+          {
+            "line": 1279,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (46197) panicked at modern/engine/tests/db24832_genuine_feeding.rs:130:5:",
+              "assertion `left == right` failed",
+              "  left: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54]",
+              " right: [62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74]",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    }
+  ],
+  "aggregate": {
+    "platforms": 4,
+    "total_rust_target_executions": 272,
+    "rust": {
+      "passed": 4196,
+      "failed": 8,
+      "ignored": 48,
+      "measured": 0,
+      "filtered_out": 0
+    },
+    "actual_executed_core_tests": 0,
+    "actual_executed_desktop_tests": 0,
+    "packages_published": 0,
+    "package_smokes_executed": 0,
+    "expected_core_per_platform": 309,
+    "expected_desktop_per_platform": 209,
+    "full_managed_or_package_corpus_completed": false
+  },
+  "artifacts": {
+    "api_total": 0,
+    "downloaded": 0,
+    "trx_files": 0,
+    "png_files": 0,
+    "reason": "Rust step failed on all four platforms. Managed/package/smoke steps were skipped; preserve receipts steps found no files and produced no artifacts."
+  },
+  "all_ordinary_hosted_workflows_collected": true,
+  "diagnostics_receipt": {
+    "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-43d38a5.json",
+    "sha256": "7CF265DAACB05D80F3AE7DEBF409E12308A85322F7E2AD1B2FFD2648C07BD2ED",
+    "bytes": 14509
+  },
+  "combined_hosted_outcomes": {
+    "main_jobs": 4,
+    "diagnostic_jobs": 3,
+    "total_terminal_jobs": 7,
+    "successful_jobs": 0,
+    "failed_jobs": 7,
+    "rust_target_executions": 272,
+    "rust": {
+      "passed": 4196,
+      "failed": 8,
+      "ignored": 48,
+      "measured": 0,
+      "filtered_out": 0
+    },
+    "diagnostic_desktop_tests_executed": 0,
+    "compiler_failures_in_diagnostic_jobs": 3
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-main-43d38a5-agent/api/run-20261017T102527236.json",
+      "sha256": "7DE9ADFB118F8EEF7E2ADA65FEA2A43625ED7C397E352A3C664CF96AEAF0213D",
+      "bytes": 13169
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/api/jobs-20261017T102527236.json",
+      "sha256": "D504119BE66F0B698559CD6064CDC0E17C253484385C882824DD362B2C88671E",
+      "bytes": 13310
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/api/artifacts-20261017T102527236.json",
+      "sha256": "E338FB10E6740E1E43CDBE137DA3A22EC09F95D8097C5F247E751DE5F81F87B4",
+      "bytes": 34
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/rust-target-results.json",
+      "sha256": "4EBC8AC7EC376C8F03923E78DECB92886293BC8F8F3384F6F9E4C23039F88F6E",
+      "bytes": 240963
+    },
+    {
+      "file": "output/pass60-workspace-metadata.json",
+      "sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+      "bytes": 21645
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/linux-x64-completed.log",
+      "sha256": "DAFED75B10FEA3BF45A0433B830C5A01986C77FD83111167C3C1007D50896E97",
+      "bytes": 208160
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/osx-x64-completed.log",
+      "sha256": "D6F94C84C40192D30C8B129A3C090AE37F4C0759BD8176A044941CA4A2A15DC6",
+      "bytes": 209275
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/win-x64-completed.log",
+      "sha256": "5F366C6E3E44F63C04306A6E32637A1C99E9F609FAB5269BAE36108DC07B8FC7",
+      "bytes": 210298
+    },
+    {
+      "file": "output/hosted-main-43d38a5-agent/logs/osx-arm64-completed.log",
+      "sha256": "3A4DB511379FD3C4AF7B36A4FFEFB9FAC2C9D8E694A8F810C973DB0FBD1722DD",
+      "bytes": 208901
+    }
+  ],
+  "boundaries": [
+    "All four Rust corpora completed despite failures because the workflow used --no-fail-fast. The 12 explicitly ignored physical-GPU tests per platform are not passing hardware evidence.",
+    "Core309/Desktop209 are planned source-manifest counts only; zero tests from either managed suite ran in MAIN after Rust failure.",
+    "All three separate diagnostics failed before test discovery at FindBestRenderedTests.cs:60 CS0121, not at a rendered assertion.",
+    "The configured no-progress fixture passed exact full Save/uniform/Gaussian assertions before its incorrect hardcoded config.seed42 assertion (actual initial1). The feeding test fails strict exported shot occupancy; no tolerance or assertion was removed.",
+    "No current CPU admission, physical GPU/capacity, rendered control, package or smoke qualification is established by these failed hosted runs. No source/HEAD, workflow controls, or repair candidates were changed."
+  ]
+}

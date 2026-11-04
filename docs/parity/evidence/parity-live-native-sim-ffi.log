@@ -1,0 +1,35 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+warning: unused import: `LegacySimulationFile`
+ --> modern\engine\src\ffi.rs:3:58
+  |
+3 |     Engine, EngineConfig, LegacyDna, LegacyOrganismFile, LegacySimulationFile, OrganismId,
+  |                                                          ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `darwinbots-engine` (lib test) generated 1 warning (run `cargo fix --lib -p darwinbots-engine --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 17.85s
+     Running unittests src\lib.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 18 tests
+test biology::native_material_tests::native_transactions_charge_in_make_stuff_order_and_keep_failed_commands ... ok
+test biology::native_material_tests::multibot_material_discount_changes_energy_but_keeps_full_transaction_waste ... ok
+test native_binary::tests::new_native_records_and_simulation_groups_have_independent_valid_framing ... ok
+test ffi::tests::legacy_save_emits_native_24832_sim_for_file_command ... ok
+test world::native_export::tests::native_organism_export_contains_live_memory_resource_bits_dna_and_restrictions ... ok
+test native_binary::tests::native_bad_counts_truncation_and_terminators_are_rejected ... ok
+test native_binary::tests::genuine_native_record_stream_round_trips_every_byte ... ok
+test native_binary::tests::editing_one_native_single_preserves_all_other_bytes ... ok
+test world::native_sim_export::tests::fresh_world_native_export_needs_no_reference_save ... ok
+test world::native_io::tests::native_runtime_rejects_nonfinite_stores_and_truncated_tails ... ok
+test world::tests::native_border_respawn_moves_the_whole_multibot_from_its_nearest_cell ... ok
+test native_binary::tests::genuine_simulation_tail_round_trips_all_options_species_and_shots ... ok
+test world::native_io::tests::genuine_native_save_becomes_a_live_world_with_exact_resources_and_shots ... ok
+test world::native_export::tests::genuine_robot_group_export_remaps_forward_and_back_ties_into_the_new_file ... ok
+test world::native_export::tests::native_export_retains_unrepresented_tie_metadata_and_type ... ok
+test native_binary::tests::native_records_keep_bits_and_opaque_bytes_through_json ... ok
+test world::native_sim_export::tests::live_native_sim_export_updates_resources_memory_world_and_shots ... ok
+test world::native_io::tests::native_origin_and_live_state_survive_modern_save_and_resume ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 8.04s
+

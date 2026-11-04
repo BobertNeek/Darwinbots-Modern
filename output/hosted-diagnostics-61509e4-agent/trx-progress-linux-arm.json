@@ -1,0 +1,126 @@
+[
+  {
+    "platform": "linux-x64",
+    "counters": {
+      "total": 214,
+      "executed": 214,
+      "passed": 214,
+      "failed": 0,
+      "notExecuted": 0
+    },
+    "result_rows": 214,
+    "selected": [
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+        "outcome": "Passed",
+        "duration": "00:00:00.3443923",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+        "outcome": "Passed",
+        "duration": "00:00:00.0171759",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Passed",
+        "duration": "00:00:00.0266649",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+        "outcome": "Passed",
+        "duration": "00:00:00.3056559",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+        "outcome": "Passed",
+        "duration": "00:00:00.0397262",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+        "outcome": "Passed",
+        "duration": "00:00:01.1519535",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+        "outcome": "Passed",
+        "duration": "00:00:00.0363040",
+        "message": null,
+        "stack_trace": null
+      }
+    ]
+  },
+  {
+    "platform": "osx-arm64",
+    "counters": {
+      "total": 214,
+      "executed": 214,
+      "passed": 214,
+      "failed": 0,
+      "notExecuted": 0
+    },
+    "result_rows": 214,
+    "selected": [
+      {
+        "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+        "outcome": "Passed",
+        "duration": "00:00:01.3955302",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+        "outcome": "Passed",
+        "duration": "00:00:00.0122797",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+        "outcome": "Passed",
+        "duration": "00:00:00.0226782",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+        "outcome": "Passed",
+        "duration": "00:00:00.0280245",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+        "outcome": "Passed",
+        "duration": "00:00:00.5278427",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+        "outcome": "Passed",
+        "duration": "00:00:00.8281569",
+        "message": null,
+        "stack_trace": null
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Passed",
+        "duration": "00:00:00.0327277",
+        "message": null,
+        "stack_trace": null
+      }
+    ]
+  }
+]

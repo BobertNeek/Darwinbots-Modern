@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-10-16T16:46:05.282Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2",
+  "status": "Read-only audit complete. Pending sealed CPU qualification and exact committed-source admission; three physical-case adapter assertions need hardening or explicit same-case runtime adapter proof before claiming all12 cases independently physical.",
+  "qualification_executed": false,
+  "reviewed_files": [
+    {
+      "file": "output/qualify-gpu-native-final45.ps1",
+      "sha256": "C11412928AC3FDA4BD397DB45D1469EF5D8FFB03C804B3492892ADCB4AA329FA"
+    },
+    {
+      "file": "output/qualify-capacity-final45.ps1",
+      "sha256": "12B5744E3E941A2ADE5A1C74E0ADD6F770F09E12599DB485C288E0A1CDCEC6BA"
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass49.ps1",
+      "sha256": "2AE91A03F1F19DCB48BF96A86EFF2005BE26A22B7170AD7286F567F7FE82BEFC"
+    }
+  ],
+  "batch49": {
+    "source_manifest_sha256": "3900DB4715D56D1A40D38572889338A679701457002685E4BAC29146084D0570",
+    "retained_projection_sha256": "4E46C352C92E3698D215EDA401BDD3876B7E6C9282595FFC1D14AD3393583213",
+    "baseline48_summary_sha256": "5241130A4111F8CB793BA3C1C2E69AB49E3BBC40F97724A33E1387EF710B684F",
+    "retained48_targets": 56,
+    "fresh49_target_invocations": 10,
+    "total_distinct_targets": 66,
+    "fresh_full_workspace_invocation": false,
+    "current_cpu_green_or_committed_source_claim": false
+  },
+  "selectors": {
+    "status": "Current target names and ignored-test minima match read-only source inventory; no tests executed.",
+    "physical_groups": [
+      {
+        "group": "physical-library",
+        "script_line": 187,
+        "minimum_passes": 7,
+        "current_ignored_test_functions": [
+          {
+            "file": "modern/engine/src/world/cached_radius.rs",
+            "ignore_line": 88,
+            "name": "death_retains_the_large_chloroplast_radius_on_physical_gpu"
+          },
+          {
+            "file": "modern/engine/src/world.rs",
+            "ignore_line": 13551,
+            "name": "failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once"
+          },
+          {
+            "file": "modern/engine/src/world.rs",
+            "ignore_line": 13716,
+            "name": "runtime_gpu_failure_retries_on_cpu_and_records_reason"
+          },
+          {
+            "file": "modern/engine/src/world.rs",
+            "ignore_line": 13744,
+            "name": "runtime_gpu_failure_is_fatal_when_fallback_is_disabled"
+          },
+          {
+            "file": "modern/engine/src/world.rs",
+            "ignore_line": 13762,
+            "name": "gpu_failure_does_not_partially_advance_the_cycle"
+          },
+          {
+            "file": "modern/engine/src/world.rs",
+            "ignore_line": 13796,
+            "name": "gpu_in_backend_failure_allows_later_tick_with_trace"
+          },
+          {
+            "file": "modern/engine/src/world.rs",
+            "ignore_line": 13824,
+            "name": "gpu_in_backend_failure_keeps_tick_many_iterations_atomic"
+          }
+        ]
+      },
+      {
+        "group": "physical-cli",
+        "script_line": 188,
+        "minimum_passes": 1,
+        "target": "darwinbots-cli --lib",
+        "test": "probe::tests::physical_gpu_run_reports_same_process_hardware_adapter"
+      },
+      {
+        "group": "physical-integration",
+        "script_line": 189,
+        "minimum_passes": 3,
+        "targets": [
+          "db24832_starter_movement",
+          "gpu_ffi",
+          "w4_evolution_gpu"
+        ],
+        "test_functions": [
+          "untouched_starter_animal_moves_on_physical_gpu",
+          "physical_gpu_fuses_grid_sensing_integration_and_render_preparation",
+          "physical_gpu_phase2_ecological_differential_has_adapter_receipt"
+        ]
+      },
+      {
+        "group": "physical-native-continuation",
+        "script_line": 190,
+        "minimum_passes": 1,
+        "target": "native_continuation_qualification",
+        "test": "physical_gpu_original_world_long_continuation_matches_cpu_and_repeated_save_resume"
+      }
+    ],
+    "total_ignored_cases": 12,
+    "portable_gpu": {
+      "script_line": 191,
+      "static_nonignored_function_name_matches": 14,
+      "physical_proof": false,
+      "reason": "Includes two deliberately forced-unavailable CPU/error tests plus12 conditional adapter tests that can return early. Harness PASS is not proof of GPU dispatch."
+    },
+    "backend_switches": {
+      "script_line": 192,
+      "static_nonignored_function_name_matches": 1,
+      "physical_proof": false,
+      "reason": "The one switch test always proves CPU state preservation; its GPU branch is conditional at gpu_ffi.rs880."
+    },
+    "receipt_count_limit": "passed_cases sums actual successful harness summary counts and rejects zero passes via each minimum. It does not count ignored/filtered separately or prove branch execution. Keep full logs; do not label portable/fallback cases as physical dispatch. Selected/unselected groups are explicitly recorded."
+  },
+  "physical_adapter_findings": [
+    {
+      "id": "cached-radius-physical-class",
+      "file": "modern/engine/src/world/cached_radius.rs",
+      "test_line": 89,
+      "test": "death_retains_the_large_chloroplast_radius_on_physical_gpu",
+      "helper_line": 48,
+      "evidence": "Shared helper asserts active Gpu and fallback_reason None at51-60/78, but neither obtains an adapter receipt nor rejects software device types. The selected physical case prints no full adapter receipt.",
+      "minimal_test_only_proposal": "Inside assert_death_retains_cached_radius only when backend==BackendPreference::Gpu, obtain engine.gpu_adapter_receipt().expect(...); assert device_type is DiscreteGpu|IntegratedGpu; assert nonempty name/backend; print receipt. CPU branch unchanged.",
+      "same_case_runtime_receipt_present": false
+    },
+    {
+      "id": "starter-physical-class",
+      "file": "modern/engine/tests/db24832_starter_movement.rs",
+      "test_line": 97,
+      "test": "untouched_starter_animal_moves_on_physical_gpu",
+      "helper_line": 10,
+      "evidence": "GPU branch26-36 asserts BackendKind::Gpu and nonempty adapter name/backend and prints device_type, but does not reject a Cpu/Other software adapter.",
+      "minimal_test_only_proposal": "After obtaining receipt at28-30 add assert!(matches!(receipt.device_type.as_str(), \"DiscreteGpu\" | \"IntegratedGpu\"), ...). Keep portable production selection unchanged.",
+      "same_case_runtime_receipt_present": true,
+      "receipt_line": 34,
+      "conditional_readiness": "Actual run log can identify device_type for this exact case; absent/unknown/software must withhold physical claim even if harness PASS."
+    },
+    {
+      "id": "ecological-physical-class",
+      "file": "modern/engine/tests/w4_evolution_gpu.rs",
+      "test_line": 174,
+      "test": "physical_gpu_phase2_ecological_differential_has_adapter_receipt",
+      "helper_line": 137,
+      "evidence": "differential_config disables CPU fallback, and test177-185 asserts Gpu/nonempty name/backend and prints device_type, but does not reject a software adapter.",
+      "minimal_test_only_proposal": "After obtaining receipt at178-180 add the same DiscreteGpu|IntegratedGpu assertion. No global production adapter policy and no change to intended portable fallback tests.",
+      "same_case_runtime_receipt_present": true,
+      "receipt_line": 184,
+      "conditional_readiness": "Actual run log can identify device_type for this exact case; absent/unknown/software must withhold physical claim even if harness PASS."
+    }
+  ],
+  "adapter_boundary": {
+    "file": "modern/engine/src/physics.rs",
+    "lines": "295-308",
+    "evidence": "request_adapter force_fallback_adapter=false requests the preferred adapter but does not itself reject software device types. Existing strict gates inspect receipt.device_type.",
+    "strict_examples": [
+      "world.rs13532-13547 shared submission-failure helper",
+      "gpu_ffi.rs271-284",
+      "native_continuation_qualification.rs115-150",
+      "cli/src/probe.rs325-369"
+    ],
+    "fallback_contract": "The deliberate submitted-GPU-failure -> CPU recovery unit test is an expected recovery contract, not an unacceptable silent physical qualification fallback. Portable tests retain their existing policy."
+  },
+  "guards": {
+    "idle": {
+      "minimum_seconds": 300,
+      "gpu": "Parameter rejects <300; repeated Windows idle observation before launch; baseline recaptured after Git and final input checked.",
+      "capacity": "ValidateRange300..86400; one atomic last-input/idle sample after provenance; deferred if busy; final input check before receipt."
+    },
+    "input_stop": {
+      "gpu": "Polls new input, terminates only its started Cargo process tree, records interrupted receipt and throws; no retry after input.",
+      "capacity": "Polls new input, terminates only its started CLI process tree; marks interrupted; subsequent selected plans independently require full idle and do not retry the interrupted case.",
+      "polling_limit": "Both use nominal500ms child polling, but synchronous provenance queries can delay that poll. GPU Git queries have no timeout; capacity Git calls each timeout10s. No hard maximum input-to-stop latency is proven by static review."
+    },
+    "serial": {
+      "within_invocation": "foreach plans, one child at a time; test threads1, Cargo build jobs1 for GPU; Rayon1 and BelowNormal; hidden windows/no focus.",
+      "shared_lease": false,
+      "classification": "Defense in depth given root commitment to launch exactly one owned runner after checking no owned worker remains. The scripts alone do not enforce cross-runner exclusion."
+    },
+    "source": {
+      "gpu": "HEAD equality + tracked diff/untracked check modern/Cargo/.cargo; Cargo executable hash before/during/after; Cargo-reported test binary hashes after exit.",
+      "capacity": "HEAD equality + engine/CLI source/manifests/.cargo + Animal workload tracked/unchanged; qualified CLI hash must match explicit argument; CLI/DNA hashes rechecked.",
+      "external_input_gap": "GPU tracked/untracked guard omits Installer and original VB input files consumed by whole-workspace compile; root admission or expanded immutable input guard must cover exact closure listed below."
+    }
+  },
+  "external_input_closure": [
+    {
+      "file": "Installer/bots/Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121",
+      "baseline49_pin": {
+        "file": "Installer/bots/Alga_Minimalis_Chloroplastus.txt",
+        "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121"
+      },
+      "scope": "Physical starter execution, and other workspace targets compile",
+      "reference": "db24832_starter_movement.rs6-8",
+      "covered_by_current_gpu_script_git_guard": false,
+      "covered_by_current_retained49_hash_pins": true
+    },
+    {
+      "file": "Installer/bots/Animal_Minimalis.txt",
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5",
+      "baseline49_pin": {
+        "file": "Installer/bots/Animal_Minimalis.txt",
+        "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5"
+      },
+      "scope": "Physical starter execution, and other workspace targets compile",
+      "reference": "db24832_starter_movement.rs6-8",
+      "covered_by_current_gpu_script_git_guard": false,
+      "covered_by_current_retained49_hash_pins": true
+    },
+    {
+      "file": "Installer/bots/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281",
+      "baseline49_pin": {
+        "file": "Installer/bots/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+        "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281"
+      },
+      "scope": "Portable --workspace compiles dna_runtime_248 even though gpu filter selects none of its tests",
+      "reference": "dna_runtime_248.rs31-33",
+      "covered_by_current_gpu_script_git_guard": false,
+      "covered_by_current_retained49_hash_pins": true
+    },
+    {
+      "file": "Installer/sets/Simple Simulation.set",
+      "sha256": "A0A483E962E6BC9B1AB90EBB5294B7A9DEA20FD30AE807CC81AB5D1C00A262A7",
+      "baseline49_pin": null,
+      "scope": "Portable --workspace compiles an unselected integration target",
+      "reference": "legacy_transport.rs17",
+      "covered_by_current_gpu_script_git_guard": false,
+      "covered_by_current_retained49_hash_pins": false
+    },
+    {
+      "file": "Darwinbots2/DNATokenizing.bas",
+      "sha256": "68402B132F2EFD2015E7FDC2FB81039D1F08684F4D6CDDC2FF3A57B0163E282B",
+      "baseline49_pin": null,
+      "scope": "Portable --workspace compiles an unselected integration target",
+      "reference": "db2_vegetation.rs98",
+      "covered_by_current_gpu_script_git_guard": false,
+      "covered_by_current_retained49_hash_pins": false
+    }
+  ],
+  "capacity_validation": {
+    "status": "Backend and sustained-population proof is fail-closed in receipt logic.",
+    "evidence": "Lines311-354 require same-run backend exactly Cpu/Gpu; Cpu explicit null adapter; Gpu nonempty named DiscreteGpu/IntegratedGpu; elapsed finite >=60s; requested ticks; starting/final/candidate population exactly requested; no births/deaths/vegetables. CPU/software fallback cannot pass Gpu capacity. Fixed plans may honestly return insufficient_sustained_duration; no duration success is guaranteed.",
+    "scope": "Selected populations only; headless measured simulation+identity-tracking interval excludes import/spawn. No rendered/original/trainer/unselected-capacity claim.",
+    "cpu_admission_missing_in_script": true,
+    "classification": "Defense in depth only if root independently enforces sealed49 CPU, package and exact CLI build receipt/hash before invoking capacity."
+  },
+  "cpu_ready_marker_contract": {
+    "creation": "Root only after ALL49 normal outcomes collected, passed, source/retained guards sealed, owned workers gone, and exact qualified source committed. No marker may be created from a running state.",
+    "legacy_fields_required_by_gpu_script": [
+      "source_head equals exact40-character committed SHA",
+      "cpu_workspace_passed=true",
+      "desktop_passed=true",
+      "package_passed=true"
+    ],
+    "legacy_boolean_meaning": "If retained for compatibility, cpu_workspace_passed must explicitly mean the qualified union of56 sealed passing48 targets plus10 fresh49 invocations under the reviewed source/reachability projection. It must not claim a new full-workspace invocation.",
+    "required_explicit_fields": {
+      "qualification_batch": 49,
+      "qualification_method": "retained48_56_plus_fresh49_10",
+      "retained_target_count": 56,
+      "fresh_target_invocations": 10,
+      "total_distinct_target_count": 66,
+      "fresh_full_workspace_invocation": false,
+      "all_normal_outcomes_collected": true,
+      "physical_gpu_proof": false
+    },
+    "required_evidence": [
+      "Sealed final49 summary/results and actual per-target counts/ignored/filtered/log hashes",
+      "Sealed48 summary SHA and reviewed projection SHA/retained section identities",
+      "Qualified49 source manifest SHA and exact post-qualification commit binding to unchanged source/input pins",
+      "Fresh strict Clippy/format/Core/Desktop/package/smoke/assets receipts and exact native DLL identity",
+      "Fresh CLI build receipt SHA; QualifiedCliSha256 must be that actual artifact",
+      "No failed/missing fresh target or failed guard; no uncommitted source drift; distinguish two0-test documentation targets from executed test cases"
+    ],
+    "current_proposal_truth": "Existing pass49-retained48-projection.json correctly declares56/10 and fresh_full_workspace_invocation=false. The49 CPU runner does not automatically write cpu-ready.json; root has explicitly reserved marker creation until final seal/commit."
+  },
+  "recommendation": "Do not execute now. After49 collection, root may scope a test-only physical-adapter hardening batch for the3 cases, then qualify that exact test source. Keep production/portable fallback unchanged. Before hardware launch enforce root admission, exact input closure and exclusive serial ownership, and preserve per-case adapter/log evidence. No broad fresh-workspace or all12-independent-physical claim from current scripts alone.",
+  "activity": {
+    "new_output_only": "output/pass49-hardware-runner-review.json",
+    "existing_files_modified": false,
+    "source_or_pins_modified": false,
+    "build_test_formatter_parser_Git_apps_UI_executed": false,
+    "hardware_launched": false
+  }
+}

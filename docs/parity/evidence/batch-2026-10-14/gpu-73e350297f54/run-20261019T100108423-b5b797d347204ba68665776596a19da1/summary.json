@@ -1,0 +1,1028 @@
+{
+  "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+  "status": "completed",
+  "planned_groups": 6,
+  "outcome_count": 6,
+  "full_plan_groups": 6,
+  "selected_groups": [
+    "physical-library",
+    "physical-cli",
+    "physical-integration",
+    "physical-native-continuation",
+    "portable-gpu",
+    "backend-switches"
+  ],
+  "unselected_groups": [],
+  "cpu_ready": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\cpu-ready.json",
+  "cpu_ready_sha256": "84799C3A07568BB00C8B4B164D43B46466D1BD5B4BABA0E61319D490BBF15486",
+  "guard_failure": null,
+  "failed_groups": [],
+  "groups": [
+    {
+      "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+      "status": "passed",
+      "task": "physical-library",
+      "attempt": 1,
+      "exit_code": 0,
+      "executable": "C:\\Users\\PC\\.cargo\\bin\\cargo.exe",
+      "executable_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+      "arguments": [
+        "test",
+        "--release",
+        "-p",
+        "darwinbots-engine",
+        "--lib",
+        "--no-fail-fast",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "minimum_passes": 7,
+      "timed_out": false,
+      "timeout_seconds": 1800,
+      "elapsed_process_seconds": 315.5597858,
+      "passed_cases": 7,
+      "terminal_harness_summary_present": true,
+      "terminal_harness_summary_count": 1,
+      "test_binaries": [
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_engine-f5a573ff9adb3a9e.exe",
+          "sha256": "CA3C316F896A3C72D991F0B8A0F187129B3C1DF2C17A256A0C8A02199E50853F"
+        }
+      ],
+      "stdout": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-library-20261019T100110824-1.stdout.log",
+      "stdout_sha256": "27B6A9F64D88D02B9864D5D07C1B5A94845FDA035A1C62C5B93B9B4BCD2A907B",
+      "stderr": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-library-20261019T100110824-1.stderr.log",
+      "stderr_sha256": "83ED7ACB40B73B8BB5B78210CD517E5B48523E4A6DC1C31BFB8052F1BAC41E10",
+      "stdout_capture": {
+        "status": "captured",
+        "bytes": 1659,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 8
+      },
+      "stderr_capture": {
+        "status": "captured",
+        "bytes": 273,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "interrupted_by_input": false,
+      "input_tick_before": 397950250,
+      "input_tick_at_stop": null,
+      "input_observed_utc": null,
+      "input_tick_after": 397950250,
+      "idle_before_ms": 11097062,
+      "idle_after_ms": 11413234,
+      "stop_reason": "process_exit",
+      "stop_observed_utc": "2026-10-19T10:06:27.0159326Z",
+      "guard_error": "",
+      "cleanup_errors": [],
+      "log_errors": [],
+      "execution_error": null,
+      "binary_error": null,
+      "input_observation_errors": [],
+      "state_errors": [],
+      "required_idle_seconds": 300,
+      "priority": "BelowNormal",
+      "rayon_threads": 1,
+      "owned_cargo_pid": 30980,
+      "error": null,
+      "started_utc": "2026-10-19T10:01:10.8259283Z",
+      "finished_utc": "2026-10-19T10:06:27.0205144Z",
+      "log_provenance": "Writer-quiescent read handle excludes writers; text and SHA256 from the same captured bytes. Missing/locked/error captures have no immutable hash. A killed or summary-less log is partial evidence only.",
+      "binary_provenance": "Fresh Cargo test invocation at the verified exact source; SHA256 of Cargo-reported executed test binaries after exit; no cached receipt reuse"
+    },
+    {
+      "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+      "status": "passed",
+      "task": "physical-cli",
+      "attempt": 1,
+      "exit_code": 0,
+      "executable": "C:\\Users\\PC\\.cargo\\bin\\cargo.exe",
+      "executable_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+      "arguments": [
+        "test",
+        "--release",
+        "-p",
+        "darwinbots-cli",
+        "--lib",
+        "--no-fail-fast",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "minimum_passes": 1,
+      "timed_out": false,
+      "timeout_seconds": 1800,
+      "elapsed_process_seconds": 305.7165205,
+      "passed_cases": 1,
+      "terminal_harness_summary_present": true,
+      "terminal_harness_summary_count": 1,
+      "test_binaries": [
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_cli-19b2f1d2dddc4ec7.exe",
+          "sha256": "635C30E65B24B7B376953E6FB63F7AA26E722987370896BB50A3A7FEEA1DDB9E"
+        }
+      ],
+      "stdout": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-cli-20261019T100628075-1.stdout.log",
+      "stdout_sha256": "570EBC1B1637D6CFBDB553D0F0E147C6B342D8011CD7D3EC8539533010C317E7",
+      "stderr": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-cli-20261019T100628075-1.stderr.log",
+      "stderr_sha256": "BCAF921A11C752DB96AD4D0D7DFA2E420C8D5B77B4688D5D85A979994B71F333",
+      "stdout_capture": {
+        "status": "captured",
+        "bytes": 298,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "stderr_capture": {
+        "status": "captured",
+        "bytes": 379,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "interrupted_by_input": false,
+      "input_tick_before": 397950250,
+      "input_tick_at_stop": null,
+      "input_observed_utc": null,
+      "input_tick_after": 397950250,
+      "idle_before_ms": 11414312,
+      "idle_after_ms": 11720453,
+      "stop_reason": "process_exit",
+      "stop_observed_utc": "2026-10-19T10:11:34.2178201Z",
+      "guard_error": "",
+      "cleanup_errors": [],
+      "log_errors": [],
+      "execution_error": null,
+      "binary_error": null,
+      "input_observation_errors": [],
+      "state_errors": [],
+      "required_idle_seconds": 300,
+      "priority": "BelowNormal",
+      "rayon_threads": 1,
+      "owned_cargo_pid": 51216,
+      "error": null,
+      "started_utc": "2026-10-19T10:06:28.0761543Z",
+      "finished_utc": "2026-10-19T10:11:34.2179110Z",
+      "log_provenance": "Writer-quiescent read handle excludes writers; text and SHA256 from the same captured bytes. Missing/locked/error captures have no immutable hash. A killed or summary-less log is partial evidence only.",
+      "binary_provenance": "Fresh Cargo test invocation at the verified exact source; SHA256 of Cargo-reported executed test binaries after exit; no cached receipt reuse"
+    },
+    {
+      "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+      "status": "passed",
+      "task": "physical-integration",
+      "attempt": 1,
+      "exit_code": 0,
+      "executable": "C:\\Users\\PC\\.cargo\\bin\\cargo.exe",
+      "executable_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+      "arguments": [
+        "test",
+        "--release",
+        "-p",
+        "darwinbots-engine",
+        "--test",
+        "db24832_starter_movement",
+        "--test",
+        "gpu_ffi",
+        "--test",
+        "w4_evolution_gpu",
+        "--no-fail-fast",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "minimum_passes": 3,
+      "timed_out": false,
+      "timeout_seconds": 1800,
+      "elapsed_process_seconds": 245.8277335,
+      "passed_cases": 3,
+      "terminal_harness_summary_present": true,
+      "terminal_harness_summary_count": 3,
+      "test_binaries": [
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_starter_movement-a7a6e97e3d6c9a98.exe",
+          "sha256": "3490526993A0E193D88DEA6E7FFF823F8994555B83ECC379B924589811DCA272"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\gpu_ffi-0257c6a4cd2bc001.exe",
+          "sha256": "30E06A3C0B954C3D60DFC4D5A9A50B48F89E9149D1366891465BE214D8291134"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\w4_evolution_gpu-51c7f1fed9db5603.exe",
+          "sha256": "6D85DFE47FD98F0C15379188FF611722235FDA4B94B0761E9DD5FC36A80FC82D"
+        }
+      ],
+      "stdout": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-integration-20261019T101135171-1.stdout.log",
+      "stdout_sha256": "71DA95154B9549377B0DB021092024EBBC528B33BE811F59DEB6724B7F56F9B9",
+      "stderr": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-integration-20261019T101135171-1.stderr.log",
+      "stderr_sha256": "BCAAAA26A0D8EEA3E33CB4B5DA28065F877FD5A31590FCA76C41F3B8E96447DF",
+      "stdout_capture": {
+        "status": "captured",
+        "bytes": 1021,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "stderr_capture": {
+        "status": "captured",
+        "bytes": 473,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "interrupted_by_input": false,
+      "input_tick_before": 397950250,
+      "input_tick_at_stop": null,
+      "input_observed_utc": null,
+      "input_tick_after": 397950250,
+      "idle_before_ms": 11721406,
+      "idle_after_ms": 11967812,
+      "stop_reason": "process_exit",
+      "stop_observed_utc": "2026-10-19T10:15:41.5735076Z",
+      "guard_error": "",
+      "cleanup_errors": [],
+      "log_errors": [],
+      "execution_error": null,
+      "binary_error": null,
+      "input_observation_errors": [],
+      "state_errors": [],
+      "required_idle_seconds": 300,
+      "priority": "BelowNormal",
+      "rayon_threads": 1,
+      "owned_cargo_pid": 51232,
+      "error": null,
+      "started_utc": "2026-10-19T10:11:35.1718060Z",
+      "finished_utc": "2026-10-19T10:15:41.5736053Z",
+      "log_provenance": "Writer-quiescent read handle excludes writers; text and SHA256 from the same captured bytes. Missing/locked/error captures have no immutable hash. A killed or summary-less log is partial evidence only.",
+      "binary_provenance": "Fresh Cargo test invocation at the verified exact source; SHA256 of Cargo-reported executed test binaries after exit; no cached receipt reuse"
+    },
+    {
+      "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+      "status": "passed",
+      "task": "physical-native-continuation",
+      "attempt": 1,
+      "exit_code": 0,
+      "executable": "C:\\Users\\PC\\.cargo\\bin\\cargo.exe",
+      "executable_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+      "arguments": [
+        "test",
+        "--release",
+        "-p",
+        "darwinbots-engine",
+        "--test",
+        "native_continuation_qualification",
+        "--no-fail-fast",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "minimum_passes": 1,
+      "timed_out": false,
+      "timeout_seconds": 7200,
+      "elapsed_process_seconds": 3875.5842167,
+      "passed_cases": 1,
+      "terminal_harness_summary_present": true,
+      "terminal_harness_summary_count": 1,
+      "test_binaries": [
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_continuation_qualification-013876c4d65198fd.exe",
+          "sha256": "092DAEAE6DEE6E4CF30947407374F7AE1FFF9A8C398465BA8DE15EF63C69059A"
+        }
+      ],
+      "stdout": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-native-continuation-20261019T101542521-1.stdout.log",
+      "stdout_sha256": "146CD7079A1B489F0BBCB71CFEE22E179371C540F3E00365366033F0E07361E2",
+      "stderr": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\physical-native-continuation-20261019T101542521-1.stderr.log",
+      "stderr_sha256": "BC7CF93164555437A87F1A1AE6B146979B0616D5AF64928E2073F65FC3701834",
+      "stdout_capture": {
+        "status": "captured",
+        "bytes": 6215,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "stderr_capture": {
+        "status": "captured",
+        "bytes": 310,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "interrupted_by_input": false,
+      "input_tick_before": 397950250,
+      "input_tick_at_stop": null,
+      "input_observed_utc": null,
+      "input_tick_after": 397950250,
+      "idle_before_ms": 11968750,
+      "idle_after_ms": 15844765,
+      "stop_reason": "process_exit",
+      "stop_observed_utc": "2026-10-19T11:20:18.5308993Z",
+      "guard_error": "",
+      "cleanup_errors": [],
+      "log_errors": [],
+      "execution_error": null,
+      "binary_error": null,
+      "input_observation_errors": [],
+      "state_errors": [],
+      "required_idle_seconds": 300,
+      "priority": "BelowNormal",
+      "rayon_threads": 1,
+      "owned_cargo_pid": 23380,
+      "error": null,
+      "started_utc": "2026-10-19T10:15:42.5211550Z",
+      "finished_utc": "2026-10-19T11:20:18.5309676Z",
+      "log_provenance": "Writer-quiescent read handle excludes writers; text and SHA256 from the same captured bytes. Missing/locked/error captures have no immutable hash. A killed or summary-less log is partial evidence only.",
+      "binary_provenance": "Fresh Cargo test invocation at the verified exact source; SHA256 of Cargo-reported executed test binaries after exit; no cached receipt reuse"
+    },
+    {
+      "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+      "status": "passed",
+      "task": "portable-gpu",
+      "attempt": 1,
+      "exit_code": 0,
+      "executable": "C:\\Users\\PC\\.cargo\\bin\\cargo.exe",
+      "executable_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+      "arguments": [
+        "test",
+        "--release",
+        "--workspace",
+        "--no-fail-fast",
+        "gpu",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "minimum_passes": 1,
+      "timed_out": false,
+      "timeout_seconds": 3600,
+      "elapsed_process_seconds": 810.4972318,
+      "passed_cases": 14,
+      "terminal_harness_summary_present": true,
+      "terminal_harness_summary_count": 66,
+      "test_binaries": [
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_cli-19b2f1d2dddc4ec7.exe",
+          "sha256": "0C51EB8F4456067F0AAFC003E3E42998BFCBC20F2842E322958D5AE6F5701832"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_cli-669e7ed1c271a6b6.exe",
+          "sha256": "434297523AE5EB8DCDAF72EBEFF43B8F759234F46DE48C595473131D758EC73F"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\bundled_bot_corpus-64a072572acbe959.exe",
+          "sha256": "ED51E7480FA5478AF34A040ED26ECA8473C1CC389637E4BD2617DEA325ECF49E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\commands-eec7744335c58eb1.exe",
+          "sha256": "0A5ECB2F84D77C0E0F2F31346B6C29F9406D7658C8F66700138C5F1EFE97D4BE"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db245_probes-527613d6923ddfd2.exe",
+          "sha256": "07010513856DEFB458165477C3878EA50E679BE3868D247EA832124CE3867F27"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_comparison-d3c5181653a931bd.exe",
+          "sha256": "795F9B7D944ABF16E7D402FABE00B61DD4DEBE3939A92D674052A4DE06525D50"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_engine-92c50bc16611c615.exe",
+          "sha256": "5F6E51941D75E514069940D5023E7AC6703EE73FA0053E298EEF9614302AFB13"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\advanced_mutation_costs-09fdfc0fa41cc905.exe",
+          "sha256": "5E5D1C33973B25F8EEAFD7E6D951F147ADAC4A57B4495A8C2D693F4838FD9BF1"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\canonical_cycle_248-650ba62a7c41d570.exe",
+          "sha256": "6F625C913447EB162D6947AAB2C8A6E53645246C233FAB9F1F850189D1DD8783"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\community_league_admission-93be0ad716fa77a4.exe",
+          "sha256": "5532401A1B22009A3233EB195752D9AB70CA1907093F116D413E6ED0F997D2BA"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\contracts-179a2d3a76e729ad.exe",
+          "sha256": "E547B6D562B4F08BD86B0565EB36C2C8EC096099E13316CEA7B127DCA78D8164"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\core_state_contracts-6bf5e5eb215ae5d4.exe",
+          "sha256": "9D11B63786A09AB95DE432A27D23AC42F5302F031D1E9C41F93BCEAA955EC7F3"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\corpses_collisions-66bd4fced172556a.exe",
+          "sha256": "708508606637512D290E327E294BC583FB3F8C95C0A052A6108137E8A3C5C956"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_clean_defaults-acb0259715fbf94e.exe",
+          "sha256": "E16578D238C2B3526CDAA3A45B8AEB87C39DE196FBD76ACEEDDC736A37D0080D"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_genuine_feeding-aa18f8f26e528034.exe",
+          "sha256": "F930613B2D9A4FBA313C856E1D00D0A2AB24A88A90FB34D1D3185CFB598FD352"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_genuine_load_transients-cffd3fd7cf5f84a6.exe",
+          "sha256": "D0434C2FF0D99F401C0981084FE671B8FE073E18C53CD340F9CDCA0A6AD6A1A0"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_starter_movement-f888656b7ea57a99.exe",
+          "sha256": "CEB274C0995105C3249AF3CD3FEE217A3FBEA5A740D29D364C08A4F94EE46790"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_final_engine_world-461d89f488220f53.exe",
+          "sha256": "96A0311343628B28472748C71877A44C5CF8E03723301B62BFD2784A94D1DD17"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_mutation_248-46accb0e62919ad8.exe",
+          "sha256": "5AE41A13114E67CDB0B9098E9773AF59D3DA0691F24F976968FEED676073DC55"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_physics-ce758037a74f4117.exe",
+          "sha256": "8FA511D0161AC95FBCC4CB509818559FB125A58D284621180953A4A870752ECF"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_projectiles-67673a8dd88d938d.exe",
+          "sha256": "74BF5BEB81B5DA02F552A37659127C47173528D2F70D9B3BE6937490C5F1AC3D"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_starter_ecology-5e288a6d107e72d3.exe",
+          "sha256": "0D8410A76DCEDCDE6B160B2286D864F1C0F5986633EF90D4B6DDCAC508ECD488"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_vegetation-b21a95ff2211a5e6.exe",
+          "sha256": "362490983933DE10EB7C0A226AF41D52525F6B57A181B45EB9D85D2188294D6D"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_vision-2b2321f6475d537f.exe",
+          "sha256": "5E81567F1AFF50A63918BEAEE276940287574A03DDEAC4605D0490A93BE366F0"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\dna_runtime_248-b6816bc5b4e5c92d.exe",
+          "sha256": "456B9C935A1A821219B133B67F5C2CE0C750BD7F324D5F03C1E19F8C1295D0CC"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\eco05_repopulation-5045dda4070ffd93.exe",
+          "sha256": "A0153C242C9C12FBAAEBC598C0513D05C051ADB0DA4789449CE695C2E83355DA"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\environment_world-3854baf0f2ececf1.exe",
+          "sha256": "DA98821106EBE5B4295EC634CFF7C1578EF9E2AAC2C5E06CC618B75450172C6F"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\extinct_species-585aba2c31b9ffb2.exe",
+          "sha256": "6FC1DA0E8E3C60B5789E8CCDBB36325ADB8137DBA54FDB4C78A66689B6DE8A9B"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\final_state_persistence_248-35fbe0bce0b29740.exe",
+          "sha256": "0EA7ED5FB2B99584E6B6CD18D58EBA4121E7C0871EBC39F3F6C25B1590911272"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\gpu_ffi-4c7d162f35e688aa.exe",
+          "sha256": "88A03836FB9D36400BCD90A3276BF48EA240376EBF419F0AD776087E51C26F49"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\history_records-143daf93a80a442e.exe",
+          "sha256": "9D9EE960A621688EA6F9C90AA81AA98E44FD8B844EA1175EF693D44E34FBE551"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\legacy_distribution-7bb136b759d1c7de.exe",
+          "sha256": "256E4756B9406671AFC5BB4BD60E4455E823C624D5ECB806C5176BF544A2119E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\legacy_transport-09aee2bbca8ac8a6.exe",
+          "sha256": "05E50961D9A339EECF7F16BE501362F1AA50CAAE8ADCC1892CC885C2BABB350C"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\live_legacy_menu_settings-b490f410f04c8243.exe",
+          "sha256": "6BDBF5D43B07247E92E9D7D7D571AA29EFE8280DB53D262502B7ACDBFFE8FB93"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\local_modes-4c38d5ff313600fd.exe",
+          "sha256": "F84886C82037E511D772107995C1357172250D5CBE761EAD29FBF0F0F5FB30A5"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\manual_tools-a429d3ceca6198a2.exe",
+          "sha256": "7D07AE9DE15A4D2312589C5EEA99E35158263FF5F9D0CA6B8672B1F17C2FDF41"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\mutation_advanced_248-d4b00b11f49281e8.exe",
+          "sha256": "A2F675BE8BAD243C4D8CD4E733F057C9A9F9B132908F1FBF90AC36F42A780195"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\mutation_lifecycle-94f7448b1761426e.exe",
+          "sha256": "0FEB0DEF288AC0E10796466F7C2BC45704E04635946812B64BDE99008F158FFE"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_continuation_qualification-9ff3b2220595958d.exe",
+          "sha256": "893EBB36B55869F1A627E68264043199659E01FBC2434E553F2D3A7E210432ED"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_mutation_continuation_qualification-29af2bf317ca2797.exe",
+          "sha256": "54BA1094ED399B324AE7C793E3F85D5D0DD11E81E8FAD0C420CE0B8DD1B80919"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_random_lifecycle_248-7de759149ed8af05.exe",
+          "sha256": "285EFC58B9FDB25B5B875C2C93AB4FBB1E422F5B761D1AFF39D06F1B1F7569AC"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_reference_senses_248-e98e55079559ad45.exe",
+          "sha256": "C27491864CEF746AA7A8B9C0EE49C15CDA3778CF1C077C9D8B1F954EAAA4826E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_resource_precision-d406bdccc810eb07.exe",
+          "sha256": "4A448528C2F4457BF30F719FD236831E144877271B1AE1A73A1CE8847FAEB026"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\occurrence_census_248-19d42b773440ac55.exe",
+          "sha256": "8395152965512629F518830778CB74D7849B0BD7024E5F2EA8954E8FCA621B65"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\parity_completion-900346f89625bb36.exe",
+          "sha256": "FC5CACFE41B6C7C4A96D3CC9653C60C7DB6C0A65C6545C05BE6100AB90280A09"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\reproduction_heredity_248-66c2c382b759ceec.exe",
+          "sha256": "B30231E1D44C99AB5B38D6A5B5872378B0876F6F4FC2C37AE82D73C2E8505D89"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\robot_state_248-09c3c6f377e9f9c0.exe",
+          "sha256": "23AD194993AAAEFD437FBDD9C56114B299DF85DD84E6543E277F4F7761BB1D32"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\robot_tools-d87531d73e3fa458.exe",
+          "sha256": "69ADEA2279CAE87B25ABEB6983CF03E12B6A3309B8E31D09B88E8182016AB72C"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\scheduler_housekeeping-34a83c41b6c94c9d.exe",
+          "sha256": "D1F7BDF1464D790D4A2821A9C6494B9BE8E274A9167AE359E89C814B0ED5CB0B"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\scheduler_shock-02bcae018107ad24.exe",
+          "sha256": "1821DF47408E66E79947D625DF898354BF4A18209EA260C297A743D0568689CD"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\sensing_compatibility-7a9674124e31a7ee.exe",
+          "sha256": "B40CCF844E8C76389A4E87110B1D9B7382F59E12412FEB123ADBE0F84C7E0AC5"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\shot_state-1724e844b71cb858.exe",
+          "sha256": "2996D52225B41B86E618021553B65B64C0CB7EA7148E1E31000E5943677F4306"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\spawn_placement-6758035783c655f8.exe",
+          "sha256": "E7BBADDED2DFEFDB463D9E841DBC3792ED2F146C35E968B4BE1716AB9C4C9BF7"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\species_ecology-f257e733aa9efc30.exe",
+          "sha256": "70071A01D3893B622E6515074943AF04E725FEE59F8957FD11ACFD20FA39CAE3"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\starter_ecology-4f04f24d61d6a506.exe",
+          "sha256": "5F7D80D5B5E66854DA96B88D4CFB0561530712A5FFD0076CD78CCC72E5DA53CF"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\sysvar_lifecycle_248-a6463d22e029177f.exe",
+          "sha256": "648531488F7C85AB06228AFB05B37978FA61DB3948AFC45748994FCD85D5350E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\ties_multibot-88c93c24b9c68278.exe",
+          "sha256": "AA72173375CD14C58F3E881957E1CFE1B3E5B11BEBAB5C91AE5F2DAE628BDB3B"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\toroidal_world-64814961e5b6b04a.exe",
+          "sha256": "5E3E58E951002D7DC0A90636D1525AA6F318EDD70A00A94A8FE35819671D3219"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\touch_taste_248-b519518bac9ec43d.exe",
+          "sha256": "C54519DFF8730520B1FCD44DBA8F122F1536F0842553CE374BA2D9090F369498"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\visual_phenotypes-079c0d150cbd6f2c.exe",
+          "sha256": "6C157F720C1B752E6ED858CB0E83457463008D1504546421553AC97A63BA88C3"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\vm-1b6c01cf0a4bd8e1.exe",
+          "sha256": "24A35DD2433288BC58CA5ADBBEB997983FBB1A9813CF8E106AF8749B913828EC"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\vm_costs_telemetry-35be8fcf35537edb.exe",
+          "sha256": "7E738E85C0A5AA53587E48C4C1F869A6C58D94FDF767F457CC2419BC4E5D3DD2"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\vm_implicit_conditions-992cbe6a6064bda8.exe",
+          "sha256": "B76B79BCDC484B2187EDAED3D0EC32B2CCF84445AE87977E3DCD8B6E3A77B9BD"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\w4_evolution_gpu-3e196d79f9dd6aa4.exe",
+          "sha256": "B216442F7C39D211097D5AD9B5F0106703C6094AC4F7513E1FEC76B9E4EAD2A9"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\world_systems-3482d82d394d1951.exe",
+          "sha256": "ABC0231DD0AC0DC2FB38F154F0F4269E33FDC9B4D2F28C4CC9632BC3501F87AA"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\zerobot_progression-cafef9c9e3e52765.exe",
+          "sha256": "56E47AA18005C96BC1FD1191359F6CCF57FE0501A355248D8EC54E67D1D409F6"
+        }
+      ],
+      "stdout": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\portable-gpu-20261019T112019536-1.stdout.log",
+      "stdout_sha256": "68FAB698D2113E6BB6353FA15A3108E214BABEE1669C25BB06A8C5DB50D0ED98",
+      "stderr": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\portable-gpu-20261019T112019536-1.stderr.log",
+      "stderr_sha256": "0BF1BDC9DE19C7DF6A183DF3A6BE79E2A63BAD883BB3DA609F0F0589525DA8E8",
+      "stdout_capture": {
+        "status": "captured",
+        "bytes": 10575,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "stderr_capture": {
+        "status": "captured",
+        "bytes": 7065,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "interrupted_by_input": false,
+      "input_tick_before": 397950250,
+      "input_tick_at_stop": null,
+      "input_observed_utc": null,
+      "input_tick_after": 397950250,
+      "idle_before_ms": 15845765,
+      "idle_after_ms": 16661515,
+      "stop_reason": "process_exit",
+      "stop_observed_utc": "2026-10-19T11:33:55.2806134Z",
+      "guard_error": "",
+      "cleanup_errors": [],
+      "log_errors": [],
+      "execution_error": null,
+      "binary_error": null,
+      "input_observation_errors": [],
+      "state_errors": [],
+      "required_idle_seconds": 300,
+      "priority": "BelowNormal",
+      "rayon_threads": 1,
+      "owned_cargo_pid": 43636,
+      "error": null,
+      "started_utc": "2026-10-19T11:20:19.5365156Z",
+      "finished_utc": "2026-10-19T11:33:55.2806880Z",
+      "log_provenance": "Writer-quiescent read handle excludes writers; text and SHA256 from the same captured bytes. Missing/locked/error captures have no immutable hash. A killed or summary-less log is partial evidence only.",
+      "binary_provenance": "Fresh Cargo test invocation at the verified exact source; SHA256 of Cargo-reported executed test binaries after exit; no cached receipt reuse"
+    },
+    {
+      "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+      "status": "passed",
+      "task": "backend-switches",
+      "attempt": 1,
+      "exit_code": 0,
+      "executable": "C:\\Users\\PC\\.cargo\\bin\\cargo.exe",
+      "executable_sha256": "6F4BEF66261261FCB43131BE8720BAB817D403A09EDEC7455C371974B90BDB7E",
+      "arguments": [
+        "test",
+        "--release",
+        "--workspace",
+        "--no-fail-fast",
+        "switch",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "minimum_passes": 1,
+      "timed_out": false,
+      "timeout_seconds": 1800,
+      "elapsed_process_seconds": 13.7469363,
+      "passed_cases": 1,
+      "terminal_harness_summary_present": true,
+      "terminal_harness_summary_count": 66,
+      "test_binaries": [
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_cli-19b2f1d2dddc4ec7.exe",
+          "sha256": "0C51EB8F4456067F0AAFC003E3E42998BFCBC20F2842E322958D5AE6F5701832"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_cli-669e7ed1c271a6b6.exe",
+          "sha256": "434297523AE5EB8DCDAF72EBEFF43B8F759234F46DE48C595473131D758EC73F"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\bundled_bot_corpus-64a072572acbe959.exe",
+          "sha256": "ED51E7480FA5478AF34A040ED26ECA8473C1CC389637E4BD2617DEA325ECF49E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\commands-eec7744335c58eb1.exe",
+          "sha256": "0A5ECB2F84D77C0E0F2F31346B6C29F9406D7658C8F66700138C5F1EFE97D4BE"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db245_probes-527613d6923ddfd2.exe",
+          "sha256": "07010513856DEFB458165477C3878EA50E679BE3868D247EA832124CE3867F27"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_comparison-d3c5181653a931bd.exe",
+          "sha256": "795F9B7D944ABF16E7D402FABE00B61DD4DEBE3939A92D674052A4DE06525D50"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\darwinbots_engine-92c50bc16611c615.exe",
+          "sha256": "5F6E51941D75E514069940D5023E7AC6703EE73FA0053E298EEF9614302AFB13"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\advanced_mutation_costs-09fdfc0fa41cc905.exe",
+          "sha256": "5E5D1C33973B25F8EEAFD7E6D951F147ADAC4A57B4495A8C2D693F4838FD9BF1"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\canonical_cycle_248-650ba62a7c41d570.exe",
+          "sha256": "6F625C913447EB162D6947AAB2C8A6E53645246C233FAB9F1F850189D1DD8783"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\community_league_admission-93be0ad716fa77a4.exe",
+          "sha256": "5532401A1B22009A3233EB195752D9AB70CA1907093F116D413E6ED0F997D2BA"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\contracts-179a2d3a76e729ad.exe",
+          "sha256": "E547B6D562B4F08BD86B0565EB36C2C8EC096099E13316CEA7B127DCA78D8164"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\core_state_contracts-6bf5e5eb215ae5d4.exe",
+          "sha256": "9D11B63786A09AB95DE432A27D23AC42F5302F031D1E9C41F93BCEAA955EC7F3"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\corpses_collisions-66bd4fced172556a.exe",
+          "sha256": "708508606637512D290E327E294BC583FB3F8C95C0A052A6108137E8A3C5C956"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_clean_defaults-acb0259715fbf94e.exe",
+          "sha256": "E16578D238C2B3526CDAA3A45B8AEB87C39DE196FBD76ACEEDDC736A37D0080D"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_genuine_feeding-aa18f8f26e528034.exe",
+          "sha256": "F930613B2D9A4FBA313C856E1D00D0A2AB24A88A90FB34D1D3185CFB598FD352"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_genuine_load_transients-cffd3fd7cf5f84a6.exe",
+          "sha256": "D0434C2FF0D99F401C0981084FE671B8FE073E18C53CD340F9CDCA0A6AD6A1A0"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db24832_starter_movement-f888656b7ea57a99.exe",
+          "sha256": "CEB274C0995105C3249AF3CD3FEE217A3FBEA5A740D29D364C08A4F94EE46790"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_final_engine_world-461d89f488220f53.exe",
+          "sha256": "96A0311343628B28472748C71877A44C5CF8E03723301B62BFD2784A94D1DD17"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_mutation_248-46accb0e62919ad8.exe",
+          "sha256": "5AE41A13114E67CDB0B9098E9773AF59D3DA0691F24F976968FEED676073DC55"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_physics-ce758037a74f4117.exe",
+          "sha256": "8FA511D0161AC95FBCC4CB509818559FB125A58D284621180953A4A870752ECF"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_projectiles-67673a8dd88d938d.exe",
+          "sha256": "74BF5BEB81B5DA02F552A37659127C47173528D2F70D9B3BE6937490C5F1AC3D"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_starter_ecology-5e288a6d107e72d3.exe",
+          "sha256": "0D8410A76DCEDCDE6B160B2286D864F1C0F5986633EF90D4B6DDCAC508ECD488"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_vegetation-b21a95ff2211a5e6.exe",
+          "sha256": "362490983933DE10EB7C0A226AF41D52525F6B57A181B45EB9D85D2188294D6D"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\db2_vision-2b2321f6475d537f.exe",
+          "sha256": "5E81567F1AFF50A63918BEAEE276940287574A03DDEAC4605D0490A93BE366F0"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\dna_runtime_248-b6816bc5b4e5c92d.exe",
+          "sha256": "456B9C935A1A821219B133B67F5C2CE0C750BD7F324D5F03C1E19F8C1295D0CC"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\eco05_repopulation-5045dda4070ffd93.exe",
+          "sha256": "A0153C242C9C12FBAAEBC598C0513D05C051ADB0DA4789449CE695C2E83355DA"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\environment_world-3854baf0f2ececf1.exe",
+          "sha256": "DA98821106EBE5B4295EC634CFF7C1578EF9E2AAC2C5E06CC618B75450172C6F"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\extinct_species-585aba2c31b9ffb2.exe",
+          "sha256": "6FC1DA0E8E3C60B5789E8CCDBB36325ADB8137DBA54FDB4C78A66689B6DE8A9B"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\final_state_persistence_248-35fbe0bce0b29740.exe",
+          "sha256": "0EA7ED5FB2B99584E6B6CD18D58EBA4121E7C0871EBC39F3F6C25B1590911272"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\gpu_ffi-4c7d162f35e688aa.exe",
+          "sha256": "88A03836FB9D36400BCD90A3276BF48EA240376EBF419F0AD776087E51C26F49"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\history_records-143daf93a80a442e.exe",
+          "sha256": "9D9EE960A621688EA6F9C90AA81AA98E44FD8B844EA1175EF693D44E34FBE551"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\legacy_distribution-7bb136b759d1c7de.exe",
+          "sha256": "256E4756B9406671AFC5BB4BD60E4455E823C624D5ECB806C5176BF544A2119E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\legacy_transport-09aee2bbca8ac8a6.exe",
+          "sha256": "05E50961D9A339EECF7F16BE501362F1AA50CAAE8ADCC1892CC885C2BABB350C"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\live_legacy_menu_settings-b490f410f04c8243.exe",
+          "sha256": "6BDBF5D43B07247E92E9D7D7D571AA29EFE8280DB53D262502B7ACDBFFE8FB93"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\local_modes-4c38d5ff313600fd.exe",
+          "sha256": "F84886C82037E511D772107995C1357172250D5CBE761EAD29FBF0F0F5FB30A5"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\manual_tools-a429d3ceca6198a2.exe",
+          "sha256": "7D07AE9DE15A4D2312589C5EEA99E35158263FF5F9D0CA6B8672B1F17C2FDF41"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\mutation_advanced_248-d4b00b11f49281e8.exe",
+          "sha256": "A2F675BE8BAD243C4D8CD4E733F057C9A9F9B132908F1FBF90AC36F42A780195"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\mutation_lifecycle-94f7448b1761426e.exe",
+          "sha256": "0FEB0DEF288AC0E10796466F7C2BC45704E04635946812B64BDE99008F158FFE"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_continuation_qualification-9ff3b2220595958d.exe",
+          "sha256": "893EBB36B55869F1A627E68264043199659E01FBC2434E553F2D3A7E210432ED"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_mutation_continuation_qualification-29af2bf317ca2797.exe",
+          "sha256": "54BA1094ED399B324AE7C793E3F85D5D0DD11E81E8FAD0C420CE0B8DD1B80919"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_random_lifecycle_248-7de759149ed8af05.exe",
+          "sha256": "285EFC58B9FDB25B5B875C2C93AB4FBB1E422F5B761D1AFF39D06F1B1F7569AC"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_reference_senses_248-e98e55079559ad45.exe",
+          "sha256": "C27491864CEF746AA7A8B9C0EE49C15CDA3778CF1C077C9D8B1F954EAAA4826E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\native_resource_precision-d406bdccc810eb07.exe",
+          "sha256": "4A448528C2F4457BF30F719FD236831E144877271B1AE1A73A1CE8847FAEB026"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\occurrence_census_248-19d42b773440ac55.exe",
+          "sha256": "8395152965512629F518830778CB74D7849B0BD7024E5F2EA8954E8FCA621B65"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\parity_completion-900346f89625bb36.exe",
+          "sha256": "FC5CACFE41B6C7C4A96D3CC9653C60C7DB6C0A65C6545C05BE6100AB90280A09"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\reproduction_heredity_248-66c2c382b759ceec.exe",
+          "sha256": "B30231E1D44C99AB5B38D6A5B5872378B0876F6F4FC2C37AE82D73C2E8505D89"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\robot_state_248-09c3c6f377e9f9c0.exe",
+          "sha256": "23AD194993AAAEFD437FBDD9C56114B299DF85DD84E6543E277F4F7761BB1D32"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\robot_tools-d87531d73e3fa458.exe",
+          "sha256": "69ADEA2279CAE87B25ABEB6983CF03E12B6A3309B8E31D09B88E8182016AB72C"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\scheduler_housekeeping-34a83c41b6c94c9d.exe",
+          "sha256": "D1F7BDF1464D790D4A2821A9C6494B9BE8E274A9167AE359E89C814B0ED5CB0B"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\scheduler_shock-02bcae018107ad24.exe",
+          "sha256": "1821DF47408E66E79947D625DF898354BF4A18209EA260C297A743D0568689CD"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\sensing_compatibility-7a9674124e31a7ee.exe",
+          "sha256": "B40CCF844E8C76389A4E87110B1D9B7382F59E12412FEB123ADBE0F84C7E0AC5"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\shot_state-1724e844b71cb858.exe",
+          "sha256": "2996D52225B41B86E618021553B65B64C0CB7EA7148E1E31000E5943677F4306"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\spawn_placement-6758035783c655f8.exe",
+          "sha256": "E7BBADDED2DFEFDB463D9E841DBC3792ED2F146C35E968B4BE1716AB9C4C9BF7"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\species_ecology-f257e733aa9efc30.exe",
+          "sha256": "70071A01D3893B622E6515074943AF04E725FEE59F8957FD11ACFD20FA39CAE3"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\starter_ecology-4f04f24d61d6a506.exe",
+          "sha256": "5F7D80D5B5E66854DA96B88D4CFB0561530712A5FFD0076CD78CCC72E5DA53CF"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\sysvar_lifecycle_248-a6463d22e029177f.exe",
+          "sha256": "648531488F7C85AB06228AFB05B37978FA61DB3948AFC45748994FCD85D5350E"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\ties_multibot-88c93c24b9c68278.exe",
+          "sha256": "AA72173375CD14C58F3E881957E1CFE1B3E5B11BEBAB5C91AE5F2DAE628BDB3B"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\toroidal_world-64814961e5b6b04a.exe",
+          "sha256": "5E3E58E951002D7DC0A90636D1525AA6F318EDD70A00A94A8FE35819671D3219"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\touch_taste_248-b519518bac9ec43d.exe",
+          "sha256": "C54519DFF8730520B1FCD44DBA8F122F1536F0842553CE374BA2D9090F369498"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\visual_phenotypes-079c0d150cbd6f2c.exe",
+          "sha256": "6C157F720C1B752E6ED858CB0E83457463008D1504546421553AC97A63BA88C3"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\vm-1b6c01cf0a4bd8e1.exe",
+          "sha256": "24A35DD2433288BC58CA5ADBBEB997983FBB1A9813CF8E106AF8749B913828EC"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\vm_costs_telemetry-35be8fcf35537edb.exe",
+          "sha256": "7E738E85C0A5AA53587E48C4C1F869A6C58D94FDF767F457CC2419BC4E5D3DD2"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\vm_implicit_conditions-992cbe6a6064bda8.exe",
+          "sha256": "B76B79BCDC484B2187EDAED3D0EC32B2CCF84445AE87977E3DCD8B6E3A77B9BD"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\w4_evolution_gpu-3e196d79f9dd6aa4.exe",
+          "sha256": "B216442F7C39D211097D5AD9B5F0106703C6094AC4F7513E1FEC76B9E4EAD2A9"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\world_systems-3482d82d394d1951.exe",
+          "sha256": "ABC0231DD0AC0DC2FB38F154F0F4269E33FDC9B4D2F28C4CC9632BC3501F87AA"
+        },
+        {
+          "path": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\target\\release\\deps\\zerobot_progression-cafef9c9e3e52765.exe",
+          "sha256": "56E47AA18005C96BC1FD1191359F6CCF57FE0501A355248D8EC54E67D1D409F6"
+        }
+      ],
+      "stdout": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\backend-switches-20261019T113356233-1.stdout.log",
+      "stdout_sha256": "DEFB887F60077AE32DE9F61599A36A06060AD6D1409DBAF42BBB41EBCCC94190",
+      "stderr": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\gpu-73e350297f54\\run-20261019T100108423-b5b797d347204ba68665776596a19da1\\backend-switches-20261019T113356233-1.stderr.log",
+      "stderr_sha256": "785F75449DADA4EFA6EB60A5229FB5BA5612E9D07FAA977ABB4B9FDE327DCC30",
+      "stdout_capture": {
+        "status": "captured",
+        "bytes": 7544,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "stderr_capture": {
+        "status": "captured",
+        "bytes": 6839,
+        "writer_quiescent": true,
+        "error": null,
+        "attempts": 1,
+        "elapsed_milliseconds": 0
+      },
+      "interrupted_by_input": false,
+      "input_tick_before": 397950250,
+      "input_tick_at_stop": null,
+      "input_observed_utc": null,
+      "input_tick_after": 397950250,
+      "idle_before_ms": 16662468,
+      "idle_after_ms": 16681468,
+      "stop_reason": "process_exit",
+      "stop_observed_utc": "2026-10-19T11:34:15.2328623Z",
+      "guard_error": "",
+      "cleanup_errors": [],
+      "log_errors": [],
+      "execution_error": null,
+      "binary_error": null,
+      "input_observation_errors": [],
+      "state_errors": [],
+      "required_idle_seconds": 300,
+      "priority": "BelowNormal",
+      "rayon_threads": 1,
+      "owned_cargo_pid": 45384,
+      "error": null,
+      "started_utc": "2026-10-19T11:33:56.2338869Z",
+      "finished_utc": "2026-10-19T11:34:15.2329923Z",
+      "log_provenance": "Writer-quiescent read handle excludes writers; text and SHA256 from the same captured bytes. Missing/locked/error captures have no immutable hash. A killed or summary-less log is partial evidence only.",
+      "binary_provenance": "Fresh Cargo test invocation at the verified exact source; SHA256 of Cargo-reported executed test binaries after exit; no cached receipt reuse"
+    }
+  ],
+  "completed_utc": "2026-10-19T11:34:15.6152286Z",
+  "collection_policy": "Collect all selected groups and all Cargo targets after ordinary test failures; stop immediately on input/source/STOP/runner/provenance failure; no input retry; unselected groups have no fresh outcome"
+}

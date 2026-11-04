@@ -1,0 +1,9 @@
+{
+  "batch": 61,
+  "utc": "2026-10-17T11:21:15.4439935Z",
+  "format_exit": 0,
+  "format_log": "output/pass61-format-retry.log",
+  "previous_attempt": "output/pass61-format.log",
+  "previous_error": "Windows mapped-section file lock on world.rs",
+  "all_code_and_tests_applied_before_checks": true
+}

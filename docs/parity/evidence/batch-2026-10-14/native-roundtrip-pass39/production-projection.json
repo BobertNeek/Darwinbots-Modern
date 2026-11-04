@@ -1,0 +1,88 @@
+{
+  "engine_production_unchanged": true,
+  "core_sources_unchanged": true,
+  "baseline": "../native-roundtrip-pass38/summary.json",
+  "baseline_source_manifest": "../native-roundtrip-pass38/source.json",
+  "production_prefixes": [
+    {
+      "file": "modern/engine/src/world/native_reference_velocity.rs",
+      "before": "9ECBB339B4F3A7563C1D822FB0C4FB4C534CCAE61BD5C2294362F1BADA9DB83F",
+      "after": "9ECBB339B4F3A7563C1D822FB0C4FB4C534CCAE61BD5C2294362F1BADA9DB83F",
+      "unchanged": true
+    },
+    {
+      "file": "modern/engine/src/world/native_tie_creation.rs",
+      "before": "7AE83CB54D0623C56463AA5571B7695DD9C24E85A6CA134AC2C3CE10D3493FC3",
+      "after": "7AE83CB54D0623C56463AA5571B7695DD9C24E85A6CA134AC2C3CE10D3493FC3",
+      "unchanged": true
+    },
+    {
+      "file": "modern/engine/src/world/native_sensing.rs",
+      "before": "F797BF9769109E5D0910E141FB2180F02FFBF650BC26876949EEE5CB2B80D40A",
+      "after": "F797BF9769109E5D0910E141FB2180F02FFBF650BC26876949EEE5CB2B80D40A",
+      "unchanged": true
+    },
+    {
+      "file": "modern/engine/src/world/file_teleporters.rs",
+      "before": "2EEE9FC6E21C96CE2E42C0EF145FDCCFB74B5AAD47714DD67D5E9ADE7FB2930A",
+      "after": "2EEE9FC6E21C96CE2E42C0EF145FDCCFB74B5AAD47714DD67D5E9ADE7FB2930A",
+      "unchanged": true
+    }
+  ],
+  "identical_other_engine_sources": [
+    "modern/engine/src/config.rs",
+    "modern/engine/src/ffi.rs",
+    "modern/engine/src/robot_state.rs",
+    "modern/engine/src/world.rs",
+    "modern/engine/src/world/native_collisions.rs",
+    "modern/engine/src/world/native_corpses.rs",
+    "modern/engine/src/world/native_disqualification.rs",
+    "modern/engine/src/world/native_io.rs",
+    "modern/engine/src/world/native_pipeline.rs",
+    "modern/engine/src/world/native_recognition_fudging.rs",
+    "modern/engine/src/world/native_shape_vision.rs",
+    "modern/engine/src/world/native_sim_export.rs",
+    "modern/engine/src/world/native_tie_physics.rs",
+    "modern/engine/src/world/native_vision.rs"
+  ],
+  "identical_core_sources": [
+    "modern/desktop/src/Darwinbots.Desktop.Core/CycleAutosavePolicy.cs",
+    "modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+    "modern/desktop/src/Darwinbots.Desktop.Core/GlobalSettings.cs",
+    "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+    "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+    "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+    "modern/desktop/src/Darwinbots.Desktop.Core/WorldConfiguration.cs",
+    "modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+    "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/CycleAutosavePolicyTests.cs",
+    "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RecognitionFudgingTests.cs",
+    "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs"
+  ],
+  "changed_fixture_files": [
+    "modern/engine/src/world/native_reference_velocity.rs",
+    "modern/engine/src/world/native_sensing.rs",
+    "modern/engine/src/world/native_tie_creation.rs",
+    "modern/engine/tests/canonical_cycle_248.rs",
+    "modern/engine/tests/final_state_persistence_248.rs",
+    "modern/engine/tests/sysvar_lifecycle_248.rs",
+    "modern/engine/tests/ties_multibot.rs"
+  ],
+  "newly_changed_test_module": "modern/engine/src/world/file_teleporters.rs",
+  "desktop_production_change": "Only successful background backup Status=AUTOSAVED assignment removed; storage, checkpoints and errors unchanged",
+  "full_source_manifest": "source.json",
+  "inherits_successful": [
+    "48bots1000cycleseach",
+    "20000and10000cycleecologies",
+    "complete-stateCPUcontinuationthrough2281",
+    "mutationcontinuationthrough1281",
+    "393316fieldzero-cycleinterchange",
+    "181CSharpCoretests"
+  ],
+  "does_not_inherit": [
+    "previousfailedRusttargets",
+    "previousdesktopfailure",
+    "physicalGPU",
+    "originalexecutabletrajectories",
+    "freshhostedmatrix"
+  ]
+}

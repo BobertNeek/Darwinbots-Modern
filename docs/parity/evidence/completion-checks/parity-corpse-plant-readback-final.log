@@ -1,0 +1,15 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.52s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 7 tests
+test world::native_corpses::tests::corpse_occupies_capacity_until_exhausted_without_counting_a_second_death ... ok
+test world::native_corpses::tests::native_corpse_decay_shot_retains_owner_radius_range_and_newshot_energy ... ok
+test world::native_corpses::tests::natural_corpse_keeps_momentum_and_collides_with_living_robots ... ok
+test world::native_corpses::tests::newborn_native_parent_identity_survives_removal_and_slot_reuse ... ok
+test world::native_corpses::tests::returned_native_corpse_decays_without_becoming_another_archived_corpse ... ok
+test world::native_corpses::tests::natural_corpse_retains_its_robot_identity_memory_dna_and_physical_tie ... ok
+test world::native_corpses::tests::archived_native_corpse_keeps_memory_materials_and_tie_through_modern_save_and_native_export ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 82 filtered out; finished in 11.68s
+

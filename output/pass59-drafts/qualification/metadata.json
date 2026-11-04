@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "status": "authored_unapplied_static_only",
+  "created_utc": "2026-10-17T07:20:23.911Z",
+  "target": "output/qualify-native-roundtrip-pass59.ps1",
+  "candidate": "output/pass59-drafts/qualification/qualify-native-roundtrip-pass59.ps1",
+  "candidate_sha256": "8634D4615BE92606F0E1CB4C5206D6783A496EAA57A10F5BCFEC85415F9F103E",
+  "base": "output/qualify-native-roundtrip-pass58.ps1",
+  "base_sha256": "9A2570E9FB003D205F059224FC36CE71DAA49261FCE2C127C058C6957D7F0527",
+  "scope": "Fresh59 output/proof/STOP/package/candidate namespaces only; same15genuine originalcontrols34835fields and all strictsource/pin/lock/PNG/serialCPUguards. Expectedmanagedcounts remain supplied by newsource manifest, not hardcoded.",
+  "execution": false,
+  "source58_mutated": false,
+  "application_boundary": "All ordinary local and hosted58 outcomes must be terminal and sealed before application/sourceHEAD changes."
+}

@@ -1,0 +1,48 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.13s
+     Running tests\species_ecology.rs (target\debug\deps\species_ecology-10bc81b3bc684f3a.exe)
+
+running 41 tests
+test animal_minimalis_recognizes_and_moves_toward_non_family_targets ... ok
+test chloroplasts_generate_environmental_energy_for_any_species ... ok
+test aim_rotates_forward_movement ... ok
+test body_feeding_shots_consume_shell_before_body ... ok
+test body_conversion_uses_db2_energy_units_and_cycle_caps ... ok
+test attenuated_venom_below_one_has_no_effect ... ok
+test configured_species_reseed_after_extinction ... ok
+test direct_dna_poison_request_does_not_fire_a_projectile ... ok
+test conspecific_defensive_poison_adds_to_store_without_forced_effect ... ok
+test dna_controls_body_defenses_chloroplasts_waste_and_aim ... ok
+test eye_strength_uses_db2_edge_to_edge_distance ... ok
+test corpses_ignore_venom_impacts ... ok
+test automatic_overflow_defecation_subtracts_the_emitted_waste_packet ... ok
+test body_feeding_shots_use_body_coefficients_and_return_energy_from_target ... ok
+test feeding_shots_without_shootval_use_legacy_body_based_strength ... ok
+test feeding_energy_shots_ignore_shell ... ok
+test heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression ... ok
+test heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five ... ok
+test in_flight_venom_keeps_payload_after_owner_removal ... ok
+test heterospecific_venom_consumes_shell_before_starting_an_effect ... ok
+test modern_chloroplast_sysvars_use_the_latest_vb6_addresses ... ok
+test conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect ... ok
+test minus_two_shots_donate_energy_to_zerobots ... ok
+test later_venom_hit_adds_duration_and_replaces_payload ... ok
+test negative_shots_feed_the_attacker_from_the_target ... ok
+test non_integral_venom_power_keeps_fractional_countdown_through_expiry ... ok
+test reproduction_synchronizes_energy_memory_before_the_next_dna_cycle ... ok
+test species_batches_publish_once_with_configured_initial_energy ... ok
+test shot_300_forces_target_reproduction_for_zerobot_feeding ... ok
+test species_identity_and_vegetable_energy_are_part_of_the_world_state ... ok
+test information_defense_applies_vb_cint_to_reversed_velocity ... ok
+test negative_alzheimer_threshold_disables_memory_mutation ... ok
+test species_mutation_rate_applies_to_ordinary_reproduction ... ok
+test reproduction_wave_stops_cleanly_at_population_capacity ... ok
+test vegetable_cap_applies_to_initial_imports_and_reproduction ... ok
+test shot07_venom_resolution_contract_covers_store_effect_and_edges ... ok
+test toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory ... ok
+test defensive_poison_uses_db2_information_and_feeding_equality_rules ... ok
+test release_energy_defense_applies_vb_cint_after_target_velocity_formula ... ok
+test toxin_location_340_is_a_no_op_and_random_location_is_safe ... ok
+test waste_phase_runs_alzheimer_and_defecation_after_waste_shot ... ok
+
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s

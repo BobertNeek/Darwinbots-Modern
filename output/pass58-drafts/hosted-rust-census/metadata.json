@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_only",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "files": [
+    {
+      "target": ".github/workflows/modern-cross-platform.yml",
+      "before": "output/pass58-drafts/hosted-rust-census/before/.github/workflows/modern-cross-platform.yml",
+      "draft": "output/pass58-drafts/hosted-rust-census/.github/workflows/modern-cross-platform.yml",
+      "base_raw_sha256": "4B596B870FC8E38DDD9D9F658AD1ACDAAB7082ED10B161D22655025D2ABF6707",
+      "candidate_raw_sha256": "0C094489C1716CACBE70899525134169DD0027B8783BE0229A463FB2D2419F6F"
+    }
+  ],
+  "reason": "Hosted cargo stopped on the first failing target, yielding only7 of68 unique Rust target outcomes per platform. Continue all ordinary Rust targets and retain a failed exit status if any target fails.",
+  "change": "Add only cargo --no-fail-fast. Matrix fail-fast=false, setup, downstream gates and artifact behavior unchanged.",
+  "new_test_rows": 0,
+  "execution": {
+    "active_source_edits": false,
+    "parser": false,
+    "formatter": false,
+    "tests": false,
+    "build": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  },
+  "apply_gate": "Apply only after all57 ordinary local+hosted outcomes and all58 code/tests authored."
+}

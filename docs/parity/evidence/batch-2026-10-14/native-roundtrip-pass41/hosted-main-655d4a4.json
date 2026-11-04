@@ -1,0 +1,429 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-15T21:39:26.686Z",
+  "scope": "Completed hosted main run for exact committed source 655d4a4; this is not a pass41 repair-runtime result",
+  "repository": "BobertNeek/Darwinbots-Modern",
+  "head_sha": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+  "run_id": 38795836574,
+  "run_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38795836574",
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "workflow": {
+    "path": ".github/workflows/modern-cross-platform.yml",
+    "source_lines": [
+      42,
+      43
+    ],
+    "rust_command": "cargo test --release --workspace",
+    "gpu_name_filter": false,
+    "run_ignored_tests": false
+  },
+  "capture": {
+    "directory": "output/hosted-655d4a4-main/capture-20261015-153055-060",
+    "summary": {
+      "path": "output/hosted-655d4a4-main/capture-20261015-153055-060/summary.json",
+      "sha256": "B6C9BD55ECCC8D0D6CB65208B7563394387FDEA12BD9F9593C6435FE81BF8690"
+    },
+    "run_metadata": {
+      "path": "output/hosted-655d4a4-main/capture-20261015-153055-060/run.json",
+      "sha256": "55F92BA49F2494507F180931ED72A5D7A1341F2596C98C926FCA827A943C07DE",
+      "acquisition_command": "gh run view 38795836574 --repo BobertNeek/Darwinbots-Modern --json status,conclusion,headSha,url,jobs,createdAt,updatedAt"
+    },
+    "raw_logs": "Retained at the recorded local paths and hashes; full ANSI log bodies are not embedded here"
+  },
+  "matrix": {
+    "passed": [
+      "linux-x64"
+    ],
+    "failed": [
+      "win-x64",
+      "osx-x64",
+      "osx-arm64"
+    ],
+    "all_four_platforms_qualified": false
+  },
+  "jobs": [
+    {
+      "rid": "linux-x64",
+      "job_id": 116631852985,
+      "job_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38795836574/job/116631852985",
+      "conclusion": "success",
+      "started_utc": "2026-10-15T19:40:42Z",
+      "completed_utc": "2026-10-15T20:07:12Z",
+      "log": {
+        "path": "output/hosted-655d4a4-main/capture-20261015-153055-060/linux-x64.log",
+        "sha256": "41FB57128168AB1D40096C2343114E65415208A92E46539838E967B6A29C3E7C",
+        "acquisition_command": "gh run view 38795836574 --repo BobertNeek/Darwinbots-Modern --job 116631852985 --log"
+      },
+      "stages": [
+        {
+          "name": "Test Rust workspace",
+          "conclusion": "success",
+          "started_at": "2026-10-15T19:41:05Z",
+          "completed_at": "2026-10-15T20:05:20Z"
+        },
+        {
+          "name": "Test desktop core",
+          "conclusion": "success",
+          "started_at": "2026-10-15T20:05:20Z",
+          "completed_at": "2026-10-15T20:05:30Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "conclusion": "success",
+          "started_at": "2026-10-15T20:05:30Z",
+          "completed_at": "2026-10-15T20:06:55Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "conclusion": "success",
+          "started_at": "2026-10-15T20:06:57Z",
+          "completed_at": "2026-10-15T20:07:02Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "conclusion": "success",
+          "started_at": "2026-10-15T20:07:02Z",
+          "completed_at": "2026-10-15T20:07:07Z"
+        }
+      ],
+      "rust": {
+        "invocation_complete": true,
+        "completed_target_summaries": 65,
+        "completed_target_summary_counts": {
+          "passed": 774,
+          "failed": 0,
+          "ignored": 9,
+          "filtered": 0
+        },
+        "counts_scope": "complete successful full-workspace invocation; includes ordinarily enabled GPU/switch tests; does not establish physical GPU execution",
+        "result": {
+          "passed": 774,
+          "failed": 0,
+          "ignored": 9,
+          "filtered": 0
+        }
+      },
+      "core": {
+        "passed": 181,
+        "failed": 0,
+        "skipped": 0,
+        "total": 181
+      },
+      "desktop": {
+        "passed": 133,
+        "failed": 0,
+        "skipped": 0,
+        "total": 133
+      },
+      "publish": "passed",
+      "package_smoke": {
+        "status": "passed",
+        "backend": "CPU",
+        "ticks": 13,
+        "population": 1,
+        "movement": true,
+        "save_resume": true,
+        "bundled_bots": 48
+      }
+    },
+    {
+      "rid": "win-x64",
+      "job_id": 116631853123,
+      "job_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38795836574/job/116631853123",
+      "conclusion": "failure",
+      "started_utc": "2026-10-15T19:40:41Z",
+      "completed_utc": "2026-10-15T19:54:37Z",
+      "log": {
+        "path": "output/hosted-655d4a4-main/capture-20261015-153055-060/win-x64.log",
+        "sha256": "F25AF6C61354D7F320659109D4E1185D5CBB7BF3FDEF4B137CC110C947C963DC",
+        "acquisition_command": "gh api repos/BobertNeek/Darwinbots-Modern/actions/jobs/116631853123/logs --allow-escape-sequences"
+      },
+      "stages": [
+        {
+          "name": "Test Rust workspace",
+          "conclusion": "failure",
+          "started_at": "2026-10-15T19:41:57Z",
+          "completed_at": "2026-10-15T19:54:32Z"
+        },
+        {
+          "name": "Test desktop core",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:54:32Z",
+          "completed_at": "2026-10-15T19:54:32Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:54:32Z",
+          "completed_at": "2026-10-15T19:54:32Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:54:32Z",
+          "completed_at": "2026-10-15T19:54:32Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:54:32Z",
+          "completed_at": "2026-10-15T19:54:32Z"
+        }
+      ],
+      "rust": {
+        "invocation_complete": false,
+        "completed_target_summaries": 6,
+        "completed_target_summary_counts": {
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0
+        },
+        "counts_scope": "partial invocation through first failing target; later targets were not run"
+      },
+      "downstream": "Core, desktop, publication and package smoke skipped after Rust failure"
+    },
+    {
+      "rid": "osx-x64",
+      "job_id": 116631853287,
+      "job_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38795836574/job/116631853287",
+      "conclusion": "failure",
+      "started_utc": "2026-10-15T19:40:41Z",
+      "completed_utc": "2026-10-15T20:18:12Z",
+      "log": {
+        "path": "output/hosted-655d4a4-main/capture-20261015-153055-060/osx-x64.log",
+        "sha256": "F68E08F7DFF61CD8B369128F26A9E87785A152BA7E61B76DF57E7638F2C443DA",
+        "acquisition_command": "gh run view 38795836574 --repo BobertNeek/Darwinbots-Modern --job 116631853287 --log"
+      },
+      "stages": [
+        {
+          "name": "Test Rust workspace",
+          "conclusion": "failure",
+          "started_at": "2026-10-15T19:41:28Z",
+          "completed_at": "2026-10-15T20:18:06Z"
+        },
+        {
+          "name": "Test desktop core",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T20:18:06Z",
+          "completed_at": "2026-10-15T20:18:06Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T20:18:06Z",
+          "completed_at": "2026-10-15T20:18:06Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T20:18:07Z",
+          "completed_at": "2026-10-15T20:18:07Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T20:18:07Z",
+          "completed_at": "2026-10-15T20:18:07Z"
+        }
+      ],
+      "rust": {
+        "invocation_complete": false,
+        "completed_target_summaries": 28,
+        "completed_target_summary_counts": {
+          "passed": 511,
+          "failed": 1,
+          "ignored": 7,
+          "filtered": 0
+        },
+        "counts_scope": "partial invocation through first failing target; later targets were not run"
+      },
+      "downstream": "Core, desktop, publication and package smoke skipped after Rust failure",
+      "failed_target": {
+        "name": "gpu_ffi",
+        "passed": 24,
+        "failed": 1,
+        "ignored": 1,
+        "filtered": 0,
+        "test": "cpu_and_gpu_match_tie_lifecycle_spring_and_hardening",
+        "location": "modern/engine/tests/gpu_ffi.rs:418:5",
+        "assertion": {
+          "actual": -20,
+          "expected": -19,
+          "side": "CPU"
+        }
+      }
+    },
+    {
+      "rid": "osx-arm64",
+      "job_id": 116631853572,
+      "job_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38795836574/job/116631853572",
+      "conclusion": "failure",
+      "started_utc": "2026-10-15T19:40:47Z",
+      "completed_utc": "2026-10-15T19:57:56Z",
+      "log": {
+        "path": "output/hosted-655d4a4-main/capture-20261015-153055-060/osx-arm64.log",
+        "sha256": "21514D761B33B9F48C4140E1A5C736D41819E399BC72B019D95D39ED3AB06B8F",
+        "acquisition_command": "gh run view 38795836574 --repo BobertNeek/Darwinbots-Modern --job 116631853572 --log"
+      },
+      "stages": [
+        {
+          "name": "Test Rust workspace",
+          "conclusion": "failure",
+          "started_at": "2026-10-15T19:41:24Z",
+          "completed_at": "2026-10-15T19:57:46Z"
+        },
+        {
+          "name": "Test desktop core",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:57:46Z",
+          "completed_at": "2026-10-15T19:57:46Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:57:46Z",
+          "completed_at": "2026-10-15T19:57:46Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:57:46Z",
+          "completed_at": "2026-10-15T19:57:46Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "conclusion": "skipped",
+          "started_at": "2026-10-15T19:57:46Z",
+          "completed_at": "2026-10-15T19:57:46Z"
+        }
+      ],
+      "rust": {
+        "invocation_complete": false,
+        "completed_target_summaries": 28,
+        "completed_target_summary_counts": {
+          "passed": 511,
+          "failed": 1,
+          "ignored": 7,
+          "filtered": 0
+        },
+        "counts_scope": "partial invocation through first failing target; later targets were not run"
+      },
+      "downstream": "Core, desktop, publication and package smoke skipped after Rust failure",
+      "failed_target": {
+        "name": "gpu_ffi",
+        "passed": 24,
+        "failed": 1,
+        "ignored": 1,
+        "filtered": 0,
+        "test": "cpu_and_gpu_match_tie_lifecycle_spring_and_hardening",
+        "location": "modern/engine/tests/gpu_ffi.rs:418:5",
+        "assertion": {
+          "actual": -20,
+          "expected": -19,
+          "side": "CPU"
+        }
+      }
+    }
+  ],
+  "windows_crash_triage": {
+    "classification": "Native process access violation; no attributed Rust assertion failure",
+    "occurred_utc": "2026-10-15T19:54:32.1771806Z",
+    "process": "darwinbots_engine-ffa39a6f53b09956.exe",
+    "exit_code": "0xc0000005",
+    "exit_symbol": "STATUS_ACCESS_VIOLATION",
+    "exact_context": [
+      {
+        "log_line": 900,
+        "text": "2026-10-15T19:54:27.9130989Z test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ok"
+      },
+      {
+        "log_line": 901,
+        "text": "2026-10-15T19:54:32.1770238Z error: test failed, to rerun pass `-p darwinbots-engine --lib`"
+      },
+      {
+        "log_line": 903,
+        "text": "2026-10-15T19:54:32.1771019Z Caused by:"
+      },
+      {
+        "log_line": 904,
+        "text": "2026-10-15T19:54:32.1771806Z   process didn't exit successfully: `D:\\a\\Darwinbots-Modern\\Darwinbots-Modern\\target\\release\\deps\\darwinbots_engine-ffa39a6f53b09956.exe` (exit code: 0xc0000005, STATUS_ACCESS_VIOLATION)"
+      },
+      {
+        "log_line": 905,
+        "text": "2026-10-15T19:54:32.1772959Z note: test exited abnormally; to see the full output pass --no-capture to the harness."
+      }
+    ],
+    "last_related_completed_test": "world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason",
+    "ordinary_real_adapter_tests": [
+      "world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason",
+      "world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled"
+    ],
+    "relevant_test_without_completion_record": "world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled",
+    "source_evidence": {
+      "commit": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+      "initialization": "modern/engine/src/physics.rs:288-318",
+      "after_submit_fault_injection": "modern/engine/src/physics.rs:790-808",
+      "fallback_policy": "modern/engine/src/world.rs:6764-6843",
+      "ordinary_real_adapter_unit_tests": "modern/engine/src/world.rs:13293-13340"
+    },
+    "observed_ignored_physical_unit_tests": [
+      "failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once",
+      "gpu_failure_does_not_partially_advance_the_cycle",
+      "gpu_in_backend_failure_allows_later_tick_with_trace",
+      "gpu_in_backend_failure_keeps_tick_many_iterations_atomic"
+    ],
+    "bounded_inference": "The two ordinary fallback units each constructed an availability-probe adapter, then an engine adapter, and injected a failure after submission and mapping began. Driver/adapter teardown or concurrency is plausible.",
+    "cause_proven": false,
+    "attribution_limit": "No native stack, crash dump, adapter receipt or failing Rust assertion identifies the crash site. Absence of a test-completion record is not proof that test caused the crash.",
+    "defect_classification": "No DB2 behavioral defect is established by this process-crash receipt"
+  },
+  "mac_tie_fixture_triage": {
+    "platforms": [
+      "osx-x64",
+      "osx-arm64"
+    ],
+    "finding": "Both failures occur at the first CPU tie-timer assertion, before the GPU timer assertion",
+    "actual": -20,
+    "expected": -19,
+    "cpu_gpu_divergence_established": false,
+    "source_backed_classification": "Fixture reissued its .tie command every cycle. TieHooke advances the old timer, then the later FireTies pass replaces it with a fresh -20 bond. The -19 expectation assumed a one-shot request.",
+    "baseline_source": {
+      "commit": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+      "path": "modern/engine/tests/gpu_ffi.rs",
+      "failure_line": 418
+    },
+    "repair_written": "Pass41 splits one-shot lifecycle and repeated-request expectations, preserves CPU/GPU differential coverage, and verifies actual spring motion and cycle-20 hardening.",
+    "repaired_runtime_result": "pending"
+  },
+  "pass41_follow_up": {
+    "source_state": "code complete and frozen",
+    "repair_runtime_state": "pending; sole combined serial qualification running, no overall repair result claimed",
+    "source_manifest": "source.json",
+    "source_file_count": 4,
+    "production_projection": "production-projection.json",
+    "engine_production_unchanged": true,
+    "core_sources_unchanged": true,
+    "desktop_production_unchanged": true,
+    "world_release_projection_sha256": "6f321c9a6c1f4cb29c3bc5f8916fd60a3fee3ede053c337b5b3a2e3601280be3",
+    "repair_scope": [
+      "cfg(test)-only CPU fallback policy injection and regressions",
+      "explicit real physical-adapter after-submit failure qualification without success-on-unavailability skips",
+      "source-backed one-shot and repeated-request tie fixtures",
+      "CLI capacity validation and headless DNA export test lifetime"
+    ],
+    "physical_gpu_qualified": false,
+    "original_trajectory_qualified": false,
+    "repaired_hosted_matrix_qualified": false
+  },
+  "agent_actions": {
+    "source_edits": false,
+    "local_builds": false,
+    "local_tests": false,
+    "apps_or_ui": false,
+    "gpu_execution": false,
+    "git_mutations": false,
+    "formal_receipt_only": true
+  }
+}

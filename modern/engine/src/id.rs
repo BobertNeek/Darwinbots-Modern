@@ -20,4 +20,3 @@ impl OrganismId {
         self.generation
     }
 }
-

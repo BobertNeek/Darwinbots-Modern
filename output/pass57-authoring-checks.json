@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "batch": 57,
+  "completed_utc": "2026-10-17T04:33:09.6836421Z",
+  "format_exit_code": 0,
+  "new_runner_parser_errors": 0,
+  "parser_messages": [],
+  "metadata_exit_code": 0,
+  "metadata_expected_targets": 68,
+  "expected_managed_test_counts": {
+    "core": 289,
+    "desktop": 193
+  },
+  "unchanged_guard_checks_retained": {
+    "receipt": "output/pass56-authoring-checks.json",
+    "sha256": "77309E4EF9D501ECF7ACBF5FEFC992D4933786865DF6DF3ED32DFB9695BA03D4",
+    "helper_sha256": "A7DCD88F30F9430116CA691F3E4DDD2F990F00465A378446EA4DA85EDDCDAC40",
+    "probe_sha256": "DDD99DCB5506B1C024AFE51A5E85D33198D0CFFF070E39853E01FCAAB5E659ED",
+    "schema5_passed": 23,
+    "schema4_historical_passed": 8,
+    "rerun": false,
+    "reason": "Helper and probes unchanged; no execution repeated. Historical schema4 is not current-source admission."
+  },
+  "product_builds_or_tests_executed": false,
+  "desktop_or_gpu_executed": false
+}

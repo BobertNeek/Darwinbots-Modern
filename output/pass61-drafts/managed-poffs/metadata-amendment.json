@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "complete_authored_unapplied_unexecuted_amendment",
+  "created_utc": "2026-10-17T11:17:02.438Z",
+  "base_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "superseded_release": {
+    "file": "output/pass61-drafts/managed-poffs/metadata.json",
+    "sha256": "81DBC1C1C476165D2133F7125D292ED5BDB5022C82E3C433FB7CAE331F521C4A",
+    "bytes": 22225
+  },
+  "changed_candidates": [
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "active_base": {
+        "sha256": "1BB540FB9AE4293DB12EB1FB3BED11A344B69E2CD881BC8B1D7452DE3CD7E454",
+        "bytes": 38832
+      },
+      "superseded_candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+        "sha256": "F3C3BDEEEAB18FAB092C773C397F659CE944A240F7A7B3B120C66DFD2EAF59AA",
+        "bytes": 40109
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/amendment/candidate/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+        "sha256": "9290BBEAB7BC0F0AF016C6DE54BA33FFBADB6470AADB1864F1AA53B614F4DF6D",
+        "bytes": 40123
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "active_base": {
+        "sha256": "B9829E46410DD15E84717857EB9E7FE42C8786F1324B7BA4A0F508AA7D09B739",
+        "bytes": 4469
+      },
+      "superseded_candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+        "sha256": "2B32AA17EA30C9E5456440CCB79A77ED893029E140763A9B4F03D0F4EC118AF4",
+        "bytes": 15988
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/amendment/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+        "sha256": "1748A21EE85DB2B615777F6CAEC92396033F0C58B9C6F0BD07EE152609BD9BB9",
+        "bytes": 16006
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    }
+  ],
+  "unchanged_candidate_count": 15,
+  "unchanged_candidates": [
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+        "sha256": "BD63CB4BD9894BCE8FE88A978A8B4F47E9B1BB19890FB3E933AC212020E3AB61",
+        "bytes": 13179
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "sha256": "11C5C37BCCF2E4FDCC4281A3B250E7071E504ECEB9655EA41769F407199C30FC",
+        "bytes": 55749
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+        "sha256": "AA5F19BC23939130DBBF139C4CBF6027DAB86EBB785D3B52F527B03E68D1AF63",
+        "bytes": 5491
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+        "sha256": "7FA365E7756DB29E7E77194FDFBC78FB46A09A5171E6D5C3C794ED33095432F9",
+        "bytes": 49743
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+        "sha256": "837544BA2ADB17DB099D471D32B1969299D15B5F31EE76004FEA25A5E61A5C10",
+        "bytes": 23891
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+        "sha256": "1CF25A1B5D8C07D08A8D140353EABC022F17243F20A251237F3204D63D3698C1",
+        "bytes": 23225
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+        "sha256": "C82C31B41B0B798D354743E73C6D505E6A0124A961B6E872426BDDB2BC7BBB3E",
+        "bytes": 38791
+      }
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+        "sha256": "28087E2067733C062260C9CB4BDBEACDB94FB24D900BCD0EA042F5053C6A5C76",
+        "bytes": 142736
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+        "sha256": "93C66BB428772C627872DEBDC89EF0A0531636072ACBD48473FA6806BC6C36B3",
+        "bytes": 24340
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+        "sha256": "BBEB2DB5B65B0627BEF3008F5DC6062AD2429F8ECC679DEE50C0D23CBD3645A8",
+        "bytes": 7727
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "sha256": "9BF58294FE960915DBD04012EF61D2707CB2083ABB036C2FD7F92266E05BEB84",
+        "bytes": 29987
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+        "sha256": "B9FD23B5202315A5948C2875625803707B158AB126D8D9707BDDA1735042E0A4",
+        "bytes": 110291
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "sha256": "C04E1D1397BB5804A75408D3829CF2F398D178DE005C06E81F1402620A726D5E",
+        "bytes": 45639
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "sha256": "7364A34B585FC794D7EF2BC56D966627ACBF6532A0EEC01C6FF0D784DAD479EC",
+        "bytes": 136337
+      }
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+        "sha256": "8A558C6E8CD35CC77DCB9EEB18E7D88CEE62C9333B29AB9F9ED3F9CC8A4CDB9A",
+        "bytes": 6559
+      }
+    }
+  ],
+  "reason": "Original DrawShots honors an inherited flash even for kind−100. Endpoint PSet applies only when not displaying that flash. Impacts ON now uses black typed flash at Start/opos; impacts OFF uses saved-color point at End/pos.",
+  "rendered_case": "Existing NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots Fact now includes ninth kind−100; x92 remains inside viewport. Palette adds source-default black and total shot assertion9.",
+  "managed_census": {
+    "net_added_core": 3,
+    "net_added_desktop": 4,
+    "expected_core": 312,
+    "expected_desktop": 213,
+    "amendment_added_rows": 0
+  },
+  "verification": {
+    "static_review_only": true,
+    "active_source_modified": false,
+    "sealed_initial_candidates_modified": false,
+    "compiler": false,
+    "formatter": false,
+    "parser": false,
+    "tests": false,
+    "product_execution": false,
+    "ui": false,
+    "gpu": false,
+    "git": false
+  },
+  "ownership": "Amended two paths released to root; the remaining15 retain initial sealed candidate references."
+}

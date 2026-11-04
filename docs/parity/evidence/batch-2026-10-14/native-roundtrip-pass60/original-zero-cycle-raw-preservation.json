@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "source_manifest_sha256": "D1218C0674D8B1C7C11F4A2CEFC8F886E891356AD7E5EB1FB7977EA436F43700",
+  "input": "modern/engine/tests/fixtures/db24832-original-user.sim",
+  "input_sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E",
+  "output": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass60\\user-rust-cycle281.sim",
+  "output_sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E",
+  "exact_raw_bytes": true,
+  "boundary": "Validated native input preserved without simulation steps. No runtime loader parity or original trajectory agreement is established by this raw copy.",
+  "loader_normalization": "Covered independently by repaired CLI tests in the fresh full Rust invocation.",
+  "fresh_rust_workspace_exit_code": 101
+}

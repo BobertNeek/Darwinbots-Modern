@@ -1,0 +1,28 @@
+{
+  "parent_head": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+  "files": [
+    {
+      "file": "modern/cli/src/probe.rs",
+      "sha256": "759DC5636AA0AE55252FCE18F9B35B6698B571967F872E24F1CF0BC002077E92"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs",
+      "sha256": "7A736B76B5018CF411AED897A67A4F948DFB32485C6A3978EF7278E2C128448A"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "D60FF1B4004C5D1203B27F82EB75D867C5B675397C2422239BFDDDF4811347A7"
+    },
+    {
+      "file": "modern/engine/tests/gpu_ffi.rs",
+      "sha256": "FAA4EB1541F5AFF913160C95BB125A0A1A8458DEBB540E9E04E9D8492DB25E05"
+    },
+    {
+      "file": "modern/engine/tests/native_continuation_qualification.rs",
+      "sha256": "452548B699D0B9564B8FCCBA38CD3486EEE1A6D179537622B44941827D39CD9C"
+    }
+  ],
+  "scope": "Physical continuation assertions and GPU runner admission only; all ordinary CPU functions and engine/Core/desktop/CLI production unchanged",
+  "ordinary_cpu_baseline": "../native-roundtrip-pass42/summary.json",
+  "physical_runtime_not_executed": true
+}

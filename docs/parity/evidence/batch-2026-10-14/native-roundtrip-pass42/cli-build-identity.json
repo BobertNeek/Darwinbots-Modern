@@ -1,0 +1,12 @@
+{
+  "cli_sha256": "B112ABF030FB200604453F2101F40B06429AE64F0816811842F1317FE599E4B5",
+  "source_manifest": "source.json",
+  "inherited_qualification": "../native-roundtrip-pass41/summary.json",
+  "build_result": {
+    "step": "cli-build",
+    "exit_code": 0,
+    "seconds": 1.1585413,
+    "log": "cli-build.log"
+  },
+  "adapter_smoke": "binary-cpu-adapter-smoke.log"
+}

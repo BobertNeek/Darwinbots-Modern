@@ -1,0 +1,513 @@
+{
+  "schema_version": 2,
+  "batch": 59,
+  "sealed_utc": "2026-10-17T08:01:31.389Z",
+  "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass59-source.json",
+    "sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+    "pinned_files": 555
+  },
+  "workflow": "Desktop platform diagnostics",
+  "workflow_file": ".github/workflows/modern-desktop-diagnostics.yml",
+  "run": {
+    "id": 39014201212,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39014201212",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-17T07:35:26Z",
+    "updated_at": "2026-10-17T07:58:12Z",
+    "head_sha": "ff50b1a735ef61c6d5d282358da76f2734f64099"
+  },
+  "all_jobs_terminal": true,
+  "jobs": [
+    {
+      "job_id": 117342799273,
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-17T07:35:31Z",
+      "completed_at": "2026-10-17T07:44:33Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:32Z",
+          "completed_at": "2026-10-17T07:35:35Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:35Z",
+          "completed_at": "2026-10-17T07:35:40Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:40Z",
+          "completed_at": "2026-10-17T07:35:52Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:52Z",
+          "completed_at": "2026-10-17T07:36:22Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:36:22Z",
+          "completed_at": "2026-10-17T07:44:28Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:44:28Z",
+          "completed_at": "2026-10-17T07:44:31Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:44:31Z",
+          "completed_at": "2026-10-17T07:44:31Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:44:31Z",
+          "completed_at": "2026-10-17T07:44:32Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:44:32Z",
+          "completed_at": "2026-10-17T07:44:32Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "The desktop test project invoked its ordinary native release build; no Rust test corpus was run by this diagnostic workflow."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 206,
+        "total": 206,
+        "executed": 206,
+        "passed": 206,
+        "failed": 0,
+        "skipped": 0,
+        "result_rows": 206,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "remaining_expected_cases_without_terminal_results": 0,
+        "failed_tests": [],
+        "messages": [],
+        "stack_traces": [],
+        "trx_file": "output/hosted-diagnostics-ff50b1a-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+        "trx_sha256": "7AD6BC1AF99A2328C03930C5A3D5F1F4C6F56E254AE8DA552A99631F59D71C8D",
+        "archive_continuation": "Passed",
+        "header_width_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "not_run": [
+        "Rust workspace test corpus (not part of this diagnostic workflow)",
+        "Desktop Core project tests (not part of this diagnostic workflow)",
+        "Published package and package smoke (not part of this diagnostic workflow)",
+        "Physical GPU, capacity, original application and visible desktop acceptance"
+      ],
+      "log": {
+        "file": "output/hosted-diagnostics-ff50b1a-agent/logs/osx-x64-completed.log",
+        "sha256": "8996EFB40A01BDFA2FEE61FF2A49525AB6E10305B36BD6033A746835310899AC",
+        "bytes": 66441
+      }
+    },
+    {
+      "job_id": 117342799448,
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-17T07:53:20Z",
+      "completed_at": "2026-10-17T07:58:11Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:53:21Z",
+          "completed_at": "2026-10-17T07:53:23Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:53:23Z",
+          "completed_at": "2026-10-17T07:53:27Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:53:27Z",
+          "completed_at": "2026-10-17T07:53:38Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:53:38Z",
+          "completed_at": "2026-10-17T07:53:48Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:53:48Z",
+          "completed_at": "2026-10-17T07:58:04Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:58:04Z",
+          "completed_at": "2026-10-17T07:58:07Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:58:07Z",
+          "completed_at": "2026-10-17T07:58:07Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:58:07Z",
+          "completed_at": "2026-10-17T07:58:07Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:58:07Z",
+          "completed_at": "2026-10-17T07:58:08Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "The desktop test project invoked its ordinary native release build; no Rust test corpus was run by this diagnostic workflow."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 206,
+        "total": 206,
+        "executed": 206,
+        "passed": 206,
+        "failed": 0,
+        "skipped": 0,
+        "result_rows": 206,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "remaining_expected_cases_without_terminal_results": 0,
+        "failed_tests": [],
+        "messages": [],
+        "stack_traces": [],
+        "trx_file": "output/hosted-diagnostics-ff50b1a-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+        "trx_sha256": "EBEADF4B7E92212A98B150192435992FB7D1B59BAB5B524F76377A9F616FDDCA",
+        "archive_continuation": "Passed",
+        "header_width_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "not_run": [
+        "Rust workspace test corpus (not part of this diagnostic workflow)",
+        "Desktop Core project tests (not part of this diagnostic workflow)",
+        "Published package and package smoke (not part of this diagnostic workflow)",
+        "Physical GPU, capacity, original application and visible desktop acceptance"
+      ],
+      "log": {
+        "file": "output/hosted-diagnostics-ff50b1a-agent/logs/osx-arm64-completed.log",
+        "sha256": "5B9A670187CC5FE98A5AB031168D64936684703E2A581CB84A8C4D1084FB3537",
+        "bytes": 66604
+      }
+    },
+    {
+      "job_id": 117342799508,
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-17T07:35:30Z",
+      "completed_at": "2026-10-17T07:39:26Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:31Z",
+          "completed_at": "2026-10-17T07:35:32Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:32Z",
+          "completed_at": "2026-10-17T07:35:35Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:35Z",
+          "completed_at": "2026-10-17T07:35:44Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:44Z",
+          "completed_at": "2026-10-17T07:35:54Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:35:54Z",
+          "completed_at": "2026-10-17T07:39:22Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:39:22Z",
+          "completed_at": "2026-10-17T07:39:23Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:39:23Z",
+          "completed_at": "2026-10-17T07:39:24Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:39:24Z",
+          "completed_at": "2026-10-17T07:39:24Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T07:39:24Z",
+          "completed_at": "2026-10-17T07:39:24Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "The desktop test project invoked its ordinary native release build; no Rust test corpus was run by this diagnostic workflow."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 206,
+        "total": 206,
+        "executed": 206,
+        "passed": 206,
+        "failed": 0,
+        "skipped": 0,
+        "result_rows": 206,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "remaining_expected_cases_without_terminal_results": 0,
+        "failed_tests": [],
+        "messages": [],
+        "stack_traces": [],
+        "trx_file": "output/hosted-diagnostics-ff50b1a-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+        "trx_sha256": "4B6715A82E5CAEC8290910FBB31654EAACFB0563AFFF84585F6CB0643C94C06B",
+        "archive_continuation": "Passed",
+        "header_width_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+            "outcome": "Passed"
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+            "outcome": "Passed"
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "not_run": [
+        "Rust workspace test corpus (not part of this diagnostic workflow)",
+        "Desktop Core project tests (not part of this diagnostic workflow)",
+        "Published package and package smoke (not part of this diagnostic workflow)",
+        "Physical GPU, capacity, original application and visible desktop acceptance"
+      ],
+      "log": {
+        "file": "output/hosted-diagnostics-ff50b1a-agent/logs/linux-x64-completed.log",
+        "sha256": "C49EF6969B01BB692A2F8127D5DDB22705F1A326068526F15EBE828A8271F89A",
+        "bytes": 65906
+      }
+    }
+  ],
+  "aggregate": {
+    "managed_result_rows": 618,
+    "managed_passed": 618,
+    "managed_failed": 0,
+    "managed_skipped": 0,
+    "complete_platform_suites": 3,
+    "incomplete_platform_suites": 0,
+    "expected_cases_without_terminal_results": 0,
+    "artifact_count": 3,
+    "artifact_files": 102,
+    "png_files": 99,
+    "trx_files": 3,
+    "rust_test_targets": 0
+  },
+  "failure_diagnosis": [],
+  "artifacts": {
+    "index": {
+      "path": "output/hosted-diagnostics-ff50b1a-agent/artifact-file-hashes.json",
+      "sha256": "3103D4647AF20AAEA054527E50448EA35231595F322B5166F6393F89C83372B8",
+      "bytes": 26010
+    },
+    "server_artifacts": [
+      {
+        "id": 12094870500,
+        "name": "desktop-diagnostics-osx-arm64",
+        "size_in_bytes": 3119518,
+        "digest": "sha256:8702862c59ceaaee4c2948aa204e32f633f2a703674829a44aeb725fea2dc739",
+        "expired": false
+      },
+      {
+        "id": 12094221649,
+        "name": "desktop-diagnostics-linux-x64",
+        "size_in_bytes": 2518650,
+        "digest": "sha256:1e82a782bec0f692185b6a32d3dae67c5bd23e307f1d5dfa4153a8279e155a2e",
+        "expired": false
+      },
+      {
+        "id": 12093969078,
+        "name": "desktop-diagnostics-osx-x64",
+        "size_in_bytes": 3119459,
+        "digest": "sha256:677c8d537f6592c64a1a10a396b4a73e6805899a619e01fd833875558729c78c",
+        "expired": false
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-diagnostics-ff50b1a-agent/api/run-20261017T080054726.json",
+      "sha256": "251DCF9F6CE5023F2280376A980980E2567DFB287B6000F9CAF25CCC0F5C8C4F",
+      "bytes": 13178
+    },
+    {
+      "file": "output/hosted-diagnostics-ff50b1a-agent/api/jobs-20261017T080054726.json",
+      "sha256": "019F7E452B68A3E1CEEBB68B0B16D2D0FA78C06F5B29CE4A1A3010A2ADF0EF67",
+      "bytes": 7500
+    },
+    {
+      "file": "output/hosted-diagnostics-ff50b1a-agent/api/artifacts-20261017T080054726.json",
+      "sha256": "69EF55F8FD1CB68E0412A6CAD1B4A9A18759D4DA03F70772BE65856ECFFE0A77",
+      "bytes": 2234
+    },
+    {
+      "file": "output/hosted-diagnostics-ff50b1a-agent/logs/osx-x64-completed.log",
+      "sha256": "8996EFB40A01BDFA2FEE61FF2A49525AB6E10305B36BD6033A746835310899AC",
+      "bytes": 66441
+    },
+    {
+      "file": "output/hosted-diagnostics-ff50b1a-agent/logs/osx-arm64-completed.log",
+      "sha256": "5B9A670187CC5FE98A5AB031168D64936684703E2A581CB84A8C4D1084FB3537",
+      "bytes": 66604
+    },
+    {
+      "file": "output/hosted-diagnostics-ff50b1a-agent/logs/linux-x64-completed.log",
+      "sha256": "C49EF6969B01BB692A2F8127D5DDB22705F1A326068526F15EBE828A8271F89A",
+      "bytes": 65906
+    },
+    {
+      "path": "output/hosted-diagnostics-ff50b1a-agent/artifact-file-hashes.json",
+      "sha256": "3103D4647AF20AAEA054527E50448EA35231595F322B5166F6393F89C83372B8",
+      "bytes": 26010
+    }
+  ],
+  "collector_actions": {
+    "read_only_github": true,
+    "dispatch": false,
+    "cancel": false,
+    "rerun": false,
+    "source_or_head_edits": false,
+    "local_product_execution": false,
+    "ui_or_gpu": false
+  },
+  "qualification_passed": true,
+  "boundary": "Exact source59 automatic hosted diagnostic scope passed on Linux x64, macOS Intel and macOS ARM: each returned the complete206-case Desktop suite. This is independent of MAIN39014201323, which remains collecting. This receipt does not establish Rust/Core/package completion, local CPU admission, physical GPU/capacity, original trajectory parity or visible desktop acceptance. Artifact pixels were preserved and hashed without a visual-review claim."
+}

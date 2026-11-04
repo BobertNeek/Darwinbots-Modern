@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "batch": 56,
+  "started_utc": "2026-10-17T04:21:29.0114796Z",
+  "completed_utc": "2026-10-17T04:22:59.3987607Z",
+  "all_code_and_tests_authored_before_checks": true,
+  "format_exit_code": 0,
+  "powershell_parser": [
+    {
+      "file": "output/native-qualification-admission53.ps1",
+      "errors": 0,
+      "messages": []
+    },
+    {
+      "file": "output/test-native-admission56.ps1",
+      "errors": 0,
+      "messages": []
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass56.ps1",
+      "errors": 0,
+      "messages": []
+    }
+  ],
+  "schema4_probe_exit_code": 0,
+  "schema5_probe_exit_code": 0,
+  "product_builds_or_tests_executed": false,
+  "desktop_or_gpu_executed": false,
+  "schema4_initial_probe_exit_code": 1,
+  "schema4_historical_basis_receipt": "output/pass56-schema4-historical-receipt.json"
+}

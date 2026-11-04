@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  Restored C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop.Core\Darwinbots.Desktop.Core.csproj (in 153 ms).
+  1 of 2 projects are up-to-date for restore.
+  Darwinbots.Desktop.Core -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\src\Darwinbots.Desktop.Core\bin\Release\net10.0\Darwinbots.Desktop.Core.dll
+C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Core.Tests\NativeDisqualificationTests.cs(27,26): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Core.Tests\Darwinbots.Desktop.Core.Tests.csproj]
+C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Core.Tests\SeededSpawnPlacementTests.cs(46,9): warning xUnit2012: Do not use Assert.True() to check if a value exists in a collection. Use Assert.Contains instead. (https://xunit.net/xunit.analyzers/rules/xUnit2012) [C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Core.Tests\Darwinbots.Desktop.Core.Tests.csproj]
+  Darwinbots.Desktop.Core.Tests -> C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Core.Tests\bin\Release\net10.0\Darwinbots.Desktop.Core.Tests.dll
+Test run for C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Core.Tests\bin\Release\net10.0\Darwinbots.Desktop.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\docs\parity\evidence\batch-2026-10-14\native-roundtrip-pass61\core.trx
+
+Passed!  - Failed:     0, Passed:   312, Skipped:     0, Total:   312, Duration: 5 s - Darwinbots.Desktop.Core.Tests.dll (net10.0)

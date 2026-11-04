@@ -9,7 +9,8 @@ public sealed class DesktopSettingsTests
     public void VersionOneSettingsRoundTrip()
     {
         var expected = new DesktopSettings { Backend = "Gpu", TicksPerUpdate = 4, SnapshotEveryTicks = 2 };
-        Assert.Equal(expected, DesktopSettings.FromJson(expected.ToJson()));
+        var actual = DesktopSettings.FromJson(expected.ToJson());
+        Assert.Equal(expected.ToJson(), actual.ToJson());
     }
 
     [Fact]

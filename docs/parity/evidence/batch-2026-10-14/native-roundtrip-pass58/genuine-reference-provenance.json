@@ -1,0 +1,205 @@
+{
+  "source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "source_manifest_sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+  "metadata": "modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+  "metadata_sha256": "739CBD3FB8528740F6CCB6B74988DB91126A5DE6D474A46FDB309C2C5A3C5F98",
+  "inputs": [
+    {
+      "file": "modern/engine/tests/fixtures/db24832-movement-start-48032.sim",
+      "bytes": 11113,
+      "sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-fixed-start-48032.sim",
+      "bytes": 11119,
+      "sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "fixed"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-body-start-48032.sim",
+      "bytes": 11105,
+      "sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "body"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-chloroplast-start-48032.sim",
+      "bytes": 11113,
+      "sha256": "CB85F10215164C18EB8D8E73A98C2B365B91FE5F7F2BB52E4F2789B7D1E38859",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "chloroplast"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-feeding-start-48032.sim",
+      "bytes": 20498,
+      "sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "feeding"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-ties-start-48032.sim",
+      "bytes": 20489,
+      "sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "ties"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-contacts-start-48032.sim",
+      "bytes": 29805,
+      "sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "contacts"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-reproduction-start-48032.sim",
+      "bytes": 11137,
+      "sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040",
+      "cycle": 0,
+      "seed": 48032,
+      "case": "reproduction"
+    }
+  ],
+  "captures": [
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim",
+      "bytes": 17062,
+      "sha256": "766F386C392C59834A3390A2C726D3E2F8DB695FE5B05A932A593D0DCCD010E3",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle10-20261016.sim",
+      "bytes": 17062,
+      "sha256": "DA23FCBE0B725FCF134F7FA25022951E600088603126BFB6E327027FF23465A2",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle102-20261016.sim",
+      "bytes": 17062,
+      "sha256": "2BB48F9883CA05E5771989CB08056BAC737E1EE50F148A8B234FF894EAF37B5B",
+      "cycle": 102,
+      "seed": 48032,
+      "case": "movement"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle1-20261016.sim",
+      "bytes": 17068,
+      "sha256": "01360A500B63AAD15D96384A25E792AB7C50CAB630497017F7C1214D00535BF4",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "fixed"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle1-20261016.sim",
+      "bytes": 17054,
+      "sha256": "0F6EBE616D67BA8FAA45372BE1F0DB0FACEC2994DCC1632953F31634E9A847E5",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "body"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle1-20261016.sim",
+      "bytes": 17062,
+      "sha256": "50DD4B01A0E0E0A19D3E79896B85127A41897BCA8762F8EBF020C63A78DA3170",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "chloroplast"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle10-20261016.sim",
+      "bytes": 17062,
+      "sha256": "569F1272D28A876B3F140420193E5A767B6E9B2B0853B5E36D39513655A4BCCE",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "chloroplast"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle1-20261017.sim",
+      "bytes": 26488,
+      "sha256": "0D0655818BECF73E1722E0A56AEBE05C4D083C0CC60C2C7F6F6A0DFEAD844337",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "feeding"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle10-20261017.sim",
+      "bytes": 26956,
+      "sha256": "A82ABBC5FA3E851A5F4E7506B8497FABA985ABDE24509DC6905B2F2D1F3C79CF",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "feeding"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle1-20261017.sim",
+      "bytes": 26443,
+      "sha256": "B1E4223FEF34CDA7FC1C7E1661B086751D83515AB387C0DF596AA2728CA6501D",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "ties"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle1-20261017.sim",
+      "bytes": 35764,
+      "sha256": "F7DA4A17D59977FC65BB32CC6BCE2AE4C8E28087672F997CE9629CFB20D202D0",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "contacts",
+      "robot_count": 3,
+      "expected_compared_fields": 4115
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle1-20261017.sim",
+      "bytes": 17086,
+      "sha256": "A6F9DC7F78280AF622D35401ECF65CB1E6ADE344D2D150342E89B5556DA0E03A",
+      "cycle": 1,
+      "seed": 48032,
+      "case": "reproduction",
+      "robot_count": 1,
+      "expected_compared_fields": 1387
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-reproduction-cycle10-20261017.sim",
+      "bytes": 26475,
+      "sha256": "4BCD08A85E121216B1BF49C4315FACEA7C985CCF691C147306A479BACE437B69",
+      "cycle": 10,
+      "seed": 48032,
+      "case": "reproduction",
+      "robot_count": 2,
+      "expected_compared_fields": 2772
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle11-20261017.sim",
+      "bytes": 35764,
+      "sha256": "8821C6D5EB2077EFAE7597FB1D4EB8ADEE3DE687275528BAF7A79C0DC5AF05BB",
+      "cycle": 11,
+      "seed": 48032,
+      "case": "contacts",
+      "robot_count": 3,
+      "expected_compared_fields": 4115
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-contacts-cycle100-20261017.sim",
+      "bytes": 35764,
+      "sha256": "C6AB7E5578162E576F37F3F1CCF738985015D9FD9C3AF155D5E561F02F9F378E",
+      "cycle": 100,
+      "seed": 48032,
+      "case": "contacts",
+      "robot_count": 3,
+      "expected_compared_fields": 4115
+    }
+  ],
+  "scope": "Original input and saved-counter identities only. Runtime comparisons execute afresh below."
+}

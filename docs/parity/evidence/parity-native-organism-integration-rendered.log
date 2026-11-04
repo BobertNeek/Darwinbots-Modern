@@ -1,0 +1,14 @@
+Test run for C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\desktop\tests\Darwinbots.Desktop.Tests\bin\Debug\net10.0\Darwinbots.Desktop.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.12)
+[xUnit.net 00:00:00.15]   Discovering: Darwinbots.Desktop.Tests
+[xUnit.net 00:00:00.24]   Discovered:  Darwinbots.Desktop.Tests
+[xUnit.net 00:00:00.27]   Starting:    Darwinbots.Desktop.Tests
+  Passed Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.MainWindowSelectsNonFirstTiedMemberHighlightsGroupAndSavesIt [2 s]
+[xUnit.net 00:00:05.67]   Finished:    Darwinbots.Desktop.Tests
+  Passed Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.RenderedWholeOrganismRoundTripPreservesSelectedLiveNativeMember [3 s]
+
+Test Run Successful.
+Total tests: 2
+     Passed: 2
+ Total time: 6.4820 Seconds

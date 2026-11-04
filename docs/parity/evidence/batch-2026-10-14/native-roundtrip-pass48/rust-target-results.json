@@ -1,0 +1,2297 @@
+{
+  "schema_version": 1,
+  "status": "SEALED completed fresh48 Rust targets only; overall48 normal outcomes and source release still pending",
+  "sealed_utc": "2026-10-16T15:59:46.564Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2/",
+  "proof_scope": "Only actual final native-roundtrip-pass48/cpu-workspace.log harness outcomes from frozen48 sources. No inherited46/47 Rust counts, no new49 test execution, no whole48 qualification claim.",
+  "command": {
+    "executable": "cargo.exe",
+    "arguments": [
+      "test",
+      "--release",
+      "--workspace",
+      "--no-fail-fast",
+      "--",
+      "--skip",
+      "gpu",
+      "--skip",
+      "switch",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "exit_code": 101,
+    "seconds": 4706.2926941,
+    "runner_pid": 45284,
+    "all66targets_complete": true,
+    "cargo_footer": "error: 2 targets failed: -p darwinbots-cli --lib; -p darwinbots-engine --lib"
+  },
+  "source": {
+    "frozen_manifest": "output/native-roundtrip-pass48-source.json",
+    "sha256": "72A065BED92B93569502E75742DE73B211531EA13BBDB65112F280058BF40D9D",
+    "pins": 76,
+    "all_current_pins_verified": true,
+    "parent_head": "dbffdc58787f369e7490461836df7ef677c01e8f",
+    "unchanged_retention_closure": {
+      "files": 212,
+      "sha256": "7B017AAA9F5A27193395E4E722629141C4226D26C958481E76F7246D065DD49A",
+      "all_file_hashes_reverified": true,
+      "algorithm_reference": "output/pass49-qualification-projection-proposal.json unchanged_rust_input_closure_guard"
+    }
+  },
+  "anchors": [
+    {
+      "file": "output/native-roundtrip-pass48-source.json",
+      "bytes": 13275,
+      "sha256": "72A065BED92B93569502E75742DE73B211531EA13BBDB65112F280058BF40D9D"
+    },
+    {
+      "file": "output/pass49-qualification-projection-proposal.json",
+      "bytes": 48730,
+      "sha256": "E519ABD798F48915007C292602272D4C122F1C0598FDE089AE2702B99E294BD3"
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass48.ps1",
+      "bytes": 7643,
+      "sha256": "742D4685173A33B5FD3518873E430F87E7D0B67F88BD2B3C88FF5D76E59E8155"
+    },
+    {
+      "file": "output/pass48-source-equivalence.json",
+      "bytes": 22307,
+      "sha256": "5EBC703E213355E86DB7494AB128E7320E1281674581CD0B05365AE28EE18A77"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass48/source.json",
+      "bytes": 13591,
+      "sha256": "E9663C91E6E3B4A8521DB60D468FA6E580B2DDEC015D4D59EE0A937A0A5FA367"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass48/results.json",
+      "bytes": 373,
+      "sha256": "2D601798D7195F6581D2491975021697B3850A82B2F266A46BE00C7DE6A4AB11"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass48/state.json",
+      "bytes": 290,
+      "sha256": "9BD33F76105C8503964F672467280407094F396D4BE0E7A00A6E74D5AC8EE2F7"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass48/cpu-workspace.log",
+      "bytes": 111723,
+      "sha256": "4C854516E7591748F37031D872138408D630CB27719ACD550824E29F600CF5A7"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass48/format-check.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass48/strict-clippy.log",
+      "bytes": 1645,
+      "sha256": "5C8B1058E051853983C2302812DB3D9F4AAD1DD7962B4AE0ABDE3A157731B4E3"
+    }
+  ],
+  "aggregate_fresh48": {
+    "targets": 66,
+    "passed": 897,
+    "failed": 3,
+    "ignored": 0,
+    "measured": 0,
+    "filtered_out": 27,
+    "passed_targets": 64,
+    "failed_targets": 2,
+    "doctest_targets": 2,
+    "doctest_passed": 0,
+    "doctest_failed": 0,
+    "whole_workspace_passed": false
+  },
+  "exact_failures": [
+    {
+      "target": "darwinbots-cli:lib:darwinbots-cli",
+      "test": "dna_source::tests::actual_file_loader_uses_engine_native_boundary_and_retains_exact_ansi_input",
+      "start_line": 8,
+      "end_line": 12,
+      "text": "thread 'dna_source::tests::actual_file_loader_uses_engine_native_boundary_and_retains_exact_ansi_input' (27328) panicked at modern\\cli\\src\\dna_source.rs:144:9:\nassertion `left == right` failed\n  left: 0\n right: 1\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+    },
+    {
+      "target": "darwinbots-engine:lib:darwinbots-engine",
+      "test": "ffi::tests::native_text_import_insert_replace_keep_source_coding_and_private_context_across_ffi_clones",
+      "start_line": 227,
+      "end_line": 230,
+      "text": "thread 'ffi::tests::native_text_import_insert_replace_keep_source_coding_and_private_context_across_ffi_clones' (46708) panicked at modern\\engine\\src\\ffi.rs:1498:13:\nassertion `left == right` failed\n  left: false\n right: true"
+    },
+    {
+      "target": "darwinbots-engine:lib:darwinbots-engine",
+      "test": "world::classic_tournament_tests::classic_community_eligibility_checks_actual_native_coding_before_configuration_mutates",
+      "start_line": 316,
+      "end_line": 317,
+      "text": "thread 'world::classic_tournament_tests::classic_community_eligibility_checks_actual_native_coding_before_configuration_mutates' (15052) panicked at modern\\engine\\src\\world\\classic_tournament_tests.rs:66:10:\ncalled `Option::unwrap()` on a `None` value"
+    }
+  ],
+  "all_targets": [
+    {
+      "package": "darwinbots-cli",
+      "type": "lib",
+      "name": "darwinbots-cli",
+      "key": "darwinbots-cli:lib:darwinbots-cli",
+      "header": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_cli-19b2f1d2dddc4ec7.exe)",
+      "harness_executable": "target\\release\\deps\\darwinbots_cli-19b2f1d2dddc4ec7.exe",
+      "header_line": 4,
+      "section_end_line": 29,
+      "summary": {
+        "line": 27,
+        "status": "FAILED",
+        "passed": 7,
+        "failed": 1,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 1,
+        "seconds": 9.79,
+        "text": "test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 9.79s"
+      },
+      "failure_names": [
+        "dna_source::tests::actual_file_loader_uses_engine_native_boundary_and_retains_exact_ansi_input"
+      ],
+      "source": {
+        "file": "modern/cli/src/lib.rs",
+        "sha256": "1DF70C2D34D671763CB786781F973ECC509DE3873AE6383EDA44F03D6053B02B"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Changed unit fixtures, new public-boundary tests, and full chain/Clippy repair",
+      "section_sha256": "C61C0F1341E608ADE0211C2E4D8E076C1BCA4EAA3741B3E5DD1357DFAA51396E",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-cli",
+      "type": "bin",
+      "name": "darwinbots-cli",
+      "key": "darwinbots-cli:bin:darwinbots-cli",
+      "header": "Running unittests src\\main.rs (target\\release\\deps\\darwinbots_cli-669e7ed1c271a6b6.exe)",
+      "harness_executable": "target\\release\\deps\\darwinbots_cli-669e7ed1c271a6b6.exe",
+      "header_line": 30,
+      "section_end_line": 35,
+      "summary": {
+        "line": 34,
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/cli/src/main.rs",
+        "sha256": "5D7D81ECB1ABCD492742EFA1264A042EAF44F97242C0CA8EF349918B539ECA4D"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "Zero-test unchanged entry point; fresh CLI build and commands target cover linked artifact",
+      "section_sha256": "77E779C09D114ECE5BE44ADFA6913830BB07F22D56F586F21511D0067BA4D232",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-cli",
+      "type": "test",
+      "name": "bundled_bot_corpus",
+      "key": "darwinbots-cli:test:bundled_bot_corpus",
+      "header": "Running tests\\bundled_bot_corpus.rs (target\\release\\deps\\bundled_bot_corpus-64a072572acbe959.exe)",
+      "harness_executable": "target\\release\\deps\\bundled_bot_corpus-64a072572acbe959.exe",
+      "header_line": 36,
+      "section_end_line": 117,
+      "summary": {
+        "line": 116,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 267.41,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 267.41s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/cli/tests/bundled_bot_corpus.rs",
+        "sha256": "DB6D859F4DF5CAA0E307ADB2C84B52B39E34F201ED882A12828BFA519DE807F9"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "Long probe/corpus path calls CLI/Engine directly, not FFI; CLI production prefix unchanged",
+      "section_sha256": "036BBE2D62D5B4B1C75E708360CEB33291B8ED06E1D912C43D8C6FE1E6E3EBE4",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-cli",
+      "type": "test",
+      "name": "commands",
+      "key": "darwinbots-cli:test:commands",
+      "header": "Running tests\\commands.rs (target\\release\\deps\\commands-eec7744335c58eb1.exe)",
+      "harness_executable": "target\\release\\deps\\commands-eec7744335c58eb1.exe",
+      "header_line": 118,
+      "section_end_line": 126,
+      "summary": {
+        "line": 125,
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.13,
+        "text": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/cli/tests/commands.rs",
+        "sha256": "BD63692BC51F211B1A6467CD7101F19198C768BDBCC1C2591B4BF450BE8973A9"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Cheap end-to-end check against newly built current CLI",
+      "section_sha256": "8B0BFD8BB429D80C94E58C4D0BAB64B5484C6073DC4852DE569910E154194092",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-cli",
+      "type": "test",
+      "name": "db245_probes",
+      "key": "darwinbots-cli:test:db245_probes",
+      "header": "Running tests\\db245_probes.rs (target\\release\\deps\\db245_probes-527613d6923ddfd2.exe)",
+      "harness_executable": "target\\release\\deps\\db245_probes-527613d6923ddfd2.exe",
+      "header_line": 127,
+      "section_end_line": 179,
+      "summary": {
+        "line": 178,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 452.49,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 452.49s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/cli/tests/db245_probes.rs",
+        "sha256": "F1D10B5015C1704A5B78490E1E54AF2BE2D87C9703DA3DB25139FF6069CB747D"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "Long probe/corpus path calls CLI/Engine directly, not FFI; CLI production prefix unchanged",
+      "section_sha256": "C8F2177F088FAFCE59F26C23E67A51B37E0BDE2EC80FFCBD2E77D9637C0A1C9E",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-cli",
+      "type": "test",
+      "name": "native_comparison",
+      "key": "darwinbots-cli:test:native_comparison",
+      "header": "Running tests\\native_comparison.rs (target\\release\\deps\\native_comparison-d3c5181653a931bd.exe)",
+      "harness_executable": "target\\release\\deps\\native_comparison-d3c5181653a931bd.exe",
+      "header_line": 180,
+      "section_end_line": 188,
+      "summary": {
+        "line": 187,
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.55,
+        "text": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/cli/tests/native_comparison.rs",
+        "sha256": "F39C078B571E63EF928FD407C2009EE815E6CC3969A1E069CD9ED0A2AE709EEB"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Cheap end-to-end check against newly built current CLI",
+      "section_sha256": "D12FAD833919B1796D10A4C7286F2BAF0B5A369608846DC8328803B460CC7F95",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "lib",
+      "name": "darwinbots-engine",
+      "key": "darwinbots-engine:lib:darwinbots-engine",
+      "header": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_engine-92c50bc16611c615.exe)",
+      "harness_executable": "target\\release\\deps\\darwinbots_engine-92c50bc16611c615.exe",
+      "header_line": 189,
+      "section_end_line": 622,
+      "summary": {
+        "line": 620,
+        "status": "FAILED",
+        "passed": 407,
+        "failed": 2,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 7,
+        "seconds": 15.39,
+        "text": "test result: FAILED. 407 passed; 2 failed; 0 ignored; 0 measured; 7 filtered out; finished in 15.39s"
+      },
+      "failure_names": [
+        "ffi::tests::native_text_import_insert_replace_keep_source_coding_and_private_context_across_ffi_clones",
+        "world::classic_tournament_tests::classic_community_eligibility_checks_actual_native_coding_before_configuration_mutates"
+      ],
+      "source": {
+        "file": "modern/engine/src/lib.rs",
+        "sha256": "5D8C0D0151E087C09BC12CBABB27714000529BCB7A2C7CF3DE016E3501A2BDAC"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Changed unit fixtures, new public-boundary tests, and full chain/Clippy repair",
+      "section_sha256": "78F994B629B377EFB7302C801D89157CB4CBD14956404DFC79FFB901C3F5AE01",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "advanced_mutation_costs",
+      "key": "darwinbots-engine:test:advanced_mutation_costs",
+      "header": "Running tests\\advanced_mutation_costs.rs (target\\release\\deps\\advanced_mutation_costs-09fdfc0fa41cc905.exe)",
+      "harness_executable": "target\\release\\deps\\advanced_mutation_costs-09fdfc0fa41cc905.exe",
+      "header_line": 623,
+      "section_end_line": 630,
+      "summary": {
+        "line": 629,
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/advanced_mutation_costs.rs",
+        "sha256": "C75F42566871B7A833F836575AAEEE2555012FA70EA399478ECC98D63699F4D6"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "1B1602F8292128B995208E1D871B870E3BA33D919B43886E1F2CAA457FE09754",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "canonical_cycle_248",
+      "key": "darwinbots-engine:test:canonical_cycle_248",
+      "header": "Running tests\\canonical_cycle_248.rs (target\\release\\deps\\canonical_cycle_248-650ba62a7c41d570.exe)",
+      "harness_executable": "target\\release\\deps\\canonical_cycle_248-650ba62a7c41d570.exe",
+      "header_line": 631,
+      "section_end_line": 650,
+      "summary": {
+        "line": 649,
+        "status": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/canonical_cycle_248.rs",
+        "sha256": "92471505FB58B6E7231E30A84DABB4228BC93E0829B10F05142616E26D23B499"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "3191736DE82EE689A8E550CE10A7E0705C6C845069A1A741519BB82C04E67BC7",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "community_league_admission",
+      "key": "darwinbots-engine:test:community_league_admission",
+      "header": "Running tests\\community_league_admission.rs (target\\release\\deps\\community_league_admission-93be0ad716fa77a4.exe)",
+      "harness_executable": "target\\release\\deps\\community_league_admission-93be0ad716fa77a4.exe",
+      "header_line": 651,
+      "section_end_line": 660,
+      "summary": {
+        "line": 659,
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.03,
+        "text": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/community_league_admission.rs",
+        "sha256": "25719206ACAEE18044A707FA911606F6B1910F9305D38848FDA8086AA34E3D50"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "D8396F6904CD1AB4F4A79DA3A54E8A23BEFE8A63FB43CDD20BAC83811075AA56",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "contracts",
+      "key": "darwinbots-engine:test:contracts",
+      "header": "Running tests\\contracts.rs (target\\release\\deps\\contracts-179a2d3a76e729ad.exe)",
+      "harness_executable": "target\\release\\deps\\contracts-179a2d3a76e729ad.exe",
+      "header_line": 661,
+      "section_end_line": 697,
+      "summary": {
+        "line": 696,
+        "status": "ok",
+        "passed": 31,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 2,
+        "seconds": 0.12,
+        "text": "test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.12s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/contracts.rs",
+        "sha256": "E7053ADB06233C61D23776A8EA10781AF9764E5516860BD88D7221AAB532114F"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "157D84DEA4B2E1B902B2B12A153211D94CB1D0088D0C6B85164537DCB1C86A01",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "core_state_contracts",
+      "key": "darwinbots-engine:test:core_state_contracts",
+      "header": "Running tests\\core_state_contracts.rs (target\\release\\deps\\core_state_contracts-6bf5e5eb215ae5d4.exe)",
+      "harness_executable": "target\\release\\deps\\core_state_contracts-6bf5e5eb215ae5d4.exe",
+      "header_line": 698,
+      "section_end_line": 708,
+      "summary": {
+        "line": 707,
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/core_state_contracts.rs",
+        "sha256": "A0908BE4AAEDECEB5A6809519B7500CB8340E41EA523B6C3A0C6815C194ED1E2"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Calls exported FFI/command boundary",
+      "section_sha256": "094C2FB6388ADE5A634A572E9319C494FD3B0955B06C74E699E771858A06D430",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "corpses_collisions",
+      "key": "darwinbots-engine:test:corpses_collisions",
+      "header": "Running tests\\corpses_collisions.rs (target\\release\\deps\\corpses_collisions-66bd4fced172556a.exe)",
+      "harness_executable": "target\\release\\deps\\corpses_collisions-66bd4fced172556a.exe",
+      "header_line": 709,
+      "section_end_line": 721,
+      "summary": {
+        "line": 720,
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.21,
+        "text": "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/corpses_collisions.rs",
+        "sha256": "F50AB4D0730FFA1C8453CFC0860D6407CA9A016C5F41643012BDE25049C55E9D"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "6607CD5B78D351DCBA118B569E8675F754F196A0CAD7ADFDCDC55C2216C6A1D6",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db24832_clean_defaults",
+      "key": "darwinbots-engine:test:db24832_clean_defaults",
+      "header": "Running tests\\db24832_clean_defaults.rs (target\\release\\deps\\db24832_clean_defaults-acb0259715fbf94e.exe)",
+      "harness_executable": "target\\release\\deps\\db24832_clean_defaults-acb0259715fbf94e.exe",
+      "header_line": 722,
+      "section_end_line": 729,
+      "summary": {
+        "line": 728,
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db24832_clean_defaults.rs",
+        "sha256": "CF50CABCF87ED20DB66B35D2595AEAEC1CCAFBED714140DBEFBC948FA7EB05BC"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "F27B773507D362E572E1570C892C6BDC2E349E77C86493089BB34D0F743DDF70",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db24832_starter_movement",
+      "key": "darwinbots-engine:test:db24832_starter_movement",
+      "header": "Running tests\\db24832_starter_movement.rs (target\\release\\deps\\db24832_starter_movement-f888656b7ea57a99.exe)",
+      "harness_executable": "target\\release\\deps\\db24832_starter_movement-f888656b7ea57a99.exe",
+      "header_line": 730,
+      "section_end_line": 736,
+      "summary": {
+        "line": 735,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 1,
+        "seconds": 0,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db24832_starter_movement.rs",
+        "sha256": "5FA1B1844CD03F410CE66C8565DB03F23DF8F0D8A6F02D71AE72FF8ABC7A769B"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "77FD99CF1BF491243F8FDBAF3154D689D189701616C98856AB85D4842043E763",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db2_final_engine_world",
+      "key": "darwinbots-engine:test:db2_final_engine_world",
+      "header": "Running tests\\db2_final_engine_world.rs (target\\release\\deps\\db2_final_engine_world-461d89f488220f53.exe)",
+      "harness_executable": "target\\release\\deps\\db2_final_engine_world-461d89f488220f53.exe",
+      "header_line": 737,
+      "section_end_line": 746,
+      "summary": {
+        "line": 745,
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db2_final_engine_world.rs",
+        "sha256": "665C5FF8FAC30C45DB36F557DB5DC05BEB2F4DD5E79931BB3149F2074BF7E4C8"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "BF04CA7A4C7E6651428B9312453900C2F0BCCA1250A0E3330A208C4956AB68D0",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db2_mutation_248",
+      "key": "darwinbots-engine:test:db2_mutation_248",
+      "header": "Running tests\\db2_mutation_248.rs (target\\release\\deps\\db2_mutation_248-46accb0e62919ad8.exe)",
+      "harness_executable": "target\\release\\deps\\db2_mutation_248-46accb0e62919ad8.exe",
+      "header_line": 747,
+      "section_end_line": 770,
+      "summary": {
+        "line": 769,
+        "status": "ok",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db2_mutation_248.rs",
+        "sha256": "9E317DCF9CED2D4A13B79AF347E92272FB9CAF37381D0126A0F2AEF8DDB81DF5"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "7349B78161048771B4E8ABFA7DCCCACE9186EE9A30694DE06B4B2319BCE7ABC1",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db2_physics",
+      "key": "darwinbots-engine:test:db2_physics",
+      "header": "Running tests\\db2_physics.rs (target\\release\\deps\\db2_physics-ce758037a74f4117.exe)",
+      "harness_executable": "target\\release\\deps\\db2_physics-ce758037a74f4117.exe",
+      "header_line": 771,
+      "section_end_line": 798,
+      "summary": {
+        "line": 797,
+        "status": "ok",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db2_physics.rs",
+        "sha256": "CF849D6500C2AF9B15A3B8D96925748DB1A009316631929A330ED267C5C18A40"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "A48F717A565E819F1BEAE3B9893F1627946E45A3BBEC6078258BB8E537477D9B",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db2_projectiles",
+      "key": "darwinbots-engine:test:db2_projectiles",
+      "header": "Running tests\\db2_projectiles.rs (target\\release\\deps\\db2_projectiles-67673a8dd88d938d.exe)",
+      "harness_executable": "target\\release\\deps\\db2_projectiles-67673a8dd88d938d.exe",
+      "header_line": 799,
+      "section_end_line": 827,
+      "summary": {
+        "line": 826,
+        "status": "ok",
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db2_projectiles.rs",
+        "sha256": "275487A152ACA9BB6AA4C9B2DD61D52224E99ED5B6D8020E0A311777343604DD"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "A02E272853A384E69C5F1E3504055905497EFE89A3C6744ECA9B5185522AFB8A",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db2_starter_ecology",
+      "key": "darwinbots-engine:test:db2_starter_ecology",
+      "header": "Running tests\\db2_starter_ecology.rs (target\\release\\deps\\db2_starter_ecology-5e288a6d107e72d3.exe)",
+      "harness_executable": "target\\release\\deps\\db2_starter_ecology-5e288a6d107e72d3.exe",
+      "header_line": 828,
+      "section_end_line": 854,
+      "summary": {
+        "line": 853,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 1552.02,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1552.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db2_starter_ecology.rs",
+        "sha256": "343D0E80370B6535F98B89EC88300CFB07F29B733836037C37D65A8BE7EF8A46"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "6738D7C6DA17E2611D3F293C720F94A5BA253220A2A6D8F8EFF82E1A4831FE50",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db2_vegetation",
+      "key": "darwinbots-engine:test:db2_vegetation",
+      "header": "Running tests\\db2_vegetation.rs (target\\release\\deps\\db2_vegetation-b21a95ff2211a5e6.exe)",
+      "harness_executable": "target\\release\\deps\\db2_vegetation-b21a95ff2211a5e6.exe",
+      "header_line": 855,
+      "section_end_line": 879,
+      "summary": {
+        "line": 878,
+        "status": "ok",
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.03,
+        "text": "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db2_vegetation.rs",
+        "sha256": "9576DC99955FB186E110C8E8FC1E600C1C8315322F6AC87CCCD3C5ADA538BB80"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "28875EF5B185837CE553A8857317F43468C380B15D4D64348FBAB86361BA0B56",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "db2_vision",
+      "key": "darwinbots-engine:test:db2_vision",
+      "header": "Running tests\\db2_vision.rs (target\\release\\deps\\db2_vision-2b2321f6475d537f.exe)",
+      "harness_executable": "target\\release\\deps\\db2_vision-2b2321f6475d537f.exe",
+      "header_line": 880,
+      "section_end_line": 889,
+      "summary": {
+        "line": 888,
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/db2_vision.rs",
+        "sha256": "C2F1FB3735227953C039EF0F07566153C1CEE9556E862FC0D762AC86089D4B14"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "4AAB93FE741CBB84A53195A75CC861F293D449693011AC67FD76BA9DD417B863",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "dna_runtime_248",
+      "key": "darwinbots-engine:test:dna_runtime_248",
+      "header": "Running tests\\dna_runtime_248.rs (target\\release\\deps\\dna_runtime_248-b6816bc5b4e5c92d.exe)",
+      "harness_executable": "target\\release\\deps\\dna_runtime_248-b6816bc5b4e5c92d.exe",
+      "header_line": 890,
+      "section_end_line": 905,
+      "summary": {
+        "line": 904,
+        "status": "ok",
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/dna_runtime_248.rs",
+        "sha256": "84069C28C59E2EF9C53F197EBC9A99D9007EF06E87AF603A0D369C9B7ECABA1A"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "C55144DEA9F1BD3D7D81F85A5D9A05DD3B9B913EE00DE7FD7A5910C0E112689E",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "eco05_repopulation",
+      "key": "darwinbots-engine:test:eco05_repopulation",
+      "header": "Running tests\\eco05_repopulation.rs (target\\release\\deps\\eco05_repopulation-5045dda4070ffd93.exe)",
+      "harness_executable": "target\\release\\deps\\eco05_repopulation-5045dda4070ffd93.exe",
+      "header_line": 906,
+      "section_end_line": 912,
+      "summary": {
+        "line": 911,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/eco05_repopulation.rs",
+        "sha256": "56F01743A9930EEB3ABB744815A64D7ACB4EB6F19D108F3A35D314A7F50080A6"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "8DBB9E23EE0481930FEDF66333B344B2A83FF72FD43BEAE73CDBE8B7F6930A39",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "environment_world",
+      "key": "darwinbots-engine:test:environment_world",
+      "header": "Running tests\\environment_world.rs (target\\release\\deps\\environment_world-3854baf0f2ececf1.exe)",
+      "harness_executable": "target\\release\\deps\\environment_world-3854baf0f2ececf1.exe",
+      "header_line": 913,
+      "section_end_line": 931,
+      "summary": {
+        "line": 930,
+        "status": "ok",
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/environment_world.rs",
+        "sha256": "733A33BC7660E32701310040E5BAAC5B7D8307738257162D2AFC5D40363B7FC0"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "213F712B389543E7C0BCCD580F5B2953DECE70C5390496FEDBAF05BFBBCE8B9B",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "extinct_species",
+      "key": "darwinbots-engine:test:extinct_species",
+      "header": "Running tests\\extinct_species.rs (target\\release\\deps\\extinct_species-585aba2c31b9ffb2.exe)",
+      "harness_executable": "target\\release\\deps\\extinct_species-585aba2c31b9ffb2.exe",
+      "header_line": 932,
+      "section_end_line": 938,
+      "summary": {
+        "line": 937,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/extinct_species.rs",
+        "sha256": "B92DD6139BC3A83D5B8C4FEF67F641690D4BD4928858799945C49CA38826F663"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "3EC0EE30796DBDCCE0DD6C0FBC3B8CFD2A964B3EA60F85073288180F072BDAAA",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "final_state_persistence_248",
+      "key": "darwinbots-engine:test:final_state_persistence_248",
+      "header": "Running tests\\final_state_persistence_248.rs (target\\release\\deps\\final_state_persistence_248-35fbe0bce0b29740.exe)",
+      "harness_executable": "target\\release\\deps\\final_state_persistence_248-35fbe0bce0b29740.exe",
+      "header_line": 939,
+      "section_end_line": 948,
+      "summary": {
+        "line": 947,
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/final_state_persistence_248.rs",
+        "sha256": "E7B9DFFDEAA15DC9B9AA877994DF1BDE6FF1EEE86136DB9EA0516CD06B94D514"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "27396EA8E58BC5B2375D790C94877DBDA0F8B445BD381803CB11BD8237500C36",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "gpu_ffi",
+      "key": "darwinbots-engine:test:gpu_ffi",
+      "header": "Running tests\\gpu_ffi.rs (target\\release\\deps\\gpu_ffi-4c7d162f35e688aa.exe)",
+      "harness_executable": "target\\release\\deps\\gpu_ffi-4c7d162f35e688aa.exe",
+      "header_line": 949,
+      "section_end_line": 968,
+      "summary": {
+        "line": 967,
+        "status": "ok",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 14,
+        "seconds": 12.56,
+        "text": "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 12.56s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/gpu_ffi.rs",
+        "sha256": "B080F1916426D33594924F586EDE8567C88B9254C11E21A5DBED4695DF96F174"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Calls exported FFI/command boundary",
+      "section_sha256": "C7CC44885406F91120F90578F0A4ED4CE005030163A0B6FB2CDB47166D53FF2E",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "history_records",
+      "key": "darwinbots-engine:test:history_records",
+      "header": "Running tests\\history_records.rs (target\\release\\deps\\history_records-143daf93a80a442e.exe)",
+      "harness_executable": "target\\release\\deps\\history_records-143daf93a80a442e.exe",
+      "header_line": 969,
+      "section_end_line": 975,
+      "summary": {
+        "line": 974,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/history_records.rs",
+        "sha256": "35E68408A8C98758992183661151649E655D2F545A60EC5EB5E0C34A565FF79C"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "60A9F58FC0C0A199C406BA0865782C120A96F0BE23DF98A834E3912D283FF9C6",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "legacy_distribution",
+      "key": "darwinbots-engine:test:legacy_distribution",
+      "header": "Running tests\\legacy_distribution.rs (target\\release\\deps\\legacy_distribution-7bb136b759d1c7de.exe)",
+      "harness_executable": "target\\release\\deps\\legacy_distribution-7bb136b759d1c7de.exe",
+      "header_line": 976,
+      "section_end_line": 982,
+      "summary": {
+        "line": 981,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.06,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/legacy_distribution.rs",
+        "sha256": "7CE22B069624E561A8B2A4AC03D3B5F95B775C085476459CED4D3F2A16607BB3"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "6078625C5A99824A4148FDAA4CAF26C2995D971492E768EEBC8844103080F568",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "legacy_transport",
+      "key": "darwinbots-engine:test:legacy_transport",
+      "header": "Running tests\\legacy_transport.rs (target\\release\\deps\\legacy_transport-09aee2bbca8ac8a6.exe)",
+      "harness_executable": "target\\release\\deps\\legacy_transport-09aee2bbca8ac8a6.exe",
+      "header_line": 983,
+      "section_end_line": 994,
+      "summary": {
+        "line": 993,
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.31,
+        "text": "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/legacy_transport.rs",
+        "sha256": "40E2669DA580F5B616C8091F6B78F967A7EE8D91D7A1E5019BB8452A2A3036DC"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "B5126020E4DA114DBDB07C46E5E1DEB10C442180CE7B3F3309EB41CFC4171FF1",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "live_legacy_menu_settings",
+      "key": "darwinbots-engine:test:live_legacy_menu_settings",
+      "header": "Running tests\\live_legacy_menu_settings.rs (target\\release\\deps\\live_legacy_menu_settings-b490f410f04c8243.exe)",
+      "harness_executable": "target\\release\\deps\\live_legacy_menu_settings-b490f410f04c8243.exe",
+      "header_line": 995,
+      "section_end_line": 1002,
+      "summary": {
+        "line": 1001,
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/live_legacy_menu_settings.rs",
+        "sha256": "063F7695D721D006FBBB13E1F1263776F47237253DD0B511CC79E47BC280751D"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "E64E5EEC459EFE76BB0701016BBB2C2151998E3CC23712F93989AC3EC07C78C7",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "local_modes",
+      "key": "darwinbots-engine:test:local_modes",
+      "header": "Running tests\\local_modes.rs (target\\release\\deps\\local_modes-4c38d5ff313600fd.exe)",
+      "harness_executable": "target\\release\\deps\\local_modes-4c38d5ff313600fd.exe",
+      "header_line": 1003,
+      "section_end_line": 1011,
+      "summary": {
+        "line": 1010,
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/local_modes.rs",
+        "sha256": "D1BCE773AFE32E7618C6A6F40236BCB5AEDE651C1FF93EF9DA803D81E5FBCAC3"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "37FEAEC20790306F42C2A5E411F18A1272E62BD7EB9898779CCA546F1772E2C3",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "manual_tools",
+      "key": "darwinbots-engine:test:manual_tools",
+      "header": "Running tests\\manual_tools.rs (target\\release\\deps\\manual_tools-a429d3ceca6198a2.exe)",
+      "harness_executable": "target\\release\\deps\\manual_tools-a429d3ceca6198a2.exe",
+      "header_line": 1012,
+      "section_end_line": 1023,
+      "summary": {
+        "line": 1022,
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/manual_tools.rs",
+        "sha256": "EBDE58A9C7DA63F169699C0DA6401E961B0F7D2D05820E2888E903FC40CD77EC"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "224060E1A95CEA1EF98589EC445FD0DCF6CB96EB684D5DACCAC2799C3CB3E24C",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "mutation_advanced_248",
+      "key": "darwinbots-engine:test:mutation_advanced_248",
+      "header": "Running tests\\mutation_advanced_248.rs (target\\release\\deps\\mutation_advanced_248-d4b00b11f49281e8.exe)",
+      "harness_executable": "target\\release\\deps\\mutation_advanced_248-d4b00b11f49281e8.exe",
+      "header_line": 1024,
+      "section_end_line": 1036,
+      "summary": {
+        "line": 1035,
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.23,
+        "text": "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/mutation_advanced_248.rs",
+        "sha256": "D2F9FAEFF5645CDB1F0B291EABDB98CD6FB8CB368397E176C5BDF387F24EE804"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "4F8F12DCF4761A7AC39338071436341B839E5CF098AE78A76FEA59A0A7B28293",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "mutation_lifecycle",
+      "key": "darwinbots-engine:test:mutation_lifecycle",
+      "header": "Running tests\\mutation_lifecycle.rs (target\\release\\deps\\mutation_lifecycle-94f7448b1761426e.exe)",
+      "harness_executable": "target\\release\\deps\\mutation_lifecycle-94f7448b1761426e.exe",
+      "header_line": 1037,
+      "section_end_line": 1050,
+      "summary": {
+        "line": 1049,
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.03,
+        "text": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/mutation_lifecycle.rs",
+        "sha256": "1064FA50AEBD1355A9ACFF6244DE5FA0455E007CA8A81D03DBA92F4BC4C735B3"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "44BC36C58E9B8404EB3183182B4A78CA855E67B5653FECBAA1EA125707A139C7",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "native_continuation_qualification",
+      "key": "darwinbots-engine:test:native_continuation_qualification",
+      "header": "Running tests\\native_continuation_qualification.rs (target\\release\\deps\\native_continuation_qualification-9ff3b2220595958d.exe)",
+      "harness_executable": "target\\release\\deps\\native_continuation_qualification-9ff3b2220595958d.exe",
+      "header_line": 1051,
+      "section_end_line": 1062,
+      "summary": {
+        "line": 1061,
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 1,
+        "seconds": 262,
+        "text": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 262.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/native_continuation_qualification.rs",
+        "sha256": "452548B699D0B9564B8FCCBA38CD3486EEE1A6D179537622B44941827D39CD9C"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "DAEB754182ACFF3C047C61E469737382118A5F78936A5B2291C84D010720F7E9",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "native_mutation_continuation_qualification",
+      "key": "darwinbots-engine:test:native_mutation_continuation_qualification",
+      "header": "Running tests\\native_mutation_continuation_qualification.rs (target\\release\\deps\\native_mutation_continuation_qualification-29af2bf317ca2797.exe)",
+      "harness_executable": "target\\release\\deps\\native_mutation_continuation_qualification-29af2bf317ca2797.exe",
+      "header_line": 1063,
+      "section_end_line": 1076,
+      "summary": {
+        "line": 1075,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 83.14,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 83.14s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/native_mutation_continuation_qualification.rs",
+        "sha256": "5CBD08181C647A48D607F7DC278A483ED309A097FD2A4081E04E71A7388D59C1"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "FD1B8BEE8C8007574C45583BBA9C267A0D19AEA9DED699425F07B5660CC01806",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "native_random_lifecycle_248",
+      "key": "darwinbots-engine:test:native_random_lifecycle_248",
+      "header": "Running tests\\native_random_lifecycle_248.rs (target\\release\\deps\\native_random_lifecycle_248-7de759149ed8af05.exe)",
+      "harness_executable": "target\\release\\deps\\native_random_lifecycle_248-7de759149ed8af05.exe",
+      "header_line": 1077,
+      "section_end_line": 1095,
+      "summary": {
+        "line": 1094,
+        "status": "ok",
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.16,
+        "text": "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/native_random_lifecycle_248.rs",
+        "sha256": "57E05E3010070568FB15EAB12340A23F01F4A03621728361B2E979FE5367BAC2"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Calls exported FFI/command boundary",
+      "section_sha256": "4367167EED4808C5A447584E1C3478F04290DFB717F2E8FC4B8C61B0619CC245",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "native_reference_senses_248",
+      "key": "darwinbots-engine:test:native_reference_senses_248",
+      "header": "Running tests\\native_reference_senses_248.rs (target\\release\\deps\\native_reference_senses_248-e98e55079559ad45.exe)",
+      "harness_executable": "target\\release\\deps\\native_reference_senses_248-e98e55079559ad45.exe",
+      "header_line": 1096,
+      "section_end_line": 1105,
+      "summary": {
+        "line": 1104,
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/native_reference_senses_248.rs",
+        "sha256": "8C292DA387DAF999A9A20EB8611D0D346581AE23129E8176604EECCCA3677C42"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "943DF81B1BF6F2F870DF7C044C066BFBDDA079C25F5E3A37A730EE6A5590DC1F",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "native_resource_precision",
+      "key": "darwinbots-engine:test:native_resource_precision",
+      "header": "Running tests\\native_resource_precision.rs (target\\release\\deps\\native_resource_precision-d406bdccc810eb07.exe)",
+      "harness_executable": "target\\release\\deps\\native_resource_precision-d406bdccc810eb07.exe",
+      "header_line": 1106,
+      "section_end_line": 1122,
+      "summary": {
+        "line": 1121,
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.03,
+        "text": "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/native_resource_precision.rs",
+        "sha256": "EDD66E866822F7FCA30AA667665474A62BFAF541B3C814EC03DBA844527FBB2A"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "CD46D992F3714C42DAF20CB6933790F406A532EC423C37DE3772D7EEA69D93D4",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "occurrence_census_248",
+      "key": "darwinbots-engine:test:occurrence_census_248",
+      "header": "Running tests\\occurrence_census_248.rs (target\\release\\deps\\occurrence_census_248-19d42b773440ac55.exe)",
+      "harness_executable": "target\\release\\deps\\occurrence_census_248-19d42b773440ac55.exe",
+      "header_line": 1123,
+      "section_end_line": 1133,
+      "summary": {
+        "line": 1132,
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 4.67,
+        "text": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.67s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/occurrence_census_248.rs",
+        "sha256": "F40B431B8B5172076977FAA985E6298EBB7E70D297CC563A00617B820667C97B"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "26905AED632379BF9E08264CE10EBDCBA6AC7A0367B58B3D2CFA8A97E02CD2BB",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "parity_completion",
+      "key": "darwinbots-engine:test:parity_completion",
+      "header": "Running tests\\parity_completion.rs (target\\release\\deps\\parity_completion-900346f89625bb36.exe)",
+      "harness_executable": "target\\release\\deps\\parity_completion-900346f89625bb36.exe",
+      "header_line": 1134,
+      "section_end_line": 1150,
+      "summary": {
+        "line": 1149,
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.06,
+        "text": "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/parity_completion.rs",
+        "sha256": "9F13B5A526C10861AAF2FE8486E76BA773125FDB4BE1ECBC59CC90B7DC756701"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "9C5321458F5B3B8C31B9E35161D01768851C42290B5FEA94086887BD761FD343",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "reproduction_heredity_248",
+      "key": "darwinbots-engine:test:reproduction_heredity_248",
+      "header": "Running tests\\reproduction_heredity_248.rs (target\\release\\deps\\reproduction_heredity_248-66c2c382b759ceec.exe)",
+      "harness_executable": "target\\release\\deps\\reproduction_heredity_248-66c2c382b759ceec.exe",
+      "header_line": 1151,
+      "section_end_line": 1186,
+      "summary": {
+        "line": 1185,
+        "status": "ok",
+        "passed": 30,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.17,
+        "text": "test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/reproduction_heredity_248.rs",
+        "sha256": "D5B8086BF9A38255B5222DBBD1C347D9ECA5FFBABAC66C16A6F04AD34EB9146B"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "E59C3949F17FDD87B56F24B62065EB7488C3C11367713306396AC52D8E0207C1",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "robot_state_248",
+      "key": "darwinbots-engine:test:robot_state_248",
+      "header": "Running tests\\robot_state_248.rs (target\\release\\deps\\robot_state_248-09c3c6f377e9f9c0.exe)",
+      "harness_executable": "target\\release\\deps\\robot_state_248-09c3c6f377e9f9c0.exe",
+      "header_line": 1187,
+      "section_end_line": 1196,
+      "summary": {
+        "line": 1195,
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/robot_state_248.rs",
+        "sha256": "7DE7AB98D7B78DCE76226F9456904D91C1C5A2F606EF83881425AFD9202EBA8F"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "DB4BE7D60D5CF78FBD493DFB0DAE53034D20B2E6FE3704CE690769A926BE1CBC",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "robot_tools",
+      "key": "darwinbots-engine:test:robot_tools",
+      "header": "Running tests\\robot_tools.rs (target\\release\\deps\\robot_tools-d87531d73e3fa458.exe)",
+      "harness_executable": "target\\release\\deps\\robot_tools-d87531d73e3fa458.exe",
+      "header_line": 1197,
+      "section_end_line": 1207,
+      "summary": {
+        "line": 1206,
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 1.66,
+        "text": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.66s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/robot_tools.rs",
+        "sha256": "4D4143CE687A6EC1F3343DB37F41FD049D64BA3485BA0E6A88AB23C5663DAEF5"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Calls exported FFI/command boundary",
+      "section_sha256": "A6F0F355FD2A110F31659804E543AEA534207639778E1FB7B526F8DF27DF7465",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "scheduler_housekeeping",
+      "key": "darwinbots-engine:test:scheduler_housekeeping",
+      "header": "Running tests\\scheduler_housekeeping.rs (target\\release\\deps\\scheduler_housekeeping-34a83c41b6c94c9d.exe)",
+      "harness_executable": "target\\release\\deps\\scheduler_housekeeping-34a83c41b6c94c9d.exe",
+      "header_line": 1208,
+      "section_end_line": 1216,
+      "summary": {
+        "line": 1215,
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/scheduler_housekeeping.rs",
+        "sha256": "6E48F2115CD78B3D871307E35819FB2600288015A6B21B90690D3F139C46AF54"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "89176450193E9E0A9F89FA647B9C04C09629E09B715B53FA36CCDFDC1720CC02",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "scheduler_shock",
+      "key": "darwinbots-engine:test:scheduler_shock",
+      "header": "Running tests\\scheduler_shock.rs (target\\release\\deps\\scheduler_shock-02bcae018107ad24.exe)",
+      "harness_executable": "target\\release\\deps\\scheduler_shock-02bcae018107ad24.exe",
+      "header_line": 1217,
+      "section_end_line": 1223,
+      "summary": {
+        "line": 1222,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/scheduler_shock.rs",
+        "sha256": "025DF8AB93A04D761BE293B2CE96B5BC4E174983A360838279CB6FCDAA20F06D"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "F154C4467CF798A8325140214C19DCB586B565210C865804E76B7FB0611F7F7C",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "sensing_compatibility",
+      "key": "darwinbots-engine:test:sensing_compatibility",
+      "header": "Running tests\\sensing_compatibility.rs (target\\release\\deps\\sensing_compatibility-7a9674124e31a7ee.exe)",
+      "harness_executable": "target\\release\\deps\\sensing_compatibility-7a9674124e31a7ee.exe",
+      "header_line": 1224,
+      "section_end_line": 1231,
+      "summary": {
+        "line": 1230,
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/sensing_compatibility.rs",
+        "sha256": "A644FA45F2E94DFCB9174B8E1266B2BC26F6478ACA8AB5476BEBAF6E6484A95C"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "1874078B77F9D4E64166F1FC14D5EFBA5C954899A91B36825BA3058F14657527",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "shot_state",
+      "key": "darwinbots-engine:test:shot_state",
+      "header": "Running tests\\shot_state.rs (target\\release\\deps\\shot_state-1724e844b71cb858.exe)",
+      "harness_executable": "target\\release\\deps\\shot_state-1724e844b71cb858.exe",
+      "header_line": 1232,
+      "section_end_line": 1238,
+      "summary": {
+        "line": 1237,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/shot_state.rs",
+        "sha256": "C159CB2C26102DD15BA5D8B695D0A4F3B113A5A880E0AB1BC0432E581BCB31D2"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "F0BCE9839A47400D556850FA36703BE4457DC4AEF8B1FBC2739CA392380204D5",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "spawn_placement",
+      "key": "darwinbots-engine:test:spawn_placement",
+      "header": "Running tests\\spawn_placement.rs (target\\release\\deps\\spawn_placement-6758035783c655f8.exe)",
+      "harness_executable": "target\\release\\deps\\spawn_placement-6758035783c655f8.exe",
+      "header_line": 1239,
+      "section_end_line": 1247,
+      "summary": {
+        "line": 1246,
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/spawn_placement.rs",
+        "sha256": "6125376E1DC90C567613063EF5E44416871886E950EB3E0AC40DD529A1E06217"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "C69ED2C3169D680BF2E5F287F095218254D8D441D14B50F8FE57A561B1BCB781",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "species_ecology",
+      "key": "darwinbots-engine:test:species_ecology",
+      "header": "Running tests\\species_ecology.rs (target\\release\\deps\\species_ecology-f257e733aa9efc30.exe)",
+      "harness_executable": "target\\release\\deps\\species_ecology-f257e733aa9efc30.exe",
+      "header_line": 1248,
+      "section_end_line": 1294,
+      "summary": {
+        "line": 1293,
+        "status": "ok",
+        "passed": 41,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.08,
+        "text": "test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/species_ecology.rs",
+        "sha256": "8879A93020058E60912EAB37AC19865E9697FC2298250DA6DC863D590BEC6E62"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "2AFAF55A7FFD6EAB6883E8F54351F09FE7F69B21097811ADC3DEC53ED7917245",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "starter_ecology",
+      "key": "darwinbots-engine:test:starter_ecology",
+      "header": "Running tests\\starter_ecology.rs (target\\release\\deps\\starter_ecology-4f04f24d61d6a506.exe)",
+      "harness_executable": "target\\release\\deps\\starter_ecology-4f04f24d61d6a506.exe",
+      "header_line": 1295,
+      "section_end_line": 1311,
+      "summary": {
+        "line": 1310,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 626.22,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 626.22s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/starter_ecology.rs",
+        "sha256": "B8B3653F993B82BFDCFF110D62D7FB7818931629A84B656805A6353EF69C6E65"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "93DEFA93CAF29BB024BCA43AE8F29DD1CAF9CA87314A08FB6B9C57DDD8BDDC6A",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "sysvar_lifecycle_248",
+      "key": "darwinbots-engine:test:sysvar_lifecycle_248",
+      "header": "Running tests\\sysvar_lifecycle_248.rs (target\\release\\deps\\sysvar_lifecycle_248-a6463d22e029177f.exe)",
+      "harness_executable": "target\\release\\deps\\sysvar_lifecycle_248-a6463d22e029177f.exe",
+      "header_line": 1312,
+      "section_end_line": 1342,
+      "summary": {
+        "line": 1341,
+        "status": "ok",
+        "passed": 25,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/sysvar_lifecycle_248.rs",
+        "sha256": "6691DE5CC0D41E1E88010A49B4B83BC02930E014BD24B55F09449D93C1BA8386"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "4D9209F20A0D613D99A8DAD29A2D1FC862B6A513A1EF137AE4F62A36931D11A4",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "ties_multibot",
+      "key": "darwinbots-engine:test:ties_multibot",
+      "header": "Running tests\\ties_multibot.rs (target\\release\\deps\\ties_multibot-88c93c24b9c68278.exe)",
+      "harness_executable": "target\\release\\deps\\ties_multibot-88c93c24b9c68278.exe",
+      "header_line": 1343,
+      "section_end_line": 1369,
+      "summary": {
+        "line": 1368,
+        "status": "ok",
+        "passed": 21,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.17,
+        "text": "test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/ties_multibot.rs",
+        "sha256": "450D75E0A51B7CB382442F202BFEC63A9CD5BC650EFFE3439D9C84B81594B54B"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "05B21661757460F086F8D29FE9BD7FC1969705211497CA27B737BBBC7C7ED29A",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "toroidal_world",
+      "key": "darwinbots-engine:test:toroidal_world",
+      "header": "Running tests\\toroidal_world.rs (target\\release\\deps\\toroidal_world-64814961e5b6b04a.exe)",
+      "harness_executable": "target\\release\\deps\\toroidal_world-64814961e5b6b04a.exe",
+      "header_line": 1370,
+      "section_end_line": 1382,
+      "summary": {
+        "line": 1381,
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/toroidal_world.rs",
+        "sha256": "49C24198AD37B669A53D1E08DBB8104D0778007D8F48101D3CFD5BD87C2BF5F4"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "1AA71A81E2145C194928D70904667A76D4C1EEF662141D151225146B2D890751",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "touch_taste_248",
+      "key": "darwinbots-engine:test:touch_taste_248",
+      "header": "Running tests\\touch_taste_248.rs (target\\release\\deps\\touch_taste_248-b519518bac9ec43d.exe)",
+      "harness_executable": "target\\release\\deps\\touch_taste_248-b519518bac9ec43d.exe",
+      "header_line": 1383,
+      "section_end_line": 1396,
+      "summary": {
+        "line": 1395,
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/touch_taste_248.rs",
+        "sha256": "228442951DC2BECD2584071FC9A053C9E95E1BBE81D0175413404A9E1B666A5C"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "242D65D0637178E34BE93064A1DDA6B84243BAB6B510F0EA5B0CB26CB55E3016",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "visual_phenotypes",
+      "key": "darwinbots-engine:test:visual_phenotypes",
+      "header": "Running tests\\visual_phenotypes.rs (target\\release\\deps\\visual_phenotypes-079c0d150cbd6f2c.exe)",
+      "harness_executable": "target\\release\\deps\\visual_phenotypes-079c0d150cbd6f2c.exe",
+      "header_line": 1397,
+      "section_end_line": 1410,
+      "summary": {
+        "line": 1409,
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/visual_phenotypes.rs",
+        "sha256": "2E326A1F19317100B431D080117BF6E9CD847E2716A1C8391B4C45E45DC2163F"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "82706E1CC1739E033E0DD108B0FD4BFB964212FD42F323F957227EC945AE710C",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "vm",
+      "key": "darwinbots-engine:test:vm",
+      "header": "Running tests\\vm.rs (target\\release\\deps\\vm-1b6c01cf0a4bd8e1.exe)",
+      "harness_executable": "target\\release\\deps\\vm-1b6c01cf0a4bd8e1.exe",
+      "header_line": 1411,
+      "section_end_line": 1424,
+      "summary": {
+        "line": 1423,
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/vm.rs",
+        "sha256": "AE748B64073FD994F3FE55EB9E65E9A1F9C2A29E56AF40BF5AB636EA5D56251A"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "64FAF9C4ACAF156B5766D1D647D1A45FAC796C5006CBDBF4CEDE0DC51A022AE2",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "vm_costs_telemetry",
+      "key": "darwinbots-engine:test:vm_costs_telemetry",
+      "header": "Running tests\\vm_costs_telemetry.rs (target\\release\\deps\\vm_costs_telemetry-35be8fcf35537edb.exe)",
+      "harness_executable": "target\\release\\deps\\vm_costs_telemetry-35be8fcf35537edb.exe",
+      "header_line": 1425,
+      "section_end_line": 1439,
+      "summary": {
+        "line": 1438,
+        "status": "ok",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.01,
+        "text": "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/vm_costs_telemetry.rs",
+        "sha256": "458EB14B99493D48C9B716433EB0B60481F3EE8D3A3A928ACF181914C374238F"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "1B1AD4F876C8569029CC06DFE5C9AA5EC7D91B8568776A739BF2A62779434493",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "vm_implicit_conditions",
+      "key": "darwinbots-engine:test:vm_implicit_conditions",
+      "header": "Running tests\\vm_implicit_conditions.rs (target\\release\\deps\\vm_implicit_conditions-992cbe6a6064bda8.exe)",
+      "harness_executable": "target\\release\\deps\\vm_implicit_conditions-992cbe6a6064bda8.exe",
+      "header_line": 1440,
+      "section_end_line": 1447,
+      "summary": {
+        "line": 1446,
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/vm_implicit_conditions.rs",
+        "sha256": "4D53870F27B3AC1159E440025FCAD8F21A10992879FF56AB13DF62C22C595D04"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "36739A5C6D4D8F1B4E89F5E38EE8CDC0BCA0C416D0BA3CCA4F706B5B0550DE0C",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "w4_evolution_gpu",
+      "key": "darwinbots-engine:test:w4_evolution_gpu",
+      "header": "Running tests\\w4_evolution_gpu.rs (target\\release\\deps\\w4_evolution_gpu-3e196d79f9dd6aa4.exe)",
+      "harness_executable": "target\\release\\deps\\w4_evolution_gpu-3e196d79f9dd6aa4.exe",
+      "header_line": 1448,
+      "section_end_line": 1455,
+      "summary": {
+        "line": 1454,
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 1,
+        "seconds": 0,
+        "text": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/w4_evolution_gpu.rs",
+        "sha256": "EA19870DCE03C09DB68CF00A8B7A6BF7499AE6EA5EFF0FE180559EBCE6DD270F"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "662199D853CB8E841896E500C7C70D75AAFE3771556ADDE81C5D325ABE206B79",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "world_systems",
+      "key": "darwinbots-engine:test:world_systems",
+      "header": "Running tests\\world_systems.rs (target\\release\\deps\\world_systems-3482d82d394d1951.exe)",
+      "harness_executable": "target\\release\\deps\\world_systems-3482d82d394d1951.exe",
+      "header_line": 1456,
+      "section_end_line": 1473,
+      "summary": {
+        "line": 1472,
+        "status": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0.02,
+        "text": "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/world_systems.rs",
+        "sha256": "82264E4D8C8668DFA2C746121577241ECC94BD2D3F351DC01112C2C6117CCBFD"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "154F539861FF06C8E05541E5F4D21BD96C3900C8DF7143CCC1DD471F490206B5",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "test",
+      "name": "zerobot_progression",
+      "key": "darwinbots-engine:test:zerobot_progression",
+      "header": "Running tests\\zerobot_progression.rs (target\\release\\deps\\zerobot_progression-cafef9c9e3e52765.exe)",
+      "harness_executable": "target\\release\\deps\\zerobot_progression-cafef9c9e3e52765.exe",
+      "header_line": 1474,
+      "section_end_line": 1480,
+      "summary": {
+        "line": 1479,
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/tests/zerobot_progression.rs",
+        "sha256": "630EA7D54AC958BD3E552BF25A19D99141EB226CA731DABA0E62D4DB5C73F2F5"
+      },
+      "proposed49_decision": "conditional_retain_fresh48",
+      "reachability": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+      "section_sha256": "819FB18D1E4F2DC1141EA6EB0AEF2608C45DC221F59068E7BF338A71B3988C35",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-cli",
+      "type": "doc",
+      "name": "darwinbots-cli",
+      "key": "darwinbots-cli:doc:darwinbots-cli",
+      "header": "Doc-tests darwinbots_cli",
+      "harness_executable": null,
+      "header_line": 1481,
+      "section_end_line": 1486,
+      "summary": {
+        "line": 1485,
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/cli/src/lib.rs",
+        "sha256": "1DF70C2D34D671763CB786781F973ECC509DE3873AE6383EDA44F03D6053B02B"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Cheap zero-doctest bookkeeping; no need to project old documentation result",
+      "section_sha256": "5ED87F8CF8C3770BB52DC041DCD9532F852D890264F76098C536767929914671",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    },
+    {
+      "package": "darwinbots-engine",
+      "type": "doc",
+      "name": "darwinbots-engine",
+      "key": "darwinbots-engine:doc:darwinbots-engine",
+      "header": "Doc-tests darwinbots_engine",
+      "harness_executable": null,
+      "header_line": 1487,
+      "section_end_line": 1492,
+      "summary": {
+        "line": 1491,
+        "status": "ok",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "seconds": 0,
+        "text": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      "failure_names": [],
+      "source": {
+        "file": "modern/engine/src/lib.rs",
+        "sha256": "5D8C0D0151E087C09BC12CBABB27714000529BCB7A2C7CF3DE016E3501A2BDAC"
+      },
+      "proposed49_decision": "rerun49",
+      "reachability": "Cheap zero-doctest bookkeeping; no need to project old documentation result",
+      "section_sha256": "32647BE4AA4BE03083B3396500FF92FF40495CA9CFEA30EA3A406F2EE84B9D94",
+      "section_hash_encoding": "UTF8 lines joined with LF; header inclusive; ends immediately before next header or cargo final error"
+    }
+  ],
+  "proposed49_projection": {
+    "status": "Conditional recommendation, not authorized execution or achieved qualification",
+    "proposal": "output/pass49-qualification-projection-proposal.json",
+    "proposal_sha256": "E519ABD798F48915007C292602272D4C122F1C0598FDE089AE2702B99E294BD3",
+    "conditionally_retainable_fresh48_successes": {
+      "targets": 56,
+      "passed": 440,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 5,
+      "all56_have_completed_PASS_summary": true,
+      "target_keys": [
+        "darwinbots-cli:bin:darwinbots-cli",
+        "darwinbots-cli:test:bundled_bot_corpus",
+        "darwinbots-cli:test:db245_probes",
+        "darwinbots-engine:test:advanced_mutation_costs",
+        "darwinbots-engine:test:canonical_cycle_248",
+        "darwinbots-engine:test:community_league_admission",
+        "darwinbots-engine:test:contracts",
+        "darwinbots-engine:test:corpses_collisions",
+        "darwinbots-engine:test:db24832_clean_defaults",
+        "darwinbots-engine:test:db24832_starter_movement",
+        "darwinbots-engine:test:db2_final_engine_world",
+        "darwinbots-engine:test:db2_mutation_248",
+        "darwinbots-engine:test:db2_physics",
+        "darwinbots-engine:test:db2_projectiles",
+        "darwinbots-engine:test:db2_starter_ecology",
+        "darwinbots-engine:test:db2_vegetation",
+        "darwinbots-engine:test:db2_vision",
+        "darwinbots-engine:test:dna_runtime_248",
+        "darwinbots-engine:test:eco05_repopulation",
+        "darwinbots-engine:test:environment_world",
+        "darwinbots-engine:test:extinct_species",
+        "darwinbots-engine:test:final_state_persistence_248",
+        "darwinbots-engine:test:history_records",
+        "darwinbots-engine:test:legacy_distribution",
+        "darwinbots-engine:test:legacy_transport",
+        "darwinbots-engine:test:live_legacy_menu_settings",
+        "darwinbots-engine:test:local_modes",
+        "darwinbots-engine:test:manual_tools",
+        "darwinbots-engine:test:mutation_advanced_248",
+        "darwinbots-engine:test:mutation_lifecycle",
+        "darwinbots-engine:test:native_continuation_qualification",
+        "darwinbots-engine:test:native_mutation_continuation_qualification",
+        "darwinbots-engine:test:native_reference_senses_248",
+        "darwinbots-engine:test:native_resource_precision",
+        "darwinbots-engine:test:occurrence_census_248",
+        "darwinbots-engine:test:parity_completion",
+        "darwinbots-engine:test:reproduction_heredity_248",
+        "darwinbots-engine:test:robot_state_248",
+        "darwinbots-engine:test:scheduler_housekeeping",
+        "darwinbots-engine:test:scheduler_shock",
+        "darwinbots-engine:test:sensing_compatibility",
+        "darwinbots-engine:test:shot_state",
+        "darwinbots-engine:test:spawn_placement",
+        "darwinbots-engine:test:species_ecology",
+        "darwinbots-engine:test:starter_ecology",
+        "darwinbots-engine:test:sysvar_lifecycle_248",
+        "darwinbots-engine:test:ties_multibot",
+        "darwinbots-engine:test:toroidal_world",
+        "darwinbots-engine:test:touch_taste_248",
+        "darwinbots-engine:test:visual_phenotypes",
+        "darwinbots-engine:test:vm",
+        "darwinbots-engine:test:vm_costs_telemetry",
+        "darwinbots-engine:test:vm_implicit_conditions",
+        "darwinbots-engine:test:w4_evolution_gpu",
+        "darwinbots-engine:test:world_systems",
+        "darwinbots-engine:test:zerobot_progression"
+      ],
+      "conditions": [
+        "Wait for ALL48 normal outcomes, final source/PNG guards and actual recovery worker exit before49 source release.",
+        "Final49 may change only scoped6 files; only2 Rust production dispatch expressions and C# writer lifecycle.",
+        "Retain only these exact48 per-target receipts with unchanged212-file closure, target source hashes, dependency options and documented no-FFI reachability.",
+        "Preserve baseline48 provenance; never label these56 as fresh49 reruns.",
+        "Filtered gpu/switch tests are not physical GPU qualification."
+      ]
+    },
+    "must_rerun49": {
+      "targets": 10,
+      "passed": 457,
+      "failed": 3,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 22,
+      "counts_are_existing48_results_not49_predictions": true,
+      "target_keys": [
+        "darwinbots-cli:lib:darwinbots-cli",
+        "darwinbots-cli:test:commands",
+        "darwinbots-cli:test:native_comparison",
+        "darwinbots-engine:lib:darwinbots-engine",
+        "darwinbots-engine:test:core_state_contracts",
+        "darwinbots-engine:test:gpu_ffi",
+        "darwinbots-engine:test:native_random_lifecycle_248",
+        "darwinbots-engine:test:robot_tools",
+        "darwinbots-cli:doc:darwinbots-cli",
+        "darwinbots-engine:doc:darwinbots-engine"
+      ],
+      "reason": "Affected Rust engine/CLI units,4 FFI integrations,2 cheap CLI boundary integrations and2 docs0 targets; new49 test counts remain unknown."
+    }
+  },
+  "original48runner": {
+    "status": "stopped_after_completed_Rust_before_Desktop",
+    "state": {
+      "status": "stopped",
+      "step": "qualification",
+      "pid": 45284,
+      "utc": "2026-10-16T15:56:07.3413565Z",
+      "source_parent": "dbffdc58787f369e7490461836df7ef677c01e8f",
+      "details": {
+        "error": "Retained qualification input changed: target/release/darwinbots-cli.exe"
+      }
+    },
+    "completed_steps": [
+      {
+        "step": "format-check",
+        "exit_code": 0,
+        "seconds": 3.7478933,
+        "log": "format-check.log"
+      },
+      {
+        "step": "strict-clippy",
+        "exit_code": 101,
+        "seconds": 35.499351,
+        "log": "strict-clippy.log"
+      },
+      {
+        "step": "cpu-workspace",
+        "exit_code": 101,
+        "seconds": 4706.2926941,
+        "log": "cpu-workspace.log"
+      }
+    ],
+    "specific_guard_failure": {
+      "retained_files": 109,
+      "matching": 108,
+      "mismatches": [
+        {
+          "file": "target/release/darwinbots-cli.exe",
+          "expected": "0564DE163159269571DAC392DB4966E44A6589E08103E6E407AA23E9635040CA",
+          "actual": "1857F4641F924FB78C378F0A00AD6C9E13EAAAF13D842342751CF41E8DFD9A54"
+        }
+      ],
+      "scope": "Cargo test rebuilt CLI artifact. Source76 pins remain exact. This single artifact mismatch stopped original runner before Desktop; it does not erase completed per-target Rust results or prove rest of48."
+    }
+  },
+  "all48_normal_outcomes_pending": true,
+  "desktop_recovery": {
+    "observed_state": {
+      "status": "running",
+      "step": "recovery-desktop-test-build",
+      "pid": 33584,
+      "utc": "2026-10-16T15:57:58.5860005Z",
+      "source_parent": "dbffdc58787f369e7490461836df7ef677c01e8f",
+      "details": {
+        "log": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass48\\recovery-desktop-test-build.log"
+      }
+    },
+    "outcomes_pending": true,
+    "source_must_remain_frozen": true,
+    "monitoring_owned_by_root": true
+  },
+  "qualification_claims": {
+    "fresh48_Rust_complete": true,
+    "fresh48_Rust_passed": false,
+    "all48_normal_outcomes_complete": false,
+    "whole48_qualified": false,
+    "source49_released": false,
+    "new49_qualification": false,
+    "original_runtime_trajectory_proof": false
+  },
+  "activity": {
+    "product_source_edits": false,
+    "formatting": false,
+    "builds": false,
+    "tests": false,
+    "Git": false,
+    "UI_or_apps": false,
+    "only_output_written": "output/pass48-completed-rust-targets.json"
+  }
+}

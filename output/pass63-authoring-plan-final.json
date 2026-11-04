@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "all63_code_and_tests_authored_peer_reviewed_unapplied",
+  "authored_utc": "2026-10-17T14:00:04.304Z",
+  "base_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "target_count": 8,
+  "existing_targets": 7,
+  "new_targets": 1,
+  "files": [
+    {
+      "target": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "candidate": "output/pass63-drafts/report/candidate/docs/parity/db24832-parity-report-2026-10-14.html",
+      "base_sha256": "D4DCC893E051190CE9B6081BBE5F87AF336BF33C5E7573D4B4C2D2D42A0D05C9",
+      "candidate_sha256": "EB18EE6A764A7661A5355E29E2E05DF0958BB53CE7AC933B2B42CE4FCA5FA1F2",
+      "new_file": false,
+      "metadata": "output/pass63-drafts/report/metadata.json",
+      "backup": "output/pass63-preapply-backup/docs/parity/db24832-parity-report-2026-10-14.html"
+    },
+    {
+      "target": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "candidate": "output/pass63-drafts/report/candidate/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "base_sha256": "4472323A9DB4D048BFB2B8AD7C5F4A64D3BA1E8507BA623F6746A1B1E53E0B29",
+      "candidate_sha256": "799437293CAE6B281C61FE58BE70E3D8B5D4E0515F6D9F2EEDBC974CD34BDA33",
+      "new_file": false,
+      "metadata": "output/pass63-drafts/report/metadata.json",
+      "backup": "output/pass63-preapply-backup/docs/parity/evidence/continuation-handoff-2026-10-13.md"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "candidate": "output/pass63-drafts/managed-readiness/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "base_sha256": "8A558C6E8CD35CC77DCB9EEB18E7D88CEE62C9333B29AB9F9ED3F9CC8A4CDB9A",
+      "candidate_sha256": "7547532BE5530DBB62A78DE27428B6937209768CC8A2F63FF0F101482F15C687",
+      "new_file": false,
+      "metadata": "output/pass63-drafts/managed-readiness/metadata.json",
+      "backup": "output/pass63-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs"
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "candidate": "output/pass63-drafts/managed-readiness/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "base_sha256": "B9FD23B5202315A5948C2875625803707B158AB126D8D9707BDDA1735042E0A4",
+      "candidate_sha256": "64BC2084001A6FC68C8A8347073A2AF9748A70AA6F81C4E7D4132443D30C1FD7",
+      "new_file": false,
+      "metadata": "output/pass63-drafts/managed-readiness/metadata.json",
+      "backup": "output/pass63-preapply-backup/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs"
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "candidate": "output/pass63-drafts/rust-test-compilation/candidate/modern/engine/src/world/native_energy.rs",
+      "base_sha256": "E036F27BCB4EEC8F8019C083762F303C6FD70F2AF51C48289CBDB573046822EE",
+      "candidate_sha256": "845F0C1CFD6F1697A9EE729E18025E1831AF0C03914B510D97C0C9EF312FE5A0",
+      "new_file": false,
+      "metadata": "output/pass63-drafts/rust-test-compilation/metadata.json",
+      "backup": "output/pass63-preapply-backup/modern/engine/src/world/native_energy.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_reproduction.rs",
+      "candidate": "output/pass63-drafts/rust-test-compilation/candidate/modern/engine/src/world/native_reproduction.rs",
+      "base_sha256": "8222394DB4AB5A1D9EF262DB590987EFA0A3717388FEB6D483FA6EF59647EAEE",
+      "candidate_sha256": "14845A1F19EE2BA2B0C8C18C501673537FC467015A9477943F1D6D9B5286E5B7",
+      "new_file": false,
+      "metadata": "output/pass63-drafts/rust-test-compilation/metadata.json",
+      "backup": "output/pass63-preapply-backup/modern/engine/src/world/native_reproduction.rs"
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "candidate": "output/pass63-drafts/rust-test-compilation/candidate/modern/engine/src/world/native_shots.rs",
+      "base_sha256": "34A19C48BCBB1330B6BB3F70E54223A7B06D89295F9B50C167A800202390ADB1",
+      "candidate_sha256": "8A3AD26A3443C18888980E53FB708BC019FABEB01D3979803B85A227335BC0D2",
+      "new_file": false,
+      "metadata": "output/pass63-drafts/rust-test-compilation/metadata.json",
+      "backup": "output/pass63-preapply-backup/modern/engine/src/world/native_shots.rs"
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass63.ps1",
+      "candidate": "output/pass63-drafts/qualification/candidate/output/qualify-native-roundtrip-pass63.ps1",
+      "base_sha256": null,
+      "candidate_sha256": "FD2397CFA228ADC9ADF79F74C7EF8295D59000C77B44A19979EE5F865FD21D8E",
+      "new_file": true,
+      "metadata": "output/pass63-drafts/qualification/metadata.json"
+    }
+  ],
+  "metadata_pins": [
+    {
+      "file": "output/pass63-drafts/rust-test-compilation/metadata.json",
+      "sha256": "A929975A2FD9E073C51299588FDF574425537F03E8F6E4D6FD31BD9CB53582A8"
+    },
+    {
+      "file": "output/pass63-drafts/managed-readiness/metadata.json",
+      "sha256": "5715165007D7BD56068B111776F5742AD219E7615BC554BC949438AA5A088FC7"
+    },
+    {
+      "file": "output/pass63-drafts/qualification/metadata.json",
+      "sha256": "6E97BC06473915E34E062859C5263106249D4B634B1C9B4E0CFA843D31AA96E6"
+    },
+    {
+      "file": "output/pass63-drafts/report/metadata.json",
+      "sha256": "D663BEB654F77526873F16184D951CDB67C078009438429843406804FF35D127"
+    }
+  ],
+  "peer_review": {
+    "rust": "review_46_failures approved",
+    "managed": "seeding_tournament_ui approved",
+    "runner": "review_46_failures approved",
+    "root_all5_test_diffs": "approved",
+    "report_preservation": "recover_46_inventory verified"
+  },
+  "expected_counts": {
+    "rust_targets": 68,
+    "net_new_rust_tests_vs62": 0,
+    "managed_core": 314,
+    "managed_desktop": 214,
+    "ordinary_outcomes": 94,
+    "strict_original_controls": 25,
+    "strict_reference_fields": 55849
+  },
+  "scope": "Test-only13compiler-error repairs and two readiness fixture corrections, fresh wrapper and truthful report/handoff. Production simulation/UI code and original reference/golden bytes unchanged.",
+  "all62_outcomes_collected_before_repairs": {
+    "local": 94,
+    "hosted": 7,
+    "local_summary_sha256": "BCD1AC87464C165280D912973A8A588E37630E77D649E9B62D01B18C06AE7443"
+  },
+  "protected_png": {
+    "file": "docs/parity/receipts/db24832-world06-shape-editor.png",
+    "sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "excluded_from_application_and_staging": true
+  },
+  "execution_before_complete_authoring": {
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "UI": false,
+    "GPU": false
+  }
+}

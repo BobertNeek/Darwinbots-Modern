@@ -1,0 +1,11 @@
+{
+  "cli_sha256": "6ECB25311DFA72D65DE49F04E6450F1ED6CCCFCB9D2990E46791DFE8E94D07DD",
+  "source_manifest": "source.json",
+  "production_projection": "production-projection.json",
+  "build_result": {
+    "step": "cli-build",
+    "exit_code": 0,
+    "seconds": 1.1817177,
+    "log": "cli-build.log"
+  }
+}

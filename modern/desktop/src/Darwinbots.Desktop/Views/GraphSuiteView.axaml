@@ -1,0 +1,103 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:Darwinbots.Desktop.Controls"
+             xmlns:core="using:Darwinbots.Desktop.Core"
+             x:Class="Darwinbots.Desktop.Views.GraphSuiteView"
+             x:DataType="core:GraphSuiteViewModel">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="18" RowSpacing="12">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+      <StackPanel Spacing="2">
+        <TextBlock Classes="section" Text="GRAPH SUITE" />
+        <TextBlock Text="DB2.48.32 metrics · local history" FontSize="11" Foreground="#69716D" />
+      </StackPanel>
+      <ComboBox x:Name="GraphChoiceCombo"
+                Grid.Column="1"
+                MinWidth="330"
+                ItemsSource="{Binding Choices}"
+                SelectedItem="{Binding SelectedChoice}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="core:GraphChoice">
+            <StackPanel Spacing="3">
+              <Border Height="1" Background="#D4D0C4" IsVisible="{Binding IsSeparatorBefore}" />
+              <TextBlock Text="{Binding Label}" />
+            </StackPanel>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <Button x:Name="OpenGraphButton" Grid.Column="2" Content="OPEN / APPLY" Click="OpenGraph_Click" />
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="1.25*,1*" ColumnSpacing="12">
+      <Border Classes="panel" Padding="14">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Classes="section" Text="RUNNING GRAPHS" />
+            <TextBlock Grid.Column="1" Text="SELECT TWO TO JOIN" FontSize="10" Foreground="#69716D" />
+          </Grid>
+          <Grid Grid.Row="1" RowDefinitions="*,150" RowSpacing="10">
+            <Border Background="#F4F1E8" BorderBrush="#D4D0C4" BorderThickness="1" Padding="8">
+              <controls:GraphSeriesChart x:Name="SeriesChart" />
+            </Border>
+            <ItemsControl x:Name="RunningGraphsList" Grid.Row="1" ItemsSource="{Binding RunningGraphs}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="core:GraphSeriesViewModel">
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="4,3">
+                    <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Metric}" FontSize="10" Foreground="#69716D" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding CurrentValueText}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                    <Button Grid.Column="3" Content="VIEW" Tag="{Binding}" Click="ViewGraph_Click" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+          <TextBlock Grid.Row="2" Text="{Binding ComparisonText}" FontSize="11" Foreground="#2D826F" />
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="panel" Padding="14">
+        <ScrollViewer>
+          <StackPanel Spacing="12">
+            <StackPanel Spacing="2">
+              <TextBlock Classes="section" Text="CUSTOM METRICS" />
+              <TextBlock Text="Use names from the sample contract with +, -, * and /." TextWrapping="Wrap" FontSize="11" Foreground="#69716D" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding CustomMetrics}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="core:CustomMetricSlotViewModel">
+                  <Border BorderBrush="#D4D0C4" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,10">
+                    <Grid ColumnDefinitions="36,*,*" ColumnSpacing="8">
+                      <TextBlock Text="{Binding Slot, StringFormat='G{0}'}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                      <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Graph name" />
+                      <TextBox Grid.Column="2" Text="{Binding Expression}" PlaceholderText="population / 2" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Background="#E8F0E1" Padding="10">
+              <StackPanel Spacing="4">
+                <TextBlock Text="PRESENTATION CONTRACT" FontWeight="SemiBold" />
+                <TextBlock Text="Graph data is a read-only projection. Rust remains the simulation authority." TextWrapping="Wrap" FontSize="11" Foreground="#52605A" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+      <Button x:Name="ResetGraphsButton" Content="RESET ALL" Click="ResetGraphs_Click" />
+      <Button x:Name="ListGraphsButton" Grid.Column="1" Content="LIST RUNNING" Click="ListGraphs_Click" />
+      <Button x:Name="ExportGraphsButton" Grid.Column="2" Content="EXPORT CSV" Click="ExportGraphs_Click" />
+      <Button x:Name="JoinCompareButton" Grid.Column="3" Content="JOIN / COMPARE" Click="JoinCompare_Click" />
+      <Button x:Name="ImportLegacyButton" Grid.Column="4" Content="IMPORT .GSAVE" Click="ImportLegacy_Click" />
+      <Button x:Name="ExportDatabaseButton" Grid.Column="5" Content="EXPORT DATABASE" Click="ExportDatabase_Click" />
+      <TextBlock x:Name="StatusText" Grid.Column="6" Text="{Binding Status}" VerticalAlignment="Center" FontSize="11" Foreground="#69716D" />
+      <Button x:Name="CloseButton" Grid.Column="7" Content="CLOSE" Click="Close_Click" />
+    </Grid>
+  </Grid>
+</UserControl>

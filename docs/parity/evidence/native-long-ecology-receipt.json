@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-13",
+  "tests": [
+    {
+      "test": "starter_world_sustains_moving_predators_finite_shots_and_bounded_plants",
+      "cycles": 20000,
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 1157.3,
+      "source_revision": "020642950a66e259851bb31633a7ff3b32daada8",
+      "log": "completion-checks/parity-native-waste-db2-long-soak.log"
+    },
+    {
+      "test": "starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce",
+      "cycles": 10000,
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 631.22,
+      "source_state": "graph repair draft before the final species-filename fix; no committed source revision is claimed",
+      "binary_sha256": "e4d3c3b84037261de0d3211ec877dd51b9b5923419d65012adcdc8264f54eb67",
+      "log": "completion-checks/parity-native-waste-starter-long-soak.log"
+    }
+  ],
+  "limits": [
+    "These are CPU ecology scenarios, not long GPU qualification or matching original-runtime trajectories.",
+    "The two runs used different source states. The final graph repair and later changes require their own applicable gates.",
+    "Internet Mode is excluded."
+  ]
+}

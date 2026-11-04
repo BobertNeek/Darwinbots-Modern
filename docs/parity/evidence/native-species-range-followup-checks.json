@@ -1,0 +1,22 @@
+{
+  "code_revision": "518a72079c1689d59bb7697894c0a2dc47ea4a7d",
+  "desktop_native_and_rendered": {
+    "passed": 9,
+    "failed": 0
+  },
+  "final_state_persistence": {
+    "passed": 4,
+    "failed": 0
+  },
+  "changes": [
+    "Count real native species at index zero; hide only an empty modern Unassigned sentinel",
+    "Preserve range 23.25 through legacy-version migration and modern save; UI range remains integer-projected"
+  ],
+  "latest_complete_release_run": {
+    "code_revision": "6bb2e5c",
+    "passed": 432,
+    "failed": 60,
+    "filtered": 2
+  },
+  "qualification": "The four persistence checks are a focused follow-up, not a replacement full workspace result"
+}

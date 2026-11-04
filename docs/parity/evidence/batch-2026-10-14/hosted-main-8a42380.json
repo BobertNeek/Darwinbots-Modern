@@ -1,0 +1,1326 @@
+{
+  "schema_version": 2,
+  "batch": 61,
+  "sealed_utc": "2026-10-17T12:24:17.651Z",
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pinned_files": 636
+  },
+  "workflow": "Modern cross-platform",
+  "workflow_file": ".github/workflows/modern-cross-platform.yml",
+  "run": {
+    "id": 39028588882,
+    "html_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39028588882",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T11:24:42Z",
+    "updated_at": "2026-10-17T12:19:34Z",
+    "head_sha": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd"
+  },
+  "all_jobs_terminal": true,
+  "state": "needs_repair",
+  "jobs": [
+    {
+      "job_id": 117384367093,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T11:24:46Z",
+      "completed_at": "2026-10-17T11:49:32Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T11:24:46Z",
+          "completed_at": "2026-10-17T11:24:47Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T11:24:47Z",
+          "completed_at": "2026-10-17T11:24:50Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T11:24:50Z",
+          "completed_at": "2026-10-17T11:24:59Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T11:24:59Z",
+          "completed_at": "2026-10-17T11:25:07Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T11:25:07Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T11:49:31Z",
+          "completed_at": "2026-10-17T11:49:31Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1055,
+          "failed": 4,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "source": "modern/engine/src/lib.rs",
+            "header_line": 608,
+            "emitted_header": "Running unittests src/lib.rs (target/release/deps/darwinbots_engine-3ea6c0970bcd56d7)",
+            "failed_tests": [
+              "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+              "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping"
+            ],
+            "ignored_tests": [
+              "test world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+            ],
+            "status": "FAILED",
+            "counts": {
+              "passed": 522,
+              "failed": 2,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "8.39s",
+            "summary_line": 1160,
+            "emitted_summary": "test result: FAILED. 522 passed; 2 failed; 7 ignored; 0 measured; 0 filtered out; finished in 8.39s"
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "source": "modern/engine/tests/db24832_genuine_feeding.rs",
+            "header_line": 1272,
+            "emitted_header": "Running tests/db24832_genuine_feeding.rs (target/release/deps/db24832_genuine_feeding-72c4fa1a2d7fa01b)",
+            "failed_tests": [
+              "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ],
+            "ignored_tests": [],
+            "status": "FAILED",
+            "counts": {
+              "passed": 7,
+              "failed": 2,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "0.39s",
+            "summary_line": 1307,
+            "emitted_summary": "test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s"
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8a42380-agent/rust-target-results.json",
+          "sha256": "BE57E2E046BE0A0487EB28AB7BA995BD0A9745D505A87501E11DFE080B04F41E",
+          "bytes": 240457
+        },
+        "log": {
+          "file": "output/hosted-main-8a42380-agent/logs/linux-x64-completed.log",
+          "sha256": "0A407DAF4A86387B1D2FC2FAEEEEFD790BE7742F200CB5B560E3AC5F54296C63",
+          "bytes": 210701
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1145,
+            "lines": [
+              "---- world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death stdout ----",
+              "",
+              "thread 'world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death' (6943) panicked at modern/engine/src/world/native_feeding.rs:109:22:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (7131) panicked at modern/engine/src/world/native_sim_export.rs:902:30:"
+            ]
+          },
+          {
+            "line": 1150,
+            "lines": [
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (7131) panicked at modern/engine/src/world/native_sim_export.rs:902:30:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "",
+              "failures:",
+              "    world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death"
+            ]
+          },
+          {
+            "line": 1287,
+            "lines": [
+              "---- genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots stdout ----",
+              "",
+              "thread 'genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots' (7335) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: shot[0].x",
+              "  left: 8277.0",
+              " right: 8288.0",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+              ""
+            ]
+          },
+          {
+            "line": 1295,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (7336) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: original pair C100 shot[62].x",
+              "  left: 8574.191",
+              " right: 8577.136",
+              "",
+              ""
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117384366994,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T11:24:49Z",
+      "completed_at": "2026-10-17T11:43:02Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T11:24:49Z",
+          "completed_at": "2026-10-17T11:24:50Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T11:24:50Z",
+          "completed_at": "2026-10-17T11:24:54Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T11:24:54Z",
+          "completed_at": "2026-10-17T11:25:01Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T11:25:01Z",
+          "completed_at": "2026-10-17T11:25:12Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T11:25:12Z",
+          "completed_at": "2026-10-17T11:42:57Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T11:42:57Z",
+          "completed_at": "2026-10-17T11:42:57Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T11:42:57Z",
+          "completed_at": "2026-10-17T11:42:57Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T11:42:57Z",
+          "completed_at": "2026-10-17T11:42:58Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T11:42:58Z",
+          "completed_at": "2026-10-17T11:42:58Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T11:42:58Z",
+          "completed_at": "2026-10-17T11:42:58Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T11:42:58Z",
+          "completed_at": "2026-10-17T11:42:58Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T11:42:58Z",
+          "completed_at": "2026-10-17T11:42:58Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T11:42:58Z",
+          "completed_at": "2026-10-17T11:42:58Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T11:42:58Z",
+          "completed_at": "2026-10-17T11:43:00Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1055,
+          "failed": 4,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "source": "modern/engine/src/lib.rs",
+            "header_line": 610,
+            "emitted_header": "Running unittests src/lib.rs (target/release/deps/darwinbots_engine-572bd71c0b5eb0bb)",
+            "failed_tests": [
+              "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+              "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping"
+            ],
+            "ignored_tests": [
+              "test world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+            ],
+            "status": "FAILED",
+            "counts": {
+              "passed": 522,
+              "failed": 2,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "6.44s",
+            "summary_line": 1162,
+            "emitted_summary": "test result: FAILED. 522 passed; 2 failed; 7 ignored; 0 measured; 0 filtered out; finished in 6.44s"
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "source": "modern/engine/tests/db24832_genuine_feeding.rs",
+            "header_line": 1274,
+            "emitted_header": "Running tests/db24832_genuine_feeding.rs (target/release/deps/db24832_genuine_feeding-378b60e23d12978b)",
+            "failed_tests": [
+              "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ],
+            "ignored_tests": [],
+            "status": "FAILED",
+            "counts": {
+              "passed": 7,
+              "failed": 2,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "0.24s",
+            "summary_line": 1309,
+            "emitted_summary": "test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s"
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8a42380-agent/rust-target-results.json",
+          "sha256": "BE57E2E046BE0A0487EB28AB7BA995BD0A9745D505A87501E11DFE080B04F41E",
+          "bytes": 240457
+        },
+        "log": {
+          "file": "output/hosted-main-8a42380-agent/logs/osx-arm64-completed.log",
+          "sha256": "528BBA4987C6A59BBF5BB44F0088E7CC57DC25DBFCCF2831C8822B414167AECB",
+          "bytes": 211320
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1147,
+            "lines": [
+              "---- world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death stdout ----",
+              "",
+              "thread 'world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death' (36100) panicked at modern/engine/src/world/native_feeding.rs:109:22:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (36298) panicked at modern/engine/src/world/native_sim_export.rs:902:30:"
+            ]
+          },
+          {
+            "line": 1152,
+            "lines": [
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (36298) panicked at modern/engine/src/world/native_sim_export.rs:902:30:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "",
+              "failures:",
+              "    world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death"
+            ]
+          },
+          {
+            "line": 1289,
+            "lines": [
+              "---- genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots stdout ----",
+              "",
+              "thread 'genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots' (36898) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: shot[0].x",
+              "  left: 8277.0",
+              " right: 8288.0",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+              ""
+            ]
+          },
+          {
+            "line": 1297,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (36902) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: original pair C100 shot[62].x",
+              "  left: 8574.191",
+              " right: 8577.136",
+              "",
+              ""
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117384367013,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T11:24:47Z",
+      "completed_at": "2026-10-17T12:19:33Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T11:24:49Z",
+          "completed_at": "2026-10-17T11:24:52Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T11:24:52Z",
+          "completed_at": "2026-10-17T11:24:58Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T11:24:58Z",
+          "completed_at": "2026-10-17T11:25:17Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T11:25:17Z",
+          "completed_at": "2026-10-17T11:25:42Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T11:25:42Z",
+          "completed_at": "2026-10-17T12:19:28Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T12:19:28Z",
+          "completed_at": "2026-10-17T12:19:28Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T12:19:28Z",
+          "completed_at": "2026-10-17T12:19:28Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T12:19:28Z",
+          "completed_at": "2026-10-17T12:19:29Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T12:19:29Z",
+          "completed_at": "2026-10-17T12:19:29Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T12:19:29Z",
+          "completed_at": "2026-10-17T12:19:29Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T12:19:29Z",
+          "completed_at": "2026-10-17T12:19:29Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T12:19:29Z",
+          "completed_at": "2026-10-17T12:19:29Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T12:19:29Z",
+          "completed_at": "2026-10-17T12:19:30Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T12:19:30Z",
+          "completed_at": "2026-10-17T12:19:30Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1055,
+          "failed": 4,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "source": "modern/engine/src/lib.rs",
+            "header_line": 635,
+            "emitted_header": "Running unittests src/lib.rs (target/release/deps/darwinbots_engine-b4e9676725af6016)",
+            "failed_tests": [
+              "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+              "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping"
+            ],
+            "ignored_tests": [
+              "test world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+            ],
+            "status": "FAILED",
+            "counts": {
+              "passed": 522,
+              "failed": 2,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "41.82s",
+            "summary_line": 1187,
+            "emitted_summary": "test result: FAILED. 522 passed; 2 failed; 7 ignored; 0 measured; 0 filtered out; finished in 41.82s"
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "source": "modern/engine/tests/db24832_genuine_feeding.rs",
+            "header_line": 1299,
+            "emitted_header": "Running tests/db24832_genuine_feeding.rs (target/release/deps/db24832_genuine_feeding-7b0b9a01161f647d)",
+            "failed_tests": [
+              "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ],
+            "ignored_tests": [],
+            "status": "FAILED",
+            "counts": {
+              "passed": 7,
+              "failed": 2,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "0.71s",
+            "summary_line": 1334,
+            "emitted_summary": "test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s"
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8a42380-agent/rust-target-results.json",
+          "sha256": "BE57E2E046BE0A0487EB28AB7BA995BD0A9745D505A87501E11DFE080B04F41E",
+          "bytes": 240457
+        },
+        "log": {
+          "file": "output/hosted-main-8a42380-agent/logs/osx-x64-completed.log",
+          "sha256": "D3BC3BEFC4A0C3AE50997B12861DB0C91CD3F563F69CE6E3CE901E078C2CD168",
+          "bytes": 212964
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1172,
+            "lines": [
+              "---- world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death stdout ----",
+              "",
+              "thread 'world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death' (106484) panicked at modern/engine/src/world/native_feeding.rs:109:22:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (106974) panicked at modern/engine/src/world/native_sim_export.rs:902:30:"
+            ]
+          },
+          {
+            "line": 1177,
+            "lines": [
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (106974) panicked at modern/engine/src/world/native_sim_export.rs:902:30:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "",
+              "failures:",
+              "    world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death"
+            ]
+          },
+          {
+            "line": 1314,
+            "lines": [
+              "---- genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots stdout ----",
+              "",
+              "thread 'genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots' (108331) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: shot[0].x",
+              "  left: 8277.0",
+              " right: 8288.0",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+              ""
+            ]
+          },
+          {
+            "line": 1322,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (108332) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: original pair C100 shot[62].x",
+              "  left: 8574.191",
+              " right: 8577.136",
+              "",
+              ""
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117384366828,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "platform": "win-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T11:24:45Z",
+      "completed_at": "2026-10-17T11:59:06Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T11:24:46Z",
+          "completed_at": "2026-10-17T11:24:47Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T11:24:47Z",
+          "completed_at": "2026-10-17T11:24:54Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T11:24:54Z",
+          "completed_at": "2026-10-17T11:25:13Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T11:25:13Z",
+          "completed_at": "2026-10-17T11:25:42Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T11:25:42Z",
+          "completed_at": "2026-10-17T11:59:02Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T11:59:02Z",
+          "completed_at": "2026-10-17T11:59:02Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T11:59:02Z",
+          "completed_at": "2026-10-17T11:59:02Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T11:59:02Z",
+          "completed_at": "2026-10-17T11:59:03Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T11:59:03Z",
+          "completed_at": "2026-10-17T11:59:03Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T11:59:03Z",
+          "completed_at": "2026-10-17T11:59:03Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T11:59:03Z",
+          "completed_at": "2026-10-17T11:59:03Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T11:59:03Z",
+          "completed_at": "2026-10-17T11:59:03Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T11:59:03Z",
+          "completed_at": "2026-10-17T11:59:05Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T11:59:05Z",
+          "completed_at": "2026-10-17T11:59:05Z"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1055,
+          "failed": 4,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [
+          {
+            "package": "darwinbots-engine",
+            "name": "darwinbots_engine",
+            "kind": "lib",
+            "source": "modern/engine/src/lib.rs",
+            "header_line": 621,
+            "emitted_header": "Running unittests src\\lib.rs (target\\release\\deps\\darwinbots_engine-ffa39a6f53b09956.exe)",
+            "failed_tests": [
+              "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+              "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping"
+            ],
+            "ignored_tests": [
+              "test world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+              "test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+            ],
+            "status": "FAILED",
+            "counts": {
+              "passed": 522,
+              "failed": 2,
+              "ignored": 7,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "16.37s",
+            "summary_line": 1173,
+            "emitted_summary": "test result: FAILED. 522 passed; 2 failed; 7 ignored; 0 measured; 0 filtered out; finished in 16.37s"
+          },
+          {
+            "package": "darwinbots-engine",
+            "name": "db24832_genuine_feeding",
+            "kind": "test",
+            "source": "modern/engine/tests/db24832_genuine_feeding.rs",
+            "header_line": 1285,
+            "emitted_header": "Running tests\\db24832_genuine_feeding.rs (target\\release\\deps\\db24832_genuine_feeding-a5fd5f2a9d5d0573.exe)",
+            "failed_tests": [
+              "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+              "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+            ],
+            "ignored_tests": [],
+            "status": "FAILED",
+            "counts": {
+              "passed": 7,
+              "failed": 2,
+              "ignored": 0,
+              "measured": 0,
+              "filtered_out": 0
+            },
+            "duration": "0.48s",
+            "summary_line": 1320,
+            "emitted_summary": "test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s"
+          }
+        ],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8a42380-agent/rust-target-results.json",
+          "sha256": "BE57E2E046BE0A0487EB28AB7BA995BD0A9745D505A87501E11DFE080B04F41E",
+          "bytes": 240457
+        },
+        "log": {
+          "file": "output/hosted-main-8a42380-agent/logs/win-x64-completed.log",
+          "sha256": "AE8232D47D8568634DFA217773C2E43744B33CEF7FBEA90D1CBB917FD4A8C4EB",
+          "bytes": 212716
+        },
+        "command": "cargo test --release --workspace --no-fail-fast",
+        "failure_contexts": [
+          {
+            "line": 1158,
+            "lines": [
+              "---- world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death stdout ----",
+              "",
+              "thread 'world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death' (5896) panicked at modern\\engine\\src\\world\\native_feeding.rs:109:22:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (5952) panicked at modern\\engine\\src\\world\\native_sim_export.rs:902:30:"
+            ]
+          },
+          {
+            "line": 1163,
+            "lines": [
+              "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+              "",
+              "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (5952) panicked at modern\\engine\\src\\world\\native_sim_export.rs:902:30:",
+              "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+              "",
+              "",
+              "failures:",
+              "    world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death"
+            ]
+          },
+          {
+            "line": 1300,
+            "lines": [
+              "---- genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots stdout ----",
+              "",
+              "thread 'genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots' (4148) panicked at modern\\engine\\tests\\db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: shot[0].x",
+              "  left: 8277.0",
+              " right: 8288.0",
+              "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+              ""
+            ]
+          },
+          {
+            "line": 1308,
+            "lines": [
+              "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+              "",
+              "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (8540) panicked at modern\\engine\\tests\\db24832_genuine_feeding.rs:40:13:",
+              "assertion `left == right` failed: original pair C100 shot[62].x",
+              "  left: 8574.191",
+              " right: 8577.136",
+              "",
+              ""
+            ]
+          }
+        ]
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after failed Rust workspace step."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "reason": "Publish/smoke/package artifact steps skipped after failed Rust workspace step."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    }
+  ],
+  "aggregate": {
+    "platforms": 4,
+    "unique_rust_target_identities": 68,
+    "total_rust_target_executions": 272,
+    "rust": {
+      "passed": 4220,
+      "failed": 16,
+      "ignored": 48,
+      "measured": 0,
+      "filtered_out": 0
+    },
+    "actual_executed_core_tests": 0,
+    "actual_executed_desktop_tests": 0,
+    "core_counts": null,
+    "desktop_counts": null,
+    "packages_published": 0,
+    "package_smokes_executed": 0,
+    "declared_expected_core_per_platform": 312,
+    "declared_expected_desktop_per_platform": 213,
+    "full_managed_or_package_corpus_completed": false
+  },
+  "artifacts": {
+    "api_total": 0,
+    "downloaded": 0,
+    "trx_files": 0,
+    "png_files": 0,
+    "reason": "All four Rust workspace steps failed. Managed/package/smoke steps were skipped; no audit or package artifacts were produced."
+  },
+  "source_asset_baseline": {
+    "receipt": {
+      "file": "output/hosted-main-8a42380-agent/windows-source-bots.json",
+      "sha256": "FDE42020C7D86E4FE47CBC1256EDEE1613798465767978F88C9BE00F7A4FEF1F",
+      "bytes": 34329
+    },
+    "source_files": 48,
+    "raw_source_matches_commit": 23,
+    "only_lf_normalized_source_matches_commit": 25,
+    "all_source_files_use_crlf": true,
+    "packaged_files_verified": 0,
+    "boundary": "Source-only CRLF checkout identities were pinned independently. No package was produced; normalized equality is not raw byte identity or packaged-asset verification."
+  },
+  "dna_export_results": {
+    "status": "not_run",
+    "trx": null,
+    "tests": [
+      {
+        "name": "RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+        "outcome": null
+      },
+      {
+        "name": "CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+        "outcome": null
+      },
+      {
+        "name": "DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+        "outcome": null
+      }
+    ]
+  },
+  "all_main_ordinary_outcomes_collected": true,
+  "evidence": [
+    {
+      "file": "output/native-roundtrip-pass61-source.json",
+      "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+      "bytes": 109886
+    },
+    {
+      "file": "output/pass61-workspace-metadata.json",
+      "sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+      "bytes": 21645
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/final-run.json",
+      "sha256": "28C5FEA47AEDC59F0EB9DC674173FC020815F0A927911AB4002D836BB834AA33",
+      "bytes": 13141
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/final-jobs.json",
+      "sha256": "30C3E26AA7AA6E1775A8406CC2D2297BA9BB5D9405A4881FC9601B6B5AEBBA33",
+      "bytes": 13310
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/final-artifacts.json",
+      "sha256": "E338FB10E6740E1E43CDBE137DA3A22EC09F95D8097C5F247E751DE5F81F87B4",
+      "bytes": 34
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/api/committed-tree.json",
+      "sha256": "5DB165580E4CC13C3CD50B5C37216DD6CC5A0EADF2865DA5E90BB102368063DF",
+      "bytes": 502003
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/rust-target-results.json",
+      "sha256": "BE57E2E046BE0A0487EB28AB7BA995BD0A9745D505A87501E11DFE080B04F41E",
+      "bytes": 240457
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/windows-source-bots.json",
+      "sha256": "FDE42020C7D86E4FE47CBC1256EDEE1613798465767978F88C9BE00F7A4FEF1F",
+      "bytes": 34329
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-linux-x64-job-check.json",
+      "sha256": "776A031D4B774A7E36B7DEC3224F2F2398D2E706B85ADB813F17A08BED0AC6DD",
+      "bytes": 61929
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/linux-x64-completed.log",
+      "sha256": "0A407DAF4A86387B1D2FC2FAEEEEFD790BE7742F200CB5B560E3AC5F54296C63",
+      "bytes": 210701
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-osx-arm64-job-check.json",
+      "sha256": "ABD982A4D3372699F8801A253D04313451666F1F6B5AC80135B2A93F9FFD4B99",
+      "bytes": 61930
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/osx-arm64-completed.log",
+      "sha256": "528BBA4987C6A59BBF5BB44F0088E7CC57DC25DBFCCF2831C8822B414167AECB",
+      "bytes": 211320
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-osx-x64-job-check.json",
+      "sha256": "A1C686DA2361355DACB64FC1F636CD65128055BD497F2D8A4C9FB92F268BEEC1",
+      "bytes": 61943
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/osx-x64-completed.log",
+      "sha256": "D3BC3BEFC4A0C3AE50997B12861DB0C91CD3F563F69CE6E3CE901E078C2CD168",
+      "bytes": 212964
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/platform-win-x64-job-check.json",
+      "sha256": "229605F40455FC1B9DC4EE531EA7CF2B43E6F774613271AB77E79FB57BA7B51C",
+      "bytes": 62475
+    },
+    {
+      "file": "output/hosted-main-8a42380-agent/logs/win-x64-completed.log",
+      "sha256": "AE8232D47D8568634DFA217773C2E43744B33CEF7FBEA90D1CBB917FD4A8C4EB",
+      "bytes": 212716
+    }
+  ],
+  "boundaries": [
+    "All four complete 68-target Rust corpora emitted despite failures because the workflow used --no-fail-fast. Platform repetitions total 272 target executions, not 272 unique targets.",
+    "Each platform reports 1,055 passing, four failing, and 12 ignored Rust tests. Ignored physical-GPU tests are not hardware qualification.",
+    "The same two one-slot native pool fixtures fail during real native death-particle allocation. Both strict original C100 feeding controls fail exported shot positions; their assertions and original bytes were retained.",
+    "Core312/Desktop213 are declared source counts only. MAIN executed neither managed suite, generated no TRX/screenshots, and published no native package or smoke result. Their actual counts remain null.",
+    "Completed-job logs were retrieved only after each job became terminal through gh api job/logs. Saved files are the CLI UTF-8 log text; timestamps and ANSI sequences were stripped only in the derived census, not in the retained logs.",
+    "This receipt covers MAIN only. It does not substitute for separate diagnostics, local CPU, original-runtime, physical GPU/capacity, or app-visible acceptance evidence. No workflow was retried or cancelled; no source/HEAD, local product, or repair candidate was changed."
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "state": "authored_unapplied_unexecuted",
+  "owner": "/root/seeding_tournament_ui",
+  "base_source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass58-source.json",
+    "sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "pins": 540
+  },
+  "scope": "AutoGraphs opens original default actual series on Simple/Eco evolving startup boundaries; no engine or graph formula changes.",
+  "files": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base_raw_sha256": "32310F808C1B313A696D0895E455E5B263142702F1904FF327AF4F3616722B51",
+      "base_bytes": 139997,
+      "raw_before": "raw-before/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate": "candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "candidate_raw_sha256": "98A612516C139207A31FF78E86908613CFB5EC7E0BE9CE39AE0C4C13F7C2BDD7",
+      "candidate_bytes": 141130
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "base_raw_sha256": "B3233613BC5D26AA272607D14BED0AC49E6159EB4FD9DF2C2F4064D8097D7930",
+      "base_bytes": 2447,
+      "raw_before": "raw-before/modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "candidate": "candidate/modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "candidate_raw_sha256": "DC444FF48FDE4F6659A66FA025EC678391B1CBDB954ACE307A8E573BAA61C892",
+      "candidate_bytes": 3205
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "base_raw_sha256": "BB317DB484F4908EB5F7B5C6E94FD3ADBB3C1F9C4B0CB9437A1FC90E7D0F7C97",
+      "base_bytes": 19752,
+      "raw_before": "raw-before/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "candidate": "candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "candidate_raw_sha256": "2763EE27B12FDAD284885D10ABBF6DC7C860B82F42962FD88EB235C3630E9206",
+      "candidate_bytes": 32753
+    }
+  ],
+  "source_contract": [
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "lines": "1692-1728",
+      "fact": "fixcam startup: y_graphs plus restart modes4/5 opens population, average mutations, total species energy."
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "lines": "1191;2123-2127;2174-2198",
+      "fact": "StartSimul resets camfix; first startup loop calls fixcam once; NewGraph keeps an existing chart, shows it and feeds its first sample."
+    },
+    {
+      "file": "Darwinbots2/Evo.bas",
+      "lines": "533-568",
+      "fact": "F1 testing mode6 transitions back to evolving mode4 on win/loss; Zerobot7/8 is outside the default graph gate."
+    }
+  ],
+  "implementation": {
+    "mode_gate": "Running SimpleSurvival/EcoSurvival with persisted auto_graphs=true, source Simple/Eco configuration and phase evolving.",
+    "boundary": "First eligible published snapshot or changed (kind,restart_count); explicit successful or attempted Load resets the presentation boundary before loading. Ineligible publication resets the gate.",
+    "defaults": [
+      "Population",
+      "AverageMutations",
+      "TotalEnergy"
+    ],
+    "preservation": "Open only missing metrics. Keep existing chart objects/history and manual chooser selection. Closing a graph does not reopen it on an ordinary snapshot; next eligible startup/restart/load reopens only missing defaults.",
+    "manual": "Graphs button still opens/activates the chooser without opening a chart.",
+    "publication": "Open after queued native snapshot presentation, including automatic process-style restarts. Remove the old Start handler empty-chooser special case."
+  },
+  "regressions": [
+    {
+      "name": "EvolutionDefaultGraphsOpenActualNativeSeriesWithoutReplacingManualCharts",
+      "cases": 1,
+      "checks": "Real owned chart windows; exact original three metrics; two species, native colors, exact sampled values; existing manual chart and chooser selection preserved; no duplicates on repeat."
+    },
+    {
+      "name": "PublishedEvolutionStartsRestartsAndLoadedWorldsOpenOnlyMissingDefaultGraphs",
+      "cases": 2,
+      "checks": "Simple/Eco; configured does not open; published start opens3; user close remains closed on refresh; restart and actual LoadButton route reopen missing only; retained manual/default chart objects and chooser selection stay intact."
+    },
+    {
+      "name": "NoneligibleEvolutionSnapshotsKeepAutomaticGraphsClosedAndManualChooserUsable",
+      "cases": 6,
+      "checks": "Disabled Simple/Eco, Zerobot, Simple/Eco F1 testing, ordinary contest do not auto-open; actual manual Graphs/Open route still works and stays intact on refresh."
+    }
+  ],
+  "static_census": {
+    "original_file_facts": 2,
+    "original_file_theories": 0,
+    "candidate_file_facts": 3,
+    "candidate_file_theories": 2,
+    "candidate_inline_data_cases": 8,
+    "net_new_desktop_cases": 9,
+    "net_new_core_cases": 0,
+    "net_new_rust_cases": 0,
+    "new_test_targets": 0
+  },
+  "active_bases_verified_unchanged": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "unchanged": true
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/GraphSuiteWindow.axaml.cs",
+      "unchanged": true
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/GraphContestRenderedTests.cs",
+      "unchanged": true
+    }
+  ],
+  "checks": {
+    "source_read_and_static_review_only": true,
+    "formatter_run": false,
+    "parser_run": false,
+    "build_run": false,
+    "tests_run": false,
+    "product_run": false,
+    "ui_run": false,
+    "gpu_run": false,
+    "git_mutated": false
+  },
+  "qualification": "This release is quarantine source/test authorship only. It neither changes frozen58 nor claims source59 compile/runtime/visible acceptance."
+}

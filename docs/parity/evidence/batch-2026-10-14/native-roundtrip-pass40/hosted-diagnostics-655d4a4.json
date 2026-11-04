@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-15T19:54:36Z",
+  "evidence_scope": "Historical hosted desktop diagnostics at 655d4a4. Current pass40 repair qualification is pending.",
+  "repository": "BobertNeek/Darwinbots-Modern",
+  "source_head": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+  "run": {
+    "id": 38795836588,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38795836588",
+    "workflow": ".github/workflows/modern-desktop-diagnostics.yml",
+    "name": "Desktop platform diagnostics",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "aggregate": {
+    "total": 399,
+    "executed": 399,
+    "passed": 398,
+    "failed": 1,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0
+  },
+  "platforms": [
+    {
+      "rid": "linux-x64",
+      "runner": "ubuntu-latest",
+      "job_id": 116631853330,
+      "conclusion": "success",
+      "artifact_id": 12002570464,
+      "artifact_name": "desktop-diagnostics-linux-x64",
+      "artifact_size_in_bytes": 2458937,
+      "artifact_trx_path": "test-results/rendered-controls.trx",
+      "local_trx_path": "output/hosted-655d4a4-diagnostics/linux-x64/test-results/rendered-controls.trx",
+      "trx_sha256": "ae375a0393abeec5c1b2b62c5f52eed34448ebb67b207ff42fd4c4d0a3eceafd",
+      "counters": {
+        "total": 133,
+        "executed": 133,
+        "passed": 133,
+        "failed": 0,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "notExecuted": 0
+      }
+    },
+    {
+      "rid": "osx-x64",
+      "runner": "macos-15-intel",
+      "job_id": 116631853337,
+      "conclusion": "success",
+      "artifact_id": 12002745901,
+      "artifact_name": "desktop-diagnostics-osx-x64",
+      "artifact_size_in_bytes": 3050013,
+      "artifact_trx_path": "test-results/rendered-controls.trx",
+      "local_trx_path": "output/hosted-655d4a4-diagnostics/osx-x64/test-results/rendered-controls.trx",
+      "trx_sha256": "49fbe531378907944ff040b3c37a7a26599a80798699672a669680f37b8f9ead",
+      "counters": {
+        "total": 133,
+        "executed": 133,
+        "passed": 133,
+        "failed": 0,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "notExecuted": 0
+      }
+    },
+    {
+      "rid": "osx-arm64",
+      "runner": "macos-latest",
+      "job_id": 116631852655,
+      "conclusion": "failure",
+      "artifact_id": 12001673893,
+      "artifact_name": "desktop-diagnostics-osx-arm64",
+      "artifact_size_in_bytes": 3050525,
+      "artifact_trx_path": "test-results/rendered-controls.trx",
+      "local_trx_path": "output/hosted-655d4a4-diagnostics/osx-arm64/test-results/rendered-controls.trx",
+      "trx_sha256": "697699639eac343bd0e8764b7f5ff051a31d63b2c29318f6f509dcdcb4520fb5",
+      "counters": {
+        "total": 133,
+        "executed": 133,
+        "passed": 132,
+        "failed": 1,
+        "error": 0,
+        "timeout": 0,
+        "aborted": 0,
+        "notExecuted": 0
+      }
+    }
+  ],
+  "arm_failure": {
+    "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+    "duration": "00:00:05.9480957",
+    "message": "The DNA export route did not reach the expected state.",
+    "stack": "   at Darwinbots.Desktop.Tests.DnaExportRenderedTests.WaitForAsync(Func`1 predicate) in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs:line 111\n   at Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs:line 57\n   at Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs:line 94\n   at Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs:line 94\n--- End of stack trace from previous location ---",
+    "required_state_at_failed_wait": [
+      "An owned DnaEditorWindow exists",
+      "Exactly one engine DNA export occurred",
+      "Editor.Text equals \"start\\nstop\""
+    ],
+    "observed_state_limitation": "The historical TRX contains only a generic predicate timeout. It does not identify the failing clause or capture actual owned-window count, editor text, export count, or editor status. No missing-window or null-text observation is claimed."
+  },
+  "dispatch_analysis": {
+    "classification": "Test application lifetime defect: asynchronous editor work spans separately isolated dispatch scopes.",
+    "installed_package": "Avalonia.Headless 12.1.0",
+    "package_metadata_path": "C:/Users/PC/.nuget/packages/avalonia.headless/12.1.0/avalonia.headless.nuspec",
+    "upstream_source_commit": "a21b9f573172f705a944dcc8aad7f036b9986f39",
+    "upstream_source_url": "https://github.com/AvaloniaUI/Avalonia/blob/a21b9f573172f705a944dcc8aad7f036b9986f39/src/Headless/Avalonia.Headless/HeadlessUnitTestSession.cs",
+    "source_evidence": [
+      {
+        "lines": "102-104",
+        "finding": "DispatchCore creates an isolated application for each dispatch when isolation is enabled."
+      },
+      {
+        "lines": "146-149",
+        "finding": "The application is disposed when the dispatched action finishes."
+      },
+      {
+        "lines": "196-203",
+        "finding": "Isolated application disposal resets the dispatcher and locator scope and restores synchronization context."
+      },
+      {
+        "lines": "324-325",
+        "finding": "Assembly sessions default to PerTest isolation unless explicitly overridden."
+      }
+    ],
+    "historical_test_problem": "The synchronous dispatch opening the editor can finish before async-void LoadDna resumes after its engine export. Subsequent predicate polls create fresh application scopes.",
+    "paired_arm_evidence": {
+      "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.DnaEditorRenderedControlsDispatchThroughVisualTree",
+      "outcome": "Passed",
+      "duration": "00:00:00.2985111",
+      "relevance": "The same editor export/save code succeeds inside one asynchronous dispatch."
+    },
+    "interpretation_limit": "The exact installed framework source confirms the isolation/reset mechanism. Its relationship to this ARM failure is a source-backed causal diagnosis, not a captured trace of the discarded continuation."
+  },
+  "current_repair": {
+    "path": "modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs",
+    "sha256": "7a736b76b5018cf411aed897a67a4f948dfb32485c6a3978ef7278e2c128448a",
+    "description": "The full test, async polling, exact content/export/save/cancel assertions, and cleanup share one async Session.Dispatch. Polling retains 100 attempts with 10ms delays and adds observed-state diagnostics.",
+    "production_ui_changed": false,
+    "qualification_pass": "native-roundtrip-pass40",
+    "qualification_manifest": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass40/source.json",
+    "qualification_state_at_receipt": "pending",
+    "repair_proven_green": false
+  }
+}

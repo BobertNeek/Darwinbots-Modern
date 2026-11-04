@@ -1,0 +1,42 @@
+{
+  "parent_head": "f65a8713c16a49aecfbc36b2ebee5ce2dbca3320",
+  "state": "uncommitted native-roundtrip pass27 source with safe positive orphan slot",
+  "files": [
+    {
+      "file": "modern/cli/src/native_comparison.rs",
+      "sha256": "d4eb9fe1f9a07801edd53355f5ad81a8c3c61e49ee61dfc738ed69c3da1cb6ff"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "d86d1bec40961a6094e1a8ffee6a72cb96e2be7a59bfab14e34388fb469775b4"
+    },
+    {
+      "file": "modern/engine/src/tie.rs",
+      "sha256": "ac1bae293e391da6039b6e7c14ab04d198d8b7d697a3bcbdcead87403a81d9aa"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "04ca04599301f934efbee9d671ff30cfaa68f5e47d5941535c339bfa914253b5"
+    },
+    {
+      "file": "modern/engine/src/world/native_export.rs",
+      "sha256": "ba6a38fa5c42abb2efff9e10c5c6c9c1b843d82738c09c85a34e9ce52403ced0"
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "sha256": "4c00b660ed4fdcec12eec76c44b166d89350c99e5b3172d0eb94cad8e93e66c7"
+    },
+    {
+      "file": "modern/engine/src/world/native_pipeline.rs",
+      "sha256": "a77f84846dcec0ad946bedc2026d44be293e3009c796937da30aef8e2a941b02"
+    },
+    {
+      "file": "modern/engine/src/world/native_sim_export.rs",
+      "sha256": "f974ac1387bf400adbe7e14f5791ee330e8faf0791032d73b83750f684c34b9b"
+    },
+    {
+      "file": ".github/workflows/modern-desktop-diagnostics.yml",
+      "sha256": "8a015adc60fab8e1a90ab469fab9890259c7e93367b610116e14d861311afa91"
+    }
+  ]
+}

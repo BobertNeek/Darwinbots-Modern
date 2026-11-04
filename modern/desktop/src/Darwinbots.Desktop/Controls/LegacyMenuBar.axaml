@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Darwinbots.Desktop.Controls.LegacyMenuBar"
+             Height="34">
+  <Border Background="#FBFAF5"
+          BorderBrush="#C9C7BD"
+          BorderThickness="0,0,0,1">
+    <Menu x:Name="RootMenu"
+          Background="Transparent"
+          FontFamily="Bahnschrift, DIN Alternate, sans-serif"
+          FontSize="12"
+          VerticalAlignment="Stretch">
+      <Menu.Styles>
+        <Style Selector="MenuItem">
+          <Setter Property="MinHeight" Value="30" />
+          <Setter Property="Padding" Value="10,4" />
+        </Style>
+        <Style Selector="Menu &gt; MenuItem">
+          <Setter Property="Padding" Value="12,4" />
+          <Setter Property="FontSize" Value="11" />
+          <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+      </Menu.Styles>
+    </Menu>
+  </Border>
+</UserControl>

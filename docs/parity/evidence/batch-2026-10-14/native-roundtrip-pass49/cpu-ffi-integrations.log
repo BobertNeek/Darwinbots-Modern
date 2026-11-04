@@ -1,0 +1,63 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 6m 20s
+     Running tests\core_state_contracts.rs (target\release\deps\core_state_contracts-ccd89b507eed90ae.exe)
+
+running 5 tests
+test core_policy_state_round_trips_through_native_save ... ok
+test legacy_object_payload_fields_survive_native_serde ... ok
+test native_ffi_updates_cost_and_recording_authority ... ok
+test per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically ... ok
+test robot_limit_rejects_configurations_above_db2_maximum ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\gpu_ffi.rs (target\release\deps\gpu_ffi-0257c6a4cd2bc001.exe)
+
+running 14 tests
+test cpu_physics_integrates_and_clamps_world_bounds ... ok
+test ffi_adds_and_removes_live_environment_features ... ok
+test ffi_binary_save_load_round_trip_replaces_engine_atomically ... ok
+test ffi_environment_updates_preserve_optional_db2_settings ... ok
+test ffi_executes_versioned_command_batches_and_reports_capabilities ... ok
+test ffi_import_accepts_known_sysvars_without_inert_warnings ... ok
+test ffi_imports_a_configured_species_as_one_command ... ok
+test ffi_loads_genuine_native_sim_and_preserves_the_world_after_rejected_load ... ok
+test ffi_manual_tools_return_ids_and_exported_dna ... ok
+test ffi_rejects_unknown_batch_versions_with_owned_structured_error ... ok
+test ffi_v1_consumers_accept_the_additive_snapshot ... ok
+test ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once ... ok
+test native_one_shot_tie_has_spring_motion_and_hardens_on_cycle_twenty ... ok
+test native_repeated_tie_requests_reset_lifetime_without_premature_hardening ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 11.81s
+
+     Running tests\native_random_lifecycle_248.rs (target\release\deps\native_random_lifecycle_248-44cdc89674ea0ecf.exe)
+
+running 13 tests
+test explicit_gaussian_handoff_survives_native_load_and_yields_to_modern_saved_state ... ok
+test extinct_species_template_exports_are_read_only_and_survive_complete_save_reload ... ok
+test failed_native_cycle_batches_restore_both_counters_and_pending_start_state ... ok
+test fresh_native_constructor_and_ffi_create_share_the_fresh_prologue ... ok
+test gaussian_spare_commands_change_only_the_cache_and_reads_do_not_consume_it ... ok
+test gaussian_spare_commands_do_not_enable_a_legacy_random_stream ... ok
+test invalid_gaussian_spare_batches_roll_back_cache_and_other_commands ... ok
+test modern_rust_and_ffi_load_restore_the_saved_uniform_state_and_spare_without_inheriting ... ok
+test native_cycle_lifecycle_preserves_monotonic_ffi_ticks_and_saved_start_boundaries ... ok
+test native_ffi_load_reseeds_uniform_state_but_retains_only_the_previous_gaussian_spare ... ok
+test native_restart_seed_command_is_replayable_and_does_not_reseed_the_live_stream ... ok
+test native_sim_load_executes_the_literal_next_random_word_after_its_prologue ... ok
+test sun_change_commands_preserve_uniform_gaussian_and_other_world_state ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests\robot_tools.rs (target\release\deps\robot_tools-1d99c83bc1ba5691.exe)
+
+running 5 tests
+test console_memory_and_energy_mutations_are_engine_authoritative ... ok
+test player_bot_release_and_invert_follow_pressed_xor_invert ... ok
+test player_bot_writes_after_dna_clear_in_the_same_full_cycle ... ok
+test restriction_options_apply_editable_column_to_live_robot_and_snapshot ... ok
+test robot_tools_commands_round_trip_through_native_batch_and_snapshot ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.61s
+

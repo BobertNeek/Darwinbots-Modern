@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "ORIGINAL_CAPTURED_PORT_COMPARISON_PENDING",
+  "captured_utc": "2026-10-17T08:20:07.055Z",
+  "case": "fixed",
+  "cycle": 10,
+  "seed": 48032,
+  "input": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\fixed\\input.sim",
+  "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+  "source_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "capture": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\fixed\\captures\\fixed-original-cycle10-pass60.sim",
+  "candidate": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass60-drafts\\original-controls\\db24832-genuine-fixed-cycle10-20261017.sim",
+  "sha256": "051F845860338E6D1B21572A73EE60867D1AD6EC2981016A1E3E6BEC11450A44",
+  "bytes": 17068,
+  "raw_saved_counter": 10,
+  "decoded_record": {
+    "fixed": -1,
+    "position": [
+      8000,
+      6000
+    ],
+    "velocity": [
+      0,
+      0
+    ],
+    "actual_velocity": [
+      0,
+      0
+    ],
+    "age": 10,
+    "body": 1000,
+    "energy": 20000
+  },
+  "protocol": [
+    "Fresh original process; continueLastSimulationNo.",
+    "Restore normal window before loading; toolbarPause, toolbarLoad exactC0; PlayerBot visually unchecked in Edit menu.",
+    "Wait loaded input title and actual robot before stepping. No Details/selection/FindBest/console/NewSim/menuF2.",
+    "First paced single click calibration saved actualC2, then eight separately observed single clicks advanced visible3..10; finalF3 save confirms exact10.",
+    "All UI via documentedSky; GDI screenshot skill fallback, no helper/runtime patch."
+  ],
+  "port_engine_executed": false,
+  "canonical_port_comparison_passed": false,
+  "active_source_mutated": false
+}

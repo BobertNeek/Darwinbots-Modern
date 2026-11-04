@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-17T07:02:01.838Z",
+  "status": "CALIBRATION ONLY; NOT CANONICAL ACCEPTANCE",
+  "exe_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+  "protocol": "Fresh process, toolbarPause/toolbarLoad; no selection or console during these captures; no Internet Mode. Actual counters read from framed save tail.",
+  "actions": [
+    {
+      "action": "single toolbar cycle",
+      "actual_saved_cycles": 1
+    },
+    {
+      "action": "click_count9",
+      "actual_saved_cycles": 1,
+      "excluded": "Filename cycle10 disagrees with authoritative savedcounter; never relabel or accept it."
+    },
+    {
+      "action": "click_count2",
+      "actual_saved_cycles": 3
+    }
+  ],
+  "captures": [
+    {
+      "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\captures\\fixed-original-cycle1.sim",
+      "bytes": 17068,
+      "sha256": "01360A500B63AAD15D96384A25E792AB7C50CAB630497017F7C1214D00535BF4",
+      "actual_saved_cycles": 1,
+      "seed": 48032,
+      "canonical_accepted": false
+    },
+    {
+      "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\captures\\fixed-original-cycle10.sim",
+      "bytes": 17068,
+      "sha256": "01360A500B63AAD15D96384A25E792AB7C50CAB630497017F7C1214D00535BF4",
+      "actual_saved_cycles": 1,
+      "seed": 48032,
+      "canonical_accepted": false
+    },
+    {
+      "file": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-long56-aba3814e-9307-46fd-9409-c5b5c4063532\\fixed\\captures\\fixed-batch2-observed.sim",
+      "bytes": 17068,
+      "sha256": "324F80439DEEBC1D4B3A6EC6A4B72B9797C58AF41D9AABE31DE5642D49743ECE",
+      "actual_saved_cycles": 3,
+      "seed": 48032,
+      "canonical_accepted": false
+    }
+  ],
+  "limitations": [
+    "No product comparison or parity claim performed.",
+    "WGC native screenshot timed out; screenshot skill GDI window captures used for observation.",
+    "First step targeting Explorer was rejected; fresh target activation recovered before successful single cycle.",
+    "Source58 remains frozen and local58 ordinary outcomes active."
+  ]
+}

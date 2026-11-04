@@ -1,0 +1,67 @@
+using System.Text;
+using System.Security.Cryptography;
+using Darwinbots.Desktop.Core;
+
+namespace Darwinbots.Desktop.Services;
+
+public static class SetupStorageService
+{
+    public static byte[] EncodeSettings(string path, DesktopSettings settings)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (IsModernJson(path)) return Encoding.UTF8.GetBytes(settings.ToJson());
+        if (Path.IsPathRooted(path) && settings.Species.Count > 0)
+        {
+            var originals = settings.Species.Select(value => (Species: value, Bytes: LegacyDnaText.Encode(value.Dna))).ToArray();
+            var directory = Path.ChangeExtension(path, ".robots");
+            var species = new List<SpeciesImport>();
+            foreach (var original in originals)
+            {
+                var value = original.Species;
+                var data = original.Bytes;
+                var dnaPath = Path.Combine(directory, Convert.ToHexString(SHA256.HashData(data)) + ".txt");
+                species.Add(value with { DnaPath = dnaPath });
+            }
+            settings = settings with { Species = species };
+            var encoded = Db2SettingsCodec.Encode(settings);
+            Directory.CreateDirectory(directory);
+            foreach (var original in originals)
+            {
+                var dnaPath = Path.Combine(directory, Convert.ToHexString(SHA256.HashData(original.Bytes)) + ".txt");
+                if (!File.Exists(dnaPath)) File.WriteAllBytes(dnaPath, original.Bytes);
+            }
+            return encoded;
+        }
+        return Db2SettingsCodec.Encode(settings);
+    }
+
+    public static DesktopSettings DecodeSettings(string path, ReadOnlyMemory<byte> bytes)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (IsModernJson(path)) return DesktopSettings.FromJson(Encoding.UTF8.GetString(bytes.Span));
+        var settings = Db2SettingsCodec.Decode(bytes.Span);
+        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        return settings with { Species = settings.Species.Select(species => ResolveSpecies(species, directory)).ToArray() };
+    }
+
+    private static SpeciesImport ResolveSpecies(SpeciesImport species, string directory)
+    {
+        if (!string.IsNullOrWhiteSpace(species.Dna)) return species;
+        var name = Path.GetFileName(species.DnaPath ?? species.Name);
+        var candidates = new[]
+        {
+            species.DnaPath ?? species.Name, Path.Combine(directory, species.DnaPath ?? species.Name),
+            Path.Combine(directory, "..", "bots", name), Path.Combine(directory, "bots", name),
+            Path.Combine(AppContext.BaseDirectory, "Bots", name), Path.Combine(AppContext.BaseDirectory, "Bots", "Historical", name),
+        };
+        var source = candidates.FirstOrDefault(File.Exists)
+            ?? throw new FileNotFoundException($"DNA file for legacy species '{species.Name}' was not found.", species.DnaPath);
+        return species with { Dna = LegacyDnaText.Decode(File.ReadAllBytes(source)), DnaPath = Path.GetFullPath(source) };
+    }
+
+    private static bool IsModernJson(string path) =>
+        Path.GetExtension(path).Equals(".json", StringComparison.OrdinalIgnoreCase);
+}

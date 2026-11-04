@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-11",
+  "code_revision": "310a153703f11656fa4a819242fac6ba13d5b3a7",
+  "fixture": "modern/engine/tests/fixtures/db24832-original-user.sim",
+  "sha256": "09b77b6eaf0a1a8ffc09c601a8869fe37c4fc4e21860ebf379519fdbfce8a55e",
+  "robot_records": 196,
+  "record_stream_end_offset": 2078323,
+  "simulation_tail_bytes": 13514,
+  "tests": {
+    "genuine_whole_file_byte_roundtrip": "passed",
+    "json_roundtrip_preserves_raw_bits_and_ansi_bytes": "passed",
+    "single_resource_edit_preserves_other_bytes": "passed",
+    "bad_counts_truncation_and_terminators": "passed"
+  },
+  "strict_clippy": "passed",
+  "limits": [
+    "This is a lossless record codec, not a completed simulation loader.",
+    "Simulation options, species, objects, shots and graph state in the tail are preserved as opaque bytes and still need semantic decoding.",
+    "The original program has not yet reloaded a port-generated or edited native file."
+  ]
+}

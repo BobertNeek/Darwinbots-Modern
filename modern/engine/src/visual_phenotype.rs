@@ -36,12 +36,7 @@ impl VisualPhenotype {
         ]
     }
 
-    pub fn apply_color_mutation(
-        &mut self,
-        changes: u32,
-        autotroph: bool,
-        random_state: &mut u64,
-    ) {
+    pub fn apply_color_mutation(&mut self, changes: u32, autotroph: bool, random_state: &mut u64) {
         if changes == 0 {
             return;
         }
@@ -60,6 +55,26 @@ impl VisualPhenotype {
 
         if autotroph {
             rgb = clamp_to_autotroph_green(rgb);
+        }
+        self.color = alpha | ((rgb[0] as u32) << 16) | ((rgb[1] as u32) << 8) | rgb[2] as u32;
+    }
+
+    pub(crate) fn apply_native_color_mutation(
+        &mut self,
+        changes: u32,
+        random: &mut crate::native_random::NativeRandom,
+    ) {
+        let alpha = self.color & 0xff00_0000;
+        let mut rgb = self.rgb();
+        for _ in 0..changes {
+            // NeoMutations selects VB's blue, green, red channels in that order.
+            let channel = 3 - random.integer(1, 3) as usize;
+            let increase = random.integer(0, 1) == 1;
+            rgb[channel] = if increase {
+                rgb[channel].saturating_add(20)
+            } else {
+                rgb[channel].saturating_sub(20)
+            };
         }
         self.color = alpha | ((rgb[0] as u32) << 16) | ((rgb[1] as u32) << 8) | rgb[2] as u32;
     }
@@ -139,11 +154,7 @@ fn clamp_to_autotroph_green(rgb: [u8; 3]) -> [u8; 3] {
             155.0
         };
     }
-    hsv_to_rgb(
-        hue,
-        saturation.clamp(0.45, 0.90),
-        value.clamp(0.40, 0.85),
-    )
+    hsv_to_rgb(hue, saturation.clamp(0.45, 0.90), value.clamp(0.40, 0.85))
 }
 
 fn rgb_to_hsv(rgb: [u8; 3]) -> [f32; 3] {

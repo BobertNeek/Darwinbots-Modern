@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "utc": "2026-10-17T06:01:51.3741047Z",
+  "source_base": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "all_applied_before_format": true,
+  "files": [
+    {
+      "target": "modern/engine/src/environment.rs",
+      "draft_sha256": "CC209E6CD44EE462DFCD337789032D196D1DA8477D34840C7BD8441AAC612425",
+      "post_format_sha256": "CC209E6CD44EE462DFCD337789032D196D1DA8477D34840C7BD8441AAC612425",
+      "bytes": 11629,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/engine/src/world.rs",
+      "draft_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "post_format_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "bytes": 580098,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/engine/src/world/native_io.rs",
+      "draft_sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "post_format_sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "bytes": 61809,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/engine/src/world/native_sim_export.rs",
+      "draft_sha256": "B1EDBC1019A78D72B919969CCE81D480F1B3BCC4C99EC361E2EA6825C9EDA084",
+      "post_format_sha256": "A04EBE61C4B72144F4CB3B3DEB4EF2FC89A5490A0F268D021AF034B77042591B",
+      "bytes": 63872,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/src/world/native_shots.rs",
+      "draft_sha256": "45837A2442A8ADC444D392D7A5FA961984513D4A1B41C645C5C92C281899DEAD",
+      "post_format_sha256": "C46B9C0F125D8C28DECA799E3812E15E05510D5487FAC70F1894C6C600B42C1A",
+      "bytes": 51432,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/tests/db2_projectiles.rs",
+      "draft_sha256": "D0B2CA6050798F6D09D20BD9325B21B89EA3AD67A85C3B630B8F99D99B6F8057",
+      "post_format_sha256": "CBB9472E0E870AE1E84929EEC12D6342AD5DD37637293943AC1CD0424FB5D1E7",
+      "bytes": 32456,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/src/world/native_energy.rs",
+      "draft_sha256": "2DEBC72890B56366913C46C266AF6CFD4FB6A9BB17B68BD253B8F45D7CEE9DC6",
+      "post_format_sha256": "FA72F1CF1856997E2549C4B2885B71F52EB83B73076CD3A0E5FA9F80365998BB",
+      "bytes": 20166,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/tests/contracts.rs",
+      "draft_sha256": "CF369243FA400EEE8B73E3C1D8EEAF90453A67633A67CF8A792E306BC6F4B800",
+      "post_format_sha256": "6B29B6E89B9923F383599FC0C208FB9BA475D3323DAAA2FE22752449B7381F24",
+      "bytes": 62395,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "draft_sha256": "EA6037C8D782A8F8BC48D966B982DBD8FFB3603D7BAAEBEB47CD75183D186D41",
+      "post_format_sha256": "EA6037C8D782A8F8BC48D966B982DBD8FFB3603D7BAAEBEB47CD75183D186D41",
+      "bytes": 23001,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml.cs",
+      "draft_sha256": "E2220334969C1351935AAC572632ACC45DD0F3755FB445F2E2CAE8B0373EDAAE",
+      "post_format_sha256": "E2220334969C1351935AAC572632ACC45DD0F3755FB445F2E2CAE8B0373EDAAE",
+      "bytes": 2663,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/ShapeEditorWindow.axaml",
+      "draft_sha256": "1E99772506D098B20D587F21AFD4A3ABE2711169B382017D64290806E2141741",
+      "post_format_sha256": "1E99772506D098B20D587F21AFD4A3ABE2711169B382017D64290806E2141741",
+      "bytes": 3376,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ShapeShotPolicyCompatibilityTests.cs",
+      "draft_sha256": "CBE9347849408F6D17B7168F4CFAB9EE0A606DB75B638CB709F00ACB0638BD5F",
+      "post_format_sha256": "CBE9347849408F6D17B7168F4CFAB9EE0A606DB75B638CB709F00ACB0638BD5F",
+      "bytes": 4586,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/ShapeEditorReflectPolicyTests.cs",
+      "draft_sha256": "6D6A551D6F572FEB11610A824FAE84C0EEF204BFAA27968BB4DDB71EC457F78A",
+      "post_format_sha256": "6D6A551D6F572FEB11610A824FAE84C0EEF204BFAA27968BB4DDB71EC457F78A",
+      "bytes": 3196,
+      "formatter_changed": false
+    },
+    {
+      "target": ".github/workflows/modern-cross-platform.yml",
+      "draft_sha256": "0C094489C1716CACBE70899525134169DD0027B8783BE0229A463FB2D2419F6F",
+      "post_format_sha256": "0C094489C1716CACBE70899525134169DD0027B8783BE0229A463FB2D2419F6F",
+      "bytes": 2925,
+      "formatter_changed": false
+    },
+    {
+      "target": "output/qualify-native-roundtrip-pass58.ps1",
+      "draft_sha256": "9A2570E9FB003D205F059224FC36CE71DAA49261FCE2C127C058C6957D7F0527",
+      "post_format_sha256": "9A2570E9FB003D205F059224FC36CE71DAA49261FCE2C127C058C6957D7F0527",
+      "bytes": 54809,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/engine/tests/native_continuation_qualification.rs",
+      "draft_sha256": "789A032ED4EB4058D038FAAC2C3EA1C00D2CD418DB6696CB24F55C93A7FC8CE7",
+      "post_format_sha256": "789A032ED4EB4058D038FAAC2C3EA1C00D2CD418DB6696CB24F55C93A7FC8CE7",
+      "bytes": 8495,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/engine/tests/final_state_persistence_248.rs",
+      "draft_sha256": "2B79C671F50A350C140A86F6A353C52A2B3C054DC29E6A6CCB2A5B0D18C39A8D",
+      "post_format_sha256": "04CFEB165522437D9DF260A190B9CFF4C17CA5712968C65955609291D3870E0A",
+      "bytes": 16969,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/tests/species_ecology.rs",
+      "draft_sha256": "8B36B61C47A15AF1BDF3A5B7440293F45C4083490C9DF4A3430F15F57F14F0FE",
+      "post_format_sha256": "A63E840309B0C8E423E31D8EF8980EC40D83AFFF2F0E593C53303A594D0060FE",
+      "bytes": 77889,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/src/world/native_waste.rs",
+      "draft_sha256": "D961027F368295F9F9E4CF21B6674999EA50216FB2071534F15FF2672CEC79B9",
+      "post_format_sha256": "223E95EB6D2503E6CDB0B7CE52C6F4DFE5314332455A159530B38571728A1EFF",
+      "bytes": 19815,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/tests/reproduction_heredity_248.rs",
+      "draft_sha256": "A1A791EBFFA98F7F1F848F7EB78B5B080EF795FB6EA92A55A99AF591874E8FC1",
+      "post_format_sha256": "29C0B923B4BA71C9CAF74D6B5E235F4D2434D62F2DA072C531C92E7B5754D720",
+      "bytes": 41059,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeWasteThresholdSettingsTests.cs",
+      "draft_sha256": "01DEA95EE01443AF8F6FD7542F20C28EA6171676F2EA83CBDC5C1CAD8C400B2F",
+      "post_format_sha256": "01DEA95EE01443AF8F6FD7542F20C28EA6171676F2EA83CBDC5C1CAD8C400B2F",
+      "bytes": 2738,
+      "formatter_changed": false
+    },
+    {
+      "target": "modern/engine/tests/touch_taste_248.rs",
+      "draft_sha256": "64F6385CCEEDD85057AB5E0B006112308E8CC24F56BCF65D0700752614D9F675",
+      "post_format_sha256": "D3CCA2DA0CDA627534F2D7313E1F8771240203235A69F4E01BC111045D9E8456",
+      "bytes": 11788,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/tests/toroidal_world.rs",
+      "draft_sha256": "51A58738322A54EC9ED47A27081165DDBF33262CE829A475CD3018334F811F18",
+      "post_format_sha256": "42FE29A52A0700447C4A89B83645176216E193CD0878A8C79CC3A5776E628A1D",
+      "bytes": 8779,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/engine/tests/world_systems.rs",
+      "draft_sha256": "62900991EE7FDA73424A6302B6DF785094858734CCA0104A1AE5B192DC5D9F6A",
+      "post_format_sha256": "F723C9AE6CADB7FC59C663C8D4168E4D8E7B3D528732202DAE39730DEBD9EE80",
+      "bytes": 17758,
+      "formatter_changed": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "draft_sha256": "2AD7DB4610A014FEC94B6DA7BEDEFADFCCC0FC09AB7836089A2E149307684080",
+      "post_format_sha256": "2AD7DB4610A014FEC94B6DA7BEDEFADFCCC0FC09AB7836089A2E149307684080",
+      "bytes": 16828,
+      "formatter_changed": false
+    }
+  ],
+  "format_only_changed": [
+    "modern/engine/src/world/native_sim_export.rs",
+    "modern/engine/src/world/native_shots.rs",
+    "modern/engine/tests/db2_projectiles.rs",
+    "modern/engine/src/world/native_energy.rs",
+    "modern/engine/tests/contracts.rs",
+    "modern/engine/tests/final_state_persistence_248.rs",
+    "modern/engine/tests/species_ecology.rs",
+    "modern/engine/src/world/native_waste.rs",
+    "modern/engine/tests/reproduction_heredity_248.rs",
+    "modern/engine/tests/touch_taste_248.rs",
+    "modern/engine/tests/toroidal_world.rs",
+    "modern/engine/tests/world_systems.rs"
+  ]
+}

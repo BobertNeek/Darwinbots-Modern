@@ -1,0 +1,1694 @@
+{
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "platform": "osx-arm64",
+  "job": {
+    "id": 117384366994,
+    "run_id": 39028588882,
+    "workflow_name": "Modern cross-platform",
+    "head_branch": "codex/db24832-completion",
+    "run_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/runs/39028588882",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOTWeRkM8AAAAbVKdLkg",
+    "head_sha": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+    "url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/actions/jobs/117384366994",
+    "html_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39028588882/job/117384366994",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T11:24:43Z",
+    "started_at": "2026-10-17T11:24:49Z",
+    "completed_at": "2026-10-17T11:43:02Z",
+    "name": "verify-and-package (macos-latest, osx-arm64)",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-17T11:24:49Z",
+        "completed_at": "2026-10-17T11:24:50Z"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-17T11:24:50Z",
+        "completed_at": "2026-10-17T11:24:54Z"
+      },
+      {
+        "name": "Run dtolnay/rust-toolchain@stable",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-17T11:24:54Z",
+        "completed_at": "2026-10-17T11:25:01Z"
+      },
+      {
+        "name": "Run actions/setup-dotnet@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-17T11:25:01Z",
+        "completed_at": "2026-10-17T11:25:12Z"
+      },
+      {
+        "name": "Test Rust workspace",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 5,
+        "started_at": "2026-10-17T11:25:12Z",
+        "completed_at": "2026-10-17T11:42:57Z"
+      },
+      {
+        "name": "Test desktop core",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 6,
+        "started_at": "2026-10-17T11:42:57Z",
+        "completed_at": "2026-10-17T11:42:57Z"
+      },
+      {
+        "name": "Test rendered desktop controls",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 7,
+        "started_at": "2026-10-17T11:42:57Z",
+        "completed_at": "2026-10-17T11:42:57Z"
+      },
+      {
+        "name": "Preserve rendered control receipts",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-10-17T11:42:57Z",
+        "completed_at": "2026-10-17T11:42:58Z"
+      },
+      {
+        "name": "Publish desktop package",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 9,
+        "started_at": "2026-10-17T11:42:58Z",
+        "completed_at": "2026-10-17T11:42:58Z"
+      },
+      {
+        "name": "Smoke test published desktop package",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 10,
+        "started_at": "2026-10-17T11:42:58Z",
+        "completed_at": "2026-10-17T11:42:58Z"
+      },
+      {
+        "name": "Run actions/upload-artifact@v4",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 11,
+        "started_at": "2026-10-17T11:42:58Z",
+        "completed_at": "2026-10-17T11:42:58Z"
+      },
+      {
+        "name": "Post Run actions/setup-dotnet@v4",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 21,
+        "started_at": "2026-10-17T11:42:58Z",
+        "completed_at": "2026-10-17T11:42:58Z"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22,
+        "started_at": "2026-10-17T11:42:58Z",
+        "completed_at": "2026-10-17T11:42:58Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-10-17T11:42:58Z",
+        "completed_at": "2026-10-17T11:43:00Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/BobertNeek/Darwinbots-Modern/check-runs/117384366994",
+    "labels": [
+      "macos-latest"
+    ],
+    "runner_id": 1000005152,
+    "runner_name": "GitHub Actions 1000005152",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  "rust": {
+    "targets": [
+      {
+        "package": "darwinbots-cli",
+        "name": "darwinbots_cli",
+        "kind": "lib",
+        "source": "modern/cli/src/lib.rs",
+        "header_line": 546,
+        "emitted_header": "Running unittests src/lib.rs (target/release/deps/darwinbots_cli-caa479a8d928cf76)",
+        "failed_tests": [],
+        "ignored_tests": [
+          "test probe::tests::physical_gpu_run_reports_same_process_hardware_adapter ... ignored, requires an idle physical GPU; run with --ignored on the GPU qualification host"
+        ],
+        "status": "ok",
+        "counts": {
+          "passed": 15,
+          "failed": 0,
+          "ignored": 1,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "1.62s",
+        "summary_line": 566,
+        "emitted_summary": "test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.62s"
+      },
+      {
+        "package": "darwinbots-cli",
+        "name": "darwinbots-cli",
+        "kind": "bin",
+        "source": "modern/cli/src/main.rs",
+        "header_line": 568,
+        "emitted_header": "Running unittests src/main.rs (target/release/deps/darwinbots_cli-b644a077d489ab6a)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.00s",
+        "summary_line": 572,
+        "emitted_summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      {
+        "package": "darwinbots-cli",
+        "name": "bundled_bot_corpus",
+        "kind": "test",
+        "source": "modern/cli/tests/bundled_bot_corpus.rs",
+        "header_line": 574,
+        "emitted_header": "Running tests/bundled_bot_corpus.rs (target/release/deps/bundled_bot_corpus-37121cc5d77e5468)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "81.23s",
+        "summary_line": 580,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 81.23s"
+      },
+      {
+        "package": "darwinbots-cli",
+        "name": "commands",
+        "kind": "test",
+        "source": "modern/cli/tests/commands.rs",
+        "header_line": 582,
+        "emitted_header": "Running tests/commands.rs (target/release/deps/commands-0bb61a0a82072304)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 589,
+        "emitted_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-cli",
+        "name": "db245_probes",
+        "kind": "test",
+        "source": "modern/cli/tests/db245_probes.rs",
+        "header_line": 590,
+        "emitted_header": "Running tests/db245_probes.rs (target/release/deps/db245_probes-923cf8f3e68c3c3f)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "135.34s",
+        "summary_line": 597,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 135.34s"
+      },
+      {
+        "package": "darwinbots-cli",
+        "name": "native_comparison",
+        "kind": "test",
+        "source": "modern/cli/tests/native_comparison.rs",
+        "header_line": 599,
+        "emitted_header": "Running tests/native_comparison.rs (target/release/deps/native_comparison-91caa76fbc5dd973)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.13s",
+        "summary_line": 608,
+        "emitted_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "darwinbots_engine",
+        "kind": "lib",
+        "source": "modern/engine/src/lib.rs",
+        "header_line": 610,
+        "emitted_header": "Running unittests src/lib.rs (target/release/deps/darwinbots_engine-572bd71c0b5eb0bb)",
+        "failed_tests": [
+          "world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death",
+          "world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping"
+        ],
+        "ignored_tests": [
+          "test world::cached_radius::tests::death_retains_the_large_chloroplast_radius_on_physical_gpu ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+          "test world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+          "test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+          "test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+          "test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+          "test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host",
+          "test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+        ],
+        "status": "FAILED",
+        "counts": {
+          "passed": 522,
+          "failed": 2,
+          "ignored": 7,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "6.44s",
+        "summary_line": 1162,
+        "emitted_summary": "test result: FAILED. 522 passed; 2 failed; 7 ignored; 0 measured; 0 filtered out; finished in 6.44s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "advanced_mutation_costs",
+        "kind": "test",
+        "source": "modern/engine/tests/advanced_mutation_costs.rs",
+        "header_line": 1165,
+        "emitted_header": "Running tests/advanced_mutation_costs.rs (target/release/deps/advanced_mutation_costs-f0f537a005453f28)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1171,
+        "emitted_summary": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "canonical_cycle_248",
+        "kind": "test",
+        "source": "modern/engine/tests/canonical_cycle_248.rs",
+        "header_line": 1173,
+        "emitted_header": "Running tests/canonical_cycle_248.rs (target/release/deps/canonical_cycle_248-be33e7ef2cc4a042)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1191,
+        "emitted_summary": "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "community_league_admission",
+        "kind": "test",
+        "source": "modern/engine/tests/community_league_admission.rs",
+        "header_line": 1193,
+        "emitted_header": "Running tests/community_league_admission.rs (target/release/deps/community_league_admission-ce264718f7f7b1c2)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1201,
+        "emitted_summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "contracts",
+        "kind": "test",
+        "source": "modern/engine/tests/contracts.rs",
+        "header_line": 1203,
+        "emitted_header": "Running tests/contracts.rs (target/release/deps/contracts-d17bfee06ccabba6)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 33,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 1240,
+        "emitted_summary": "test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "core_state_contracts",
+        "kind": "test",
+        "source": "modern/engine/tests/core_state_contracts.rs",
+        "header_line": 1242,
+        "emitted_header": "Running tests/core_state_contracts.rs (target/release/deps/core_state_contracts-851583f2853797be)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.01s",
+        "summary_line": 1251,
+        "emitted_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "corpses_collisions",
+        "kind": "test",
+        "source": "modern/engine/tests/corpses_collisions.rs",
+        "header_line": 1252,
+        "emitted_header": "Running tests/corpses_collisions.rs (target/release/deps/corpses_collisions-f8cd61d0a629d794)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.05s",
+        "summary_line": 1265,
+        "emitted_summary": "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db24832_clean_defaults",
+        "kind": "test",
+        "source": "modern/engine/tests/db24832_clean_defaults.rs",
+        "header_line": 1263,
+        "emitted_header": "Running tests/db24832_clean_defaults.rs (target/release/deps/db24832_clean_defaults-a28f6ba5b8b24d96)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.00s",
+        "summary_line": 1272,
+        "emitted_summary": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db24832_genuine_feeding",
+        "kind": "test",
+        "source": "modern/engine/tests/db24832_genuine_feeding.rs",
+        "header_line": 1274,
+        "emitted_header": "Running tests/db24832_genuine_feeding.rs (target/release/deps/db24832_genuine_feeding-378b60e23d12978b)",
+        "failed_tests": [
+          "genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots",
+          "genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches"
+        ],
+        "ignored_tests": [],
+        "status": "FAILED",
+        "counts": {
+          "passed": 7,
+          "failed": 2,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.24s",
+        "summary_line": 1309,
+        "emitted_summary": "test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db24832_genuine_load_transients",
+        "kind": "test",
+        "source": "modern/engine/tests/db24832_genuine_load_transients.rs",
+        "header_line": 1312,
+        "emitted_header": "Running tests/db24832_genuine_load_transients.rs (target/release/deps/db24832_genuine_load_transients-acc43f49c6c5c85f)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.14s",
+        "summary_line": 1325,
+        "emitted_summary": "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db24832_starter_movement",
+        "kind": "test",
+        "source": "modern/engine/tests/db24832_starter_movement.rs",
+        "header_line": 1327,
+        "emitted_header": "Running tests/db24832_starter_movement.rs (target/release/deps/db24832_starter_movement-67d43f532706140b)",
+        "failed_tests": [],
+        "ignored_tests": [
+          "test untouched_starter_animal_moves_on_physical_gpu ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+        ],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 1,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1333,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db2_final_engine_world",
+        "kind": "test",
+        "source": "modern/engine/tests/db2_final_engine_world.rs",
+        "header_line": 1335,
+        "emitted_header": "Running tests/db2_final_engine_world.rs (target/release/deps/db2_final_engine_world-760b0291224b01fb)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1343,
+        "emitted_summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db2_mutation_248",
+        "kind": "test",
+        "source": "modern/engine/tests/db2_mutation_248.rs",
+        "header_line": 1345,
+        "emitted_header": "Running tests/db2_mutation_248.rs (target/release/deps/db2_mutation_248-f5cbc33ae07b25e8)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.01s",
+        "summary_line": 1367,
+        "emitted_summary": "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db2_physics",
+        "kind": "test",
+        "source": "modern/engine/tests/db2_physics.rs",
+        "header_line": 1369,
+        "emitted_header": "Running tests/db2_physics.rs (target/release/deps/db2_physics-17e186b22a398882)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1395,
+        "emitted_summary": "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db2_projectiles",
+        "kind": "test",
+        "source": "modern/engine/tests/db2_projectiles.rs",
+        "header_line": 1397,
+        "emitted_header": "Running tests/db2_projectiles.rs (target/release/deps/db2_projectiles-cf1bbf35a9b8cdb4)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 23,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1424,
+        "emitted_summary": "test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db2_starter_ecology",
+        "kind": "test",
+        "source": "modern/engine/tests/db2_starter_ecology.rs",
+        "header_line": 1426,
+        "emitted_header": "Running tests/db2_starter_ecology.rs (target/release/deps/db2_starter_ecology-935f63590f035ef9)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "400.84s",
+        "summary_line": 1432,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 400.84s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db2_vegetation",
+        "kind": "test",
+        "source": "modern/engine/tests/db2_vegetation.rs",
+        "header_line": 1434,
+        "emitted_header": "Running tests/db2_vegetation.rs (target/release/deps/db2_vegetation-d9b28f86f3b98018)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1458,
+        "emitted_summary": "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "db2_vision",
+        "kind": "test",
+        "source": "modern/engine/tests/db2_vision.rs",
+        "header_line": 1460,
+        "emitted_header": "Running tests/db2_vision.rs (target/release/deps/db2_vision-a71ac45298299525)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1468,
+        "emitted_summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "dna_runtime_248",
+        "kind": "test",
+        "source": "modern/engine/tests/dna_runtime_248.rs",
+        "header_line": 1470,
+        "emitted_header": "Running tests/dna_runtime_248.rs (target/release/deps/dna_runtime_248-d7ec1a1180d0db32)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.00s",
+        "summary_line": 1484,
+        "emitted_summary": "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "eco05_repopulation",
+        "kind": "test",
+        "source": "modern/engine/tests/eco05_repopulation.rs",
+        "header_line": 1486,
+        "emitted_header": "Running tests/eco05_repopulation.rs (target/release/deps/eco05_repopulation-08659bb737d26484)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 1491,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "environment_world",
+        "kind": "test",
+        "source": "modern/engine/tests/environment_world.rs",
+        "header_line": 1493,
+        "emitted_header": "Running tests/environment_world.rs (target/release/deps/environment_world-e5f73045f35d1e83)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1510,
+        "emitted_summary": "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "extinct_species",
+        "kind": "test",
+        "source": "modern/engine/tests/extinct_species.rs",
+        "header_line": 1512,
+        "emitted_header": "Running tests/extinct_species.rs (target/release/deps/extinct_species-2bad7b443ac39a9c)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1517,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "final_state_persistence_248",
+        "kind": "test",
+        "source": "modern/engine/tests/final_state_persistence_248.rs",
+        "header_line": 1519,
+        "emitted_header": "Running tests/final_state_persistence_248.rs (target/release/deps/final_state_persistence_248-a04c3b2890eabef6)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1527,
+        "emitted_summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "gpu_ffi",
+        "kind": "test",
+        "source": "modern/engine/tests/gpu_ffi.rs",
+        "header_line": 1529,
+        "emitted_header": "Running tests/gpu_ffi.rs (target/release/deps/gpu_ffi-9704406c913c6ca9)",
+        "failed_tests": [],
+        "ignored_tests": [
+          "test physical_gpu_fuses_grid_sensing_integration_and_render_preparation ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+        ],
+        "status": "ok",
+        "counts": {
+          "passed": 28,
+          "failed": 0,
+          "ignored": 1,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "3.44s",
+        "summary_line": 1562,
+        "emitted_summary": "test result: ok. 28 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 3.44s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "history_records",
+        "kind": "test",
+        "source": "modern/engine/tests/history_records.rs",
+        "header_line": 1564,
+        "emitted_header": "Running tests/history_records.rs (target/release/deps/history_records-9e7a12994405ffbb)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 1569,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "legacy_distribution",
+        "kind": "test",
+        "source": "modern/engine/tests/legacy_distribution.rs",
+        "header_line": 1571,
+        "emitted_header": "Running tests/legacy_distribution.rs (target/release/deps/legacy_distribution-1b9b9d7d1a428160)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1576,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "legacy_transport",
+        "kind": "test",
+        "source": "modern/engine/tests/legacy_transport.rs",
+        "header_line": 1578,
+        "emitted_header": "Running tests/legacy_transport.rs (target/release/deps/legacy_transport-867e1ab69bf56113)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 1588,
+        "emitted_summary": "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "live_legacy_menu_settings",
+        "kind": "test",
+        "source": "modern/engine/tests/live_legacy_menu_settings.rs",
+        "header_line": 1590,
+        "emitted_header": "Running tests/live_legacy_menu_settings.rs (target/release/deps/live_legacy_menu_settings-e6055a12de7fb8ff)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.00s",
+        "summary_line": 1596,
+        "emitted_summary": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "local_modes",
+        "kind": "test",
+        "source": "modern/engine/tests/local_modes.rs",
+        "header_line": 1598,
+        "emitted_header": "Running tests/local_modes.rs (target/release/deps/local_modes-ca62a75e101393cf)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.01s",
+        "summary_line": 1605,
+        "emitted_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "manual_tools",
+        "kind": "test",
+        "source": "modern/engine/tests/manual_tools.rs",
+        "header_line": 1607,
+        "emitted_header": "Running tests/manual_tools.rs (target/release/deps/manual_tools-f17641e3608cd39c)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.01s",
+        "summary_line": 1617,
+        "emitted_summary": "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "mutation_advanced_248",
+        "kind": "test",
+        "source": "modern/engine/tests/mutation_advanced_248.rs",
+        "header_line": 1619,
+        "emitted_header": "Running tests/mutation_advanced_248.rs (target/release/deps/mutation_advanced_248-8e261b08c6f39e5f)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.05s",
+        "summary_line": 1630,
+        "emitted_summary": "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "mutation_lifecycle",
+        "kind": "test",
+        "source": "modern/engine/tests/mutation_lifecycle.rs",
+        "header_line": 1632,
+        "emitted_header": "Running tests/mutation_lifecycle.rs (target/release/deps/mutation_lifecycle-28ab352ade743004)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1644,
+        "emitted_summary": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "native_continuation_qualification",
+        "kind": "test",
+        "source": "modern/engine/tests/native_continuation_qualification.rs",
+        "header_line": 1646,
+        "emitted_header": "Running tests/native_continuation_qualification.rs (target/release/deps/native_continuation_qualification-47cddf57191379e6)",
+        "failed_tests": [],
+        "ignored_tests": [
+          "test physical_gpu_original_world_long_continuation_matches_cpu_and_repeated_save_resume ... ignored, requires an idle physical GPU; run with --ignored on the qualification host"
+        ],
+        "status": "ok",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 1,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "69.93s",
+        "summary_line": 1654,
+        "emitted_summary": "test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 69.93s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "native_mutation_continuation_qualification",
+        "kind": "test",
+        "source": "modern/engine/tests/native_mutation_continuation_qualification.rs",
+        "header_line": 1656,
+        "emitted_header": "Running tests/native_mutation_continuation_qualification.rs (target/release/deps/native_mutation_continuation_qualification-9ba5dda872cf4c23)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "22.32s",
+        "summary_line": 1661,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.32s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "native_random_lifecycle_248",
+        "kind": "test",
+        "source": "modern/engine/tests/native_random_lifecycle_248.rs",
+        "header_line": 1663,
+        "emitted_header": "Running tests/native_random_lifecycle_248.rs (target/release/deps/native_random_lifecycle_248-dfe635762a9afaae)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.04s",
+        "summary_line": 1680,
+        "emitted_summary": "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "native_reference_senses_248",
+        "kind": "test",
+        "source": "modern/engine/tests/native_reference_senses_248.rs",
+        "header_line": 1682,
+        "emitted_header": "Running tests/native_reference_senses_248.rs (target/release/deps/native_reference_senses_248-02b839002d282dbf)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1690,
+        "emitted_summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "native_resource_precision",
+        "kind": "test",
+        "source": "modern/engine/tests/native_resource_precision.rs",
+        "header_line": 1692,
+        "emitted_header": "Running tests/native_resource_precision.rs (target/release/deps/native_resource_precision-65f327c07460ba0b)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1707,
+        "emitted_summary": "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "occurrence_census_248",
+        "kind": "test",
+        "source": "modern/engine/tests/occurrence_census_248.rs",
+        "header_line": 1709,
+        "emitted_header": "Running tests/occurrence_census_248.rs (target/release/deps/occurrence_census_248-eb6888f430ee1823)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.37s",
+        "summary_line": 1718,
+        "emitted_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "parity_completion",
+        "kind": "test",
+        "source": "modern/engine/tests/parity_completion.rs",
+        "header_line": 1720,
+        "emitted_header": "Running tests/parity_completion.rs (target/release/deps/parity_completion-7ae15a5043145195)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1735,
+        "emitted_summary": "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "reproduction_heredity_248",
+        "kind": "test",
+        "source": "modern/engine/tests/reproduction_heredity_248.rs",
+        "header_line": 1737,
+        "emitted_header": "Running tests/reproduction_heredity_248.rs (target/release/deps/reproduction_heredity_248-8d732ae39461f736)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 30,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.04s",
+        "summary_line": 1771,
+        "emitted_summary": "test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "robot_state_248",
+        "kind": "test",
+        "source": "modern/engine/tests/robot_state_248.rs",
+        "header_line": 1773,
+        "emitted_header": "Running tests/robot_state_248.rs (target/release/deps/robot_state_248-8841e995b385b34e)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.01s",
+        "summary_line": 1781,
+        "emitted_summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "robot_tools",
+        "kind": "test",
+        "source": "modern/engine/tests/robot_tools.rs",
+        "header_line": 1783,
+        "emitted_header": "Running tests/robot_tools.rs (target/release/deps/robot_tools-56a1264b25acc952)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.23s",
+        "summary_line": 1792,
+        "emitted_summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "scheduler_housekeeping",
+        "kind": "test",
+        "source": "modern/engine/tests/scheduler_housekeeping.rs",
+        "header_line": 1794,
+        "emitted_header": "Running tests/scheduler_housekeeping.rs (target/release/deps/scheduler_housekeeping-02fafa67c2366c17)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1801,
+        "emitted_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "scheduler_shock",
+        "kind": "test",
+        "source": "modern/engine/tests/scheduler_shock.rs",
+        "header_line": 1803,
+        "emitted_header": "Running tests/scheduler_shock.rs (target/release/deps/scheduler_shock-a60b9203193cc32b)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1808,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "sensing_compatibility",
+        "kind": "test",
+        "source": "modern/engine/tests/sensing_compatibility.rs",
+        "header_line": 1810,
+        "emitted_header": "Running tests/sensing_compatibility.rs (target/release/deps/sensing_compatibility-1b3dfb085aacf303)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.01s",
+        "summary_line": 1816,
+        "emitted_summary": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "shot_state",
+        "kind": "test",
+        "source": "modern/engine/tests/shot_state.rs",
+        "header_line": 1818,
+        "emitted_header": "Running tests/shot_state.rs (target/release/deps/shot_state-e4444d6e47a9fef4)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1823,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "spawn_placement",
+        "kind": "test",
+        "source": "modern/engine/tests/spawn_placement.rs",
+        "header_line": 1825,
+        "emitted_header": "Running tests/spawn_placement.rs (target/release/deps/spawn_placement-224cdd1c79f923b2)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1832,
+        "emitted_summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "species_ecology",
+        "kind": "test",
+        "source": "modern/engine/tests/species_ecology.rs",
+        "header_line": 1834,
+        "emitted_header": "Running tests/species_ecology.rs (target/release/deps/species_ecology-5cfede6ab1d0501b)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 41,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 1879,
+        "emitted_summary": "test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "starter_ecology",
+        "kind": "test",
+        "source": "modern/engine/tests/starter_ecology.rs",
+        "header_line": 1881,
+        "emitted_header": "Running tests/starter_ecology.rs (target/release/deps/starter_ecology-9e647c994bbd97c2)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "176.14s",
+        "summary_line": 1887,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 176.14s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "sysvar_lifecycle_248",
+        "kind": "test",
+        "source": "modern/engine/tests/sysvar_lifecycle_248.rs",
+        "header_line": 1889,
+        "emitted_header": "Running tests/sysvar_lifecycle_248.rs (target/release/deps/sysvar_lifecycle_248-bc34a6f812f042b0)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.01s",
+        "summary_line": 1918,
+        "emitted_summary": "test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "ties_multibot",
+        "kind": "test",
+        "source": "modern/engine/tests/ties_multibot.rs",
+        "header_line": 1920,
+        "emitted_header": "Running tests/ties_multibot.rs (target/release/deps/ties_multibot-bdbb148d0fea3d45)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.05s",
+        "summary_line": 1945,
+        "emitted_summary": "test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "toroidal_world",
+        "kind": "test",
+        "source": "modern/engine/tests/toroidal_world.rs",
+        "header_line": 1947,
+        "emitted_header": "Running tests/toroidal_world.rs (target/release/deps/toroidal_world-8c85f81fc32da723)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 1958,
+        "emitted_summary": "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "touch_taste_248",
+        "kind": "test",
+        "source": "modern/engine/tests/touch_taste_248.rs",
+        "header_line": 1960,
+        "emitted_header": "Running tests/touch_taste_248.rs (target/release/deps/touch_taste_248-5ef425fe9ba62150)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.03s",
+        "summary_line": 1972,
+        "emitted_summary": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "visual_phenotypes",
+        "kind": "test",
+        "source": "modern/engine/tests/visual_phenotypes.rs",
+        "header_line": 1974,
+        "emitted_header": "Running tests/visual_phenotypes.rs (target/release/deps/visual_phenotypes-4ffc3cfb21c5e374)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 1986,
+        "emitted_summary": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "vm",
+        "kind": "test",
+        "source": "modern/engine/tests/vm.rs",
+        "header_line": 1988,
+        "emitted_header": "Running tests/vm.rs (target/release/deps/vm-586a8b4eb959e490)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.00s",
+        "summary_line": 2000,
+        "emitted_summary": "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "vm_costs_telemetry",
+        "kind": "test",
+        "source": "modern/engine/tests/vm_costs_telemetry.rs",
+        "header_line": 2002,
+        "emitted_header": "Running tests/vm_costs_telemetry.rs (target/release/deps/vm_costs_telemetry-dc212ec52f4c1f10)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 2015,
+        "emitted_summary": "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "vm_implicit_conditions",
+        "kind": "test",
+        "source": "modern/engine/tests/vm_implicit_conditions.rs",
+        "header_line": 2017,
+        "emitted_header": "Running tests/vm_implicit_conditions.rs (target/release/deps/vm_implicit_conditions-c5f1e36d6839fe08)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 2023,
+        "emitted_summary": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "w4_evolution_gpu",
+        "kind": "test",
+        "source": "modern/engine/tests/w4_evolution_gpu.rs",
+        "header_line": 2025,
+        "emitted_header": "Running tests/w4_evolution_gpu.rs (target/release/deps/w4_evolution_gpu-511c286f5178bee8)",
+        "failed_tests": [],
+        "ignored_tests": [
+          "test physical_gpu_phase2_ecological_differential_has_adapter_receipt ... ignored, requires a physical GPU; run with --ignored on the GPU qualification host"
+        ],
+        "status": "ok",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 1,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 2032,
+        "emitted_summary": "test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "world_systems",
+        "kind": "test",
+        "source": "modern/engine/tests/world_systems.rs",
+        "header_line": 2034,
+        "emitted_header": "Running tests/world_systems.rs (target/release/deps/world_systems-153d11baf4d40967)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 2050,
+        "emitted_summary": "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "zerobot_progression",
+        "kind": "test",
+        "source": "modern/engine/tests/zerobot_progression.rs",
+        "header_line": 2052,
+        "emitted_header": "Running tests/zerobot_progression.rs (target/release/deps/zerobot_progression-1aa0aa41f197719d)",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.02s",
+        "summary_line": 2057,
+        "emitted_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+      },
+      {
+        "package": "darwinbots-cli",
+        "name": "darwinbots_cli",
+        "kind": "doc",
+        "source": "modern/cli/src/lib.rs",
+        "header_line": 2059,
+        "emitted_header": "Doc-tests darwinbots_cli",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.00s",
+        "summary_line": 2063,
+        "emitted_summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      },
+      {
+        "package": "darwinbots-engine",
+        "name": "darwinbots_engine",
+        "kind": "doc",
+        "source": "modern/engine/src/lib.rs",
+        "header_line": 2065,
+        "emitted_header": "Doc-tests darwinbots_engine",
+        "failed_tests": [],
+        "ignored_tests": [],
+        "status": "ok",
+        "counts": {
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "duration": "0.00s",
+        "summary_line": 2069,
+        "emitted_summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      }
+    ],
+    "counts": {
+      "passed": 1055,
+      "failed": 4,
+      "ignored": 12,
+      "measured": 0,
+      "filtered_out": 0
+    },
+    "actual_distinct_targets": 68,
+    "completed_targets": 68,
+    "full_expected_corpus_completed": true,
+    "parse_errors": [],
+    "failure_contexts": [
+      {
+        "line": 1147,
+        "lines": [
+          "---- world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death stdout ----",
+          "",
+          "thread 'world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death' (36100) panicked at modern/engine/src/world/native_feeding.rs:109:22:",
+          "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+          "",
+          "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+          "",
+          "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (36298) panicked at modern/engine/src/world/native_sim_export.rs:902:30:"
+        ]
+      },
+      {
+        "line": 1152,
+        "lines": [
+          "---- world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping stdout ----",
+          "",
+          "thread 'world::native_sim_export::tests::native_shot_export_resolves_recycled_owner_before_packed_old_slot_mapping' (36298) panicked at modern/engine/src/world/native_sim_export.rs:902:30:",
+          "called `Result::unwrap()` on an `Err` value: Invariant(\"original native shot allocation cannot grow this full pool\")",
+          "",
+          "",
+          "failures:",
+          "    world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death"
+        ]
+      },
+      {
+        "line": 1289,
+        "lines": [
+          "---- genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots stdout ----",
+          "",
+          "thread 'genuine_feeding_c100_retains_twenty_expired_original_death_particle_slots' (36898) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+          "assertion `left == right` failed: shot[0].x",
+          "  left: 8277.0",
+          " right: 8288.0",
+          "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+          ""
+        ]
+      },
+      {
+        "line": 1297,
+        "lines": [
+          "---- genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches stdout ----",
+          "",
+          "thread 'genuine_feeding_c10_and_c100_match_after_preserving_runtime_caches' (36902) panicked at modern/engine/tests/db24832_genuine_feeding.rs:40:13:",
+          "assertion `left == right` failed: original pair C100 shot[62].x",
+          "  left: 8574.191",
+          " right: 8577.136",
+          "",
+          ""
+        ]
+      }
+    ],
+    "expected_distinct_targets": 68,
+    "log": {
+      "file": "output/hosted-main-8a42380-agent/logs/osx-arm64-completed.log",
+      "sha256": "528BBA4987C6A59BBF5BB44F0088E7CC57DC25DBFCCF2831C8822B414167AECB",
+      "bytes": 211320
+    },
+    "command": "cargo test --release --workspace --no-fail-fast"
+  },
+  "core": {
+    "step_conclusion": "skipped",
+    "executed": false,
+    "counts": null,
+    "actual_summary_count": 0
+  },
+  "desktop": {
+    "step_conclusion": "skipped",
+    "executed": false,
+    "counts": null,
+    "actual_summary_count": 0,
+    "trx": null
+  },
+  "package": {
+    "publish_conclusion": "skipped",
+    "smoke_conclusion": "skipped",
+    "published": false,
+    "smoke_executed": false,
+    "native_library": null,
+    "bundled_assets_verified": 0
+  },
+  "proof_scope": "Terminal job data only. Final all-platform/artifact receipt waits allfour ordinary outcomes."
+}

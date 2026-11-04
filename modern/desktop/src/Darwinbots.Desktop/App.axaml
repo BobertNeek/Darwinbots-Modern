@@ -2,10 +2,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Darwinbots.Desktop.App"
              RequestedThemeVariant="Light">
+  <Application.Resources>
+    <SolidColorBrush x:Key="WindowBrush" Color="#F3F0E8" />
+    <SolidColorBrush x:Key="HeaderBrush" Color="#FBF9F2" />
+    <SolidColorBrush x:Key="ToolbarBrush" Color="#E9E7DE" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#FBF9F2" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#C8C5BB" />
+    <SolidColorBrush x:Key="TextBrush" Color="#202725" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#69716D" />
+    <SolidColorBrush x:Key="FieldBrush" Color="#F9F8F2" />
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
     <Style Selector="Window">
-      <Setter Property="Background" Value="#F3F0E8" />
+      <Setter Property="Background" Value="{DynamicResource WindowBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
       <Setter Property="FontFamily" Value="Aptos, Noto Sans, sans-serif" />
     </Style>
     <Style Selector="TextBlock.section">
@@ -13,11 +24,11 @@
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="LetterSpacing" Value="1.2" />
-      <Setter Property="Foreground" Value="#202725" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
     <Style Selector="Border.panel">
-      <Setter Property="Background" Value="#FBF9F2" />
-      <Setter Property="BorderBrush" Value="#C8C5BB" />
+      <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="Button.transport">

@@ -1,0 +1,1585 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "sealed_utc": "2026-10-17T14:13:16.070Z",
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass63-source.json",
+    "sha256": "6E6A0F44695062B4B453EDBA28E7E3A03224D10AE0D27F9ADF99071F80506860",
+    "source_file_count": 686,
+    "all_pins_reverified_by_collector": true
+  },
+  "workflow": "Desktop platform diagnostics",
+  "workflow_file": ".github/workflows/modern-desktop-diagnostics.yml",
+  "run": {
+    "id": 39039127580,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39039127580",
+    "event": "workflow_dispatch",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-17T14:03:28Z",
+    "updated_at": "2026-10-17T14:10:21Z",
+    "head_sha": "61509e4c8424f751d20c5f34a83c35fc6d8be424"
+  },
+  "all_jobs_terminal": true,
+  "all_three_diagnostic_outcomes_collected": true,
+  "jobs": [
+    {
+      "job_id": 117414845762,
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-17T14:03:32Z",
+      "completed_at": "2026-10-17T14:07:31Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:33Z",
+          "completed_at": "2026-10-17T14:03:34Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:34Z",
+          "completed_at": "2026-10-17T14:03:37Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:37Z",
+          "completed_at": "2026-10-17T14:03:46Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:46Z",
+          "completed_at": "2026-10-17T14:03:54Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:54Z",
+          "completed_at": "2026-10-17T14:07:26Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:26Z",
+          "completed_at": "2026-10-17T14:07:28Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:28Z",
+          "completed_at": "2026-10-17T14:07:28Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:28Z",
+          "completed_at": "2026-10-17T14:07:28Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:28Z",
+          "completed_at": "2026-10-17T14:07:28Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Native release library build inside the Desktop test workflow; no Rust test corpus is run by this diagnostics workflow.",
+        "native_library_digest": null,
+        "native_library_digest_boundary": "The workflow artifact emits no native library digest; exact DLL identity is not inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 214,
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "result_rows": 214,
+        "unique_execution_ids": 214,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": true,
+        "failed_tests": [],
+        "trx": {
+          "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+          "sha256": "39F87222C7B481BC939ED9653748CBDDE9803286EB9FCF1AFFD493CE2CD15AD2",
+          "bytes": 334194
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed",
+            "execution_id": "3ac34ddd-400d-454d-bdd7-d7d53b4b3f59",
+            "duration": "00:00:00.3443923",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+            "outcome": "Passed",
+            "execution_id": "70f88213-55a7-432c-befb-fc31a825cd72",
+            "duration": "00:00:00.4255080",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed",
+            "execution_id": "50f1ae50-2648-46d2-ac09-36fd6236aec6",
+            "duration": "00:00:07.3123645",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "outcome": "Passed",
+            "execution_id": "7f35e87f-e27d-4d90-9788-ae6e6a199cab",
+            "duration": "00:00:01.0070121",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "outcome": "Passed",
+            "execution_id": "b5501e5a-cc43-44c6-9b38-5b1f6f83edc7",
+            "duration": "00:00:00.0737592",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed",
+            "execution_id": "39394b32-9b9c-4292-8ad8-9a8de6eb8cbe",
+            "duration": "00:00:00.0171759",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+            "outcome": "Passed",
+            "execution_id": "0dac40bd-c73e-4eea-a8af-15a1e06940fe",
+            "duration": "00:00:00.0601301",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "565f4c9b-8ff0-4743-b3d0-932039e421e8",
+            "duration": "00:00:00.0266649",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+            "outcome": "Passed",
+            "execution_id": "f233caa9-ab71-49ca-9985-63e5ff435d13",
+            "duration": "00:00:00.1360731",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+            "outcome": "Passed",
+            "execution_id": "7a000e02-8cde-45a1-b56f-b5069dd5ad0d",
+            "duration": "00:00:00.1322172",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+            "outcome": "Passed",
+            "execution_id": "8762ef5a-be39-4155-9901-e002030c327e",
+            "duration": "00:00:00.3683909",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+            "outcome": "Passed",
+            "execution_id": "6671e7e0-0fd6-45a3-8796-3ea7588eb29c",
+            "duration": "00:00:00.3558285",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+            "outcome": "Passed",
+            "execution_id": "da4abb83-fde2-4d48-a377-1be5e4aee13d",
+            "duration": "00:00:00.4396452",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+            "outcome": "Passed",
+            "execution_id": "db01bf10-f8a6-4e0c-9625-e1021524bea3",
+            "duration": "00:00:00.3111717",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "outcome": "Passed",
+            "execution_id": "4f0bdd93-a1b5-4edf-835b-6cda0f0e99f0",
+            "duration": "00:00:00.9692759",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed",
+            "execution_id": "333248bf-eea9-4d8a-be23-b6fb96b45c92",
+            "duration": "00:00:00.3056559",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+            "outcome": "Passed",
+            "execution_id": "cf6398b5-7861-4555-ac42-3aed010f7149",
+            "duration": "00:00:00.2901019",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+            "outcome": "Passed",
+            "execution_id": "2ea46068-a720-4e21-87e8-c927eb3ab297",
+            "duration": "00:00:00.2038968",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "outcome": "Passed",
+            "execution_id": "c990decf-9108-4dc4-b766-7d96be864c8a",
+            "duration": "00:00:00.1307792",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "b130d5b9-0b6c-4cdc-93fc-8f503b2dc918",
+            "duration": "00:00:00.0397262",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed",
+            "execution_id": "340cdc17-0504-4029-ad45-7e84c143290e",
+            "duration": "00:00:01.1519535",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed",
+            "execution_id": "60af3bf2-da23-4530-a88c-d89f50cd4460",
+            "duration": "00:00:00.0363040",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "outcome": "Passed",
+            "execution_id": "fce18b60-cb3d-4909-a50f-d8c2436355e3",
+            "duration": "00:00:00.1559864",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "outcome": "Passed",
+            "execution_id": "c7393da1-49ec-4726-b992-c91c834ea492",
+            "duration": "00:00:00.1512244",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 39,
+        "png_count": 38,
+        "trx_count": 1,
+        "changed_shot_render_captures_emitted": true
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-61509e4-agent/logs/linux-x64-completed.log",
+        "sha256": "CCFEA5A54317DF7A495498078F38EEC172634C6D6B5019E90F1C3DC56DEC9FB4",
+        "bytes": 67017
+      },
+      "not_run": [
+        "Rust workspace tests (outside this diagnostics workflow)",
+        "Desktop Core test project (outside this workflow)",
+        "Published package/package smoke/package identity (outside this workflow)",
+        "Physical GPU/capacity, actual original application and final visible desktop acceptance"
+      ]
+    },
+    {
+      "job_id": 117414845925,
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-17T14:03:33Z",
+      "completed_at": "2026-10-17T14:10:20Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:33Z",
+          "completed_at": "2026-10-17T14:03:35Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:35Z",
+          "completed_at": "2026-10-17T14:03:41Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:41Z",
+          "completed_at": "2026-10-17T14:03:54Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:54Z",
+          "completed_at": "2026-10-17T14:04:14Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:04:14Z",
+          "completed_at": "2026-10-17T14:10:12Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:10:12Z",
+          "completed_at": "2026-10-17T14:10:15Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:10:15Z",
+          "completed_at": "2026-10-17T14:10:15Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:10:15Z",
+          "completed_at": "2026-10-17T14:10:16Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:10:16Z",
+          "completed_at": "2026-10-17T14:10:17Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Native release library build inside the Desktop test workflow; no Rust test corpus is run by this diagnostics workflow.",
+        "native_library_digest": null,
+        "native_library_digest_boundary": "The workflow artifact emits no native library digest; exact DLL identity is not inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 214,
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "result_rows": 214,
+        "unique_execution_ids": 214,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": true,
+        "failed_tests": [],
+        "trx": {
+          "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+          "sha256": "338FDBCA2E73CD844A1E5F4A0C98B6E3F1021A7A104C13AF0E0EB1F9545310F0",
+          "bytes": 345038
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+            "outcome": "Passed",
+            "execution_id": "4b23b9a5-e54d-4ce0-b8a0-1d111e49a149",
+            "duration": "00:00:00.1094166",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed",
+            "execution_id": "a728c976-f1e2-4450-83be-5877247a73ec",
+            "duration": "00:00:00.0159245",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "outcome": "Passed",
+            "execution_id": "12c8324f-8196-4509-95d2-90bd056974a9",
+            "duration": "00:00:00.0786342",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed",
+            "execution_id": "9c301fbb-09d8-4972-9020-7462f30dff1b",
+            "duration": "00:00:02.3865248",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "outcome": "Passed",
+            "execution_id": "e8760c85-7079-4e37-a418-c105582b9aa0",
+            "duration": "00:00:00.1539889",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed",
+            "execution_id": "f92aae11-ab90-4b0c-b06a-109169a6ce0d",
+            "duration": "00:00:00.6783164",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "outcome": "Passed",
+            "execution_id": "c9f72159-3cab-442c-9634-2d76d08959cc",
+            "duration": "00:00:02.7376470",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed",
+            "execution_id": "3c9ed487-b07b-47e4-a35e-9748deda450a",
+            "duration": "00:00:00.0320747",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+            "outcome": "Passed",
+            "execution_id": "62164e1c-32b8-40f8-aecb-b8b51b9a428e",
+            "duration": "00:00:00.0849813",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+            "outcome": "Passed",
+            "execution_id": "3d9e4cff-ec1e-4e51-a135-3ffca9791b31",
+            "duration": "00:00:00.0999042",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "0e5271ca-7f71-4aee-b0b4-d647f5c4fdc1",
+            "duration": "00:00:00.0256106",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+            "outcome": "Passed",
+            "execution_id": "8c701438-56d5-4475-a778-d1c821e43074",
+            "duration": "00:00:00.3801113",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "1e1b70bc-289a-494c-a639-d070c6d64ece",
+            "duration": "00:00:00.0489134",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+            "outcome": "Passed",
+            "execution_id": "d648d961-73e4-435d-add6-93fa2f4299fe",
+            "duration": "00:00:00.1045637",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+            "outcome": "Passed",
+            "execution_id": "287376ef-5171-4e5e-9235-6a234fe1142d",
+            "duration": "00:00:00.1563971",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "outcome": "Passed",
+            "execution_id": "8489f7e9-c675-47ac-8959-c6add85c795c",
+            "duration": "00:00:00.5920754",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "outcome": "Passed",
+            "execution_id": "cc4a2601-3e86-4c89-aece-c73c7d150d3a",
+            "duration": "00:00:00.7416024",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed",
+            "execution_id": "f1f6a3f8-d6a7-47b8-95d0-f376180fb8c4",
+            "duration": "00:00:13.2481864",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+            "outcome": "Passed",
+            "execution_id": "cf0b97db-7060-45af-8319-248946b06dbb",
+            "duration": "00:00:00.4555904",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+            "outcome": "Passed",
+            "execution_id": "3f643681-7a7a-4b33-9610-0c7793f03aa8",
+            "duration": "00:00:00.5654697",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed",
+            "execution_id": "3498ba16-2520-46fd-a683-9b653e103bef",
+            "duration": "00:00:00.7647756",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+            "outcome": "Passed",
+            "execution_id": "801b55d5-444a-420a-8303-7c6005a8abcd",
+            "duration": "00:00:00.5757915",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "outcome": "Passed",
+            "execution_id": "191d28c9-4207-4495-8d96-e468341e9cc2",
+            "duration": "00:00:01.0973856",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+            "outcome": "Passed",
+            "execution_id": "c0f51c84-de90-4963-9e65-45eed29521b1",
+            "duration": "00:00:00.5007528",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 39,
+        "png_count": 38,
+        "trx_count": 1,
+        "changed_shot_render_captures_emitted": true
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-61509e4-agent/logs/osx-x64-completed.log",
+        "sha256": "66F868CC9054C947DC03576B40D9055F1EDDBDB8374D682F5CB39A273963730D",
+        "bytes": 68635
+      },
+      "not_run": [
+        "Rust workspace tests (outside this diagnostics workflow)",
+        "Desktop Core test project (outside this workflow)",
+        "Published package/package smoke/package identity (outside this workflow)",
+        "Physical GPU/capacity, actual original application and final visible desktop acceptance"
+      ]
+    },
+    {
+      "job_id": 117414846304,
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-17T14:03:36Z",
+      "completed_at": "2026-10-17T14:07:48Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:37Z",
+          "completed_at": "2026-10-17T14:03:38Z"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:38Z",
+          "completed_at": "2026-10-17T14:03:43Z"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:43Z",
+          "completed_at": "2026-10-17T14:03:50Z"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:03:50Z",
+          "completed_at": "2026-10-17T14:04:04Z"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:04:04Z",
+          "completed_at": "2026-10-17T14:07:41Z"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:41Z",
+          "completed_at": "2026-10-17T14:07:43Z"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:43Z",
+          "completed_at": "2026-10-17T14:07:43Z"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:43Z",
+          "completed_at": "2026-10-17T14:07:44Z"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-17T14:07:44Z",
+          "completed_at": "2026-10-17T14:07:46Z"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_build": "Native release library build inside the Desktop test workflow; no Rust test corpus is run by this diagnostics workflow.",
+        "native_library_digest": null,
+        "native_library_digest_boundary": "The workflow artifact emits no native library digest; exact DLL identity is not inferred."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 214,
+        "total": 214,
+        "executed": 214,
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "result_rows": 214,
+        "unique_execution_ids": 214,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "all_tests_passed": true,
+        "failed_tests": [],
+        "trx": {
+          "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+          "sha256": "9617A4F0BB083987E3BFA5CB27DE8A3085DF22E6B36D9E7A6BEA29E2A52A9BEE",
+          "bytes": 345038
+        },
+        "selected_cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.MalformedStartupSidecarFailsBeforeItsDnaImportAndPreservesTheSetupSpecies",
+            "outcome": "Passed",
+            "execution_id": "12277795-ca0e-431e-899a-d30a5d73939e",
+            "duration": "00:00:00.2747610",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed",
+            "execution_id": "4bb47479-6e26-47fe-b9fa-1a7bd7cb193b",
+            "duration": "00:00:01.3955302",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.SetupKeepsPickedProfileAndOriginalSourcePathOnTheSpeciesDefinition",
+            "outcome": "Passed",
+            "execution_id": "e3609b1c-b94f-4a34-8fbe-12560681fbe8",
+            "duration": "00:00:00.1807159",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed",
+            "execution_id": "6bba5c4f-7480-41d5-8e9c-a069376c78a2",
+            "duration": "00:00:00.0122797",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed",
+            "execution_id": "90222290-2332-46a0-a9d9-b74a832e3500",
+            "duration": "00:00:00.0226782",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupWithoutASidecarKeepsTheOriginalDefaultSpeciesAndInsertionRoute",
+            "outcome": "Passed",
+            "execution_id": "1df5c55b-2052-4599-bfa7-0492eebd2e79",
+            "duration": "00:00:00.2756300",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.ExplicitEvolutionFileCarriesItsSidecarThroughTheNativeConfigAndSavedSnapshot",
+            "outcome": "Passed",
+            "execution_id": "57070125-85e6-4108-bee1-95b62e23e76a",
+            "duration": "00:00:00.0659071",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Passed",
+            "execution_id": "96e76eb1-3ccc-49b8-8959-ed9840f49d94",
+            "duration": "00:00:04.9776377",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "c264fe20-c820-4c18-997d-7e52329efdec",
+            "duration": "00:00:00.0280245",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.OriginalSettingsProfileRemainsAuthoritativeOverAnAdjacentSidecar",
+            "outcome": "Passed",
+            "execution_id": "4945e2a5-a084-4679-b3b8-8c6c508a7723",
+            "duration": "00:00:00.0026427",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: False)",
+            "outcome": "Passed",
+            "execution_id": "f5919ba2-872e-49c9-ab13-220f55787036",
+            "duration": "00:00:00.0493389",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.ResetCapturesTheCurrentSpareOnceAndDoesNotReplayTheOriginalHandoffAfterItClears",
+            "outcome": "Passed",
+            "execution_id": "52f7b683-3cc8-4cc6-9fc3-b736737f1caf",
+            "duration": "00:00:00.6320386",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed",
+            "execution_id": "ed00af8e-c288-480a-b202-cf04647aea86",
+            "duration": "00:00:00.5278427",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+            "outcome": "Passed",
+            "execution_id": "bd685081-c79a-4bec-b6b4-b0077f3e8749",
+            "duration": "00:00:00.4888146",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+            "outcome": "Passed",
+            "execution_id": "b16f60f5-f800-4dae-9a60-7495423ae328",
+            "duration": "00:00:00.0454100",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: False)",
+            "outcome": "Passed",
+            "execution_id": "5b01515f-2103-4416-a919-8741be33013c",
+            "duration": "00:00:00.3537357",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed",
+            "execution_id": "1d1682d0-db71-4f69-8362-291d3a725270",
+            "duration": "00:00:00.8281569",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.NativeLoadRetainsTheProcessHandoffButModernLoadRestoresItsOwnGaussianState(savedHasSpare: True)",
+            "outcome": "Passed",
+            "execution_id": "1ee51bf4-9541-44b3-b3ec-413d13dd8d02",
+            "duration": "00:00:00.0843508",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "a926bdf6-fc9e-473a-b029-bc5cdc253a8f",
+            "duration": "00:00:00.0327277",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.InvalidNativeSnapshotTextIsRejectedBeforeTheStorageDestinationIsOpened",
+            "outcome": "Passed",
+            "execution_id": "c6292f7c-14c7-4050-b212-da571bdea73a",
+            "duration": "00:00:00.0448305",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeStartupRobotFileTests.StartupSidecarReachesItsNativeRobotAtTheExactCenterAndSurvivesExportAndSaveResume",
+            "outcome": "Passed",
+            "execution_id": "65ebbf95-21ce-4d4f-bc73-7647bd349488",
+            "duration": "00:00:00.2161825",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+            "outcome": "Passed",
+            "execution_id": "b35e7402-dfa6-4633-a34f-659b734f6ab0",
+            "duration": "00:00:00.8620653",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.NewSimulationRoutesCaptureCurrentSpareAndWireTheReplacementWithTheInjectedServices(useMenu: True)",
+            "outcome": "Passed",
+            "execution_id": "1af4b704-c49c-4b2e-8e6f-ca7643ee00ff",
+            "duration": "00:00:00.5036427",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.NativeRobotFileIntegrationTests.PickedSidecarProfileReachesOnlyItsActualNativeSpeciesAndSelectedExport",
+            "outcome": "Passed",
+            "execution_id": "3c7c8ebf-5c77-48c7-85a7-8b9d96eda7ee",
+            "duration": "00:00:00.3367847",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      },
+      "abort": {
+        "occurred": false,
+        "log_inactivity_abort": false
+      },
+      "artifacts": {
+        "file_count": 39,
+        "png_count": 38,
+        "trx_count": 1,
+        "changed_shot_render_captures_emitted": true
+      },
+      "log": {
+        "file": "output/hosted-diagnostics-61509e4-agent/logs/osx-arm64-completed.log",
+        "sha256": "87727ED8852AF85FFAE33573F4E43C519F4F4B25650B3693F6C7143082626B2B",
+        "bytes": 67714
+      },
+      "not_run": [
+        "Rust workspace tests (outside this diagnostics workflow)",
+        "Desktop Core test project (outside this workflow)",
+        "Published package/package smoke/package identity (outside this workflow)",
+        "Physical GPU/capacity, actual original application and final visible desktop acceptance"
+      ]
+    }
+  ],
+  "aggregate": {
+    "platforms": 3,
+    "successful_jobs": 3,
+    "failed_jobs": 0,
+    "actual_executed_desktop_tests": 642,
+    "actual_passed_test_rows": 642,
+    "actual_failed_test_rows": 0,
+    "actual_skipped_test_rows": 0,
+    "expected_desktop_tests_per_platform": 214,
+    "full_expected_corpus_completed": true,
+    "all_tests_passed": true,
+    "compiler_failures": 0
+  },
+  "failure_diagnosis": [],
+  "readiness_regressions": {
+    "both_menu_and_toolbar_find_best_passed_on_all_three": true,
+    "loaded_196_robot_world_readiness_passed_on_all_three": true,
+    "actual_cases": [
+      {
+        "platform": "linux-x64",
+        "cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed",
+            "execution_id": "3ac34ddd-400d-454d-bdd7-d7d53b4b3f59",
+            "duration": "00:00:00.3443923",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed",
+            "execution_id": "333248bf-eea9-4d8a-be23-b6fb96b45c92",
+            "duration": "00:00:00.3056559",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed",
+            "execution_id": "340cdc17-0504-4029-ad45-7e84c143290e",
+            "duration": "00:00:01.1519535",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      },
+      {
+        "platform": "osx-x64",
+        "cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed",
+            "execution_id": "9c301fbb-09d8-4972-9020-7462f30dff1b",
+            "duration": "00:00:02.3865248",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed",
+            "execution_id": "f92aae11-ab90-4b0c-b06a-109169a6ce0d",
+            "duration": "00:00:00.6783164",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed",
+            "execution_id": "3498ba16-2520-46fd-a683-9b653e103bef",
+            "duration": "00:00:00.7647756",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      },
+      {
+        "platform": "osx-arm64",
+        "cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.RuntimeControlSurfaceTests.LoadedNativeWorldHydratesControlsAndChangingTopologyPreservesItsRules",
+            "outcome": "Passed",
+            "execution_id": "4bb47479-6e26-47fe-b9fa-1a7bd7cb193b",
+            "duration": "00:00:01.3955302",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+            "outcome": "Passed",
+            "execution_id": "ed00af8e-c288-480a-b202-cf04647aea86",
+            "duration": "00:00:00.5278427",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+            "outcome": "Passed",
+            "execution_id": "1d1682d0-db71-4f69-8362-291d3a725270",
+            "duration": "00:00:00.8281569",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      }
+    ],
+    "boundary": "Fresh source63 rows pass with the authored completion barrier and bounded native-load wait. This does not retrospectively prove the exact cause of the source62 timeouts; no timeout status failure was emitted in63."
+  },
+  "changed_shot_rendering": {
+    "all_four_world_shot_facts_passed_on_all_three_platforms": true,
+    "actual_rows": [
+      {
+        "platform": "linux-x64",
+        "cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed",
+            "execution_id": "39394b32-9b9c-4292-8ad8-9a8de6eb8cbe",
+            "duration": "00:00:00.0171759",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "565f4c9b-8ff0-4743-b3d0-932039e421e8",
+            "duration": "00:00:00.0266649",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "b130d5b9-0b6c-4cdc-93fc-8f503b2dc918",
+            "duration": "00:00:00.0397262",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed",
+            "execution_id": "60af3bf2-da23-4530-a88c-d89f50cd4460",
+            "duration": "00:00:00.0363040",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      },
+      {
+        "platform": "osx-x64",
+        "cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed",
+            "execution_id": "a728c976-f1e2-4450-83be-5877247a73ec",
+            "duration": "00:00:00.0159245",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed",
+            "execution_id": "3c9ed487-b07b-47e4-a35e-9748deda450a",
+            "duration": "00:00:00.0320747",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "0e5271ca-7f71-4aee-b0b4-d647f5c4fdc1",
+            "duration": "00:00:00.0256106",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "1e1b70bc-289a-494c-a639-d070c6d64ece",
+            "duration": "00:00:00.0489134",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      },
+      {
+        "platform": "osx-arm64",
+        "cases": [
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.UnknownShotUsesOwnerColourAndWritesRenderedReceipt",
+            "outcome": "Passed",
+            "execution_id": "6bba5c4f-7480-41d5-8e9c-a069376c78a2",
+            "duration": "00:00:00.0122797",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+            "outcome": "Passed",
+            "execution_id": "90222290-2332-46a0-a9d9-b74a832e3500",
+            "duration": "00:00:00.0226782",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ShotExistenceAndStorageGateNormalPaintWhileFlashesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "c264fe20-c820-4c18-997d-7e52329efdec",
+            "duration": "00:00:00.0280245",
+            "message": null,
+            "stack_trace": null
+          },
+          {
+            "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+            "outcome": "Passed",
+            "execution_id": "a926bdf6-fc9e-473a-b029-bc5cdc253a8f",
+            "duration": "00:00:00.0327277",
+            "message": null,
+            "stack_trace": null
+          }
+        ]
+      }
+    ],
+    "visually_inspected_files": [
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-death-particle-colours.png",
+        "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "bytes": 3876,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-flashes.png",
+        "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "bytes": 3950,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-normal.png",
+        "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "bytes": 3216,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-flash-palette.png",
+        "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "bytes": 5900,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+        "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "bytes": 3193,
+        "png": {
+          "width": 640,
+          "height": 480
+        }
+      }
+    ],
+    "capture_byte_equivalence_to62": [
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-death-particle-colours.png",
+        "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "bytes": 3876,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-flashes.png",
+        "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "bytes": 3950,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-existence-storage-normal.png",
+        "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "bytes": 3216,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-flash-palette.png",
+        "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "bytes": 5900,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+        "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "bytes": 3193,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-death-particle-colours.png",
+        "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "bytes": 3876,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-existence-storage-flashes.png",
+        "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "bytes": 3950,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-existence-storage-normal.png",
+        "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "bytes": 3216,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-flash-palette.png",
+        "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "bytes": 5900,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/gui-audit/world-shot-impacts-off-retains-shots.png",
+        "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "bytes": 3193,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-death-particle-colours.png",
+        "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "bytes": 3876,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-existence-storage-flashes.png",
+        "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "bytes": 3950,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-existence-storage-normal.png",
+        "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "bytes": 3216,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-flash-palette.png",
+        "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "bytes": 5900,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+        "byte_identical_to62": true
+      },
+      {
+        "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/gui-audit/world-shot-impacts-off-retains-shots.png",
+        "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "bytes": 3193,
+        "png": {
+          "width": 640,
+          "height": 480
+        },
+        "previous62_sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+        "byte_identical_to62": true
+      }
+    ],
+    "visual_observation": "Five fresh Linux frames were inspected: colored endpoint particles and corpse disc, four solid red Start flashes, restricted normal-flight points, typed solid flash palette, and alive endpoint shots with impacts disabled. All15 corresponding captures from the three platforms are byte-identical to the pinned62 capture index. Exact RGB/state semantics are additionally backed by the four Passed test rows per platform.",
+    "visual_scope": "Actual hosted headless captures only; this does not constitute original app or final visible packaged acceptance."
+  },
+  "artifacts": {
+    "index": {
+      "file": "output/hosted-diagnostics-61509e4-agent/artifact-file-hashes.json",
+      "sha256": "CBBC8A5B3687A67DEFA193FF854DD3A56CDCA290E7FD66895F098EDDA54DCEDF",
+      "bytes": 37461
+    },
+    "server_artifacts": [
+      {
+        "id": 12103920259,
+        "name": "desktop-diagnostics-osx-x64",
+        "size_in_bytes": 3131920,
+        "digest": "sha256:b414389c737c07ad7315a26ccfdcd6a12ebc99d27dd22dd6e26cb027a369e21c",
+        "expired": false,
+        "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424"
+      },
+      {
+        "id": 12103408088,
+        "name": "desktop-diagnostics-osx-arm64",
+        "size_in_bytes": 3132885,
+        "digest": "sha256:03d78d7521932c95b07dfc394cc89cb1dc205cf5ab0f94a6fae85e93bba47b6e",
+        "expired": false,
+        "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424"
+      },
+      {
+        "id": 12103327157,
+        "name": "desktop-diagnostics-linux-x64",
+        "size_in_bytes": 2531746,
+        "digest": "sha256:a83e9f9879eae9ef1c3cf35067308c770d82fdf90f139417d0eed1e703b3050e",
+        "expired": false,
+        "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424"
+      }
+    ],
+    "downloaded_artifact_count": 3,
+    "file_count": 117,
+    "trx_files": 3,
+    "png_files": 114,
+    "downloaded_archive_digest_locally_verified": false,
+    "expanded_files_individually_hashed": true,
+    "published_package_count": 0,
+    "published_package_identity": null
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/api/final-run.json",
+      "sha256": "979814A3286A112D407FD8A3F5718F195CFE4EA94CC8E9AA8E9C97BBD28C0284",
+      "bytes": 13135
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/api/final-jobs.json",
+      "sha256": "557583503623EDAE975D76CC14F4EB310A30509007425B1607A663B594B0425F",
+      "bytes": 7502
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/api/final-artifacts.json",
+      "sha256": "E368B8D717A2B04625FCF120432FEACA71D18F264F3E923FC3EC27F2CBBA8AA7",
+      "bytes": 2236
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/artifact-file-hashes.json",
+      "sha256": "CBBC8A5B3687A67DEFA193FF854DD3A56CDCA290E7FD66895F098EDDA54DCEDF",
+      "bytes": 37461
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/trx-summary-verified.json",
+      "sha256": "8489FBCDD54B8B6E3E02022A90C4E6B7C5434581FA84A6F2C9134023B55BB114",
+      "bytes": 30151
+    },
+    {
+      "file": "output/native-roundtrip-pass63-source.json",
+      "sha256": "6E6A0F44695062B4B453EDBA28E7E3A03224D10AE0D27F9ADF99071F80506860",
+      "bytes": 117714
+    },
+    {
+      "file": ".github/workflows/modern-desktop-diagnostics.yml",
+      "sha256": "8A015ADC60FAB8E1A90AB469FAB9890259C7E93367B610116E14D861311AFA91",
+      "bytes": 1782
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "sha256": "7547532BE5530DBB62A78DE27428B6937209768CC8A2F63FF0F101482F15C687",
+      "bytes": 7709
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "sha256": "64BC2084001A6FC68C8A8347073A2AF9748A70AA6F81C4E7D4132443D30C1FD7",
+      "bytes": 111659
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "sha256": "F0BB6CE0FD26A287FBFF5CBFAB1B05EE5F71C55283EB20AFAA7C9545BCB84FE1",
+      "bytes": 22413
+    },
+    {
+      "file": "output/hosted-diagnostics-9d9321e-agent/artifact-file-hashes.json",
+      "sha256": "49ACE6CDD16BDD3AE5654357954A38B3CA42EC899290ADDB688B0B29C0A71103",
+      "bytes": 37461
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/logs/linux-x64-completed.log",
+      "sha256": "CCFEA5A54317DF7A495498078F38EEC172634C6D6B5019E90F1C3DC56DEC9FB4",
+      "bytes": 67017
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+      "sha256": "39F87222C7B481BC939ED9653748CBDDE9803286EB9FCF1AFFD493CE2CD15AD2",
+      "bytes": 334194
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/logs/osx-arm64-completed.log",
+      "sha256": "87727ED8852AF85FFAE33573F4E43C519F4F4B25650B3693F6C7143082626B2B",
+      "bytes": 67714
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+      "sha256": "9617A4F0BB083987E3BFA5CB27DE8A3085DF22E6B36D9E7A6BEA29E2A52A9BEE",
+      "bytes": 345038
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/logs/osx-x64-completed.log",
+      "sha256": "66F868CC9054C947DC03576B40D9055F1EDDBDB8374D682F5CB39A273963730D",
+      "bytes": 68635
+    },
+    {
+      "file": "output/hosted-diagnostics-61509e4-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+      "sha256": "338FDBCA2E73CD844A1E5F4A0C98B6E3F1021A7A104C13AF0E0EB1F9545310F0",
+      "bytes": 345038
+    }
+  ],
+  "collector_actions": {
+    "dispatch": false,
+    "cancel": false,
+    "rerun": false,
+    "local_tests_or_builds": false,
+    "product_or_UI_or_GPU_execution": false,
+    "source_runner_manifest_or_report_edits": false,
+    "git_mutation": false,
+    "repair_drafts": false,
+    "log_api_repository": "BobertNeek/Darwinbots-Modern explicitly named in each API endpoint and GH_REPO; gh api does not accept --repo. gh run commands used explicit --repo.",
+    "log_fetch_allow_escape_sequences_for_raw_saved_logs": true,
+    "frozen_source_manifest_reverified_at_end": true,
+    "source_pins_reverified": 686
+  },
+  "qualification_passed": true,
+  "boundary": "This receipt qualifies only all three hosted Desktop diagnostics outcomes for exact source61509e4. It runs no Rust/Core/package/hardware corpus, does not replace local94 or MAIN outcomes, and grants no complete parity or final visible/original acceptance."
+}

@@ -1,0 +1,456 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "sealed_utc": "2026-10-17T06:47:19.694Z",
+  "source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass58-source.json",
+    "sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "pinned_files": 540
+  },
+  "workflow": "Desktop platform diagnostics",
+  "workflow_file": ".github/workflows/modern-desktop-diagnostics.yml",
+  "run": {
+    "id": 39008656161,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39008656161",
+    "event": "workflow_dispatch",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T06:06:01Z",
+    "updated_at": "2026-10-17T06:14:34Z",
+    "head_sha": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d"
+  },
+  "all_jobs_terminal": true,
+  "jobs": [
+    {
+      "job_id": 117326247741,
+      "name": "rendered-desktop (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T06:06:06Z",
+      "completed_at": "2026-10-17T06:10:13Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_built": true,
+        "scope": "Native library build as dependency of Desktop test project; no Rust test corpus in this workflow."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 197,
+        "total": 197,
+        "executed": 197,
+        "passed": 196,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 197,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "remaining_expected_cases_without_terminal_results": 0,
+        "failed_tests": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Failed"
+          }
+        ],
+        "messages": [
+          "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2117)\nExpected: [···, 50, 48, 50, 56, 55, ···]\nActual:   [···, 50, 48, 52, 50, 50, ···]\n                        ↑ (pos 2117)"
+        ],
+        "stack_traces": [
+          "   at Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps() in /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs:line 174\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)"
+        ],
+        "trx_file": "output/hosted-diagnostics-8018c20-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+        "trx_sha256": "8D98BA9254C1E1CF3AD21E10E4E36A7E7A344FB6013CC3D666B66B72603B419A"
+      },
+      "abort": {
+        "occurred": false
+      },
+      "not_run": {
+        "core_tests": "not in diagnostic workflow",
+        "rust_test_workspace": "not in diagnostic workflow",
+        "package_publish": "not in diagnostic workflow",
+        "package_smoke": "not in diagnostic workflow",
+        "local_gpu_or_capacity": "not run by collector"
+      }
+    },
+    {
+      "job_id": 117326247841,
+      "name": "rendered-desktop (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T06:06:10Z",
+      "completed_at": "2026-10-17T06:14:27Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_built": true,
+        "scope": "Native library build as dependency of Desktop test project; no Rust test corpus in this workflow."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 197,
+        "total": 197,
+        "executed": 197,
+        "passed": 196,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 197,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": true,
+        "remaining_expected_cases_without_terminal_results": 0,
+        "failed_tests": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Failed"
+          }
+        ],
+        "messages": [
+          "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2116)\nExpected: [···, 50, 52, 48, 55, 54, ···]\nActual:   [···, 50, 52, 49, 48, 51, ···]\n                        ↑ (pos 2116)"
+        ],
+        "stack_traces": [
+          "   at Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs:line 174\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)"
+        ],
+        "trx_file": "output/hosted-diagnostics-8018c20-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+        "trx_sha256": "83831035BA649C736151BBF4564038D5E1F2800DB67F96C18BB7FA259F753B2B"
+      },
+      "abort": {
+        "occurred": false
+      },
+      "not_run": {
+        "core_tests": "not in diagnostic workflow",
+        "rust_test_workspace": "not in diagnostic workflow",
+        "package_publish": "not in diagnostic workflow",
+        "package_smoke": "not in diagnostic workflow",
+        "local_gpu_or_capacity": "not run by collector"
+      }
+    },
+    {
+      "job_id": 117326247892,
+      "name": "rendered-desktop (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T06:06:14Z",
+      "completed_at": "2026-10-17T06:14:33Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Diagnose rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "number": 6,
+          "name": "Preserve diagnostic receipts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "rust": {
+        "test_targets_executed": 0,
+        "native_library_built": true,
+        "scope": "Native library build as dependency of Desktop test project; no Rust test corpus in this workflow."
+      },
+      "managed": {
+        "project": "Darwinbots.Desktop.Tests",
+        "expected_cases": 197,
+        "total": 105,
+        "executed": 105,
+        "passed": 104,
+        "failed": 1,
+        "skipped": 0,
+        "result_rows": 105,
+        "result_rows_match_counters": true,
+        "full_expected_suite_completed": false,
+        "remaining_expected_cases_without_terminal_results": 92,
+        "failed_tests": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Failed"
+          }
+        ],
+        "messages": [
+          "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2118)\nExpected: [···, 54, 52, 49, 53, 44, ···]\nActual:   [···, 54, 52, 55, 50, 44, ···]\n                        ↑ (pos 2118)"
+        ],
+        "stack_traces": [
+          "   at Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs:line 174\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)"
+        ],
+        "trx_file": "output/hosted-diagnostics-8018c20-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+        "trx_sha256": "D72B921583BF3DD6E0CF4D161111052254BF9B26931076D57533751D1FD8EA06"
+      },
+      "abort": {
+        "occurred": true,
+        "reason": "Blame collector5-minute inactivity timeout terminated testhost; runner then reports testhost crash/run aborted.",
+        "active_test": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width:1280)",
+        "active_test_terminal_outcome": false,
+        "active_test_proven_cause": false,
+        "blame_sequence": "output/hosted-diagnostics-8018c20-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/8cce840e-26c7-4f9b-9e76-144c796bee53/Sequence_9aa844b40749419dacd5bd30afbabfdb.xml",
+        "boundary": "Sequence marks1280case Completed=False after1500case Completed=True. This is an independent incomplete-run diagnostic; it is not counted as an assertion failure or skipped test."
+      },
+      "not_run": {
+        "core_tests": "not in diagnostic workflow",
+        "rust_test_workspace": "not in diagnostic workflow",
+        "package_publish": "not in diagnostic workflow",
+        "package_smoke": "not in diagnostic workflow",
+        "local_gpu_or_capacity": "not run by collector"
+      }
+    }
+  ],
+  "aggregate": {
+    "managed_result_rows": 499,
+    "managed_passed": 496,
+    "managed_failed": 3,
+    "managed_skipped": 0,
+    "complete_platform_suites": 2,
+    "incomplete_platform_suites": 1,
+    "expected_cases_without_terminal_results": 92,
+    "artifact_count": 3,
+    "artifact_files": 82,
+    "png_files": 77,
+    "rust_test_targets": 0
+  },
+  "failure_diagnosis": {
+    "archive_checkpoint": {
+      "source": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "line": 174,
+      "classification": "Twin checkpoints match before ticks at168; full checkpoints differ after sequential ticks. Both NativeEngineClient instances currently sample separate live host Timer inputs before Tick; pending restart seed is persisted in config. Fixed identical host inputs are required before attributing divergence to runtime restore. Complete payload arrays were not emitted; exact full diff is unavailable in this run.",
+      "repair_status": "quarantine-only59 proposal; full byte equality must remain"
+    },
+    "arm_inactivity": {
+      "classification": "Separate unproven hang/host-termination boundary",
+      "requires_focused_diagnosis": true
+    }
+  },
+  "artifacts": {
+    "index": {
+      "file": "output/hosted-diagnostics-8018c20-agent/artifact-file-hashes.json",
+      "sha256": "D2A6AC90E9F03E58B49977F6A5A3718A84FAB33020F4DC9C6C4EF19A8E5118C9",
+      "bytes": 21964
+    },
+    "server_artifacts": [
+      {
+        "id": 12092540180,
+        "name": "desktop-diagnostics-osx-arm64",
+        "size_in_bytes": 949204,
+        "digest": "sha256:60675455650203f343dc6a89eb11e0d7044144e0feef333b262983465b137a7d",
+        "expired": false
+      },
+      {
+        "id": 12092540168,
+        "name": "desktop-diagnostics-osx-x64",
+        "size_in_bytes": 3118129,
+        "digest": "sha256:630aa6e400a26ad5005a706b6b3066007f3509f3ecc1b8bad9b3a8af0e350184",
+        "expired": false
+      },
+      {
+        "id": 12091214735,
+        "name": "desktop-diagnostics-linux-x64",
+        "size_in_bytes": 2516504,
+        "digest": "sha256:58cd1465660b9c12db38ca32ad214616f9746e4a148c54ae3559990db6410c92",
+        "expired": false
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-diagnostics-8018c20-agent/api/run-20261017T064329654.json",
+      "sha256": "DEACE3A819FC00AB49EB4BE987D09FC1B84E1EF0BB90838B41E213EF9E4D0545",
+      "bytes": 13864
+    },
+    {
+      "file": "output/hosted-diagnostics-8018c20-agent/api/jobs-20261017T064329654.json",
+      "sha256": "D60738BEB7E38556B07D1336B5E604BB052B0CD62A53C91D2C055E341C274B59",
+      "bytes": 7500
+    },
+    {
+      "file": "output/hosted-diagnostics-8018c20-agent/api/artifacts-20261017T064329654.json",
+      "sha256": "76CAEB53025604571234EF0FD8DF471786158EE760D354F76E8DBD18711E9E0C",
+      "bytes": 2233
+    },
+    {
+      "file": "output/hosted-diagnostics-8018c20-agent/logs/linux-x64-completed.log",
+      "sha256": "4E35DE6EB5B4BD6643044FAF0811CF5F5C8E920B6D355C9509CABEA8B73E37CB",
+      "bytes": 114705
+    },
+    {
+      "file": "output/hosted-diagnostics-8018c20-agent/logs/osx-x64-completed.log",
+      "sha256": "982EA6F369A65CB1AC3CFC4099F374006466742C3B26BF6E75D85C20D285430A",
+      "bytes": 118649
+    },
+    {
+      "file": "output/hosted-diagnostics-8018c20-agent/logs/osx-arm64-completed.log",
+      "sha256": "8AD906B5D6C194B12A7261D7E8BA50BDD2B32B24D094EC1760AB0FE267C036E1",
+      "bytes": 116887
+    },
+    {
+      "file": "output/hosted-diagnostics-8018c20-agent/artifact-file-hashes.json",
+      "sha256": "D2A6AC90E9F03E58B49977F6A5A3718A84FAB33020F4DC9C6C4EF19A8E5118C9",
+      "bytes": 21964
+    }
+  ],
+  "collector_actions": {
+    "read_only_github": true,
+    "dispatch": false,
+    "cancel": false,
+    "source_or_head_edits": false,
+    "local_product_execution": false,
+    "ui_or_gpu": false
+  },
+  "qualification_passed": false,
+  "boundary": "Exact source58 hosted diagnostic outcomes only.496 passing and3 failing terminal Desktop results were executed across499 returned rows; ARM terminated after105 of197 expected cases. This does not qualify the full three-platform Desktop corpus, Rust workspace, Core, package, GPU, capacity or original/visible desktop acceptance. MAIN run39008576353 is collected separately."
+}

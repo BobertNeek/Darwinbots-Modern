@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "all8_applied_before_any63_checks",
+  "applied_utc": "2026-10-17T14:00:04.535Z",
+  "plan": "output/pass63-authoring-plan-final.json",
+  "plan_sha256": "844235367B14F7B304058C6DFD33BCA0D37C8E2D7A530DBBC4D160A1CBE9C861",
+  "files": [
+    {
+      "file": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "sha256": "EB18EE6A764A7661A5355E29E2E05DF0958BB53CE7AC933B2B42CE4FCA5FA1F2",
+      "bytes": 687520
+    },
+    {
+      "file": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "sha256": "799437293CAE6B281C61FE58BE70E3D8B5D4E0515F6D9F2EEDBC974CD34BDA33",
+      "bytes": 421881
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "sha256": "7547532BE5530DBB62A78DE27428B6937209768CC8A2F63FF0F101482F15C687",
+      "bytes": 7709
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "sha256": "64BC2084001A6FC68C8A8347073A2AF9748A70AA6F81C4E7D4132443D30C1FD7",
+      "bytes": 111659
+    },
+    {
+      "file": "modern/engine/src/world/native_energy.rs",
+      "sha256": "845F0C1CFD6F1697A9EE729E18025E1831AF0C03914B510D97C0C9EF312FE5A0",
+      "bytes": 24019
+    },
+    {
+      "file": "modern/engine/src/world/native_reproduction.rs",
+      "sha256": "14845A1F19EE2BA2B0C8C18C501673537FC467015A9477943F1D6D9B5286E5B7",
+      "bytes": 11957
+    },
+    {
+      "file": "modern/engine/src/world/native_shots.rs",
+      "sha256": "8A3AD26A3443C18888980E53FB708BC019FABEB01D3979803B85A227335BC0D2",
+      "bytes": 55877
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass63.ps1",
+      "sha256": "FD2397CFA228ADC9ADF79F74C7EF8295D59000C77B44A19979EE5F865FD21D8E",
+      "bytes": 58462
+    }
+  ],
+  "protected_png_sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+  "product_execution": false
+}

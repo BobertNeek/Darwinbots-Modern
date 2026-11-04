@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-12",
+  "global_code_revision": "be4705f",
+  "local_mode_code_revision": "7c48634",
+  "engine_code_revision": "d4ad087a76d2400724a8fa8e5cfb80089da81756",
+  "checks": {
+    "global_core": {
+      "passed": 132,
+      "failed": 0
+    },
+    "global_native_and_loaded_ui": {
+      "passed": 13,
+      "failed": 0
+    },
+    "global_loaded_ui_final": {
+      "passed": 1,
+      "failed": 0,
+      "overlaps_native_subset": true
+    },
+    "local_mode_core": {
+      "passed": 133,
+      "failed": 0
+    },
+    "local_mode_followup": {
+      "passed": 5,
+      "failed": 0
+    },
+    "configured_mode_loaded_ui": {
+      "passed": 1,
+      "failed": 0,
+      "code_revision": "d6084190dae38556f151cd56de29e882dcd7ed8b"
+    }
+  },
+  "native_dll_sha256": "9040a44eb50f7671f3991836cd1a9381b9c7cb159a69c32354057fa2b3ae65d5",
+  "logs": [
+    "completion-checks/parity-loaded-global-core.log",
+    "completion-checks/parity-loaded-global-native.log",
+    "completion-checks/parity-loaded-global-ui-final.log",
+    "completion-checks/parity-loaded-local-mode-core.log",
+    "completion-checks/parity-loaded-local-mode-checks.log"
+  ],
+  "changes": [
+    "Loaded engine costs restore all editor fields, including instruction and dynamic cost mappings.",
+    "Loaded advanced mutation settings restore nested delta, oscillation and effective epigenetic policy.",
+    "Loaded main body cutoff and greedy rules populate the editor.",
+    "Local-mode snapshots retain complete configuration; model edits preserve population, source and selection weights.",
+    "Configured local-mode loads populate the matching controls."
+  ],
+  "limits": [
+    "UI loaded-global fixture and non-default native readback are checked; original all-option visual equivalence remains open.",
+    "Original native mode flags and display options not represented in engine config remain open.",
+    "Whole-product parity remains unproven."
+  ]
+}

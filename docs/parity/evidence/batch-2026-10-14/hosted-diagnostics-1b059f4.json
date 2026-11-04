@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+  "state": "not_scheduled_by_path_filter",
+  "sealed_utc": "2026-10-17T02:30:02.002Z",
+  "repository": "BobertNeek/Darwinbots-Modern",
+  "source_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+  "workflow": {
+    "file": ".github/workflows/modern-desktop-diagnostics.yml",
+    "name": "Desktop platform diagnostics",
+    "sha256": "8A015ADC60FAB8E1A90AB469FAB9890259C7E93367B610116E14D861311AFA91",
+    "trigger": "push with path filter; manual dispatch supported but deliberately not requested",
+    "run_id": null,
+    "url": null,
+    "status": "not_scheduled",
+    "conclusion": null
+  },
+  "new_diagnostics_run_id": null,
+  "new_diagnostics_test_counts": null,
+  "all_three_normal_outcomes_collected": false,
+  "overall_passed": null,
+  "automatic_run_absence": {
+    "observed": true,
+    "reason": "Batch55 changes Rust engine/runtime and its tests. Diagnostics push filter matches only its YAML and four specific Desktop files, which did not change.",
+    "matched_path_filter_inputs": [
+      ".github/workflows/modern-desktop-diagnostics.yml",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestApplication.cs",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/DesktopTestSessionTests.cs",
+      "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml"
+    ],
+    "manual_dispatch_performed": false,
+    "root_decision": "Do not dispatch redundant diagnostics55; MAIN55 performs fresh Desktop execution on each platform."
+  },
+  "source_boundary": {
+    "rendered_fixture_inputs_unchanged": true,
+    "engine_inputs_changed": true,
+    "overall_runtime_equivalence_claim": false,
+    "note": "Unchanged rendered fixtures do not establish identical runtime behavior after engine changes. No historical result is promoted to fresh batch55 qualification."
+  },
+  "historical_diagnostics54": {
+    "historical_only": true,
+    "source_head": "14961edfbb9c979ef7b07145bd95153517659211",
+    "run_id": 38981686100,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38981686100",
+    "receipt": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-14961ed.json",
+    "receipt_sha256": "B17F4B241EC69CA5DA4903A2FD4781421F74DF907655B33608ACDA6050160079",
+    "test_executions": {
+      "platforms": 3,
+      "total": 567,
+      "passed": 567,
+      "failed": 0,
+      "skipped": 0
+    },
+    "counts_apply_to_current_source": false
+  },
+  "pending_fresh_main_coverage": {
+    "run_id": 38995006547,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/38995006547",
+    "source_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+    "workflow_name": "Modern cross-platform",
+    "status_at_discovery": "in_progress",
+    "fresh_desktop_coverage": "Pending final MAIN55 receipts; expected full189 Desktop tests per platform",
+    "actual_test_counts": null,
+    "collection_owner": "Root-designated MAIN55 collector; not duplicated here"
+  },
+  "raw_discovery": {
+    "file": "output/hosted-diagnostics-1b059f4-agent/initial-run-discovery.json",
+    "sha256": "2B47CA398381B2500C99DE0840695F4E61342580B0E2520FA8A07A4AB55B6684"
+  },
+  "execution_boundary": {
+    "local_build_or_test_run": false,
+    "ui_or_gpu_actions": false,
+    "source_or_git_mutation": false,
+    "previous54_evidence_modified": false,
+    "extra_workflow_dispatched": false
+  },
+  "claim_boundary": "This records why no diagnostics55 run was scheduled. It is not a successful test result, runtime-equivalence certificate, original-executable proof, full CPU qualification, or hardware qualification."
+}

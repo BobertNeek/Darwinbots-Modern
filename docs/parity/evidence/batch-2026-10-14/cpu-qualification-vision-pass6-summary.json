@@ -1,0 +1,105 @@
+{
+  "source_parent": "043b946",
+  "source_description": "uncommitted vision/timing draft, before later output-preserving spatial bounds and direct-sensing fixture repairs",
+  "state": "completed with one identified fixture failure",
+  "log": "parity-batch-cpu-workspace-vision-pass6.log",
+  "cargo_build_jobs": 1,
+  "test_threads": 1,
+  "priority": "BelowNormal",
+  "totals": {
+    "passed": 659,
+    "failed": 1,
+    "ignored": 0,
+    "filtered": 26
+  },
+  "target_summaries": 64,
+  "cli_sha256": "8F6BB111CD54814634A04EE7AAD5DECCB6AD9E0E0B09930CD35AACBB22674C37",
+  "excluded": [
+    "GPU tests",
+    "backend switching"
+  ],
+  "failures": [
+    "test world::native_reference_velocity::tests::focus_eye_publishes_relative_velocity_and_scalar_through_save_resume ... FAILED"
+  ],
+  "behavior_receipts": [
+    "DB2 ecology cycle=10000 robots=1374 plants=16 shots=1062 births=3274 feeding=415283 harvested=18783237",
+    "DB2 ecology cycle=20000 robots=1396 plants=14 shots=2185 births=5108 feeding=981767 harvested=38820133",
+    "native CPU cycle=2281 robots=412 shots=59 births=3169 mutations=0 save_bytes=9881927",
+    "native mutation CPU cycle=1281 robots=1795 births=6743 mutations=15062 save_bytes=37761561",
+    "native mutation CPU surviving class=Point count=15350",
+    "native mutation CPU surviving class=Delta count=846",
+    "native mutation CPU surviving class=CopyError count=40838",
+    "Starter ecology cycle=10000 robots=1374 plants=16 shots=1062 births=3274 feeding=415283 harvested=18783237"
+  ],
+  "selected_results": [
+    {
+      "target": "Running tests\\bundled_bot_corpus.rs (target\\release\\deps\\bundled_bot_corpus-64a072572acbe959.exe)",
+      "state": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "seconds": 480.24
+    },
+    {
+      "target": "Running tests\\db245_probes.rs (target\\release\\deps\\db245_probes-527613d6923ddfd2.exe)",
+      "state": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "seconds": 972.46
+    },
+    {
+      "target": "Running tests\\db2_starter_ecology.rs (target\\release\\deps\\db2_starter_ecology-5e288a6d107e72d3.exe)",
+      "state": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "seconds": 1528.64
+    },
+    {
+      "target": "Running tests\\native_continuation_qualification.rs (target\\release\\deps\\native_continuation_qualification-9ff3b2220595958d.exe)",
+      "state": "ok",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1,
+      "seconds": 76.11
+    },
+    {
+      "target": "Running tests\\native_mutation_continuation_qualification.rs (target\\release\\deps\\native_mutation_continuation_qualification-29af2bf317ca2797.exe)",
+      "state": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "seconds": 1207.93
+    },
+    {
+      "target": "Running tests\\species_ecology.rs (target\\release\\deps\\species_ecology-f257e733aa9efc30.exe)",
+      "state": "ok",
+      "passed": 41,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "seconds": 0.1
+    },
+    {
+      "target": "Running tests\\starter_ecology.rs (target\\release\\deps\\starter_ecology-4f04f24d61d6a506.exe)",
+      "state": "ok",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0,
+      "seconds": 530.18
+    }
+  ],
+  "parity_complete": false,
+  "archived_log": "logs/parity-batch-cpu-workspace-vision-pass6.log",
+  "repair_logs": [
+    "logs/parity-batch-vision-spatial-library-repair-pass7.log",
+    "logs/parity-batch-vision-spatial-integration-repair-pass1.log"
+  ]
+}

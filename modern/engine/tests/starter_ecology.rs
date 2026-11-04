@@ -1,6 +1,7 @@
 use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SpeciesDefinition};
 
-const ALGA_MINIMALIS: &str = include_str!("../../../Installer/bots/Alga_Minimalis_Chloroplastus.txt");
+const ALGA_MINIMALIS: &str =
+    include_str!("../../../Installer/bots/Alga_Minimalis_Chloroplastus.txt");
 const ANIMAL_MINIMALIS: &str = include_str!("../../../Installer/bots/Animal_Minimalis.txt");
 
 #[test]
@@ -14,7 +15,8 @@ fn starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce() {
         vegetable_energy_per_tick: 0,
         sunlight_energy: 100,
         ..EngineConfig::testing()
-    }).unwrap();
+    })
+    .unwrap();
     let alga = engine.register_species(SpeciesDefinition {
         name: "Alga Minimalis".to_owned(),
         vegetable: true,
@@ -28,39 +30,65 @@ fn starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce() {
         reseed: true,
         ..SpeciesDefinition::default()
     });
-    engine.spawn_species_batch(
-        LegacyDna::parse(ALGA_MINIMALIS).unwrap(),
-        alga,
-        random_positions(300, 16_000.0, 12_000.0, 7),
-        1_000,
-    ).unwrap();
-    engine.spawn_species_batch(
-        LegacyDna::parse(ANIMAL_MINIMALIS).unwrap(),
-        animal,
-        random_positions(100, 16_000.0, 12_000.0, 13),
-        1_000,
-    ).unwrap();
+    engine
+        .spawn_species_batch(
+            LegacyDna::parse(ALGA_MINIMALIS).unwrap(),
+            alga,
+            random_positions(300, 16_000.0, 12_000.0, 7),
+            1_000,
+        )
+        .unwrap();
+    engine
+        .spawn_species_batch(
+            LegacyDna::parse(ANIMAL_MINIMALIS).unwrap(),
+            animal,
+            random_positions(100, 16_000.0, 12_000.0, 13),
+            1_000,
+        )
+        .unwrap();
 
-    engine.tick_many(10_000).unwrap();
+    for _ in 0..10 {
+        engine.tick_many(1_000).unwrap();
+        engine.validate_invariants().unwrap();
+        assert!(engine.vegetable_population() <= 500);
+        let snapshot = engine.snapshot();
+        println!(
+            "Starter ecology cycle={} robots={} plants={} shots={} births={} feeding={} harvested={}",
+            snapshot.tick,
+            snapshot.organisms.len(),
+            engine.vegetable_population(),
+            snapshot.shots.len(),
+            snapshot.stats.births,
+            snapshot.stats.feeding_events,
+            snapshot.stats.energy_harvested
+        );
+    }
 
     let snapshot = engine.snapshot();
     assert!(engine.vegetable_population() <= 500);
     assert!(snapshot.stats.intentional_movement_events > 0);
     assert!(snapshot.stats.energy_harvested > 0);
-    assert!(snapshot.organisms.iter().any(|organism| organism.species == animal && organism.parents[0].is_some()));
+    assert!(
+        snapshot
+            .organisms
+            .iter()
+            .any(|organism| organism.species == animal && organism.parents[0].is_some())
+    );
 }
 
 fn random_positions(count: usize, width: f32, height: f32, seed: u64) -> Vec<[f32; 2]> {
     let mut state = seed.max(1);
-    (0..count).map(|_| {
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        let x = (state as u32) as f32 / u32::MAX as f32;
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        let y = (state as u32) as f32 / u32::MAX as f32;
-        [x * width, y * height]
-    }).collect()
+    (0..count)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let x = (state as u32) as f32 / u32::MAX as f32;
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let y = (state as u32) as f32 / u32::MAX as f32;
+            [x * width, y * height]
+        })
+        .collect()
 }

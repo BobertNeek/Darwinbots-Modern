@@ -1,0 +1,67 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 2.9125361,
+    "log": "format-check.log"
+  },
+  {
+    "step": "strict-clippy",
+    "exit_code": 0,
+    "seconds": 80.6748267,
+    "log": "strict-clippy.log"
+  },
+  {
+    "step": "cli-build",
+    "exit_code": 0,
+    "seconds": 308.3344603,
+    "log": "cli-build.log"
+  },
+  {
+    "step": "original-zero-cycle-replay",
+    "exit_code": 0,
+    "seconds": 0.9980794,
+    "log": "original-zero-cycle-replay.log"
+  },
+  {
+    "step": "original-zero-cycle-compare",
+    "exit_code": 0,
+    "seconds": 1.5688357,
+    "log": "original-zero-cycle-compare.log"
+  },
+  {
+    "step": "desktop-core",
+    "exit_code": 0,
+    "seconds": 22.5693395,
+    "log": "desktop-core.log"
+  },
+  {
+    "step": "desktop-test-build",
+    "exit_code": 0,
+    "seconds": 271.0743456,
+    "log": "desktop-test-build.log"
+  },
+  {
+    "step": "windows-publish",
+    "exit_code": 0,
+    "seconds": 12.1126095,
+    "log": "windows-publish.log"
+  },
+  {
+    "step": "package-smoke",
+    "exit_code": 0,
+    "log": "package-smoke.json"
+  },
+  {
+    "step": "packaged-native-desktop",
+    "exit_code": 1,
+    "seconds": 105.7783647,
+    "log": "packaged-native-desktop.log"
+  },
+  {
+    "step": "cpu-workspace",
+    "exit_code": 101,
+    "seconds": 4059.4975433,
+    "log": "cpu-workspace.log"
+  }
+]

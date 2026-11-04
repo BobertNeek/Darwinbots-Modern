@@ -1,0 +1,968 @@
+//! Native writers use live state and retain unrepresented per-robot metadata.
+
+use super::*;
+use crate::native_binary::{NativeRecordFile, NativeRobotRecord, NativeValue};
+
+fn invalid(message: impl Into<String>) -> EngineError {
+    EngineError::InvalidSave(format!("native DB2 export {}", message.into()))
+}
+
+pub(super) fn ansi(value: &str) -> Result<Vec<u8>, EngineError> {
+    const C1: [char; 32] = [
+        '€', '\u{81}', '‚', 'ƒ', '„', '…', '†', '‡', 'ˆ', '‰', 'Š', '‹', 'Œ', '\u{8d}', 'Ž',
+        '\u{8f}', '\u{90}', '‘', '’', '“', '”', '•', '–', '—', '˜', '™', 'š', '›', 'œ', '\u{9d}',
+        'ž', 'Ÿ',
+    ];
+    value
+        .chars()
+        .map(|ch| {
+            let scalar = u32::from(ch);
+            if scalar < 128 || (160..=255).contains(&scalar) {
+                Ok(scalar as u8)
+            } else if let Some(index) = C1.iter().position(|&candidate| candidate == ch) {
+                Ok(index as u8 + 128)
+            } else {
+                Err(invalid(format!(
+                    "text contains a character outside Windows-1252: {ch}"
+                )))
+            }
+        })
+        .collect()
+}
+
+fn word(record: &mut NativeRobotRecord, name: &str, value: i64) -> Result<(), EngineError> {
+    let value = i16::try_from(value)
+        .map_err(|_| invalid(format!("{name} exceeds native Integer range")))?;
+    record.set_value(name, NativeValue::Word(value))
+}
+
+fn long(record: &mut NativeRobotRecord, name: &str, value: u64) -> Result<(), EngineError> {
+    let value =
+        i32::try_from(value).map_err(|_| invalid(format!("{name} exceeds native Long range")))?;
+    record.set_value(name, NativeValue::Long(value))
+}
+
+fn boolean(record: &mut NativeRobotRecord, name: &str, value: bool) -> Result<(), EngineError> {
+    word(record, name, if value { -1 } else { 0 })
+}
+
+fn text(
+    record: &mut NativeRobotRecord,
+    length_name: &str,
+    name: &str,
+    value: &str,
+) -> Result<(), EngineError> {
+    let bytes = ansi(value)?;
+    word(record, length_name, bytes.len() as i64)?;
+    record.set_value(name, NativeValue::Bytes(bytes))
+}
+
+pub(super) fn native_dna(dna: &LegacyDna) -> Result<Vec<u8>, EngineError> {
+    let mut bytes = Vec::with_capacity(dna.blocks().len() * 4);
+    for block in dna.blocks() {
+        bytes.extend_from_slice(&i16::from(block.class as u8).to_le_bytes());
+        bytes.extend_from_slice(
+            &i16::try_from(block.value)
+                .map_err(|_| invalid("DNA value exceeds native Integer range"))?
+                .to_le_bytes(),
+        );
+    }
+    Ok(bytes)
+}
+
+pub(super) fn mutation_arrays(
+    profile: &StandardMutationProfile,
+    rates: &mut [u8],
+    shapes: &mut [u8],
+) -> Result<(), EngineError> {
+    for (i, rate) in [
+        profile.point,
+        profile.minor_deletion,
+        profile.reversal,
+        profile.insertion,
+        profile.amplification,
+        profile.major_deletion,
+        profile.copy_error,
+        profile.delta,
+        profile.translocation,
+        profile.point2,
+        profile.copy_error2,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        for (is_rate, offset, value) in [
+            (true, i * 4, rate.one_in),
+            (false, i * 8, rate.mean),
+            (false, i * 8 + 4, rate.std_dev),
+        ] {
+            let value = value as f32;
+            if !value.is_finite() {
+                return Err(invalid("mutation setting exceeds native Single range"));
+            }
+            let bytes = if is_rate { &mut *rates } else { &mut *shapes };
+            bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+    }
+    Ok(())
+}
+
+impl Engine {
+    /// Export a specified robot group as a genuine native `.dbo` record stream.
+    pub fn export_native_organisms(&self, members: &[OrganismId]) -> Result<Vec<u8>, EngineError> {
+        // HDRoutines.SaveOrganism/LoadOrganism use clist(50), including a sentinel.
+        if members.is_empty() || members.len() > 50 {
+            return Err(invalid(
+                "2.48.32 organism groups must contain 1..50 members",
+            ));
+        }
+        NativeRecordFile {
+            robots: self.native_robot_records(members)?,
+            tail: vec![],
+        }
+        .encode()
+    }
+
+    pub(super) fn native_robot_records(
+        &self,
+        members: &[OrganismId],
+    ) -> Result<Vec<NativeRobotRecord>, EngineError> {
+        if members.len() > MAX_ROBOTS {
+            return Err(invalid("simulation exceeds 32000 robot records"));
+        }
+        let mut remap = HashMap::new();
+        for (i, &id) in members.iter().enumerate() {
+            self.valid_slot(id)?;
+            if remap.insert(id, i as i16 + 1).is_some() {
+                return Err(invalid("duplicate organism member"));
+            }
+        }
+        let mut records = members
+            .iter()
+            .map(|&id| self.native_robot_record(id))
+            .collect::<Result<Vec<_>, _>>()?;
+        for (i, (&id, record)) in members.iter().zip(&mut records).enumerate() {
+            word(record, "old_slot", i as i64 + 1)?;
+            self.write_native_ties(id, record, &remap)?;
+        }
+        Ok(records)
+    }
+
+    fn native_robot_record(&self, id: OrganismId) -> Result<NativeRobotRecord, EngineError> {
+        let robot = self.slots.get(id)?;
+        if let Some(index) = robot.native_record_index
+            && self
+                .native_origin
+                .as_ref()
+                .and_then(|file| file.robots.get(index))
+                .is_none()
+        {
+            return Err(invalid("robot source record reference is invalid"));
+        }
+        let mut record = robot
+            .native_record_override
+            .as_deref()
+            .or_else(|| {
+                self.native_origin.as_ref().and_then(|file| {
+                    robot
+                        .native_record_index
+                        .and_then(|index| file.robots.get(index))
+                        .or_else(|| {
+                            file.robots.iter().find(|record| {
+                                record.long("absolute_id").ok().map(|id| id as u32 as u64)
+                                    == Some(robot.identity.absolute_id)
+                            })
+                        })
+                })
+            })
+            .cloned()
+            .map(Ok)
+            .unwrap_or_else(NativeRobotRecord::empty)?;
+        for (name, value) in [
+            ("vegetable", robot.flags.vegetable),
+            ("wall", robot.flags.wall),
+            ("fixed", robot.flags.fixed),
+            ("exists", robot.flags.exists),
+            ("dead", robot.flags.dead),
+            ("corpse", robot.flags.corpse),
+            ("mutations_enabled", robot.flags.can_mutate),
+            ("view", robot.flags.view),
+            ("new_move", robot.flags.new_move),
+            ("cant_see", !robot.flags.can_see),
+            ("disable_dna", !robot.flags.can_execute_dna),
+            ("disable_movement", !robot.flags.can_move),
+            ("cant_reproduce", !robot.flags.can_reproduce),
+            ("virus_immune", robot.flags.virus_immune),
+            ("no_chloroplasts", robot.flags.no_chloroplasts),
+            ("multibot", robot.counters.multibot),
+        ] {
+            boolean(&mut record, name, value)?;
+        }
+        for (name, value) in [
+            ("position_x", robot.kinematics.position[0]),
+            ("position_y", robot.kinematics.position[1]),
+            ("velocity_x", robot.kinematics.velocity[0]),
+            ("velocity_y", robot.kinematics.velocity[1]),
+            ("actual_velocity_x", robot.kinematics.actual_velocity[0]),
+            ("actual_velocity_y", robot.kinematics.actual_velocity[1]),
+            ("aim", robot.heading()),
+            ("angular_momentum", robot.kinematics.angular_momentum),
+            ("angular_torque", robot.kinematics.angular_torque),
+            ("energy", robot.materials.energy),
+            ("body", robot.materials.body),
+            ("buoyancy", robot.buoyancy),
+            ("waste", robot.materials.waste),
+            ("permanent_waste", robot.materials.permanent_waste),
+            ("shell", robot.materials.shell),
+            ("slime", robot.materials.slime),
+            ("venom", robot.materials.venom),
+            ("poison", robot.materials.poison),
+            ("chloroplasts", robot.materials.chloroplasts),
+        ] {
+            record.set_single(name, value)?;
+        }
+        for (name, value) in [
+            ("age", robot.counters.age),
+            ("birth_cycle", robot.counters.birth_cycle),
+            ("old_mutations", robot.counters.old_mutations),
+            ("simulation_id", robot.identity.simulation_id),
+            ("absolute_id", robot.identity.absolute_id),
+        ] {
+            long(&mut record, name, value)?;
+        }
+        if let Some(parent) = robot.identity.parents[0].and_then(|id| self.slots.get(id).ok()) {
+            long(&mut record, "parent", parent.identity.absolute_id)?;
+        } else if robot.identity.parent_absolute_id != 0 {
+            long(&mut record, "parent", robot.identity.parent_absolute_id)?;
+        }
+        for (name, value) in [
+            ("offspring", robot.counters.offspring as i64),
+            ("generation", i64::from(robot.counters.generation)),
+            ("gene_count", i64::from(robot.program.dna.gene_count())),
+            ("dna_length", robot.program.dna.blocks().len() as i64),
+            ("dna_length_marker", robot.program.dna.blocks().len() as i64),
+            ("stored_dna_length", robot.program.dna.blocks().len() as i64),
+            (
+                "mutations",
+                robot.program.mutation_metadata.total_mutations.min(32_000) as i64,
+            ),
+            (
+                "last_mutation",
+                robot
+                    .program
+                    .mutation_metadata
+                    .native_last_mutations
+                    .min(32_000) as i64,
+            ),
+            (
+                "subspecies",
+                i64::from(robot.program.mutation_metadata.subspecies),
+            ),
+            ("fertilized", i64::from(robot.effects.fertilization_timer)),
+            (
+                "point_policy",
+                i64::from(robot.program.mutation_profile.point_value_change_percent),
+            ),
+            (
+                "copy_error_policy",
+                i64::from(
+                    robot
+                        .program
+                        .mutation_profile
+                        .copy_error_value_change_percent,
+                ),
+            ),
+        ] {
+            word(&mut record, name, value)?;
+        }
+        let mut memory = record.bytes("memory")?.to_vec();
+        for address in 1..=1000 {
+            let value = i16::try_from(robot.program.memory.read(address))
+                .map_err(|_| invalid("memory value exceeds native Integer range"))?;
+            memory[address as usize * 2..address as usize * 2 + 2]
+                .copy_from_slice(&value.to_le_bytes());
+        }
+        record.set_value("memory", NativeValue::Bytes(memory))?;
+        record.set_value("dna", NativeValue::Bytes(native_dna(&robot.program.dna)?))?;
+        let name = if robot.identity.species_file.is_empty() {
+            &self.species[robot.identity.species.0 as usize].name
+        } else {
+            &robot.identity.species_file
+        };
+        text(&mut record, "species_name_length", "species_name", name)?;
+        text(&mut record, "owner_length", "owner", &robot.identity.owner)?;
+        record.set_mutation_details(ansi(
+            &robot.program.mutation_metadata.detailed_log.join("\r\n"),
+        )?)?;
+        let mut tag = ansi(&robot.identity.tag)?;
+        tag.truncate(50);
+        tag.resize(50, b' ');
+        record.set_value("tag", NativeValue::Bytes(tag))?;
+        for (name, value) in [
+            ("multibot_time", robot.counters.multibot_time),
+            (
+                "chloroplast_share_delay",
+                robot.counters.chloroplast_share_delay,
+            ),
+            ("disqualification", robot.counters.disqualification),
+        ] {
+            record.set_value(name, NativeValue::Byte(value))?;
+        }
+        let mut rates = record.bytes("mutation_rates")?.to_vec();
+        let mut shapes = record.bytes("mutation_shapes")?.to_vec();
+        mutation_arrays(&robot.program.mutation_profile, &mut rates, &mut shapes)?;
+        record.set_value("mutation_rates", NativeValue::Bytes(rates))?;
+        record.set_value("mutation_shapes", NativeValue::Bytes(shapes))?;
+        let variables = robot.program.dna.native_user_variables();
+        // SaveRobotBody writes only vars(1..50), followed by the actual vnum.
+        // DB3S retains the complete table; the native format cannot carry it.
+        let mut private = Vec::new();
+        let mut definitions = variables.iter();
+        for _ in 0..50 {
+            let (name, value) = match definitions.next() {
+                Some((name, value)) => (ansi(name)?, *value),
+                None => (vec![], 0),
+            };
+            private.extend_from_slice(
+                &i16::try_from(name.len())
+                    .map_err(|_| invalid("private variable name is too long"))?
+                    .to_le_bytes(),
+            );
+            private.extend_from_slice(&name);
+            private.extend_from_slice(
+                &i16::try_from(value)
+                    .map_err(|_| invalid("private variable value exceeds Integer range"))?
+                    .to_le_bytes(),
+            );
+        }
+        word(
+            &mut record,
+            "private_variable_count",
+            i64::from(robot.program.private_variable_count),
+        )?;
+        record.set_value("private_variables", NativeValue::Bytes(private))?;
+        record.set_single(
+            "old_genetic_distance",
+            robot
+                .program
+                .genetic_graph
+                .map_or(0.0, |graph| graph.previous_distance),
+        )?;
+        let mut epigenetic = vec![];
+        for value in robot.heredity.epigenetic_staging {
+            epigenetic.extend_from_slice(
+                &i16::try_from(value)
+                    .map_err(|_| invalid("epigenetic memory exceeds Integer range"))?
+                    .to_le_bytes(),
+            );
+        }
+        record.set_value("epigenetic_memory", NativeValue::Bytes(epigenetic))?;
+        let sperm = robot
+            .effects
+            .stored_sperm
+            .as_ref()
+            .map(|stored| native_dna(&stored.dna))
+            .transpose()?
+            .unwrap_or_default();
+        word(&mut record, "sperm_length", (sperm.len() / 4) as i64)?;
+        record.set_value("sperm_dna", NativeValue::Bytes(sperm))?;
+        let rgb = robot.phenotype.color;
+        let bgr = ((rgb & 0xff) << 16) | (rgb & 0xff00) | ((rgb >> 16) & 0xff);
+        record.set_value("color", NativeValue::Long(bgr as i32))?;
+        let mut skin = record.bytes("skin")?.to_vec();
+        for (i, point) in robot.phenotype.skin.iter().enumerate() {
+            for (offset, value) in [
+                (i * 4, (point.radius * 60.0).round_ties_even() as i32),
+                (
+                    i * 4 + 2,
+                    ((314 - point.angle) as f32 / 2.0).round_ties_even() as i32,
+                ),
+            ] {
+                skin[offset..offset + 2].copy_from_slice(
+                    &i16::try_from(value)
+                        .map_err(|_| invalid("skin point exceeds Integer range"))?
+                        .to_le_bytes(),
+                );
+            }
+        }
+        record.set_value("skin", NativeValue::Bytes(skin))?;
+        Ok(record)
+    }
+
+    fn write_native_ties(
+        &self,
+        id: OrganismId,
+        record: &mut NativeRobotRecord,
+        remap: &HashMap<OrganismId, i16>,
+    ) -> Result<(), EngineError> {
+        let ties = self
+            .tie_indices_for(id)
+            .into_iter()
+            .map(|ordinal| &self.ties[ordinal])
+            .filter(|tie| {
+                remap.contains_key(&if tie.first == id {
+                    tie.second
+                } else {
+                    tie.first
+                })
+            })
+            .collect::<Vec<_>>();
+        if ties.len() > 10 {
+            return Err(invalid("robot has more than 10 ties"));
+        }
+        let mut core = vec![0; 11 * 38];
+        let mut extension = vec![0; 11 * 13];
+        let original_core = record.bytes("ties_core")?.to_vec();
+        let original_extension = record.bytes("ties_extension")?.to_vec();
+        let robot = self.slots.get(id)?;
+        for (i, tie) in ties.into_iter().enumerate() {
+            let forward = tie.first == id;
+            let end = tie.native_end_states()[usize::from(!forward)];
+            let other = if forward { tie.second } else { tie.first };
+            let c = &mut core[(i + 1) * 38..(i + 2) * 38];
+            let e = &mut extension[(i + 1) * 13..(i + 2) * 13];
+            let other_robot = self.slots.get(other)?;
+            for old_index in 1..=10 {
+                let old = &original_core[old_index * 38..(old_index + 1) * 38];
+                let old_slot = i16::from_le_bytes(old[2..4].try_into().unwrap());
+                if old_slot == 0 {
+                    continue;
+                }
+                let matches = |record: &NativeRobotRecord| {
+                    record.word("old_slot").ok() == Some(old_slot)
+                        && record.long("absolute_id").ok().map(|id| id as u32 as u64)
+                            == Some(other_robot.identity.absolute_id)
+                };
+                let same_robot = if let Some(record) = other_robot.native_record_override.as_deref()
+                {
+                    matches(record)
+                } else if let Some(origin) = &self.native_origin {
+                    if let Some(index) = other_robot.native_record_index {
+                        origin.robots.get(index).is_some_and(matches)
+                    } else {
+                        origin.robots.iter().any(matches)
+                    }
+                } else {
+                    false
+                };
+                if same_robot {
+                    c.copy_from_slice(old);
+                    e.copy_from_slice(&original_extension[old_index * 13..(old_index + 1) * 13]);
+                    break;
+                }
+            }
+            let endpoint = robot
+                .ties
+                .iter()
+                .flatten()
+                .find(|endpoint| endpoint.other == Some(other));
+            let reciprocal = self
+                .tie_indices_for(other)
+                .into_iter()
+                .filter(|&ordinal| {
+                    let t = &self.ties[ordinal];
+                    remap.contains_key(&if t.first == other { t.second } else { t.first })
+                })
+                .position(|ordinal| std::ptr::eq(&self.ties[ordinal], tie))
+                .unwrap()
+                + 1;
+            let all_other_ties_exported = self.tie_indices_for(other).into_iter().all(|ordinal| {
+                let t = &self.ties[ordinal];
+                remap.contains_key(&if t.first == other { t.second } else { t.first })
+            });
+            let reciprocal = if self.native_random.is_some() && all_other_ties_exported {
+                end.saved_reciprocal.unwrap_or_else(|| {
+                    if end.length.is_none() {
+                        i32::from(i16::from_le_bytes(c[4..6].try_into().unwrap()))
+                    } else {
+                        reciprocal as i32
+                    }
+                })
+            } else {
+                reciprocal as i32
+            };
+            for (offset, value) in [
+                (
+                    0,
+                    if forward {
+                        tie.first_port
+                    } else {
+                        tie.second_port
+                    },
+                ),
+                (2, i32::from(remap[&other])),
+                (4, reciprocal),
+                (14, if end.angle_fixed { -1 } else { 0 }),
+                (26, end.last),
+                (30, if forward { 0 } else { -1 }),
+                (34, if tie.information { -1 } else { 0 }),
+                (
+                    36,
+                    if if forward {
+                        tie.sharing_first
+                    } else {
+                        tie.sharing_second
+                    } {
+                        -1
+                    } else {
+                        0
+                    },
+                ),
+            ] {
+                c[offset..offset + 2].copy_from_slice(
+                    &i16::try_from(value)
+                        .map_err(|_| invalid("tie Integer field exceeds range"))?
+                        .to_le_bytes(),
+                );
+            }
+            let angle = end.angle;
+            let bend = end.bend;
+            let length = if self.native_random.is_some() {
+                end.length
+                    .unwrap_or_else(|| i32::from_le_bytes(c[16..20].try_into().unwrap()))
+            } else {
+                endpoint
+                    .map_or(tie.rest_length, |endpoint| endpoint.current_length)
+                    .round_ties_even() as i32
+            };
+            let shrink = end.shrink;
+            c[6..10].copy_from_slice(&angle.to_le_bytes());
+            c[10..14].copy_from_slice(&bend.to_le_bytes());
+            c[16..20].copy_from_slice(&length.to_le_bytes());
+            c[20..24].copy_from_slice(&shrink.to_le_bytes());
+            if let Some(endpoint) = endpoint {
+                c[32..34].copy_from_slice(
+                    &i16::try_from(endpoint.energy_marker)
+                        .map_err(|_| invalid("tie energy marker exceeds Integer range"))?
+                        .to_le_bytes(),
+                );
+            }
+            e[0] = end.kind;
+            e[1..5].copy_from_slice(&end.b.to_le_bytes());
+            e[5..9].copy_from_slice(&end.k.to_le_bytes());
+            e[9..13].copy_from_slice(&end.rest_length.to_le_bytes());
+        }
+        record.set_value("ties_core", NativeValue::Bytes(core))?;
+        record.set_value("ties_extension", NativeValue::Bytes(extension))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_organism_export_contains_live_memory_resource_bits_dna_and_restrictions() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let id = engine
+            .spawn_at(
+                LegacyDna::parse("def counter 999\nstart 71 .counter store stop").unwrap(),
+                [500.0, 500.0],
+            )
+            .unwrap();
+        {
+            let robot = engine.slots.get_mut(id).unwrap();
+            robot.materials.energy = 587.01544;
+            robot.materials.body = 153.94617;
+            robot.flags.can_execute_dna = false;
+            robot.flags.can_see = false;
+            robot.program.memory.write(1000, -712);
+            robot.identity.owner = "Local €".into();
+            robot.set_heading(2.146511);
+        }
+        let bytes = engine.export_native_organisms(&[id]).unwrap();
+        let file = NativeRecordFile::decode(&bytes).unwrap();
+        assert!(file.tail.is_empty());
+        let robot = &file.robots[0];
+        assert_eq!(robot.single("energy").unwrap().to_bits(), 0x4412c0fd);
+        assert_eq!(robot.single("body").unwrap().to_bits(), 0x4319f238);
+        assert_eq!(
+            robot.single("aim").unwrap().to_bits(),
+            2.146511_f32.to_bits()
+        );
+        assert_eq!(robot.word("disable_dna").unwrap(), -1);
+        assert_eq!(robot.word("cant_see").unwrap(), -1);
+        assert_eq!(
+            &robot.bytes("memory").unwrap()[2000..2002],
+            &(-712_i16).to_le_bytes()
+        );
+        assert_eq!(robot.bytes("owner").unwrap(), b"Local \x80");
+        assert_eq!(robot.word("private_variable_count").unwrap(), 2);
+        assert_eq!(
+            robot.bytes("dna").unwrap(),
+            native_dna(engine.dna(id).unwrap()).unwrap()
+        );
+        assert_eq!(file.encode().unwrap(), bytes);
+        assert!(engine.export_native_organisms(&[id, id]).is_err());
+        assert!(engine.export_native_organisms(&[]).is_err());
+        assert!(ansi("unsupported 🐉").is_err());
+    }
+
+    #[test]
+    fn native_private_table_projects_first_fifty_without_clamping_the_next_index() {
+        let source = (0..70)
+            .map(|index| format!("def v{index} {}\n", index + 100))
+            .collect::<String>()
+            + "start .v69 999 store stop";
+        let dna = crate::dna::native_load_robot_dna(&source).unwrap();
+        assert_eq!(dna.native_user_variables().len(), 70);
+        let mut engine = Engine::new_native(EngineConfig::testing()).unwrap();
+        let id = engine.spawn_at(dna, [500.0; 2]).unwrap();
+        engine
+            .slots
+            .get_mut(id)
+            .unwrap()
+            .program
+            .private_variable_count = 71;
+        let saved = crate::SaveFile::encode(&engine).unwrap();
+        let bytes = engine.export_native_sim().unwrap();
+        assert_eq!(crate::SaveFile::encode(&engine).unwrap(), saved);
+        let file = NativeRecordFile::decode(&bytes).unwrap();
+        let record = &file.robots[0];
+        assert_eq!(record.word("private_variable_count").unwrap(), 71);
+        let private = record.bytes("private_variables").unwrap();
+        let mut offset = 0;
+        for index in 0..50 {
+            let size = i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()) as usize;
+            offset += 2;
+            assert_eq!(
+                &private[offset..offset + size],
+                format!("v{index}").as_bytes()
+            );
+            offset += size;
+            assert_eq!(
+                i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()),
+                index + 100
+            );
+            offset += 2;
+        }
+        assert_eq!(offset, private.len());
+        let resumed = crate::SaveFile::decode(&saved).unwrap();
+        assert_eq!(
+            resumed
+                .slots
+                .get(id)
+                .unwrap()
+                .program
+                .dna
+                .native_user_variables()
+                .len(),
+            70
+        );
+        let mut native = Engine::from_native_sim(&bytes).unwrap();
+        let imported = native.slots.ids_in_slot_order()[0];
+        assert_eq!(
+            native
+                .slots
+                .get(imported)
+                .unwrap()
+                .program
+                .dna
+                .native_user_variables()
+                .len(),
+            50
+        );
+        assert_eq!(
+            native
+                .slots
+                .get(imported)
+                .unwrap()
+                .program
+                .private_variable_count,
+            71
+        );
+        native.tick().unwrap();
+        assert_eq!(native.memory_at(imported, 999).unwrap(), 169);
+    }
+
+    #[test]
+    fn native_private_slots_preserve_order_duplicates_empty_slots_and_next_index() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let id = engine
+            .spawn_at(LegacyDna::parse("start stop").unwrap(), [500.0; 2])
+            .unwrap();
+        let definitions = vec![
+            ("Zulu".to_owned(), 901),
+            ("".to_owned(), -7),
+            ("Alpha".to_owned(), 902),
+            ("Zulu".to_owned(), 903),
+        ];
+        let robot = engine.slots.get_mut(id).unwrap();
+        robot
+            .program
+            .dna
+            .set_native_context(definitions.clone(), false, DnaMetadata::default());
+        robot.program.private_variable_count = 5;
+        let bytes = engine.export_native_organisms(&[id]).unwrap();
+        let file = NativeRecordFile::decode(&bytes).unwrap();
+        let record = &file.robots[0];
+        assert_eq!(record.word("private_variable_count").unwrap(), 5);
+        let private = record.bytes("private_variables").unwrap();
+        let mut offset = 0;
+        for (name, value) in definitions {
+            let size = i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()) as usize;
+            offset += 2;
+            assert_eq!(&private[offset..offset + size], name.as_bytes());
+            offset += size;
+            assert_eq!(
+                i16::from_le_bytes(private[offset..offset + 2].try_into().unwrap()),
+                value as i16
+            );
+            offset += 2;
+        }
+        let restored: LegacyDna =
+            serde_json::from_slice(&serde_json::to_vec(engine.dna(id).unwrap()).unwrap()).unwrap();
+        assert_eq!(
+            restored.native_user_variables(),
+            engine.dna(id).unwrap().native_user_variables()
+        );
+        assert_eq!(restored.user_variable("Zulu"), Some(903));
+    }
+
+    #[test]
+    fn native_export_keeps_distinct_endpoint_springs_angles_and_bends() {
+        let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+        let dna = LegacyDna::parse("start stop").unwrap();
+        let first = engine.spawn_at(dna.clone(), [500.0, 500.0]).unwrap();
+        let second = engine.spawn_at(dna, [700.0, 500.0]).unwrap();
+        let mut tie = TieState::legacy(first, second, 200.0, 1, 1);
+        let mut ends = tie.native_end_states();
+        ends[0].angle = 0.25;
+        ends[0].bend = 0.125;
+        ends[1].rest_length = 250.0;
+        ends[1].b = 0.04;
+        ends[1].last = -7;
+        ends[1].angle = -0.75;
+        ends[1].bend = -0.125;
+        ends[1].shrink = 19;
+        ends[1].kind = 0;
+        ends[1].hardened = false;
+        tie.native_ends = Some(ends);
+        tie.sync_native_primary();
+        engine.ties.push(tie);
+        let file = NativeRecordFile {
+            robots: engine.native_robot_records(&[first, second]).unwrap(),
+            tail: vec![],
+        };
+        for (index, end) in ends.into_iter().enumerate() {
+            let core = file.robots[index].bytes("ties_core").unwrap();
+            let extension = file.robots[index].bytes("ties_extension").unwrap();
+            assert_eq!(
+                f32::from_le_bytes(core[44..48].try_into().unwrap()),
+                end.angle
+            );
+            assert_eq!(
+                f32::from_le_bytes(core[48..52].try_into().unwrap()),
+                end.bend
+            );
+            assert_eq!(
+                i32::from_le_bytes(core[58..62].try_into().unwrap()),
+                end.shrink
+            );
+            assert_eq!(
+                i16::from_le_bytes(core[64..66].try_into().unwrap()),
+                end.last as i16
+            );
+            assert_eq!(extension[13], end.kind);
+            assert_eq!(
+                f32::from_le_bytes(extension[14..18].try_into().unwrap()),
+                end.b
+            );
+            assert_eq!(
+                f32::from_le_bytes(extension[22..26].try_into().unwrap()),
+                end.rest_length
+            );
+        }
+    }
+
+    #[test]
+    fn genuine_robot_group_export_remaps_forward_and_back_ties_into_the_new_file() {
+        let engine = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let ids = engine.slots.ids_in_slot_order();
+        let origin = engine.native_origin.as_ref().unwrap();
+        assert!(engine.export_native_organisms(&ids).is_err());
+        let file = NativeRecordFile {
+            robots: engine.native_robot_records(&ids).unwrap(),
+            tail: vec![],
+        };
+        assert_eq!(file.robots.len(), 196);
+        let mut forward = 0;
+        let mut backward = 0;
+        for (i, record) in file.robots.iter().enumerate() {
+            assert_eq!(record.word("old_slot").unwrap(), i as i16 + 1);
+            let core = record.bytes("ties_core").unwrap();
+            for index in 1..=10 {
+                let c = &core[index * 38..(index + 1) * 38];
+                let pnt = i16::from_le_bytes(c[2..4].try_into().unwrap());
+                if pnt == 0 {
+                    continue;
+                }
+                assert!((1..=196).contains(&pnt));
+                let source = origin.robots[i].bytes("ties_core").unwrap();
+                // VB6 DeleteTie shifts arrays but leaves some ptt values stale.
+                // Preserve that saved metadata while remapping the actual pnt.
+                assert_eq!(&c[4..6], &source[index * 38 + 4..index * 38 + 6]);
+                let other = file.robots[pnt as usize - 1].bytes("ties_core").unwrap();
+                assert!(other.chunks_exact(38).skip(1).any(|end| {
+                    i16::from_le_bytes(end[2..4].try_into().unwrap()) == i as i16 + 1
+                }));
+                if i16::from_le_bytes(c[30..32].try_into().unwrap()) == 0 {
+                    forward += 1;
+                } else {
+                    backward += 1;
+                }
+            }
+        }
+        assert!(!engine.ties.is_empty());
+        assert_eq!(forward, engine.ties.len());
+        assert_eq!(backward, forward);
+    }
+
+    #[test]
+    fn native_tie_commands_survive_console_edits_and_snapshot_publication() {
+        let mut engine = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let id = engine.ties[0].first;
+        for (address, value) in [(450, -712), (451, 39), (480, -111), (484, 222)] {
+            engine.set_organism_memory(id, address, value).unwrap();
+        }
+        engine.publish_snapshot();
+        for (address, value) in [(450, -712), (451, 39), (480, -111), (484, 222)] {
+            assert_eq!(engine.memory_at(id, address).unwrap(), value);
+        }
+        let resumed = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
+        for (address, value) in [(450, -712), (451, 39), (480, -111), (484, 222)] {
+            assert_eq!(resumed.memory_at(id, address).unwrap(), value);
+        }
+    }
+
+    #[test]
+    fn native_saved_tie_length_is_independent_of_current_geometry() {
+        let mut engine = Engine::from_native_sim(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let tie = &engine.ties[0];
+        let id = tie.first;
+        let other = tie.second;
+        let saved_length = tie.native_end_states()[0].length.unwrap();
+        let other_position = engine.slots.get(other).unwrap().kinematics.position;
+        engine.slots.get_mut(id).unwrap().kinematics.position =
+            [other_position[0] + 123.0, other_position[1]];
+        engine.refresh_tie_projections();
+        let members = engine.slots.ids_in_slot_order();
+        let record_index = members.iter().position(|&member| member == id).unwrap();
+        let tie_index = engine
+            .tie_indices_for(id)
+            .iter()
+            .position(|&i| i == 0)
+            .unwrap()
+            + 1;
+        let records = engine.native_robot_records(&members).unwrap();
+        let core = records[record_index].bytes("ties_core").unwrap();
+        let offset = tie_index * 38 + 16;
+        assert_eq!(
+            i32::from_le_bytes(core[offset..offset + 4].try_into().unwrap()),
+            saved_length
+        );
+        let resumed = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
+        assert_eq!(
+            resumed.ties[0].native_end_states()[0].length,
+            Some(saved_length)
+        );
+    }
+
+    #[test]
+    fn old_modern_tie_metadata_recovers_saved_native_lengths() {
+        let mut origin = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        for record in &mut origin.robots {
+            let mut core = record.bytes("ties_core").unwrap().to_vec();
+            for tie in core.chunks_exact_mut(38).skip(1) {
+                if i16::from_le_bytes(tie[2..4].try_into().unwrap()) != 0 {
+                    tie[16..20].copy_from_slice(&177_i32.to_le_bytes());
+                }
+            }
+            record
+                .set_value("ties_core", NativeValue::Bytes(core))
+                .unwrap();
+        }
+        let mut engine = Engine::from_native_sim(&origin.encode().unwrap()).unwrap();
+        for tie in &mut engine.ties {
+            let mut old = serde_json::to_value(tie.native_end_states()).unwrap();
+            for end in old.as_array_mut().unwrap() {
+                end.as_object_mut().unwrap().remove("length");
+                end.as_object_mut().unwrap().remove("saved_reciprocal");
+            }
+            tie.native_ends = Some(serde_json::from_value(old).unwrap());
+        }
+        let restored = crate::SaveFile::decode(&crate::SaveFile::encode(&engine).unwrap()).unwrap();
+        for record in restored
+            .native_robot_records(&restored.slots.ids_in_slot_order())
+            .unwrap()
+        {
+            for tie in record.bytes("ties_core").unwrap().chunks_exact(38).skip(1) {
+                if i16::from_le_bytes(tie[2..4].try_into().unwrap()) != 0 {
+                    assert_eq!(i32::from_le_bytes(tie[16..20].try_into().unwrap()), 177);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_export_retains_unrepresented_tie_metadata_and_type() {
+        let mut origin = NativeRecordFile::decode(include_bytes!(
+            "../../tests/fixtures/db24832-original-user.sim"
+        ))
+        .unwrap();
+        let mut selected = None;
+        for (slot, record) in origin.robots.iter_mut().enumerate() {
+            let mut core = record.bytes("ties_core").unwrap().to_vec();
+            let mut extension = record.bytes("ties_extension").unwrap().to_vec();
+            for index in 1..=10 {
+                let c = &mut core[index * 38..(index + 1) * 38];
+                if i16::from_le_bytes(c[2..4].try_into().unwrap()) == 0 {
+                    continue;
+                }
+                c[24..26].copy_from_slice(&(-1_i16).to_le_bytes());
+                c[28..30].copy_from_slice(&(-712_i16).to_le_bytes());
+                extension[index * 13] = 3;
+                selected = Some(slot);
+                break;
+            }
+            if selected.is_some() {
+                record
+                    .set_value("ties_core", NativeValue::Bytes(core))
+                    .unwrap();
+                record
+                    .set_value("ties_extension", NativeValue::Bytes(extension))
+                    .unwrap();
+                break;
+            }
+        }
+        let engine = Engine::from_native_sim(&origin.encode().unwrap()).unwrap();
+        let file = NativeRecordFile {
+            robots: engine
+                .native_robot_records(&engine.slots.ids_in_slot_order())
+                .unwrap(),
+            tail: vec![],
+        };
+        let r = &file.robots[selected.unwrap()];
+        let core = r.bytes("ties_core").unwrap();
+        let extension = r.bytes("ties_extension").unwrap();
+        let preserved = (1..=10).any(|index| {
+            let c = &core[index * 38..(index + 1) * 38];
+            i16::from_le_bytes(c[24..26].try_into().unwrap()) == -1
+                && i16::from_le_bytes(c[28..30].try_into().unwrap()) == -712
+                && extension[index * 13] == 3
+        });
+        assert!(preserved);
+    }
+}

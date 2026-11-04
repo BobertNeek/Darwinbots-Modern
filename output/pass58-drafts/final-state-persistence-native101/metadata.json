@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_static_reviewed_supersession",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "files": [
+    {
+      "target": "modern/engine/tests/final_state_persistence_248.rs",
+      "draft": "output/pass58-drafts/final-state-persistence-native101/modern/engine/tests/final_state_persistence_248.rs",
+      "before": "output/pass58-drafts/final-state-persistence-native101/before/modern/engine/tests/final_state_persistence_248.rs",
+      "base_raw_sha256": "E7B9DFFDEAA15DC9B9AA877994DF1BDE6FF1EEE86136DB9EA0516CD06B94D514",
+      "derived_from": "output/pass58-drafts/final-state-persistence/modern/engine/tests/final_state_persistence_248.rs",
+      "derived_from_raw_sha256": "6643E2B9631C12AD2A42CF4A612B20AAC209AAE59BC49426DE880DB1F694C298",
+      "candidate_raw_sha256": "2B79C671F50A350C140A86F6A353C52A2B3C054DC29E6A6CCB2A5B0D18C39A8D",
+      "candidate_bytes": 16864,
+      "existing_test_rows_before": 4,
+      "existing_test_rows_after": 4,
+      "new_test_rows": 0
+    }
+  ],
+  "supersedes": {
+    "metadata": "output/pass58-drafts/final-state-persistence/metadata.json",
+    "sha256": "DFCC53A51025068735DB4EC29E2D6A60183812A43210619E92640F0C84CEB143",
+    "candidate_sha256": "6643E2B9631C12AD2A42CF4A612B20AAC209AAE59BC49426DE880DB1F694C298",
+    "prior_files_preserved_unchanged": true,
+    "reason": "Static review found prior100physical/101logical pool inconsistent while native cursorSome. This is not an executed new failure. Native cursor validation requires physical owners length equal capacity."
+  },
+  "source_authority": {
+    "file": "modern/engine/src/shot/projectile.rs",
+    "lines": [
+      926,
+      986
+    ],
+    "contract": "extend_native_slots initializes all20 parallel vectors. validate_native_slots requires nonzero capacity, cursor<=capacity and owners.len==capacity while cursorSome."
+  },
+  "repair": {
+    "initial_slots": 100,
+    "final_physical_slots": 101,
+    "logical_capacity": 101,
+    "native_cursor": "preserved Some; never removed or reset",
+    "inactive_template_slot": 99,
+    "expected_defaults_asserted_before_copy": true,
+    "extended_parallel_fields": [
+      "owners",
+      "positions",
+      "previous_positions",
+      "velocities",
+      "ages",
+      "ranges",
+      "energies",
+      "kinds",
+      "values",
+      "alive",
+      "impact_flash",
+      "payloads",
+      "source_species_names",
+      "toxin_memory_locations",
+      "toxin_memory_values",
+      "colors",
+      "source_vegetables",
+      "stored",
+      "gene_numbers",
+      "dna_lengths"
+    ],
+    "includes_owners_alive_payloads": true,
+    "free_slots": "retained empty; not a parallel slot vector",
+    "live_slots_after_extension": 1,
+    "live_slot_zero_asserted": true,
+    "slot0_values_mutated_in_place": 17,
+    "fractional_range": 23.25,
+    "pool_capacity_value_preserved": 101,
+    "invariant_checks_added": [
+      "after public SaveFile decode of mutated fixture",
+      "after repeated public SaveFile decode"
+    ],
+    "production_validation_not_changed": true,
+    "profile_not_changed": true
+  },
+  "coverage_preserved": {
+    "all_original_snapshot_assertions": true,
+    "entire_projectiles_ties_obstacles_teleporters_equality": true,
+    "repeat_db3s_stability": true,
+    "invalid_obstacle_update_atomicity": true,
+    "original_assertion_suffix_same_except_two_added_invariant_calls": true
+  },
+  "diagnostic_evidence": {
+    "prior_data_only_receipt": "output/pass58-drafts/final-state-persistence/metadata.json",
+    "prior_metadata_sha256": "DFCC53A51025068735DB4EC29E2D6A60183812A43210619E92640F0C84CEB143",
+    "scope": "The prior raw logged values/JSON/diff remain unchanged historical diagnosis:8length+792presence records, zero existing scalar/value changes. They are not800 behavioral errors and do not claim the amended fixture ran."
+  },
+  "static_review": {
+    "all20_parallel_fields_explicitly_extended": true,
+    "all_slot99_defaults_asserted_before_copy": true,
+    "original_assertions_suffix_unchanged_except_two_added_invariant_checks": true,
+    "reverse_new_edits_reconstruct_prior_draft": true,
+    "native_cursor_or_profile_not_removed": true,
+    "rows_before": 4,
+    "rows_after": 4,
+    "new_rows": 0,
+    "prior_candidate_unchanged": true,
+    "active_source_unchanged": true
+  },
+  "test_census": {
+    "rows_before": 4,
+    "rows_after": 4,
+    "new_rows": 0,
+    "new_cargo_targets": 0,
+    "cumulative_expected_new_rust_rows_vs55": 62,
+    "expected_distinct_rust_targets": 68,
+    "expected_managed_counts": {
+      "core": 298,
+      "desktop": 197
+    }
+  },
+  "overlap": {
+    "world": false,
+    "native_shots": false,
+    "native_energy": false
+  },
+  "execution": {
+    "formatter": false,
+    "powershell_or_product_parser": false,
+    "build": false,
+    "tests": false,
+    "engine_or_cli": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false,
+    "active_source_edits": false
+  },
+  "apply_gate": "Collect all ordinary57 outcomes; root extends58plan/backup with this final supersession, then all approved code/tests apply before checks.",
+  "ownership_released": true
+}

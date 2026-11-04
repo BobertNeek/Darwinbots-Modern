@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "source_backed_cause_and_completed_unchanged61_diagnostic_only",
+  "created_utc": "2026-10-17T12:58:17.374Z",
+  "original": {
+    "version": "2.48.32",
+    "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+    "executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+    "source_files": [
+      {
+        "file": "Darwinbots2/main.frm",
+        "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+        "lines": [
+          1374,
+          1507
+        ],
+        "rule": "startloaded sets cooldown to negative RepopCooldown; fresh StartSimul does not reset that global"
+      },
+      {
+        "file": "Darwinbots2/Vegs.bas",
+        "sha256": "0AF2A56CBD7FD14D67BC4AA7C6488470CE3C1B59C6739B6576F6DB15A929419E",
+        "lines": [
+          9,
+          23,
+          37
+        ],
+        "rule": "Global Long cooldown increments on eligible calls, subtracts configured interval after attempted repopulation"
+      },
+      {
+        "file": "Darwinbots2/Master.bas",
+        "sha256": "D46C737105A0DDACD46BE56BB73D5747317B4D2928D058DE2D5D67BFE48FEA1A",
+        "lines": [
+          390,
+          396
+        ],
+        "rule": "Repopulation called only below minimum chloroplast census and after first-loaded-cycle sentinel clears"
+      }
+    ],
+    "original_files_unchanged_against_revision": true
+  },
+  "failed_qualification": {
+    "code_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+    "manifest_sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "summary_sha256": "0F30E4B269E8183A04FFECA509E47A206CC2D41A61674E6D1DF2103406A9A764",
+    "ordinary": {
+      "total": 94,
+      "passed": 89,
+      "failed": 5
+    },
+    "original_controls": {
+      "total": 25,
+      "passed": 24
+    },
+    "source_repaired_or_qualified_by_diagnostic": false
+  },
+  "diagnostic": {
+    "scope": "CPU-only already-built61 binaries after all94 local and7 hosted ordinary outcomes; source and original fixtures unchanged",
+    "dll_sha256": "958AE431D1AF44D0F529F87945E29B1D655941A81D33AF8CCB2528959536562A",
+    "cli_sha256": "BB4AEC9155CFC306A9261A8B27883D9BDDF8A82D62D675C57B884DB36ADEF3E0",
+    "regular_c100_sha256": "43398EF63DEEBF083F9C8163679C1CF1E3441DDE4094556BAAEBC4B847EDBD18",
+    "reference_c100_sha256": "32537482FDB46360B18219BECDB33D99D02B2ACEFDC41E68A9E929A3C5B2CB4F",
+    "observed_regular_death_cycle": 29,
+    "observed_regular_extra_uniform_draws_at": [
+      11,
+      21,
+      31
+    ],
+    "extra_draws_per_premature_repopulation": 20,
+    "reference_first_particle_draw_offset_model": 197,
+    "regular_first_particle_draw_offset_model": 217,
+    "model_search_limit": 20000,
+    "expired_age_does_not_establish_creation_cycle": true,
+    "counterfactual": {
+      "modified_temporary_input_only": true,
+      "first_repopulation_interval": 20,
+      "normal_interval_restored_after_cycle": 21,
+      "normal_interval": 10,
+      "output_cycle": 100,
+      "output_sha256": "A0F5C86CBEAFD6B9B6FA7A24A443AF8FB5D8E38E260AC1992C9D269A676146C1",
+      "strict_compared_active_fields": 1684,
+      "absolute_tolerance": 0,
+      "relative_tolerance": 0,
+      "active_field_differences": 0,
+      "retained_death_particle_slots": 20,
+      "parsed_retained_particle_field_differences": 0
+    },
+    "files": [
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-compare.json",
+        "sha256": "4C10D12E20C9115B274279B2FA62B1D59C390D558B146389E416DA5A5CE47E87",
+        "bytes": 623
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-compare.stderr.log",
+        "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+        "bytes": 0
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-cycle100.sim",
+        "sha256": "A0F5C86CBEAFD6B9B6FA7A24A443AF8FB5D8E38E260AC1992C9D269A676146C1",
+        "bytes": 18868
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-initial-delay.db3s",
+        "sha256": "A2432240AB72FEC5ADC2D9B8ACEED0D346D5D065AEBD240C122213D7B32431FB",
+        "bytes": 83424
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-provenance.json",
+        "sha256": "BB79102B327785B1D4B090B5F596C30FCA4821F04E08CA751E2F9CE81E1F1FAD",
+        "bytes": 552
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-restored-period-cycle21.db3s",
+        "sha256": "8B51236AF9C9506D5027E5C88BBD03915AB19D6AC566F1D0B93EAD82986EA7AE",
+        "bytes": 90055
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle20.log",
+        "sha256": "6E50E884A26386D79F696A6D1BB706B3B63631F6DE1253A522520BD541F13E30",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle25.log",
+        "sha256": "C0AA50F6F5E9740CD785C5989D2270536553AC73D24391CCE4AAAA1D6F42670F",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle26.log",
+        "sha256": "D2111E925CA8E669D6FB85E413FAF0462075D1D7C6D0961CB5AA3252D0FA4D36",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle27.log",
+        "sha256": "11C3339D1353B543A389D01D8CF97D1449976713EBC063206B678EF7BFDFFA02",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle28.log",
+        "sha256": "5F667AE63B43066B1925949B99A1894453584471F65DB093CCC0EF51388C6BCF",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle29.log",
+        "sha256": "BE845C2C267E2F7FA70366B29CF03C4FB22FFEBCAD16A873AD9E349DAB548A69",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle30.log",
+        "sha256": "E92CBF029A666FAE2E924AFE51991C1EF422A2C9CB0AE13F2AD5209661AEF280",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle31.log",
+        "sha256": "31AD88FC7885B695D8E48500514FF3DAD91FE7F5D5B23A42B9577EB8B194A225",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/cycle32.log",
+        "sha256": "0ADE8B3398F2512FCBC4D2D256EC206C6ED041A6A4DD0448E7C6D1B788BC9E2C",
+        "bytes": 411
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle20.sim",
+        "sha256": "92A34CB674EB691E22E2B3847E36542EA7E738313D215B4BB82F6C2FFBEB337D",
+        "bytes": 27852
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle25.sim",
+        "sha256": "55AF9DA9175BAA12B8FC21CF5DF47FEDB74C704C32B7F74F198C8F89BEAB8484",
+        "bytes": 28122
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle26.sim",
+        "sha256": "CD2A87DC880A2A68C5371F9F007CFD19DF6B4017CB526E99BEEDFBF954F06204",
+        "bytes": 28176
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle27.sim",
+        "sha256": "DC3C7EDDE565EC9C50ACDC41BB7F4F1B8E97FE0D9C606E07C7BFF468E1212FA8",
+        "bytes": 28230
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle28.sim",
+        "sha256": "6FF9B5207CB597E7E74FFECC28D8C287DBF72A67D6D5B25DA7F8B5D0027ED679",
+        "bytes": 28284
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle29.sim",
+        "sha256": "F93DF50755DF56406788406B4A24DE693138C0E0AA9FB923643B6E61ABFB93CA",
+        "bytes": 18868
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle30.sim",
+        "sha256": "3B1D6C516CD22ED96712732935344D3ECE1DDA1B88C1C22E88BD176CC3FA88B4",
+        "bytes": 18868
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle31.sim",
+        "sha256": "09CF7965112BE502C1A4940E4D20CFBAC07E85224E24307B5E334CB47B168089",
+        "bytes": 18868
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/feeding-cycle32.sim",
+        "sha256": "5C4C6619373E29638B574E94A1DA9FDF16D30FC0C89D8DE218F94A19C70C52BF",
+        "bytes": 18868
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle0.db3s",
+        "sha256": "56CA4BA0CFFAC795F9FC0420CB0A8D8F67A2B6EFB2C275153BBE49B3D5BC9A9C",
+        "bytes": 83424
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle10.db3s",
+        "sha256": "A094F8C2FC3EB5237969BC256504CCEAD7DEC0A1B66E34018B51B42A0C5B313B",
+        "bytes": 86904
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle20.db3s",
+        "sha256": "C01A59BD550E987248EF125D3B25BF7A4A901D7F36A9CD1940934EC3E97318F6",
+        "bytes": 89518
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle28.db3s",
+        "sha256": "0E78E8BC88F5CB58CBAD7172157F5E08F88CB53C163DAED666D01BC01257A042",
+        "bytes": 91913
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle29.db3s",
+        "sha256": "0B645D6754094DDBC4A6C2BE8AF4336C30C4A286E50F3DDD7F2F00ED46CCFAEB",
+        "bytes": 86522
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-cycle32.db3s",
+        "sha256": "02539AC4F4DE07195E3170A615FE18590E14A70F2D0F0FC86D566CD02DA4F9BE",
+        "bytes": 86246
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/ffi-rng-trace.json",
+        "sha256": "2FCCFB2F2B3533B58458EBC8B8E379683671FB148937FADB9AF81C26A6B47241",
+        "bytes": 46846
+      }
+    ]
+  },
+  "repair_requirements": [
+    "Native .sim startloaded resets the native signed cooldown to negative configured interval.",
+    "Same-process New/reset retains the original global native cooldown.",
+    "DB3S preserves the signed live native countdown and pending first-loaded-cycle guard.",
+    "Native above-minimum census leaves the global cooldown unchanged; portable semantics remain separate.",
+    "Preserve all25 genuine references and strict active/dormant assertions."
+  ],
+  "qualification": {
+    "batch62_code_authored": true,
+    "batch62_checks_executed": false,
+    "admission_created": false,
+    "GPU_executed": false,
+    "original_UI_helper_executed": false,
+    "final_static_review_utc": "2026-10-17T13:13:21.280Z",
+    "scope": "All batch62 Rust/managed code and tests authored and peer reviewed; active application and qualification have not run."
+  }
+}

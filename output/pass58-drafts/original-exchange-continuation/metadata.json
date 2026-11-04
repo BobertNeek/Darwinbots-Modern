@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "status": "authored_unapplied_released",
+  "base_source_head": "f2a42877fdc15ad8a332dd041c0ce8c6a9bd0d69",
+  "classification": "Stale trajectory-count assertions in a native exchange fixture; source-backed first-loaded-cycle gate correctly suppresses the old assumed birth.",
+  "failure": {
+    "target": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+    "source_assertion_line": 161,
+    "log": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57/packaged-native-desktop.log",
+    "trx": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass57/desktop.trx",
+    "actual_birth_delta": 0,
+    "stale_expected_birth_delta": 1,
+    "desktop_actual_summary": {
+      "passed": 192,
+      "failed": 1,
+      "skipped": 0,
+      "total": 193
+    }
+  },
+  "fixture": {
+    "archive": "docs/parity/evidence/native-sim-original-roundtrip.zip",
+    "archive_sha256": "06CDAD316F4B3AC741FA68BB1B4B82FA62585CD8270803E5329EBC47616C3026",
+    "entry": "original-after-port654.sim",
+    "entry_bytes": 5914388,
+    "entry_sha256": "F00975B9C463EBDADFCA8ABE39926AAD8CEB0AC34767B51974B97B0C3B2413D9",
+    "provenance": "docs/parity/evidence/native-sim-original-roundtrip.json",
+    "provenance_sha256": "D05E4382076FEEF19A26354D78484DAF72251E9752029567E05AC39A6BA00F18",
+    "supported_claim": "Original saved checkpoint654 with543records loads through native FFI and advances. Historical note explicitly limits it to interoperability, not numeric equivalence.",
+    "unsupported_claim": "No saved original655 checkpoint or future originalRnd state is archived, so a specific future death/reseed/population count is not an oracle."
+  },
+  "source_authority": [
+    {
+      "path": "Darwinbots2/main.frm",
+      "lines": "1508-1509",
+      "meaning": "startloaded sets totvegs−1 before the first update."
+    },
+    {
+      "path": "Darwinbots2/Robots.bas",
+      "lines": "1499,2130,2457",
+      "meaning": "First displayed census remains−1; both asexual and sexual reproduction return before birth. The unconditional2130/2457 guard affects all robots despite vegetable-focused comment."
+    },
+    {
+      "path": "modern/engine/src/world/native_io.rs",
+      "lines": "416-418",
+      "meaning": "Native import initializes source load transients and marks pending loaded census."
+    },
+    {
+      "path": "modern/engine/src/world/native_reproduction.rs",
+      "lines": "11-31",
+      "meaning": "Pending becomesFirstCycle through that saved boundary, then clears; full checkpoints preserve it."
+    },
+    {
+      "path": "modern/engine/src/world.rs",
+      "lines": "6137-6142,11513-11516,11285-11296,12024-12033",
+      "meaning": "Population counts visible noncorpses; each living death and each reseed updates its counter, enabling membership/counter conservation."
+    }
+  ],
+  "files": [
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "draft": "output/pass58-drafts/original-exchange-continuation/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "raw_before": "output/pass58-drafts/original-exchange-continuation/before/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "base_raw_sha256": "3C226E32CB317DFE8A377D3A6B181EB1751A924232BA9B03984B065E8DAC49AA",
+      "base_bytes": 14860,
+      "candidate_raw_sha256": "2AD7DB4610A014FEC94B6DA7BEDEFADFCCC0FC09AB7836089A2E149307684080",
+      "candidate_bytes": 16828,
+      "new_test_rows": 0
+    }
+  ],
+  "assertion_changes": [
+    "Adds exact archive-entry SHA guard; keeps loaded tick654/population543 and advanced tick655.",
+    "Asserts pending→first_cycle saved census stages and unchangedBirths according to original first-loaded-cycle source gate.",
+    "Full native FFI DB3S save→load→save bytes must match before ticking; independent restored twin must produce complete equal bytes after the same tick; repeated advanced checkpoint load must remain byte-identical.",
+    "Specific unproven death1/population543 assumptions replaced by monotone lifecycle counters, living-key membership changes matching deaths/reseeds and exact population conservation, including corpse conversion handling.",
+    "No tolerance, legacy-profile switch, expected-RNG override, archive mutation or production edit."
+  ],
+  "test_census": {
+    "existing_file_facts": 6,
+    "existing_file_theories": 1,
+    "existing_file_data_rows": 7,
+    "existing_executed_rows_before": 13,
+    "existing_executed_rows_after": 13,
+    "new_rows": 0,
+    "managed_expected_core_unchanged": 307,
+    "managed_expected_desktop_unchanged": 197
+  },
+  "promotion": "One additional intended Desktop test-file target only; parent may append to final58 plan/backup. All existing sealed receipts unchanged.",
+  "execution": {
+    "source_and_existing_log_read": true,
+    "static_review": true,
+    "active_source_edits": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "git_command": false,
+    "git_mutation": false,
+    "ui": false,
+    "gpu": false
+  }
+}

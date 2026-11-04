@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+  "collected_utc": "2026-10-19T11:56:04.496Z",
+  "status": "completed_passed",
+  "all_six_groups_passed": true,
+  "strict_original_world_10000_cycle_gpu_cpu_and_repeated_save_resume_passed": true,
+  "physical_adapter": {
+    "name": "NVIDIA GeForce RTX 3050",
+    "backend": "Vulkan",
+    "device_type": "DiscreteGpu"
+  },
+  "groups": [
+    {
+      "task": "physical-library",
+      "status": "passed",
+      "passed_cases": 7,
+      "failed_cases": 0,
+      "ignored_cases": 0,
+      "terminal_summaries": 1,
+      "elapsed_process_seconds": 315.5597858
+    },
+    {
+      "task": "physical-cli",
+      "status": "passed",
+      "passed_cases": 1,
+      "failed_cases": 0,
+      "ignored_cases": 0,
+      "terminal_summaries": 1,
+      "elapsed_process_seconds": 305.7165205
+    },
+    {
+      "task": "physical-integration",
+      "status": "passed",
+      "passed_cases": 3,
+      "failed_cases": 0,
+      "ignored_cases": 0,
+      "terminal_summaries": 3,
+      "elapsed_process_seconds": 245.8277335
+    },
+    {
+      "task": "physical-native-continuation",
+      "status": "passed",
+      "passed_cases": 1,
+      "failed_cases": 0,
+      "ignored_cases": 0,
+      "terminal_summaries": 1,
+      "elapsed_process_seconds": 3875.5842167
+    },
+    {
+      "task": "portable-gpu",
+      "status": "passed",
+      "passed_cases": 14,
+      "failed_cases": 0,
+      "ignored_cases": 12,
+      "terminal_summaries": 66,
+      "elapsed_process_seconds": 810.4972318
+    },
+    {
+      "task": "backend-switches",
+      "status": "passed",
+      "passed_cases": 1,
+      "failed_cases": 0,
+      "ignored_cases": 0,
+      "terminal_summaries": 66,
+      "elapsed_process_seconds": 13.7469363
+    }
+  ],
+  "boundary": "Group selections can overlap; these counts are not summed as unique tests. Capacity and native visible walkthrough remain separate. Original source992 failed receipts remain unchanged.",
+  "evidence": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/backend-switches-20261019T113356233-1.receipt.json",
+      "sha256": "43267B2598680566BCEA4989695A8CF2D25189EDDBB14F13E81A4C08C29540B6"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/backend-switches-20261019T113356233-1.stderr.log",
+      "sha256": "785F75449DADA4EFA6EB60A5229FB5BA5612E9D07FAA977ABB4B9FDE327DCC30"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/backend-switches-20261019T113356233-1.stdout.log",
+      "sha256": "DEFB887F60077AE32DE9F61599A36A06060AD6D1409DBAF42BBB41EBCCC94190"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/backend-switches.json",
+      "sha256": "43267B2598680566BCEA4989695A8CF2D25189EDDBB14F13E81A4C08C29540B6"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-cli-20261019T100628075-1.receipt.json",
+      "sha256": "9F8BBF733DC0E81BA19E440B1B2C6C3B5C181860DA7CE904DC40CC96CA6361F3"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-cli-20261019T100628075-1.stderr.log",
+      "sha256": "BCAF921A11C752DB96AD4D0D7DFA2E420C8D5B77B4688D5D85A979994B71F333"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-cli-20261019T100628075-1.stdout.log",
+      "sha256": "570EBC1B1637D6CFBDB553D0F0E147C6B342D8011CD7D3EC8539533010C317E7"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-cli.json",
+      "sha256": "9F8BBF733DC0E81BA19E440B1B2C6C3B5C181860DA7CE904DC40CC96CA6361F3"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-integration-20261019T101135171-1.receipt.json",
+      "sha256": "4F327F6325709BD573012B50C80E65398D3500156C3E2B2D120DD3D9B0CACD13"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-integration-20261019T101135171-1.stderr.log",
+      "sha256": "BCAAAA26A0D8EEA3E33CB4B5DA28065F877FD5A31590FCA76C41F3B8E96447DF"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-integration-20261019T101135171-1.stdout.log",
+      "sha256": "71DA95154B9549377B0DB021092024EBBC528B33BE811F59DEB6724B7F56F9B9"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-integration.json",
+      "sha256": "4F327F6325709BD573012B50C80E65398D3500156C3E2B2D120DD3D9B0CACD13"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-library-20261019T100110824-1.receipt.json",
+      "sha256": "C78F7D847BBF9A10A821476D8948DE23EEE2958A464CE3F52F735BD2160A5169"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-library-20261019T100110824-1.stderr.log",
+      "sha256": "83ED7ACB40B73B8BB5B78210CD517E5B48523E4A6DC1C31BFB8052F1BAC41E10"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-library-20261019T100110824-1.stdout.log",
+      "sha256": "27B6A9F64D88D02B9864D5D07C1B5A94845FDA035A1C62C5B93B9B4BCD2A907B"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-library.json",
+      "sha256": "C78F7D847BBF9A10A821476D8948DE23EEE2958A464CE3F52F735BD2160A5169"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-native-continuation-20261019T101542521-1.receipt.json",
+      "sha256": "0A176298151468B33A57103607D5877DEB0E7F7FFE685C65DE7CCD5175C62D80"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-native-continuation-20261019T101542521-1.stderr.log",
+      "sha256": "BC7CF93164555437A87F1A1AE6B146979B0616D5AF64928E2073F65FC3701834"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-native-continuation-20261019T101542521-1.stdout.log",
+      "sha256": "146CD7079A1B489F0BBCB71CFEE22E179371C540F3E00365366033F0E07361E2"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/physical-native-continuation.json",
+      "sha256": "0A176298151468B33A57103607D5877DEB0E7F7FFE685C65DE7CCD5175C62D80"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/portable-gpu-20261019T112019536-1.receipt.json",
+      "sha256": "6FB76A034FC3D9A8E937ABDEC7C2FAAF601AAAF0C63B80DE04C82CC08770DD40"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/portable-gpu-20261019T112019536-1.stderr.log",
+      "sha256": "0BF1BDC9DE19C7DF6A183DF3A6BE79E2A63BAD883BB3DA609F0F0589525DA8E8"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/portable-gpu-20261019T112019536-1.stdout.log",
+      "sha256": "68FAB698D2113E6BB6353FA15A3108E214BABEE1669C25BB06A8C5DB50D0ED98"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/portable-gpu.json",
+      "sha256": "6FB76A034FC3D9A8E937ABDEC7C2FAAF601AAAF0C63B80DE04C82CC08770DD40"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/run.json",
+      "sha256": "307D4E617D9854E7DC0BD460BF72A60DF87BE43166AC2498E0560D29F9BCFB43"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/state.json",
+      "sha256": "4DE9CC4EE7DDBF7FD6E6AE595E24B39DF2DDE94F552863B71EF50734519AAD72"
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/gpu-73e350297f54/run-20261019T100108423-b5b797d347204ba68665776596a19da1/summary.json",
+      "sha256": "4D444949508121DEF6DCD1DDE71B69662D8737FB26AAD6BDAED8E752F5DB9A74"
+    },
+    {
+      "file": "output/gpu65-start.json",
+      "sha256": "0D8A77663BB1E79D8FB6031C56B6001717164D2A80C023A45E5206B4C1E4583C"
+    },
+    {
+      "file": "output/gpu65-observed-exit.json",
+      "sha256": "236467DF3BDC8A784578A74056C1E29D2D8036A6B76EA6FE2375208E48F2BE20"
+    },
+    {
+      "file": "output/gpu65-alife-release-observation.json",
+      "sha256": "A335E2F5BFF1484A03E2179BD118C417E2B28F05E15857CE74527E5D673A3AD9"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "ORIGINAL_CAPTURED_PORT_COMPARISON_PENDING",
+  "captured_utc": "2026-10-17T08:36:20.713Z",
+  "case": "fixed",
+  "cycle": 100,
+  "seed": 48032,
+  "input": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\fixed\\input.sim",
+  "input_sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6",
+  "source_executable_sha256": "7F580D9CE8F1095A01FD162E9BCAC03FE437599E080786FD670B676671C31990",
+  "source_revision": "467a8a0c1564db2071cf65efe39dcfefc5ab7a0c",
+  "capture": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-console59-9060ee6b-9427-4a54-8edc-39badc3114a1\\fixed\\captures\\fixed-original-cycle100-attempt3-pass60.sim",
+  "candidate": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass60-drafts\\original-controls\\db24832-genuine-fixed-cycle100-20261017.sim",
+  "sha256": "792BE4607BA33883184F260092646E673FFBED263AFDD1915C045B34E71C1ACA",
+  "bytes": 17068,
+  "raw_saved_counter": 100,
+  "decoded_record": {
+    "fixed": -1,
+    "position": [
+      8000,
+      6000
+    ],
+    "velocity": [
+      0,
+      0
+    ],
+    "actual_velocity": [
+      0,
+      0
+    ],
+    "age": 100,
+    "body": 1000,
+    "energy": 20000
+  },
+  "protocol": [
+    "Fresh original process; continueLastSimulationNo.",
+    "Restore before toolbarPause+toolbarLoad unchanged fixed C0; original advances one load cycle, confirmed in independently saved C1 baseline.",
+    "No Details/selection/FindBest/console/NewSim/menuF2; PlayerBot unchecked in identical retained configuration.",
+    "Intermediate saved C81 verified directly, then19 successful single-cycle clicks; saved counter and age confirm100. Status bar lag and rejected captures are separately retained.",
+    "All UI via documentedSky; GDI screenshot fallback; no helper/runtime patch."
+  ],
+  "port_engine_executed": false,
+  "canonical_port_comparison_passed": false,
+  "active_source_mutated": false
+}

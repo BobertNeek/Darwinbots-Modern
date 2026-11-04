@@ -1,0 +1,64 @@
+{
+  "classification": "static original-source arithmetic, not an engine/runtime/CLI comparison",
+  "sources": [
+    {
+      "file": "Darwinbots2/Robots.bas",
+      "sha256": "9EF9C3F61B8CBD1206259F408335195F073153403A36A7563389FEE2E4201FB3",
+      "lines": [
+        "1185-1193",
+        "1623-1634",
+        "1644",
+        "2209-2231"
+      ]
+    },
+    {
+      "file": "Darwinbots2/Vegs.bas",
+      "sha256": "0AF2A56CBD7FD14D67BC4AA7C6488470CE3C1B59C6739B6576F6DB15A929419E",
+      "lines": [
+        "159-166",
+        "273-325"
+      ]
+    }
+  ],
+  "source_order": [
+    "HandleWaste calls feedveg2 when Waste>0 and chloroplasts>0",
+    "feedveg2 computes Single energy/body; consumes exactly one Rndy to select order",
+    "HandleWaste then Alzheimer/defecation/publication",
+    "shooting, chloroplast decay, body/buoyancy/reproduction commands, later ReproduceAndKill",
+    "late FeedVeg has no feedveg2 and exits before photosynthesis when dark"
+  ],
+  "fixture_before_handlewaste": {
+    "energy": 4000,
+    "body": 400,
+    "waste": 40,
+    "chloroplasts": 200,
+    "feeding_to_body": 0.75
+  },
+  "fixture_before_reproduction": {
+    "energy": 4000.000732421875,
+    "body": 400.000244140625,
+    "waste": 39.99374771118164
+  },
+  "formula_notes": [
+    "Single mealEnergy = CSng(200/64000*(1-.75)); Single mealBody = CSng((200/64000*.75)/10)",
+    "Single energy += mealEnergy; Single body += mealBody",
+    "Each successful channel independently updates Single waste by its own Double fraction; both random orders give the same result for40waste",
+    "Reproduce declares nnrg/nwaste Single and nbody Integer; at25%, nbody=CInt(body/100*25)=100",
+    "parent nrg=CSng(nrg-nnrg-nnrg*.001); child nrg=CSng(nnrg*.999); copy/tie fees occur later"
+  ],
+  "post_split": {
+    "energy": 2999.00048828125,
+    "body": 300.000244140625,
+    "waste": 29.995311737060547,
+    "child_energy": 999.0001831054688,
+    "child_body": 100,
+    "child_waste": 9.99843692779541,
+    "parent_mem310": 2999
+  },
+  "copy_fee30_parent_energy": 2969.00048828125,
+  "tie_fee3_then_copy6": {
+    "previous_energy": 2996.00048828125,
+    "energy": 2990.00048828125
+  },
+  "runtime_verified": false
+}

@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "batch": 60,
+  "state": "authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T08:52:56.324Z",
+  "owner": "/root/review_46_failures",
+  "source_head": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "frozen_source_manifest": {
+    "file": "output/native-roundtrip-pass59-source.json",
+    "sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+    "pins": 555
+  },
+  "parent_release": {
+    "file": "output/pass60-drafts/manual-find-best/gpu-coverage/metadata.json",
+    "sha256": "BB38A3A0935DAD085F75C4D64109F9C5C0C3B394EA8573C75F0AC18B3CBA9F98",
+    "not_modified": true
+  },
+  "files": [
+    {
+      "source_path": "modern/engine/src/world/native_fitness.rs",
+      "base_raw_sha256": "FB24E0AD8F4716AC0E1E68E003F2E891155703498235D0D81FFC37B1085C334D",
+      "input_path": "output/pass60-drafts/manual-find-best/numeric-parity/input-before/modern/engine/src/world/native_fitness.rs",
+      "input_sha256": "FB24E0AD8F4716AC0E1E68E003F2E891155703498235D0D81FFC37B1085C334D",
+      "parent_candidate_path": null,
+      "parent_candidate_sha256": null,
+      "candidate_path": "output/pass60-drafts/manual-find-best/numeric-parity/candidate/modern/engine/src/world/native_fitness.rs",
+      "candidate_raw_sha256": "F4238D6914E3A562058A1CAF897E6D9EDC1437E45A6A90DD6EE79CE8E1CB8336",
+      "base_bytes": 3152,
+      "candidate_bytes": 9580,
+      "new_file": false
+    },
+    {
+      "source_path": "modern/engine/src/world.rs",
+      "base_raw_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+      "input_path": "output/pass60-drafts/manual-find-best/numeric-parity/input-before/modern/engine/src/world.rs",
+      "input_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED",
+      "parent_candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world.rs",
+      "parent_candidate_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED",
+      "candidate_path": "output/pass60-drafts/manual-find-best/numeric-parity/candidate/modern/engine/src/world.rs",
+      "candidate_raw_sha256": "F645E8C441295E0AC623713E50B7AE2026216FBA9C58017E94A88E106AB43157",
+      "base_bytes": 580318,
+      "candidate_bytes": 580449,
+      "new_file": false
+    },
+    {
+      "source_path": "modern/engine/src/world/staged_evolution.rs",
+      "base_raw_sha256": "D41646AD1AFACD9B8C8E5F4BA1E76C88A11B1E30ADEB488E4C9D8D5A8DE6C714",
+      "input_path": "output/pass60-drafts/manual-find-best/numeric-parity/input-before/modern/engine/src/world/staged_evolution.rs",
+      "input_sha256": "D02DFBDADAC65E56F0447AF40A80FDDA611956FA60D81661E65BA5371AF6F48F",
+      "parent_candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world/staged_evolution.rs",
+      "parent_candidate_sha256": "D02DFBDADAC65E56F0447AF40A80FDDA611956FA60D81661E65BA5371AF6F48F",
+      "candidate_path": "output/pass60-drafts/manual-find-best/numeric-parity/candidate/modern/engine/src/world/staged_evolution.rs",
+      "candidate_raw_sha256": "40CA65896B4C5588E624048624463E62374800BF3FFDE2A99B1CF0B44FDA6486",
+      "base_bytes": 63211,
+      "candidate_bytes": 63217,
+      "new_file": false
+    }
+  ],
+  "source_references": [
+    {
+      "file": "Darwinbots2/main.frm",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+      "lines": "2993-3034;3041-3081",
+      "why": "Literal Corpse filename candidate exclusion; source fitness powers and strict >= tie order; recursive Double score addition order; Single descendant investment and cancer threshold."
+    },
+    {
+      "file": "Darwinbots2/Robots.bas",
+      "sha256": "9EF9C3F61B8CBD1206259F408335195F073153403A36A7563389FEE2E4201FB3",
+      "lines": "218;224",
+      "why": "nrg and body are both Single."
+    },
+    {
+      "file": "Darwinbots2/Iersera.vbp",
+      "sha256": "3F5CC1650739272A7108648050EA9C0BB2C22C5A45C03AEBF7E69645304E2616",
+      "lines": "85-101",
+      "why": "Version2.48.32; UnroundedFP=0."
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "lines": "496;531",
+      "why": "Native filename and corpse flag are preserved independently."
+    }
+  ],
+  "production_changes": {
+    "descendant_investment": "Evaluate body*Integer10 and nrg+product as Single before widening the completed InvestedEnergy to Double; Cancer tests that rounded Double against1000.",
+    "recursive_accumulation": "Add the recursive Double descendant result before the child InvestedEnergy in source slot order (main.frm3053-3054). Do not pre-add those contributions together.",
+    "root_accumulation": "Keep the root expression Double-led: recursive score + widened nrg + widened Single(body*Integer10). The entire root sum is never rounded to Single.",
+    "manual_filename": "Pass an explicit manual-action predicate flag only from select_best_robot. It excludes literal case-sensitive native FName Corpse from manual candidates. Existing explicit find_best_robot query behavior and all descendant membership remain unchanged."
+  },
+  "static_numeric_proof": {
+    "child_body_single": 99.99999237060547,
+    "child_energy_single": 0.000039999998989515007,
+    "single_body_product": 999.9999389648438,
+    "source_single_investment": 1000,
+    "old_promoted_double_investment": 999.9999637060537,
+    "source_cancer": false,
+    "old_cancer": true,
+    "parent_rival_regression": "A10000-energy Mutate parent plus that child must beat a5000-energy rival at active source-generated weight29. Prior promoted arithmetic suppresses the parent as cancer.",
+    "root_double_expected": 999.9999789648427,
+    "recursive_addition_control": "For a finite Single2^53 child followed by a branch with descendant1 and invested1, source sequential Double additions retain2^53; combining the branch contributions first yields2^53+2."
+  },
+  "coverage": {
+    "base_native_fitness_test_rows": 1,
+    "candidate_native_fitness_test_rows": 4,
+    "new_rust_test_rows": 3,
+    "new_test_names": [
+      "manual_zerobot_selection_rounds_child_investment_before_the_cancer_threshold",
+      "native_family_scores_preserve_single_products_and_double_accumulation_order",
+      "manual_find_best_excludes_literal_corpse_filename_without_filtering_descendants"
+    ],
+    "query_contract": "Literal Corpse remains selectable by the prior explicit weighted query; manual action excludes it, leaves complete ordinary Save bytes unchanged, and the same named actor still contributes as a descendant.",
+    "new_managed_rows": 0,
+    "tests_executed": false,
+    "original_executable_numeric_threshold_observed": false
+  },
+  "independent_static_review": {
+    "other_actionable_findings": [],
+    "running_configured_mode9_and_generated_weight": "Reviewed final running-boundary candidates; source observation limited to Running Zerobot Evolving; configured/mode9 use fallback without observations.",
+    "clock_rng_full_save": "Unused prefetched host sample is not committed; source no-progress path preserves pending seed/RNG/fullsave, while real restart receives the provided seed.",
+    "managed_selection_restart": "Menu/toolbar use the action API; restarted worlds return no stale key and clear view-model/viewport selection.",
+    "automatic_existing_query_calls": "Existing automatic callers of the public weighted query are unchanged; this release scopes the new filename predicate to the authorized manual action."
+  },
+  "aggregate": {
+    "target_count": 17,
+    "implementation_paths": 16,
+    "qualifier_paths": 1,
+    "files": [
+      {
+        "source_path": "modern/engine/src/world/staged_evolution.rs",
+        "base_raw_sha256": "D41646AD1AFACD9B8C8E5F4BA1E76C88A11B1E30ADEB488E4C9D8D5A8DE6C714",
+        "candidate_path": "output/pass60-drafts/manual-find-best/numeric-parity/candidate/modern/engine/src/world/staged_evolution.rs",
+        "candidate_raw_sha256": "40CA65896B4C5588E624048624463E62374800BF3FFDE2A99B1CF0B44FDA6486",
+        "base_bytes": 63211,
+        "candidate_bytes": 63217,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "18314F98C456A05B7A0B032F222A323250E7F7BC866D6D5EE1A5DA5E1BFE14FB",
+        "changed_from_parent": true,
+        "input_path": "output/pass60-drafts/manual-find-best/numeric-parity/input-before/modern/engine/src/world/staged_evolution.rs",
+        "input_sha256": "D02DFBDADAC65E56F0447AF40A80FDDA611956FA60D81661E65BA5371AF6F48F",
+        "parent_candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world/staged_evolution.rs",
+        "parent_candidate_sha256": "D02DFBDADAC65E56F0447AF40A80FDDA611956FA60D81661E65BA5371AF6F48F"
+      },
+      {
+        "source_path": "modern/engine/src/ffi.rs",
+        "base_raw_sha256": "1AB1AD12E3BBAC79E4CB6FC0E89B1CCD9CAD099AE50964750384E489A1C24C66",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/ffi.rs",
+        "candidate_raw_sha256": "80BEF85CB5F99486BAE7BEC2A1571232746C22BC4468D0248F8A22D00200089E",
+        "base_bytes": 84333,
+        "candidate_bytes": 89084,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "80BEF85CB5F99486BAE7BEC2A1571232746C22BC4468D0248F8A22D00200089E",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+        "base_raw_sha256": "4623BFA212A895CCA24061DDDCF5089E49E7C605042B4CE3ABD710B74E04E2A9",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+        "candidate_raw_sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+        "base_bytes": 5600,
+        "candidate_bytes": 5787,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "9EC8342387AB8F72B932D5418C63D99DEE180B6429EBB6467F5239FDE48E655F",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+        "base_raw_sha256": "3CBB7EB300245787CF4F69DBFECE399BFC1AA71F7C35D50871BA0CED49A6449E",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+        "candidate_raw_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+        "base_bytes": 4909,
+        "candidate_bytes": 5017,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+        "base_raw_sha256": "1C2BA3E71A069FC0850978DFB94957262F8DBC4AB7F0894535D3E537655F78E2",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+        "candidate_raw_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+        "base_bytes": 22446,
+        "candidate_bytes": 22800,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "base_raw_sha256": "1B5D13B9F8CF945AD31DF7C51EC8F75C4D73CA0FF8C15F6424C7B10C6CC0028B",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "candidate_raw_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+        "base_bytes": 55376,
+        "candidate_bytes": 55496,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+        "base_raw_sha256": "BC9A4ACFC7F84D891FA603B93AD0165E8C577CD299CAC8350BACDDAA2F5B981E",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+        "candidate_raw_sha256": "E2D27190B2165631BA158DF08EE0AB6FB338209D125BC4B76CCEC760D3428A43",
+        "base_bytes": 48232,
+        "candidate_bytes": 49426,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "5C97F74B7FC03845DDC8E875F60138B7D19DCE99A4C66DC31F3C628E8D1649C0",
+        "changed_from_parent": true
+      },
+      {
+        "source_path": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+        "base_raw_sha256": "91C05D457EF91E4668CEA84DB6115FFB4C195916E6E80A4CFCF8E04E83FE9FC0",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+        "candidate_raw_sha256": "AAFC0115476B2D750B0D79D1CA707060E0C948DA9031873E7439874D11CFE788",
+        "base_bytes": 141332,
+        "candidate_bytes": 141951,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "13D1F2E623C0416D4A30770888455A8C468E6C3E92F3314F15BE356062AFE2D8",
+        "changed_from_parent": true
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+        "base_raw_sha256": "3ECE78356C7D8925A2FC68FEB75B325D28E1F274FF901EC6E569107B6FD7AD54",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+        "candidate_raw_sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+        "base_bytes": 1945,
+        "candidate_bytes": 3122,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "400223C79262FB215116BE97599E4A1F127B257E2E22014E0EE95E06652B76A4",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "base_raw_sha256": "17651D34D069686ECDAD94524ADAD51E90B3ECA0F44B49632D65A4050C9CD5D0",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "candidate_raw_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+        "base_bytes": 25694,
+        "candidate_bytes": 26957,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "base_raw_sha256": "A637955B25785A38FD23FAD7FC0130E0B20763FAE69AFC26DAD58A74C61911BA",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "candidate_raw_sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+        "base_bytes": 38517,
+        "candidate_bytes": 42165,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "480C134FA67FF7F2270257DC9CB0E1FE6E8A6673D522CA15AEF507DEA3033CDA",
+        "changed_from_parent": true
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "base_raw_sha256": "9D696B47A5B5E556DCE77FE5065E03050DE6FBE73F44D6C3184FD86ACA53AA9C",
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "candidate_raw_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+        "base_bytes": 134964,
+        "candidate_bytes": 135216,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+        "changed_from_parent": false
+      },
+      {
+        "source_path": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+        "base_raw_sha256": null,
+        "candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+        "candidate_raw_sha256": "34154B207147B3B87BA67461F210F42790275D4E26C8E393E01E143F1B6D1E0F",
+        "base_bytes": 0,
+        "candidate_bytes": 6547,
+        "new_file": true,
+        "parent_candidate_raw_sha256": "F043E4017BFC297CC96391E179CAA3E70BA5117AF5095B9437B34DF2F8132752",
+        "changed_from_parent": true
+      },
+      {
+        "source_path": "modern/engine/src/world.rs",
+        "base_raw_sha256": "625FACF1EC60551A1E225340B6BB16FFA6B16348573BA534ED37EB945FF8A3F9",
+        "candidate_path": "output/pass60-drafts/manual-find-best/numeric-parity/candidate/modern/engine/src/world.rs",
+        "candidate_raw_sha256": "F645E8C441295E0AC623713E50B7AE2026216FBA9C58017E94A88E106AB43157",
+        "base_bytes": 580318,
+        "candidate_bytes": 580449,
+        "new_file": false,
+        "parent_candidate_raw_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED",
+        "changed_from_parent": true,
+        "input_path": "output/pass60-drafts/manual-find-best/numeric-parity/input-before/modern/engine/src/world.rs",
+        "input_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED",
+        "parent_candidate_path": "output/pass60-drafts/manual-find-best/running-boundary/candidate/modern/engine/src/world.rs",
+        "parent_candidate_sha256": "E58C761BAF4215B264C986360660E852B9686723410EC36612B454F391FAFCED"
+      },
+      {
+        "source_path": "modern/engine/tests/gpu_ffi.rs",
+        "base_raw_sha256": "DD67C89D425AF9C3A38445853679616BCD8071199DBA32B2029F689C2DA1086B",
+        "candidate_path": "output/pass60-drafts/manual-find-best/gpu-coverage/candidate/modern/engine/tests/gpu_ffi.rs",
+        "candidate_raw_sha256": "24B2D1B535282E31C755B010B04109C67F3EB08C0365CA4C50F3BE1787E83FAA",
+        "base_bytes": 60327,
+        "candidate_bytes": 63916,
+        "new_file": false
+      },
+      {
+        "source_path": "output/qualify-native-roundtrip-pass60.ps1",
+        "candidate_path": "output/pass60-drafts/qualification/qualify-native-roundtrip-pass60.ps1",
+        "candidate_raw_sha256": "ECEF31FC682B296C55BC2C2EA94B4F10B0BC03430B71920E99E66044B4286412",
+        "owner": "/root",
+        "new_file": true
+      },
+      {
+        "source_path": "modern/engine/src/world/native_fitness.rs",
+        "base_raw_sha256": "FB24E0AD8F4716AC0E1E68E003F2E891155703498235D0D81FFC37B1085C334D",
+        "input_path": "output/pass60-drafts/manual-find-best/numeric-parity/input-before/modern/engine/src/world/native_fitness.rs",
+        "input_sha256": "FB24E0AD8F4716AC0E1E68E003F2E891155703498235D0D81FFC37B1085C334D",
+        "parent_candidate_path": null,
+        "parent_candidate_sha256": null,
+        "candidate_path": "output/pass60-drafts/manual-find-best/numeric-parity/candidate/modern/engine/src/world/native_fitness.rs",
+        "candidate_raw_sha256": "F4238D6914E3A562058A1CAF897E6D9EDC1437E45A6A90DD6EE79CE8E1CB8336",
+        "base_bytes": 3152,
+        "candidate_bytes": 9580,
+        "new_file": false
+      }
+    ],
+    "rust_distinct_targets": 68,
+    "expected_managed_test_counts": {
+      "core": 309,
+      "desktop": 209
+    },
+    "new_test_rows_vs59": {
+      "rust": 7,
+      "core": 2,
+      "desktop": 3
+    },
+    "this_addition_new_rows": {
+      "rust": 3,
+      "core": 0,
+      "desktop": 0
+    }
+  },
+  "static_review": {
+    "all_three_inverse_byte_checks": true,
+    "base_native_fitness_matches_source59_pin": true,
+    "parent_world_and_staged_hashes_verified": true,
+    "active_source_not_written": true,
+    "released_candidates_not_written": true,
+    "source_or_head_edits": false,
+    "formatter_or_parser": false,
+    "build_test_or_product_execution": false,
+    "ui_or_gpu": false
+  },
+  "remaining": "Root review/application/formatting and combined qualification are still required. All source59 guarded files and released60 parent candidates remain untouched."
+}

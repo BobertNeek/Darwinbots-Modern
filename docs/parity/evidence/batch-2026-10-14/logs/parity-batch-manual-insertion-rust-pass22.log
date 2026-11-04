@@ -1,0 +1,10 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 3m 32s
+     Running unittests src\lib.rs (target\release\deps\darwinbots_engine-f5a573ff9adb3a9e.exe)
+
+running 3 tests
+test world::player_insertion::tests::insertion_reuses_species_without_replacing_the_startup_template ... ok
+test world::player_insertion::tests::invalid_or_full_insertion_preserves_complete_saved_state ... ok
+test world::player_insertion::tests::native_insertion_keeps_species_identity_and_exact_player_coordinates ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 214 filtered out; finished in 0.04s

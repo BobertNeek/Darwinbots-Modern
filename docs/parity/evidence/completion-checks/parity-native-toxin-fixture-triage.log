@@ -1,0 +1,221 @@
+    Blocking waiting for file lock on build directory
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 3m 57s
+     Running tests\species_ecology.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\species_ecology-bfdb025584c7f8ad.exe)
+
+running 41 tests
+test body_conversion_uses_db2_energy_units_and_cycle_caps ... ok
+test aim_rotates_forward_movement ... ok
+test animal_minimalis_recognizes_and_moves_toward_non_family_targets ... ok
+test chloroplasts_generate_environmental_energy_for_any_species ... ok
+test attenuated_venom_below_one_has_no_effect ... ok
+test body_feeding_shots_consume_shell_before_body ... FAILED
+test configured_species_reseed_after_extinction ... ok
+test body_feeding_shots_use_body_coefficients_and_return_energy_from_target ... FAILED
+test corpses_ignore_venom_impacts ... FAILED
+test direct_dna_poison_request_does_not_fire_a_projectile ... ok
+test dna_controls_body_defenses_chloroplasts_waste_and_aim ... FAILED
+test conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect ... FAILED
+test conspecific_defensive_poison_adds_to_store_without_forced_effect ... FAILED
+test eye_strength_uses_db2_edge_to_edge_distance ... ok
+test defensive_poison_uses_db2_information_and_feeding_equality_rules ... FAILED
+test feeding_energy_shots_ignore_shell ... FAILED
+test feeding_shots_without_shootval_use_legacy_body_based_strength ... FAILED
+test heterospecific_venom_consumes_shell_before_starting_an_effect ... FAILED
+test heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five ... FAILED
+test heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression ... ok
+test modern_chloroplast_sysvars_use_the_latest_vb6_addresses ... ok
+test in_flight_venom_keeps_payload_after_owner_removal ... FAILED
+test minus_two_shots_donate_energy_to_zerobots ... FAILED
+test automatic_overflow_defecation_subtracts_the_emitted_waste_packet ... ok
+test later_venom_hit_adds_duration_and_replaces_payload ... FAILED
+test reproduction_synchronizes_energy_memory_before_the_next_dna_cycle ... ok
+test negative_shots_feed_the_attacker_from_the_target ... FAILED
+test non_integral_venom_power_keeps_fractional_countdown_through_expiry ... FAILED
+test species_batches_publish_once_with_configured_initial_energy ... ok
+test species_identity_and_vegetable_energy_are_part_of_the_world_state ... ok
+test shot_302_forces_target_reproduction_for_zerobot_feeding ... FAILED
+test species_mutation_rate_applies_to_ordinary_reproduction ... ok
+test information_defense_applies_vb_cint_to_reversed_velocity ... FAILED
+test vegetable_cap_applies_to_initial_imports_and_reproduction ... ok
+test shot07_venom_resolution_contract_covers_store_effect_and_edges ... FAILED
+test waste_phase_runs_alzheimer_and_defecation_after_waste_shot ... FAILED
+test release_energy_defense_applies_vb_cint_after_target_velocity_formula ... FAILED
+test reproduction_wave_stops_cleanly_at_population_capacity ... FAILED
+test toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory ... ok
+test negative_alzheimer_threshold_disables_memory_mutation ... ok
+test toxin_location_340_is_a_no_op_and_random_location_is_safe ... ok
+
+failures:
+
+---- body_feeding_shots_consume_shell_before_body stdout ----
+
+thread 'body_feeding_shots_consume_shell_before_body' (17108) panicked at modern\engine\tests\species_ecology.rs:628:5:
+assertion `left == right` failed
+  left: 100
+ right: 98
+
+---- body_feeding_shots_use_body_coefficients_and_return_energy_from_target stdout ----
+
+thread 'body_feeding_shots_use_body_coefficients_and_return_energy_from_target' (16092) panicked at modern\engine\tests\species_ecology.rs:663:5:
+assertion `left == right` failed
+  left: 1000
+ right: 980
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- corpses_ignore_venom_impacts stdout ----
+
+thread 'corpses_ignore_venom_impacts' (5312) panicked at modern\engine\tests\species_ecology.rs:1800:50:
+index out of bounds: the len is 0 but the index is 0
+
+---- dna_controls_body_defenses_chloroplasts_waste_and_aim stdout ----
+
+thread 'dna_controls_body_defenses_chloroplasts_waste_and_aim' (22544) panicked at modern\engine\tests\species_ecology.rs:373:5:
+assertion failed: organism.waste > 0
+
+---- conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect stdout ----
+
+thread 'conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect' (16196) panicked at modern\engine\tests\species_ecology.rs:1160:5:
+assertion `left == right` failed
+  left: 120
+ right: 32000
+
+---- conspecific_defensive_poison_adds_to_store_without_forced_effect stdout ----
+
+thread 'conspecific_defensive_poison_adds_to_store_without_forced_effect' (12656) panicked at modern\engine\tests\species_ecology.rs:1213:5:
+assertion `left == right` failed
+  left: 9
+ right: 30
+
+---- defensive_poison_uses_db2_information_and_feeding_equality_rules stdout ----
+
+thread 'defensive_poison_uses_db2_information_and_feeding_equality_rules' (2056) panicked at modern\engine\tests\species_ecology.rs:980:5:
+assertion `left == right` failed
+  left: 96
+ right: 22
+
+---- feeding_energy_shots_ignore_shell stdout ----
+
+thread 'feeding_energy_shots_ignore_shell' (12864) panicked at modern\engine\tests\species_ecology.rs:588:5:
+assertion `left == right` failed
+  left: 990
+ right: 940
+
+---- feeding_shots_without_shootval_use_legacy_body_based_strength stdout ----
+
+thread 'feeding_shots_without_shootval_use_legacy_body_based_strength' (14856) panicked at modern\engine\tests\species_ecology.rs:427:5:
+assertion `left == right` failed
+  left: 0
+ right: 165
+
+---- heterospecific_venom_consumes_shell_before_starting_an_effect stdout ----
+
+thread 'heterospecific_venom_consumes_shell_before_starting_an_effect' (15572) panicked at modern\engine\tests\species_ecology.rs:1332:5:
+assertion `left == right` failed
+  left: (0, 3)
+ right: (0, 2)
+
+---- heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five stdout ----
+
+thread 'heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five' (21556) panicked at modern\engine\tests\species_ecology.rs:1271:5:
+assertion `left == right` failed
+  left: 1608
+ right: 1000
+
+---- in_flight_venom_keeps_payload_after_owner_removal stdout ----
+
+thread 'in_flight_venom_keeps_payload_after_owner_removal' (8172) panicked at modern\engine\tests\species_ecology.rs:1763:5:
+assertion `left == right` failed
+  left: 7
+ right: 6
+
+---- minus_two_shots_donate_energy_to_zerobots stdout ----
+
+thread 'minus_two_shots_donate_energy_to_zerobots' (21168) panicked at modern\engine\tests\species_ecology.rs:540:5:
+assertion `left == right` failed
+  left: 900
+ right: 950
+
+---- later_venom_hit_adds_duration_and_replaces_payload stdout ----
+
+thread 'later_venom_hit_adds_duration_and_replaces_payload' (12592) panicked at modern\engine\tests\species_ecology.rs:1626:5:
+assertion `left == right` failed
+  left: 3
+ right: 2
+
+---- negative_shots_feed_the_attacker_from_the_target stdout ----
+
+thread 'negative_shots_feed_the_attacker_from_the_target' (15732) panicked at modern\engine\tests\species_ecology.rs:141:5:
+assertion failed: engine.organism(attacker).unwrap().energy > 1_000
+
+---- non_integral_venom_power_keeps_fractional_countdown_through_expiry stdout ----
+
+thread 'non_integral_venom_power_keeps_fractional_countdown_through_expiry' (9796) panicked at modern\engine\tests\species_ecology.rs:1443:5:
+assertion `left == right` failed
+  left: 6.9870706
+ right: 6.9712706
+
+---- shot_302_forces_target_reproduction_for_zerobot_feeding stdout ----
+
+thread 'shot_302_forces_target_reproduction_for_zerobot_feeding' (13356) panicked at modern\engine\tests\species_ecology.rs:556:5:
+assertion `left == right` failed
+  left: 2
+ right: 3
+
+---- information_defense_applies_vb_cint_to_reversed_velocity stdout ----
+
+thread 'information_defense_applies_vb_cint_to_reversed_velocity' (21988) panicked at modern\engine\tests\species_ecology.rs:851:10:
+called `Option::unwrap()` on a `None` value
+
+---- shot07_venom_resolution_contract_covers_store_effect_and_edges stdout ----
+
+thread 'shot07_venom_resolution_contract_covers_store_effect_and_edges' (19308) panicked at modern\engine\tests\species_ecology.rs:2042:9:
+assertion `left == right` failed: heterospecific payload counts down
+  left: Expected { source_venom: 0, impacts: 1, effects: 1, target: Some([0, 0, 6, 500, 77, 77]), countdown: Some(6.9870706), corpse_unchanged: false }
+ right: Expected { source_venom: 0, impacts: 1, effects: 1, target: Some([0, 0, 7, 500, 77, 77]), countdown: Some(7.0), corpse_unchanged: false }
+
+---- waste_phase_runs_alzheimer_and_defecation_after_waste_shot stdout ----
+
+thread 'waste_phase_runs_alzheimer_and_defecation_after_waste_shot' (14848) panicked at modern\engine\tests\species_ecology.rs:172:5:
+assertion failed: after.materials.permanent_waste > 0.0
+
+---- release_energy_defense_applies_vb_cint_after_target_velocity_formula stdout ----
+
+thread 'release_energy_defense_applies_vb_cint_after_target_velocity_formula' (20088) panicked at modern\engine\tests\species_ecology.rs:929:10:
+called `Option::unwrap()` on a `None` value
+
+---- reproduction_wave_stops_cleanly_at_population_capacity stdout ----
+
+thread 'reproduction_wave_stops_cleanly_at_population_capacity' (12116) panicked at modern\engine\tests\species_ecology.rs:525:5:
+assertion `left == right` failed
+  left: 21
+ right: 32
+
+
+failures:
+    body_feeding_shots_consume_shell_before_body
+    body_feeding_shots_use_body_coefficients_and_return_energy_from_target
+    conspecific_defensive_poison_adds_to_store_without_forced_effect
+    conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect
+    corpses_ignore_venom_impacts
+    defensive_poison_uses_db2_information_and_feeding_equality_rules
+    dna_controls_body_defenses_chloroplasts_waste_and_aim
+    feeding_energy_shots_ignore_shell
+    feeding_shots_without_shootval_use_legacy_body_based_strength
+    heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five
+    heterospecific_venom_consumes_shell_before_starting_an_effect
+    in_flight_venom_keeps_payload_after_owner_removal
+    information_defense_applies_vb_cint_to_reversed_velocity
+    later_venom_hit_adds_duration_and_replaces_payload
+    minus_two_shots_donate_energy_to_zerobots
+    negative_shots_feed_the_attacker_from_the_target
+    non_integral_venom_power_keeps_fractional_countdown_through_expiry
+    release_energy_defense_applies_vb_cint_after_target_velocity_formula
+    reproduction_wave_stops_cleanly_at_population_capacity
+    shot07_venom_resolution_contract_covers_store_effect_and_edges
+    shot_302_forces_target_reproduction_for_zerobot_feeding
+    waste_phase_runs_alzheimer_and_defecation_after_waste_shot
+
+test result: FAILED. 19 passed; 22 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test species_ecology`

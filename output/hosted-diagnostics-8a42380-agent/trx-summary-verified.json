@@ -1,0 +1,239 @@
+[
+  {
+    "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+    "sha256": "FFEB30C8251635CC7456FD3179A49282896DECB14363189D16C8CDA58CE5B5C3",
+    "bytes": 335257,
+    "outcome": "Failed",
+    "counters": {
+      "total": 213,
+      "executed": 213,
+      "passed": 212,
+      "failed": 1,
+      "error": 0,
+      "timeout": 0,
+      "aborted": 0,
+      "inconclusive": 0,
+      "passedButRunAborted": 0,
+      "notRunnable": 0,
+      "notExecuted": 0,
+      "disconnected": 0,
+      "warning": 0,
+      "completed": 0,
+      "inProgress": 0,
+      "pending": 0
+    },
+    "result_rows": 213,
+    "unique_execution_ids": 213,
+    "passed_rows": 212,
+    "failed_rows": 1,
+    "not_executed_rows": 0,
+    "failed": [
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Failed",
+        "message": "A saved white energy shot used the old green fallback.",
+        "stack_trace": "   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.<>c.<ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible>b__1_0() in /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 168\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass9_0.<Dispatch>b__0()\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible() in /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 94\n--- End of stack trace from previous location ---"
+      }
+    ],
+    "selected_cases": [
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.AccessibilityRouteRenderedTests.RobotMenuFindBestDispatchesThroughRenderedSurfaceAndWritesReceipt",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Failed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles",
+        "outcome": "Passed"
+      }
+    ]
+  },
+  {
+    "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+    "sha256": "9378608753AD38F349DB6AA308E4F54E40E365222FB29DA2E832C5C6684E54C8",
+    "bytes": 346103,
+    "outcome": "Failed",
+    "counters": {
+      "total": 213,
+      "executed": 213,
+      "passed": 212,
+      "failed": 1,
+      "error": 0,
+      "timeout": 0,
+      "aborted": 0,
+      "inconclusive": 0,
+      "passedButRunAborted": 0,
+      "notRunnable": 0,
+      "notExecuted": 0,
+      "disconnected": 0,
+      "warning": 0,
+      "completed": 0,
+      "inProgress": 0,
+      "pending": 0
+    },
+    "result_rows": 213,
+    "unique_execution_ids": 213,
+    "passed_rows": 212,
+    "failed_rows": 1,
+    "not_executed_rows": 0,
+    "failed": [
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Failed",
+        "message": "A saved white energy shot used the old green fallback.",
+        "stack_trace": "   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.<>c.<ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible>b__1_0() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 168\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass9_0.<Dispatch>b__0()\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 94\n--- End of stack trace from previous location ---"
+      }
+    ],
+    "selected_cases": [
+      {
+        "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.AccessibilityRouteRenderedTests.RobotMenuFindBestDispatchesThroughRenderedSurfaceAndWritesReceipt",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Failed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract",
+        "outcome": "Passed"
+      }
+    ]
+  },
+  {
+    "file": "output/hosted-diagnostics-8a42380-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+    "sha256": "546FE64A1FCDF759DF1E0CB83092BC688C58A626C5D821578FFFA44BEFB39286",
+    "bytes": 346103,
+    "outcome": "Failed",
+    "counters": {
+      "total": 213,
+      "executed": 213,
+      "passed": 212,
+      "failed": 1,
+      "error": 0,
+      "timeout": 0,
+      "aborted": 0,
+      "inconclusive": 0,
+      "passedButRunAborted": 0,
+      "notRunnable": 0,
+      "notExecuted": 0,
+      "disconnected": 0,
+      "warning": 0,
+      "completed": 0,
+      "inProgress": 0,
+      "pending": 0
+    },
+    "result_rows": 213,
+    "unique_execution_ids": 213,
+    "passed_rows": 212,
+    "failed_rows": 1,
+    "not_executed_rows": 0,
+    "failed": [
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Failed",
+        "message": "A saved white energy shot used the old green fallback.",
+        "stack_trace": "   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.<>c.<ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible>b__1_0() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 168\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass9_0.<Dispatch>b__0()\n   at Avalonia.Headless.HeadlessUnitTestSession.<>c__DisplayClass12_0`1.<DispatchCore>b__0()\n--- End of stack trace from previous location ---\n   at Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs:line 94\n--- End of stack trace from previous location ---"
+      }
+    ],
+    "selected_cases": [
+      {
+        "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1500)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.ManualFindBestUsesLiveZerobotWeightWithoutChangingTheReadOnlyQueryContract",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: True)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.RenderedControlSurfaceAuditTests.RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width: 1280)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.FindBestRenderedTests.ManualZerobotSelectionUsesTheSourceActionAndClearsRestartedSelection(menu: False)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+        "outcome": "Failed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.AccessibilityRouteRenderedTests.RobotMenuFindBestDispatchesThroughRenderedSurfaceAndWritesReceipt",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Darwinbots.Desktop.Tests.CommunityLeagueNativeTests.DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles",
+        "outcome": "Passed"
+      }
+    ]
+  }
+]

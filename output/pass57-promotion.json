@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "batch": 57,
+  "state": "all_repair_code_and_tests_authored_applied_before_checks",
+  "utc": "2026-10-17T04:33:06.7626030Z",
+  "all_code_authored_utc": "2026-10-17T04:33:06.7552541Z",
+  "source_head": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "previous_local_outcomes_complete": true,
+  "previous_hosted_outcomes_complete": true,
+  "previous_failure_receipt": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass56/qualification-failure-summary.json",
+  "files": [
+    {
+      "file": "modern/engine/src/world/native_shots.rs",
+      "before_sha256": "394F91B6A25F7B696519457980EE59C96CB6669E7B9C9D3152A6F9D8C526D545",
+      "sha256": "1A188728891B1B145A9524686C2113FC37A9E21474B43604C195DD47AF293ACA",
+      "backup": "output/pass57-preapply-backup/modern/engine/src/world/native_shots.rs"
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass57.ps1",
+      "sha256": "85DB65571EA4179FF559D08534F6C5366FFE18348938E4FA23AF9DF3DDA0E61B",
+      "previously_existed": false
+    }
+  ],
+  "new_test_rows": 0,
+  "combined_net_new_rust_tests_vs55": 59,
+  "product_checks_before_application": false
+}

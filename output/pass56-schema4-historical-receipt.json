@@ -1,0 +1,548 @@
+{
+  "schema_version": 1,
+  "batch": 56,
+  "utc": "2026-10-17T04:22:59.3426679Z",
+  "reason": "Old schema4 probe copies live Core inputs but its historical receipt pins pre56 bytes. Guard correctly rejected modified EngineSnapshot. Replay unchanged probe with all107 exact captured source inputs, using backups only where needed.",
+  "source_head": "e0300ca1391e0028b39aef2b61031a98934f00db",
+  "input_count": 107,
+  "from_preapply_backup": 8,
+  "files": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ClassicTournamentDnaExport.cs",
+      "sha256": "D537572496462E09B57E24DB1A9B06163A0C8673546ABB5EBCA6E07F6F040E91",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ContestResultsWorkflow.cs",
+      "sha256": "19F90FD0631345E6E6C133166E2E14028666C451E75C025F6C7CA400E6B0A6EB",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/CycleAutosavePolicy.cs",
+      "sha256": "4D9A10672E73414E19490E06611B4A570F25D87A30A675E2583F1F6C782B36F9",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Darwinbots.Desktop.Core.csproj",
+      "sha256": "EB6773C54734A5235914F02C8D53A47E64A75F7B00CCDF6F215A1F7F14E55C42",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2BrownianScale.cs",
+      "sha256": "69743A63026BDFC42D31C37C6EBDDB311D25F9180348DCDEDDC02A75F4650D63",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2MutationRateCodec.cs",
+      "sha256": "6AEFCC571519282A77D35A94868CCA673E9A7FAABC4B4C1971DC70A2D0123D58",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2Persistence.cs",
+      "sha256": "D60209E6CF598C1D88EF3E2267A94C8019DD05C116DB080426E9DA90B6547F6B",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2RobotFileStorage.cs",
+      "sha256": "86B6FAC7EE90F11E998EBE5603F45138A47FB77DF84A80F4B09AAF5EC2D48B51",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/DesktopControlRules.cs",
+      "sha256": "C9D2438D5BEC18B4934EE90D986553324E62D6D1DA5BF74DB8C4E55BDB7B5F6E",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/DesktopSettings.cs",
+      "sha256": "5E90D768CD22CFA751A2B5F78E3BA7E1CEAEEAAC96758FE17B8D50BA5262E525",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/DnaImportReport.cs",
+      "sha256": "57799AE951F31F8A3623E19BBE02AFA83FBE370A72C4CBC0C3E10334AFAD4098",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EngineCapabilities.cs",
+      "sha256": "602C60DB597A0320C7CF930849E68D9029D9CC878CB3BF7A7ED1051A5693CF3C",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "sha256": "89075FFDD5F8C147BB6FB8EF2F8F21696FE4390900C5A6E42548A6F349D50C06",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+      "sha256": "C873365BF073191145BC68A187E65D8AC9B45B6CC22EB9A01E6AAFB5211B716A",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EyeDesignerModel.cs",
+      "sha256": "B1BF5EC71A1741DC9CCBD3551845855D63E28BAEA23C818EDBF2D16202E4B4EF",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/FileTeleporterCodec.cs",
+      "sha256": "514E6894548149771F2BCEBE941D2C0AA8ACF76E10F4F96DA3BFDA6AF3A6991A",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/GlobalSettings.cs",
+      "sha256": "148BFE809F505DA9D5C46367D2359B0EC5E3506DABB58A349E3C2D2583045070",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/GraphWorkflow.cs",
+      "sha256": "EC1492963EE36C631541AFF6182657DE4B3E80187239CFCBD9341D07FFE6990B",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "sha256": "E02DCAF5AE4C5CE3E421A219415B7BD98391195BA193969432A19286A97EAF5E",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClientFactory.cs",
+      "sha256": "08A72D244078F869D61EC4F74CD7EBF16A0B52524D6C75E640C21BC922E9A693",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyDnaText.cs",
+      "sha256": "9066B564C47E72C46A89ED1A0600CDA0F5859D804C6E08E88F3960A50F9819BE",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyGraphJoin.cs",
+      "sha256": "615AF0E75EA65FFEEFD4769A200BF5833EBF55C2B40993F764550F3D665899CA",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/ILegacyCommandHandler.cs",
+      "sha256": "C572EC79699D0FF663F95B9E5FD9F30F04F68A498948DA552B2CEA78305C8D52",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyCommandId.cs",
+      "sha256": "6016A0186FCA76714085E37AE2D39A544F856A7C4036BF0A52344384BA29BD4B",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyCommandResult.cs",
+      "sha256": "74941E90387C6974D066BC27D385218739555866AC5A77C0A2EB76EE818061CE",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyCommandRouter.cs",
+      "sha256": "B89E38B262D08D1C74840E73733188C4458DBB8F9124ECDE8F414C0EBA337741",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyCommandState.cs",
+      "sha256": "33261CE2536A760C4405F719BBB8CD6D51373290C9520F7F8A40C32A33677AC7",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyHelpResolver.cs",
+      "sha256": "0D214884A46FB3EB9F4601A2D6E1C0D6BEC50DBF495622C38223E308575CF990",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyMenuCatalog.cs",
+      "sha256": "11E8B1F9F3A0FDBEC214FD45AF6C2B62094F78EBACDD180442C29A2477FE27E1",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyMenus/LegacyMenuItem.cs",
+      "sha256": "006130B6B05E798AF15BACD698062FB0840E38CE233138FB5BC56CBAA767D010",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyRecordingSerializer.cs",
+      "sha256": "689BE078655770D9A9E76D25EB5B184EE865CAF9C379FDCE6EF4AEFCF13F8E32",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "sha256": "4623BFA212A895CCA24061DDDCF5089E49E7C605042B4CE3ABD710B74E04E2A9",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ManualReproduction.cs",
+      "sha256": "BC8C7523AF50BA20818A70F06046C4571C0E74649BDA3B9FE08624487D69CFA0",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/MazePresetBuilder.cs",
+      "sha256": "F7FA240F9BABA4C82F5F3D8A02131F046629FF40D3DE6622B01AEBF3E422A9DF",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/MutationSettingsUpdate.cs",
+      "sha256": "34BD7BD81B4873A620BEB73E0FC25C85F26127F90322A4641442C689B3128549",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "sha256": "45563CF89CA9F84EC04FBB73742B35B5CB4500B4B3F25AE5BFF1FDD5300AD51D",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "sha256": "7F871E7202BA5DA5B6F6BA517C2745A0746F14E1FC1FA3335845217183749F69",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ObjectEditorPolicy.cs",
+      "sha256": "2BF240FB74BE1AC821C61D82033C81D868200C98C706A35BB02CE73A3E098DA6",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ObstacleEditorPolicy.cs",
+      "sha256": "960BB00D449B2A0488F155D85D4DC2142256E8EA102E718A5699ED122CA82029",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/OfflineDiagnosticRecovery.cs",
+      "sha256": "94B0D79A6750CDA321F0CD7632B93D4ABF8281BEDB4DF61FFF822807FC1F6BB7",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/OrganismKey.cs",
+      "sha256": "2DADEB3FFB87A63E9530BEF3910B7A4212AE548FA657198DAA2208DAA424EE12",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/OrganismVisualGeometry.cs",
+      "sha256": "59C31CEBF28043146B951A4B3BB1193EA568ACC76AE6C84B4064FB8E554A0C20",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/PhylogenyModel.cs",
+      "sha256": "E07D7887B0BF5A2B371ABC75B35E86BCD4BF735334793265B04B40741949B046",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/PopulationSeedingExport.cs",
+      "sha256": "9DE746F32B6524BA63CE6C097D9B8A9FA02818DFE8C9E6EE20E12FF6AE883C81",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/RgbMemoryMonitor.cs",
+      "sha256": "4B8854E78709C41ED752DA9E0022969299CEA659B14D04DD77F384F162C19DF1",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/RobotColorEditor.cs",
+      "sha256": "3F889D14089E3DCE5733EC4F6AFE6965BC461D2DB1EDB0EA5D81E1DC6B654FAA",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/RobotConsole.cs",
+      "sha256": "BF650D366ED37E6E572E4CF5A55A596FEF001BEDF80174156E22B506DAFC55E7",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/RobotDiagnosticModel.cs",
+      "sha256": "3CFC28EB156DD62C1BB39B54A27C809917ED433D3945BBAAD8F2CD9D5D2E2796",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/RobotTools.cs",
+      "sha256": "C472BDA77CB772B4227ACD054259543207133A07C73482F8FDB6BFF2C9B95596",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SeededSpawnPlacement.cs",
+      "sha256": "40594E63F04B8A97063C8B4424E8DACFDA32700E281AB8B64896F2F9ACA16517",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "sha256": "F1ABDCA5233891DAA9ADC53A57AA3D2FF6F6CCC18986D4083FE9B8DC07034646",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSettingsWorkflow.cs",
+      "sha256": "9EF3879E9EC6FF6CF4FA3D1C0DEEBBEEED29CC21663E80403BB66C6E9EBAE0AE",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SpeciesImport.cs",
+      "sha256": "041719B7905A4D9DFD9F679403C528637CE61E3ADB9409E5AF7D41B6AF883A1B",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/StartupDnaWorkflow.cs",
+      "sha256": "44157475106E5E6FD133DE30DDCB01355333F56D15B1E30A6DEE00160BCA787C",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/UiPreferences.cs",
+      "sha256": "79C25E2BB00F5AE574C150A72A3706F86F58485CCD3F1010DF754B09ABA19ED3",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldConfiguration.cs",
+      "sha256": "C083A11A43C4EA24EBDE77F4A547B2EE8F34E04A73AE3060C5AC21634D2E8769",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldInsertionController.cs",
+      "sha256": "F20C083E53F0805C097D046A390484CE7096F1EBAFEBBFFFDFCBA5C64477122E",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldOverlayProjection.cs",
+      "sha256": "5365668C8EDC5068701E848FFB09C08E763A7B366314977678DC6BD244249177",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+      "sha256": "9372084AC7579386C9F87096E38F879C471044BA97D7D45AC74AE329098493A3",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ZerobotProgressionController.cs",
+      "sha256": "EBEF3FC6E986EF256BE1011076C48890E01AB37050252D6E71EE1767924DBF07",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ClassicTournamentDnaExportTests.cs",
+      "sha256": "E809AF79023BE0E6D099168D9357B6875589DFCAD1D54CFB393953D4A8BAFCC1",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/CycleAutosavePolicyTests.cs",
+      "sha256": "6ABA80C98DA8C77E58ADAA43567A335D805598A9AC6E4853303F2F6E4E895EF3",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj",
+      "sha256": "BE1F9F1FED89AB82C609883BF7D29548ADA636647FE9247E64DF07C7645E0C31",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db24832DefaultParityTests.cs",
+      "sha256": "3A596F4AAA629E1C3369B1EEDF0C47881E496525EABBC0F0658E76BFA6B90490",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+      "sha256": "35E99120F0CF7A2F225A32D2A5DCBD3C4810A87BB4E146993717AB9383C19E37",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2MutationRateCodecTests.cs",
+      "sha256": "A259BE7ED98D7B25B8DBD8B4B29E1514C6F3569F909468C2D4831C9F01091AD1",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2PersistenceTests.cs",
+      "sha256": "C1BB309A9E8CEB9310B589BE9D970A765532E6F93239A9435FED8F6EDA89E7E5",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2RobotFileStorageTests.cs",
+      "sha256": "7E3682275322AB56D466AA53A785079CAE0812A02A54982B83CBEDEA54D38C5B",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/DesktopControlRulesTests.cs",
+      "sha256": "1496A6CEFD15E3AE2EB976011FF36328905BBA3CCD075780418B6D69E478DE84",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/DesktopSettingsTests.cs",
+      "sha256": "CCBC27477403BE5DD7DD864D91C3CA584ABD1A0FF5D4DF561B7D5789D305D751",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/FileTeleporterCodecTests.cs",
+      "sha256": "8E6379BCF1E4C63497DC28B7BF64897DD74FDC35B1ACB64516DD34955CF1EA5C",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/GlobalSettingsTests.cs",
+      "sha256": "C18E209E7751259693CBE5E6E7157C52AA956A95C1102B333BF31A1A94493B4D",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/GraphAndContestTests.cs",
+      "sha256": "AD0B0643C5E1E9FA1F32AC3C0B6C57FEA49DF6FE13000557398F1C7C015BE554",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacyCommandRouterTests.cs",
+      "sha256": "DDFD52D0075961317A1F93F15E4F57D7F42F90EFB336E97CB1BAB8B08FEDAD1E",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacyDnaTextTests.cs",
+      "sha256": "2C62C46311590F0EEB91D18B6E14CEFFE31DE8904EC63000A9B59581F554E170",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacyMenuCatalogTests.cs",
+      "sha256": "6301DD2C83A6F780A489D50ABD237041E22794FD43EB02C8FCDF58C46C844DF7",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacyRecordingHelpTests.cs",
+      "sha256": "E9BC4E23F324B77A2F9BCFA38274F6ECBCF7F0C18A7DD9C35E2F1ED1B136EDB9",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacySettingsImportTests.cs",
+      "sha256": "26DC4B6A7472392A717449A9D6816E6661132D46BCD978649B6820DE654495EC",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ManualReproductionCommandTests.cs",
+      "sha256": "05715C2E32683C54C8DC881E52B1CFEED881EE09DC78B8C755F9A17BA5F5A6E8",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/MazePresetBuilderTests.cs",
+      "sha256": "895321A0568A24815679BB019B8E35D6268FC738BF0D1BA7090E035205870065",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/MutationProfileCommandTests.cs",
+      "sha256": "7CFA1336C3E80E4B8C221EF0B4F3E40622605CBA076CC84D4159A334F51927D7",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeDelta2Tests.cs",
+      "sha256": "D7A72AF76C31F844F648B1BC189B2A3F76BA2ECE6F36F6BEB31CF7890B812C92",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeDisqualificationTests.cs",
+      "sha256": "5AECB2634C59ACE5E7B471FF2949C5A99C20ED1C7D2B842C960DB5BB829E4733",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeLeagueSeriesTests.cs",
+      "sha256": "0A464A003569C471818D1805FFDD384088AD526C8870EA24D156AAA7DD108499",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeMutationSettingsTests.cs",
+      "sha256": "CB919E753A12BA05396F3FAED4288CEAF4202D963366848259485C043614FA8C",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "sha256": "DFE85E12DC20588E854DB057BD9CD981BC9AF536E6B9E4DDC8CCC18A2CC61029",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ObjectEditorPolicyTests.cs",
+      "sha256": "A444C36D966624FEA9E882BA5346E98D17B9481652F0F482BDE42EE7181A46C4",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ObstacleEditorPolicyTests.cs",
+      "sha256": "EA731C4232AAEA0F78210BFF804A80A5DBB65A9C1B6658243A79D99089DBC56C",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/OfflineDiagnosticRecoveryTests.cs",
+      "sha256": "4C3D744BF90281C77CBB2F384D57AE2AE20332057105D5F4B01B0E7A55A13D71",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/OrganismVisualGeometryTests.cs",
+      "sha256": "3997A910CCE13B922EF8C4973AE9C60B468B82DB249F25A8A9772936C3EC829E",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RecognitionFudgingTests.cs",
+      "sha256": "ED2635CDD318095275D7332827D6C899CE0A4C2C445E31E6EB275D1F212AFE4E",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RobotColorEditorStateTests.cs",
+      "sha256": "89E7A2F673B8F98B98215216D58D8E4844AF6665E48D6F30879BBA70C0BF14C2",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RobotDiagnosticModelTests.cs",
+      "sha256": "414CCF49E77ED32DAC90FCB37057A14F18BE3B89A09EAAF6C97B55893B0B30F3",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RobotFileSessionTests.cs",
+      "sha256": "4765CAC5A05E1AFB9D5BCEC28D878ED623361F255F25E3110AF82A2708161439",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RobotToolsTests.cs",
+      "sha256": "E20118EFFC3C3316791A3A323A5A7946A6646990CC3A7A2A06339E5ABFCFCC0C",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SeededSpawnPlacementTests.cs",
+      "sha256": "C3F13E7C58B3039C0DDB2A89507E6F698D3AC4D40D1DFD65346AAAFFD4827548",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SelectedRobotDiagnosticDomainTests.cs",
+      "sha256": "A7FB0D75BFEB1D7812DD125780B9161CA8D57511D2105E1506CFD78116AB97F9",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SelectionVisualTests.cs",
+      "sha256": "5C27BB481CE6FEA19E7DA3B49C97FDDFBFC7D80F9DE71BF1F9C1F2DF88360D3D",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SettingsDomainWorkflowTests.cs",
+      "sha256": "65B21528A1F41190A5B62786F13554C4F17AC067C3C20C6051519199F15A99AC",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "sha256": "AF9879641C34340EC5B69503B272FFC3CF85CF188D1B8528BEFFB5AE080775CD",
+      "from_preapply_backup": true
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StagedEvolutionTests.cs",
+      "sha256": "3ECE78356C7D8925A2FC68FEB75B325D28E1F274FF901EC6E569107B6FD7AD54",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/StartupDnaWorkflowTests.cs",
+      "sha256": "1574F5C314259A86668892BEF22AC43CC3774C917C5CB2DD5B4A94D704D98AB8",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/UiPreferencesTests.cs",
+      "sha256": "C91BBE266D80A050D15F2FE260683D2FDDA30E1CB3FE6E1778FDE196C945CB2F",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/WorldInsertionControllerTests.cs",
+      "sha256": "ACBF85E23442F517A6A3AD0BEFC9EC2213E78240F43424C74AFB863D0EDA1621",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/WorldOverlayProjectionTests.cs",
+      "sha256": "244944076DE2CD73741E0FE1EB7FE571DF8477EAA199A9A33A30A6769096E82D",
+      "from_preapply_backup": false
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ZerobotProgressionControllerTests.cs",
+      "sha256": "ABF890D2EA56A61879EF52CE068FCAF1121D9F50C3916B63AB58DF14B66D88B8",
+      "from_preapply_backup": false
+    }
+  ],
+  "exit_code": 0,
+  "scope": "Historical schema4 compatibility only, no current56 source equivalence or admission, no product/GPU/UI execution."
+}

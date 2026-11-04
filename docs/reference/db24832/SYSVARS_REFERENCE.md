@@ -1,0 +1,264 @@
+# Darwinbots 2.48.32 sysvar address reference
+
+This is the canonical built-in symbol table extracted from `LoadSysVars()` in [`DNATokenizing.bas`](https://github.com/darwinbots/Darwinbots2/blob/467a8a0c1564db2071cf65efe39dcfefc5ab7a0c/Darwinbots2/DNATokenizing.bas). It contains every shipped name and alias, grouped by the memory address to which the parser resolves it. Addresses are decimal. A DNA token `.name` pushes the address; `*.name` dereferences that address.
+
+Extraction result: **255 names and aliases across 247 distinct addresses.**
+
+The table is an implementation inventory, not an access-control list. Some addresses are inputs, some are outputs, many are cleared after use, and some are aliases retained for old bots. See the main product specification for lifecycle and subsystem behavior.
+
+| Address | Built-in names and aliases |
+|---:|---|
+| 1 | `.up` |
+| 2 | `.dn` |
+| 3 | `.sx` |
+| 4 | `.dx` |
+| 5 | `.aimdx`, `.aimright` |
+| 6 | `.aimsx`, `.aimleft` |
+| 7 | `.shoot` |
+| 8 | `.shootval` |
+| 9 | `.robage` |
+| 10 | `.mass` |
+| 11 | `.maxvel` |
+| 12 | `.timer` |
+| 18 | `.aim` |
+| 19 | `.setaim` |
+| 194 | `.bodgain` |
+| 195 | `.bodloss` |
+| 196 | `.velscalar` |
+| 197 | `.velsx` |
+| 198 | `.veldx` |
+| 199 | `.veldn` |
+| 200 | `.velup`, `.vel` |
+| 201 | `.hit` |
+| 202 | `.shflav` |
+| 203 | `.pain` |
+| 204 | `.pleas` |
+| 205 | `.hitup` |
+| 206 | `.hitdn` |
+| 207 | `.hitdx` |
+| 208 | `.hitsx` |
+| 209 | `.shang` |
+| 210 | `.shup` |
+| 211 | `.shdn` |
+| 212 | `.shdx` |
+| 213 | `.shsx` |
+| 214 | `.edge` |
+| 215 | `.fixed` |
+| 216 | `.fixpos` |
+| 217 | `.depth`, `.ypos` |
+| 218 | `.daytime` |
+| 219 | `.xpos` |
+| 220 | `.kills` |
+| 221 | `.hitang` |
+| 300 | `.repro` |
+| 301 | `.mrepro` |
+| 302 | `.sexrepro` |
+| 303 | `.fertilized` |
+| 310 | `.nrg` |
+| 311 | `.body` |
+| 312 | `.fdbody` |
+| 313 | `.strbody` |
+| 314 | `.setboy` |
+| 315 | `.rdboy` |
+| 330 | `.tie` |
+| 331 | `.stifftie` |
+| 335 | `.mkvirus` |
+| 336 | `.dnalen` |
+| 337 | `.vtimer` |
+| 338 | `.vshoot` |
+| 339 | `.genes` |
+| 340 | `.delgene` |
+| 341 | `.thisgene` |
+| 400 | `.sun` |
+| 401 | `.totalbots` |
+| 402 | `.totalmyspecies` |
+| 410 | `.tout1` |
+| 411 | `.tout2` |
+| 412 | `.tout3` |
+| 413 | `.tout4` |
+| 414 | `.tout5` |
+| 415 | `.tout6` |
+| 416 | `.tout7` |
+| 417 | `.tout8` |
+| 418 | `.tout9` |
+| 419 | `.tout10` |
+| 420 | `.tin1` |
+| 421 | `.tin2` |
+| 422 | `.tin3` |
+| 423 | `.tin4` |
+| 424 | `.tin5` |
+| 425 | `.tin6` |
+| 426 | `.tin7` |
+| 427 | `.tin8` |
+| 428 | `.tin9` |
+| 429 | `.tin10` |
+| 437 | `.trefbody` |
+| 438 | `.trefxpos` |
+| 439 | `.trefypos` |
+| 440 | `.trefvelmysx` |
+| 441 | `.trefvelmydx` |
+| 442 | `.trefvelmydn` |
+| 443 | `.trefvelmyup` |
+| 444 | `.trefvelscalar` |
+| 445 | `.trefvelyoursx` |
+| 446 | `.trefvelyourdx` |
+| 447 | `.trefvelyourdn` |
+| 448 | `.trefvelyourup` |
+| 449 | `.trefshell` |
+| 450 | `.tieang` |
+| 451 | `.tielen` |
+| 452 | `.tieloc` |
+| 453 | `.tieval` |
+| 454 | `.tiepres` |
+| 455 | `.tienum` |
+| 456 | `.trefup` |
+| 457 | `.trefdn` |
+| 458 | `.trefsx` |
+| 459 | `.trefdx` |
+| 460 | `.trefaimdx` |
+| 461 | `.trefaimsx` |
+| 462 | `.trefshoot` |
+| 463 | `.trefeye` |
+| 464 | `.trefnrg` |
+| 465 | `.trefage` |
+| 466 | `.numties` |
+| 467 | `.deltie` |
+| 468 | `.fixang` |
+| 469 | `.fixlen` |
+| 470 | `.multi` |
+| 471 | `.readtie` |
+| 473 | `.memval` |
+| 474 | `.memloc` |
+| 475 | `.tmemval` |
+| 476 | `.tmemloc` |
+| 477 | `.reffixed` |
+| 478 | `.treffixed` |
+| 479 | `.trefaim` |
+| 480 | `.tieang1` |
+| 481 | `.tieang2` |
+| 482 | `.tieang3` |
+| 483 | `.tieang4` |
+| 484 | `.tielen1` |
+| 485 | `.tielen2` |
+| 486 | `.tielen3` |
+| 487 | `.tielen4` |
+| 501 | `.eye1` |
+| 502 | `.eye2` |
+| 503 | `.eye3` |
+| 504 | `.eye4` |
+| 505 | `.eye5` |
+| 506 | `.eye6` |
+| 507 | `.eye7` |
+| 508 | `.eye8` |
+| 509 | `.eye9` |
+| 510 | `.eyef` |
+| 511 | `.focuseye` |
+| 521 | `.eye1dir` |
+| 522 | `.eye2dir` |
+| 523 | `.eye3dir` |
+| 524 | `.eye4dir` |
+| 525 | `.eye5dir` |
+| 526 | `.eye6dir` |
+| 527 | `.eye7dir` |
+| 528 | `.eye8dir` |
+| 529 | `.eye9dir` |
+| 531 | `.eye1width` |
+| 532 | `.eye2width` |
+| 533 | `.eye3width` |
+| 534 | `.eye4width` |
+| 535 | `.eye5width` |
+| 536 | `.eye6width` |
+| 537 | `.eye7width` |
+| 538 | `.eye8width` |
+| 539 | `.eye9width` |
+| 685 | `.reftype` |
+| 686 | `.refmulti` |
+| 687 | `.refshell` |
+| 688 | `.refbody` |
+| 689 | `.refxpos` |
+| 690 | `.refypos` |
+| 695 | `.refvelscalar` |
+| 696 | `.refvelsx` |
+| 697 | `.refveldx` |
+| 698 | `.refveldn` |
+| 699 | `.refvel`, `.refvelup` |
+| 701 | `.refup` |
+| 702 | `.refdn` |
+| 703 | `.refsx` |
+| 704 | `.refdx` |
+| 705 | `.refaimdx` |
+| 706 | `.refaimsx` |
+| 707 | `.refshoot` |
+| 708 | `.refeye` |
+| 709 | `.refnrg` |
+| 710 | `.refage` |
+| 711 | `.refaim` |
+| 712 | `.reftie` |
+| 713 | `.refpoison` |
+| 714 | `.refvenom` |
+| 715 | `.refkills` |
+| 721 | `.myup` |
+| 722 | `.mydn` |
+| 723 | `.mysx` |
+| 724 | `.mydx` |
+| 725 | `.myaimdx` |
+| 726 | `.myaimsx` |
+| 727 | `.myshoot` |
+| 728 | `.myeye` |
+| 729 | `.myties` |
+| 730 | `.mypoison` |
+| 731 | `.myvenom` |
+| 800 | `.out1` |
+| 801 | `.out2` |
+| 802 | `.out3` |
+| 803 | `.out4` |
+| 804 | `.out5` |
+| 805 | `.out6` |
+| 806 | `.out7` |
+| 807 | `.out8` |
+| 808 | `.out9` |
+| 809 | `.out10` |
+| 810 | `.in1` |
+| 811 | `.in2` |
+| 812 | `.in3` |
+| 813 | `.in4` |
+| 814 | `.in5` |
+| 815 | `.in6` |
+| 816 | `.in7` |
+| 817 | `.in8` |
+| 818 | `.in9` |
+| 819 | `.in10` |
+| 820 | `.mkslime` |
+| 821 | `.slime` |
+| 822 | `.mkshell` |
+| 823 | `.shell` |
+| 824 | `.strvenom`, `.mkvenom` |
+| 825 | `.venom` |
+| 826 | `.strpoison`, `.mkpoison` |
+| 827 | `.poison` |
+| 828 | `.waste` |
+| 829 | `.pwaste` |
+| 830 | `.sharenrg` |
+| 831 | `.sharewaste` |
+| 832 | `.shareshell` |
+| 833 | `.shareslime` |
+| 834 | `.ploc` |
+| 835 | `.vloc` |
+| 836 | `.venval` |
+| 837 | `.paralyzed` |
+| 838 | `.poisoned` |
+| 839 | `.pval` |
+| 900 | `.backshot` |
+| 901 | `.aimshoot` |
+| 920 | `.chlr` |
+| 921 | `.mkchlr` |
+| 922 | `.rmchlr` |
+| 923 | `.light`, `.availability` |
+| 924 | `.sharechlr` |
+
+## Extraction notes
+
+- This table deliberately preserves spelling, capitalization, aliases, and shared addresses.
+- Custom `def name value` declarations are file-local aliases and are not included here.
+- Numeric memory remains 1 through 1000 at runtime. Positive information-shot addresses are normalized into that range.
+- The old external `sysvars2.21.txt` file is historical compatibility data. The built-in table above is broader and authoritative for 2.48.32.

@@ -1,0 +1,420 @@
+{
+  "code_revision": "8f2a6ac0a876668931aa87d67f8fed2257aae53a",
+  "profile": "release",
+  "command": "cargo test --workspace --release --no-fail-fast -- --skip starter_world_sustains_moving_predators_finite_shots_and_bounded_plants --skip starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce",
+  "passed": 404,
+  "failed": 66,
+  "targets": [
+    {
+      "target": "unittests src\\lib.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "unittests src\\main.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\commands.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db245_probes.rs",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "unittests src\\lib.rs",
+      "passed": 25,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\advanced_mutation_costs.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\canonical_cycle_248.rs",
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\contracts.rs",
+      "passed": 33,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\core_state_contracts.rs",
+      "passed": 4,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\corpses_collisions.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db24832_clean_defaults.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db24832_starter_movement.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db2_final_engine_world.rs",
+      "passed": 2,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db2_mutation_248.rs",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db2_physics.rs",
+      "passed": 22,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db2_projectiles.rs",
+      "passed": 23,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db2_starter_ecology.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1
+    },
+    {
+      "target": "tests\\db2_vegetation.rs",
+      "passed": 18,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\db2_vision.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\dna_runtime_248.rs",
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\eco05_repopulation.rs",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\environment_world.rs",
+      "passed": 7,
+      "failed": 6,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\extinct_species.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\final_state_persistence_248.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\gpu_ffi.rs",
+      "passed": 25,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\history_records.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\legacy_distribution.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\legacy_transport.rs",
+      "passed": 5,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\live_legacy_menu_settings.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\local_modes.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\manual_tools.rs",
+      "passed": 5,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\mutation_advanced_248.rs",
+      "passed": 5,
+      "failed": 2,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\mutation_lifecycle.rs",
+      "passed": 7,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\occurrence_census_248.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\parity_completion.rs",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\reproduction_heredity_248.rs",
+      "passed": 25,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\robot_state_248.rs",
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\robot_tools.rs",
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\scheduler_housekeeping.rs",
+      "passed": 2,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\scheduler_shock.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\sensing_compatibility.rs",
+      "passed": 1,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\shot_state.rs",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\spawn_placement.rs",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\species_ecology.rs",
+      "passed": 15,
+      "failed": 26,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\starter_ecology.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 1
+    },
+    {
+      "target": "tests\\sysvar_lifecycle_248.rs",
+      "passed": 21,
+      "failed": 3,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\ties_multibot.rs",
+      "passed": 17,
+      "failed": 4,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\toroidal_world.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\touch_taste_248.rs",
+      "passed": 4,
+      "failed": 4,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\visual_phenotypes.rs",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\vm.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\vm_costs_telemetry.rs",
+      "passed": 8,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\vm_implicit_conditions.rs",
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\w4_evolution_gpu.rs",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\world_systems.rs",
+      "passed": 4,
+      "failed": 8,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\zerobot_progression.rs",
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\zerobot_progression.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    },
+    {
+      "target": "tests\\zerobot_progression.rs",
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 0
+    }
+  ],
+  "excluded_long_tests": [
+    "starter_world_sustains_moving_predators_finite_shots_and_bounded_plants",
+    "starter_ecology_remains_bounded_and_animals_move_feed_and_reproduce"
+  ],
+  "log_sha256": "39acc6c95adbb3f46b55c24eed221cbea38beee2997098eadb657a2cd65c4cfd"
+}

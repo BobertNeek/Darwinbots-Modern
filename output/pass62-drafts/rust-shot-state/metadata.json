@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "authored_unapplied_unexecuted",
+  "created_utc": "2026-10-17T12:48:21.510Z",
+  "owner": "/root/seeding_tournament_ui",
+  "base_source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass61-source.json",
+    "sha256": "4AD7E8553AAF90EBDE8C5B73172F38B67D97C76B8A4D239F99074E2C580408A0",
+    "pinned_files": 636
+  },
+  "scope": "Focused Rust shot publication/flash reset and two known native pool fixture budgets. This is not a C100 parity repair.",
+  "files": [
+    {
+      "source_relative_path": "modern/engine/src/shot.rs",
+      "new_file": false,
+      "base_sha256": "9CCD4965E31BE3FE25633AA4AF0675E83B50C304A00B2EF7F5876A032475EF8F",
+      "base_bytes": 1198,
+      "candidate_path": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/shot.rs",
+      "candidate_sha256": "848BBBC57ACE3DA69DB3488A8139A028173D8B43ADCE72DB38A520E6B209AFBE",
+      "candidate_bytes": 1312,
+      "existing_test_rows": 0,
+      "candidate_test_rows": 0,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/shot/projectile.rs",
+      "new_file": false,
+      "base_sha256": "A1858CBF45F1C0AAAAD92433531A96231CC251361DC1DFBBCF27C61F8ECC6990",
+      "base_bytes": 56400,
+      "candidate_path": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/shot/projectile.rs",
+      "candidate_sha256": "42F6FB498BE639F7DD57258BFEAE51DD46B63B4CDE7687A54BCA707FCBFEDF18",
+      "candidate_bytes": 58312,
+      "existing_test_rows": 15,
+      "candidate_test_rows": 16,
+      "added_test_rows": [
+        "native_snapshots_distinguish_flight_live_flash_and_dead_flash_with_legacy_alive_default"
+      ],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world/native_shots.rs",
+      "new_file": false,
+      "base_sha256": "C46B9C0F125D8C28DECA799E3812E15E05510D5487FAC70F1894C6C600B42C1A",
+      "base_bytes": 51432,
+      "candidate_path": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world/native_shots.rs",
+      "candidate_sha256": "34A19C48BCBB1330B6BB3F70E54223A7B06D89295F9B50C167A800202390ADB1",
+      "candidate_bytes": 55420,
+      "existing_test_rows": 18,
+      "candidate_test_rows": 19,
+      "added_test_rows": [
+        "native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s"
+      ],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world.rs",
+      "new_file": false,
+      "base_sha256": "A3376DF667E9C06C79D18E12A8CE01A72A5EB5D6F1E583D49B07E861186D399D",
+      "base_bytes": 583847,
+      "candidate_path": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world.rs",
+      "candidate_sha256": "BB3D49A04942D5387A56C106DB7FAB3190FC9580C9135EBE34A6D71D92680C6D",
+      "candidate_bytes": 583872,
+      "existing_test_rows": 30,
+      "candidate_test_rows": 30,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world/native_feeding.rs",
+      "new_file": false,
+      "base_sha256": "BD2528497C9CD42DF50CB0A5DCAF4EDD7483B1930EBDDA464C785E035217D9C4",
+      "base_bytes": 5256,
+      "candidate_path": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world/native_feeding.rs",
+      "candidate_sha256": "E24EA4F746548EE262CE8C1D66438DEB013A4879D87C2A75B4E5E9D34F0CD397",
+      "candidate_bytes": 5390,
+      "existing_test_rows": 3,
+      "candidate_test_rows": 3,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    },
+    {
+      "source_relative_path": "modern/engine/src/world/native_sim_export.rs",
+      "new_file": false,
+      "base_sha256": "A04EBE61C4B72144F4CB3B3DEB4EF2FC89A5490A0F268D021AF034B77042591B",
+      "base_bytes": 63872,
+      "candidate_path": "output/pass62-drafts/rust-shot-state/candidate/modern/engine/src/world/native_sim_export.rs",
+      "candidate_sha256": "C2629BFB7477F9AF5BB3950544D28DFF1EAA4AAF1FBDADBF4A2EB2F6C284D6E2",
+      "candidate_bytes": 64004,
+      "existing_test_rows": 14,
+      "candidate_test_rows": 14,
+      "added_test_rows": [],
+      "removed_test_rows": []
+    }
+  ],
+  "test_census": {
+    "added_rust_rows": 2,
+    "removed_rust_rows": 0,
+    "expected_distinct_rust_targets": 68,
+    "discovery_executed": false,
+    "source_attribute_count_method": "Static count of #[test] attributes and their next fn. All existing named rows remain."
+  },
+  "source_revision": "Original VB6 source467a8a0c1564db2071cf65efe39dcfefc5ab7a0c, independently confirmed by parent for Shots.bas.",
+  "source_references": [
+    {
+      "file": "Darwinbots2/Shots.bas",
+      "lines": "305-316",
+      "sha256": "5091B7196149EC219A66AC75EE0ED704B68D34F1DB763EDEC77C406ED226D408",
+      "contract": "A visit clears flash/exist/DnaLen before the existence check. A preexisting dead flash is not visited or aged."
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "lines": "953-969",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+      "contract": "DrawShots checks flash before exist; normal drawing requires exist and not stored."
+    }
+  ],
+  "contract": [
+    "ShotSnapshot.alive is an additive public boolean, defaulttrue on missing legacy JSON; explicitfalse remainsfalse. Existing stored field is unchanged.",
+    "Projectile publication includes alive OR impact_flash and exposes the actual alive value. Dead unflashed slots remain absent.",
+    "Legacy DB3S v2 shot snapshot conversion initializes alive=true, matching the old only-existing-row publication contract.",
+    "Native next-visit flash reset explicitly clears impact_flash for both live and already-dead slots, then clears DNA length/payload before existence gating.",
+    "Generic deactivate/free-list behavior remains byte-exact. Previously dead flashes do not add duplicate free slots.",
+    "Only the two diagnosed one-slot fixtures initialize a source-valid native100-slot pool before the initial return/energy packet. Full-pool source-fatal behavior remains covered and unchanged.",
+    "All25 strict original controls/55849 active comparison fields, dormant20-particle regression, tolerances and goldens remain untouched. C100 position divergence remains an unresolved separate gate."
+  ],
+  "static_review": {
+    "all6_raw_base_hashes_match_frozen_manifest": true,
+    "all_existing_test_names_retained": true,
+    "added_fact_names": {
+      "modern/engine/src/shot/projectile.rs": [
+        "native_snapshots_distinguish_flight_live_flash_and_dead_flash_with_legacy_alive_default"
+      ],
+      "modern/engine/src/world/native_shots.rs": [
+        "native_flash_cleanup_also_clears_dead_slots_and_continues_exactly_after_db3s"
+      ]
+    },
+    "generic_deactivate_body_byte_exact": true,
+    "world_inverse_to_base_after_removing_only_alive_initializer": true,
+    "all4_publication_state_combinations_covered": true,
+    "dead_and_live_flash_controls_with_db3s": true,
+    "no_rng_or_visit_increment_controls": true,
+    "fixture_packet_allocation_preceded_by_native100_reset": true,
+    "all_other_paths_untouched": true
+  },
+  "execution": {
+    "active_sources_applied": false,
+    "formatter": false,
+    "parser": false,
+    "build": false,
+    "tests": false,
+    "product_or_cli": false,
+    "ui": false,
+    "gpu": false,
+    "git_mutations": false
+  },
+  "qualification_required": [
+    "Parent static review of allbatch62 candidates, followed by complete code-first application/freeze.",
+    "Fresh Rust and managed qualification plus existing strict original comparisons; no results are implied by authored test names."
+  ]
+}

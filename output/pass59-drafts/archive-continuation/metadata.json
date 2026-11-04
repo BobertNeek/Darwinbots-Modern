@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "batch": 59,
+  "status": "authored_unapplied_static_only",
+  "released_utc": "2026-10-17T06:48:11.736Z",
+  "base_source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass58-source.json",
+    "sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "pins": 540
+  },
+  "files": [
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "original": {
+        "file": "output/pass59-drafts/archive-continuation/before/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+        "sha256": "2AD7DB4610A014FEC94B6DA7BEDEFADFCCC0FC09AB7836089A2E149307684080",
+        "bytes": 16828
+      },
+      "candidate": {
+        "file": "output/pass59-drafts/archive-continuation/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+        "sha256": "88E84C7B2B33F8874A2A08B417F4011AA97B716B00F4A5B04CBFD73A50528404",
+        "bytes": 17778
+      },
+      "base_raw_hash_matches_pin": true
+    }
+  ],
+  "production_changes": false,
+  "diagnosis": {
+    "confirmed_external_clock_path": "NativeEngineClient.Tick105–118 prepends NativeRestartSeedCommand.945–955 samples its TimeProvider and sends set_native_restart_seed. Rust native_random_world89–90 persists that supplied value as EngineConfig.native_restart_seed. Two sequential live-clock twins therefore receive different explicitly saved host inputs. Beforetick wholecheckpoint equality already passed in hosted58; phase_timings is serde-skip.",
+    "inferred_prefix_path": "Byte mismatch positions2116–2118 contain decimal digit excerpts near the serialized configuration prefix; this is consistent with native_restart_seed but not a reconstructed complete payload diff. Current TRXs emit only short excerpts, not full checkpoint arrays.",
+    "production_gap_proven": false,
+    "fixture_change": "Supply the same immutable UTC1.25second clock to both clients; assert both persisted pending restart seeds equal125. Retain full checkpoint byte equality before and after ticks, pending→first_cycle stage, exact inputhash and all birth/death/reseed/identity accounting."
+  },
+  "source_anchors": [
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "lines": "105–118,945–955",
+      "rule": "Each Tick sends hostTimer-derived restart seed."
+    },
+    {
+      "file": "modern/engine/src/world/native_random_world.rs",
+      "lines": "88–91",
+      "rule": "Host restart seed is persisted configuration; storing it does not draw simulation RNG."
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "lines": "2386–2387,2611–2642",
+      "rule": "Phase timings are skipped; DB3S stores complete serde_json Value engine payload."
+    },
+    {
+      "file": "modern/engine/src/persistence.rs",
+      "lines": "9–11,67–73",
+      "rule": "DB3S frames complete sorted JSON payload without masking saved inputs."
+    }
+  ],
+  "failure_evidence": [
+    {
+      "platform": "linux-x64",
+      "trx": "output/hosted-diagnostics-8018c20-agent/artifacts/desktop-diagnostics-linux-x64/test-results/rendered-controls.trx",
+      "trx_sha256": "8D98BA9254C1E1CF3AD21E10E4E36A7E7A344FB6013CC3D666B66B72603B419A",
+      "failed_test": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+      "source_line": 174,
+      "returned_message": "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2117)\nExpected: [···, 50, 48, 50, 56, 55, ···]\nActual:   [···, 50, 48, 52, 50, 50, ···]\n                        ↑ (pos 2117)"
+    },
+    {
+      "platform": "osx-x64",
+      "trx": "output/hosted-diagnostics-8018c20-agent/artifacts/desktop-diagnostics-osx-x64/test-results/rendered-controls.trx",
+      "trx_sha256": "83831035BA649C736151BBF4564038D5E1F2800DB67F96C18BB7FA259F753B2B",
+      "failed_test": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+      "source_line": 174,
+      "returned_message": "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2116)\nExpected: [···, 50, 52, 48, 55, 54, ···]\nActual:   [···, 50, 52, 49, 48, 51, ···]\n                        ↑ (pos 2116)"
+    },
+    {
+      "platform": "osx-arm64",
+      "trx": "output/hosted-diagnostics-8018c20-agent/artifacts/desktop-diagnostics-osx-arm64/test-results/rendered-controls.trx",
+      "trx_sha256": "D72B921583BF3DD6E0CF4D161111052254BF9B26931076D57533751D1FD8EA06",
+      "failed_test": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+      "source_line": 174,
+      "returned_message": "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2118)\nExpected: [···, 54, 52, 49, 53, 44, ···]\nActual:   [···, 54, 52, 55, 50, 44, ···]\n                        ↑ (pos 2118)"
+    }
+  ],
+  "preserved_assertions": {
+    "before_tick_complete_save_equality": true,
+    "after_tick_complete_save_equality": true,
+    "after_reload_complete_save_equality": true,
+    "source_loaded_census_stage": true,
+    "original_input_hash": true,
+    "full_lifecycle_accounting": true,
+    "no_field_masks_or_tolerances": true
+  },
+  "test_census": {
+    "facts": 6,
+    "theory_rows": 7,
+    "total_before": 13,
+    "total_after": 13,
+    "net_new": 0,
+    "test_names_preserved": true,
+    "expected_desktop_suite_unchanged": 197
+  },
+  "arm_abort_boundary": {
+    "separate": true,
+    "active_case": "RuntimeHeaderRemainsClickableWithWiderFontMetricsAndBackendLabels(width:1280)",
+    "blame_records_completed_false": true,
+    "no_header_edit": true,
+    "cause_unproven": true
+  },
+  "execution": {
+    "formatter": false,
+    "source_parser": false,
+    "build": false,
+    "tests": false,
+    "product_cli": false,
+    "git_mutation": false,
+    "active_source_edits": false,
+    "ui_or_gpu": false
+  },
+  "qualification_boundary": "Unapplied59 test-only draft. No58 outcome is replaced or marked passing, and no production restore/parity claim follows until the combined subsequent qualification."
+}

@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "batch": 63,
+  "state": "bound_candidate_authored_released_for_root_review_not_executed",
+  "prepared_utc": "2026-10-17T23:29:01.701Z",
+  "operator": "root_only_after_all94local_and_all7hosted_terminal_collected",
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass63-source.json",
+    "sha256": "6E6A0F44695062B4B453EDBA28E7E3A03224D10AE0D27F9ADF99071F80506860",
+    "bytes": 117714
+  },
+  "approved_strict_pass_model": {
+    "file": "output/pass63-drafts/collector/admission-compatible-unbound/strict-pass/collect-native-roundtrip-pass63.mjs",
+    "sha256": "A28D6BEE5BE0FD8BE075D10A3036147D74674984FB018A3D97E3CD2E6F481945",
+    "bytes": 50076
+  },
+  "approved_unbound_metadata": {
+    "file": "output/pass63-drafts/collector/admission-compatible-unbound/metadata.json",
+    "sha256": "6E7BBB1B4D6E63CEFCCEEE2BC68DC8A0DA3F9E1D2969699DA366BBCD59E071A7",
+    "bytes": 4523
+  },
+  "preserved_first_bound_variant": {
+    "file": "output/pass63-drafts/collector/admission-compatible-bound/collect-native-roundtrip-pass63.mjs",
+    "sha256": "C729FE3EF32E2D1E9889431912CE7215AF263130D48E7CEA0A4BC4E36FEA10D0",
+    "bytes": 50802
+  },
+  "candidate": {
+    "file": "output/pass63-drafts/collector/admission-compatible-bound/terminal-result/collect-native-roundtrip-pass63.mjs",
+    "sha256": "E619D980F143D3E208D4E3C27D007175AB1EA87E4AB81E715477B2AC4B4C4917",
+    "bytes": 51166
+  },
+  "preferred_candidate": "output/pass63-drafts/collector/admission-compatible-bound/terminal-result/collect-native-roundtrip-pass63.mjs",
+  "literal_current_build_artifact_bindings": [
+    {
+      "file": "target/release/darwinbots-cli.exe",
+      "realpath": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-audit-20261011-cc16cb4\\target\\release\\darwinbots-cli.exe",
+      "sha256": "442D50F66C62DC70AD635ABBEF9443EDB910E943D4DCF340C9E89909867C35A2",
+      "bytes": 12406272
+    },
+    {
+      "file": "target/release/darwinbots_engine.dll",
+      "realpath": "C:\\Users\\PC\\AppData\\Local\\Temp\\db24832-audit-20261011-cc16cb4\\target\\release\\darwinbots_engine.dll",
+      "sha256": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9",
+      "bytes": 12479488
+    }
+  ],
+  "identity_receipts": [
+    {
+      "name": "cli-build-identity.json",
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/cli-build-identity.json",
+      "sha256": "0CFDCE7D1FAE786B680069F449A6D280E9AF6430622774A55F38DBAE0B9BFFB2",
+      "bytes": 143,
+      "value": {
+        "cli_sha256": "442D50F66C62DC70AD635ABBEF9443EDB910E943D4DCF340C9E89909867C35A2",
+        "source": "source.json",
+        "build_exit_code": 0
+      }
+    },
+    {
+      "name": "native-dll-identity-before.json",
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/native-dll-identity-before.json",
+      "sha256": "EBA0EE9806D83A2E85DD6C4C6369F7E2C384B11E70E685FBA4676D7C84A12E93",
+      "bytes": 258,
+      "value": {
+        "target_release": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9",
+        "package": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9",
+        "desktop": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9"
+      }
+    },
+    {
+      "name": "native-dll-identity.json",
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/native-dll-identity.json",
+      "sha256": "EBA0EE9806D83A2E85DD6C4C6369F7E2C384B11E70E685FBA4676D7C84A12E93",
+      "bytes": 258,
+      "value": {
+        "target_release": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9",
+        "package": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9",
+        "desktop": "C545402B8C6F71FE9979B67CB1806F48CEFF666380E1C61960618C17284365E9"
+      }
+    }
+  ],
+  "artifact_bytes_and_receipt_hashes_reverified_after_authoring": true,
+  "terminal_result_provenance": {
+    "outer_exit_code": null,
+    "outer_exit_code_observed": false,
+    "orchestrator_session_id": 90770,
+    "root_report": "write_stdin returned Unknown process id90770 after app/runtime restart during usage pause",
+    "actual_recorded_ordinary_steps": 94,
+    "distinct_actual_recorded_steps": 94,
+    "actual_recorded_nonzero_steps": 0,
+    "observed_terminal_state": "completed",
+    "derived_terminal_result_code": 0,
+    "boundary": "The0is derived from all94 recorded invocation codes and terminal state, not an observed outer OS/session exit. Candidate independently revalidates that agreement and verifies original PID absence before sealing."
+  },
+  "narrow_changes_from_approved_strict_pass": [
+    "Remove immediate unbound throw/comment and replace empty allowlist with exactly two current63 artifact literals plus all three actual63 raw identity-receipt hashes.",
+    "Rename only the root-supplied argument/variable from runner-exit-code/runnerExit to terminal-result-code/terminalResultCode;0|1 must agree with actual94codes and terminal state.",
+    "Record runner_completion.exit_code=null,exit_code_observed=false,derived_terminal_result_code and explicit unavailable-session provenance instead of claiming observed OS exit."
+  ],
+  "unchanged_guards": {
+    "source_pins": 686,
+    "ordinary_outcomes": 94,
+    "expected_distinct_rust_targets": 68,
+    "core_expected": 314,
+    "desktop_expected": 214,
+    "genuine_controls": 25,
+    "expected_original_only_fields": 55849,
+    "strict_owned_source_and_proof_paths": true,
+    "exact_two_artifact_junction_exceptions": true,
+    "terminal_state_process_absence_checks": true,
+    "all_actual_invocation_exit_codes_retained": true,
+    "same_byte_evidence_checks": true,
+    "admission_compatible_rust_schema1_and_command_array_and_actual_status": true,
+    "compiler_diagnostics_distinct_from_executed_tests": true,
+    "no_helper_changes": true
+  },
+  "future_outputs": [
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/rust-target-results.json",
+    "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass63/qualification-summary.json"
+  ],
+  "invocation": "node.exe \"C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\output\\pass63-drafts\\collector\\admission-compatible-bound\\terminal-result\\collect-native-roundtrip-pass63.mjs\" --repo \"C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2\" --terminal-result-code 0",
+  "execution": {
+    "collector": false,
+    "parser": false,
+    "formatter": false,
+    "build": false,
+    "tests": false,
+    "product": false,
+    "UI": false,
+    "GPU": false,
+    "git": false,
+    "active_source_or_receipt_writes": false
+  },
+  "scope": "Preparation only. Root reviews and executes the preferred terminal-result variant. No canonical summary.json, CPU-ready marker, admission or qualified completion claim is written by this task."
+}

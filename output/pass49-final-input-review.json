@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "status": "Read-only final input audit complete; no concrete flaws found; qualification remains in progress and is not claimed",
+  "reviewed_utc": "2026-10-16T16:22:16.966Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2/",
+  "inputs": [
+    {
+      "file": "output/qualify-native-roundtrip-pass49.ps1",
+      "sha256": "2AE91A03F1F19DCB48BF96A86EFF2005BE26A22B7170AD7286F567F7FE82BEFC"
+    },
+    {
+      "file": "output/native-roundtrip-pass49-source.json",
+      "sha256": "3900DB4715D56D1A40D38572889338A679701457002685E4BAC29146084D0570"
+    },
+    {
+      "file": "output/pass49-retained48-projection.json",
+      "sha256": "4E46C352C92E3698D215EDA401BDD3876B7E6C9282595FFC1D14AD3393583213"
+    }
+  ],
+  "findings": [],
+  "verified": {
+    "retained_pins": 239,
+    "retained_pin_paths_unique": 239,
+    "retained_pin_hash_mismatches": 0,
+    "current_source_pins": 76,
+    "current_source_pin_hash_mismatches": 0,
+    "source_path_set_same_as48": true,
+    "exact6_changed_paths": [
+      "modern/cli/src/dna_source.rs",
+      "modern/desktop/src/Darwinbots.Desktop.Core/PopulationSeedingExport.cs",
+      "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeLeagueSeriesTests.cs",
+      "modern/engine/src/ffi.rs",
+      "modern/engine/src/league.rs",
+      "modern/engine/src/world/classic_tournament_tests.rs"
+    ],
+    "retained_target_keys_unique": 56,
+    "retained_counts": {
+      "targets": 56,
+      "passed": 440,
+      "failed": 0,
+      "ignored": 0,
+      "measured": 0,
+      "filtered_out": 5
+    },
+    "retained_rows_match_sealed48_summaries_source_hashes_and_log_section_hashes": true,
+    "fresh_target_keys_count": 10,
+    "fresh_target_keys_match_approved_projection": true,
+    "retained_plus_fresh_distinct_target_keys": 66,
+    "all_retained_targets_passed": true,
+    "all212_immutable_closure_pins_present": true,
+    "independently_rediscovered_closure": {
+      "count": 212,
+      "sha256": "7B017AAA9F5A27193395E4E722629141C4226D26C958481E76F7246D065DD49A"
+    },
+    "all8_candidate_input_pins_present": true,
+    "no_mutable_target_binary_pins": true,
+    "baseline_summary_sha256": "5241130A4111F8CB793BA3C1C2E69AB49E3BBC40F97724A33E1387EF710B684F",
+    "baseline_summary_hash_verified": true
+  },
+  "ffi_prefix": {
+    "actual_sha256": "9514D7637F29B2765C7702CE906834F3454ADC322236C8E6E260C22EEE1AB514",
+    "expected_sha256": "9514D7637F29B2765C7702CE906834F3454ADC322236C8E6E260C22EEE1AB514",
+    "exact_match": true,
+    "method": "Read old pinned48 prefix and actual49 prefix. Reconstruct exact required LegacyDna import cleanup, direct parser substitution, and JSON dispatcher substitution with its observed formatter block wrapping/indentation; preserve all unchanged command body text. Entire reconstructed prefix equals actual bytes. No parser/formatter run and no blind whitespace removal.",
+    "other_production_prefixes_unchanged": [
+      "modern/engine/src/league.rs",
+      "modern/cli/src/dna_source.rs"
+    ]
+  },
+  "final_runner_safeguards": {
+    "new_package_preflight": "Lines71-73 and114-115 reject existing package/candidate output directories before overwrite.",
+    "candidate_manifest_and_inputs": "All8 candidate39 manifest/SIM inputs are immutable pins. Lines74-77 require exact seven names and [1,10,100].",
+    "collect_all_candidate_completeness": "Lines104-110 retain command exit codes/output hashes then record failing completeness if count is not21 or any output failed/missing; remaining normal outcomes still run.",
+    "native_dll_identity": "Lines128-140 assert fresh target/package/test SHA equality before Desktop and all3 unchanged after Desktop, with before/after receipts.",
+    "fresh_cli_identity": "Lines91,94,150 retain fresh CLI build hash and recheck before seal; no mutable binary is included in retained48 guards.",
+    "fresh_and_retained_labels": "Final receipt identifies56 retained48 targets and10 fresh49 invocations; projection explicitly disclaims new full-workspace runtime, physical GPU and genuine-original proof."
+  },
+  "activity": {
+    "existing_files_modified": false,
+    "only_new_output": "output/pass49-final-input-review.json",
+    "parser_formatter_commands_build_test_Git_apps_UI_executed": false,
+    "owned_worker_managed": false,
+    "qualification_claim": false
+  }
+}

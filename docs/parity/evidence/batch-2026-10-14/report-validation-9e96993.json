@@ -1,0 +1,47 @@
+{
+  "source_head": "9e9699360ad5f117c43a6af9ba6b1576682747d2",
+  "report": "db24832-parity-report-2026-10-14.html",
+  "rows": 23,
+  "checks": {
+    "simulation_filter": 4,
+    "manual_insertion_search": 1,
+    "no_result_search": 0,
+    "reset": 23,
+    "mobile_document_width": 390,
+    "mobile_viewport_width": 390,
+    "relative_links": 51,
+    "missing_links": 0,
+    "console_errors": 0
+  },
+  "headless": true,
+  "gpu_disabled": true,
+  "desktop_viewport": [
+    1440,
+    1000
+  ],
+  "mobile_viewport": [
+    390,
+    844
+  ],
+  "screenshots": [
+    {
+      "file": "report-desktop-current.png",
+      "sha256": "0db56629c7b58ab15b417631cc02ca71aca306355669570650adfa43c4555117"
+    },
+    {
+      "file": "report-desktop-capacity.png",
+      "sha256": "2e1aa08039b83ccf0fc255ccedbc1517f211c9aa56da43c5f9376c8c55309f7e"
+    },
+    {
+      "file": "report-mobile-current.png",
+      "sha256": "822cc7b552e97242046e2377667ca2e447ccbdbc7d13a78214e2c3fe536b5785"
+    },
+    {
+      "file": "report-mobile-capacity.png",
+      "sha256": "45a84fc29f29a6402c8eb4fc7e743175b685d20118fabee568aaa1841d147d5e"
+    }
+  ],
+  "visual_inspection": "Desktop and mobile header and capacity sections inspected; wide tables scroll within the page",
+  "report_sha256": "4e000bb0be87b4e28e3ceb3930e40daadcd3ef958e20fa3ee99b826c6f8e22a5",
+  "utc": "2026-10-15T10:37:37.327Z"
+}

@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-12",
+  "code_revision": "2c1acf34582983794cd69c38671bf71f857354bd",
+  "source": "Darwinbots2/Shots.bas newshot; normal Shooting calls pass offset=True",
+  "checks": {
+    "pool_tests": {
+      "passed": 3,
+      "failed": 0,
+      "log": "completion-checks/parity-native-shot-offset-tests.log"
+    },
+    "dedicated_projectiles": {
+      "passed": 23,
+      "failed": 0,
+      "log": "completion-checks/parity-native-shot-offset-projectiles.log"
+    },
+    "strict_engine_lib_tests_clippy": {
+      "passed": true,
+      "log": "completion-checks/parity-native-shot-offset-clippy.log"
+    }
+  },
+  "changes": [
+    "Normal shots add the radial offset, subtract owner velocity and add actual velocity in native Single assignment order.",
+    "New and reused shots initialize previous position to new position minus inherited shot velocity.",
+    "Virus release retains the native offset=False path."
+  ],
+  "limits": [
+    "Original-executable trajectory comparison remains open.",
+    "The first filtered call ran zero dedicated integration cases; the unfiltered 23-case call supplies the integration evidence.",
+    "The last complete release workspace remains 454 passed / 58 failed / 2 filtered at 4e83860."
+  ]
+}

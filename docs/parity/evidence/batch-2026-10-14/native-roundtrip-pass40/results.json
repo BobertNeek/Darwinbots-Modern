@@ -1,0 +1,14 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 2.5548084,
+    "log": "format-check.log"
+  },
+  {
+    "step": "strict-cli-clippy",
+    "exit_code": 0,
+    "seconds": 4.8783909,
+    "log": "strict-cli-clippy.log"
+  }
+]

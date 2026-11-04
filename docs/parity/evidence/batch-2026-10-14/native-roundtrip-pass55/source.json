@@ -1,0 +1,798 @@
+{
+  "schema_version": 1,
+  "batch": 55,
+  "parent_head": "1b059f4dc18ca1d19952b35576bfbb840809e020",
+  "comparison_base": "14961edfbb9c979ef7b07145bd95153517659211",
+  "qualification_state": "all55_code_and_tests_authored_frozen",
+  "created_utc": "2026-10-17T02:28:02.405Z",
+  "code_and_tests_authored_before_checks": true,
+  "all_initial_code_and_tests_authored_utc": "2026-10-17T02:24:02.574Z",
+  "product_tests_or_builds_before_freeze": false,
+  "powershell_parser_errors": 0,
+  "authoring_format_exit_code": 0,
+  "isolated_admission_probes": {
+    "schema5_passed": 14,
+    "schema4_passed": 8,
+    "fixture_sum_repaired": true,
+    "receipt": "output/pass55-admission-repair-release.json"
+  },
+  "qualification_scope": "Fresh full hardware-filtered Rust workspace, strict Clippy, Core/Desktop/native library/package/CPU smoke/48 assets. Ten independently captured original checkpoints compared exactly, plus original zero-cycle393316 fields. GPU and capacity require later qualified admission and idle.",
+  "expected_distinct_rust_targets": 68,
+  "workspace_metadata": "output/pass55-workspace-metadata.json",
+  "source_file_count": 192,
+  "files": [
+    {
+      "file": ".gitattributes",
+      "sha256": "CAD0112E90DF99451F710D8921E54C62C174612C61EAB077E516AF8748603021"
+    },
+    {
+      "file": ".github/workflows/modern-cross-platform.yml",
+      "sha256": "4B596B870FC8E38DDD9D9F658AD1ACDAAB7082ED10B161D22655025D2ABF6707"
+    },
+    {
+      "file": "Cargo.lock",
+      "sha256": "062E3AB5A2253413CB56A756DCC9CFBA53A12934215F4EB7AE6B01814252063B"
+    },
+    {
+      "file": "Cargo.toml",
+      "sha256": "B026DE686052B55BA51C27598D23A2F243866B80A36194A6EBBB12EDFBAA665D"
+    },
+    {
+      "file": "Installer/bots/Alga_Minimalis.txt",
+      "sha256": "79993974A6CD6A66CD3BCF940502A53E0886E17B40222773E0BF8BAF8A155401"
+    },
+    {
+      "file": "Installer/bots/Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121"
+    },
+    {
+      "file": "Installer/bots/Animal_Minimalis.txt",
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5"
+    },
+    {
+      "file": "Installer/bots/Animal_Minimalis_Connubialis.txt",
+      "sha256": "2E82E517A7D8A33E4B6C3168CBE2E631727642D7C385EA76C6B63232EF3C35E6"
+    },
+    {
+      "file": "Installer/bots/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "sha256": "609270B7EEB6EF92782124EC942EE3160CF9613347BD98662B75B76F5B9B12CF"
+    },
+    {
+      "file": "Installer/bots/Bubbles (F2)(Jez)-21.08.06.txt",
+      "sha256": "C575AB27AB498A075DDD6439CEFC7BF470A169C6EFE1CC16CA68098D0EAE3AC8"
+    },
+    {
+      "file": "Installer/bots/Callidus(F1)(Shen)-05.04.05.txt",
+      "sha256": "B447D333E6D2C5D3C416FEBB6766E326D5DF11B4C022BBA92769EDA39BF1E3C8"
+    },
+    {
+      "file": "Installer/bots/Catapiller(MB)(Peter).txt",
+      "sha256": "F112B9789159E6AC5FF839F9D33A1D0BC778624831E34B2BD81B9D684AF16DF9"
+    },
+    {
+      "file": "Installer/bots/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "sha256": "CED8DF58B4FE9AE29C6D03D8F64EC3AFDE5867FE2CBE08D90CD20D3A32EFD3E6"
+    },
+    {
+      "file": "Installer/bots/Ebola (F1Vir) (Moonfisher).txt",
+      "sha256": "D0B3437F9ED37F77D904DED4F0BC1F5B68A2AB70E3FB787625A97099BA58F345"
+    },
+    {
+      "file": "Installer/bots/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "sha256": "1D881243C720F04EC81EF098D841E5292311E76087F3925F7C9FB6A171D10A9F"
+    },
+    {
+      "file": "Installer/bots/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "sha256": "51852363CAC2FDA2F3BC9392DCDC297580A30B7AB3447DFD1E1C3DBB2DF3835C"
+    },
+    {
+      "file": "Installer/bots/Fruit_Fliesv0.21.txt",
+      "sha256": "5D554A6585E63A29B603FC1D5D93652AFDDAA1103FBE9FAA9ABEC7FAC3D9DF86"
+    },
+    {
+      "file": "Installer/bots/Locust(F1)(Moonfisher).txt",
+      "sha256": "425376200A83ED56CDA9CE6CA59FA50DB1FCA172FBF876628E4E739F6B4FBE81"
+    },
+    {
+      "file": "Installer/bots/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "sha256": "411B04032A8FEAF20E7DD413A08340C96C3B93AFEBC7E5A35A54CBF7F6BE071F"
+    },
+    {
+      "file": "Installer/bots/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "sha256": "C346E93DD954D111D569B8D2D63DA4177D5433CF2EB15BA334A154C1613F25E9"
+    },
+    {
+      "file": "Installer/bots/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "sha256": "9E93D6694DDA3F3C6B5A054B24A12838E2D8A7E0160A62F33ACDD890AE06C77A"
+    },
+    {
+      "file": "Installer/bots/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "sha256": "80EF0E7437FD2BBEAC64736576FE48B906FF61E0FA4D6974C2E251181B8A45FB"
+    },
+    {
+      "file": "Installer/bots/Quickdraw(F1)(Moonfisher).txt",
+      "sha256": "F24C30BFE66CE31E221F30FF520068345CFA1D7506FD716FF7054966E2FC0DEE"
+    },
+    {
+      "file": "Installer/bots/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "sha256": "CDAB99B7AF6F8ACA54A7E9D3064E11F8C5ABDD4F98625FEBB0E48746FC2A59A0"
+    },
+    {
+      "file": "Installer/bots/Republican Wasp (F1)(Commander Keen).txt",
+      "sha256": "CC3733F51BDE8AC1CE0EFF85F63217BE061EB6003476E5AD8F527B3898FC32FA"
+    },
+    {
+      "file": "Installer/bots/Saber.txt",
+      "sha256": "7CB4F03B211F279ADEA16281E39AC898A4BBA2EF28E5375104C4101B1005CC0A"
+    },
+    {
+      "file": "Installer/bots/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "sha256": "83E6EBF019B08156862496326A70700F1374A9A1BDE7EA4C6032C09FF1562F8E"
+    },
+    {
+      "file": "Installer/bots/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "sha256": "C4EAB07A29B53014D966ADB4698FAE156105EE0F01D25C8D42B40EDEB5FB13D4"
+    },
+    {
+      "file": "Installer/bots/Spinnerv1.52.txt",
+      "sha256": "27B5D7C70FA3A542B3AE38F83AAD4A8123E5BD68637ABB475B3B0812E50D2EED"
+    },
+    {
+      "file": "Installer/bots/The One (1G)(Shen)-23.04.05.txt",
+      "sha256": "798E486BFA9C80C518455ADA8061C547458D06CC6E3CC4E3FFE92CA6CE54D220"
+    },
+    {
+      "file": "Installer/bots/TieFighters.txt",
+      "sha256": "878A101CADAD7B4F98693CB5E3ED3E111F358C579004F393D465ACE24116BBAA"
+    },
+    {
+      "file": "Installer/bots/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281"
+    },
+    {
+      "file": "Installer/bots/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "sha256": "174E36A48F478E30DA3D940A3540C2760D1B9C07E8F6A9C5697E3E010EB131E7"
+    },
+    {
+      "file": "Installer/bots/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "sha256": "7FD0DD03A77F10C8A26F3B2D26E84071463F173F75240F9355C82E9B81F86208"
+    },
+    {
+      "file": "Installer/bots/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "sha256": "58CDFBE2202705F0B99BF9A863AEAF066E2DC206FB5E3E1905FA44F3FDB45775"
+    },
+    {
+      "file": "Installer/bots/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "sha256": "3BFB6EC260D72D165C497F3CABCA28156B2A1D2A6DB3EB877E04C2A7FF7B98C8"
+    },
+    {
+      "file": "Installer/bots/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "sha256": "5D0B6636AEC6E80730474C684D606B5C6A76E6B66D4105FDBD30AC2C71A0D588"
+    },
+    {
+      "file": "Installer/bots/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "sha256": "773BD3EA3B270E854E53C739B298A70A40684242E1A0A67A8E725B3E84ED9932"
+    },
+    {
+      "file": "Installer/bots/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "sha256": "76E70B9C9F29F38577172F04910D7C8846E858135CF46D3E0A2A3032C34B510B"
+    },
+    {
+      "file": "Installer/bots/league/17-D. Blinder (F2)-01.03.04.txt",
+      "sha256": "823A557E42B05D2626DD28C2785696557FA4586710823694C5D27B89F0B6190C"
+    },
+    {
+      "file": "Installer/bots/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "sha256": "D777DD50238C5313AD81719CC14372ECE2C10F7813BA94D186CDAC188FB9A97B"
+    },
+    {
+      "file": "Installer/bots/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "sha256": "0A002084FD8FC9C8DA04E8B8A920A325A8D3A83F02FAC1FBD8797B776C1EEFAC"
+    },
+    {
+      "file": "Installer/bots/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "sha256": "793472C1879F554C09C58A3180AB5673A55E88A861284EE75ACE2BA3A34AFA47"
+    },
+    {
+      "file": "Installer/bots/league/20-Bot v 1.1.txt",
+      "sha256": "E56C73E3F173A14DC842AF742EBD913BE893938BABBA23BD89A14045906B6197"
+    },
+    {
+      "file": "Installer/bots/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "sha256": "C853342E1B8E033BB05911037245A2F6EDA14C6AA0329377D316C8AB8D6EA881"
+    },
+    {
+      "file": "Installer/bots/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "sha256": "DA5D24C52E00E431AE051240AF7BA9E9F2DD7EAF6F6B7481C69D36FCB6D496AC"
+    },
+    {
+      "file": "Installer/bots/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "sha256": "562DC85F510D5881CCD66BB3AF26E5B3F161A7C399FA4E8D710C0EE801E1228F"
+    },
+    {
+      "file": "Installer/bots/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "sha256": "FC09E7D21E98569F59853752E84885EFD377F40C417F5E6BFE35BB1C1D20D9CC"
+    },
+    {
+      "file": "Installer/bots/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "sha256": "506635F191AA1F12716A069DB3319A6BCAD68BE5D7F9C7D97BF18F81A693002E"
+    },
+    {
+      "file": "Installer/bots/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "sha256": "846FD16EFDA850DB2A36DB64480C45899AE26CD6481D9CEFC4AC27257332C568"
+    },
+    {
+      "file": "Installer/bots/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "sha256": "E22956B386353102288F794573D2E3B5C29FFAAA1B3DC1C0F823C0E23B40EE5D"
+    },
+    {
+      "file": "Installer/bots/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "sha256": "456129935205500440C29F01EB627713B0DB660C2FD8144E8F97F39030A8B768"
+    },
+    {
+      "file": "modern/cli/src/dna_source.rs",
+      "sha256": "8B9CBD966545255305535BEA664678C923FE31921BCEF0F6928D36C0A0B84CA5"
+    },
+    {
+      "file": "modern/cli/src/lib.rs",
+      "sha256": "8D537DD330AA050F2E7C9356FFE1D15C32B8C77C0C339833B12FD87D254F1DA7"
+    },
+    {
+      "file": "modern/cli/src/native_comparison.rs",
+      "sha256": "DC7CF837A8489187D67715204BFBF96ED2F67BED1AA778D7E9941DE97E90F83E"
+    },
+    {
+      "file": "modern/cli/src/probe.rs",
+      "sha256": "45C4C192AF418514861200812A5F61CCAA0C38EE47DAED1278F21821F5708256"
+    },
+    {
+      "file": "modern/cli/tests/native_comparison.rs",
+      "sha256": "F39C078B571E63EF928FD407C2009EE815E6CC3969A1E069CD9ED0A2AE709EEB"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ClassicTournamentDnaExport.cs",
+      "sha256": "D537572496462E09B57E24DB1A9B06163A0C8673546ABB5EBCA6E07F6F040E91"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/ContestResultsWorkflow.cs",
+      "sha256": "19F90FD0631345E6E6C133166E2E14028666C451E75C025F6C7CA400E6B0A6EB"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/CycleAutosavePolicy.cs",
+      "sha256": "4D9A10672E73414E19490E06611B4A570F25D87A30A675E2583F1F6C782B36F9"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2MutationRateCodec.cs",
+      "sha256": "6AEFCC571519282A77D35A94868CCA673E9A7FAABC4B4C1971DC70A2D0123D58"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2Persistence.cs",
+      "sha256": "D60209E6CF598C1D88EF3E2267A94C8019DD05C116DB080426E9DA90B6547F6B"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/Db2RobotFileStorage.cs",
+      "sha256": "86B6FAC7EE90F11E998EBE5603F45138A47FB77DF84A80F4B09AAF5EC2D48B51"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "sha256": "89075FFDD5F8C147BB6FB8EF2F8F21696FE4390900C5A6E42548A6F349D50C06"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "sha256": "E02DCAF5AE4C5CE3E421A219415B7BD98391195BA193969432A19286A97EAF5E"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacyDnaText.cs",
+      "sha256": "9066B564C47E72C46A89ED1A0600CDA0F5859D804C6E08E88F3960A50F9819BE"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LegacySettingsAdapter.cs",
+      "sha256": "0096A155BCA0F07558074DCCCD11535BB58CB5251C19632FCC9D6161293B3CCD"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/LocalMode.cs",
+      "sha256": "4623BFA212A895CCA24061DDDCF5089E49E7C605042B4CE3ABD710B74E04E2A9"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "sha256": "45563CF89CA9F84EC04FBB73742B35B5CB4500B4B3F25AE5BFF1FDD5300AD51D"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "sha256": "7F871E7202BA5DA5B6F6BA517C2745A0746F14E1FC1FA3335845217183749F69"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/PopulationSeedingExport.cs",
+      "sha256": "9DE746F32B6524BA63CE6C097D9B8A9FA02818DFE8C9E6EE20E12FF6AE883C81"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/RobotTools.cs",
+      "sha256": "C472BDA77CB772B4227ACD054259543207133A07C73482F8FDB6BFF2C9B95596"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "sha256": "F1ABDCA5233891DAA9ADC53A57AA3D2FF6F6CCC18986D4083FE9B8DC07034646"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/WorldSetupOptions.cs",
+      "sha256": "9372084AC7579386C9F87096E38F879C471044BA97D7D45AC74AE329098493A3"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Services/AvaloniaDesktopStorageService.cs",
+      "sha256": "AB1E2B71C5819B26D403D227072964D29B4A29A069869D5774AC8884E9CFF557"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Services/IDesktopStorageService.cs",
+      "sha256": "E114D15855269B4D7E8185A49B96BFA2750A15BC71110C54F7670BF63A269490"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Services/SetupStorageService.cs",
+      "sha256": "5A55BFF07AC214D2A871DD4363C3D8DA11AD8FEB0184500DE7CFCD7685FF7247"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/ViewModels/LocalModeViewModel.cs",
+      "sha256": "459D747CF99BBA230F48C9A054B4A62E5A7AE5803BF03C63B15D4EF6C1315F6A"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/ViewModels/MainWindowViewModel.cs",
+      "sha256": "FC4305AF0A0748A5BFE5EA631335052A8A816A31D52CC389B1E62786F6EBA60B"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/AdvancedSettingsWindow.axaml.cs",
+      "sha256": "8F7D34FB7EC83FEC4F35E29D86896DFD10BE7C455F3374E914224FEF91D416E2"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/DnaEditorWindow.axaml.cs",
+      "sha256": "794F0CF0C4A94B57D350B12E3E7ED6AA5DD6DA8ED24B40FDDBD873CCE99BA247"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+      "sha256": "EF9787C2D52B4A612A85FF56BCC9D705EBAA89CB790D029DABBA27C2B8531591"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "sha256": "0318A909E9E6652423527CB78D641B1D21EE78F13A68214C9A66E43E2F503062"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/SetupWindow.axaml.cs",
+      "sha256": "D3293DD46F9B99F11DE39286C33D50F861BF3FE5EEF839E8B14A39DB8C31EBE0"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/ClassicTournamentDnaExportTests.cs",
+      "sha256": "E809AF79023BE0E6D099168D9357B6875589DFCAD1D54CFB393953D4A8BAFCC1"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/CycleAutosavePolicyTests.cs",
+      "sha256": "6ABA80C98DA8C77E58ADAA43567A335D805598A9AC6E4853303F2F6E4E895EF3"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2MutationRateCodecTests.cs",
+      "sha256": "A259BE7ED98D7B25B8DBD8B4B29E1514C6F3569F909468C2D4831C9F01091AD1"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2PersistenceTests.cs",
+      "sha256": "C1BB309A9E8CEB9310B589BE9D970A765532E6F93239A9435FED8F6EDA89E7E5"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2RobotFileStorageTests.cs",
+      "sha256": "7E3682275322AB56D466AA53A785079CAE0812A02A54982B83CBEDEA54D38C5B"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacyDnaTextTests.cs",
+      "sha256": "2C62C46311590F0EEB91D18B6E14CEFFE31DE8904EC63000A9B59581F554E170"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/LegacySettingsImportTests.cs",
+      "sha256": "26DC4B6A7472392A717449A9D6816E6661132D46BCD978649B6820DE654495EC"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeLeagueSeriesTests.cs",
+      "sha256": "0A464A003569C471818D1805FFDD384088AD526C8870EA24D156AAA7DD108499"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "sha256": "DFE85E12DC20588E854DB057BD9CD981BC9AF536E6B9E4DDC8CCC18A2CC61029"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RobotFileSessionTests.cs",
+      "sha256": "4765CAC5A05E1AFB9D5BCEC28D878ED623361F255F25E3110AF82A2708161439"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/RobotToolsTests.cs",
+      "sha256": "E20118EFFC3C3316791A3A323A5A7946A6646990CC3A7A2A06339E5ABFCFCC0C"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SettingsDomainWorkflowTests.cs",
+      "sha256": "65B21528A1F41190A5B62786F13554C4F17AC067C3C20C6051519199F15A99AC"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "sha256": "AF9879641C34340EC5B69503B272FFC3CF85CF188D1B8528BEFFB5AE080775CD"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "sha256": "DA09D0707F57C8FB3D32D425E5AAB9F30BD8423916185D7FA4A4B03F46D44F05"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/ControlSurfaceBindingTests.cs",
+      "sha256": "F2C97CCEACCB9584C2DBFCE8D591257CB096CFC6B0463824671212DEF213487B"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/DnaExportRenderedTests.cs",
+      "sha256": "964B7209204F2967ABF2C12B9E9BE20D3C95E86C56DA9AF01EAC38F46C74B9C4"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+      "sha256": "3C226E32CB317DFE8A377D3A6B181EB1751A924232BA9B03984B065E8DAC49AA"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/LocalModeWorkflowTests.cs",
+      "sha256": "78C893F554634F64700AAA63CDD7737D94D7B2AD7E45B2899A96DCDE285D5D8F"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/MainWindowViewModelTests.cs",
+      "sha256": "2C68A097E5A6B8382E9B608C07780C05FCCEE6DF0E034820913F9FEA50A9BB92"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/NativeDnaStorageBoundaryTests.cs",
+      "sha256": "5C7AC8DFE609F41B881947421201F1730558432F59CA54960F4BD6AD7C129A41"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/NativeRobotFileIntegrationTests.cs",
+      "sha256": "9CDB5CB11CF59C1C2881F51228C75575E7C518AF240231EEBC8BD06E3D909AA1"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/NativeStartupRobotFileTests.cs",
+      "sha256": "C01CEC2D8CE15490A1E47330635F12DC52A618A43EDB095C00EFA9AC69B242EF"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "sha256": "65DFDDEBCA353257AA9CB5B1B949FB1A08FB295C946BBDC5172310A96884A77E"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "sha256": "ABAAEA57E91306AF63F94C36655524EBF254C8E461F350F529E199AC058ED592"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/SafeModeAutosaveRenderedTests.cs",
+      "sha256": "6C2BBB6DFAFFF94EC316CE38DFF991D53D7A75128AF6576CBA7CA6C06296EC05"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/SetupControlSurfaceTests.cs",
+      "sha256": "3BCE1EC8F1FD540188BACC07FD9A6934357EBBE8C2D13E7768984D7D7D4AF7AC"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Tests/ToolsRenderedRouteTests.cs",
+      "sha256": "E6B4B6B447F55D6DC5713433809A41714F655DED08A34472A282712EFE583316"
+    },
+    {
+      "file": "modern/engine/src/biology.rs",
+      "sha256": "5C2C1351C31B4A01646758714430F04D4FE64612697834831D79ADEACB6AF5F9"
+    },
+    {
+      "file": "modern/engine/src/config.rs",
+      "sha256": "5DB0C2C2750CE0D16E949E587FD6D927B7A86FFE1811832F4759AC0F4ADACBF2"
+    },
+    {
+      "file": "modern/engine/src/dna.rs",
+      "sha256": "141BF4A580903DA61BCAF52CC3937E5CDCE59771D1688BA4CC4CDE7B168BB974"
+    },
+    {
+      "file": "modern/engine/src/dna/native_load.rs",
+      "sha256": "E0F1BEBEFB016EABE4E26E7D0BF67C846BCEF6DD8C2D868D5C93BE6FB3070E02"
+    },
+    {
+      "file": "modern/engine/src/evolution.rs",
+      "sha256": "FA83F4CBB0B26F9829990F0BF528DFCD0AD5522009819E1BB79AA643947037E9"
+    },
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "sha256": "3FB54C1CF3C181150238384CEF997185422FC68F7B49B5A89607853263461D7F"
+    },
+    {
+      "file": "modern/engine/src/league.rs",
+      "sha256": "0F605FB2EBB3CA045E4BB425803DDB385E4A2FCAEF81A66DC423CDA6A338F7C9"
+    },
+    {
+      "file": "modern/engine/src/lib.rs",
+      "sha256": "5D8C0D0151E087C09BC12CBABB27714000529BCB7A2C7CF3DE016E3501A2BDAC"
+    },
+    {
+      "file": "modern/engine/src/modes.rs",
+      "sha256": "8612D9EA96C6CD67425F7639E1F42AC1724B31225CA8A07BA0AB65FF3AC8D008"
+    },
+    {
+      "file": "modern/engine/src/mutation.rs",
+      "sha256": "8A40A2EDD598A9168C2C6148BE7BF2845582500C604C6195555D7002371FF59B"
+    },
+    {
+      "file": "modern/engine/src/mutation/legacy_mrate.rs",
+      "sha256": "01103392898074CB287794636C131DC76E264DE940A49FB44CFB7F877EDCC4CE"
+    },
+    {
+      "file": "modern/engine/src/native_random.rs",
+      "sha256": "3B2B316F92FB101D503B19AB6459A233304E6040B28E65721E3DD6127369B23B"
+    },
+    {
+      "file": "modern/engine/src/native_skin.rs",
+      "sha256": "56466D1DA2C91DF6426A4CAC57F10B73927AF627FFFDCF39459E17AA90CE3126"
+    },
+    {
+      "file": "modern/engine/src/physics.rs",
+      "sha256": "920FF5696A313DE977373053B471290270EB84AD640B44204BD26513BC37AD04"
+    },
+    {
+      "file": "modern/engine/src/physics/collision.rs",
+      "sha256": "9C8F14FDA46DEB9BD1744FE4ADC02438EC86A710D51F1B736C3EAE6DA6E25817"
+    },
+    {
+      "file": "modern/engine/src/robot_state.rs",
+      "sha256": "8995060A6064C564FDC5CD30EAEDBE7B68C808A0C3374390649590E81A854A20"
+    },
+    {
+      "file": "modern/engine/src/shot/projectile.rs",
+      "sha256": "258CBAA266F5E61199ADA4194FA53B4AC5ACD27CD67F6F12728520CEA6350CCD"
+    },
+    {
+      "file": "modern/engine/src/vegetation.rs",
+      "sha256": "667A18E6911BE67994626ACE0E21A6A9B551F4CF1494B6D3942AF729C68665FB"
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "sha256": "B54034A1AB3F7074BEC27D3F61D7A59245092E223829CB55B79144D436D37CC8"
+    },
+    {
+      "file": "modern/engine/src/world/cached_radius.rs",
+      "sha256": "21E1FF741E3C15FA33B25834DDA0FB56F3BF90E77E36EAC54774E69A8D91BA4C"
+    },
+    {
+      "file": "modern/engine/src/world/classic_tournament_tests.rs",
+      "sha256": "3882FD72E63FA6B30BF5451E221153225A0407A63D8965952E67F8F3469008D1"
+    },
+    {
+      "file": "modern/engine/src/world/league_series.rs",
+      "sha256": "F7C94838E0038BF1E489203995B08687DFA13A1CB86002DF9FA861E24F178529"
+    },
+    {
+      "file": "modern/engine/src/world/native_biology.rs",
+      "sha256": "16131A806DEC5FB02D64BD59FBACEA8F650F5929C98E9372A0F35B373C24C0B0"
+    },
+    {
+      "file": "modern/engine/src/world/native_collisions.rs",
+      "sha256": "816CEEAA13475E36F887F767B04F7F0165757AD17AC4393D41A9A6589B2A143B"
+    },
+    {
+      "file": "modern/engine/src/world/native_disqualification.rs",
+      "sha256": "035F6239B8EA0B5EB393C2FD2DE7D16CF42576A87D3349E1CF8AE9AD7EE88546"
+    },
+    {
+      "file": "modern/engine/src/world/native_dynamic_costs.rs",
+      "sha256": "B72974A62A270B835177B1135F5393C6CE2D5DDDC9082DFBF4BC675AF946E494"
+    },
+    {
+      "file": "modern/engine/src/world/native_export.rs",
+      "sha256": "D1459A649DB664842E73C18CC8822113F446621BE93D1C51B5E232607449025F"
+    },
+    {
+      "file": "modern/engine/src/world/native_graphs.rs",
+      "sha256": "FC49CA77E771D9CCB0B0CA196093F24F3AA6B87142EF547D396F91E9EAE115E3"
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "sha256": "91AC096F745FD118CE26BECD4F03354277872E8F0204FE3A7454C0C50D5CEDF3"
+    },
+    {
+      "file": "modern/engine/src/world/native_league.rs",
+      "sha256": "932DE8C1ECAFAE21C7DFB5FB24D0F994D6D5577930A665A45121FF9736F30969"
+    },
+    {
+      "file": "modern/engine/src/world/native_mutation_oscillation.rs",
+      "sha256": "7DCA9BEA0F38D6B48ECF2D4225E24F29FBF2F316255C3EA0F1EBD1B1ABC7F9D4"
+    },
+    {
+      "file": "modern/engine/src/world/native_obstacles.rs",
+      "sha256": "AB3C083AE4664B94999030155AAB7889C4A27211014D40FCFF73CCD2C44A82C9"
+    },
+    {
+      "file": "modern/engine/src/world/native_random_world.rs",
+      "sha256": "956A732F20D1B7195B8692A530431FCB0097CE89BD308E58731AD9B70B191C65"
+    },
+    {
+      "file": "modern/engine/src/world/native_recognition_fudging.rs",
+      "sha256": "357677340FDB0656EAF661A551EDD6642BAB693A30DE663A0E0AADBF072CB586"
+    },
+    {
+      "file": "modern/engine/src/world/native_script_placement.rs",
+      "sha256": "831D9AEE660B2177A58A534DC95D3E280F743F052D662F71899C5E90AAC51F4D"
+    },
+    {
+      "file": "modern/engine/src/world/native_sim_export.rs",
+      "sha256": "60877A0C0442293AA72FBA0E1957FED62C72B0C48945A4EB1E2CDCF6AE1EEEA2"
+    },
+    {
+      "file": "modern/engine/src/world/native_virus.rs",
+      "sha256": "D5297B34EA737E87EBD90F739B1D2DCAABF2332AAAEF7A6729AAA7D462E8CAD8"
+    },
+    {
+      "file": "modern/engine/src/world/native_waste.rs",
+      "sha256": "5BF8D63F93D1B5EEC9A1D056C2018DB2D3FD06B64B19A604C0FE9BAB99DC7556"
+    },
+    {
+      "file": "modern/engine/src/world/player_insertion.rs",
+      "sha256": "30AC9FEB53EEE9E57F26EF17D10797A5E80AA772CD3150084C61092891045242"
+    },
+    {
+      "file": "modern/engine/src/world/staged_evolution.rs",
+      "sha256": "D41646AD1AFACD9B8C8E5F4BA1E76C88A11B1E30ADEB488E4C9D8D5A8DE6C714"
+    },
+    {
+      "file": "modern/engine/tests/db24832_genuine_feeding.rs",
+      "sha256": "6457133EE2691611E0A7AC6C5684BAD14C830211625AD774F735433D626FFBA2"
+    },
+    {
+      "file": "modern/engine/tests/db24832_genuine_load_transients.rs",
+      "sha256": "EA6B84028FF4EB219BB7CEA1F6439BABB88E58C96ED8BDE7533BDF7866C9716D"
+    },
+    {
+      "file": "modern/engine/tests/db24832_starter_movement.rs",
+      "sha256": "957CFAFCAEBF5CBF8F62ED831F17FBD246AA519B08AD34A2A67DE9C64E435F98"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-body-start-48032.sim",
+      "sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-chloroplast-start-48032.sim",
+      "sha256": "CB85F10215164C18EB8D8E73A98C2B365B91FE5F7F2BB52E4F2789B7D1E38859"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-feeding-start-48032.sim",
+      "sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-fixed-start-48032.sim",
+      "sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-body-cycle1-20261016.sim",
+      "sha256": "0F6EBE616D67BA8FAA45372BE1F0DB0FACEC2994DCC1632953F31634E9A847E5"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-capture-provenance.json",
+      "sha256": "ECFB5A163559C8EAB224FA504154B2CFD68498F70E732AABC582F236CCD55098"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle1-20261016.sim",
+      "sha256": "50DD4B01A0E0E0A19D3E79896B85127A41897BCA8762F8EBF020C63A78DA3170"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-chloroplast-cycle10-20261016.sim",
+      "sha256": "569F1272D28A876B3F140420193E5A767B6E9B2B0853B5E36D39513655A4BCCE"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle1-20261017.sim",
+      "sha256": "0D0655818BECF73E1722E0A56AEBE05C4D083C0CC60C2C7F6F6A0DFEAD844337"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-feeding-cycle10-20261017.sim",
+      "sha256": "A82ABBC5FA3E851A5F4E7506B8497FABA985ABDE24509DC6905B2F2D1F3C79CF"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-fixed-cycle1-20261016.sim",
+      "sha256": "01360A500B63AAD15D96384A25E792AB7C50CAB630497017F7C1214D00535BF4"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle1-20261016.sim",
+      "sha256": "766F386C392C59834A3390A2C726D3E2F8DB695FE5B05A932A593D0DCCD010E3"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle10-20261016.sim",
+      "sha256": "DA23FCBE0B725FCF134F7FA25022951E600088603126BFB6E327027FF23465A2"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-movement-cycle102-20261016.sim",
+      "sha256": "2BB48F9883CA05E5771989CB08056BAC737E1EE50F148A8B234FF894EAF37B5B"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-genuine-ties-cycle1-20261017.sim",
+      "sha256": "B1E4223FEF34CDA7FC1C7E1661B086751D83515AB387C0DF596AA2728CA6501D"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-movement-start-48032.sim",
+      "sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-original-user.sim",
+      "sha256": "09B77B6EAF0A1A8FFC09C601A8869FE37C4FC4E21860EBF379519FDBFCE8A55E"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832-ties-start-48032.sim",
+      "sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db24832/canonical_cycle_phases.json",
+      "sha256": "08DEA3D05B21EB1EB137E77A2C8616220D189B333BE758A302EA9B2894CD376A"
+    },
+    {
+      "file": "modern/engine/tests/fixtures/db3s_v2_phase1.bin",
+      "sha256": "2832A12FE835CB29EB85F1C4CE1856F67E6BE85B69D3681CF299AB4D496D071C"
+    },
+    {
+      "file": "modern/engine/tests/gpu_ffi.rs",
+      "sha256": "DD67C89D425AF9C3A38445853679616BCD8071199DBA32B2029F689C2DA1086B"
+    },
+    {
+      "file": "modern/engine/tests/native_random_lifecycle_248.rs",
+      "sha256": "57E05E3010070568FB15EAB12340A23F01F4A03621728361B2E979FE5367BAC2"
+    },
+    {
+      "file": "modern/engine/tests/w4_evolution_gpu.rs",
+      "sha256": "3CACAB4F43B49312C19D5F373E960AFCE02AAF9A5C329E0E3CB00D776067C497"
+    },
+    {
+      "file": "output/native-qualification-admission52.ps1",
+      "sha256": "B1A4F68E2A50B1560E482AE0C93DA60147C3EFA80C796B81EE12D6B04C80C386"
+    },
+    {
+      "file": "output/native-qualification-admission53.ps1",
+      "sha256": "8C81E24439DACD2DF72EEC8D615D1CB32A427085DAED664FF69CD5DBD4D73BC0"
+    },
+    {
+      "file": "output/pass52-workspace-metadata.json",
+      "sha256": "88CC430EA0E80F5C7D27865F1E2EB5D01EA6FF5735FDCDBEF6C37A2CF9247AD1"
+    },
+    {
+      "file": "output/pass55-workspace-metadata.json",
+      "sha256": "86D5DAC4DA2AB1ADED08570746E40F69E4E519B1D59E31E659DDA316DD1291D0"
+    },
+    {
+      "file": "output/qualify-capacity-final52.ps1",
+      "sha256": "E0186F20EA85CA10398294F6CEF1DC7C33036F3348C6002A2BF0A9FB0CEFBA76"
+    },
+    {
+      "file": "output/qualify-capacity-final53.ps1",
+      "sha256": "15F9CD4857DB3A8DFBB270ECE2A03BCD2B54ACC752B3AFD9952F20BF571D2355"
+    },
+    {
+      "file": "output/qualify-desktop-pass54.ps1",
+      "sha256": "D1752FD8C9B5F1779BC736AC2DC1412A2D6D2D36CF7A69F71F5399BDB8D834EF"
+    },
+    {
+      "file": "output/qualify-gpu-native-final50.ps1",
+      "sha256": "C2A2A0386F9DB3169A2697B781B2627A962C94383D83DE1F17546A7526ED3DF5"
+    },
+    {
+      "file": "output/qualify-gpu-native-final52.ps1",
+      "sha256": "B76AE77E4ACB8A8FA422C877E560A75AF587F46F1FFE77A43DCB4734EAEDFD32"
+    },
+    {
+      "file": "output/qualify-gpu-native-final53.ps1",
+      "sha256": "18FEAD1CB0653289643A6A844041964872C8126F03AC5A899D62BCAA3ADFAA21"
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass52.ps1",
+      "sha256": "7C8A9A54FA0E1D211B57DC6FB72EC8B5B74216F22CB03E802536C9B521F31049"
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass53.ps1",
+      "sha256": "D392EF4945A7D248D1603FB07532833E80E3DE67A2D82A5619C84491B535D4FF"
+    },
+    {
+      "file": "output/qualify-native-roundtrip-pass55.ps1",
+      "sha256": "90CF0E7CB3281993725D1720154FF20B2DC61D20DDC3D812944F91B7FBB600FC"
+    },
+    {
+      "file": "output/test-native-admission54.ps1",
+      "sha256": "B6744870ED769E68FE75E062A81B6785D0A9033D6C1467714173A8E73DC4F4E9"
+    },
+    {
+      "file": "output/test-native-admission55.ps1",
+      "sha256": "490A7CE4365AB098B5975A251BC8E58BD1A9B14B0358F006C541420256F2E89E"
+    }
+  ],
+  "preserved_wip_image": {
+    "file": "docs/parity/receipts/db24832-world06-shape-editor.png",
+    "sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "policy": "Read-only observation; excluded from commit and qualification sources."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "status": "scoped_checks_completed_long_deferred",
+  "step": "original-world-continuation",
+  "utc": "2026-10-15T14:00:15.0125358Z",
+  "source_parent": "f65a8713c16a49aecfbc36b2ebee5ce2dbca3320",
+  "details": {
+    "reason": "User requested code-first qualification. Newly confirmed native tie and sensing code must be completed before expensive continuation runs. Any partial long-run log is unqualified.",
+    "failed_completed_steps": [],
+    "completed_rust_cases": 324,
+    "full_workspace_qualified": false,
+    "original_world_continuation_qualified": false
+  }
+}

@@ -19,9 +19,11 @@ public sealed class ControlSurfaceBindingTests
     {
         var surfaces = new[]
         {
-            new Surface("MainWindow.axaml", typeof(MainWindow), 26),
-            new Surface("SetupWindow.axaml", typeof(SetupWindow), 11),
-            new Surface("AdvancedSettingsWindow.axaml", typeof(AdvancedSettingsWindow), 2),
+            // The retained ignore-errors toggle replaces the redundant toolbar button handler.
+            new Surface("MainWindow.axaml", typeof(MainWindow), 61),
+            new Surface("SetupWindow.axaml", typeof(SetupWindow), 22),
+            new Surface("AdvancedSettingsWindow.axaml", typeof(AdvancedSettingsWindow), 3),
+            new Surface("GlobalSettingsWindow.axaml", typeof(GlobalSettingsWindow), 3),
             new Surface("DnaEditorWindow.axaml", typeof(DnaEditorWindow), 3),
         };
 
@@ -44,7 +46,10 @@ public sealed class ControlSurfaceBindingTests
             }
 
             foreach (Match control in Regex.Matches(xaml, "<(?:Button|RadioButton)\\b(?<attributes>[^>]*)>"))
-                Assert.Contains("Click=\"", control.Groups["attributes"].Value, StringComparison.Ordinal);
+            {
+                var attributes = control.Groups["attributes"].Value;
+                Assert.Contains("Click=\"", attributes, StringComparison.Ordinal);
+            }
             foreach (Match item in Regex.Matches(xaml, "<MenuItem\\b(?<attributes>[^>]*)/>"))
                 Assert.Contains("Click=\"", item.Groups["attributes"].Value, StringComparison.Ordinal);
         }

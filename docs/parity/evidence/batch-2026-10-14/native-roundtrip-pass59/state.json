@@ -1,0 +1,17 @@
+{
+  "status": "completed",
+  "step": "all",
+  "pid": 10688,
+  "utc": "2026-10-17T08:55:56.0249707Z",
+  "source_parent": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "comparison_base": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "source_manifest_sha256": "583D1DE4880EEE9D312B7B41B2E471CC3A06DEC145EEAE310315136E48DC80DA",
+  "expected_managed_test_counts": {
+    "core": 307,
+    "desktop": 206
+  },
+  "details": {
+    "failed_steps": [],
+    "scope": "All available ordinary CPU outcomes collected; root seals counts, summary and admission separately."
+  }
+}

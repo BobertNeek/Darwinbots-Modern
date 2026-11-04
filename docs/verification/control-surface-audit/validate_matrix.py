@@ -54,14 +54,15 @@ allowed_statuses = {
 }
 expected_surfaces = {
     "SetupWindow": 32,
-    "MainWindow": 39,
-    "AdvancedSettingsWindow": 34,
+    "MainWindow": 59,
+    "AdvancedSettingsWindow": 37,
+    "GlobalSettingsWindow": 7,
     "DnaEditorWindow": 4,
 }
 errors = []
 
-if len(rows) != 109:
-    errors.append(f"expected 109 controls, found {len(rows)}")
+if len(rows) != 139:
+    errors.append(f"expected 139 controls, found {len(rows)}")
 
 ids = [row.get("id") for row in rows]
 if len(set(ids)) != len(ids):
@@ -83,7 +84,7 @@ if dict(surface_counts) != expected_surfaces:
     errors.append(f"unexpected surface counts: {dict(surface_counts)}")
 
 test_text = test_path.read_text(encoding="utf-8-sig")
-test_ids = set(re.findall(r'"((?:setup|live|advanced|dna)\.[^"]+)"', test_text))
+test_ids = set(re.findall(r'"((?:setup|live|advanced|global|dna)\.[^"]+)"', test_text))
 matrix_ids = set(ids)
 if test_ids != matrix_ids:
     errors.append(f"missing from matrix: {sorted(test_ids - matrix_ids)}")

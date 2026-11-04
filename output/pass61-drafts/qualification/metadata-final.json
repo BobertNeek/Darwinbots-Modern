@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "authored_quarantine_final_no_application_or_execution",
+  "sealed_utc": "2026-10-17T10:53:31.684Z",
+  "owner": "/root",
+  "source_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "files": [
+    {
+      "source_path": "output/qualify-native-roundtrip-pass61.ps1",
+      "candidate_path": "output/pass61-drafts/qualification/candidate/output/qualify-native-roundtrip-pass61.ps1",
+      "new_file": true,
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "FD5AC09FE6BA7C6B986C96E875BEA8DEAB5331D1CFBA40AE388129652E0AC730",
+      "candidate_bytes": 58366
+    },
+    {
+      "source_path": "output/probe-native-comparison-output61.ps1",
+      "candidate_path": "output/pass61-drafts/qualification/candidate/output/probe-native-comparison-output61.ps1",
+      "new_file": true,
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "A5F79AE26C610CF290FB4E34860F1C09A41759D8F0ED51AA88FF9AE0E5D82229",
+      "candidate_bytes": 5946
+    },
+    {
+      "source_path": "docs/parity/evidence/batch-2026-10-14/native-poff-source-authority61.json",
+      "candidate_path": "output/pass61-drafts/qualification/candidate/docs/parity/evidence/batch-2026-10-14/native-poff-source-authority61.json",
+      "new_file": true,
+      "base_raw_sha256": null,
+      "candidate_raw_sha256": "9D9796168BD6372C10C6D25850F7089D0E033B120C070BC4F89F168447C73BEF",
+      "candidate_bytes": 3405
+    }
+  ],
+  "derived_from": {
+    "file": "output/qualify-native-roundtrip-pass60.ps1",
+    "raw_sha256": "A6F540D22A3A9C2B071B506DCA0092628920FB2B6E838324BF5AFB1B6A84A20C"
+  },
+  "changes": [
+    "Fresh61 runner and output/source/STOP paths; keep25 original captures55849 strict fields,68 Rust targets and94 ordinary outcomes.",
+    "Separate native-compare stdout JSON from stderr, retain actual nonzero status and stderr-log receipt. Ordinary Rust/managed merged logging unchanged.",
+    "Four isolated regression cases authored: passed JSON, failed JSON+stderr/footer+actual counts/status, invalid JSON+actual failure status, ordinary merged streams.",
+    "Original native source identity/behavior and prior capture observation recorded independently of unexecuted repair."
+  ],
+  "new_managed_test_rows": 0,
+  "new_rust_test_rows": 0,
+  "new_isolated_probe_cases": 4,
+  "execution": {
+    "parser": false,
+    "formatter": false,
+    "product_builds": false,
+    "product_tests": false,
+    "isolated_probe": false,
+    "desktop": false,
+    "gpu": false
+  },
+  "historical_initial_authoring_metadata": {
+    "file": "output/pass61-drafts/qualification/metadata.json",
+    "sha256": "80CC442F10B9492CE8F6BA5CA65D3890C5618E5945E8201CC8C91E7AD6AEE1D3",
+    "boundary": "Initial authoring history only; candidate hashes in this final release supersede it after static path/state-token review."
+  }
+}

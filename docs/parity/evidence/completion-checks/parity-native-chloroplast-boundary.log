@@ -1,0 +1,42 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `release` profile [optimized] target(s) in 5.97s
+     Running tests\db2_vegetation.rs (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\target\release\deps\db2_vegetation-80dd5b34cb567973.exe)
+
+running 19 tests
+test chloroplast_sysvars_use_db2_memory_addresses ... ok
+test every_db2_248_sysvar_resolves_to_its_vb6_address ... ok
+test initial_and_reseeded_vegetables_start_with_db2_chloroplasts ... ok
+test full_chloroplast_plant_receives_db2_light_and_body_split ... ok
+test chloroplast_construction_charges_the_configured_cost_once ... ok
+test darkness_prevents_chloroplast_feeding ... ok
+test chloroplasts_decay_naturally_without_a_removal_command ... ok
+test chloroplast_pressure_uses_equivalents_and_a_strict_population_boundary ... ok
+test day_night_cycle_changes_after_the_configured_number_of_completed_cycles ... ok
+test repopulation_waits_for_cooldown_and_spawns_configured_batch ... ok
+test slime_shell_poison_and_venom_use_db2_caps_costs_and_decay ... ok
+test sunlight_intensity_scales_non_pond_photosynthesis ... ok
+test tides_reduce_photosynthetic_yield_at_high_tide ... ok
+test slime_blocks_ties_by_the_legacy_probability_threshold ... ok
+test vegetable_reproduction_splits_parent_biology_without_resetting_child ... ok
+test vegetable_reproduction_is_throttled_near_the_population_cap ... ok
+test weather_sun_band_controls_light_memory_for_wrapped_positions ... FAILED
+test total_energy_threshold_modes_apply_vb6_sun_overrides ... ok
+test chloroplasts_metabolize_waste_into_energy_and_body ... ok
+
+failures:
+
+---- weather_sun_band_controls_light_memory_for_wrapped_positions stdout ----
+
+thread 'weather_sun_band_controls_light_memory_for_wrapped_positions' (22524) panicked at modern\engine\tests\db2_vegetation.rs:685:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    weather_sun_band_controls_light_memory_for_wrapped_positions
+
+test result: FAILED. 18 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test db2_vegetation`

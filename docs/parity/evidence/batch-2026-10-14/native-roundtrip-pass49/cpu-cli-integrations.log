@@ -1,0 +1,20 @@
+   Compiling darwinbots-cli v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\cli)
+    Finished `release` profile [optimized] target(s) in 1m 21s
+     Running tests\commands.rs (target\release\deps\commands-eec7744335c58eb1.exe)
+
+running 3 tests
+test benchmark_populates_requested_number_of_organisms ... ok
+test run_imports_legacy_bot_advances_ticks_and_emits_json ... ok
+test stress_command_checks_invariants_and_emits_reproducible_hash ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\native_comparison.rs (target\release\deps\native_comparison-d3c5181653a931bd.exe)
+
+running 3 tests
+test comparison_reports_actual_fields_and_applies_tolerance_only_to_floats ... ok
+test replay_uses_signed_original_cycles_and_preserves_the_pending_first_update ... ok
+test suite_replay_and_compare_preserve_inputs_and_fail_for_changed_state ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+

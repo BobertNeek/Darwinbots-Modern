@@ -1,0 +1,1235 @@
+{
+  "schema_version": 2,
+  "batch": 62,
+  "sealed_utc": "2026-10-17T13:26:19.207Z",
+  "source_head": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass62-source.json",
+    "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+    "pinned_files": 661
+  },
+  "workflow": "Modern cross-platform",
+  "workflow_file": ".github/workflows/modern-cross-platform.yml",
+  "run": {
+    "id": 39035994065,
+    "html_url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39035994065",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T13:18:07Z",
+    "updated_at": "2026-10-17T13:23:00Z",
+    "head_sha": "9d9321e4b86d76d18ef5e2c10f6c873ce0446089"
+  },
+  "all_jobs_terminal": true,
+  "state": "needs_repair",
+  "failure_stage": "rust_library_test_compilation",
+  "jobs": [
+    {
+      "job_id": 117405752101,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T13:18:13Z",
+      "completed_at": "2026-10-17T13:23:00Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T13:18:16Z",
+          "completed_at": "2026-10-17T13:18:20Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T13:18:20Z",
+          "completed_at": "2026-10-17T13:18:29Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T13:18:29Z",
+          "completed_at": "2026-10-17T13:18:45Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T13:18:45Z",
+          "completed_at": "2026-10-17T13:19:07Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T13:19:07Z",
+          "completed_at": "2026-10-17T13:22:55Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T13:22:55Z",
+          "completed_at": "2026-10-17T13:22:55Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T13:22:55Z",
+          "completed_at": "2026-10-17T13:22:55Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T13:22:55Z",
+          "completed_at": "2026-10-17T13:22:56Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T13:22:56Z",
+          "completed_at": "2026-10-17T13:22:56Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T13:22:56Z",
+          "completed_at": "2026-10-17T13:22:56Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T13:22:56Z",
+          "completed_at": "2026-10-17T13:22:56Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T13:22:56Z",
+          "completed_at": "2026-10-17T13:22:56Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T13:22:56Z",
+          "completed_at": "2026-10-17T13:22:56Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T13:22:56Z",
+          "completed_at": "2026-10-17T13:22:57Z"
+        }
+      ],
+      "rust": {
+        "executed": false,
+        "full_expected_corpus_completed": false,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 0,
+        "counts": null,
+        "test_result_summaries": 0,
+        "compile_failed_before_test_execution": true,
+        "compiler_error_count": 13,
+        "compiler_errors": [
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeRecordFile` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:43:32",
+            "line": 626
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeSimulationTail` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:45:31",
+            "line": 642
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeValue` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:51:42",
+            "line": 658
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:491:48",
+            "line": 674
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:516:46",
+            "line": 680
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:524:52",
+            "line": 686
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:526:46",
+            "line": 692
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:257:13",
+            "line": 698
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:263:13",
+            "line": 704
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:269:13",
+            "line": 710
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:275:13",
+            "line": 716
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:284:13",
+            "line": 722
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:293:13",
+            "line": 728
+          }
+        ],
+        "census_receipt": {
+          "file": "output/hosted-main-9d9321e-agent/rust-target-results.json",
+          "sha256": "9180D67683A2EB204D0F210A321C29676DF7A559F2DFD6D706AF45B791E63B85",
+          "bytes": 57857
+        },
+        "log": {
+          "file": "output/hosted-main-9d9321e-agent/logs/osx-x64-completed.log",
+          "sha256": "607B8DDEED6F648793AFF3235DE57328D1CAB913337F8671652F70DD8EF5CA08",
+          "bytes": 62769
+        },
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "asset_counts": null,
+        "reason": "Publish, smoke and package upload skipped; no package artifact exists."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117405752186,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T13:18:11Z",
+      "completed_at": "2026-10-17T13:20:02Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T13:18:11Z",
+          "completed_at": "2026-10-17T13:18:13Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T13:18:13Z",
+          "completed_at": "2026-10-17T13:18:16Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T13:18:16Z",
+          "completed_at": "2026-10-17T13:18:25Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T13:18:25Z",
+          "completed_at": "2026-10-17T13:18:33Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T13:18:33Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T13:19:59Z",
+          "completed_at": "2026-10-17T13:19:59Z"
+        }
+      ],
+      "rust": {
+        "executed": false,
+        "full_expected_corpus_completed": false,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 0,
+        "counts": null,
+        "test_result_summaries": 0,
+        "compile_failed_before_test_execution": true,
+        "compiler_error_count": 13,
+        "compiler_errors": [
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeRecordFile` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:43:32",
+            "line": 542
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeSimulationTail` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:45:31",
+            "line": 558
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeValue` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:51:42",
+            "line": 574
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:491:48",
+            "line": 590
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:516:46",
+            "line": 596
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:524:52",
+            "line": 602
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:526:46",
+            "line": 608
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:257:13",
+            "line": 614
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:263:13",
+            "line": 620
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:269:13",
+            "line": 626
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:275:13",
+            "line": 632
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:284:13",
+            "line": 638
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:293:13",
+            "line": 644
+          }
+        ],
+        "census_receipt": {
+          "file": "output/hosted-main-9d9321e-agent/rust-target-results.json",
+          "sha256": "9180D67683A2EB204D0F210A321C29676DF7A559F2DFD6D706AF45B791E63B85",
+          "bytes": 57857
+        },
+        "log": {
+          "file": "output/hosted-main-9d9321e-agent/logs/linux-x64-completed.log",
+          "sha256": "4D1C793F0460FF0832C5840B67F08BE2E206331382988ECD4686A099C9A5AF3B",
+          "bytes": 57198
+        },
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "asset_counts": null,
+        "reason": "Publish, smoke and package upload skipped; no package artifact exists."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117405752227,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "platform": "win-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T13:18:11Z",
+      "completed_at": "2026-10-17T13:22:30Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T13:18:11Z",
+          "completed_at": "2026-10-17T13:18:13Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T13:18:13Z",
+          "completed_at": "2026-10-17T13:18:23Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T13:18:23Z",
+          "completed_at": "2026-10-17T13:18:51Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T13:18:51Z",
+          "completed_at": "2026-10-17T13:19:35Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T13:19:35Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:26Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T13:22:26Z",
+          "completed_at": "2026-10-17T13:22:28Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T13:22:28Z",
+          "completed_at": "2026-10-17T13:22:28Z"
+        }
+      ],
+      "rust": {
+        "executed": false,
+        "full_expected_corpus_completed": false,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 0,
+        "counts": null,
+        "test_result_summaries": 0,
+        "compile_failed_before_test_execution": true,
+        "compiler_error_count": 13,
+        "compiler_errors": [
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeRecordFile` in the crate root",
+            "location": "--> modern\\engine\\src\\world\\native_reproduction.rs:43:32",
+            "line": 555
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeSimulationTail` in the crate root",
+            "location": "--> modern\\engine\\src\\world\\native_reproduction.rs:45:31",
+            "line": 571
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeValue` in the crate root",
+            "location": "--> modern\\engine\\src\\world\\native_reproduction.rs:51:42",
+            "line": 587
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern\\engine\\src\\world\\native_shots.rs:491:48",
+            "line": 603
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern\\engine\\src\\world\\native_shots.rs:516:46",
+            "line": 609
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern\\engine\\src\\world\\native_shots.rs:524:52",
+            "line": 615
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern\\engine\\src\\world\\native_shots.rs:526:46",
+            "line": 621
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern\\engine\\src\\world\\native_energy.rs:257:13",
+            "line": 627
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern\\engine\\src\\world\\native_energy.rs:263:13",
+            "line": 633
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern\\engine\\src\\world\\native_energy.rs:269:13",
+            "line": 639
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern\\engine\\src\\world\\native_energy.rs:275:13",
+            "line": 645
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern\\engine\\src\\world\\native_energy.rs:284:13",
+            "line": 651
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern\\engine\\src\\world\\native_energy.rs:293:13",
+            "line": 657
+          }
+        ],
+        "census_receipt": {
+          "file": "output/hosted-main-9d9321e-agent/rust-target-results.json",
+          "sha256": "9180D67683A2EB204D0F210A321C29676DF7A559F2DFD6D706AF45B791E63B85",
+          "bytes": 57857
+        },
+        "log": {
+          "file": "output/hosted-main-9d9321e-agent/logs/win-x64-completed.log",
+          "sha256": "593085B640ED8F36BDB2333B9AABAEFB0CBE52714B162712550CC4BF93252302",
+          "bytes": 59092
+        },
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "asset_counts": null,
+        "reason": "Publish, smoke and package upload skipped; no package artifact exists."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    },
+    {
+      "job_id": 117405752252,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T13:18:18Z",
+      "completed_at": "2026-10-17T13:20:50Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-17T13:18:19Z",
+          "completed_at": "2026-10-17T13:18:21Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-17T13:18:21Z",
+          "completed_at": "2026-10-17T13:18:26Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-17T13:18:26Z",
+          "completed_at": "2026-10-17T13:18:35Z"
+        },
+        {
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-17T13:18:35Z",
+          "completed_at": "2026-10-17T13:18:44Z"
+        },
+        {
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 5,
+          "started_at": "2026-10-17T13:18:44Z",
+          "completed_at": "2026-10-17T13:20:45Z"
+        },
+        {
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-17T13:20:45Z",
+          "completed_at": "2026-10-17T13:20:45Z"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-17T13:20:45Z",
+          "completed_at": "2026-10-17T13:20:45Z"
+        },
+        {
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-17T13:20:45Z",
+          "completed_at": "2026-10-17T13:20:46Z"
+        },
+        {
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-17T13:20:46Z",
+          "completed_at": "2026-10-17T13:20:46Z"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-17T13:20:46Z",
+          "completed_at": "2026-10-17T13:20:46Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-17T13:20:46Z",
+          "completed_at": "2026-10-17T13:20:46Z"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-10-17T13:20:46Z",
+          "completed_at": "2026-10-17T13:20:46Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-17T13:20:46Z",
+          "completed_at": "2026-10-17T13:20:46Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-17T13:20:46Z",
+          "completed_at": "2026-10-17T13:20:48Z"
+        }
+      ],
+      "rust": {
+        "executed": false,
+        "full_expected_corpus_completed": false,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 0,
+        "counts": null,
+        "test_result_summaries": 0,
+        "compile_failed_before_test_execution": true,
+        "compiler_error_count": 13,
+        "compiler_errors": [
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeRecordFile` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:43:32",
+            "line": 544
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeSimulationTail` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:45:31",
+            "line": 560
+          },
+          {
+            "code": "E0433",
+            "message": "cannot find `NativeValue` in the crate root",
+            "location": "--> modern/engine/src/world/native_reproduction.rs:51:42",
+            "line": 576
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:491:48",
+            "line": 592
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:516:46",
+            "line": 598
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:524:52",
+            "line": 604
+          },
+          {
+            "code": "E0616",
+            "message": "field `free_slots` of struct `projectile::ProjectilePool` is private",
+            "location": "--> modern/engine/src/world/native_shots.rs:526:46",
+            "line": 610
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:257:13",
+            "line": 616
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:263:13",
+            "line": 622
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:269:13",
+            "line": 628
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:275:13",
+            "line": 634
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:284:13",
+            "line": 640
+          },
+          {
+            "code": "E0063",
+            "message": "missing field `repopulation_counter` in initializer of `native_energy::NativeProcessCaches`",
+            "location": "--> modern/engine/src/world/native_energy.rs:293:13",
+            "line": 646
+          }
+        ],
+        "census_receipt": {
+          "file": "output/hosted-main-9d9321e-agent/rust-target-results.json",
+          "sha256": "9180D67683A2EB204D0F210A321C29676DF7A559F2DFD6D706AF45B791E63B85",
+          "bytes": 57857
+        },
+        "log": {
+          "file": "output/hosted-main-9d9321e-agent/logs/osx-arm64-completed.log",
+          "sha256": "F73F3DF773AD034608741826A512C447434AD381F64C0E922B4CFC54B48470B3",
+          "bytes": 57811
+        },
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "desktop": {
+        "executed": false,
+        "counts": null,
+        "trx": null,
+        "reason": "Skipped after Rust lib-test compilation failed."
+      },
+      "package": {
+        "published": false,
+        "smoke_executed": false,
+        "native_library": null,
+        "bundled_assets_verified": 0,
+        "asset_counts": null,
+        "reason": "Publish, smoke and package upload skipped; no package artifact exists."
+      },
+      "not_run_after_failure": [
+        "Test desktop core",
+        "Test rendered desktop controls",
+        "Publish desktop package",
+        "Smoke test published desktop package",
+        "Run actions/upload-artifact@v4",
+        "Post Run actions/setup-dotnet@v4"
+      ],
+      "artifacts": []
+    }
+  ],
+  "aggregate": {
+    "platforms": 4,
+    "declared_unique_rust_target_identities": 68,
+    "actual_unique_rust_target_identities": 0,
+    "total_rust_target_executions": 0,
+    "actual_executed_rust_tests": 0,
+    "rust": null,
+    "compiler_error_diagnostics": 52,
+    "unique_compiler_error_locations": 13,
+    "actual_executed_core_tests": 0,
+    "actual_executed_desktop_tests": 0,
+    "core_counts": null,
+    "desktop_counts": null,
+    "packages_published": 0,
+    "package_smokes_executed": 0,
+    "declared_expected_core_per_platform": 314,
+    "declared_expected_desktop_per_platform": 214,
+    "full_rust_managed_or_package_corpus_completed": false
+  },
+  "failure_diagnosis": {
+    "scope": "Thirteen Rust test-source compile errors repeat on all four platforms; no failing runtime test rows.",
+    "groups": [
+      {
+        "code": "E0433",
+        "count_per_platform": 3,
+        "file": "modern/engine/src/world/native_reproduction.rs",
+        "lines": [
+          43,
+          45,
+          51
+        ],
+        "message": "NativeRecordFile, NativeSimulationTail and NativeValue are referenced at the crate root but are not re-exported there."
+      },
+      {
+        "code": "E0616",
+        "count_per_platform": 4,
+        "file": "modern/engine/src/world/native_shots.rs",
+        "lines": [
+          491,
+          516,
+          524,
+          526
+        ],
+        "message": "New test accesses private ProjectilePool.free_slots."
+      },
+      {
+        "code": "E0063",
+        "count_per_platform": 6,
+        "file": "modern/engine/src/world/native_energy.rs",
+        "lines": [
+          257,
+          263,
+          269,
+          275,
+          284,
+          293
+        ],
+        "message": "Existing NativeProcessCaches test initializers omit the newly added repopulation_counter field."
+      }
+    ],
+    "repairs_authored_or_applied_by_collector": false
+  },
+  "artifacts": {
+    "total_count": 0,
+    "items": [],
+    "api": {
+      "file": "output/hosted-main-9d9321e-agent/api/final-artifacts.json",
+      "sha256": "D3AD979D01443A9D7342E7FBE39064B41EBDB340029293F1B099BCFB6C493C42",
+      "bytes": 33
+    }
+  },
+  "source_asset_baseline": {
+    "receipt": {
+      "file": "output/hosted-main-9d9321e-agent/windows-source-bots.json",
+      "sha256": "FFE8AF1820EA4E9EC1A2221B9E2F463145EEC5E2DACB9224EEBE13A362ED11D7",
+      "bytes": 34329
+    },
+    "source_files": 48,
+    "raw_source_matches_commit": 23,
+    "only_lf_normalized_source_matches_commit": 25,
+    "all_source_files_use_crlf": true,
+    "packaged_files_verified": 0,
+    "boundary": "This is the frozen Windows source baseline only. Raw identities and LF-only normalization are separate; no package asset identity is established because publish was skipped."
+  },
+  "dna_export_results": {
+    "status": "not_run",
+    "trx": null,
+    "tests": [
+      {
+        "name": "RenderedControlSurfaceAuditTests.CompletedClassicDnaExportUsesTheFolderPickerAndPreservesOriginalFiles",
+        "outcome": null
+      },
+      {
+        "name": "CommunityLeagueNativeTests.PopulationSeedingScoresExtinctionThenAutomaticallyRunsTheClassicTournamentAndExportsStartupDna",
+        "outcome": null
+      },
+      {
+        "name": "DnaExportRenderedTests.MainWindowSelectedOrganismExportsExactDnaAndKeepsCanceledRouteInert",
+        "outcome": null
+      }
+    ]
+  },
+  "all_main_ordinary_outcomes_collected": true,
+  "qualification_passed": false,
+  "evidence": [
+    {
+      "file": "output/native-roundtrip-pass62-source.json",
+      "sha256": "5F5E901F1B2461D2C9B0A67CC3CDDD45BEE3DC2061120CF12FC33FADF16B72ED",
+      "bytes": 113644
+    },
+    {
+      "file": "output/pass62-workspace-metadata.json",
+      "sha256": "B805F4B22730F3C4116476017F0AFCA39989DD7718AA2A4348820070546C8D23",
+      "bytes": 21645
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/api/final-run.json",
+      "sha256": "D90E3A4991E2A1246B08EB7AB2CEE9C4C73B49E1CF35A51302B8E86DA4953010",
+      "bytes": 13128
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/api/final-jobs.json",
+      "sha256": "5F2B7ACD0546713975BF582516CB2CABB950EEDB99AAB03F4C1457860BBBFDF0",
+      "bytes": 13309
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/api/final-artifacts.json",
+      "sha256": "D3AD979D01443A9D7342E7FBE39064B41EBDB340029293F1B099BCFB6C493C42",
+      "bytes": 33
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/api/committed-tree.json",
+      "sha256": "60ABC7E4CA1C9A22F64AA48FA33F8D1837357A34459DF665EA67611B872FA47D",
+      "bytes": 620653
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/rust-target-results.json",
+      "sha256": "9180D67683A2EB204D0F210A321C29676DF7A559F2DFD6D706AF45B791E63B85",
+      "bytes": 57857
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/windows-source-bots.json",
+      "sha256": "FFE8AF1820EA4E9EC1A2221B9E2F463145EEC5E2DACB9224EEBE13A362ED11D7",
+      "bytes": 34329
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/platform-osx-x64-job-check.json",
+      "sha256": "9BD8E9B11A551D9DB3857CD6AD08231BDDAA9A715861C82217E83E5C0BF11326",
+      "bytes": 10919
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/platform-linux-x64-job-check.json",
+      "sha256": "3378F0B957F352283E13AFD419BBB26535DA50A6A2B466AF793CA60C2EBEE4FD",
+      "bytes": 10923
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/platform-win-x64-job-check.json",
+      "sha256": "4566A80229668A23AEFB6AC989579DE71F0A339A85F8BDDAD23B7C2EA846CD14",
+      "bytes": 11059
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/platform-osx-arm64-job-check.json",
+      "sha256": "79CEC1E18914EF24E8AAE05C9348E58FF069E964F2EB267B58B2CADDDB741B85",
+      "bytes": 10923
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/logs/osx-x64-completed.log",
+      "sha256": "607B8DDEED6F648793AFF3235DE57328D1CAB913337F8671652F70DD8EF5CA08",
+      "bytes": 62769
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/logs/linux-x64-completed.log",
+      "sha256": "4D1C793F0460FF0832C5840B67F08BE2E206331382988ECD4686A099C9A5AF3B",
+      "bytes": 57198
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/logs/win-x64-completed.log",
+      "sha256": "593085B640ED8F36BDB2333B9AABAEFB0CBE52714B162712550CC4BF93252302",
+      "bytes": 59092
+    },
+    {
+      "file": "output/hosted-main-9d9321e-agent/logs/osx-arm64-completed.log",
+      "sha256": "F73F3DF773AD034608741826A512C447434AD381F64C0E922B4CFC54B48470B3",
+      "bytes": 57811
+    }
+  ],
+  "boundaries": [
+    "All four jobs completed with failure normally; no cancellation, retry, rerun or workflow dispatch was performed by this collector.",
+    "Rust compilation emitted no Running/Doc-tests header and no test-result summary on any platform. Counts stay null; zero target executions does not mean a passing test corpus. The 52 compiler diagnostics repeat 13 unique source locations and are not failed test rows.",
+    "Core314/Desktop214 and 68 Rust targets are declarations from frozen source metadata. MAIN ran neither managed suite, produced no TRX/screenshots and published no package or smoke result. Actual managed counts remain null.",
+    "The API reports zero artifacts, so there are no hosted binaries to execute or inspect. No package DLL, packaged bot bytes or package-native identity is claimed. The 48-file source baseline retains its raw-vs-LF identity distinction.",
+    "Completed-job logs were retrieved only after each job became terminal using gh api job/logs. Stored files are captured UTF-8 CLI log text with LF line endings; ANSI and timestamp removal occurs only in the derived census.",
+    "This receipt covers MAIN only and substitutes for neither separate diagnostics nor local CPU, genuine-original, physical GPU/capacity or visible acceptance. Source, HEAD, runners and unrelated PNG were not changed; no local product/build/test/UI/GPU action was run."
+  ]
+}

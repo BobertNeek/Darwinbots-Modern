@@ -1,0 +1,467 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 40.66s
+     Running tests\contracts.rs (target\debug\deps\contracts-15d8523ccda91f2b.exe)
+
+running 33 tests
+test db2_defaults_are_exposed_by_engine_config ... ok
+test batch_spawn_publishes_one_complete_population_snapshot ... ok
+test db3s_v2_migrates_every_existing_robot_field ... ok
+test db3s_v3_old_save_defaults_standard_mutation_profile ... ok
+test db3s_v3_older_save_defaults_asexual_heredity_and_identity_fields ... ok
+test db3s_v2_accepts_parent_defaulted_field_omissions ... ok
+test db3s_v3_rejects_malformed_standard_mutation_profile ... ok
+test db3s_v3_round_trip_preserves_complete_phase1_state ... ok
+test engine_uses_vm_flow_semantics_for_movement_intents ... ok
+test imports_legacy_dna_and_preserves_user_variables ... ok
+test db3s_v3_missing_toxin_projectile_fields_default_to_aligned_empty_payloads ... ok
+test db3s_v3_round_trip_preserves_nondefault_standard_mutation_profile ... ok
+test invariant_checker_accepts_slot_reuse_and_seeded_ticks ... ok
+test db3s_v3_round_trip_preserves_in_flight_toxin_payload ... ok
+test mutation_free_save_disables_saved_mutations_without_changing_live_engine ... ok
+test parser_compiles_symbolic_memory_operands_to_numeric_addresses ... ok
+test db3s_v3_round_trip_preserves_asexual_birth_state ... ok
+test newborn_and_reused_slots_start_without_toxin_effects ... ok
+test in_flight_toxin_uses_frozen_species_after_owner_species_change ... ok
+test save_version_one_is_rejected_after_db2_state_upgrade ... ok
+test save_files_are_versioned_and_round_trip_reference_state ... ok
+test snapshot_v2_exposes_phase1_telemetry ... ok
+test later_toxin_hit_caps_fractional_duration_at_32000 ... ok
+test db3s_v3_round_trip_preserves_mid_effect_toxin_state ... ok
+test unavailable_gpu_falls_back_to_cpu_when_allowed ... ok
+test unavailable_gpu_is_an_error_when_fallback_is_disabled ... ok
+test unknown_legacy_instruction_becomes_zero_with_location_warning ... ok
+test core_06_seeded_repeatability_save_resume_and_atomicity_contract ... ok
+test save_round_trip_preserves_pre_refactor_robot_state_fields ... ok
+test tick_many_advances_a_batch_and_publishes_the_final_state ... ok
+test seeded_cpu_ticks_are_reproducible_and_publish_snapshots ... ok
+test review_projection_db3s_v3_resumes_exact_mid_soft_tie_lifecycle ... ok
+test db3s_v3_configuration_groups_default_missing_fields_round_trip_and_reject_invalid_atomically ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests\core_state_contracts.rs (target\debug\deps\core_state_contracts-5c180ce12254e6fe.exe)
+
+running 5 tests
+test robot_limit_rejects_configurations_above_db2_maximum ... ok
+test legacy_object_payload_fields_survive_native_serde ... ok
+test native_ffi_updates_cost_and_recording_authority ... ok
+test core_policy_state_round_trips_through_native_save ... ok
+test per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically ... FAILED
+
+failures:
+
+---- per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically stdout ----
+
+thread 'per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically' (23136) panicked at modern\engine\tests\core_state_contracts.rs:279:5:
+assertion `left == right` failed
+  left: Object {"age": Number(6), "birth_cycle": Number(17), "body": Number(45), "body_fraction": Number(0.0), "chloroplasts": Number(14), "decay_timer": Number(0), "dna": String("dead-dna"), "dna_length": Number(19), "energy": Number(321), "generation": Number(4), "kills": Number(3), "new_mutations": Number(2), "offspring": Number(8), "parent": Object {"generation": Number(0), "slot": Number(0)}, "position": Array [Number(90.5), Number(80.25)], "repopulating": Bool(false), "species": Number(0), "total_mutations": Number(11), "unique_id": Number(9001), "velocity": Array [Number(-1.25), Number(2.5)]}
+ right: Object {"age": Number(6), "birth_cycle": Number(17), "body": Number(45), "chloroplasts": Number(14), "dna": String("dead-dna"), "dna_length": Number(19), "energy": Number(321), "generation": Number(4), "kills": Number(3), "new_mutations": Number(2), "offspring": Number(8), "parent": Object {"generation": Number(0), "slot": Number(0)}, "position": Array [Number(90.5), Number(80.25)], "repopulating": Bool(false), "species": Number(0), "total_mutations": Number(11), "unique_id": Number(9001), "velocity": Array [Number(-1.25), Number(2.5)]}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    per_06_v3_save_preserves_one_living_and_one_dead_snapshot_atomically
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test core_state_contracts`
+     Running tests\db2_physics.rs (target\debug\deps\db2_physics-6be20966215a49cb.exe)
+
+running 22 tests
+test elasticity_rebounds_colliding_bots_with_finite_velocity ... ok
+test drag_reduces_retained_momentum_instead_of_replacing_it ... ok
+test brownian_motion_rotates_aim_on_the_next_cycle ... ok
+test maximum_velocity_caps_total_velocity_after_environment_impulses ... ok
+test newmove_directive_is_preserved_by_legacy_dna ... ok
+test movement_command_adds_impulse_and_bot_coasts_without_new_thrust ... ok
+test fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick ... ok
+test newly_loaded_bots_start_with_db2_body_reserve ... ok
+test non_toroidal_border_collision_writes_edge_sense ... ok
+test pond_buoyancy_reverses_vertical_gravity_at_the_bottom ... ok
+test db2_gravity_is_applied_after_friction_on_the_first_tick ... ok
+test pond_full_buoyancy_sinks_shallow_but_floats_deep_when_raw_threshold_exceeds_one ... ok
+test physical_radius_is_derived_from_body_like_db2 ... ok
+test fixed_bot_radii_config_survives_save_and_uses_db2_half_radius ... ok
+test static_friction_blocks_impulses_below_the_breakaway_threshold ... ok
+test voluntary_acceleration_is_clamped_before_efficiency_multiplier ... ok
+test pond_tides_modulate_vertical_gravity_over_the_configured_period ... ok
+test static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impulse ... ok
+test voluntary_motion_cost_uses_the_clipped_acceleration_magnitude ... ok
+test edge_sense_matches_vb6_boundary_distance_calibration ... ok
+test fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost ... ok
+test phy04_cpu_engine_physics_contract ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests\final_state_persistence_248.rs (target\debug\deps\final_state_persistence_248-7f062fa94f68776e.exe)
+
+running 4 tests
+test per_01_loads_legacy_simulation_state_and_promotes_it_to_db3s_v3 ... ok
+test mut_02_point_and_delta_mutations_run_through_an_ordinary_cycle ... ok
+test core_02_persists_remaining_robot_flags_counters_private_diagnostics_and_occurrences ... ok
+test core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests\gpu_ffi.rs (target\debug\deps\gpu_ffi-33763a4cd59e524e.exe)
+
+running 25 tests
+test cpu_physics_integrates_and_clamps_world_bounds ... ok
+test engine_retains_gpu_backend_and_uses_it_for_tick_physics ... ok
+test engine_can_switch_backends_while_preserving_live_state ... ok
+test cpu_and_gpu_emit_identical_nontiming_cycle_traces ... ok
+test cpu_and_gpu_match_toxin_state_memory_and_position ... ok
+test cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn ... ok
+test cpu_and_gpu_match_tie_lifecycle_spring_and_hardening ... ok
+test ffi_adds_and_removes_live_environment_features ... ok
+test cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance ... ok
+test ffi_v1_consumers_accept_the_additive_snapshot ... ok
+test ffi_import_accepts_known_sysvars_without_inert_warnings ... ok
+test ffi_rejects_unknown_batch_versions_with_owned_structured_error ... ok
+test ffi_environment_updates_preserve_optional_db2_settings ... ok
+test ffi_binary_save_load_round_trip_replaces_engine_atomically ... ok
+test ffi_executes_versioned_command_batches_and_reports_capabilities ... ok
+test ffi_imports_a_configured_species_as_one_command ... ok
+test ffi_manual_tools_return_ids_and_exported_dna ... ok
+test fused_gpu_sensing_and_motion_match_cpu_contract_when_adapter_is_available ... ok
+test gpu_prepares_render_instances_with_integrated_positions ... ok
+test gpu_physics_matches_cpu_when_an_adapter_is_available ... ok
+test gpu_sensing_matches_nearest_neighbor_contract_when_adapter_is_available ... ok
+test gpu_builds_spatial_grid_before_neighborhood_queries_when_adapter_is_available ... ok
+test gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_available ... ok
+test physical_gpu_fuses_grid_sensing_integration_and_render_preparation ... ok
+test ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.39s
+
+     Running tests\reproduction_heredity_248.rs (target\debug\deps\reproduction_heredity_248-5b5141649e0e8deb.exe)
+
+running 25 tests
+test birth_tie_uses_source_asymmetric_ports_and_lifetime_100 ... ok
+test birth_tie_transfers_one_staged_cell_per_early_age_without_overwrite ... ok
+test child_generation_saturates_at_32000 ... ok
+test absolute_identity_allocator_survives_child_deletion_and_save_round_trip ... ok
+test buoyancy_command_readback_and_birth_inheritance_round_trip ... ok
+test child_inherits_parent_program_profile_species_and_birth_identity ... ok
+test blocked_birth_preserves_parent_pending_heredity ... ok
+test delayed_heredity_requires_the_surviving_birth_tie ... ok
+test later_normal_tie_uses_first_free_child_record_after_birth_tie ... ok
+test blocked_birth_charges_no_five_block_dna_copy_cost ... ok
+test collision_uses_radius_stored_before_same_cycle_body_feed ... ok
+test newborn_clears_ordinary_memory_and_stages_only_delayed_heredity ... ok
+test competing_births_commit_in_parent_slot_order_and_leave_loser_unchanged ... ok
+test body_split_uses_vb6_cint_round_to_even_without_minimums ... ok
+test non_toroidal_birth_bounds_include_parent_radius_and_smudge_50 ... ok
+test repro_125_transfers_twenty_five_percent_of_db2_resources ... ok
+test positive_energy_below_201_remains_eligible_for_reproduction ... ok
+test repro_with_zero_effective_percentage_does_not_birth_or_consume_request ... ok
+test ties_disabled_allows_birth_but_gates_staged_transfer ... ok
+test successful_birth_charges_parent_only_for_five_block_dna_copy ... ok
+test successful_birth_clears_parent_pending_heredity_after_staging_child_memory ... ok
+test post_birth_mass_and_previous_energy_match_source_bookkeeping ... ok
+test occupied_forward_placement_is_atomic_and_keeps_repro_pending ... ok
+test toroidal_birth_uses_unwrapped_candidate_and_obstacle_segment ... ok
+test full_parent_tie_capacity_allows_birth_without_birth_tie_or_staged_transfer ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests\species_ecology.rs (target\debug\deps\species_ecology-0f585b51595f5704.exe)
+
+running 41 tests
+test body_conversion_uses_db2_energy_units_and_cycle_caps ... ok
+test aim_rotates_forward_movement ... ok
+test animal_minimalis_recognizes_and_moves_toward_non_family_targets ... ok
+test configured_species_reseed_after_extinction ... ok
+test chloroplasts_generate_environmental_energy_for_any_species ... ok
+test attenuated_venom_below_one_has_no_effect ... FAILED
+test body_feeding_shots_use_body_coefficients_and_return_energy_from_target ... FAILED
+test body_feeding_shots_consume_shell_before_body ... FAILED
+test corpses_ignore_venom_impacts ... FAILED
+test dna_controls_body_defenses_chloroplasts_waste_and_aim ... FAILED
+test direct_dna_poison_request_does_not_fire_a_projectile ... ok
+test eye_strength_uses_db2_edge_to_edge_distance ... ok
+test conspecific_defensive_poison_adds_to_store_without_forced_effect ... FAILED
+test conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect ... FAILED
+test defensive_poison_uses_db2_information_and_feeding_equality_rules ... FAILED
+test feeding_energy_shots_ignore_shell ... FAILED
+test feeding_shots_without_shootval_use_legacy_body_based_strength ... FAILED
+test in_flight_venom_keeps_payload_after_owner_removal ... FAILED
+test heterospecific_venom_consumes_shell_before_starting_an_effect ... FAILED
+test heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five ... FAILED
+test modern_chloroplast_sysvars_use_the_latest_vb6_addresses ... ok
+test heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression ... FAILED
+test minus_two_shots_donate_energy_to_zerobots ... FAILED
+test later_venom_hit_adds_duration_and_replaces_payload ... FAILED
+test negative_shots_feed_the_attacker_from_the_target ... FAILED
+test information_defense_applies_vb_cint_to_reversed_velocity ... FAILED
+test reproduction_synchronizes_energy_memory_before_the_next_dna_cycle ... ok
+test species_batches_publish_once_with_configured_initial_energy ... ok
+test non_integral_venom_power_keeps_fractional_countdown_through_expiry ... FAILED
+test automatic_overflow_defecation_subtracts_the_emitted_waste_packet ... ok
+test shot_302_forces_target_reproduction_for_zerobot_feeding ... FAILED
+test species_mutation_rate_applies_to_ordinary_reproduction ... ok
+test species_identity_and_vegetable_energy_are_part_of_the_world_state ... ok
+test release_energy_defense_applies_vb_cint_after_target_velocity_formula ... FAILED
+test vegetable_cap_applies_to_initial_imports_and_reproduction ... ok
+test waste_phase_runs_alzheimer_and_defecation_after_waste_shot ... FAILED
+test toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory ... FAILED
+test toxin_location_340_is_a_no_op_and_random_location_is_safe ... FAILED
+test reproduction_wave_stops_cleanly_at_population_capacity ... FAILED
+test negative_alzheimer_threshold_disables_memory_mutation ... ok
+test shot07_venom_resolution_contract_covers_store_effect_and_edges ... FAILED
+
+failures:
+
+---- attenuated_venom_below_one_has_no_effect stdout ----
+
+thread 'attenuated_venom_below_one_has_no_effect' (14356) panicked at modern\engine\tests\species_ecology.rs:1381:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- body_feeding_shots_use_body_coefficients_and_return_energy_from_target stdout ----
+
+thread 'body_feeding_shots_use_body_coefficients_and_return_energy_from_target' (23120) panicked at modern\engine\tests\species_ecology.rs:662:5:
+assertion `left == right` failed
+  left: 1000
+ right: 980
+
+---- body_feeding_shots_consume_shell_before_body stdout ----
+
+thread 'body_feeding_shots_consume_shell_before_body' (10052) panicked at modern\engine\tests\species_ecology.rs:627:5:
+assertion `left == right` failed
+  left: 100
+ right: 98
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- corpses_ignore_venom_impacts stdout ----
+
+thread 'corpses_ignore_venom_impacts' (22380) panicked at modern\engine\tests\species_ecology.rs:1791:50:
+index out of bounds: the len is 0 but the index is 0
+
+---- dna_controls_body_defenses_chloroplasts_waste_and_aim stdout ----
+
+thread 'dna_controls_body_defenses_chloroplasts_waste_and_aim' (3588) panicked at modern\engine\tests\species_ecology.rs:372:5:
+assertion failed: organism.waste > 0
+
+---- conspecific_defensive_poison_adds_to_store_without_forced_effect stdout ----
+
+thread 'conspecific_defensive_poison_adds_to_store_without_forced_effect' (13324) panicked at modern\engine\tests\species_ecology.rs:1206:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect stdout ----
+
+thread 'conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect' (20436) panicked at modern\engine\tests\species_ecology.rs:1155:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- defensive_poison_uses_db2_information_and_feeding_equality_rules stdout ----
+
+thread 'defensive_poison_uses_db2_information_and_feeding_equality_rules' (10344) panicked at modern\engine\tests\species_ecology.rs:975:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- feeding_energy_shots_ignore_shell stdout ----
+
+thread 'feeding_energy_shots_ignore_shell' (8180) panicked at modern\engine\tests\species_ecology.rs:587:5:
+assertion `left == right` failed
+  left: 990
+ right: 940
+
+---- feeding_shots_without_shootval_use_legacy_body_based_strength stdout ----
+
+thread 'feeding_shots_without_shootval_use_legacy_body_based_strength' (10192) panicked at modern\engine\tests\species_ecology.rs:426:5:
+assertion `left == right` failed
+  left: 0
+ right: 165
+
+---- in_flight_venom_keeps_payload_after_owner_removal stdout ----
+
+thread 'in_flight_venom_keeps_payload_after_owner_removal' (2224) panicked at modern\engine\tests\species_ecology.rs:1753:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- heterospecific_venom_consumes_shell_before_starting_an_effect stdout ----
+
+thread 'heterospecific_venom_consumes_shell_before_starting_an_effect' (11800) panicked at modern\engine\tests\species_ecology.rs:1325:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five stdout ----
+
+thread 'heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five' (14424) panicked at modern\engine\tests\species_ecology.rs:1264:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression stdout ----
+
+thread 'heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression' (19604) panicked at modern\engine\tests\species_ecology.rs:751:5:
+assertion `left == right` failed: live shots: [ShotSnapshot { owner: OrganismId { slot: 0, generation: 0 }, start: [948.6345, 843.85376], end: [988.5066, 847.05035], velocity: [39.87207, 3.1965876], age: 1, range: 11, energy: 440.0, kind: -3, value: 8, impact_flash: false, color: 4284655684, source_vegetable: false, source_species_name: Some("Venom source"), memory_location: 500, memory_value: 77, stored: false, gene_number: 1, dna_length: 0, payload: None }]
+  left: 0
+ right: 1
+
+---- minus_two_shots_donate_energy_to_zerobots stdout ----
+
+thread 'minus_two_shots_donate_energy_to_zerobots' (13556) panicked at modern\engine\tests\species_ecology.rs:539:5:
+assertion `left == right` failed
+  left: 900
+ right: 950
+
+---- later_venom_hit_adds_duration_and_replaces_payload stdout ----
+
+thread 'later_venom_hit_adds_duration_and_replaces_payload' (21420) panicked at modern\engine\tests\species_ecology.rs:1620:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- negative_shots_feed_the_attacker_from_the_target stdout ----
+
+thread 'negative_shots_feed_the_attacker_from_the_target' (4760) panicked at modern\engine\tests\species_ecology.rs:140:5:
+assertion failed: engine.organism(attacker).unwrap().energy > 1_000
+
+---- information_defense_applies_vb_cint_to_reversed_velocity stdout ----
+
+thread 'information_defense_applies_vb_cint_to_reversed_velocity' (22200) panicked at modern\engine\tests\species_ecology.rs:27:5:
+assertion `left == right` failed
+  left: 4
+ right: 3
+
+---- non_integral_venom_power_keeps_fractional_countdown_through_expiry stdout ----
+
+thread 'non_integral_venom_power_keeps_fractional_countdown_through_expiry' (13280) panicked at modern\engine\tests\species_ecology.rs:1437:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- shot_302_forces_target_reproduction_for_zerobot_feeding stdout ----
+
+thread 'shot_302_forces_target_reproduction_for_zerobot_feeding' (20932) panicked at modern\engine\tests\species_ecology.rs:555:5:
+assertion `left == right` failed
+  left: 2
+ right: 3
+
+---- release_energy_defense_applies_vb_cint_after_target_velocity_formula stdout ----
+
+thread 'release_energy_defense_applies_vb_cint_after_target_velocity_formula' (12464) panicked at modern\engine\tests\species_ecology.rs:27:5:
+assertion `left == right` failed
+  left: 4
+ right: 3
+
+---- waste_phase_runs_alzheimer_and_defecation_after_waste_shot stdout ----
+
+thread 'waste_phase_runs_alzheimer_and_defecation_after_waste_shot' (11312) panicked at modern\engine\tests\species_ecology.rs:171:5:
+assertion failed: after.materials.permanent_waste > 0.0
+
+---- toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory stdout ----
+
+thread 'toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory' (21592) panicked at modern\engine\tests\species_ecology.rs:1691:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- toxin_location_340_is_a_no_op_and_random_location_is_safe stdout ----
+
+thread 'toxin_location_340_is_a_no_op_and_random_location_is_safe' (23380) panicked at modern\engine\tests\species_ecology.rs:1559:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- reproduction_wave_stops_cleanly_at_population_capacity stdout ----
+
+thread 'reproduction_wave_stops_cleanly_at_population_capacity' (8580) panicked at modern\engine\tests\species_ecology.rs:524:5:
+assertion `left == right` failed
+  left: 21
+ right: 32
+
+---- shot07_venom_resolution_contract_covers_store_effect_and_edges stdout ----
+
+thread 'shot07_venom_resolution_contract_covers_store_effect_and_edges' (23164) panicked at modern\engine\tests\species_ecology.rs:2033:9:
+assertion `left == right` failed: heterospecific payload counts down
+  left: Expected { source_venom: 0, impacts: 1, effects: 1, target: Some([0, 0, 6, 500, 77, 77]), countdown: Some(6.656275), corpse_unchanged: false }
+ right: Expected { source_venom: 0, impacts: 1, effects: 1, target: Some([0, 0, 7, 500, 77, 77]), countdown: Some(7.0), corpse_unchanged: false }
+
+
+failures:
+    attenuated_venom_below_one_has_no_effect
+    body_feeding_shots_consume_shell_before_body
+    body_feeding_shots_use_body_coefficients_and_return_energy_from_target
+    conspecific_defensive_poison_adds_to_store_without_forced_effect
+    conspecific_venom_adds_to_store_at_cap_without_shell_loss_or_effect
+    corpses_ignore_venom_impacts
+    defensive_poison_uses_db2_information_and_feeding_equality_rules
+    dna_controls_body_defenses_chloroplasts_waste_and_aim
+    feeding_energy_shots_ignore_shell
+    feeding_shots_without_shootval_use_legacy_body_based_strength
+    heterospecific_poison_ignores_shell_and_forces_payload_for_power_over_one_point_five
+    heterospecific_venom_consumes_shell_before_starting_an_effect
+    heterospecific_venom_forces_memory_without_energy_drain_or_movement_suppression
+    in_flight_venom_keeps_payload_after_owner_removal
+    information_defense_applies_vb_cint_to_reversed_velocity
+    later_venom_hit_adds_duration_and_replaces_payload
+    minus_two_shots_donate_energy_to_zerobots
+    negative_shots_feed_the_attacker_from_the_target
+    non_integral_venom_power_keeps_fractional_countdown_through_expiry
+    release_energy_defense_applies_vb_cint_after_target_velocity_formula
+    reproduction_wave_stops_cleanly_at_population_capacity
+    shot07_venom_resolution_contract_covers_store_effect_and_edges
+    shot_302_forces_target_reproduction_for_zerobot_feeding
+    toxin_final_cycle_writes_then_cleans_effect_without_clearing_memory
+    toxin_location_340_is_a_no_op_and_random_location_is_safe
+    waste_phase_runs_alzheimer_and_defecation_after_waste_shot
+
+test result: FAILED. 15 passed; 26 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test species_ecology`
+     Running tests\ties_multibot.rs (target\debug\deps\ties_multibot-be8a7c78ee7429bc.exe)
+
+running 21 tests
+test dragging_one_member_moves_the_tied_organism_and_clears_momentum ... ok
+test hardened_shell_share_marks_only_the_forward_tie_endpoint ... ok
+test hardened_tie_group_follows_teleporter_relocation ... ok
+test multibot_amplifies_feeding_shot_and_virtual_body_range ... ok
+test fixang_command_applies_canonical_tie_torque ... ok
+test fixlen_command_changes_the_authoritative_tie_spring_response ... ok
+test slime_is_consumed_to_resist_new_ties ... ok
+test review_projection_create_save_load_break_tracks_one_canonical_tie ... ok
+test soft_tie_uses_twenty_unit_deadband ... ok
+test new_tie_hardens_on_db2_cycle ... ok
+test review_projection_hardened_removal_clears_state_before_reused_slot_dna ... ok
+test successful_tie_attack_consumes_twenty_slime ... ok
+test tie_breaks_when_surface_gap_exceeds_one_thousand ... ok
+test tie_formation_skips_existing_pair_for_next_eligible_target ... ok
+test stifftie_command_changes_hardened_tie_force ... ok
+test structural_tie_torque_rotates_both_members_in_opposite_directions ... ok
+test eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity ... ok
+test sharing_requires_hardening ... FAILED
+test tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage ... ok
+test legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clamping ... ok
+test negative_tieloc_resource_exchange_runs_in_engine_tick ... ok
+
+failures:
+
+---- sharing_requires_hardening stdout ----
+
+thread 'sharing_requires_hardening' (6976) panicked at modern\engine\tests\ties_multibot.rs:1480:5:
+assertion `left == right` failed
+  left: 2999.5781
+ right: 2999.578
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    sharing_requires_hardening
+
+test result: FAILED. 20 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+error: test failed, to rerun pass `-p darwinbots-engine --test ties_multibot`
+error: 3 targets failed:
+    `-p darwinbots-engine --test core_state_contracts`
+    `-p darwinbots-engine --test species_ecology`
+    `-p darwinbots-engine --test ties_multibot`

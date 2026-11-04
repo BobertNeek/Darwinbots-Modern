@@ -1,0 +1,112 @@
+{
+  "source_parent": "e2adeb58c62e66b5796555e83aef92ec36ca2424",
+  "source_manifest": "source.json",
+  "state": "completed_with_test_fixture_failures",
+  "rust_cpu": {
+    "passed": 673,
+    "failed": 23,
+    "target_summaries": 64,
+    "failed_tests": [
+      "world::native_reference_velocity::tests::focus_eye_publishes_relative_velocity_and_scalar_through_save_resume",
+      "world::native_shape_vision::tests::visible_shape_publishes_surface_type_motion_and_zero_robot_materials",
+      "a_new_tie_exchanges_resources_only_after_hardening",
+      "tie_data_can_change_a_later_tie_fire_command_in_the_same_cycle",
+      "review_projection_db3s_v3_resumes_exact_mid_soft_tie_lifecycle",
+      "core_04_round_trips_mutated_shot_tie_and_environment_objects_atomically",
+      "engine_tick_keeps_tie_memory_pending_without_a_valid_selected_port",
+      "engine_tick_keeps_tie_port_selectors_distinct_from_tie_count",
+      "engine_tick_marks_tie_information_transfer_on_selected_endpoint",
+      "engine_tick_resets_tie_memory_only_after_a_valid_selected_write",
+      "engine_tick_routes_tie_memory_only_through_the_selected_local_port",
+      "eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity",
+      "fixang_command_applies_canonical_tie_torque",
+      "fixlen_command_changes_the_authoritative_tie_spring_response",
+      "hardened_tie_group_follows_teleporter_relocation",
+      "legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clamping",
+      "multibot_amplifies_feeding_shot_and_virtual_body_range",
+      "new_tie_hardens_on_db2_cycle",
+      "stifftie_command_changes_hardened_tie_force",
+      "structural_tie_torque_rotates_the_angle_fixed_forward_endpoint",
+      "tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage",
+      "tie_formation_skips_existing_pair_for_next_eligible_target",
+      "touch_bankers_rounds_the_other_robot_center_before_direction_selection"
+    ],
+    "physical_gpu_excluded": true
+  },
+  "new_native_regressions": {
+    "passed": 19,
+    "failed": 0
+  },
+  "corpus": {
+    "bots": 48,
+    "cycles_each": 1000,
+    "status": "passed"
+  },
+  "long_ecologies": [
+    {
+      "cycles": 20000,
+      "seconds": 2016.99,
+      "status": "passed"
+    },
+    {
+      "cycles": 10000,
+      "seconds": 868.12,
+      "status": "passed"
+    }
+  ],
+  "continuation": [
+    {
+      "kind": "original_save_cpu",
+      "final_cycle": 2281,
+      "reloads": 4,
+      "seconds": 378.95,
+      "status": "passed"
+    },
+    {
+      "kind": "mutation_enabled_original_save_cpu",
+      "final_cycle": 1281,
+      "reloads": 4,
+      "mutations": 7042,
+      "seconds": 106.67,
+      "status": "passed"
+    }
+  ],
+  "core": {
+    "passed": 159,
+    "failed": 0,
+    "receipt": "core.trx"
+  },
+  "desktop": {
+    "state": "build_failed",
+    "errors": 2,
+    "reason": "Missing Control argument in two StabilizeForInput test setup calls; rendered suite not run."
+  },
+  "package": {
+    "status": "passed",
+    "backend": "CPU",
+    "ticks": 13,
+    "population": 1,
+    "movement": true,
+    "save_resume": true,
+    "bundled_bots": 48
+  },
+  "assets": {
+    "bots": 48,
+    "asset_mismatches": []
+  },
+  "strict_clippy": "passed",
+  "exact_interchange": {
+    "compared_fields": 393316,
+    "differences": 0,
+    "absolute_tolerance": 0,
+    "relative_tolerance": 0
+  },
+  "preserved_wip_image": {
+    "file": "docs/parity/receipts/db24832-world06-shape-editor.png",
+    "before": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "test_output": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+    "restored": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9"
+  },
+  "original_runtime_trajectory": false,
+  "physical_gpu_qualified": false
+}

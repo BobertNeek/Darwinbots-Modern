@@ -1,0 +1,22 @@
+{
+  "status": "paused_by_user",
+  "step": "cli-tests",
+  "pid": 37728,
+  "utc": "2026-10-15T19:58:01.313Z",
+  "source_parent": "655d4a4b16579b63e38ea43f7321b6d10ecef3a2",
+  "details": {
+    "reason": "Explicit human pause, relayed from task 01a14122-59ff-7091-9f63-b06d28bdbb8f",
+    "interrupted": "CLI test compilation; no runtime results collected",
+    "stopped_root": 37728,
+    "stopped_descendants": [
+      35064,
+      34004,
+      38268
+    ],
+    "verified_remaining_owned_processes": 0,
+    "exec_session": 9733,
+    "exec_session_closed": true,
+    "resume_requires": "Explicit human resume; preserve current code and evidence; use a fresh qualification directory"
+  },
+  "previous_status": "running"
+}

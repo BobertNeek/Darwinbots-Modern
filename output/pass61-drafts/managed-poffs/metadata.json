@@ -1,0 +1,568 @@
+{
+  "schema_version": 1,
+  "batch": 61,
+  "state": "complete_authored_unapplied_unexecuted_released",
+  "authored_utc": "2026-10-17T11:02:51.303Z",
+  "base_head": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "base_source_manifest": {
+    "file": "output/native-roundtrip-pass60-source.json",
+    "sha256": "D1218C0674D8B1C7C11F4A2CEFC8F886E891356AD7E5EB1FB7977EA436F43700",
+    "pinned_files": 613
+  },
+  "scope": {
+    "target_files": 17,
+    "existing_production_files": 9,
+    "existing_test_files": 8,
+    "new_files": 0,
+    "active_source_modified": false
+  },
+  "files": [
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+      "base": {
+        "sha256": "7E5B2020F61B862757BE1E7DDF78206114338EC283DEA620F238457C67BB98BE",
+        "bytes": 12977
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+        "sha256": "BD63CB4BD9894BCE8FE88A978A8B4F47E9B1BB19890FB3E933AC212020E3AB61",
+        "bytes": 13179
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+      "base": {
+        "sha256": "D4CA5A717DA1240F78B2E0C927E072E1B51FF98BFAC93359C8A727B99F893076",
+        "bytes": 55496
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "sha256": "11C5C37BCCF2E4FDCC4281A3B250E7071E504ECEB9655EA41769F407199C30FC",
+        "bytes": 55749
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+      "base": {
+        "sha256": "DE26C232704EE8398F1E72662492FAF305706BC9AE7B452C5C2EB0F1B9F46C07",
+        "bytes": 5017
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+        "sha256": "AA5F19BC23939130DBBF139C4CBF6027DAB86EBB785D3B52F527B03E68D1AF63",
+        "bytes": 5491
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "base": {
+        "sha256": "E2D27190B2165631BA158DF08EE0AB6FB338209D125BC4B76CCEC760D3428A43",
+        "bytes": 49426
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+        "sha256": "7FA365E7756DB29E7E77194FDFBC78FB46A09A5171E6D5C3C794ED33095432F9",
+        "bytes": 49743
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+      "base": {
+        "sha256": "C873365BF073191145BC68A187E65D8AC9B45B6CC22EB9A01E6AAFB5211B716A",
+        "bytes": 22998
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+        "sha256": "837544BA2ADB17DB099D471D32B1969299D15B5F31EE76004FEA25A5E61A5C10",
+        "bytes": 23891
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+      "base": {
+        "sha256": "086C20DB57C8FD00DDC17DF688982CBD8E06AA3CD9E60C526987F646990B7D73",
+        "bytes": 22800
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+        "sha256": "1CF25A1B5D8C07D08A8D140353EABC022F17243F20A251237F3204D63D3698C1",
+        "bytes": 23225
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+      "base": {
+        "sha256": "EF9787C2D52B4A612A85FF56BCC9D705EBAA89CB790D029DABBA27C2B8531591",
+        "bytes": 38746
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+        "sha256": "C82C31B41B0B798D354743E73C6D505E6A0124A961B6E872426BDDB2BC7BBB3E",
+        "bytes": 38791
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "base": {
+        "sha256": "AAFC0115476B2D750B0D79D1CA707060E0C948DA9031873E7439874D11CFE788",
+        "bytes": 141951
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+        "sha256": "28087E2067733C062260C9CB4BDBEACDB94FB24D900BCD0EA042F5053C6A5C76",
+        "bytes": 142736
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+      "base": {
+        "sha256": "1BB540FB9AE4293DB12EB1FB3BED11A344B69E2CD881BC8B1D7452DE3CD7E454",
+        "bytes": 38832
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+        "sha256": "F3C3BDEEEAB18FAB092C773C397F659CE944A240F7A7B3B120C66DFD2EAF59AA",
+        "bytes": 40109
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+      "base": {
+        "sha256": "8E6964CF3812730FF007397F65CC21B5BFEBEF345B65C0D99EC1C839C75B600B",
+        "bytes": 22548
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+        "sha256": "93C66BB428772C627872DEBDC89EF0A0531636072ACBD48473FA6806BC6C36B3",
+        "bytes": 24340
+      },
+      "added_fact_rows": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+      "base": {
+        "sha256": "35E99120F0CF7A2F225A32D2A5DCBD3C4810A87BB4E146993717AB9383C19E37",
+        "bytes": 6004
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+        "sha256": "BBEB2DB5B65B0627BEF3008F5DC6062AD2429F8ECC679DEE50C0D23CBD3645A8",
+        "bytes": 7727
+      },
+      "added_fact_rows": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+      "base": {
+        "sha256": "65A27AE865E29CC875A49BA89A7C9262766FE23FECCB93062A7508C8878B6952",
+        "bytes": 26957
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "sha256": "9BF58294FE960915DBD04012EF61D2707CB2083ABB036C2FD7F92266E05BEB84",
+        "bytes": 29987
+      },
+      "added_fact_rows": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+      "base": {
+        "sha256": "ABAAEA57E91306AF63F94C36655524EBF254C8E461F350F529E199AC058ED592",
+        "bytes": 106955
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+        "sha256": "B9FD23B5202315A5948C2875625803707B158AB126D8D9707BDDA1735042E0A4",
+        "bytes": 110291
+      },
+      "added_fact_rows": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+      "base": {
+        "sha256": "B9829E46410DD15E84717857EB9E7FE42C8786F1324B7BA4A0F508AA7D09B739",
+        "bytes": 4469
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+        "sha256": "2B32AA17EA30C9E5456440CCB79A77ED893029E140763A9B4F03D0F4EC118AF4",
+        "bytes": 15988
+      },
+      "added_fact_rows": 2,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+      "base": {
+        "sha256": "7D69BDB02B6DE1762BCB88655263AD81DE3862DD24BD3F45FF694A4B7D119416",
+        "bytes": 42165
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "sha256": "C04E1D1397BB5804A75408D3829CF2F398D178DE005C06E81F1402620A726D5E",
+        "bytes": 45639
+      },
+      "added_fact_rows": 1,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+      "base": {
+        "sha256": "BA9367A954232B4AC355C463F2043182C87C312E49094465857BB13030BB4BD3",
+        "bytes": 135216
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "sha256": "7364A34B585FC794D7EF2BC56D966627ACBF6532A0EEC01C6FF0D784DAD479EC",
+        "bytes": 136337
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    },
+    {
+      "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+      "base": {
+        "sha256": "34154B207147B3B87BA67461F210F42790275D4E26C8E393E01E143F1B6D1E0F",
+        "bytes": 6547
+      },
+      "candidate": {
+        "file": "output/pass61-drafts/managed-poffs/candidate/modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+        "sha256": "8A558C6E8CD35CC77DCB9EEB18E7D88CEE62C9333B29AB9F9ED3F9CC8A4CDB9A",
+        "bytes": 6559
+      },
+      "added_fact_rows": 0,
+      "theory_rows_unchanged": true
+    }
+  ],
+  "managed_census": {
+    "base": {
+      "core": 309,
+      "desktop": 209
+    },
+    "net_added": {
+      "core": 3,
+      "desktop": 4
+    },
+    "expected_after_apply": {
+      "core": 312,
+      "desktop": 213
+    },
+    "all_existing_theory_inline_rows_unchanged": true,
+    "per_file": [
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop.Core/EngineSnapshot.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeSnapshotParser.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop.Core/IEngineClient.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop.Core/EnvironmentUpdate.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop.Core/SimulationSession.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/src/Darwinbots.Desktop/Controls/WorldViewport.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeSnapshotParserTests.cs",
+        "facts_before": 16,
+        "facts_after": 17,
+        "inline_rows_before": 6,
+        "inline_rows_after": 6
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Db2EnvironmentSettingsTests.cs",
+        "facts_before": 8,
+        "facts_after": 9,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/SimulationSessionTests.cs",
+        "facts_before": 22,
+        "facts_after": 23,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RuntimeControlSurfaceTests.cs",
+        "facts_before": 23,
+        "facts_after": 24,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/WorldShotRenderedTests.cs",
+        "facts_before": 1,
+        "facts_after": 3,
+        "inline_rows_before": 0,
+        "inline_rows_after": 0
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/CommunityLeagueNativeTests.cs",
+        "facts_before": 14,
+        "facts_after": 15,
+        "inline_rows_before": 17,
+        "inline_rows_after": 17
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/RenderedControlSurfaceAuditTests.cs",
+        "facts_before": 20,
+        "facts_after": 20,
+        "inline_rows_before": 6,
+        "inline_rows_after": 6
+      },
+      {
+        "target": "modern/desktop/tests/Darwinbots.Desktop.Tests/FindBestRenderedTests.cs",
+        "facts_before": 0,
+        "facts_after": 0,
+        "inline_rows_before": 2,
+        "inline_rows_after": 2
+      }
+    ],
+    "new_core_facts": [
+      "NativeSnapshotParserTests.DeathParticlePolicyAndShotArgbPreserveOldPayloadsAndExplicitZero",
+      "Db2EnvironmentSettingsTests.DeathParticleCommandsUsePositivePolicyAndOnlyExplicitBulkSuppression",
+      "SimulationSessionTests.DeathParticlePolicyAndSuppressedDeletionWaitForTheEngineQueueAndPublishAcknowledgement"
+    ],
+    "new_desktop_facts": [
+      "RuntimeControlSurfaceTests.PoffsToolbarUsesAcknowledgedCreationPolicyWithoutHidingExistingParticlesOrCorpses",
+      "WorldShotRenderedTests.ExistingDeathParticlesUseArgbPointsWhileCreationIsDisabledAndCorpsesRemainVisible",
+      "WorldShotRenderedTests.NativeFlashPaletteUsesPreviousPositionAndDisablingImpactsStillDrawsLiveShots",
+      "CommunityLeagueNativeTests.DeathParticlePolicyRoundTripsAndOnlyConnectedDeletionSuppressesItsOwnParticles"
+    ],
+    "find_best_compile_repair_adds_rows": 0
+  },
+  "protocol": {
+    "root_snapshot": {
+      "field": "death_poffs_enabled",
+      "type": "bool",
+      "absent_or_null_legacy_default": true
+    },
+    "process_cache": {
+      "field": "death_poffs_enabled",
+      "type": "bool",
+      "missing_legacy_default": true,
+      "managed_optional_record_tail": true
+    },
+    "command": {
+      "type": "set_death_poffs_enabled",
+      "enabled": "bool"
+    },
+    "connected_deletion": {
+      "type": "remove_many",
+      "optional_field": "suppress_death_poffs",
+      "default": false,
+      "ordinary_json_unchanged": true,
+      "field_emitted_only_when_true": true,
+      "only_ui_caller": "KillSelectedOrganismAsync"
+    },
+    "unsupported_default_interface_methods": "Creation policy setter and true suppression throw clear NotSupportedException; false suppression delegates to existing ordinary removal.",
+    "shot_color": {
+      "json_field": "color",
+      "managed_type": "uint?",
+      "wire_format": "Existing opaque internal ARGB; NOT original BGR",
+      "absent_or_null": "Existing kind/owner fallback preserved",
+      "present_zero": "Opaque black",
+      "original_import_vectors": {
+        "COLORREF_red_255": "0xFFFF0000",
+        "COLORREF_blue_16711680": "0xFF0000FF",
+        "COLORREF_black_0": "0xFF000000"
+      },
+      "rust_owner_covers_actual_import_conversion": true
+    },
+    "no_new_configuration_setting_or_ui_surface": true
+  },
+  "behavior": {
+    "toolbar": "Await queued setter and use acknowledged snapshot to synchronize positive label. Snapshot publication re-synchronizes label across load/restart. No local optimistic viewport toggle.",
+    "visibility": "Turning creation off leaves existing shot particles and corpses visible. Existing independent viewport corpse-display property is not changed by the toolbar.",
+    "same_process_handoff": "Existing NativeProcessCaches channel carries policy through New/Reset/nativeSIM; existing tests extend false and true contexts. DB3S owns its saved policy; fresh/external true remains Rust authority.",
+    "normal_shot_color": "Use present internal ARGB for every kind; absent alone uses existing fallback.",
+    "death_particle_geometry": "Kind−100 draws an endpoint PSet-style decorative point with original DrawWidth1..2 formula; other ordinary trails remain.",
+    "flash": "Impacts OFF renders still-alive shots using normal saved color; ON palette−1red,−2white,−3blue,−4green,−5yellow,−6magenta,−7cyan,otherblack at Start/opos.",
+    "color_assertions": "New rendered tests transcode with documented Bitmap.CopyPixels(ILockedFramebuffer) to known RGBA8888, without accepting channel-swapped comparisons. Existing unrelated owner-color test unchanged.",
+    "save_purity": "Existing display-only Fact retains exact Save/call/state assertions after removing creation-policy click. Actual native-client test verifies policy changes bytes without advancing tick/cycle/uniform/config and DB3S exact reload."
+  },
+  "source_anchors": [
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "lines": "968;1687;1800–1801",
+      "purpose": "Process nopoff toolbar creation policy"
+    },
+    {
+      "file": "Darwinbots2/Robots.bas",
+      "lines": "359;3008",
+      "purpose": "RobSize120 and death-particle creation gate"
+    },
+    {
+      "file": "Darwinbots2/Multibots.bas",
+      "lines": "57–63",
+      "purpose": "Connected-organism deletion temporarily suppresses particles"
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "lines": "397–404;953–974",
+      "purpose": "Flash palette/opos and saved normal color/pos with DrawWidth1..2"
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "lines": "56–58;850",
+      "purpose": "COLORREF converted to internal opaque ARGB on import"
+    },
+    {
+      "file": "modern/engine/src/shot/projectile.rs",
+      "lines": "657–669",
+      "purpose": "Published JSON shot.color is existing internal ARGB"
+    },
+    {
+      "file": "modern/engine/src/world/native_sim_export.rs",
+      "lines": "46–47;657",
+      "purpose": "Native-file export converts internal ARGB back to COLORREF"
+    }
+  ],
+  "authority_hashes": [
+    {
+      "file": "Darwinbots2/MDIForm1.frm",
+      "sha256": "7CE8CDEBEA42396A2371E22E6FDE5D568B6FF26AE89720F5DC107C008F155D95",
+      "bytes": 115170
+    },
+    {
+      "file": "Darwinbots2/Robots.bas",
+      "sha256": "9EF9C3F61B8CBD1206259F408335195F073153403A36A7563389FEE2E4201FB3",
+      "bytes": 116735
+    },
+    {
+      "file": "Darwinbots2/Multibots.bas",
+      "sha256": "82ECAC2BED12BA56D296EAC85E8CF17E5AB8C4C7203B19C297F004400CA14103",
+      "bytes": 5068
+    },
+    {
+      "file": "Darwinbots2/main.frm",
+      "sha256": "87924F9881813672CE603E70DA44AE2FF876C2C010C2065E1953216E99CE5765",
+      "bytes": 104816
+    },
+    {
+      "file": "modern/engine/src/world/native_io.rs",
+      "sha256": "BA53098AC7C7651F261F414892E82E366D65483AAE2EBD9977CD8E24D4526EBB",
+      "bytes": 61809
+    },
+    {
+      "file": "modern/engine/src/shot/projectile.rs",
+      "sha256": "A1858CBF45F1C0AAAAD92433531A96231CC251361DC1DFBBCF27C61F8ECC6990",
+      "bytes": 56400
+    },
+    {
+      "file": "modern/engine/src/world/native_sim_export.rs",
+      "sha256": "A04EBE61C4B72144F4CB3B3DEB4EF2FC89A5490A0F268D021AF034B77042591B",
+      "bytes": 63872
+    }
+  ],
+  "rendered_receipts_authored_not_generated": [
+    "world-death-particle-colours.png",
+    "world-shot-flash-palette.png",
+    "world-shot-impacts-off-retains-shots.png"
+  ],
+  "previous_outcomes": {
+    "all94_local60_and_all7_hosted60_terminal_before_authoring": "Root authoring release",
+    "hosted_main_receipt": {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-main-43d38a5.json",
+      "sha256": "65D9A9952807497F739D1C8D4CD66C7B690869E8A504A15E4E3431BAE2FE3E1A",
+      "bytes": 36651
+    },
+    "hosted_diagnostics_receipt": {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-43d38a5.json",
+      "sha256": "7CF265DAACB05D80F3AE7DEBF409E12308A85322F7E2AD1B2FFD2648C07BD2ED",
+      "bytes": 14509
+    }
+  },
+  "verification": {
+    "static_fragment_and_row_review": true,
+    "all17_active_base_bytes_rechecked_before_candidate_write": true,
+    "compiler": false,
+    "formatter": false,
+    "source_parser": false,
+    "tests": false,
+    "probes": false,
+    "product_execution": false,
+    "ui": false,
+    "gpu": false,
+    "git": false,
+    "agents_spawned": false
+  },
+  "unverified": [
+    "All candidates require root combined application/compilation/tests with coordinated Rust61 policy implementation.",
+    "No rendered image, native command, DB3S resume or hardware behavior was executed during authoring."
+  ],
+  "ownership": "Released to root; all17 complete candidates exist only under the quarantine candidate prefix. No active source or released prior evidence was overwritten."
+}

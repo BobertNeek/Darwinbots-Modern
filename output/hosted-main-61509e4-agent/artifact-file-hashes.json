@@ -1,0 +1,2491 @@
+{
+  "source_head": "61509e4c8424f751d20c5f34a83c35fc6d8be424",
+  "run_id": 39039047969,
+  "files": [
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/accessibility-preferences.png",
+      "sha256": "F473AD1123FBA3941975897BFFBD60CD4C50401022EE87D83194D506C601E60E",
+      "bytes": 91067
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/advanced-initial.png",
+      "sha256": "4A36C1B10776E68203D149028570F23A5D6B37E5FD7C6814851AC771E6AE28B1",
+      "bytes": 80426
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/db24832-world06-shape-editor.png",
+      "sha256": "583924F2569A119D31BC806B4813495B5DCDED59B5C1F9B49B47D87275FBC881",
+      "bytes": 37339
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/dna-exercised.png",
+      "sha256": "7A8CCC6DE37F012152D5DBF1A56794664A1129C8820C5ECFBD39964FBAC10BA7",
+      "bytes": 13943
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/dna-initial.png",
+      "sha256": "2784F40EA11C6A661439068A911B05259AA7B766603158CD1141CECE1DDA7544",
+      "bytes": 11203
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/feeding-settings-controls.png",
+      "sha256": "0798CCAFA8CD2427DF74573435FC834A8A1010C353EC789FBF00094BB36EB955",
+      "bytes": 67991
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/final-tools-visual.png",
+      "sha256": "6087274381261C19FB838016132B63DB44AA0D5C92B357C953A626A217714A61",
+      "bytes": 17906
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/global-settings-find-best-weight.png",
+      "sha256": "CB88B8611A9B7D6B52FFFD6FE72B78E061F490828D5B6214B390A9C0D6FFF21D",
+      "bytes": 67530
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/global-settings-four-tabs.png",
+      "sha256": "BDDFF8B47F4C2FD544EC63472B2E0D0C8997A6AEE23A8CBEE9FCBBAA4FF4A9B3",
+      "bytes": 67556
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/global-settings-recognition-fudging.png",
+      "sha256": "CBC8CE6CEB4DED5439FA2DFD3A4FB75B9B8C7AD706A7BA6C83948E3356757CE3",
+      "bytes": 53611
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/graph-inline-history.png",
+      "sha256": "20E8C4FA0EC40CE3ED955D048693A4A16905EDDEB5F9950094FC344870103910",
+      "bytes": 166946
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/io05-autosave-safemode-recovery.png",
+      "sha256": "57794004CE3BBA9162F8835E4253E0C2FD2F8D5441D09067191B3CF243846269",
+      "bytes": 120055
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/menu-05-robot-find-best.png",
+      "sha256": "29CCE961A64BBAF8224741F87C0A5555E83A87A0098740723F6DF6583C6CD9AD",
+      "bytes": 110379
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/native-species-graph.png",
+      "sha256": "375187FFED9F17672F3243CD84AA728A98EF12ED8A1CA1A4AA8363C278A98964",
+      "bytes": 12568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/robot-details.png",
+      "sha256": "E8D03883D8C85ABCDCDAB6E7C0F4E1F493874EAE3E8D29498B5D90DF6C2137D3",
+      "bytes": 108590
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/run-01-classic-reset.png",
+      "sha256": "B6935865218A3912E733B8229B6CEC40C4A3B2FFC35CFC7A88F830CE0ED5263A",
+      "bytes": 112241
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/runtime-before-kill.png",
+      "sha256": "8F515298902206D76194DDF4EBB4188DD9396FFEBEF306B4FB1C77E1401DB0BB",
+      "bytes": 118809
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/runtime-exercised.png",
+      "sha256": "7D55488BCE8529192D761D20C8746ED5C11FF786F635F215E2AB9888E57262A2",
+      "bytes": 153303
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/runtime-header-wide-1280.png",
+      "sha256": "A3D07617865ECB8382E1696B928FD87874F23EC5F3986483867473815F4B1AFD",
+      "bytes": 112289
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/runtime-header-wide-1500.png",
+      "sha256": "12769F0B9A318B001F8A76691A38766BA3E727053B2E2789801089E26C7FF11E",
+      "bytes": 116418
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/runtime-initial.png",
+      "sha256": "3168363D43EBF9EFADA892FF42E87AC754AF90A23251713B8824E77D13187C4F",
+      "bytes": 114799
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/set-01-setup-working-copy.png",
+      "sha256": "B5143AE3B1AB471D4456B6B760699C3682C556672706264FDF46E58949C2793D",
+      "bytes": 97690
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/set07-restart-league.png",
+      "sha256": "B004276953FA74BB44FF718F1CBA0479E3BBCC1D1E180C715B8327933E35B9F0",
+      "bytes": 132241
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/setup-exercised.png",
+      "sha256": "E6FBC5392BBDB75E8C37C2CB978B1F4AFD5627208A0C85D1550DD08F41D0A145",
+      "bytes": 103081
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/setup-initial.png",
+      "sha256": "D0572D6C6E1A7A5023D2923C600475D3C7280A52A7C6EFB6B77D4A30A84491A4",
+      "bytes": 96919
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/shell-dashboard-1500x900.png",
+      "sha256": "5DB118E723A854A298F47FE36686DA05A34DD99CC80EC72039C08CCDFD4BDA5A",
+      "bytes": 110592
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/teleporter-editor-exercised.png",
+      "sha256": "ACE5F1F8CAE43C3536F546F5FCD26922AB50568C29252E6B59482AF6557AB98F",
+      "bytes": 57138
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/toolbar-1280x900.png",
+      "sha256": "1B2D3F025E0D70D597F7DB53F1C1E8656C56B43BAFAA0774BC31E8D595154A54",
+      "bytes": 112252
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/world-death-particle-colours.png",
+      "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+      "bytes": 3876
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/world-insertion-exercised.png",
+      "sha256": "40F5848FF9871BA2F7EE05B0828AC7D61B944110C494EFC621E193637BAFF0E1",
+      "bytes": 99957
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/world-shot-existence-storage-flashes.png",
+      "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+      "bytes": 3950
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/world-shot-existence-storage-normal.png",
+      "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+      "bytes": 3216
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/world-shot-flash-palette.png",
+      "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+      "bytes": 5900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/world-shot-impacts-off-retains-shots.png",
+      "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+      "bytes": 3193
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/gui-audit/linux-x64/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-linux-x64/test-results/linux-x64/rendered-controls.trx",
+      "sha256": "D14C9C83AEF6B1E44EF52A6D368B8A90826D5D356FFE1B4E4D039F3B11CE2303",
+      "bytes": 334194
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/accessibility-preferences.png",
+      "sha256": "11B23F0F731CF1AC8934F94EF987892E258AA6AC6EC382263FD9800FEA82A2BE",
+      "bytes": 104053
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/advanced-initial.png",
+      "sha256": "480D6AAE70CF52B51F1E262E3AC0DB99C761380338AB35418B460C2ED3BF4B75",
+      "bytes": 104047
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/db24832-world06-shape-editor.png",
+      "sha256": "329FEB69C57583B0E0CD8586D757B2BD7E1E8FF46A091A344135129E6E461EB3",
+      "bytes": 44377
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/dna-exercised.png",
+      "sha256": "EF3308472F21C94701DCAF3414DAA0C9B9782296E413592420FF87CF35116292",
+      "bytes": 16750
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/dna-initial.png",
+      "sha256": "BDE83FB707A5BB68DF529EA840B9E69D39A99810A6EA266DFFBEF5992FA34E3E",
+      "bytes": 12638
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/feeding-settings-controls.png",
+      "sha256": "B129FFF6DAF7C92F46536CD5A904BEA9701F349B417698455A14D40A54A3CF13",
+      "bytes": 89622
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/final-tools-visual.png",
+      "sha256": "B2C3DBD09CF0B1F2289D9E363075247196D23D84857C597AE48DE4D24ED2451B",
+      "bytes": 18188
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/global-settings-find-best-weight.png",
+      "sha256": "BB3A47A6C7A9F0ABA33C2FEAA2B4F0ABBA03A51E208AB6C03637AA01EDD42788",
+      "bytes": 83772
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/global-settings-four-tabs.png",
+      "sha256": "4FEA497585347C978B68DD8D97B9E43B52C8192A37FF93C4B1DE29B6062E721E",
+      "bytes": 83747
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/global-settings-recognition-fudging.png",
+      "sha256": "061FB58BBC4151D4C4BD07F4F96ECB7A663197CD2829543A917E447F6A3F4DD3",
+      "bytes": 65342
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/graph-inline-history.png",
+      "sha256": "A64BC25D2E8421A8F9ABCFEAB17962BF32D86ACA5EEF468D169A6F5E906874C7",
+      "bytes": 195498
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/io05-autosave-safemode-recovery.png",
+      "sha256": "3CD93B4A1E34DB1927E8F5376EDF169F49942DBDE990B7F0963461F9134391F6",
+      "bytes": 147143
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/menu-05-robot-find-best.png",
+      "sha256": "F21112CA30798B39357D560AA91AADEE5373BD2DBB7135576CB978FF9BBAF098",
+      "bytes": 135528
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/native-species-graph.png",
+      "sha256": "90E422230A39E8CC035A6AB7707084BE63D76DAFDE050B3A071F1E5F3F78A830",
+      "bytes": 7989
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/robot-details.png",
+      "sha256": "E45A018B70F520EB3CD59CDC1B9EE3678D001F0D5F4241C2BA09BA790A09D146",
+      "bytes": 135909
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/run-01-classic-reset.png",
+      "sha256": "8D2671A3E231A1B52B283AF0E7FC2DFAE9852CB4B27F9376AD8897FD462F5BE9",
+      "bytes": 138678
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/runtime-before-kill.png",
+      "sha256": "617FFCF8AB19A2A5714039244902D2E4FB556DF468CF447C447800D267C505E9",
+      "bytes": 152149
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/runtime-exercised.png",
+      "sha256": "3862C212F787A77C1790725CF5F52F63582D36306E4C4A0555026974F2C6344A",
+      "bytes": 195270
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/runtime-header-wide-1280.png",
+      "sha256": "B2CE8D6A52877E7D11A2C29E8B84259F707BBF6CFD27ED68ACA8CC00CEF5E0C1",
+      "bytes": 138424
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/runtime-header-wide-1500.png",
+      "sha256": "718C1AFC165AA30DAF0095DE986B4B34CC2470859403DF7AEA280C151101803D",
+      "bytes": 144240
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/runtime-initial.png",
+      "sha256": "C10FEC9579F5B9C62A8C3685D8BC84EF18D9E793E623218578F7F09EF652B8D0",
+      "bytes": 141978
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/set-01-setup-working-copy.png",
+      "sha256": "745D7185F4AE241579113A0994B7E58BFE5546C288E92A5B70AD2BC64FF013EA",
+      "bytes": 122166
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/set07-restart-league.png",
+      "sha256": "28E23E8C53AD638F5983FCAF3C208DE5ED65AB5A79871E68FC56C28DE1916B7B",
+      "bytes": 167827
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/setup-exercised.png",
+      "sha256": "7B9D63748D9916B9EB814574370C3154812C9127ED36939C0FB421332981BB78",
+      "bytes": 131992
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/setup-initial.png",
+      "sha256": "04DC802E1043172D807A1CABFDE786A51A99181AA75DC0A5BAB995C63A6E0B7B",
+      "bytes": 120614
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/shell-dashboard-1500x900.png",
+      "sha256": "ABC2DCF711303E7E3BA2FF7EA57A9AFF0C24066C84CBA08A088404080786C118",
+      "bytes": 138161
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/teleporter-editor-exercised.png",
+      "sha256": "EFF8967727C3BD5C07EA396A4622528D5C4E9757CB7E0EF991B1CBBDE15EBE32",
+      "bytes": 73211
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/toolbar-1280x900.png",
+      "sha256": "90FC541385FA25F9460AD98552C69ACBB314A8E7042DCC8626722FE703A9262B",
+      "bytes": 138074
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/world-death-particle-colours.png",
+      "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+      "bytes": 3876
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/world-insertion-exercised.png",
+      "sha256": "D2B428F6889F2B16B62D08A3177EC96E9EDDB4EEDA7F96917DCC619177488A01",
+      "bytes": 120190
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/world-shot-existence-storage-flashes.png",
+      "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+      "bytes": 3950
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/world-shot-existence-storage-normal.png",
+      "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+      "bytes": 3216
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/world-shot-flash-palette.png",
+      "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+      "bytes": 5900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/world-shot-impacts-off-retains-shots.png",
+      "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+      "bytes": 3193
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/gui-audit/osx-arm64/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-arm64/test-results/osx-arm64/rendered-controls.trx",
+      "sha256": "746A928A4D546D0C8775D5E8D97AB24031147C13AF77B4862B02A50B25DCDD94",
+      "bytes": 345255
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/accessibility-preferences.png",
+      "sha256": "F1C9A8274254F7CCC351E345CFBBDD3DC04E6FA1BDC623EE44349FD82B80DDB6",
+      "bytes": 103984
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/advanced-initial.png",
+      "sha256": "19D32976059EC4DC26D34F2143C70058BBD4E56BADD3986BBF0FB615518034B1",
+      "bytes": 104038
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/db24832-world06-shape-editor.png",
+      "sha256": "B690E822B750068D63FC5D34FA9216C9A70C3212C5001EB658E563606A5F2A6A",
+      "bytes": 44359
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/dna-exercised.png",
+      "sha256": "4FC66D8EBB2C9EE3EB40BE814CC14177DD27AC971C616FA4151A0D7CF8F83F42",
+      "bytes": 16744
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/dna-initial.png",
+      "sha256": "2C2832CA80924999EBC4B545E1E3738C29A3C758FBAE1836C30E782CFCCD3031",
+      "bytes": 12645
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/feeding-settings-controls.png",
+      "sha256": "1927C28229A831D70D4E77B5D2AC0DDF1E4863D05FD9D3C299A10C2B53D133A4",
+      "bytes": 89612
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/final-tools-visual.png",
+      "sha256": "B2C3DBD09CF0B1F2289D9E363075247196D23D84857C597AE48DE4D24ED2451B",
+      "bytes": 18188
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/global-settings-find-best-weight.png",
+      "sha256": "AB0ADDA7A58F6EE8A7677E088280C9A0C5E168E685055E79AAD67FB839FAE05B",
+      "bytes": 83766
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/global-settings-four-tabs.png",
+      "sha256": "B991BCEECFED1F90D63E58EF52FC8AE0A58962849B57460B0279071BD86BBE0B",
+      "bytes": 83737
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/global-settings-recognition-fudging.png",
+      "sha256": "10380EF39C6613F5CCF0B7EB197C498DE595658700C81D0A63040BE17BE3C618",
+      "bytes": 65298
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/graph-inline-history.png",
+      "sha256": "39330A43C58FDC968DAEE172DF10F6E9829D2AF1F7E895D36AC57DDEADB4D34A",
+      "bytes": 195389
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/io05-autosave-safemode-recovery.png",
+      "sha256": "4839FAAB254BACA1BF611605D3EA348858F92509F6C7AC07489DF4BCC3A0AD82",
+      "bytes": 147841
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/menu-05-robot-find-best.png",
+      "sha256": "6A80B0040CEA7F2B8A1877382BC80B8D2F8B0C8DE6DC38C3A841896AAA8C235A",
+      "bytes": 136201
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/native-species-graph.png",
+      "sha256": "C94F0A61316279E48831070D2ACC7DFDEAE3DF6385BFE37067E144F97FB5C18C",
+      "bytes": 7989
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/robot-details.png",
+      "sha256": "D4DE7C30A13D41EC5D7D8FA8AD8DE2CCCE5A4C5F3F306FC799B26734BE094E01",
+      "bytes": 135916
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/run-01-classic-reset.png",
+      "sha256": "62366E379A5A04BA565F26EF9020A32195745E0A395E5C4A20977B5B5BBB2DF2",
+      "bytes": 138625
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/runtime-before-kill.png",
+      "sha256": "C233572DB46E41EFF494A4B3402B0306969449097503C884F539EF4C4F3D5C46",
+      "bytes": 152207
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/runtime-exercised.png",
+      "sha256": "2C9BA1F3CC93B89E0791072FB133C0EB723CA408AC35BCDC8C378F5AFFBA0724",
+      "bytes": 195373
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/runtime-header-wide-1280.png",
+      "sha256": "322A90F39AD23445258279448A6D253E38D633A2E00312BC43AFF41E956BFDA7",
+      "bytes": 138362
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/runtime-header-wide-1500.png",
+      "sha256": "FF38BEFB97CC50420F0BC5F134053490148C8C5B54860CA94CCBC35359370257",
+      "bytes": 144241
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/runtime-initial.png",
+      "sha256": "64392502188991807C5F1C98F1707DD86155F46B9D0D37C6CDF0A068FF68A756",
+      "bytes": 142036
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/set-01-setup-working-copy.png",
+      "sha256": "93B299F4BFFF7D3047494C83FA7B6779E25EFEFBA2BD29C4CDF11E63EFA971E2",
+      "bytes": 122112
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/set07-restart-league.png",
+      "sha256": "BE0B48A4AA35019686DF85ABB80350805C7B8BAFB0B585DCE78C3FA54284EC12",
+      "bytes": 167802
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/setup-exercised.png",
+      "sha256": "AAAE0AC7D229FA3FEA781F0199E0D82F9B06FCBC03672EC382E0FE828C8C4F34",
+      "bytes": 131908
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/setup-initial.png",
+      "sha256": "65DD42B4ABA1DE90A4E863AD9415C3C522E9D1419ED8F6368509618EEEC419D9",
+      "bytes": 120564
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/shell-dashboard-1500x900.png",
+      "sha256": "19C583A1755AB21156E620DBA6490184CC41700593A63DEB14713033F6707EE6",
+      "bytes": 138195
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/teleporter-editor-exercised.png",
+      "sha256": "BB0B705B17AA50D9262EBDCF332573A13E220D21E83A78430EEB118DC6D930A8",
+      "bytes": 73199
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/toolbar-1280x900.png",
+      "sha256": "FEA0BC101F4D99F5C22343F44DE58C694859673B042C9A12AE171B165C7D8BAB",
+      "bytes": 138073
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/world-death-particle-colours.png",
+      "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+      "bytes": 3876
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/world-insertion-exercised.png",
+      "sha256": "F0FAA675C140023B6C57C626CCC070A26E724D42A3899541F616D9341377AD1F",
+      "bytes": 120223
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/world-shot-existence-storage-flashes.png",
+      "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+      "bytes": 3950
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/world-shot-existence-storage-normal.png",
+      "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+      "bytes": 3216
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/world-shot-flash-palette.png",
+      "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+      "bytes": 5900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/world-shot-impacts-off-retains-shots.png",
+      "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+      "bytes": 3193
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/gui-audit/osx-x64/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-osx-x64/test-results/osx-x64/rendered-controls.trx",
+      "sha256": "365C40833DD0CD8292180FC4F5D064B87D42E65216B41D9EC1717EC89F80B47F",
+      "bytes": 345038
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/accessibility-preferences.png",
+      "sha256": "C5D29AC0DF952A4EA05E12E97F0F33DB39F92569E7DC28B1E71D918FB5765BC3",
+      "bytes": 79864
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/advanced-initial.png",
+      "sha256": "2C875CDDF2F6D647A76415F4CDDDCA2C8406E49480BAD0B4982B92D800DD03EF",
+      "bytes": 56370
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/db24832-world06-shape-editor.png",
+      "sha256": "44B7419EC76B825F1C307A284BD14A607DC975C1C410857F41A6A66C1E57FAE9",
+      "bytes": 26541
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/dna-exercised.png",
+      "sha256": "BAB32C14AFC11A838A35CC1FFDDAB612FC7B0772B0869748C9F057189634C5C5",
+      "bytes": 11978
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/dna-initial.png",
+      "sha256": "890D0AFF158351DCDF100EFDB2A9D209A13AEE6EAB171FA4675FC65DB4894E69",
+      "bytes": 9278
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/feeding-settings-controls.png",
+      "sha256": "6878B62FD6CE39D6A2C59228E6920BB6F97179B7FC5D858107ACBAE5C9015EFD",
+      "bytes": 48559
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/final-tools-visual.png",
+      "sha256": "CB97235D9F7F5B91766CA641670A3779F5D6727BF3D97CCD54CFB8AF2E5B92EE",
+      "bytes": 17732
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/global-settings-find-best-weight.png",
+      "sha256": "D34079969DE2060E5FD23BE614E7CE0D88D03A804C857E1B10546BB0DFDE4422",
+      "bytes": 48258
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/global-settings-four-tabs.png",
+      "sha256": "37E84A6F4F68BB6C5BABE859636FD9523823464B348B3BCF170846EB39947535",
+      "bytes": 48271
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/global-settings-recognition-fudging.png",
+      "sha256": "61B0836DA63FEFD447B3AE91F95510293A3C06015E922B05C4CD350F6C64F15E",
+      "bytes": 36712
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/graph-inline-history.png",
+      "sha256": "954391EF320B3F695769A922FFF55CE73030E6DB7AE2DDBAEE5EB7B1B859DA15",
+      "bytes": 136694
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/io05-autosave-safemode-recovery.png",
+      "sha256": "7E680CF059690B6DA605C2521742479831B0F59591F127A05279D45BAF1C7C20",
+      "bytes": 92358
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/menu-05-robot-find-best.png",
+      "sha256": "9ED55F47AA41931AE945C3BF9A8245EF3CE48C1BF771B4F1860B5FCC6A51D2B8",
+      "bytes": 87002
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/native-arena-corpse.png",
+      "sha256": "C5D49133465335587B719D8FEBEEDBAF34C877F63278CFF6C57A75079A793ABE",
+      "bytes": 3939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/native-species-graph.png",
+      "sha256": "D4E8CDDEAF5C4011C9D4B53B0FB2FBFFAC329AE5E53B6136F1E8BB7DF22BED61",
+      "bytes": 12601
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/native-vision-full-range.png",
+      "sha256": "686B7F33D2897A9683D3150DDD62F7C9D90FB0D19FBD5291C46422AF7647035D",
+      "bytes": 6460
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/native-vision-observed-range.png",
+      "sha256": "D8C9D45FA8445B336F2A16C247A1907E3377C0EB7116E65E4225838350BC3008",
+      "bytes": 5939
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/robot-details.png",
+      "sha256": "D9D8180FF4C3551CDAB6652F057DA166D9FCE330BDBEDBF780F70C719D418085",
+      "bytes": 71478
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/run-01-classic-reset.png",
+      "sha256": "AF3229126570166C5FCCAE04C1EE2E2DBC7D7B9DBE2E2ED3625E959C2B91FF07",
+      "bytes": 88094
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/runtime-before-kill.png",
+      "sha256": "26BA4DA9BC44E8B452DFE29989A2A678E6A1F7F3E0897444990DBD29E3374973",
+      "bytes": 90626
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/runtime-exercised.png",
+      "sha256": "A49BBEF44D92609A241BCA02995919EDCF96B207B64410F02D20143FA46CF616",
+      "bytes": 116034
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/runtime-header-wide-1280.png",
+      "sha256": "432D98E727678A90A424EA4DDA5F1264562EC84D8295AE0A9EE430623F270C2D",
+      "bytes": 89088
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/runtime-header-wide-1500.png",
+      "sha256": "E75DF2801F45E944E742BFC73DA854A8D3452FE0BC07182A6570A3915F963D31",
+      "bytes": 91046
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/runtime-initial.png",
+      "sha256": "2DBCDFA134908B0BF8B23CE96405A6A826C4BDB3F393205C1964C56983E159BA",
+      "bytes": 89924
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/set-01-setup-working-copy.png",
+      "sha256": "AC4366672BD763A12D38E676ACCDED927AB9CA7C9655E3AB9D05CDF84F7480F1",
+      "bytes": 70493
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/set07-restart-league.png",
+      "sha256": "4934D17A68B88923BCCFBD940B2017BD58338FC41C1CE082589302464AD5304F",
+      "bytes": 103821
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/setup-exercised.png",
+      "sha256": "B1A8E4E424DF936CA6D9ECC665309C485C7C8B21812AA7587FB4B9872B89FFD3",
+      "bytes": 75648
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/setup-initial.png",
+      "sha256": "B3140B183E08E8FE2EBA26191DBA4BCE117FC59E627A9965B3EE81EC1DD615B5",
+      "bytes": 69985
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/shell-dashboard-1500x900.png",
+      "sha256": "F5B73579F29B3EF4317B6C9C6DD8D475938B689B385EF1B2DCA8D896A03FC50E",
+      "bytes": 85975
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/teleporter-editor-exercised.png",
+      "sha256": "60B3450BA1D7F4E105DE5F0AB33486779F22CE3EBCE588D60D2FAE91994D9CC7",
+      "bytes": 39299
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/toolbar-1280x900.png",
+      "sha256": "D3B5C4DA571BE0CA20C2D190030C503DC318E298E5B32889594D445598059A35",
+      "bytes": 87493
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/world-death-particle-colours.png",
+      "sha256": "1E8614CCFF6B2CBFB055A36E480E4D41184C8C39148F6F0195F5C591AB56F984",
+      "bytes": 3876
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/world-insertion-exercised.png",
+      "sha256": "22A1D07CD3EFB2BBB8D4CA392CED4E5C861ADCCA24F5BBC0A358FB50048756E3",
+      "bytes": 78256
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/world-shot-existence-storage-flashes.png",
+      "sha256": "A8A04FE4157E026E31B314688FCABA19FA44D300F73C9881E4103783D1B7D385",
+      "bytes": 3950
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/world-shot-existence-storage-normal.png",
+      "sha256": "741E01751DEB2FED0CC6038A868CBD7B61D93C0315C1CFF05A1DED83CD4DA32A",
+      "bytes": 3216
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/world-shot-flash-palette.png",
+      "sha256": "C7F33C656A7F7B8019F24FC614A148112D9229F2CD6F741F47507A5BE2F39502",
+      "bytes": 5900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/world-shot-impacts-off-retains-shots.png",
+      "sha256": "E5E56FFBF5BC81A79105C7255340520D4025DCCEE68E1683D7B5A9AAEBA986C4",
+      "bytes": 3193
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/gui-audit/win-x64/world-shot-owner-colour.png",
+      "sha256": "D33C73D74E9CC7EE2FD27DF617901A2C4E24F68895EFFB553EB651DEB1759497",
+      "bytes": 3252
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-gui-audit-win-x64/test-results/win-x64/rendered-controls.trx",
+      "sha256": "BFF8E6825EF0B637BD2111EF7D6D8BEFD295CD5FDDDDF2D6F4E333054B2F1B1F",
+      "bytes": 330024
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Base.dll",
+      "sha256": "91EB28E9AF3AAA79BBE63D19209B2BC5D723378DB6732037DECB8F20E8A77CE1",
+      "bytes": 2341888
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Controls.dll",
+      "sha256": "61532FDC20B2B0B0CEB277182D9E7DD126215315F7383238AB46F9525A448682",
+      "bytes": 1339392
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.DesignerSupport.dll",
+      "sha256": "D917540E50C0CF8CCDB24DFE41F1ED5F232FCA65269BF1D7F86D2CF51703D2B7",
+      "bytes": 214528
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Desktop.dll",
+      "sha256": "BB30870ABBF7F60AA2AE0D9A1F92B940DF982030CDF9548F7768565E001EA08D",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Dialogs.dll",
+      "sha256": "7D76158DEDB7196A46B5942A8DEE5E670C609EC38AB36F90D14853C0DEB1B6C4",
+      "bytes": 242688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.dll",
+      "sha256": "676B7E93936EC7197E3221366104E89F0B8336B7916D599E031A7BC7B353B8CF",
+      "bytes": 4096
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.FreeDesktop.AtSpi.dll",
+      "sha256": "59E4C91657823A3620EE26B67EAB711F987A307CF3F316ED2F6BAA5BF10D5E2A",
+      "bytes": 562688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.FreeDesktop.dll",
+      "sha256": "9C1D71DDB18C475B3848B6F070BE61DA934D60AF1F517A7D6399DE1EC65B83DA",
+      "bytes": 253952
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.HarfBuzz.dll",
+      "sha256": "B3FF6150E64F14F816EBD4B1D5158FC89C5048D414CA90B38A6D8331067E2F89",
+      "bytes": 22016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Markup.dll",
+      "sha256": "3C6B04F6287914919DEBF33BFB6EB3EC8E9B1EC2300804238F7485A4846F16A6",
+      "bytes": 45568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Markup.Xaml.dll",
+      "sha256": "CD3D37F82B28162CDB99B127A05C9CAFA401848C1507E54266BD714D25B5B209",
+      "bytes": 74752
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Metal.dll",
+      "sha256": "442BE8E98B19A496619FB5F8F54C5A6B8B99EC105E54940C6C7A94879A22EB11",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.MicroCom.dll",
+      "sha256": "BB4C10481E708D4985A8FC97E761126C73689664010601DD6BE466974AB15398",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Native.dll",
+      "sha256": "80A89A7DD5FF1B9F127D1A99AB94C0A1B372D91E37C0115D6E13C2739E634636",
+      "bytes": 350208
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.OpenGL.dll",
+      "sha256": "963F859A910F2C3ECDE780A5F552135DB109A89374707F8EE500E878C009A0C9",
+      "bytes": 128512
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Remote.Protocol.dll",
+      "sha256": "BD3BE7C4F8EB98DB8B9A022B629D1C313F1065BD1A002E6E44ACFCD33381F1E1",
+      "bytes": 75776
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Skia.dll",
+      "sha256": "2F6B12DDBAC1C90FE56C8DAF8362DCC1E102F3DE485AE6DE16D35615481C240C",
+      "bytes": 125440
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Themes.Fluent.dll",
+      "sha256": "2C6C40407551DFF2DA5059142753FE8CA6C10C7956C31723328EA89CA5340AA1",
+      "bytes": 733184
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Vulkan.dll",
+      "sha256": "D6DCD5B102F108C22F0AC79936FE04932F5030B898347829CDB35EECFFB38464",
+      "bytes": 190976
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Win32.Automation.dll",
+      "sha256": "18A7B82ABB1217C84F8FC299479B2267BEB5E384FDC240D40E38A27A76D73B6D",
+      "bytes": 123904
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.Win32.dll",
+      "sha256": "F59FDE0A61F385EFFB94DA9DCC97D91593A3355054D15AB8AC05EA6EA481B5B3",
+      "bytes": 943104
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Avalonia.X11.dll",
+      "sha256": "9A0F4471180A0F9A44F08000030A3CF699FE486DC124A8854FF701DA0562F065",
+      "bytes": 406016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121",
+      "bytes": 373
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Animal_Minimalis.txt",
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5",
+      "bytes": 606
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Alga_Minimalis.txt",
+      "sha256": "79993974A6CD6A66CD3BCF940502A53E0886E17B40222773E0BF8BAF8A155401",
+      "bytes": 277
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Animal_Minimalis_Connubialis.txt",
+      "sha256": "2E82E517A7D8A33E4B6C3168CBE2E631727642D7C385EA76C6B63232EF3C35E6",
+      "bytes": 1136
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "sha256": "609270B7EEB6EF92782124EC942EE3160CF9613347BD98662B75B76F5B9B12CF",
+      "bytes": 9935
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Bubbles (F2)(Jez)-21.08.06.txt",
+      "sha256": "C575AB27AB498A075DDD6439CEFC7BF470A169C6EFE1CC16CA68098D0EAE3AC8",
+      "bytes": 7170
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Callidus(F1)(Shen)-05.04.05.txt",
+      "sha256": "B447D333E6D2C5D3C416FEBB6766E326D5DF11B4C022BBA92769EDA39BF1E3C8",
+      "bytes": 3710
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Catapiller(MB)(Peter).txt",
+      "sha256": "F112B9789159E6AC5FF839F9D33A1D0BC778624831E34B2BD81B9D684AF16DF9",
+      "bytes": 5513
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "sha256": "CED8DF58B4FE9AE29C6D03D8F64EC3AFDE5867FE2CBE08D90CD20D3A32EFD3E6",
+      "bytes": 3258
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Ebola (F1Vir) (Moonfisher).txt",
+      "sha256": "D0B3437F9ED37F77D904DED4F0BC1F5B68A2AB70E3FB787625A97099BA58F345",
+      "bytes": 15568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "sha256": "1D881243C720F04EC81EF098D841E5292311E76087F3925F7C9FB6A171D10A9F",
+      "bytes": 9744
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "sha256": "51852363CAC2FDA2F3BC9392DCDC297580A30B7AB3447DFD1E1C3DBB2DF3835C",
+      "bytes": 4250
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Fruit_Fliesv0.21.txt",
+      "sha256": "5D554A6585E63A29B603FC1D5D93652AFDDAA1103FBE9FAA9ABEC7FAC3D9DF86",
+      "bytes": 2639
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281",
+      "bytes": 2690
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "sha256": "174E36A48F478E30DA3D940A3540C2760D1B9C07E8F6A9C5697E3E010EB131E7",
+      "bytes": 916
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "sha256": "7FD0DD03A77F10C8A26F3B2D26E84071463F173F75240F9355C82E9B81F86208",
+      "bytes": 851
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "sha256": "58CDFBE2202705F0B99BF9A863AEAF066E2DC206FB5E3E1905FA44F3FDB45775",
+      "bytes": 5558
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "sha256": "3BFB6EC260D72D165C497F3CABCA28156B2A1D2A6DB3EB877E04C2A7FF7B98C8",
+      "bytes": 3138
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "sha256": "5D0B6636AEC6E80730474C684D606B5C6A76E6B66D4105FDBD30AC2C71A0D588",
+      "bytes": 2715
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "sha256": "773BD3EA3B270E854E53C739B298A70A40684242E1A0A67A8E725B3E84ED9932",
+      "bytes": 1723
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "sha256": "76E70B9C9F29F38577172F04910D7C8846E858135CF46D3E0A2A3032C34B510B",
+      "bytes": 522
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/17-D. Blinder (F2)-01.03.04.txt",
+      "sha256": "823A557E42B05D2626DD28C2785696557FA4586710823694C5D27B89F0B6190C",
+      "bytes": 1322
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "sha256": "D777DD50238C5313AD81719CC14372ECE2C10F7813BA94D186CDAC188FB9A97B",
+      "bytes": 983
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "sha256": "0A002084FD8FC9C8DA04E8B8A920A325A8D3A83F02FAC1FBD8797B776C1EEFAC",
+      "bytes": 1960
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "sha256": "793472C1879F554C09C58A3180AB5673A55E88A861284EE75ACE2BA3A34AFA47",
+      "bytes": 8398
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/20-Bot v 1.1.txt",
+      "sha256": "E56C73E3F173A14DC842AF742EBD913BE893938BABBA23BD89A14045906B6197",
+      "bytes": 3068
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "sha256": "C853342E1B8E033BB05911037245A2F6EDA14C6AA0329377D316C8AB8D6EA881",
+      "bytes": 774
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "sha256": "DA5D24C52E00E431AE051240AF7BA9E9F2DD7EAF6F6B7481C69D36FCB6D496AC",
+      "bytes": 10831
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "sha256": "562DC85F510D5881CCD66BB3AF26E5B3F161A7C399FA4E8D710C0EE801E1228F",
+      "bytes": 736
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "sha256": "FC09E7D21E98569F59853752E84885EFD377F40C417F5E6BFE35BB1C1D20D9CC",
+      "bytes": 6295
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "sha256": "506635F191AA1F12716A069DB3319A6BCAD68BE5D7F9C7D97BF18F81A693002E",
+      "bytes": 3039
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "sha256": "846FD16EFDA850DB2A36DB64480C45899AE26CD6481D9CEFC4AC27257332C568",
+      "bytes": 2839
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "sha256": "E22956B386353102288F794573D2E3B5C29FFAAA1B3DC1C0F823C0E23B40EE5D",
+      "bytes": 3024
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "sha256": "456129935205500440C29F01EB627713B0DB660C2FD8144E8F97F39030A8B768",
+      "bytes": 1773
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Locust(F1)(Moonfisher).txt",
+      "sha256": "425376200A83ED56CDA9CE6CA59FA50DB1FCA172FBF876628E4E739F6B4FBE81",
+      "bytes": 7172
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "sha256": "411B04032A8FEAF20E7DD413A08340C96C3B93AFEBC7E5A35A54CBF7F6BE071F",
+      "bytes": 4877
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "sha256": "C346E93DD954D111D569B8D2D63DA4177D5433CF2EB15BA334A154C1613F25E9",
+      "bytes": 3722
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "sha256": "9E93D6694DDA3F3C6B5A054B24A12838E2D8A7E0160A62F33ACDD890AE06C77A",
+      "bytes": 575
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "sha256": "80EF0E7437FD2BBEAC64736576FE48B906FF61E0FA4D6974C2E251181B8A45FB",
+      "bytes": 11711
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Quickdraw(F1)(Moonfisher).txt",
+      "sha256": "F24C30BFE66CE31E221F30FF520068345CFA1D7506FD716FF7054966E2FC0DEE",
+      "bytes": 8345
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "sha256": "CDAB99B7AF6F8ACA54A7E9D3064E11F8C5ABDD4F98625FEBB0E48746FC2A59A0",
+      "bytes": 3863
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Republican Wasp (F1)(Commander Keen).txt",
+      "sha256": "CC3733F51BDE8AC1CE0EFF85F63217BE061EB6003476E5AD8F527B3898FC32FA",
+      "bytes": 2634
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Saber.txt",
+      "sha256": "7CB4F03B211F279ADEA16281E39AC898A4BBA2EF28E5375104C4101B1005CC0A",
+      "bytes": 18584
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "sha256": "83E6EBF019B08156862496326A70700F1374A9A1BDE7EA4C6032C09FF1562F8E",
+      "bytes": 7945
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "sha256": "C4EAB07A29B53014D966ADB4698FAE156105EE0F01D25C8D42B40EDEB5FB13D4",
+      "bytes": 641
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/Spinnerv1.52.txt",
+      "sha256": "27B5D7C70FA3A542B3AE38F83AAD4A8123E5BD68637ABB475B3B0812E50D2EED",
+      "bytes": 19802
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/The One (1G)(Shen)-23.04.05.txt",
+      "sha256": "798E486BFA9C80C518455ADA8061C547458D06CC6E3CC4E3FFE92CA6CE54D220",
+      "bytes": 1900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Bots/Historical/TieFighters.txt",
+      "sha256": "878A101CADAD7B4F98693CB5E3ED3E111F358C579004F393D465ACE24116BBAA",
+      "bytes": 18909
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Darwinbots.Desktop",
+      "sha256": "B7030F087E16548B49C47403C54DB49A81A3254F83E2B81D565E8CA79850C716",
+      "bytes": 78192
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Darwinbots.Desktop.Core.dll",
+      "sha256": "DED216A2074E2F2DDF65127BEC6BD8CCB3D1249DE50064BB2A3BD5E08C158D67",
+      "bytes": 994816
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Darwinbots.Desktop.Core.pdb",
+      "sha256": "A1AF1B6013F3010DBEC002234D365D477E4395D1CD97A618AF12EF0DF22E2E70",
+      "bytes": 162212
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Darwinbots.Desktop.deps.json",
+      "sha256": "E437FA0DC7B43F99A4F35B048F0D2D1DE656DBA60AD6A904E9450C3EF1A07072",
+      "bytes": 12897
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Darwinbots.Desktop.dll",
+      "sha256": "4EE34D406818A4759AD5D04C7F71B7A6A906D9C4C208652DCF400EFA7E0F0BEE",
+      "bytes": 806400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Darwinbots.Desktop.pdb",
+      "sha256": "330D60698B099635D2C491BE5AF08104E7050EEF127153833E0F6DC1FC40C0BF",
+      "bytes": 177080
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Darwinbots.Desktop.runtimeconfig.json",
+      "sha256": "9950D4583CFC9A106857C0D5B8A75B53E8774852B57B80BC3823A74D44A4D87F",
+      "bytes": 330
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/HarfBuzzSharp.dll",
+      "sha256": "55E72AC23263F8E12484F3435E02EC22FAC9EFF6E6D169BB0A8C246BE6B99D29",
+      "bytes": 122400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/libdarwinbots_engine.so",
+      "sha256": "F7C5932E8C929BD3A3E6B6BE02F0D0BFD83FA6F3E4E23927ED2125DE90EB723C",
+      "bytes": 13697752
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/libHarfBuzzSharp.so",
+      "sha256": "1D5C3AFEF13545BF34BF8F068B14E25EE619C3B6DEE235C44E260FE61CB24018",
+      "bytes": 2808040
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/libSkiaSharp.so",
+      "sha256": "66C856EAF1A47A00B23204C30C6EE407987BF5086ECC0A1A6B4FD67526B0CD02",
+      "bytes": 11170296
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/MicroCom.Runtime.dll",
+      "sha256": "2538EC6F3C24E901A90E33C37788B9A4E4B6AE8158CAB7328A00A00BB28EAB9E",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/SkiaSharp.dll",
+      "sha256": "AAAAA18C68BA1F3A3408B00DFF28B11D5705198E17BA9D3AA59222BFD35407C8",
+      "bytes": 489824
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-linux-x64/Tmds.DBus.Protocol.dll",
+      "sha256": "60A1C5255731D8AC843CAB53108BE8BA1ED02759CE3DB0DA5B49939EBE97BD8A",
+      "bytes": 232960
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Base.dll",
+      "sha256": "91EB28E9AF3AAA79BBE63D19209B2BC5D723378DB6732037DECB8F20E8A77CE1",
+      "bytes": 2341888
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Controls.dll",
+      "sha256": "61532FDC20B2B0B0CEB277182D9E7DD126215315F7383238AB46F9525A448682",
+      "bytes": 1339392
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.DesignerSupport.dll",
+      "sha256": "D917540E50C0CF8CCDB24DFE41F1ED5F232FCA65269BF1D7F86D2CF51703D2B7",
+      "bytes": 214528
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Desktop.dll",
+      "sha256": "BB30870ABBF7F60AA2AE0D9A1F92B940DF982030CDF9548F7768565E001EA08D",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Dialogs.dll",
+      "sha256": "7D76158DEDB7196A46B5942A8DEE5E670C609EC38AB36F90D14853C0DEB1B6C4",
+      "bytes": 242688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.dll",
+      "sha256": "676B7E93936EC7197E3221366104E89F0B8336B7916D599E031A7BC7B353B8CF",
+      "bytes": 4096
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.FreeDesktop.AtSpi.dll",
+      "sha256": "59E4C91657823A3620EE26B67EAB711F987A307CF3F316ED2F6BAA5BF10D5E2A",
+      "bytes": 562688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.FreeDesktop.dll",
+      "sha256": "9C1D71DDB18C475B3848B6F070BE61DA934D60AF1F517A7D6399DE1EC65B83DA",
+      "bytes": 253952
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.HarfBuzz.dll",
+      "sha256": "B3FF6150E64F14F816EBD4B1D5158FC89C5048D414CA90B38A6D8331067E2F89",
+      "bytes": 22016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Markup.dll",
+      "sha256": "3C6B04F6287914919DEBF33BFB6EB3EC8E9B1EC2300804238F7485A4846F16A6",
+      "bytes": 45568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Markup.Xaml.dll",
+      "sha256": "CD3D37F82B28162CDB99B127A05C9CAFA401848C1507E54266BD714D25B5B209",
+      "bytes": 74752
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Metal.dll",
+      "sha256": "442BE8E98B19A496619FB5F8F54C5A6B8B99EC105E54940C6C7A94879A22EB11",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.MicroCom.dll",
+      "sha256": "BB4C10481E708D4985A8FC97E761126C73689664010601DD6BE466974AB15398",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Native.dll",
+      "sha256": "80A89A7DD5FF1B9F127D1A99AB94C0A1B372D91E37C0115D6E13C2739E634636",
+      "bytes": 350208
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.OpenGL.dll",
+      "sha256": "963F859A910F2C3ECDE780A5F552135DB109A89374707F8EE500E878C009A0C9",
+      "bytes": 128512
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Remote.Protocol.dll",
+      "sha256": "BD3BE7C4F8EB98DB8B9A022B629D1C313F1065BD1A002E6E44ACFCD33381F1E1",
+      "bytes": 75776
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Skia.dll",
+      "sha256": "2F6B12DDBAC1C90FE56C8DAF8362DCC1E102F3DE485AE6DE16D35615481C240C",
+      "bytes": 125440
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Themes.Fluent.dll",
+      "sha256": "2C6C40407551DFF2DA5059142753FE8CA6C10C7956C31723328EA89CA5340AA1",
+      "bytes": 733184
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Vulkan.dll",
+      "sha256": "D6DCD5B102F108C22F0AC79936FE04932F5030B898347829CDB35EECFFB38464",
+      "bytes": 190976
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Win32.Automation.dll",
+      "sha256": "18A7B82ABB1217C84F8FC299479B2267BEB5E384FDC240D40E38A27A76D73B6D",
+      "bytes": 123904
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.Win32.dll",
+      "sha256": "F59FDE0A61F385EFFB94DA9DCC97D91593A3355054D15AB8AC05EA6EA481B5B3",
+      "bytes": 943104
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Avalonia.X11.dll",
+      "sha256": "9A0F4471180A0F9A44F08000030A3CF699FE486DC124A8854FF701DA0562F065",
+      "bytes": 406016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121",
+      "bytes": 373
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Animal_Minimalis.txt",
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5",
+      "bytes": 606
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Alga_Minimalis.txt",
+      "sha256": "79993974A6CD6A66CD3BCF940502A53E0886E17B40222773E0BF8BAF8A155401",
+      "bytes": 277
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Animal_Minimalis_Connubialis.txt",
+      "sha256": "2E82E517A7D8A33E4B6C3168CBE2E631727642D7C385EA76C6B63232EF3C35E6",
+      "bytes": 1136
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "sha256": "609270B7EEB6EF92782124EC942EE3160CF9613347BD98662B75B76F5B9B12CF",
+      "bytes": 9935
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Bubbles (F2)(Jez)-21.08.06.txt",
+      "sha256": "C575AB27AB498A075DDD6439CEFC7BF470A169C6EFE1CC16CA68098D0EAE3AC8",
+      "bytes": 7170
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Callidus(F1)(Shen)-05.04.05.txt",
+      "sha256": "B447D333E6D2C5D3C416FEBB6766E326D5DF11B4C022BBA92769EDA39BF1E3C8",
+      "bytes": 3710
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Catapiller(MB)(Peter).txt",
+      "sha256": "F112B9789159E6AC5FF839F9D33A1D0BC778624831E34B2BD81B9D684AF16DF9",
+      "bytes": 5513
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "sha256": "CED8DF58B4FE9AE29C6D03D8F64EC3AFDE5867FE2CBE08D90CD20D3A32EFD3E6",
+      "bytes": 3258
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Ebola (F1Vir) (Moonfisher).txt",
+      "sha256": "D0B3437F9ED37F77D904DED4F0BC1F5B68A2AB70E3FB787625A97099BA58F345",
+      "bytes": 15568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "sha256": "1D881243C720F04EC81EF098D841E5292311E76087F3925F7C9FB6A171D10A9F",
+      "bytes": 9744
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "sha256": "51852363CAC2FDA2F3BC9392DCDC297580A30B7AB3447DFD1E1C3DBB2DF3835C",
+      "bytes": 4250
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Fruit_Fliesv0.21.txt",
+      "sha256": "5D554A6585E63A29B603FC1D5D93652AFDDAA1103FBE9FAA9ABEC7FAC3D9DF86",
+      "bytes": 2639
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281",
+      "bytes": 2690
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "sha256": "174E36A48F478E30DA3D940A3540C2760D1B9C07E8F6A9C5697E3E010EB131E7",
+      "bytes": 916
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "sha256": "7FD0DD03A77F10C8A26F3B2D26E84071463F173F75240F9355C82E9B81F86208",
+      "bytes": 851
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "sha256": "58CDFBE2202705F0B99BF9A863AEAF066E2DC206FB5E3E1905FA44F3FDB45775",
+      "bytes": 5558
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "sha256": "3BFB6EC260D72D165C497F3CABCA28156B2A1D2A6DB3EB877E04C2A7FF7B98C8",
+      "bytes": 3138
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "sha256": "5D0B6636AEC6E80730474C684D606B5C6A76E6B66D4105FDBD30AC2C71A0D588",
+      "bytes": 2715
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "sha256": "773BD3EA3B270E854E53C739B298A70A40684242E1A0A67A8E725B3E84ED9932",
+      "bytes": 1723
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "sha256": "76E70B9C9F29F38577172F04910D7C8846E858135CF46D3E0A2A3032C34B510B",
+      "bytes": 522
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/17-D. Blinder (F2)-01.03.04.txt",
+      "sha256": "823A557E42B05D2626DD28C2785696557FA4586710823694C5D27B89F0B6190C",
+      "bytes": 1322
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "sha256": "D777DD50238C5313AD81719CC14372ECE2C10F7813BA94D186CDAC188FB9A97B",
+      "bytes": 983
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "sha256": "0A002084FD8FC9C8DA04E8B8A920A325A8D3A83F02FAC1FBD8797B776C1EEFAC",
+      "bytes": 1960
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "sha256": "793472C1879F554C09C58A3180AB5673A55E88A861284EE75ACE2BA3A34AFA47",
+      "bytes": 8398
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/20-Bot v 1.1.txt",
+      "sha256": "E56C73E3F173A14DC842AF742EBD913BE893938BABBA23BD89A14045906B6197",
+      "bytes": 3068
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "sha256": "C853342E1B8E033BB05911037245A2F6EDA14C6AA0329377D316C8AB8D6EA881",
+      "bytes": 774
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "sha256": "DA5D24C52E00E431AE051240AF7BA9E9F2DD7EAF6F6B7481C69D36FCB6D496AC",
+      "bytes": 10831
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "sha256": "562DC85F510D5881CCD66BB3AF26E5B3F161A7C399FA4E8D710C0EE801E1228F",
+      "bytes": 736
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "sha256": "FC09E7D21E98569F59853752E84885EFD377F40C417F5E6BFE35BB1C1D20D9CC",
+      "bytes": 6295
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "sha256": "506635F191AA1F12716A069DB3319A6BCAD68BE5D7F9C7D97BF18F81A693002E",
+      "bytes": 3039
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "sha256": "846FD16EFDA850DB2A36DB64480C45899AE26CD6481D9CEFC4AC27257332C568",
+      "bytes": 2839
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "sha256": "E22956B386353102288F794573D2E3B5C29FFAAA1B3DC1C0F823C0E23B40EE5D",
+      "bytes": 3024
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "sha256": "456129935205500440C29F01EB627713B0DB660C2FD8144E8F97F39030A8B768",
+      "bytes": 1773
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Locust(F1)(Moonfisher).txt",
+      "sha256": "425376200A83ED56CDA9CE6CA59FA50DB1FCA172FBF876628E4E739F6B4FBE81",
+      "bytes": 7172
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "sha256": "411B04032A8FEAF20E7DD413A08340C96C3B93AFEBC7E5A35A54CBF7F6BE071F",
+      "bytes": 4877
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "sha256": "C346E93DD954D111D569B8D2D63DA4177D5433CF2EB15BA334A154C1613F25E9",
+      "bytes": 3722
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "sha256": "9E93D6694DDA3F3C6B5A054B24A12838E2D8A7E0160A62F33ACDD890AE06C77A",
+      "bytes": 575
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "sha256": "80EF0E7437FD2BBEAC64736576FE48B906FF61E0FA4D6974C2E251181B8A45FB",
+      "bytes": 11711
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Quickdraw(F1)(Moonfisher).txt",
+      "sha256": "F24C30BFE66CE31E221F30FF520068345CFA1D7506FD716FF7054966E2FC0DEE",
+      "bytes": 8345
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "sha256": "CDAB99B7AF6F8ACA54A7E9D3064E11F8C5ABDD4F98625FEBB0E48746FC2A59A0",
+      "bytes": 3863
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Republican Wasp (F1)(Commander Keen).txt",
+      "sha256": "CC3733F51BDE8AC1CE0EFF85F63217BE061EB6003476E5AD8F527B3898FC32FA",
+      "bytes": 2634
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Saber.txt",
+      "sha256": "7CB4F03B211F279ADEA16281E39AC898A4BBA2EF28E5375104C4101B1005CC0A",
+      "bytes": 18584
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "sha256": "83E6EBF019B08156862496326A70700F1374A9A1BDE7EA4C6032C09FF1562F8E",
+      "bytes": 7945
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "sha256": "C4EAB07A29B53014D966ADB4698FAE156105EE0F01D25C8D42B40EDEB5FB13D4",
+      "bytes": 641
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/Spinnerv1.52.txt",
+      "sha256": "27B5D7C70FA3A542B3AE38F83AAD4A8123E5BD68637ABB475B3B0812E50D2EED",
+      "bytes": 19802
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/The One (1G)(Shen)-23.04.05.txt",
+      "sha256": "798E486BFA9C80C518455ADA8061C547458D06CC6E3CC4E3FFE92CA6CE54D220",
+      "bytes": 1900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Bots/Historical/TieFighters.txt",
+      "sha256": "878A101CADAD7B4F98693CB5E3ED3E111F358C579004F393D465ACE24116BBAA",
+      "bytes": 18909
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Darwinbots.Desktop",
+      "sha256": "5FD451BC3982C622A3A3EFA93DE3C1ABD56D683AF2F3059CAA5848A72A015C3C",
+      "bytes": 124712
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Darwinbots.Desktop.Core.dll",
+      "sha256": "38F306660D292696713AC9F8BF6DDC629613E373B9A2A58FC70F7ED98F137C3E",
+      "bytes": 994816
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Darwinbots.Desktop.Core.pdb",
+      "sha256": "50623D9293067685C216BBF251DE57C1D0CCB2DD448FC331501ED7A6A1052306",
+      "bytes": 162212
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Darwinbots.Desktop.deps.json",
+      "sha256": "737C61A914FDDC527B3EEA7CEE34AF947B7DEBF57464E8CF70C9BE8E5FC633E3",
+      "bytes": 13045
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Darwinbots.Desktop.dll",
+      "sha256": "2E8B62DA3F638FBF2B08615F84184E07A500E88F650179F8D594D01C718FF7DA",
+      "bytes": 806400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Darwinbots.Desktop.pdb",
+      "sha256": "3E0B185FDA7F164F76EE4A50DF2870FCF2C4995CF74AAA0644066660E8DE70AE",
+      "bytes": 177084
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Darwinbots.Desktop.runtimeconfig.json",
+      "sha256": "9950D4583CFC9A106857C0D5B8A75B53E8774852B57B80BC3823A74D44A4D87F",
+      "bytes": 330
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/HarfBuzzSharp.dll",
+      "sha256": "55E72AC23263F8E12484F3435E02EC22FAC9EFF6E6D169BB0A8C246BE6B99D29",
+      "bytes": 122400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/libAvaloniaNative.dylib",
+      "sha256": "0642ADCBA18415B634C1C4125E09FE2AF08762A6C8E7E23E196B1A5E0EE0A18A",
+      "bytes": 1548080
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/libdarwinbots_engine.dylib",
+      "sha256": "AA0B35BE06515112C074827B84A3EA7EAC93ADF37DAB0B0BB2CC36AF96AD4A2F",
+      "bytes": 10667664
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/libHarfBuzzSharp.dylib",
+      "sha256": "B2D7D39A46954B3D7310540BDF393F398AC4194EE029B995DEEB1DB0C161C43D",
+      "bytes": 2922800
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/libSkiaSharp.dylib",
+      "sha256": "E09F07AE1DF62DED475351F56D8DC8366CD679043F28B65D9DEE597A5FD0DA6C",
+      "bytes": 15201456
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/MicroCom.Runtime.dll",
+      "sha256": "2538EC6F3C24E901A90E33C37788B9A4E4B6AE8158CAB7328A00A00BB28EAB9E",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/SkiaSharp.dll",
+      "sha256": "AAAAA18C68BA1F3A3408B00DFF28B11D5705198E17BA9D3AA59222BFD35407C8",
+      "bytes": 489824
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-arm64/Tmds.DBus.Protocol.dll",
+      "sha256": "60A1C5255731D8AC843CAB53108BE8BA1ED02759CE3DB0DA5B49939EBE97BD8A",
+      "bytes": 232960
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Base.dll",
+      "sha256": "91EB28E9AF3AAA79BBE63D19209B2BC5D723378DB6732037DECB8F20E8A77CE1",
+      "bytes": 2341888
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Controls.dll",
+      "sha256": "61532FDC20B2B0B0CEB277182D9E7DD126215315F7383238AB46F9525A448682",
+      "bytes": 1339392
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.DesignerSupport.dll",
+      "sha256": "D917540E50C0CF8CCDB24DFE41F1ED5F232FCA65269BF1D7F86D2CF51703D2B7",
+      "bytes": 214528
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Desktop.dll",
+      "sha256": "BB30870ABBF7F60AA2AE0D9A1F92B940DF982030CDF9548F7768565E001EA08D",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Dialogs.dll",
+      "sha256": "7D76158DEDB7196A46B5942A8DEE5E670C609EC38AB36F90D14853C0DEB1B6C4",
+      "bytes": 242688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.dll",
+      "sha256": "676B7E93936EC7197E3221366104E89F0B8336B7916D599E031A7BC7B353B8CF",
+      "bytes": 4096
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.FreeDesktop.AtSpi.dll",
+      "sha256": "59E4C91657823A3620EE26B67EAB711F987A307CF3F316ED2F6BAA5BF10D5E2A",
+      "bytes": 562688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.FreeDesktop.dll",
+      "sha256": "9C1D71DDB18C475B3848B6F070BE61DA934D60AF1F517A7D6399DE1EC65B83DA",
+      "bytes": 253952
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.HarfBuzz.dll",
+      "sha256": "B3FF6150E64F14F816EBD4B1D5158FC89C5048D414CA90B38A6D8331067E2F89",
+      "bytes": 22016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Markup.dll",
+      "sha256": "3C6B04F6287914919DEBF33BFB6EB3EC8E9B1EC2300804238F7485A4846F16A6",
+      "bytes": 45568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Markup.Xaml.dll",
+      "sha256": "CD3D37F82B28162CDB99B127A05C9CAFA401848C1507E54266BD714D25B5B209",
+      "bytes": 74752
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Metal.dll",
+      "sha256": "442BE8E98B19A496619FB5F8F54C5A6B8B99EC105E54940C6C7A94879A22EB11",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.MicroCom.dll",
+      "sha256": "BB4C10481E708D4985A8FC97E761126C73689664010601DD6BE466974AB15398",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Native.dll",
+      "sha256": "80A89A7DD5FF1B9F127D1A99AB94C0A1B372D91E37C0115D6E13C2739E634636",
+      "bytes": 350208
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.OpenGL.dll",
+      "sha256": "963F859A910F2C3ECDE780A5F552135DB109A89374707F8EE500E878C009A0C9",
+      "bytes": 128512
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Remote.Protocol.dll",
+      "sha256": "BD3BE7C4F8EB98DB8B9A022B629D1C313F1065BD1A002E6E44ACFCD33381F1E1",
+      "bytes": 75776
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Skia.dll",
+      "sha256": "2F6B12DDBAC1C90FE56C8DAF8362DCC1E102F3DE485AE6DE16D35615481C240C",
+      "bytes": 125440
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Themes.Fluent.dll",
+      "sha256": "2C6C40407551DFF2DA5059142753FE8CA6C10C7956C31723328EA89CA5340AA1",
+      "bytes": 733184
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Vulkan.dll",
+      "sha256": "D6DCD5B102F108C22F0AC79936FE04932F5030B898347829CDB35EECFFB38464",
+      "bytes": 190976
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Win32.Automation.dll",
+      "sha256": "18A7B82ABB1217C84F8FC299479B2267BEB5E384FDC240D40E38A27A76D73B6D",
+      "bytes": 123904
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.Win32.dll",
+      "sha256": "F59FDE0A61F385EFFB94DA9DCC97D91593A3355054D15AB8AC05EA6EA481B5B3",
+      "bytes": 943104
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Avalonia.X11.dll",
+      "sha256": "9A0F4471180A0F9A44F08000030A3CF699FE486DC124A8854FF701DA0562F065",
+      "bytes": 406016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121",
+      "bytes": 373
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Animal_Minimalis.txt",
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5",
+      "bytes": 606
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Alga_Minimalis.txt",
+      "sha256": "79993974A6CD6A66CD3BCF940502A53E0886E17B40222773E0BF8BAF8A155401",
+      "bytes": 277
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Animal_Minimalis_Connubialis.txt",
+      "sha256": "2E82E517A7D8A33E4B6C3168CBE2E631727642D7C385EA76C6B63232EF3C35E6",
+      "bytes": 1136
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "sha256": "609270B7EEB6EF92782124EC942EE3160CF9613347BD98662B75B76F5B9B12CF",
+      "bytes": 9935
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Bubbles (F2)(Jez)-21.08.06.txt",
+      "sha256": "C575AB27AB498A075DDD6439CEFC7BF470A169C6EFE1CC16CA68098D0EAE3AC8",
+      "bytes": 7170
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Callidus(F1)(Shen)-05.04.05.txt",
+      "sha256": "B447D333E6D2C5D3C416FEBB6766E326D5DF11B4C022BBA92769EDA39BF1E3C8",
+      "bytes": 3710
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Catapiller(MB)(Peter).txt",
+      "sha256": "F112B9789159E6AC5FF839F9D33A1D0BC778624831E34B2BD81B9D684AF16DF9",
+      "bytes": 5513
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "sha256": "CED8DF58B4FE9AE29C6D03D8F64EC3AFDE5867FE2CBE08D90CD20D3A32EFD3E6",
+      "bytes": 3258
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Ebola (F1Vir) (Moonfisher).txt",
+      "sha256": "D0B3437F9ED37F77D904DED4F0BC1F5B68A2AB70E3FB787625A97099BA58F345",
+      "bytes": 15568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "sha256": "1D881243C720F04EC81EF098D841E5292311E76087F3925F7C9FB6A171D10A9F",
+      "bytes": 9744
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "sha256": "51852363CAC2FDA2F3BC9392DCDC297580A30B7AB3447DFD1E1C3DBB2DF3835C",
+      "bytes": 4250
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Fruit_Fliesv0.21.txt",
+      "sha256": "5D554A6585E63A29B603FC1D5D93652AFDDAA1103FBE9FAA9ABEC7FAC3D9DF86",
+      "bytes": 2639
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281",
+      "bytes": 2690
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "sha256": "174E36A48F478E30DA3D940A3540C2760D1B9C07E8F6A9C5697E3E010EB131E7",
+      "bytes": 916
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "sha256": "7FD0DD03A77F10C8A26F3B2D26E84071463F173F75240F9355C82E9B81F86208",
+      "bytes": 851
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "sha256": "58CDFBE2202705F0B99BF9A863AEAF066E2DC206FB5E3E1905FA44F3FDB45775",
+      "bytes": 5558
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "sha256": "3BFB6EC260D72D165C497F3CABCA28156B2A1D2A6DB3EB877E04C2A7FF7B98C8",
+      "bytes": 3138
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "sha256": "5D0B6636AEC6E80730474C684D606B5C6A76E6B66D4105FDBD30AC2C71A0D588",
+      "bytes": 2715
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "sha256": "773BD3EA3B270E854E53C739B298A70A40684242E1A0A67A8E725B3E84ED9932",
+      "bytes": 1723
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "sha256": "76E70B9C9F29F38577172F04910D7C8846E858135CF46D3E0A2A3032C34B510B",
+      "bytes": 522
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/17-D. Blinder (F2)-01.03.04.txt",
+      "sha256": "823A557E42B05D2626DD28C2785696557FA4586710823694C5D27B89F0B6190C",
+      "bytes": 1322
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "sha256": "D777DD50238C5313AD81719CC14372ECE2C10F7813BA94D186CDAC188FB9A97B",
+      "bytes": 983
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "sha256": "0A002084FD8FC9C8DA04E8B8A920A325A8D3A83F02FAC1FBD8797B776C1EEFAC",
+      "bytes": 1960
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "sha256": "793472C1879F554C09C58A3180AB5673A55E88A861284EE75ACE2BA3A34AFA47",
+      "bytes": 8398
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/20-Bot v 1.1.txt",
+      "sha256": "E56C73E3F173A14DC842AF742EBD913BE893938BABBA23BD89A14045906B6197",
+      "bytes": 3068
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "sha256": "C853342E1B8E033BB05911037245A2F6EDA14C6AA0329377D316C8AB8D6EA881",
+      "bytes": 774
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "sha256": "DA5D24C52E00E431AE051240AF7BA9E9F2DD7EAF6F6B7481C69D36FCB6D496AC",
+      "bytes": 10831
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "sha256": "562DC85F510D5881CCD66BB3AF26E5B3F161A7C399FA4E8D710C0EE801E1228F",
+      "bytes": 736
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "sha256": "FC09E7D21E98569F59853752E84885EFD377F40C417F5E6BFE35BB1C1D20D9CC",
+      "bytes": 6295
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "sha256": "506635F191AA1F12716A069DB3319A6BCAD68BE5D7F9C7D97BF18F81A693002E",
+      "bytes": 3039
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "sha256": "846FD16EFDA850DB2A36DB64480C45899AE26CD6481D9CEFC4AC27257332C568",
+      "bytes": 2839
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "sha256": "E22956B386353102288F794573D2E3B5C29FFAAA1B3DC1C0F823C0E23B40EE5D",
+      "bytes": 3024
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "sha256": "456129935205500440C29F01EB627713B0DB660C2FD8144E8F97F39030A8B768",
+      "bytes": 1773
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Locust(F1)(Moonfisher).txt",
+      "sha256": "425376200A83ED56CDA9CE6CA59FA50DB1FCA172FBF876628E4E739F6B4FBE81",
+      "bytes": 7172
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "sha256": "411B04032A8FEAF20E7DD413A08340C96C3B93AFEBC7E5A35A54CBF7F6BE071F",
+      "bytes": 4877
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "sha256": "C346E93DD954D111D569B8D2D63DA4177D5433CF2EB15BA334A154C1613F25E9",
+      "bytes": 3722
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "sha256": "9E93D6694DDA3F3C6B5A054B24A12838E2D8A7E0160A62F33ACDD890AE06C77A",
+      "bytes": 575
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "sha256": "80EF0E7437FD2BBEAC64736576FE48B906FF61E0FA4D6974C2E251181B8A45FB",
+      "bytes": 11711
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Quickdraw(F1)(Moonfisher).txt",
+      "sha256": "F24C30BFE66CE31E221F30FF520068345CFA1D7506FD716FF7054966E2FC0DEE",
+      "bytes": 8345
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "sha256": "CDAB99B7AF6F8ACA54A7E9D3064E11F8C5ABDD4F98625FEBB0E48746FC2A59A0",
+      "bytes": 3863
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Republican Wasp (F1)(Commander Keen).txt",
+      "sha256": "CC3733F51BDE8AC1CE0EFF85F63217BE061EB6003476E5AD8F527B3898FC32FA",
+      "bytes": 2634
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Saber.txt",
+      "sha256": "7CB4F03B211F279ADEA16281E39AC898A4BBA2EF28E5375104C4101B1005CC0A",
+      "bytes": 18584
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "sha256": "83E6EBF019B08156862496326A70700F1374A9A1BDE7EA4C6032C09FF1562F8E",
+      "bytes": 7945
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "sha256": "C4EAB07A29B53014D966ADB4698FAE156105EE0F01D25C8D42B40EDEB5FB13D4",
+      "bytes": 641
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/Spinnerv1.52.txt",
+      "sha256": "27B5D7C70FA3A542B3AE38F83AAD4A8123E5BD68637ABB475B3B0812E50D2EED",
+      "bytes": 19802
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/The One (1G)(Shen)-23.04.05.txt",
+      "sha256": "798E486BFA9C80C518455ADA8061C547458D06CC6E3CC4E3FFE92CA6CE54D220",
+      "bytes": 1900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Bots/Historical/TieFighters.txt",
+      "sha256": "878A101CADAD7B4F98693CB5E3ED3E111F358C579004F393D465ACE24116BBAA",
+      "bytes": 18909
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Darwinbots.Desktop",
+      "sha256": "D39794377DF3B5CD1D41A5C3EC2FF3D8C7D8ADDA9046AF2E9B3BFB6449AD2413",
+      "bytes": 88024
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Darwinbots.Desktop.Core.dll",
+      "sha256": "38F306660D292696713AC9F8BF6DDC629613E373B9A2A58FC70F7ED98F137C3E",
+      "bytes": 994816
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Darwinbots.Desktop.Core.pdb",
+      "sha256": "50623D9293067685C216BBF251DE57C1D0CCB2DD448FC331501ED7A6A1052306",
+      "bytes": 162212
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Darwinbots.Desktop.deps.json",
+      "sha256": "5AD934DDBFB5D951F9DCE556D4D441B8F1B183CE15FA54FAD03446B103A09D6D",
+      "bytes": 13041
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Darwinbots.Desktop.dll",
+      "sha256": "D407472C27295F1621919F7CF4EB129EA3EFCEDDE9FC9C7E16C88E6E46075446",
+      "bytes": 806400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Darwinbots.Desktop.pdb",
+      "sha256": "3F36426128F8EF0B46335F7360401954281D680D387CEBA7A1CA4331AD0F8F0C",
+      "bytes": 177080
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Darwinbots.Desktop.runtimeconfig.json",
+      "sha256": "9950D4583CFC9A106857C0D5B8A75B53E8774852B57B80BC3823A74D44A4D87F",
+      "bytes": 330
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/HarfBuzzSharp.dll",
+      "sha256": "55E72AC23263F8E12484F3435E02EC22FAC9EFF6E6D169BB0A8C246BE6B99D29",
+      "bytes": 122400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/libAvaloniaNative.dylib",
+      "sha256": "0642ADCBA18415B634C1C4125E09FE2AF08762A6C8E7E23E196B1A5E0EE0A18A",
+      "bytes": 1548080
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/libdarwinbots_engine.dylib",
+      "sha256": "AC7C86D5C8FE25E1AE73CB56E7F43CC5542527A8C3B0CB252ADB899F1F71818E",
+      "bytes": 11030992
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/libHarfBuzzSharp.dylib",
+      "sha256": "B2D7D39A46954B3D7310540BDF393F398AC4194EE029B995DEEB1DB0C161C43D",
+      "bytes": 2922800
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/libSkiaSharp.dylib",
+      "sha256": "E09F07AE1DF62DED475351F56D8DC8366CD679043F28B65D9DEE597A5FD0DA6C",
+      "bytes": 15201456
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/MicroCom.Runtime.dll",
+      "sha256": "2538EC6F3C24E901A90E33C37788B9A4E4B6AE8158CAB7328A00A00BB28EAB9E",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/SkiaSharp.dll",
+      "sha256": "AAAAA18C68BA1F3A3408B00DFF28B11D5705198E17BA9D3AA59222BFD35407C8",
+      "bytes": 489824
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-osx-x64/Tmds.DBus.Protocol.dll",
+      "sha256": "60A1C5255731D8AC843CAB53108BE8BA1ED02759CE3DB0DA5B49939EBE97BD8A",
+      "bytes": 232960
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Base.dll",
+      "sha256": "91EB28E9AF3AAA79BBE63D19209B2BC5D723378DB6732037DECB8F20E8A77CE1",
+      "bytes": 2341888
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Controls.dll",
+      "sha256": "61532FDC20B2B0B0CEB277182D9E7DD126215315F7383238AB46F9525A448682",
+      "bytes": 1339392
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.DesignerSupport.dll",
+      "sha256": "D917540E50C0CF8CCDB24DFE41F1ED5F232FCA65269BF1D7F86D2CF51703D2B7",
+      "bytes": 214528
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Desktop.dll",
+      "sha256": "BB30870ABBF7F60AA2AE0D9A1F92B940DF982030CDF9548F7768565E001EA08D",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Dialogs.dll",
+      "sha256": "7D76158DEDB7196A46B5942A8DEE5E670C609EC38AB36F90D14853C0DEB1B6C4",
+      "bytes": 242688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.dll",
+      "sha256": "676B7E93936EC7197E3221366104E89F0B8336B7916D599E031A7BC7B353B8CF",
+      "bytes": 4096
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.FreeDesktop.AtSpi.dll",
+      "sha256": "59E4C91657823A3620EE26B67EAB711F987A307CF3F316ED2F6BAA5BF10D5E2A",
+      "bytes": 562688
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.FreeDesktop.dll",
+      "sha256": "9C1D71DDB18C475B3848B6F070BE61DA934D60AF1F517A7D6399DE1EC65B83DA",
+      "bytes": 253952
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.HarfBuzz.dll",
+      "sha256": "B3FF6150E64F14F816EBD4B1D5158FC89C5048D414CA90B38A6D8331067E2F89",
+      "bytes": 22016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Markup.dll",
+      "sha256": "3C6B04F6287914919DEBF33BFB6EB3EC8E9B1EC2300804238F7485A4846F16A6",
+      "bytes": 45568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Markup.Xaml.dll",
+      "sha256": "CD3D37F82B28162CDB99B127A05C9CAFA401848C1507E54266BD714D25B5B209",
+      "bytes": 74752
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Metal.dll",
+      "sha256": "442BE8E98B19A496619FB5F8F54C5A6B8B99EC105E54940C6C7A94879A22EB11",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.MicroCom.dll",
+      "sha256": "BB4C10481E708D4985A8FC97E761126C73689664010601DD6BE466974AB15398",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Native.dll",
+      "sha256": "80A89A7DD5FF1B9F127D1A99AB94C0A1B372D91E37C0115D6E13C2739E634636",
+      "bytes": 350208
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.OpenGL.dll",
+      "sha256": "963F859A910F2C3ECDE780A5F552135DB109A89374707F8EE500E878C009A0C9",
+      "bytes": 128512
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Remote.Protocol.dll",
+      "sha256": "BD3BE7C4F8EB98DB8B9A022B629D1C313F1065BD1A002E6E44ACFCD33381F1E1",
+      "bytes": 75776
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Skia.dll",
+      "sha256": "2F6B12DDBAC1C90FE56C8DAF8362DCC1E102F3DE485AE6DE16D35615481C240C",
+      "bytes": 125440
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Themes.Fluent.dll",
+      "sha256": "2C6C40407551DFF2DA5059142753FE8CA6C10C7956C31723328EA89CA5340AA1",
+      "bytes": 733184
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Vulkan.dll",
+      "sha256": "D6DCD5B102F108C22F0AC79936FE04932F5030B898347829CDB35EECFFB38464",
+      "bytes": 190976
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Win32.Automation.dll",
+      "sha256": "18A7B82ABB1217C84F8FC299479B2267BEB5E384FDC240D40E38A27A76D73B6D",
+      "bytes": 123904
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.Win32.dll",
+      "sha256": "F59FDE0A61F385EFFB94DA9DCC97D91593A3355054D15AB8AC05EA6EA481B5B3",
+      "bytes": 943104
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Avalonia.X11.dll",
+      "sha256": "9A0F4471180A0F9A44F08000030A3CF699FE486DC124A8854FF701DA0562F065",
+      "bytes": 406016
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/av_libglesv2.dll",
+      "sha256": "53191A77FE783CD757CA7767077C2A64A662E7043777A5B4AB74980D4A0B73E3",
+      "bytes": 5394096
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Alga_Minimalis_Chloroplastus.txt",
+      "sha256": "220979D75843D6DDE6EDAE65AD4E1CB6BFE9B2C54A6CFC789351054E6E507121",
+      "bytes": 373
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Animal_Minimalis.txt",
+      "sha256": "A4E987876D99BB47926506807294B0628BF7AD1D4D1F138208842755019FC3A5",
+      "bytes": 606
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Alga_Minimalis.txt",
+      "sha256": "79993974A6CD6A66CD3BCF940502A53E0886E17B40222773E0BF8BAF8A155401",
+      "bytes": 277
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Animal_Minimalis_Connubialis.txt",
+      "sha256": "2E82E517A7D8A33E4B6C3168CBE2E631727642D7C385EA76C6B63232EF3C35E6",
+      "bytes": 1136
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Blue on blue (F2)(Jez)-05.08.06.txt",
+      "sha256": "609270B7EEB6EF92782124EC942EE3160CF9613347BD98662B75B76F5B9B12CF",
+      "bytes": 9935
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Bubbles (F2)(Jez)-21.08.06.txt",
+      "sha256": "C575AB27AB498A075DDD6439CEFC7BF470A169C6EFE1CC16CA68098D0EAE3AC8",
+      "bytes": 7170
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Callidus(F1)(Shen)-05.04.05.txt",
+      "sha256": "B447D333E6D2C5D3C416FEBB6766E326D5DF11B4C022BBA92769EDA39BF1E3C8",
+      "bytes": 3710
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Catapiller(MB)(Peter).txt",
+      "sha256": "F112B9789159E6AC5FF839F9D33A1D0BC778624831E34B2BD81B9D684AF16DF9",
+      "bytes": 5513
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Detonator v1.2(F1)(bacillus)-24.04.08.txt",
+      "sha256": "CED8DF58B4FE9AE29C6D03D8F64EC3AFDE5867FE2CBE08D90CD20D3A32EFD3E6",
+      "bytes": 3258
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Ebola (F1Vir) (Moonfisher).txt",
+      "sha256": "D0B3437F9ED37F77D904DED4F0BC1F5B68A2AB70E3FB787625A97099BA58F345",
+      "bytes": 15568
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Etch Mk II(F1)(abyaly)-15.03.2008.txt",
+      "sha256": "1D881243C720F04EC81EF098D841E5292311E76087F3925F7C9FB6A171D10A9F",
+      "bytes": 9744
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Excalibur 1.12 (F2)(Light)-06.03.07.txt",
+      "sha256": "51852363CAC2FDA2F3BC9392DCDC297580A30B7AB3447DFD1E1C3DBB2DF3835C",
+      "bytes": 4250
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Fruit_Fliesv0.21.txt",
+      "sha256": "5D554A6585E63A29B603FC1D5D93652AFDDAA1103FBE9FAA9ABEC7FAC3D9DF86",
+      "bytes": 2639
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/1-Fruit Flies v0.21 (F1) (Moonfisher) 28-09-08.txt",
+      "sha256": "EE29B771C3631ADD57628C773213D5B02A7DDF299DBC20552A31CA1088158281",
+      "bytes": 2690
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/10-Expletus Sexcomplitus (6G)(Jez)-11.03.04.txt",
+      "sha256": "174E36A48F478E30DA3D940A3540C2760D1B9C07E8F6A9C5697E3E010EB131E7",
+      "bytes": 916
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/11-Schoonmaker (6G)(Henk)-04.03.04.txt",
+      "sha256": "7FD0DD03A77F10C8A26F3B2D26E84071463F173F75240F9355C82E9B81F86208",
+      "bytes": 851
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/12-Caterpillar(Peter)(F2_MB)04-11-08.txt",
+      "sha256": "58CDFBE2202705F0B99BF9A863AEAF066E2DC206FB5E3E1905FA44F3FDB45775",
+      "bytes": 5558
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/13-Alpha2.7 WidVis(F3)(d-EVO)23-10-2008.txt",
+      "sha256": "3BFB6EC260D72D165C497F3CABCA28156B2A1D2A6DB3EB877E04C2A7FF7B98C8",
+      "bytes": 3138
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/14-A. Praxidikae mk2 (F2)(Unc) 07.29.05.txt",
+      "sha256": "5D0B6636AEC6E80730474C684D606B5C6A76E6B66D4105FDBD30AC2C71A0D588",
+      "bytes": 2715
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/15-Knotbot v2 (MB) MysticalDumpling -2.6.14.txt",
+      "sha256": "773BD3EA3B270E854E53C739B298A70A40684242E1A0A67A8E725B3E84ED9932",
+      "bytes": 1723
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/16-Animal Minimalis (4G)(Numsgil)-10.03.05.txt",
+      "sha256": "76E70B9C9F29F38577172F04910D7C8846E858135CF46D3E0A2A3032C34B510B",
+      "bytes": 522
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/17-D. Blinder (F2)-01.03.04.txt",
+      "sha256": "823A557E42B05D2626DD28C2785696557FA4586710823694C5D27B89F0B6190C",
+      "bytes": 1322
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/18-Drifting Spinner1 (F2)(Jez)-25.10.03.txt",
+      "sha256": "D777DD50238C5313AD81719CC14372ECE2C10F7813BA94D186CDAC188FB9A97B",
+      "bytes": 983
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/19-Equalite (F2)(Henk) -23.02.05.txt",
+      "sha256": "0A002084FD8FC9C8DA04E8B8A920A325A8D3A83F02FAC1FBD8797B776C1EEFAC",
+      "bytes": 1960
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/2-Quickdraw (F1) (Moonfisher) 29-10-08.txt",
+      "sha256": "793472C1879F554C09C58A3180AB5673A55E88A861284EE75ACE2BA3A34AFA47",
+      "bytes": 8398
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/20-Bot v 1.1.txt",
+      "sha256": "E56C73E3F173A14DC842AF742EBD913BE893938BABBA23BD89A14045906B6197",
+      "bytes": 3068
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/21-Efficient Bot (F1)(Shen)-01.09.04.txt",
+      "sha256": "C853342E1B8E033BB05911037245A2F6EDA14C6AA0329377D316C8AB8D6EA881",
+      "bytes": 774
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/3-Spinner v1.2 (F2) (Moonfisher) 14-04-08.txt",
+      "sha256": "DA5D24C52E00E431AE051240AF7BA9E9F2DD7EAF6F6B7481C69D36FCB6D496AC",
+      "bytes": 10831
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/4-Singula Haloculus v2.1 (SB)(bacillus)5-12-2008.txt",
+      "sha256": "562DC85F510D5881CCD66BB3AF26E5B3F161A7C399FA4E8D710C0EE801E1228F",
+      "bytes": 736
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/5-Gimmick1.0_F3__Ikke_11.6.2008.txt",
+      "sha256": "FC09E7D21E98569F59853752E84885EFD377F40C417F5E6BFE35BB1C1D20D9CC",
+      "bytes": 6295
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/6-Astronomo2 (F2)(Commander Keen)3-10-08.txt",
+      "sha256": "506635F191AA1F12716A069DB3319A6BCAD68BE5D7F9C7D97BF18F81A693002E",
+      "bytes": 3039
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/7-Astronomo (F2)(Commander Keen) 2-10-08.txt",
+      "sha256": "846FD16EFDA850DB2A36DB64480C45899AE26CD6481D9CEFC4AC27257332C568",
+      "bytes": 2839
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/8-multiply3 (F2)(peter) -18.9.07.txt",
+      "sha256": "E22956B386353102288F794573D2E3B5C29FFAAA1B3DC1C0F823C0E23B40EE5D",
+      "bytes": 3024
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/league/9-Big (F3) (Moonfisher) 19-10-08.txt",
+      "sha256": "456129935205500440C29F01EB627713B0DB660C2FD8144E8F97F39030A8B768",
+      "bytes": 1773
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Locust(F1)(Moonfisher).txt",
+      "sha256": "425376200A83ED56CDA9CE6CA59FA50DB1FCA172FBF876628E4E739F6B4FBE81",
+      "bytes": 7172
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Martian Tank 3 (F2)(Martian)-06.07.2007.txt",
+      "sha256": "411B04032A8FEAF20E7DD413A08340C96C3B93AFEBC7E5A35A54CBF7F6BE071F",
+      "bytes": 4877
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Multiply4(F1)(F2)(Peter)19-12-07.txt",
+      "sha256": "C346E93DD954D111D569B8D2D63DA4177D5433CF2EB15BA334A154C1613F25E9",
+      "bytes": 3722
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Occura Amplificis(F1)(bacillus)-25.03.08.txt",
+      "sha256": "9E93D6694DDA3F3C6B5A054B24A12838E2D8A7E0160A62F33ACDD890AE06C77A",
+      "bytes": 575
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Pacifist (5G) (Moonfisher) 19-02-08.txt",
+      "sha256": "80EF0E7437FD2BBEAC64736576FE48B906FF61E0FA4D6974C2E251181B8A45FB",
+      "bytes": 11711
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Quickdraw(F1)(Moonfisher).txt",
+      "sha256": "F24C30BFE66CE31E221F30FF520068345CFA1D7506FD716FF7054966E2FC0DEE",
+      "bytes": 8345
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Reaper (F1)(Googlyeyesultra)-17.07.07.txt",
+      "sha256": "CDAB99B7AF6F8ACA54A7E9D3064E11F8C5ABDD4F98625FEBB0E48746FC2A59A0",
+      "bytes": 3863
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Republican Wasp (F1)(Commander Keen).txt",
+      "sha256": "CC3733F51BDE8AC1CE0EFF85F63217BE061EB6003476E5AD8F527B3898FC32FA",
+      "bytes": 2634
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Saber.txt",
+      "sha256": "7CB4F03B211F279ADEA16281E39AC898A4BBA2EF28E5375104C4101B1005CC0A",
+      "bytes": 18584
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Seasnake 1.0 (MB)(EricL) - 23.04.08.txt",
+      "sha256": "83E6EBF019B08156862496326A70700F1374A9A1BDE7EA4C6032C09FF1562F8E",
+      "bytes": 7945
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Singula Haloculus v2.1(F1)(bacillus)21.04.08.txt",
+      "sha256": "C4EAB07A29B53014D966ADB4698FAE156105EE0F01D25C8D42B40EDEB5FB13D4",
+      "bytes": 641
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/Spinnerv1.52.txt",
+      "sha256": "27B5D7C70FA3A542B3AE38F83AAD4A8123E5BD68637ABB475B3B0812E50D2EED",
+      "bytes": 19802
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/The One (1G)(Shen)-23.04.05.txt",
+      "sha256": "798E486BFA9C80C518455ADA8061C547458D06CC6E3CC4E3FFE92CA6CE54D220",
+      "bytes": 1900
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Bots/Historical/TieFighters.txt",
+      "sha256": "878A101CADAD7B4F98693CB5E3ED3E111F358C579004F393D465ACE24116BBAA",
+      "bytes": 18909
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Darwinbots.Desktop.Core.dll",
+      "sha256": "5A8BB3E2C6FD25BFC4609A5A9DD974745CF27B4B8AC433EA36DD803DB1744C45",
+      "bytes": 994816
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Darwinbots.Desktop.Core.pdb",
+      "sha256": "79A43851DB58A1877236A08BF2823C19162BF0231A08F90E83AED03A0426758F",
+      "bytes": 162028
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Darwinbots.Desktop.deps.json",
+      "sha256": "B0E68D24E8FCD60D407B4F9ED6F883EFFA3A157D88A66977455665FA2171B258",
+      "bytes": 14185
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Darwinbots.Desktop.dll",
+      "sha256": "ECBBCAA5547AED0773997F60D0FB4F7A0C38F014B428F25485748C3AF32F48E1",
+      "bytes": 806400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Darwinbots.Desktop.exe",
+      "sha256": "8A391C013C6FF871371F71B6326C13378194D38D0EFA72E8B56684EECCA052F1",
+      "bytes": 162816
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Darwinbots.Desktop.pdb",
+      "sha256": "2C3C4DFF472DF48BE8A5A29DAB8BF3350593348999C6C4BF981B0600CCFD9FE7",
+      "bytes": 176892
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Darwinbots.Desktop.runtimeconfig.json",
+      "sha256": "C230A317A54DD960BCBEB5F347F52E18DC665A26F7EFDA2159FCED9A5AC7E097",
+      "bytes": 342
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/darwinbots_engine.dll",
+      "sha256": "F9AEEAE49F0CC441C76CE4C312AF356566206CFA9E296D891061EAFBAA8DE060",
+      "bytes": 12475392
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/HarfBuzzSharp.dll",
+      "sha256": "55E72AC23263F8E12484F3435E02EC22FAC9EFF6E6D169BB0A8C246BE6B99D29",
+      "bytes": 122400
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/libHarfBuzzSharp.dll",
+      "sha256": "145ADE963EBA427027D5E1381DB5D51A0EF9E98E9FEF9EFBFA6074CA20DA246F",
+      "bytes": 1816088
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/libHarfBuzzSharp.pdb",
+      "sha256": "4300D75D5AF09FBB79D565D9A18573243A93214C811D4F24A33F11F0D4242D93",
+      "bytes": 20918272
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/libSkiaSharp.dll",
+      "sha256": "7DEC3BA900AB353491E6446F0083739924C6F8DD668832E2F09D38EBFFDBBE1C",
+      "bytes": 11628896
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/libSkiaSharp.pdb",
+      "sha256": "9FA70AEFF3122BCCEAE15CD89D9D2F3C88C8D382122EF70AD694A76D119DCC6E",
+      "bytes": 84033536
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/MicroCom.Runtime.dll",
+      "sha256": "2538EC6F3C24E901A90E33C37788B9A4E4B6AE8158CAB7328A00A00BB28EAB9E",
+      "bytes": 15360
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/SkiaSharp.dll",
+      "sha256": "AAAAA18C68BA1F3A3408B00DFF28B11D5705198E17BA9D3AA59222BFD35407C8",
+      "bytes": 489824
+    },
+    {
+      "file": "output/hosted-main-61509e4-agent/artifacts/darwinbots-win-x64/Tmds.DBus.Protocol.dll",
+      "sha256": "60A1C5255731D8AC843CAB53108BE8BA1ED02759CE3DB0DA5B49939EBE97BD8A",
+      "bytes": 232960
+    }
+  ]
+}

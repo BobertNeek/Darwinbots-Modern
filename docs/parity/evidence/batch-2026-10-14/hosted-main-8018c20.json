@@ -1,0 +1,849 @@
+{
+  "schema_version": 1,
+  "batch": 58,
+  "sealed_utc": "2026-10-17T06:51:26.067Z",
+  "source_head": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d",
+  "source_manifest": {
+    "file": "output/native-roundtrip-pass58-source.json",
+    "sha256": "102DC7BE8C4E3676015012F593CEB92A95DB598196661BAF80F817C6A4B8566C",
+    "pinned_files": 540
+  },
+  "workflow": "Modern cross-platform",
+  "workflow_file": ".github/workflows/modern-cross-platform.yml",
+  "run": {
+    "id": 39008576353,
+    "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39008576353",
+    "event": "push",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-17T06:04:46Z",
+    "updated_at": "2026-10-17T06:47:38Z",
+    "head_sha": "8018c200690ea20d07c2d243138eb7d8f8fc0e7d"
+  },
+  "all_jobs_terminal": true,
+  "jobs": [
+    {
+      "job_id": 117326013556,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "platform": "linux-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T06:04:50Z",
+      "completed_at": "2026-10-17T06:26:16Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "number": 8,
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1038,
+          "failed": 0,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8018c20-agent/rust-target-results.json",
+          "sha256": "5AF5FB9F66E03A85D7E507C4B4B93A8FB90576D8587A936261060D6E4FB6F6FF",
+          "bytes": 213109
+        },
+        "log_file": "output/hosted-main-8018c20-agent/logs/linux-x64-completed.log",
+        "log_sha256": "1932375AE9F5D6D22A1A026A24165BE7DD01FFDD0282DC88452CC85715B0AEEE",
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "passed": 307,
+        "failed": 0,
+        "skipped": 0,
+        "total": 307,
+        "full_expected_corpus_completed": true,
+        "evidence": "Actual emitted dotnet summary; Core TRX was not preserved by this workflow artifact path.",
+        "log_file": "output/hosted-main-8018c20-agent/logs/linux-x64-completed.log",
+        "summary_line": 2026,
+        "emitted_summary": "Passed!  - Failed:     0, Passed:   307, Skipped:     0, Total:   307, Duration: 766 ms - Darwinbots.Desktop.Core.Tests.dll (net10.0)"
+      },
+      "desktop": {
+        "passed": 196,
+        "failed": 1,
+        "skipped": 0,
+        "total": 197,
+        "executed": 197,
+        "result_rows": 197,
+        "result_rows_match_counters": true,
+        "full_expected_corpus_completed": true,
+        "failed_tests": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Failed"
+          }
+        ],
+        "messages": [
+          "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2116)\nExpected: [···, 51, 49, 51, 57, 48, ···]\nActual:   [···, 51, 49, 52, 48, 49, ···]\n                        ↑ (pos 2116)"
+        ],
+        "stack_traces": [
+          "   at Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps() in /home/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs:line 174\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)"
+        ],
+        "trx_file": "output/hosted-main-8018c20-agent/artifacts/darwinbots-gui-audit-linux-x64/test-results/linux-x64/rendered-controls.trx",
+        "trx_sha256": "90EB8A7EC958014072C76E565B0AEF71BE5EFEF026F169AE5D3970CAD571BDBD",
+        "host_inactivity_abort": false
+      },
+      "not_run_after_failure": [
+        {
+          "step": "Publish desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Smoke test published desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Run actions/upload-artifact@v4",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        }
+      ],
+      "artifacts": {
+        "gui_audit_preserved": true,
+        "native_package_produced": false,
+        "boundary": "GUI audit is preserved by always-run upload; publish/package smoke/package upload are skipped and not claimed."
+      }
+    },
+    {
+      "job_id": 117326013658,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "platform": "osx-arm64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T06:04:56Z",
+      "completed_at": "2026-10-17T06:26:52Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "number": 8,
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1038,
+          "failed": 0,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8018c20-agent/rust-target-results.json",
+          "sha256": "5AF5FB9F66E03A85D7E507C4B4B93A8FB90576D8587A936261060D6E4FB6F6FF",
+          "bytes": 213109
+        },
+        "log_file": "output/hosted-main-8018c20-agent/logs/osx-arm64-completed.log",
+        "log_sha256": "513DF3C89C4618FBC1A9914327626C11A9971F5064D29CB8561381A7D4B872AE",
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "passed": 307,
+        "failed": 0,
+        "skipped": 0,
+        "total": 307,
+        "full_expected_corpus_completed": true,
+        "evidence": "Actual emitted dotnet summary; Core TRX was not preserved by this workflow artifact path.",
+        "log_file": "output/hosted-main-8018c20-agent/logs/osx-arm64-completed.log",
+        "summary_line": 2028,
+        "emitted_summary": "Passed!  - Failed:     0, Passed:   307, Skipped:     0, Total:   307, Duration: 1 s - Darwinbots.Desktop.Core.Tests.dll (net10.0)"
+      },
+      "desktop": {
+        "passed": 196,
+        "failed": 1,
+        "skipped": 0,
+        "total": 197,
+        "executed": 197,
+        "result_rows": 197,
+        "result_rows_match_counters": true,
+        "full_expected_corpus_completed": true,
+        "failed_tests": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Failed"
+          }
+        ],
+        "messages": [
+          "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2117)\nExpected: [···, 49, 53, 52, 53, 48, ···]\nActual:   [···, 49, 53, 53, 51, 56, ···]\n                        ↑ (pos 2117)"
+        ],
+        "stack_traces": [
+          "   at Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs:line 174\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)"
+        ],
+        "trx_file": "output/hosted-main-8018c20-agent/artifacts/darwinbots-gui-audit-osx-arm64/test-results/osx-arm64/rendered-controls.trx",
+        "trx_sha256": "3E581909A744523D7D1593F1E72A78CC307630DF951C8DDE137BEA63CF020674",
+        "host_inactivity_abort": false
+      },
+      "not_run_after_failure": [
+        {
+          "step": "Publish desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Smoke test published desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Run actions/upload-artifact@v4",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        }
+      ],
+      "artifacts": {
+        "gui_audit_preserved": true,
+        "native_package_produced": false,
+        "boundary": "GUI audit is preserved by always-run upload; publish/package smoke/package upload are skipped and not claimed."
+      }
+    },
+    {
+      "job_id": 117326013702,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "platform": "win-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T06:04:51Z",
+      "completed_at": "2026-10-17T06:42:09Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "number": 8,
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1038,
+          "failed": 0,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8018c20-agent/rust-target-results.json",
+          "sha256": "5AF5FB9F66E03A85D7E507C4B4B93A8FB90576D8587A936261060D6E4FB6F6FF",
+          "bytes": 213109
+        },
+        "log_file": "output/hosted-main-8018c20-agent/logs/win-x64-completed.log",
+        "log_sha256": "6D22443A2DC3F54B360EC7E2A63CC7F72FF1D904BEAF98BA5F639BC7AED81CC4",
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "passed": 307,
+        "failed": 0,
+        "skipped": 0,
+        "total": 307,
+        "full_expected_corpus_completed": true,
+        "evidence": "Actual emitted dotnet summary; Core TRX was not preserved by this workflow artifact path.",
+        "log_file": "output/hosted-main-8018c20-agent/logs/win-x64-completed.log",
+        "summary_line": 2039,
+        "emitted_summary": "Passed!  - Failed:     0, Passed:   307, Skipped:     0, Total:   307, Duration: 3 s - Darwinbots.Desktop.Core.Tests.dll (net10.0)"
+      },
+      "desktop": {
+        "passed": 196,
+        "failed": 1,
+        "skipped": 0,
+        "total": 197,
+        "executed": 197,
+        "result_rows": 197,
+        "result_rows_match_counters": true,
+        "full_expected_corpus_completed": true,
+        "failed_tests": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Failed"
+          }
+        ],
+        "messages": [
+          "Assert.Equal() Failure: Collections differ&#xD;\n                        ↓ (pos 2117)&#xD;\nExpected: [···, 49, 48, 55, 51, 56, ···]&#xD;\nActual:   [···, 49, 48, 57, 50, 49, ···]&#xD;\n                        ↑ (pos 2117)"
+        ],
+        "stack_traces": [
+          "   at Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps() in D:\\a\\Darwinbots-Modern\\Darwinbots-Modern\\modern\\desktop\\tests\\Darwinbots.Desktop.Tests\\LegacySettingsNativeTests.cs:line 174&#xD;\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)&#xD;\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;\n   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)"
+        ],
+        "trx_file": "output/hosted-main-8018c20-agent/artifacts/darwinbots-gui-audit-win-x64/test-results/win-x64/rendered-controls.trx",
+        "trx_sha256": "01F434229D50A0B0296D09FD61EF6728E5349889D8AB2130302F09ECA30A294A",
+        "host_inactivity_abort": false
+      },
+      "not_run_after_failure": [
+        {
+          "step": "Publish desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Smoke test published desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Run actions/upload-artifact@v4",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        }
+      ],
+      "artifacts": {
+        "gui_audit_preserved": true,
+        "native_package_produced": false,
+        "boundary": "GUI audit is preserved by always-run upload; publish/package smoke/package upload are skipped and not claimed."
+      }
+    },
+    {
+      "job_id": 117326013752,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "platform": "osx-x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-17T06:04:53Z",
+      "completed_at": "2026-10-17T06:47:38Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Test Rust workspace",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Test desktop core",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Test rendered desktop controls",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "number": 8,
+          "name": "Preserve rendered control receipts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Publish desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Smoke test published desktop package",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Post Run actions/setup-dotnet@v4",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 22,
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "rust": {
+        "full_expected_corpus_completed": true,
+        "expected_distinct_targets": 68,
+        "actual_distinct_targets": 68,
+        "counts": {
+          "passed": 1038,
+          "failed": 0,
+          "ignored": 12,
+          "measured": 0,
+          "filtered_out": 0
+        },
+        "failed_targets": [],
+        "ignored_physical_gpu_tests": 12,
+        "census_receipt": {
+          "file": "output/hosted-main-8018c20-agent/rust-target-results.json",
+          "sha256": "5AF5FB9F66E03A85D7E507C4B4B93A8FB90576D8587A936261060D6E4FB6F6FF",
+          "bytes": 213109
+        },
+        "log_file": "output/hosted-main-8018c20-agent/logs/osx-x64-completed.log",
+        "log_sha256": "3B2EF20E4DB374D7BEBCDF7CD679758476C3C34EE3772E53CD5A1BC5EA148655",
+        "command": "cargo test --release --workspace --no-fail-fast"
+      },
+      "core": {
+        "passed": 307,
+        "failed": 0,
+        "skipped": 0,
+        "total": 307,
+        "full_expected_corpus_completed": true,
+        "evidence": "Actual emitted dotnet summary; Core TRX was not preserved by this workflow artifact path.",
+        "log_file": "output/hosted-main-8018c20-agent/logs/osx-x64-completed.log",
+        "summary_line": 2027,
+        "emitted_summary": "Passed!  - Failed:     0, Passed:   307, Skipped:     0, Total:   307, Duration: 2 s - Darwinbots.Desktop.Core.Tests.dll (net10.0)"
+      },
+      "desktop": {
+        "passed": 196,
+        "failed": 1,
+        "skipped": 0,
+        "total": 197,
+        "executed": 197,
+        "result_rows": 197,
+        "result_rows_match_counters": true,
+        "full_expected_corpus_completed": true,
+        "failed_tests": [
+          {
+            "test_name": "Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+            "outcome": "Failed"
+          }
+        ],
+        "messages": [
+          "Assert.Equal() Failure: Collections differ\n                        ↓ (pos 2116)\nExpected: [···, 52, 52, 49, 57, 56, ···]\nActual:   [···, 52, 52, 50, 51, 57, ···]\n                        ↑ (pos 2116)"
+        ],
+        "stack_traces": [
+          "   at Darwinbots.Desktop.Tests.LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps() in /Users/runner/work/Darwinbots-Modern/Darwinbots-Modern/modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs:line 174\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)\n   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)\n   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)"
+        ],
+        "trx_file": "output/hosted-main-8018c20-agent/artifacts/darwinbots-gui-audit-osx-x64/test-results/osx-x64/rendered-controls.trx",
+        "trx_sha256": "76C43090E40A4E0928E1DA93E571D7DC28B4B6BBB644C62F1266784376B151E5",
+        "host_inactivity_abort": false
+      },
+      "not_run_after_failure": [
+        {
+          "step": "Publish desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Smoke test published desktop package",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        },
+        {
+          "step": "Run actions/upload-artifact@v4",
+          "reason": "Earlier rendered Desktop test step failed; ordinary job gates preserved."
+        }
+      ],
+      "artifacts": {
+        "gui_audit_preserved": true,
+        "native_package_produced": false,
+        "boundary": "GUI audit is preserved by always-run upload; publish/package smoke/package upload are skipped and not claimed."
+      }
+    }
+  ],
+  "aggregate": {
+    "rust_target_executions": 272,
+    "rust_passed": 4152,
+    "rust_failed": 0,
+    "rust_ignored": 48,
+    "rust_filtered_out": 0,
+    "core_passed": 1228,
+    "core_failed": 0,
+    "core_skipped": 0,
+    "desktop_passed": 784,
+    "desktop_failed": 4,
+    "desktop_skipped": 0,
+    "desktop_result_rows": 788,
+    "completed_jobs": 4,
+    "failed_jobs": 4,
+    "cancelled_jobs": 0,
+    "gui_artifacts": 4,
+    "gui_artifact_files": 136,
+    "png_files": 132,
+    "trx_files": 4,
+    "published_native_packages": 0,
+    "package_smokes_executed": 0
+  },
+  "failure_diagnosis": {
+    "same_failure_all_platforms": true,
+    "test": "LegacySettingsNativeTests.OriginalExecutableContinuationOfThePortExportLoadsAndSteps",
+    "source": "modern/desktop/tests/Darwinbots.Desktop.Tests/LegacySettingsNativeTests.cs",
+    "line": 174,
+    "before_tick_complete_checkpoint_equality_passed": true,
+    "after_twin_ticks_complete_checkpoint_equality_failed": true,
+    "confirmed_fixture_external_input": "Each NativeEngineClient.Tick reads its live TimeProvider and persists native_restart_seed. Both clients currently use default System clocks, so sequential twin ticks have uncontrolled distinct saved host inputs.",
+    "complete_payload_diff_available": false,
+    "prefix_path_inferred_not_proven": "Current TRXs contain short differing decimal digit excerpts near byte2116–2118; no full checkpoint arrays.",
+    "repair_metadata": {
+      "file": "output/pass59-drafts/archive-continuation/metadata.json",
+      "sha256": "4B809BB7DC6A978CAF67E93F98815AC77112DEC6FAA43EA7ADD20A66BAFA8211",
+      "bytes": 6295
+    },
+    "repair_applied_or_executed": false
+  },
+  "artifacts": {
+    "index": {
+      "file": "output/hosted-main-8018c20-agent/artifact-file-hashes.json",
+      "sha256": "49B8B8ED9A7B7710437A87FE2F6C126CA2C37F2AB2533AD9B6FF55F902299CEF",
+      "bytes": 35792
+    },
+    "server_artifacts": [
+      {
+        "id": 12093036555,
+        "name": "darwinbots-gui-audit-win-x64",
+        "size_in_bytes": 1919579,
+        "digest": "sha256:281f7e1b243e1b6cca8aa76d4cecbb9813529c9f8192589e0f9e5997e04e5c30",
+        "expired": false
+      },
+      {
+        "id": 12092487988,
+        "name": "darwinbots-gui-audit-osx-x64",
+        "size_in_bytes": 3116639,
+        "digest": "sha256:948db9bf35e0b61f8afe2aa6832724be6ca34ac70ac88786cffb85bfb87ce419",
+        "expired": false
+      },
+      {
+        "id": 12092382623,
+        "name": "darwinbots-gui-audit-linux-x64",
+        "size_in_bytes": 2518137,
+        "digest": "sha256:6203808d32b3954c59f3ac804d45fe4c16efbaa021ca16ad26bfa22117579838",
+        "expired": false
+      },
+      {
+        "id": 12091968012,
+        "name": "darwinbots-gui-audit-osx-arm64",
+        "size_in_bytes": 3119721,
+        "digest": "sha256:eb1b647aa251956a280efceb2482e3f68e285c62b2bc8d257358f6c1dd62ceee",
+        "expired": false
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "file": "output/hosted-main-8018c20-agent/api/run-20261017T064843859.json",
+      "sha256": "F4A2355294D2DEBC60A0AE2B14D7B3F02D5F429FF68C0A7CF85132DBF62C03E8",
+      "bytes": 13867
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/api/jobs-20261017T064843859.json",
+      "sha256": "35964222D416CC2F89D66FD87A3A6CCCC5B0C7F81B05334DF104F01682C81182",
+      "bytes": 13308
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/api/artifacts-20261017T064843859.json",
+      "sha256": "75910083FBBBE9004028BAF89911447B39217D895A218A96814E5DC134BCCC2F",
+      "bytes": 2971
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/logs/linux-x64-completed.log",
+      "sha256": "1932375AE9F5D6D22A1A026A24165BE7DD01FFDD0282DC88452CC85715B0AEEE",
+      "bytes": 374634
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/logs/osx-arm64-completed.log",
+      "sha256": "513DF3C89C4618FBC1A9914327626C11A9971F5064D29CB8561381A7D4B872AE",
+      "bytes": 373474
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/logs/win-x64-completed.log",
+      "sha256": "6D22443A2DC3F54B360EC7E2A63CC7F72FF1D904BEAF98BA5F639BC7AED81CC4",
+      "bytes": 374835
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/logs/osx-x64-completed.log",
+      "sha256": "3B2EF20E4DB374D7BEBCDF7CD679758476C3C34EE3772E53CD5A1BC5EA148655",
+      "bytes": 373246
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/rust-target-results.json",
+      "sha256": "5AF5FB9F66E03A85D7E507C4B4B93A8FB90576D8587A936261060D6E4FB6F6FF",
+      "bytes": 213109
+    },
+    {
+      "file": "output/hosted-main-8018c20-agent/artifact-file-hashes.json",
+      "sha256": "49B8B8ED9A7B7710437A87FE2F6C126CA2C37F2AB2533AD9B6FF55F902299CEF",
+      "bytes": 35792
+    }
+  ],
+  "collector_actions": {
+    "read_only_github": true,
+    "dispatch": false,
+    "cancel": false,
+    "source_or_head_edits": false,
+    "local_product_execution": false,
+    "ui_or_gpu": false
+  },
+  "qualification_passed": false,
+  "boundary": "Exact source58 full hosted ordinary Rust corpus completed successfully on all four platforms, with12 physical GPU tests ignored per platform. Core307 passed on each. Each full Desktop197-case suite failed the same archive checkpoint comparison, so no package publish/smoke/package artifact followed. These results do not create local CPU admission, physical GPU/capacity evidence, full original trajectory or visible acceptance. Separate diagnostics39008656161 additionally had an incomplete ARM run; it is not substituted for the complete MAIN ARM result."
+}

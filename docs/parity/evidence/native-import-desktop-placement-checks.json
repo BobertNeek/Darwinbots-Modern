@@ -1,0 +1,11 @@
+{
+  "code_revision": "12372916b6b17781c10dfc2c0f2f40d5d802aa34",
+  "passed": 1,
+  "failed": 0,
+  "trigger": "Create a 1000x1000 client, load the native 16000x12000 save, insert a centered species",
+  "observed": [
+    8000,
+    6000
+  ],
+  "meaning": "Desktop insertion uses loaded world dimensions, and rejected loads retain previous live state"
+}

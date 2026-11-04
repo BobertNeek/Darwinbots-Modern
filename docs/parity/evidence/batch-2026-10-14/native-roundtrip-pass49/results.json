@@ -1,0 +1,237 @@
+[
+  {
+    "step": "format-check",
+    "exit_code": 0,
+    "seconds": 3.9347971,
+    "log": "format-check.log"
+  },
+  {
+    "step": "strict-clippy",
+    "exit_code": 0,
+    "seconds": 95.1439032,
+    "log": "strict-clippy.log"
+  },
+  {
+    "step": "cpu-engine-lib",
+    "exit_code": 0,
+    "seconds": 403.7251994,
+    "log": "cpu-engine-lib.log"
+  },
+  {
+    "step": "cpu-ffi-integrations",
+    "exit_code": 0,
+    "seconds": 398.0318169,
+    "log": "cpu-ffi-integrations.log"
+  },
+  {
+    "step": "cpu-cli-lib",
+    "exit_code": 0,
+    "seconds": 367.6133454,
+    "log": "cpu-cli-lib.log"
+  },
+  {
+    "step": "cpu-cli-integrations",
+    "exit_code": 0,
+    "seconds": 84.103666,
+    "log": "cpu-cli-integrations.log"
+  },
+  {
+    "step": "cpu-docs",
+    "exit_code": 0,
+    "seconds": 4.6724574,
+    "log": "cpu-docs.log"
+  },
+  {
+    "step": "cli-build",
+    "exit_code": 0,
+    "seconds": 1.3171729,
+    "log": "cli-build.log"
+  },
+  {
+    "step": "original-zero-cycle-replay",
+    "exit_code": 0,
+    "seconds": 1.8381256,
+    "log": "original-zero-cycle-replay.log"
+  },
+  {
+    "step": "original-zero-cycle-compare",
+    "exit_code": 0,
+    "seconds": 1.9217774,
+    "log": "original-zero-cycle-compare.log"
+  },
+  {
+    "step": "candidate-movement-1",
+    "exit_code": 0,
+    "seconds": 0.4807836,
+    "log": "candidate-movement-1.log"
+  },
+  {
+    "step": "candidate-movement-10",
+    "exit_code": 0,
+    "seconds": 0.4377109,
+    "log": "candidate-movement-10.log"
+  },
+  {
+    "step": "candidate-movement-100",
+    "exit_code": 0,
+    "seconds": 0.4946446,
+    "log": "candidate-movement-100.log"
+  },
+  {
+    "step": "candidate-fixed-1",
+    "exit_code": 0,
+    "seconds": 0.7058619,
+    "log": "candidate-fixed-1.log"
+  },
+  {
+    "step": "candidate-fixed-10",
+    "exit_code": 0,
+    "seconds": 0.5173334,
+    "log": "candidate-fixed-10.log"
+  },
+  {
+    "step": "candidate-fixed-100",
+    "exit_code": 0,
+    "seconds": 0.4791644,
+    "log": "candidate-fixed-100.log"
+  },
+  {
+    "step": "candidate-contacts-1",
+    "exit_code": 0,
+    "seconds": 0.4406555,
+    "log": "candidate-contacts-1.log"
+  },
+  {
+    "step": "candidate-contacts-10",
+    "exit_code": 0,
+    "seconds": 0.4298494,
+    "log": "candidate-contacts-10.log"
+  },
+  {
+    "step": "candidate-contacts-100",
+    "exit_code": 0,
+    "seconds": 0.5052301,
+    "log": "candidate-contacts-100.log"
+  },
+  {
+    "step": "candidate-body-1",
+    "exit_code": 0,
+    "seconds": 0.42629,
+    "log": "candidate-body-1.log"
+  },
+  {
+    "step": "candidate-body-10",
+    "exit_code": 0,
+    "seconds": 0.4559844,
+    "log": "candidate-body-10.log"
+  },
+  {
+    "step": "candidate-body-100",
+    "exit_code": 0,
+    "seconds": 0.4432885,
+    "log": "candidate-body-100.log"
+  },
+  {
+    "step": "candidate-ties-1",
+    "exit_code": 0,
+    "seconds": 0.4399307,
+    "log": "candidate-ties-1.log"
+  },
+  {
+    "step": "candidate-ties-10",
+    "exit_code": 0,
+    "seconds": 0.4575683,
+    "log": "candidate-ties-10.log"
+  },
+  {
+    "step": "candidate-ties-100",
+    "exit_code": 0,
+    "seconds": 0.5044049,
+    "log": "candidate-ties-100.log"
+  },
+  {
+    "step": "candidate-feeding-1",
+    "exit_code": 0,
+    "seconds": 0.5430073,
+    "log": "candidate-feeding-1.log"
+  },
+  {
+    "step": "candidate-feeding-10",
+    "exit_code": 0,
+    "seconds": 0.4981823,
+    "log": "candidate-feeding-10.log"
+  },
+  {
+    "step": "candidate-feeding-100",
+    "exit_code": 0,
+    "seconds": 0.4694054,
+    "log": "candidate-feeding-100.log"
+  },
+  {
+    "step": "candidate-reproduction-1",
+    "exit_code": 0,
+    "seconds": 0.9566071,
+    "log": "candidate-reproduction-1.log"
+  },
+  {
+    "step": "candidate-reproduction-10",
+    "exit_code": 0,
+    "seconds": 0.7294351,
+    "log": "candidate-reproduction-10.log"
+  },
+  {
+    "step": "candidate-reproduction-100",
+    "exit_code": 0,
+    "seconds": 1.0765978,
+    "log": "candidate-reproduction-100.log"
+  },
+  {
+    "step": "candidate-checkpoints-completeness",
+    "exit_code": 0,
+    "cases": 7,
+    "expected_outputs": 21,
+    "actual_rows": 21
+  },
+  {
+    "step": "desktop-core",
+    "exit_code": 0,
+    "seconds": 25.4672501,
+    "log": "desktop-core.log"
+  },
+  {
+    "step": "desktop-test-build",
+    "exit_code": 0,
+    "seconds": 279.5429811,
+    "log": "desktop-test-build.log"
+  },
+  {
+    "step": "windows-publish",
+    "exit_code": 0,
+    "seconds": 16.3086265,
+    "log": "windows-publish.log"
+  },
+  {
+    "step": "package-smoke",
+    "exit_code": 0,
+    "timed_out": false,
+    "log": "package-smoke.json"
+  },
+  {
+    "step": "packaged-native-desktop",
+    "exit_code": 0,
+    "seconds": 132.0749757,
+    "log": "packaged-native-desktop.log"
+  },
+  {
+    "step": "package-assets",
+    "exit_code": 0,
+    "bots": 48
+  },
+  {
+    "step": "retained-pass48-targets",
+    "exit_code": 0,
+    "retained_targets": 56,
+    "fresh_target_invocations": 10,
+    "basis": "exact source and reachability projection; not fresh49 runtime"
+  }
+]

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "status": "authored_source_authority_candidate_pending_full_batch_review",
+  "source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "files": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+      "new_file": true,
+      "base_sha256": null,
+      "candidate_file": "output/pass62-drafts/source-authority/candidate/docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+      "candidate_sha256": "BCA9A27390F1176B7308465E7F813434D0649912D3380BF3BD6FFA59024EC294",
+      "candidate_bytes": 10714
+    }
+  ],
+  "new_tests": 0,
+  "product_execution": false,
+  "original_diagnostic_scope": "Already-built61 CPU diagnosis; no62 source checks",
+  "active_source_mutated": false,
+  "state": "all_code_authored_peer_reviewed_unapplied_unexecuted"
+}

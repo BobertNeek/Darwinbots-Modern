@@ -1,0 +1,24 @@
+{
+  "status": "needs_repair",
+  "step": "all",
+  "pid": 31960,
+  "utc": "2026-10-17T10:47:09.2859538Z",
+  "source_parent": "43d38a55ac3e95c541bc9407bc0056b7cf45e351",
+  "comparison_base": "ff50b1a735ef61c6d5d282358da76f2734f64099",
+  "source_manifest_sha256": "D1218C0674D8B1C7C11F4A2CEFC8F886E891356AD7E5EB1FB7977EA436F43700",
+  "expected_managed_test_counts": {
+    "core": 309,
+    "desktop": 209
+  },
+  "details": {
+    "failed_steps": [
+      "cpu-rust-workspace",
+      "genuine-feeding-100-compare",
+      "genuine-feeding-100-field-coverage",
+      "genuine-additional-checkpoints-completeness",
+      "desktop-test-build",
+      "packaged-native-desktop"
+    ],
+    "scope": "All available ordinary CPU outcomes collected; root seals counts, summary and admission separately."
+  }
+}

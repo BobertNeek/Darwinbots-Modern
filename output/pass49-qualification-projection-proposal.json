@@ -1,0 +1,1051 @@
+{
+  "schema_version": 1,
+  "status": "Read-only qualification proposal only; pass48 still running; no pass49 qualification performed",
+  "created_utc": "2026-10-16T15:24:13.116Z",
+  "workspace": "C:/Users/PC/.codex/worktrees/db24832-completion/Darwinbots 2/",
+  "source48_frozen_manifest": {
+    "path": "output/native-roundtrip-pass48-source.json",
+    "sha256": "72A065BED92B93569502E75742DE73B211531EA13BBDB65112F280058BF40D9D",
+    "all_76_current_pins_verified": true
+  },
+  "observed48_state": {
+    "status": "running",
+    "step": "cpu-workspace",
+    "pid": 45284,
+    "utc": "2026-10-16T14:37:40.7897445Z",
+    "source_parent": "dbffdc58787f369e7490461836df7ef677c01e8f",
+    "details": {
+      "log": "C:\\Users\\PC\\.codex\\worktrees\\db24832-completion\\Darwinbots 2\\docs\\parity\\evidence\\batch-2026-10-14\\native-roundtrip-pass48\\cpu-workspace.log"
+    }
+  },
+  "scope_limit": "ONLY two production ffi.rs ImportDna parser-dispatch calls to engine.load_dna_source; test-only explicit legacy/eligibility fixtures and LeagueSeries initializer; C# PopulationSeedingExport sequential CreateNew/write/close and729-file tests. No Engine constructor/helper/spawn/physics/parser production changes. Reassess projection if any additional production behavior changes.",
+  "permitted_changed_paths_frozen48_hashes": [
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "sha256": "B920D859CDFF903A417915AFA4670BAA9031BDED1362D52AB6AADD48E1860419"
+    },
+    {
+      "file": "modern/engine/src/league.rs",
+      "sha256": "9C33630BCD8752DE82112EAAD1472D60B69AB610019F6358EE78E85A5254ABDA"
+    },
+    {
+      "file": "modern/engine/src/world/classic_tournament_tests.rs",
+      "sha256": "AB8B73A92AEFAD847EC9C3DD449EAE7D75ACC4BB58B94014F7AD2D2F483AFB45"
+    },
+    {
+      "file": "modern/cli/src/dna_source.rs",
+      "sha256": "92A005FAD253658044EF8F18072744E872F460ED8797A6396372E6CF7D225684"
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/PopulationSeedingExport.cs",
+      "sha256": "B08E21B71B8E74B51AFB1C24664E391056B85ACF6FEC1B9D56B6392D981BBC57"
+    },
+    {
+      "file": "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeLeagueSeriesTests.cs",
+      "sha256": "65CC6C23971F40A85374134D86F4B61D6096FD8D71BFCD8F0FE6F170C7E4C4E1"
+    }
+  ],
+  "production_prefix_guards": [
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "test_boundary": "First literal #[cfg(test)] is the final test module (manually reviewed)",
+      "frozen48_production_prefix_sha256": "496D30FB3742C81D06C758BD22AD6B033868BDED69346A5AA717FDB3049D34D9",
+      "expected49_production_prefix_sha256": "08E2EDDAB84DE8BAC93E20A696CA2E14F737A42920C377DCDC2904EE1B162AF8",
+      "permitted_production_change": "Exactly the two dispatch expressions at frozen48 lines448 and670; compare normalized Rust tokens if formatter changes whitespace"
+    },
+    {
+      "file": "modern/engine/src/league.rs",
+      "test_boundary": "First literal #[cfg(test)] is the final test module (manually reviewed)",
+      "frozen48_production_prefix_sha256": "B74CDD6F6DFD41F573169AD02BC7C60FC5D88E957D07590822995A90FDC0DAB4",
+      "expected49_production_prefix_sha256": "B74CDD6F6DFD41F573169AD02BC7C60FC5D88E957D07590822995A90FDC0DAB4",
+      "permitted_production_change": "None; complete prefix must remain identical modulo formatter-only whitespace"
+    },
+    {
+      "file": "modern/cli/src/dna_source.rs",
+      "test_boundary": "First literal #[cfg(test)] is the final test module (manually reviewed)",
+      "frozen48_production_prefix_sha256": "F10140A949FA3EDC09C070DF1C1E1A53B70DE7DDB0C6A26E3280B03F8F041C2D",
+      "expected49_production_prefix_sha256": "F10140A949FA3EDC09C070DF1C1E1A53B70DE7DDB0C6A26E3280B03F8F041C2D",
+      "permitted_production_change": "None; complete prefix must remain identical modulo formatter-only whitespace"
+    }
+  ],
+  "unchanged_rust_input_closure_guard": {
+    "scope": [
+      "modern/engine/src/**",
+      "modern/cli/src/**",
+      "modern/engine/tests/**",
+      "modern/cli/tests/**",
+      "Installer/bots/**",
+      "Cargo.toml",
+      "Cargo.lock",
+      "modern/engine/Cargo.toml",
+      "modern/cli/Cargo.toml",
+      "existing rust-toolchain[.toml] and .cargo/** if present"
+    ],
+    "exclude_allowed_paths": [
+      "modern/engine/src/ffi.rs",
+      "modern/engine/src/league.rs",
+      "modern/engine/src/world/classic_tournament_tests.rs",
+      "modern/cli/src/dna_source.rs",
+      "modern/desktop/src/Darwinbots.Desktop.Core/PopulationSeedingExport.cs",
+      "modern/desktop/tests/Darwinbots.Desktop.Core.Tests/NativeLeagueSeriesTests.cs"
+    ],
+    "file_count": 212,
+    "sha256": "7B017AAA9F5A27193395E4E722629141C4226D26C958481E76F7246D065DD49A",
+    "algorithm": "Recursively collect regular files, reject symbolic links, exclude the6 allowed paths, sort slash-normalized relative paths by ordinal JS comparison; concatenate each path + NUL + uppercase SHA256(raw bytes) + LF; SHA256 UTF8 concatenation. Require same final49 path set/count/digest. Raw prefix hashes separately guard league.rs and cli/dna_source.rs production; ffi.rs prefix may change ONLY the2 named dispatch expressions. Any formatter-only raw hash deviation requires exact source review, not a blind whitespace-ignore rule."
+  },
+  "retention_prerequisites": [
+    "Collect ALL pass48 outcomes, final source/PNG guards, and actual owned worker exit before any49 edit or execution. A currently running target is not green.",
+    "Seal final48 cpu-workspace.log/results/source receipts with final hashes. Retain only per-target completed PASS outcomes with exact original counts/ignored/filtered, not the failed workspace aggregate. No47/46 results substituted as fresh48.",
+    "Confirm final49 source change set matches the6 scoped paths and reviewed two-expression production delta; cfg(test) modifications stay in test modules. Any additional Engine/physics/parser/default constructor/CLI production change invalidates this projection.",
+    "Recompute full212-file unchanged Rust/input guard and per-target source hashes. Preserve Cargo.lock/manifests/toolchain/options. Record explicit exclusion of the four FFI integration targets from retention.",
+    "Keep skip gpu/skip switch and serial CPU policy identical. A retained target with0 passed and filtered GPU tests is not physical GPU evidence.",
+    "Tag every retained result baseline48 + final48 receipt/source hashes + reachability rationale; tag reruns fresh49. Do not present retained targets as rerun49."
+  ],
+  "target_projection": {
+    "expected_total66": 66,
+    "rerun49_targets": 10,
+    "conditional_retained48_targets": 56,
+    "targets": [
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "advanced_mutation_costs",
+        "source": "modern/engine/tests/advanced_mutation_costs.rs",
+        "sha256": "C75F42566871B7A833F836575AAEEE2555012FA70EA399478ECC98D63699F4D6",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "canonical_cycle_248",
+        "source": "modern/engine/tests/canonical_cycle_248.rs",
+        "sha256": "92471505FB58B6E7231E30A84DABB4228BC93E0829B10F05142616E26D23B499",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "community_league_admission",
+        "source": "modern/engine/tests/community_league_admission.rs",
+        "sha256": "25719206ACAEE18044A707FA911606F6B1910F9305D38848FDA8086AA34E3D50",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "contracts",
+        "source": "modern/engine/tests/contracts.rs",
+        "sha256": "E7053ADB06233C61D23776A8EA10781AF9764E5516860BD88D7221AAB532114F",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.12s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "core_state_contracts",
+        "source": "modern/engine/tests/core_state_contracts.rs",
+        "sha256": "A0908BE4AAEDECEB5A6809519B7500CB8340E41EA523B6C3A0C6815C194ED1E2",
+        "decision": "rerun49",
+        "reason": "Calls exported FFI/command boundary",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "corpses_collisions",
+        "source": "modern/engine/tests/corpses_collisions.rs",
+        "sha256": "F50AB4D0730FFA1C8453CFC0860D6407CA9A016C5F41643012BDE25049C55E9D",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db24832_clean_defaults",
+        "source": "modern/engine/tests/db24832_clean_defaults.rs",
+        "sha256": "CF50CABCF87ED20DB66B35D2595AEAEC1CCAFBED714140DBEFBC948FA7EB05BC",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db24832_starter_movement",
+        "source": "modern/engine/tests/db24832_starter_movement.rs",
+        "sha256": "5FA1B1844CD03F410CE66C8565DB03F23DF8F0D8A6F02D71AE72FF8ABC7A769B",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db2_final_engine_world",
+        "source": "modern/engine/tests/db2_final_engine_world.rs",
+        "sha256": "665C5FF8FAC30C45DB36F557DB5DC05BEB2F4DD5E79931BB3149F2074BF7E4C8",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db2_mutation_248",
+        "source": "modern/engine/tests/db2_mutation_248.rs",
+        "sha256": "9E317DCF9CED2D4A13B79AF347E92272FB9CAF37381D0126A0F2AEF8DDB81DF5",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db2_physics",
+        "source": "modern/engine/tests/db2_physics.rs",
+        "sha256": "CF849D6500C2AF9B15A3B8D96925748DB1A009316631929A330ED267C5C18A40",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db2_projectiles",
+        "source": "modern/engine/tests/db2_projectiles.rs",
+        "sha256": "275487A152ACA9BB6AA4C9B2DD61D52224E99ED5B6D8020E0A311777343604DD",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db2_starter_ecology",
+        "source": "modern/engine/tests/db2_starter_ecology.rs",
+        "sha256": "343D0E80370B6535F98B89EC88300CFB07F29B733836037C37D65A8BE7EF8A46",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "running_no_target_result"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db2_vegetation",
+        "source": "modern/engine/tests/db2_vegetation.rs",
+        "sha256": "9576DC99955FB186E110C8E8FC1E600C1C8315322F6AC87CCCD3C5ADA538BB80",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "db2_vision",
+        "source": "modern/engine/tests/db2_vision.rs",
+        "sha256": "C2F1FB3735227953C039EF0F07566153C1CEE9556E862FC0D762AC86089D4B14",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "dna_runtime_248",
+        "source": "modern/engine/tests/dna_runtime_248.rs",
+        "sha256": "84069C28C59E2EF9C53F197EBC9A99D9007EF06E87AF603A0D369C9B7ECABA1A",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "eco05_repopulation",
+        "source": "modern/engine/tests/eco05_repopulation.rs",
+        "sha256": "56F01743A9930EEB3ABB744815A64D7ACB4EB6F19D108F3A35D314A7F50080A6",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "environment_world",
+        "source": "modern/engine/tests/environment_world.rs",
+        "sha256": "733A33BC7660E32701310040E5BAAC5B7D8307738257162D2AFC5D40363B7FC0",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "extinct_species",
+        "source": "modern/engine/tests/extinct_species.rs",
+        "sha256": "B92DD6139BC3A83D5B8C4FEF67F641690D4BD4928858799945C49CA38826F663",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "final_state_persistence_248",
+        "source": "modern/engine/tests/final_state_persistence_248.rs",
+        "sha256": "E7B9DFFDEAA15DC9B9AA877994DF1BDE6FF1EEE86136DB9EA0516CD06B94D514",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "gpu_ffi",
+        "source": "modern/engine/tests/gpu_ffi.rs",
+        "sha256": "B080F1916426D33594924F586EDE8567C88B9254C11E21A5DBED4695DF96F174",
+        "decision": "rerun49",
+        "reason": "Calls exported FFI/command boundary",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "history_records",
+        "source": "modern/engine/tests/history_records.rs",
+        "sha256": "35E68408A8C98758992183661151649E655D2F545A60EC5EB5E0C34A565FF79C",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "legacy_distribution",
+        "source": "modern/engine/tests/legacy_distribution.rs",
+        "sha256": "7CE22B069624E561A8B2A4AC03D3B5F95B775C085476459CED4D3F2A16607BB3",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "legacy_transport",
+        "source": "modern/engine/tests/legacy_transport.rs",
+        "sha256": "40E2669DA580F5B616C8091F6B78F967A7EE8D91D7A1E5019BB8452A2A3036DC",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "live_legacy_menu_settings",
+        "source": "modern/engine/tests/live_legacy_menu_settings.rs",
+        "sha256": "063F7695D721D006FBBB13E1F1263776F47237253DD0B511CC79E47BC280751D",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "local_modes",
+        "source": "modern/engine/tests/local_modes.rs",
+        "sha256": "D1BCE773AFE32E7618C6A6F40236BCB5AEDE651C1FF93EF9DA803D81E5FBCAC3",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "manual_tools",
+        "source": "modern/engine/tests/manual_tools.rs",
+        "sha256": "EBDE58A9C7DA63F169699C0DA6401E961B0F7D2D05820E2888E903FC40CD77EC",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "mutation_advanced_248",
+        "source": "modern/engine/tests/mutation_advanced_248.rs",
+        "sha256": "D2F9FAEFF5645CDB1F0B291EABDB98CD6FB8CB368397E176C5BDF387F24EE804",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "mutation_lifecycle",
+        "source": "modern/engine/tests/mutation_lifecycle.rs",
+        "sha256": "1064FA50AEBD1355A9ACFF6244DE5FA0455E007CA8A81D03DBA92F4BC4C735B3",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "native_continuation_qualification",
+        "source": "modern/engine/tests/native_continuation_qualification.rs",
+        "sha256": "452548B699D0B9564B8FCCBA38CD3486EEE1A6D179537622B44941827D39CD9C",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "native_mutation_continuation_qualification",
+        "source": "modern/engine/tests/native_mutation_continuation_qualification.rs",
+        "sha256": "5CBD08181C647A48D607F7DC278A483ED309A097FD2A4081E04E71A7388D59C1",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "native_random_lifecycle_248",
+        "source": "modern/engine/tests/native_random_lifecycle_248.rs",
+        "sha256": "57E05E3010070568FB15EAB12340A23F01F4A03621728361B2E979FE5367BAC2",
+        "decision": "rerun49",
+        "reason": "Calls exported FFI/command boundary",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "native_reference_senses_248",
+        "source": "modern/engine/tests/native_reference_senses_248.rs",
+        "sha256": "8C292DA387DAF999A9A20EB8611D0D346581AE23129E8176604EECCCA3677C42",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "native_resource_precision",
+        "source": "modern/engine/tests/native_resource_precision.rs",
+        "sha256": "EDD66E866822F7FCA30AA667665474A62BFAF541B3C814EC03DBA844527FBB2A",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "occurrence_census_248",
+        "source": "modern/engine/tests/occurrence_census_248.rs",
+        "sha256": "F40B431B8B5172076977FAA985E6298EBB7E70D297CC563A00617B820667C97B",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "parity_completion",
+        "source": "modern/engine/tests/parity_completion.rs",
+        "sha256": "9F13B5A526C10861AAF2FE8486E76BA773125FDB4BE1ECBC59CC90B7DC756701",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "reproduction_heredity_248",
+        "source": "modern/engine/tests/reproduction_heredity_248.rs",
+        "sha256": "D5B8086BF9A38255B5222DBBD1C347D9ECA5FFBABAC66C16A6F04AD34EB9146B",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "robot_state_248",
+        "source": "modern/engine/tests/robot_state_248.rs",
+        "sha256": "7DE7AB98D7B78DCE76226F9456904D91C1C5A2F606EF83881425AFD9202EBA8F",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "robot_tools",
+        "source": "modern/engine/tests/robot_tools.rs",
+        "sha256": "4D4143CE687A6EC1F3343DB37F41FD049D64BA3485BA0E6A88AB23C5663DAEF5",
+        "decision": "rerun49",
+        "reason": "Calls exported FFI/command boundary",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "scheduler_housekeeping",
+        "source": "modern/engine/tests/scheduler_housekeeping.rs",
+        "sha256": "6E48F2115CD78B3D871307E35819FB2600288015A6B21B90690D3F139C46AF54",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "scheduler_shock",
+        "source": "modern/engine/tests/scheduler_shock.rs",
+        "sha256": "025DF8AB93A04D761BE293B2CE96B5BC4E174983A360838279CB6FCDAA20F06D",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "sensing_compatibility",
+        "source": "modern/engine/tests/sensing_compatibility.rs",
+        "sha256": "A644FA45F2E94DFCB9174B8E1266B2BC26F6478ACA8AB5476BEBAF6E6484A95C",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "shot_state",
+        "source": "modern/engine/tests/shot_state.rs",
+        "sha256": "C159CB2C26102DD15BA5D8B695D0A4F3B113A5A880E0AB1BC0432E581BCB31D2",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "spawn_placement",
+        "source": "modern/engine/tests/spawn_placement.rs",
+        "sha256": "6125376E1DC90C567613063EF5E44416871886E950EB3E0AC40DD529A1E06217",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "species_ecology",
+        "source": "modern/engine/tests/species_ecology.rs",
+        "sha256": "8879A93020058E60912EAB37AC19865E9697FC2298250DA6DC863D590BEC6E62",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "starter_ecology",
+        "source": "modern/engine/tests/starter_ecology.rs",
+        "sha256": "B8B3653F993B82BFDCFF110D62D7FB7818931629A84B656805A6353EF69C6E65",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "sysvar_lifecycle_248",
+        "source": "modern/engine/tests/sysvar_lifecycle_248.rs",
+        "sha256": "6691DE5CC0D41E1E88010A49B4B83BC02930E014BD24B55F09449D93C1BA8386",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "ties_multibot",
+        "source": "modern/engine/tests/ties_multibot.rs",
+        "sha256": "450D75E0A51B7CB382442F202BFEC63A9CD5BC650EFFE3439D9C84B81594B54B",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "toroidal_world",
+        "source": "modern/engine/tests/toroidal_world.rs",
+        "sha256": "49C24198AD37B669A53D1E08DBB8104D0778007D8F48101D3CFD5BD87C2BF5F4",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "touch_taste_248",
+        "source": "modern/engine/tests/touch_taste_248.rs",
+        "sha256": "228442951DC2BECD2584071FC9A053C9E95E1BBE81D0175413404A9E1B666A5C",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "visual_phenotypes",
+        "source": "modern/engine/tests/visual_phenotypes.rs",
+        "sha256": "2E326A1F19317100B431D080117BF6E9CD847E2716A1C8391B4C45E45DC2163F",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "vm",
+        "source": "modern/engine/tests/vm.rs",
+        "sha256": "AE748B64073FD994F3FE55EB9E65E9A1F9C2A29E56AF40BF5AB636EA5D56251A",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "vm_costs_telemetry",
+        "source": "modern/engine/tests/vm_costs_telemetry.rs",
+        "sha256": "458EB14B99493D48C9B716433EB0B60481F3EE8D3A3A928ACF181914C374238F",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "vm_implicit_conditions",
+        "source": "modern/engine/tests/vm_implicit_conditions.rs",
+        "sha256": "4D53870F27B3AC1159E440025FCAD8F21A10992879FF56AB13DF62C22C595D04",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "w4_evolution_gpu",
+        "source": "modern/engine/tests/w4_evolution_gpu.rs",
+        "sha256": "EA19870DCE03C09DB68CF00A8B7A6BF7499AE6EA5EFF0FE180559EBCE6DD270F",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "world_systems",
+        "source": "modern/engine/tests/world_systems.rs",
+        "sha256": "82264E4D8C8668DFA2C746121577241ECC94BD2D3F351DC01112C2C6117CCBFD",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "test",
+        "name": "zerobot_progression",
+        "source": "modern/engine/tests/zerobot_progression.rs",
+        "sha256": "630EA7D54AC958BD3E552BF25A19D99141EB226CA731DABA0E62D4DB5C73F2F5",
+        "decision": "conditional_retain_fresh48",
+        "reason": "No FFI or EngineCommand import/call; unchanged direct Engine/parser/physics path",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "test",
+        "name": "bundled_bot_corpus",
+        "source": "modern/cli/tests/bundled_bot_corpus.rs",
+        "sha256": "DB6D859F4DF5CAA0E307ADB2C84B52B39E34F201ED882A12828BFA519DE807F9",
+        "decision": "conditional_retain_fresh48",
+        "reason": "Long probe/corpus path calls CLI/Engine directly, not FFI; CLI production prefix unchanged",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 267.41s"
+        }
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "test",
+        "name": "commands",
+        "source": "modern/cli/tests/commands.rs",
+        "sha256": "BD63692BC51F211B1A6467CD7101F19198C768BDBCC1C2591B4BF450BE8973A9",
+        "decision": "rerun49",
+        "reason": "Cheap end-to-end check against newly built current CLI",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s"
+        }
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "test",
+        "name": "db245_probes",
+        "source": "modern/cli/tests/db245_probes.rs",
+        "sha256": "F1D10B5015C1704A5B78490E1E54AF2BE2D87C9703DA3DB25139FF6069CB747D",
+        "decision": "conditional_retain_fresh48",
+        "reason": "Long probe/corpus path calls CLI/Engine directly, not FFI; CLI production prefix unchanged",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 452.49s"
+        }
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "test",
+        "name": "native_comparison",
+        "source": "modern/cli/tests/native_comparison.rs",
+        "sha256": "F39C078B571E63EF928FD407C2009EE815E6CC3969A1E069CD9ED0A2AE709EEB",
+        "decision": "rerun49",
+        "reason": "Cheap end-to-end check against newly built current CLI",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "lib",
+        "name": "darwinbots-engine",
+        "source": "modern/engine/src/lib.rs",
+        "sha256": "5D8C0D0151E087C09BC12CBABB27714000529BCB7A2C7CF3DE016E3501A2BDAC",
+        "decision": "rerun49",
+        "reason": "Changed unit fixtures, new public-boundary tests, and full chain/Clippy repair",
+        "observed48": {
+          "status": "failed",
+          "summary": "test result: FAILED. 407 passed; 2 failed; 0 ignored; 0 measured; 7 filtered out; finished in 15.39s"
+        }
+      },
+      {
+        "package": "darwinbots-engine",
+        "type": "doc",
+        "name": "darwinbots-engine",
+        "source": "modern/engine/src/lib.rs",
+        "sha256": "5D8C0D0151E087C09BC12CBABB27714000529BCB7A2C7CF3DE016E3501A2BDAC",
+        "decision": "rerun49",
+        "reason": "Cheap zero-doctest bookkeeping; no need to project old documentation result",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "lib",
+        "name": "darwinbots-cli",
+        "source": "modern/cli/src/lib.rs",
+        "sha256": "1DF70C2D34D671763CB786781F973ECC509DE3873AE6383EDA44F03D6053B02B",
+        "decision": "rerun49",
+        "reason": "Changed unit fixtures, new public-boundary tests, and full chain/Clippy repair",
+        "observed48": {
+          "status": "failed",
+          "summary": "test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 9.79s"
+        }
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "doc",
+        "name": "darwinbots-cli",
+        "source": "modern/cli/src/lib.rs",
+        "sha256": "1DF70C2D34D671763CB786781F973ECC509DE3873AE6383EDA44F03D6053B02B",
+        "decision": "rerun49",
+        "reason": "Cheap zero-doctest bookkeeping; no need to project old documentation result",
+        "observed48": {
+          "status": "not_started_at_read"
+        }
+      },
+      {
+        "package": "darwinbots-cli",
+        "type": "bin",
+        "name": "darwinbots-cli",
+        "source": "modern/cli/src/main.rs",
+        "sha256": "5D7D81ECB1ABCD492742EFA1264A042EAF44F97242C0CA8EF349918B539ECA4D",
+        "decision": "conditional_retain_fresh48",
+        "reason": "Zero-test unchanged entry point; fresh CLI build and commands target cover linked artifact",
+        "observed48": {
+          "status": "passed",
+          "summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+        }
+      }
+    ]
+  },
+  "recommended_serial_steps": [
+    {
+      "step": "fresh49 format and all-target lint",
+      "commands": [
+        "cargo fmt --all -- --check",
+        "cargo clippy --release --workspace --all-targets -- -D warnings"
+      ],
+      "reason": "Changed Rust fixtures/public boundary and prior strict lint failure; compile every target without repeating long runtime targets."
+    },
+    {
+      "step": "fresh49 engine unit and FFI CPU integrations",
+      "command": "cargo test --release -p darwinbots-engine --lib --test core_state_contracts --test gpu_ffi --test native_random_lifecycle_248 --test robot_tools --no-fail-fast -- --skip gpu --skip switch --nocapture --test-threads=1",
+      "reason": "Whole engine unit suite covers changed ffi fixtures, league initializer, Classic chain and new direct C/JSON imports; integrations cover transactions, import-driven RNG lifecycle and robot tools."
+    },
+    {
+      "step": "fresh49 CLI units and cheap boundary integrations",
+      "command": "cargo test --release -p darwinbots-cli --lib --test commands --test native_comparison --no-fail-fast -- --skip gpu --skip switch --nocapture --test-threads=1",
+      "reason": "Changed dna_source test fixture is CLI lib; commands/native_comparison cheaply validate fresh linked CLI. Retain long bundled_bot_corpus and db245_probes only under source/reachability guards."
+    },
+    {
+      "step": "fresh49 documentation targets",
+      "command": "cargo test --release --workspace --doc --no-fail-fast",
+      "reason": "Two prior0-test doctest targets are cheap to recapture; do not inherit counts implicitly."
+    },
+    {
+      "step": "fresh49 CLI build and replay receipts",
+      "commands": [
+        "cargo build --release -p darwinbots-cli",
+        "Repeat pass47 original-zero-cycle native-replay until281 then strict native-compare tolerance0 against original user.sim into NEW49 paths.",
+        "Repeat all7 cases ×3 checkpoints1/10/100 from unchanged candidate39 inputs into NEW candidate49 paths; record input/output hashes and fresh49 CLI hash."
+      ],
+      "reason": "NativeReplay/Compare cannot reach changed FFI dispatch, so old receipts remain semantic baseline only; fresh current-CLI zero/candidate receipts are cheap and avoid carrying changed-artifact ambiguity.",
+      "boundary": "These21 outputs remain Rust candidates, and strict zero checks only0 additional cycles. Neither supplies original trajectory proof."
+    },
+    {
+      "step": "fresh49 complete C# Core",
+      "command": "dotnet test modern/desktop/tests/Darwinbots.Desktop.Core.Tests/Darwinbots.Desktop.Core.Tests.csproj -c Release --logger trx;LogFileName=core.trx --results-directory <proof49>",
+      "reason": "PopulationSeedingExport is production Core code; old234 green cannot qualify changed writer. Run full Core including729 sequential CreateNew/write/dispose, exact names/suffix/tag bytes, late collision failure rollback, existing-file preservation and closed handle checks."
+    },
+    {
+      "step": "fresh49 native Desktop build and NEW publish",
+      "commands": [
+        "dotnet build modern/desktop/tests/Darwinbots.Desktop.Tests/Darwinbots.Desktop.Tests.csproj -c Release",
+        "dotnet publish modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj -c Release -r win-x64 --self-contained false -o artifacts/win-x64-native-roundtrip-pass49"
+      ],
+      "reason": "Desktop csproj BuildNativeEngine builds current49 cdylib, then publish copies current native library; both Rust FFI and Core assembly production changed. Never overwrite47/48 package."
+    },
+    {
+      "step": "fresh49 package smoke, exact DLL Desktop tests and assets",
+      "commands": [
+        "Run existing hidden --smoke-test once from NEW49 package with same bounded timeout.",
+        "Copy NEW49 package darwinbots_engine.dll into Desktop test bin; require hash identity package=target/release DLL=test DLL; run complete Desktop --no-build TRX suite with existing hang bounds.",
+        "Recompute all48 Installer bot asset hashes against NEW49 package. Preserve/restore unrelated PNG using unique49 backup and receipt."
+      ],
+      "reason": "Program smoke calls ImportDna and NativeEngineClient JSON dispatch reaches changed path. MainWindow export uses changed Core writer. Fresh package bytes cannot inherit old smoke/Desktop/assets."
+    },
+    {
+      "step": "seal49 mixed evidence honestly",
+      "commands": [
+        "Verify every49 source pin, unchanged212-file guard, retained48 per-target receipt hashes and package/native/CLI identities; require all intended outcomes collected and worker exit."
+      ],
+      "reason": "Separate fresh49 results from retained48 direct-engine coverage. Do not mark final pass or promote UI/original/GPU proof from this proposal."
+    }
+  ],
+  "not_retainable_for49": [
+    "Pass48 format success: Rust changed again.",
+    "Pass48 strict-Clippy failure: repair must pass fresh.",
+    "Pass48 engine or CLI lib failed outcomes: rerun full affected targets.",
+    "Pass48 packaged Desktop TRX and47 inherited native DLL/package/Core/smoke:49 production FFI and C# writer change their reachable artifacts.",
+    "Old native DLL identity E8211F5E...: it is47 only; fresh49 identity must be captured, not asserted in advance.",
+    "Pass47 zero/candidate and asset receipts as fresh49 artifact proof: recapture cheap49 outputs/hashes while preserving old records."
+  ],
+  "reachability_evidence": [
+    {
+      "file": "modern/engine/src/ffi.rs",
+      "lines": "428-455;670-681;1332+",
+      "fact": "Two changed default imports live entirely inside exported FFI. New tests are final cfg(test) module."
+    },
+    {
+      "file": "modern/engine/src/lib.rs",
+      "line": 40,
+      "fact": "pub mod ffi; no reverse references to ffi/EngineCommand/db_engine symbols found in other engine production modules."
+    },
+    {
+      "file": "modern/engine/src/world.rs",
+      "line": 4998,
+      "fact": "Existing load_dna_source method already implements native-vs-legacy boundary; its production bytes are unchanged."
+    },
+    {
+      "files": [
+        "modern/engine/tests/core_state_contracts.rs",
+        "modern/engine/tests/gpu_ffi.rs",
+        "modern/engine/tests/native_random_lifecycle_248.rs",
+        "modern/engine/tests/robot_tools.rs"
+      ],
+      "fact": "The only4 engine integration source files importing/calling ffi/db_engine/EngineCommand/db_buffer symbols; all are rerun conservatively even when individual cases do not import DNA."
+    },
+    {
+      "file": "modern/cli/src/lib.rs",
+      "lines": "126-152",
+      "fact": "NativeReplay uses Engine::from_native_sim, advance, native export; it never calls FFI ImportDna. CLI production module search found no engine ffi/db_engine/EngineCommand usage."
+    },
+    {
+      "files": [
+        "modern/cli/src/dna_source.rs:80+",
+        "modern/engine/src/league.rs:716+",
+        "modern/engine/src/world/classic_tournament_tests.rs"
+      ],
+      "fact": "CLI fixture, LeagueSeries initializer, Classic chain corrections remain cfg(test); production prefixes are pinned separately."
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop.Core/NativeEngineClient.cs",
+      "lines": "117-123",
+      "fact": "Desktop ImportDna sends JSON command to native dispatch; changed FFI is reachable."
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Views/MainWindow.axaml.cs",
+      "line": 2560,
+      "fact": "Population export UI calls PopulationSeedingExport.WriteAsync; changed Core writer is reachable."
+    },
+    {
+      "file": "modern/desktop/src/Darwinbots.Desktop/Program.cs",
+      "line": 32,
+      "fact": "Packaged smoke calls ImportDna; fresh smoke validates changed native boundary."
+    }
+  ],
+  "proposal_only": true,
+  "qualification_executed": false,
+  "no_product_edits_format_build_test_Git_or_UI": true
+}

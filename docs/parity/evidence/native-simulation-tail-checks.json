@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-11",
+  "code_revision": "89c1587853bf78bbd9bd613b351289416b41cffb",
+  "genuine_tail_bytes": 13514,
+  "records": 196,
+  "species": 2,
+  "shot_slots": 146,
+  "world_size": [
+    16000,
+    12000
+  ],
+  "cycle": 281,
+  "max_absolute_id": 294,
+  "tests": 5,
+  "strict_clippy": "passed",
+  "proof": "The complete genuine file and decoded tail each survive native and JSON byte-identical round trips.",
+  "limits": [
+    "No production Engine state application is implemented by this codec yet.",
+    "No original program re-load has been exercised on a modified exported file."
+  ]
+}

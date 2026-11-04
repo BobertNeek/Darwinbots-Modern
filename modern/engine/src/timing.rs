@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct PhaseTimings {
+    #[serde(default)]
+    pub cycle: f64,
     pub dna: f64,
     pub intent: f64,
     pub spatial: f64,

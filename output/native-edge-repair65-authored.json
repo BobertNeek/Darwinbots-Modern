@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "source_head": "73e350297f54e88a7a690c435517ebb13615f953",
+  "base_source": "9921ebd53a52784973ebf6315fcc9f8c32fe8d53",
+  "authored_utc": "2026-10-19T08:06:29.510Z",
+  "diagnosis": "GPU sensing/render readback clips native edge positions. At cycle282 render instance75 Y was12000 instead of authoritative12001.48046875; all other JSON snapshot roots matched at this first divergence. Full CPU/GPU equivalence at later checkpoints remains subject to the unchanged strict test.",
+  "old_source_gpu_resume": "Byte-identical continuous/resumed saves and equal snapshots at cycles281/282/291/381/1281; diagnostic only, no failed gate override.",
+  "repair": "Publish render positions from the same authoritative organism used for radius, aim, skin and identity. Native wall handling and gameplay untouched.",
+  "regression": "Device-independent original-world first-tick reproduction injects clipped sensing readout and requires the complete snapshot to equal the independent CPU reference.",
+  "strict_gpu_assertions_unchanged": true,
+  "qualification": "Fresh CPU65/all94 and hosted4 running; new source has no GPU admission yet.",
+  "evidence": [
+    {
+      "file": "output/native-gpu-diagnostic64-20261019T075627327/diagnosis.json",
+      "sha256": "09497F6693FE3F0BADD051F85882F93697F21F33792852F442A254C8CA212C14"
+    },
+    {
+      "file": "output/native-gpu-diagnostic64-20261019T075627327/manifest.json",
+      "sha256": "A7E39810DD29408B7B59308CB2E7D07469A5013870D259659F0C7C9DC6478FB6"
+    },
+    {
+      "file": "output/native-gpu-diagnostic64-20261019T075627327/observed-exit.json",
+      "sha256": "9E679D5E4B30371C1800623C45900D27B08840C96A69E3442E79586F9022089E"
+    },
+    {
+      "file": "output/gpu64-remaining-collected.json",
+      "sha256": "D8BBA17E221638EEDE3F314C07E78D09FB46B605E6A007BE81FDAAFAB5E2ED7D"
+    },
+    {
+      "file": "output/native-roundtrip-pass65-source.json",
+      "sha256": "C50D046FA1C5D160C4A83639C7A6E2EA9E6ECB577315E7A70867BFCA4342B037"
+    }
+  ]
+}

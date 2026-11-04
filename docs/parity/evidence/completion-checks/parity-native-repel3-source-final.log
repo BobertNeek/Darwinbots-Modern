@@ -1,0 +1,253 @@
+   Compiling darwinbots-engine v0.1.0 (C:\Users\PC\.codex\worktrees\db24832-completion\Darwinbots 2\modern\engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 59.75s
+     Running unittests src\lib.rs (target\debug\deps\darwinbots_engine-d5cc0d4745fb374f.exe)
+
+running 96 tests
+test corpse::tests::energy_decay_packet_uses_original_body_conversion_and_rejects_empty_body ... ok
+test ffi::tests::ffi_guard_converts_panics_to_structured_engine_errors ... ok
+test corpse::tests::no_shot_decay_dissipates_body_and_fractional_period_survives_resume ... ok
+test biology::native_material_tests::multibot_material_discount_changes_energy_but_keeps_full_transaction_waste ... ok
+test biology::native_material_tests::native_transactions_charge_in_make_stuff_order_and_keep_failed_commands ... ok
+test native_binary::tests::new_native_records_and_simulation_groups_have_independent_valid_framing ... ok
+test ffi::tests::legacy_save_emits_native_24832_sim_for_file_command ... ok
+test ffi::tests::invalid_find_best_weight_preserves_the_entire_command_batch ... ok
+test physics::collision::native_contact_tests::fixed_contact_uses_native_mass_and_vector_scalar_clamp ... ok
+test physics::collision::native_contact_tests::moving_contacts_keep_native_compression_and_projection_damping ... ok
+test physics::collision::native_contact_tests::stationary_and_fixed_contacts_separate_equally_and_coincident_centers_stay_put ... ok
+test native_binary::tests::native_bad_counts_truncation_and_terminators_are_rejected ... ok
+test physics::collision::projectile_motion_tests::original_shot_collision_accounts_for_motion_and_excludes_cycle_endpoints ... ok
+test physics::movement::tests::native_dot_cross_motion_uses_east_north_west_south_bearings ... ok
+test physics::radius_tests::native_radius_rounds_double_result_before_chloroplast_blend ... ok
+test robot_state::tests::robot_arena_deref_exposes_only_slot_slice ... ok
+test senses::tests::direction_thresholds_are_strict ... ok
+test robot_state::tests::stale_physics_batch_id_does_not_partially_mutate_earlier_robot ... ok
+test senses::tests::relative_angle_selects_all_four_aim_relative_quadrants ... ok
+test shot::projectile::tests::db24832_impact_decay_uses_age_before_the_current_tick_increment ... ok
+test shot::projectile::tests::db2_pool_grows_by_ten_percent_and_compacts_below_seventy_percent ... ok
+test vision::native_tests::native_heading_zero_sees_east_and_positive_quarter_turn_sees_north ... ok
+test vision::native_tests::native_raw_heading_and_pond_night_strength_survive_publication ... ok
+test shot::projectile::tests::feeding_power_uses_fixed_or_proportional_original_settings_without_changing_toxins ... ok
+test vision::native_tests::native_eye_width_and_target_edges_use_quads_geometry ... ok
+test vm::memory_persistence_tests::addressed_memory_restores_independently_of_serialized_order ... ok
+test vm::memory_persistence_tests::ambiguous_or_invalid_saved_memory_is_rejected ... ok
+test native_binary::tests::editing_one_native_single_preserves_all_other_bytes ... ok
+test native_binary::tests::genuine_native_record_stream_round_trips_every_byte ... ok
+test world::file_teleporters::tests::output_collision_preserves_existing_file_and_departing_robot ... ok
+test native_binary::tests::genuine_simulation_tail_round_trips_all_options_species_and_shots ... ok
+test world::file_transfer_transaction::tests::aborted_transfer_restores_input_and_never_exposes_output ... ok
+test world::native_aim::tests::dna_setaim_1256_runs_through_the_world_and_persists_the_native_zero_readbacks ... ok
+test world::file_teleporters::tests::native_sim_offline_gateway_uses_its_saved_path_geometry_and_poll_state ... ok
+test world::native_aim::tests::native_aim_keeps_full_turn_momentum_and_only_opposing_turns_reduce_it ... ok
+test world::native_aim::tests::native_aim_rounds_the_combined_single_before_mod_and_uses_1256 ... ok
+test world::native_biology::tests::chloroplast_request_is_atomic_and_net_growth_is_charged_after_shots ... ok
+test world::native_aim::tests::native_turn_fee_uses_net_radians_and_absolute_cost_product ... ok
+test world::native_biology::tests::excluded_commands_remain_pending_and_negative_body_commands_are_ignored ... ok
+test world::native_biology::tests::native_age_cost_rounds_start_and_log_mode_overrides_linear ... ok
+test world::native_biology::tests::chloroplast_construction_and_body_feeding_cannot_fund_an_earlier_shot ... ok
+test world::file_transfer_transaction::tests::publication_collision_keeps_external_file_and_restores_input ... ok
+test world::native_biology::tests::upkeep_rounds_each_fee_and_excludes_corpse_stores ... ok
+test world::native_biology::tests::shot_uses_body_and_energy_before_body_commands ... ok
+test world::native_corpses::tests::native_corpse_decay_shot_retains_owner_radius_range_and_newshot_energy ... ok
+test world::native_biology::tests::native_corpse_death_uses_fifteen_after_senses_including_older_zero_defaults ... ok
+test world::file_transfer_transaction::tests::successful_transfer_publishes_complete_output_and_consumes_input ... ok
+test world::native_corpses::tests::corpse_occupies_capacity_until_exhausted_without_counting_a_second_death ... ok
+test world::native_corpses::tests::natural_corpse_keeps_momentum_and_collides_with_living_robots ... ok
+test world::native_corpses::tests::newborn_native_parent_identity_survives_removal_and_slot_reuse ... ok
+test world::native_corpses::tests::returned_native_corpse_decays_without_becoming_another_archived_corpse ... ok
+test world::native_corpses::tests::natural_corpse_retains_its_robot_identity_memory_dna_and_physical_tie ... ok
+test world::native_export::tests::native_organism_export_contains_live_memory_resource_bits_dna_and_restrictions ... ok
+test world::native_feeding::tests::body_shot_respects_shell_equality_and_native_leftover_equality ... ok
+test world::native_feeding::tests::body_shot_takes_eight_percent_as_body_points_and_corpse_uses_fourfold_power ... ok
+test world::native_feeding::tests::energy_feed_caps_the_return_packet_and_obeys_explicit_shot_death ... ok
+test world::file_teleporters::tests::native_group_capacity_failure_keeps_file_and_existing_world ... ok
+test world::native_io::tests::native_runtime_rejects_nonfinite_stores_and_truncated_tails ... ok
+test world::native_io::tests::genuine_native_save_becomes_a_live_world_with_exact_resources_and_shots ... ok
+test world::native_export::tests::genuine_robot_group_export_remaps_forward_and_back_ties_into_the_new_file ... ok
+test world::file_teleporters::tests::file_exchange_moves_a_native_multibot_as_one_file_with_memory_stores_and_tie_intact ... ok
+test world::native_export::tests::native_export_retains_unrepresented_tie_metadata_and_type ... ok
+test world::native_organism_io::tests::invalid_later_native_member_rolls_back_all_imported_state ... ok
+test world::native_organism_io::tests::malformed_native_tie_is_rejected_without_partial_import ... ok
+test world::native_sim_export::tests::empty_native_world_loads_through_production_save_dispatch ... ok
+test world::native_sim_export::tests::fresh_world_native_export_needs_no_reference_save ... ok
+test world::native_organism_io::tests::native_group_import_preserves_memory_singles_and_ties_in_reused_slots ... ok
+test world::native_virus::tests::firing_reuses_the_saved_shot_and_applies_both_native_charges ... ok
+test world::native_virus::tests::invalid_requests_do_not_copy_and_an_invalid_positive_delete_is_cleared ... ok
+test world::native_virus::tests::making_allocates_the_stored_gene_once_and_retains_the_request ... ok
+test world::native_organism_io::tests::native_integer_memory_preserves_full_word_range_until_a_dna_store ... ok
+test world::native_virus::tests::native_save_retains_exact_copied_gene_and_native_loading_resets_the_timer ... ok
+test world::native_virus::tests::plants_discard_chloroplasts_before_copying_and_disabled_dna_freezes_the_timer ... ok
+test world::native_virus::tests::stored_shots_move_without_colliding_aging_or_expiring ... ok
+test world::native_virus::tests::older_gene_only_save_can_fire_without_creating_a_second_gene ... ok
+test world::native_virus::tests::virus_immunity_preserves_slime_but_disabled_dna_and_mutation_do_not_block_infection ... ok
+test world::native_virus::tests::virus_power_consumes_slime_and_equality_infects_after_save_resume ... ok
+test world::tests::all_dna_finishes_before_the_after_dna_clear_pass ... ok
+test world::tests::assisted_reproduction_survives_blocking_save_resume_and_same_value_dna_replaces_it ... ok
+test world::tests::db24832_minus_six_body_feed_contract ... ok
+test world::tests::exhausted_corpse_is_removed_when_energy_remains ... ok
+test world::tests::eco03_photosynthesis_pond_sun_conversion_population_and_bounds_contract ... ok
+test world::native_organism_io::tests::native_menu_insertion_uses_whole_twips_translates_all_cells_and_continues_after_save ... ok
+test world::native_organism_io::tests::repeated_native_imports_keep_duplicate_absolute_ids_and_separate_metadata ... ok
+test native_binary::tests::native_records_keep_bits_and_opaque_bytes_through_json ... ok
+test world::tests::native_border_respawn_moves_the_whole_multibot_from_its_nearest_cell ... ok
+test world::tests::native_velocity_readbacks_are_signed_and_round_single_halves_to_even ... ok
+test world::native_sim_export::tests::live_native_sim_export_updates_resources_memory_world_and_shots ... ok
+test world::tests::gpu_in_backend_failure_keeps_tick_many_iterations_atomic ... ok
+test world::tests::gpu_in_backend_failure_allows_later_tick_with_trace ... ok
+test world::tests::gpu_failure_does_not_partially_advance_the_cycle ... ok
+test world::tests::runtime_gpu_failure_retries_on_cpu_and_records_reason ... ok
+test world::tests::runtime_gpu_failure_is_fatal_when_fallback_is_disabled ... ok
+test world::tests::failed_gpu_cycle_restores_file_transfers_and_retry_consumes_each_once ... ok
+test world::native_io::tests::native_origin_and_live_state_survive_modern_save_and_resume ... ok
+test world::native_corpses::tests::archived_native_corpse_keeps_memory_materials_and_tie_through_modern_save_and_native_export ... ok
+
+test result: ok. 96 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.35s
+
+     Running tests\corpses_collisions.rs (target\debug\deps\corpses_collisions-8a924f8214196211.exe)
+
+running 7 tests
+test overlapping_organisms_are_separated_without_non_finite_motion ... ok
+test energy_below_configured_corpse_threshold_becomes_corpse_after_age_zero ... ok
+test body_feeding_shots_multiply_corpse_damage_and_return_a_packet ... ok
+test energy_feeding_cannot_extract_energy_from_ordinary_corpses ... ok
+test configured_corpse_decay_changes_authoritative_lifecycle_state_after_tick ... ok
+test energy_donation_does_not_revive_or_feed_a_corpse ... ok
+test energy_death_leaves_a_decayable_corpse_in_world_state ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.33s
+
+     Running tests\db2_final_engine_world.rs (target\debug\deps\db2_final_engine_world-7df028117f3e59bb.exe)
+
+running 4 tests
+test phy_08_resolves_every_cluster_pair_and_substitutes_fixed_body_mass ... ok
+test sen_01_opaque_shapes_occlude_and_disabled_vision_clears_nine_eyes ... ok
+test sen_01_projects_each_of_nine_eyes_with_native_bearings_under_both_border_modes ... ok
+test eco_03_pond_depth_moving_sun_band_and_tide_reduce_authoritative_feed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\db2_physics.rs (target\debug\deps\db2_physics-fb80da21d080f2fb.exe)
+
+running 22 tests
+test drag_reduces_retained_momentum_instead_of_replacing_it ... ok
+test brownian_motion_rotates_aim_on_the_next_cycle ... ok
+test elasticity_rebounds_colliding_bots_with_finite_velocity ... ok
+test fluid_added_mass_reduces_acceleration_and_angular_damping_is_applied_in_tick ... ok
+test newmove_directive_is_preserved_by_legacy_dna ... ok
+test maximum_velocity_caps_total_velocity_after_environment_impulses ... ok
+test non_toroidal_border_collision_writes_edge_sense ... ok
+test movement_command_adds_impulse_and_bot_coasts_without_new_thrust ... ok
+test newly_loaded_bots_start_with_db2_body_reserve ... ok
+test fixed_bot_radii_config_survives_save_and_uses_db2_half_radius ... ok
+test db2_gravity_is_applied_after_friction_on_the_first_tick ... ok
+test physical_radius_is_derived_from_body_like_db2 ... ok
+test edge_sense_matches_vb6_boundary_distance_calibration ... ok
+test static_friction_blocks_impulses_below_the_breakaway_threshold ... ok
+test pond_buoyancy_reverses_vertical_gravity_at_the_bottom ... ok
+test pond_tides_modulate_vertical_gravity_over_the_configured_period ... ok
+test voluntary_acceleration_is_clamped_before_efficiency_multiplier ... ok
+test voluntary_motion_cost_uses_the_clipped_acceleration_magnitude ... ok
+test pond_full_buoyancy_sinks_shallow_but_floats_deep_when_raw_threshold_exceeds_one ... ok
+test static_friction_is_applied_after_collisions_to_cancel_the_post_contact_impulse ... ok
+test fixed_and_corpse_flags_suppress_voluntary_motion_and_energy_cost ... ok
+test phy04_cpu_engine_physics_contract ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\eco05_repopulation.rs (target\debug\deps\eco05_repopulation-11960258a3a0ea65.exe)
+
+running 1 test
+test eco05_seeded_repopulation_caps_vegetables_and_survives_save_load ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\environment_world.rs (target\debug\deps\environment_world-bbf2ad9ab3606928.exe)
+
+running 13 tests
+test brownian_motion_can_be_disabled_while_running ... ok
+test gravity_and_drag_affect_motion ... ok
+test complete_environment_settings_can_change_while_running ... ok
+test intrasim_teleporter_blocks_immediate_paired_backflow ... ok
+test opaque_obstacle_blocks_vision_of_a_target_behind_it ... ok
+test intrasim_teleporter_respects_shape_blocking ... ok
+test obstacles_reject_organisms_and_teleporters_relocate_them ... ok
+test outbound_only_teleporter_does_not_relocate_intrasim_organisms ... ok
+test shape_editor_properties_persist_through_the_authoritative_engine ... ok
+test shape_drift_moves_the_obstacle_before_publication ... ok
+test intrasim_teleporter_applies_filters_and_counts_capacity_per_transfer ... ok
+test see_through_shape_preserves_vision_of_a_target_behind_it ... ok
+test planet_eaters_apply_mutual_db2_mass_scaled_attraction ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\gpu_ffi.rs (target\debug\deps\gpu_ffi-625ae4070967ba49.exe)
+
+running 26 tests
+test cpu_physics_integrates_and_clamps_world_bounds ... ok
+test engine_can_switch_backends_while_preserving_live_state ... ok
+test engine_retains_gpu_backend_and_uses_it_for_tick_physics ... ok
+test cpu_and_gpu_emit_identical_nontiming_cycle_traces ... ok
+test cpu_and_gpu_match_native_border_overshoot_and_next_cycle_respawn ... ok
+test cpu_and_gpu_match_toxin_state_memory_and_position ... ok
+test cpu_and_gpu_match_tie_lifecycle_spring_and_hardening ... ok
+test ffi_adds_and_removes_live_environment_features ... ok
+test cpu_and_gpu_match_gameplay_state_within_existing_physics_tolerance ... ok
+test ffi_environment_updates_preserve_optional_db2_settings ... ok
+test ffi_v1_consumers_accept_the_additive_snapshot ... ok
+test ffi_import_accepts_known_sysvars_without_inert_warnings ... ok
+test ffi_imports_a_configured_species_as_one_command ... ok
+test ffi_binary_save_load_round_trip_replaces_engine_atomically ... ok
+test ffi_executes_versioned_command_batches_and_reports_capabilities ... ok
+test ffi_rejects_unknown_batch_versions_with_owned_structured_error ... ok
+test fused_gpu_sensing_and_motion_match_cpu_contract_when_adapter_is_available ... ok
+test gpu_physics_matches_cpu_when_an_adapter_is_available ... ok
+test gpu_prepares_render_instances_with_integrated_positions ... ok
+test gpu_builds_spatial_grid_before_neighborhood_queries_when_adapter_is_available ... ok
+test ffi_manual_tools_return_ids_and_exported_dna ... ok
+test ffi_loads_genuine_native_sim_and_preserves_the_world_after_rejected_load ... ok
+test gpu_sensing_and_rendering_do_not_reintegrate_db2_positions_when_adapter_is_available ... ok
+test gpu_sensing_matches_nearest_neighbor_contract_when_adapter_is_available ... ok
+test physical_gpu_fuses_grid_sensing_integration_and_render_preparation ... ok
+test ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.09s
+
+     Running tests\ties_multibot.rs (target\debug\deps\ties_multibot-4c214f6cbb4974f2.exe)
+
+running 21 tests
+test dragging_one_member_moves_the_tied_organism_and_clears_momentum ... ok
+test fixang_command_applies_canonical_tie_torque ... ok
+test hardened_tie_group_follows_teleporter_relocation ... ok
+test hardened_shell_share_marks_only_the_forward_tie_endpoint ... ok
+test multibot_amplifies_feeding_shot_and_virtual_body_range ... ok
+test fixlen_command_changes_the_authoritative_tie_spring_response ... ok
+test slime_is_consumed_to_resist_new_ties ... ok
+test review_projection_create_save_load_break_tracks_one_canonical_tie ... ok
+test soft_tie_uses_twenty_unit_deadband ... ok
+test removed_tie_clears_topology_and_retains_references_until_the_next_read ... ok
+test new_tie_hardens_on_db2_cycle ... ok
+test successful_tie_attack_consumes_twenty_slime ... ok
+test tie_breaks_when_surface_gap_exceeds_one_thousand ... ok
+test stifftie_command_changes_hardened_tie_force ... ok
+test eleventh_endpoint_tie_is_rejected_at_ten_tie_capacity ... ok
+test structural_tie_torque_rotates_both_members_in_opposite_directions ... ok
+test tie_formation_skips_existing_pair_for_next_eligible_target ... ok
+test sharing_requires_hardening ... ok
+test tie_cluster_spans_addressed_readbacks_torque_hardening_traversal_and_breakage ... ok
+test legacy_tie_torque_calibration_table_covers_signed_deadband_stiffness_and_clamping ... ok
+test negative_tieloc_resource_exchange_runs_in_engine_tick ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests\touch_taste_248.rs (target\debug\deps\touch_taste_248-0aa630ed182f34da.exe)
+
+running 8 tests
+test vertical_overlap_writes_right_and_left_runtime_touch_cells ... ok
+test touch_bankers_rounds_the_other_robot_center_before_direction_selection ... ok
+test actual_overlap_touches_both_participants_but_not_a_nearby_non_overlap ... ok
+test confirmed_organism_hit_tastes_even_when_effect_returns_false ... ok
+test late_touch_is_read_by_next_dna_then_clears_without_stale_directions ... ok
+test shot_taste_uses_previous_position_and_vb6_angle_rounding ... ok
+test positive_memory_shot_taste_uses_canonical_address_kind ... ok
+test corpse_and_obstacle_impacts_do_not_taste_a_live_robot ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s

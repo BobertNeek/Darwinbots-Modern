@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "batch": 62,
+  "state": "complete_authored_peer_reviewed_quarantine_document_candidates_fresh_qualification_pending",
+  "created_utc": "2026-10-17T12:56:43.509Z",
+  "owner": "/root/recover_46_inventory",
+  "base_source_head": "8a42380d2096bb97d5028a0c3cfc03b96420fdcd",
+  "latest_fully_qualified_checkpoint": {
+    "batch": 59,
+    "source": "ff50b1a735ef61c6d5d282358da76f2734f64099"
+  },
+  "files": [
+    {
+      "target_path": "docs/parity/db24832-parity-report-2026-10-14.html",
+      "new_file": false,
+      "base_raw_sha256": "B143C3E7F425FDCF13AD47A7BC2E7852CB8AF47FAB1C2A4B8D00036D246D13C5",
+      "base_bytes": 588973,
+      "candidate_path": "output/pass62-drafts/report/candidate/docs/parity/db24832-parity-report-2026-10-14.html",
+      "candidate_raw_sha256": "D4DCC893E051190CE9B6081BBE5F87AF336BF33C5E7573D4B4C2D2D42A0D05C9",
+      "candidate_bytes": 656446,
+      "superseded_provisional_candidate_raw_sha256": "D0D031CAC7A8F0288BA89BD8BBB0584732AF33859EF0C743F2C243DB5993619F",
+      "superseded_provisional_candidate_bytes": 631195
+    },
+    {
+      "target_path": "docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "new_file": false,
+      "base_raw_sha256": "548F78F2CD1FCDD7ECFD37EBFA1F4E49B5F420E0FEB08D4A2A1EFAE56D6F4243",
+      "base_bytes": 402247,
+      "candidate_path": "output/pass62-drafts/report/candidate/docs/parity/evidence/continuation-handoff-2026-10-13.md",
+      "candidate_raw_sha256": "4472323A9DB4D048BFB2B8AD7C5F4A64D3BA1E8507BA623F6746A1B1E53E0B29",
+      "candidate_bytes": 414182,
+      "superseded_provisional_candidate_raw_sha256": "BA1E175606569A5969A3DCCD286C3AA2B860D7CDDBDC7372A7441049410806CF",
+      "superseded_provisional_candidate_bytes": 410144
+    }
+  ],
+  "sealed61_facts": {
+    "all_ordinary_outcomes_collected": true,
+    "ordinary": {
+      "total": 94,
+      "zero": 89,
+      "direct_nonzero": 5,
+      "dependency_not_run": 0
+    },
+    "rust": {
+      "targets": 68,
+      "passed": 1040,
+      "failed": 4,
+      "ignored": 0,
+      "filtered_out": 27
+    },
+    "core": {
+      "passed": 312,
+      "failed": 0,
+      "total": 312
+    },
+    "desktop": {
+      "passed": 212,
+      "failed": 1,
+      "total": 213
+    },
+    "original": {
+      "references": 25,
+      "matched": 24,
+      "matched_fields": 54165,
+      "total_union_fields": 55849,
+      "C100_compared_fields": 1684,
+      "C100_differences": 75
+    },
+    "hosted": {
+      "all_seven_terminal_failure": true,
+      "main_per_platform": {
+        "targets": 68,
+        "passed": 1055,
+        "failed": 4,
+        "ignored": 12
+      },
+      "diagnostics_per_platform": {
+        "passed": 212,
+        "failed": 1,
+        "total": 213
+      }
+    },
+    "qualification_passed": false
+  },
+  "source_authority_and_diagnostic": {
+    "source_rule": "main.startloaded1507 initial cooldown=-RepopCooldown; source61zero attemptsC11 instead ofC21",
+    "counterfactual_scope": "Root unchanged61DLL with temporary schedule;1684activefields/20parsed dormant particles matched. Diagnostic only; source61failed/goldens unchanged.62productionrepair authored but not qualified.",
+    "diagnostic_evidence": [
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-provenance.json",
+        "sha256": "BB79102B327785B1D4B090B5F596C30FCA4821F04E08CA751E2F9CE81E1F1FAD",
+        "bytes": 552
+      },
+      {
+        "file": "output/pass61-c100-diagnostic-20261017T1246/counterfactual-compare.json",
+        "sha256": "4C10D12E20C9115B274279B2FA62B1D59C390D558B146389E416DA5A5CE47E87",
+        "bytes": 623
+      }
+    ],
+    "source_authority": {
+      "target": "docs/parity/evidence/batch-2026-10-14/native-repopulation-source-authority62.json",
+      "candidate_raw_sha256": "BCA9A27390F1176B7308465E7F813434D0649912D3380BF3BD6FFA59024EC294",
+      "candidate_bytes": 10714,
+      "metadata_sha256": "312C597A5D291E235F1A84B525B8431BD8F32D3B1CED1EEB784380F9FA1AB1C5"
+    }
+  },
+  "sealed_evidence_inputs": [
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/qualification-summary.json",
+      "sha256": "0F30E4B269E8183A04FFECA509E47A206CC2D41A61674E6D1DF2103406A9A764",
+      "bytes": 116819
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/native-roundtrip-pass61/rust-target-results.json",
+      "sha256": "140004E81F7D8F63B3781179195CBDB2740186DDBCF04593F82F2042D87AD568",
+      "bytes": 64299
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-main-8a42380.json",
+      "sha256": "31AF8394F5C60D2A638BD9CC5A619D5E362CD0B8B709B197919041FA25EA6DD8",
+      "bytes": 55568
+    },
+    {
+      "file": "docs/parity/evidence/batch-2026-10-14/hosted-diagnostics-8a42380.json",
+      "sha256": "0479C194C87FFC92616B24B9BDA4CC093F8AF6E2AA5568F09D0778A226D370B4",
+      "bytes": 31196
+    }
+  ],
+  "qualification_candidate": {
+    "metadata_path": "output/pass62-drafts/qualification/metadata.json",
+    "metadata_sha256": "8BD498C3259AFDB9DE556DA5E4437E115B20409013F935AB5D2C5ADC3FF0106F",
+    "candidate_path": "output/pass62-drafts/qualification/candidate/output/qualify-native-roundtrip-pass62.ps1",
+    "candidate_raw_sha256": "C75F20122582DDD4EC357C3674C1F4784E5B4C1A95BE56F8E2D371661DBDE118",
+    "provisional": false,
+    "execution_pending": true
+  },
+  "preservation": {
+    "ledger_ids": [
+      "IO-01",
+      "IO-02",
+      "IO-03",
+      "IO-04",
+      "IO-05",
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04",
+      "SIM-05",
+      "MODE-01",
+      "MODE-02",
+      "UI-01",
+      "UI-02",
+      "UI-03",
+      "MODE-03",
+      "DATA-01",
+      "UI-04",
+      "UI-05",
+      "UI-06",
+      "QA-01",
+      "QA-02",
+      "QA-03",
+      "ENG-01",
+      "ENG-02"
+    ],
+    "ledger_ids_and_order_unchanged": true,
+    "preserved_existing_historical_json_keys": [
+      "historical_desktop_core_release",
+      "historical_desktop",
+      "historical_hosted_desktop",
+      "historical_qualified_package",
+      "historical_workspace_release",
+      "historical_manual_insertion",
+      "historical_corpus",
+      "historical_cpu_ecologies",
+      "historical_native_cpu_continuation",
+      "historical_mutation_enabled_cpu_continuation",
+      "historical_bounded_cpu_benchmarks",
+      "historical_hosted_run",
+      "historical_hosted_diagnostics",
+      "historical_pass38_full_run_before_repairs",
+      "historical_original_comparison_preparation",
+      "historical_pass39_batch",
+      "historical_local_cpu_pass39",
+      "historical_hosted_655d4a4",
+      "historical_pass43_batch",
+      "historical_qualified_batch44",
+      "historical_qualified_hosted_dbffdc5",
+      "historical_qualified_batch45",
+      "historical_collected_batch46",
+      "historical_collected_batch47",
+      "historical_collected_batch48",
+      "historical_collected_batch49",
+      "historical_collected_batch50",
+      "historical_qualified_hosted_4ba3268",
+      "historical_collected_batch52",
+      "historical_hosted_0ea7306",
+      "historical_hosted_e0300ca",
+      "historical_original_comparison_before54_capture",
+      "historical_repaired_code_gaps_52_54",
+      "historical_long_cpu_projection_before54_update",
+      "historical_qualified_batch54",
+      "historical_original_comparison_before55qualification",
+      "historical_collected_batch55",
+      "historical_applied_batch56_authoring",
+      "historical_collected_batch56",
+      "historical_collected_batch57",
+      "historical_original_comparison_before57_final",
+      "historical_collected_batch58",
+      "historical_hosted_8018c20",
+      "historical_applied_batch59_authoring",
+      "historical_report_current_fields_before59_qualification",
+      "historical_qualified_batch59",
+      "historical_night_authorization_before60",
+      "historical_report_current_fields_before61_authoring",
+      "historical_applied_batch60_authoring",
+      "historical_collected_batch60",
+      "historical_night_authorization_before61"
+    ],
+    "preserved_existing_historical_json_values": 51,
+    "includes_all_older47_historical_values": true,
+    "css_exact": true,
+    "filter_javascript_exact": true,
+    "previous_current_report_status_retained_as_historical_details": true,
+    "entire_prior_handoff_exact_suffix": true,
+    "active_doc_and_runner_baselines_rehashed_unchanged": true,
+    "original_reference_goldens_changed": false,
+    "sealed61_receipts_rewritten": false,
+    "all51_active_historical_json_values_exact": true,
+    "all53_prior_candidate_historical_values_exact": true,
+    "ledger_ids_and_order_exact": true,
+    "ledger_count": 25,
+    "prior_visible_status_exact": true,
+    "whole_prior_candidate_handoff_exact_suffix": true,
+    "whole_active_handoff_exact_suffix": true,
+    "all_prior_provisional_visible_status_and_machine_fields_retained_as_history": true
+  },
+  "verification": {
+    "static_document_and_data_readback_only": true,
+    "rendered": false,
+    "product_parser_executed": false,
+    "product_execution": false,
+    "formatter": false,
+    "tests": false,
+    "builds": false,
+    "ui": false,
+    "gpu": false,
+    "git_mutation": false,
+    "active_source_or_docs_written": false
+  },
+  "promotion_gate": "Allcode/tests authored and static peer reviews complete. Root alone applies/commits/freezes the complete25-target batch and runs fresh combined qualification after complete source freeze. All94ordinary outcomes must finish before further repairs; no62pass/CPUadmission/hardware/100%claim.",
+  "finalized_utc": "2026-10-17T13:15:28.109Z",
+  "supersedes_provisional_metadata": {
+    "file": "output/pass62-drafts/report/metadata.json",
+    "sha256": "D2DDA47922AD1B1D79D8839E40D6F5A877506C8832617D57DEA2C1B17835759E",
+    "bytes": 8699,
+    "prior_counts_preserved_in_report_history": true
+  },
+  "historical_provisional62": {
+    "all_code_and_tests_authored": false,
+    "product_execution": false,
+    "C100_source_cause_confirmed": true,
+    "C100_production_repair_qualified": false,
+    "known_new_rows": {
+      "rust": 2,
+      "core": 1,
+      "desktop": 1
+    },
+    "provisional_managed_counts": {
+      "core": 313,
+      "desktop": 214
+    },
+    "additional_C100_rust_rows": null,
+    "final_target_count": null,
+    "final_test_counts": null,
+    "planned_rust_targets": 68,
+    "planned_ordinary_outcomes": 94,
+    "original_controls": 25,
+    "original_reference_only_fields": 55849,
+    "final_authoring_metadata_pending": true
+  },
+  "authored62": {
+    "all_code_and_tests_authored": true,
+    "all_static_peer_reviews_complete": true,
+    "product_execution": false,
+    "final_application_census": {
+      "total_targets": 25,
+      "existing_targets": 23,
+      "new_targets": 2,
+      "owners": {
+        "rust": {
+          "targets": 11,
+          "existing": 11,
+          "new": 0
+        },
+        "managed": {
+          "targets": 10,
+          "existing": 10,
+          "new": 0
+        },
+        "qualification": {
+          "targets": 1,
+          "existing": 0,
+          "new": 1
+        },
+        "source_authority": {
+          "targets": 1,
+          "existing": 0,
+          "new": 1
+        },
+        "report": {
+          "targets": 2,
+          "existing": 2,
+          "new": 0
+        }
+      },
+      "new_rows_vs61": {
+        "rust": 4,
+        "core": 2,
+        "desktop": 1
+      },
+      "expected": {
+        "rust_targets": 68,
+        "core": 314,
+        "desktop": 214,
+        "ordinary_outcomes": 94,
+        "original_controls": 25,
+        "reference_only_fields": 55849
+      }
+    },
+    "new_rows_vs61": {
+      "rust": 4,
+      "core": 2,
+      "desktop": 1
+    },
+    "expected_suites": {
+      "rust_targets": 68,
+      "core": 314,
+      "desktop": 214,
+      "ordinary_outcomes": 94,
+      "original_controls": 25,
+      "reference_only_fields": 55849
+    },
+    "C100_production_repair_authored": true,
+    "C100_production_repair_qualified": false,
+    "final_authoring_metadata_pending": false,
+    "application_commit_freeze_and_fresh_outcomes_recorded_separately_by_root": true
+  },
+  "authoritative_releases": [
+    {
+      "file": "output/pass62-drafts/native-repopulation/metadata.json",
+      "sha256": "A6042F0445A1F4AAE45D1E877839D4E8B62ED5D24D470C7A0CE2B8122F9BDED5",
+      "bytes": 14627
+    },
+    {
+      "file": "output/pass62-drafts/managed-shot-state/repopulation-counter/metadata.json",
+      "sha256": "3E26FC4DF681AB9C68C1CECC6CB921DDCEFCDDB32D40169FDB38C1C1D26FE9CF",
+      "bytes": 12670
+    },
+    {
+      "file": "output/pass62-drafts/managed-shot-state/metadata.json",
+      "sha256": "165ABE3C3B02508BF15D5751B960E63FFC35D53832F6F62259E9E0633F6C6F23",
+      "bytes": 9671
+    },
+    {
+      "file": "output/pass62-drafts/rust-shot-state/metadata.json",
+      "sha256": "F19FFF691E06DE0947E91036061EF5C7834086D2EE037384A7DF8EDE3C222ABF",
+      "bytes": 7754
+    },
+    {
+      "file": "output/pass62-drafts/qualification/metadata.json",
+      "sha256": "8BD498C3259AFDB9DE556DA5E4437E115B20409013F935AB5D2C5ADC3FF0106F",
+      "bytes": 2083
+    },
+    {
+      "file": "output/pass62-drafts/source-authority/metadata.json",
+      "sha256": "312C597A5D291E235F1A84B525B8431BD8F32D3B1CED1EEB784380F9FA1AB1C5",
+      "bytes": 874
+    }
+  ],
+  "raw_pin_verification": {
+    "all24_release_base_and_candidate_rows_verified": true,
+    "unique_Rust_paths": 11,
+    "unique_managed_paths": 10,
+    "final_runner_candidate_verified": true,
+    "final_authority_candidate_verified": true,
+    "all31_diagnostic_pins_verified": true,
+    "active_doc_raw_baselines_unchanged": true,
+    "sealed61_receipt_values_unchanged": true
+  }
+}

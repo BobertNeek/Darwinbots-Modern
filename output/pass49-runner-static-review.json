@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "status": "Read-only draft review complete; three necessary corrections accepted by root; final edited runner/projection not yet reviewed or qualified",
+  "reviewed_utc": "2026-10-16T16:11:52.466Z",
+  "runner": "output/qualify-native-roundtrip-pass49.DRAFT.ps1",
+  "reviewed_text_sha256": "BBD6B07FC0136CAC5705C9D1527ED8565B3A6F889A8D89D20852C3ABEB1AD0B3",
+  "source_edits": false,
+  "parser_formatter_build_test_Git_apps_UI_executed": false,
+  "target_selection": {
+    "correct": true,
+    "fresh_rust_targets": 10,
+    "description": "Engine lib +4 FFI integration targets; CLI lib +commands/native_comparison;2 docs. Intended56 retained48 targets handled separately.",
+    "full_fresh_desktop_scope_present": true,
+    "comments": "Fresh Core, Desktop build, NEW package, smoke, package-native Desktop, assets, CLI zero and candidate loops are selected. Format/Clippy and no-fail-fast collection remain."
+  },
+  "necessary_corrections": [
+    {
+      "id": "new-package-preflight",
+      "lines": "103-104",
+      "finding": "Publish currently accepts an already existing49 package directory and can merge/overwrite it.",
+      "required": "Before publish, reject existing artifacts/win-x64-native-roundtrip-pass49. Preserve all prior package roots.",
+      "root_accepted": true
+    },
+    {
+      "id": "assert-native-dll-identity",
+      "lines": "116-122",
+      "finding": "Runner copies package DLL and only records package/test hashes; it neither asserts equality nor captures target/release identity.",
+      "required": "Require SHA256 target/release darwinbots_engine.dll = NEW49 package DLL = Desktop-test DLL before and after Desktop. Write all3 identities. This is fresh49 artifact identity, not a retained mutable-binary guard.",
+      "root_accepted": true
+    },
+    {
+      "id": "pin-and-complete21-candidates",
+      "lines": "89-99",
+      "finding": "candidate39 manifest +7 startSIMs lie outside unchanged212 source/input closure. Current live manifest loop can silently run0 or wrong checkpoints; receipt permits null output hashes.",
+      "required": "Pin manifest and all7 inputSIM hashes. Validate exact declared7 unique case names and checkpoint arrays[1,10,100], then21 distinct planned invocations/receipt rows. Record a failed completeness step for missing/failed output while continuing other normal outcomes; do not throw at first candidate failure. Recheck fresh CLI hash against its own build receipt before sealing.",
+      "root_accepted": true,
+      "candidate_input_pins": [
+        {
+          "file": "output/native-oracle-candidate39/manifest.json",
+          "sha256": "49F44CE37573A9C41EB419C15C5B0359474697FA4BC82DD70BF86B25F0DD8BA9"
+        },
+        {
+          "file": "output/native-oracle-candidate39/movement-start.sim",
+          "sha256": "6678CDD874314AED26D738B29897EE8CEE4E269DA6BEFDB55BEC47292F19E52E"
+        },
+        {
+          "file": "output/native-oracle-candidate39/fixed-start.sim",
+          "sha256": "94C32DA0BDB409DF42C7DF7CB43B59A3DEA70E08D0D53631B8FEE0FDEAD41BE6"
+        },
+        {
+          "file": "output/native-oracle-candidate39/contacts-start.sim",
+          "sha256": "4AF50D8B78BD75723DDF36E47C3A80B9DE64636FBC1A9501E16C7FCBFF9F0C72"
+        },
+        {
+          "file": "output/native-oracle-candidate39/body-start.sim",
+          "sha256": "0445D63EF499C785DB6A3678E03DD2F0C4B57D0CB2DDD3EC3BB9CA9DCB8565B5"
+        },
+        {
+          "file": "output/native-oracle-candidate39/ties-start.sim",
+          "sha256": "302DE657A38E7B88B1ABBB652ED567BCC3530345E16554AC2C63EAC5290D9FA3"
+        },
+        {
+          "file": "output/native-oracle-candidate39/feeding-start.sim",
+          "sha256": "A0AE7DFE9C75F8BBC6B7482106666C529F1DA96D91F7EE414D9F2E914B87C03D"
+        },
+        {
+          "file": "output/native-oracle-candidate39/reproduction-start.sim",
+          "sha256": "60FD33C86E938B94D86C074AE9B8097B9D61159CCF5D35D066BAFFCB4BF18040"
+        }
+      ]
+    }
+  ],
+  "final_projection_requirements": {
+    "generated_after_all_authors_release_and_formatter": true,
+    "baseline48_summary_sha256": "5241130A4111F8CB793BA3C1C2E69AB49E3BBC40F97724A33E1387EF710B684F",
+    "retained_successful_targets": 56,
+    "fresh_rust_targets": 10,
+    "retained_pins_must_include": "Unchanged212 file closure; sealed48 logs/source manifests/target receipt; candidate manifest+7 inputSIMs.",
+    "retained_pins_must_exclude": "Mutable target/release CLI and DLL binaries. Their fresh49 identities belong in fresh build/package receipts.",
+    "ffi_production_scope": "Two parser-dispatch expressions plus required regular LegacyDna import removal/test-module import relocation; root canonical-formatter-compares exact old→expected prefix. Earlier two-expression-only raw expected prefix hash is not the final authority.",
+    "projection_file_status_at_review": "output/pass49-retained48-projection.json not yet present, as expected. Its final content has not been reviewed."
+  },
+  "other_necessary_runner_corrections_found": [],
+  "qualification_executed": false
+}

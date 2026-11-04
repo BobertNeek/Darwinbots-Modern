@@ -1,0 +1,1413 @@
+{
+  "schema_version": 3,
+  "batch": 56,
+  "source_commit": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "source_head": "9be8474cdcdf3bba2ac249ca141ed19e1f64df9f",
+  "repository": "BobertNeek/Darwinbots-Modern",
+  "workflow": "Modern cross-platform",
+  "workflow_file": ".github/workflows/modern-cross-platform.yml",
+  "workflow_source": {
+    "file": ".github/workflows/modern-cross-platform.yml",
+    "sha256": "4B596B870FC8E38DDD9D9F658AD1ACDAAB7082ED10B161D22655025D2ABF6707",
+    "bytes": 2910
+  },
+  "run_id": 39002567275,
+  "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275",
+  "branch": "codex/db24832-completion",
+  "event": "push",
+  "created_utc": "2026-10-17T04:26:21Z",
+  "updated_utc": "2026-10-17T04:32:07Z",
+  "sealed_utc": "2026-10-17T04:34:00.560Z",
+  "state": "needs_repair_compile_prerequisite_failed",
+  "run_status": "completed",
+  "run_conclusion": "failure",
+  "all_normal_outcomes_collected": true,
+  "cancelled_jobs": 0,
+  "overall_passed": false,
+  "normal_jobs": [
+    {
+      "completedAt": "2026-10-17T04:28:58Z",
+      "conclusion": "failure",
+      "databaseId": 117308392926,
+      "name": "verify-and-package (windows-latest, win-x64)",
+      "startedAt": "2026-10-17T04:26:25Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:26:27Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:26:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:34Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:26:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:58Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:26:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:21Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:26:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:27:21Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:54Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:56Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:28:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:56Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:28:56Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308392926"
+    },
+    {
+      "completedAt": "2026-10-17T04:27:47Z",
+      "conclusion": "failure",
+      "databaseId": 117308393067,
+      "name": "verify-and-package (macos-latest, osx-arm64)",
+      "startedAt": "2026-10-17T04:26:28Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:26:31Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:26:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:34Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:26:31Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:41Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:26:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:52Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:26:41Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:43Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:26:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:43Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:27:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:43Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:27:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:44Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:27:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:44Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:27:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:44Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:27:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:44Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:27:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:44Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:27:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:45Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:27:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:27:45Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308393067"
+    },
+    {
+      "completedAt": "2026-10-17T04:32:06Z",
+      "conclusion": "failure",
+      "databaseId": 117308393078,
+      "name": "verify-and-package (macos-15-intel, osx-x64)",
+      "startedAt": "2026-10-17T04:26:28Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:26:35Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:26:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:54Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:26:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:18Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:26:54Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:28:01Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:27:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:56Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:28:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:56Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:31:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:56Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:31:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:57Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:31:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:57Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:31:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:57Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:31:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:57Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:31:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:57Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:31:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:58Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:31:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:31:58Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:31:58Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308393078"
+    },
+    {
+      "completedAt": "2026-10-17T04:27:48Z",
+      "conclusion": "failure",
+      "databaseId": 117308393143,
+      "name": "verify-and-package (ubuntu-latest, linux-x64)",
+      "startedAt": "2026-10-17T04:26:25Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-17T04:26:26Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-17T04:26:25Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:28Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-17T04:26:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:37Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-17T04:26:28Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:26:46Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-dotnet@v4",
+          "number": 4,
+          "startedAt": "2026-10-17T04:26:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "failure",
+          "name": "Test Rust workspace",
+          "number": 5,
+          "startedAt": "2026-10-17T04:26:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "skipped",
+          "name": "Test desktop core",
+          "number": 6,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "skipped",
+          "name": "Test rendered desktop controls",
+          "number": 7,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "success",
+          "name": "Preserve rendered control receipts",
+          "number": 8,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "skipped",
+          "name": "Publish desktop package",
+          "number": 9,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "skipped",
+          "name": "Smoke test published desktop package",
+          "number": 10,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "skipped",
+          "name": "Run actions/upload-artifact@v4",
+          "number": 11,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:46Z",
+          "conclusion": "skipped",
+          "name": "Post Run actions/setup-dotnet@v4",
+          "number": 21,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:47Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 22,
+          "startedAt": "2026-10-17T04:27:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-17T04:27:47Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 23,
+          "startedAt": "2026-10-17T04:27:47Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308393143"
+    }
+  ],
+  "platform_results": [
+    {
+      "rid": "win-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:28:58Z",
+        "conclusion": "failure",
+        "databaseId": 117308392926,
+        "name": "verify-and-package (windows-latest, win-x64)",
+        "startedAt": "2026-10-17T04:26:25Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:26:27Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:26:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:34Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:26:27Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:58Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:26:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:21Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:26:58Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:27:21Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:54Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:56Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:28:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:56Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:28:56Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308392926"
+      },
+      "compile_boundary": {
+        "code": "E0609",
+        "source_file": "modern/engine/src/world/native_shots.rs",
+        "source_line": 71,
+        "reason": "EngineConfig has no direct max_velocity field; the field is under config.physics.",
+        "diagnostic_context": [
+          "2026-10-17T04:28:48.3630108Z error[E0609]: no field `max_velocity` on type `config::EngineConfig`",
+          "2026-10-17T04:28:48.3645554Z   --> modern\\engine\\src\\world\\native_shots.rs:71:38",
+          "2026-10-17T04:28:48.3646130Z    |",
+          "2026-10-17T04:28:48.3646770Z 71 |             + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:28:48.3647332Z    |                                      ^^^^^^^^^^^^ unknown field",
+          "2026-10-17T04:28:48.3647683Z    |",
+          "2026-10-17T04:28:48.3648040Z help: one of the expressions' fields has a field of the same name",
+          "2026-10-17T04:28:48.3648383Z    |",
+          "2026-10-17T04:28:48.3648914Z 71 |             + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:28:48.3649444Z    |                                      ++++++++"
+        ],
+        "additional_msbuild_diagnostic": [],
+        "not_a_test_failure": true
+      },
+      "actual_rust_completed_targets": 0,
+      "actual_rust_test_results": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered_out": 0,
+        "executed": 0
+      },
+      "actual_managed_test_results": {
+        "total": 0,
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "trx_files": 0,
+        "reason": "Managed test steps skipped after Rust compile prerequisite failure."
+      },
+      "rust_test_terminal_summaries": 0,
+      "rust_test_start_lines": 0,
+      "managed_test_terminal_summaries": 0,
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-9be8474-agent/logs/win-x64-final.log",
+        "sha256": "24340E5AE18CFC1A7B7A2681846DE42D7278FAA60181234584EA9D623726673C",
+        "bytes": 50716
+      }
+    },
+    {
+      "rid": "osx-arm64",
+      "job": {
+        "completedAt": "2026-10-17T04:27:47Z",
+        "conclusion": "failure",
+        "databaseId": 117308393067,
+        "name": "verify-and-package (macos-latest, osx-arm64)",
+        "startedAt": "2026-10-17T04:26:28Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:26:31Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:26:29Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:34Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:26:31Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:41Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:26:34Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:52Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:26:41Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:43Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:26:52Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:43Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:27:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:43Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:27:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:44Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:27:43Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:44Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:27:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:44Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:27:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:44Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:27:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:44Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:27:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:45Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:27:44Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:27:45Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308393067"
+      },
+      "compile_boundary": {
+        "code": "E0609",
+        "source_file": "modern/engine/src/world/native_shots.rs",
+        "source_line": 71,
+        "reason": "EngineConfig has no direct max_velocity field; the field is under config.physics.",
+        "diagnostic_context": [
+          "2026-10-17T04:27:36.4775860Z error[E0609]: no field `max_velocity` on type `config::EngineConfig`",
+          "2026-10-17T04:27:36.4876710Z   --> modern/engine/src/world/native_shots.rs:71:38",
+          "2026-10-17T04:27:36.4977960Z    |",
+          "2026-10-17T04:27:36.5079970Z 71 |             + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:27:36.5181420Z    |                                      ^^^^^^^^^^^^ unknown field",
+          "2026-10-17T04:27:36.5282540Z    |",
+          "2026-10-17T04:27:36.5384090Z help: one of the expressions' fields has a field of the same name",
+          "2026-10-17T04:27:36.5484110Z    |",
+          "2026-10-17T04:27:36.5585920Z 71 |             + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:27:36.5685710Z    |                                      ++++++++"
+        ],
+        "additional_msbuild_diagnostic": [],
+        "not_a_test_failure": true
+      },
+      "actual_rust_completed_targets": 0,
+      "actual_rust_test_results": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered_out": 0,
+        "executed": 0
+      },
+      "actual_managed_test_results": {
+        "total": 0,
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "trx_files": 0,
+        "reason": "Managed test steps skipped after Rust compile prerequisite failure."
+      },
+      "rust_test_terminal_summaries": 0,
+      "rust_test_start_lines": 0,
+      "managed_test_terminal_summaries": 0,
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-9be8474-agent/logs/osx-arm64-final.log",
+        "sha256": "2A632FF336549FE15ABC7FD63F827076E1DE04FBA78F295B0635EE565868062E",
+        "bytes": 49486
+      }
+    },
+    {
+      "rid": "osx-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:32:06Z",
+        "conclusion": "failure",
+        "databaseId": 117308393078,
+        "name": "verify-and-package (macos-15-intel, osx-x64)",
+        "startedAt": "2026-10-17T04:26:28Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:26:35Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:26:24Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:54Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:26:35Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:18Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:26:54Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:28:01Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:27:18Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:56Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:28:01Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:56Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:31:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:56Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:31:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:57Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:31:56Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:57Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:31:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:57Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:31:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:57Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:31:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:57Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:31:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:58Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:31:57Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:31:58Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:31:58Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308393078"
+      },
+      "compile_boundary": {
+        "code": "E0609",
+        "source_file": "modern/engine/src/world/native_shots.rs",
+        "source_line": 71,
+        "reason": "EngineConfig has no direct max_velocity field; the field is under config.physics.",
+        "diagnostic_context": [
+          "2026-10-17T04:31:37.8639180Z error[E0609]: no field `max_velocity` on type `config::EngineConfig`",
+          "2026-10-17T04:31:37.8641480Z   --> modern/engine/src/world/native_shots.rs:71:38",
+          "2026-10-17T04:31:37.8643000Z    |",
+          "2026-10-17T04:31:37.8645040Z 71 |             + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:31:37.8647570Z    |                                      ^^^^^^^^^^^^ unknown field",
+          "2026-10-17T04:31:37.8648820Z    |",
+          "2026-10-17T04:31:37.8650010Z help: one of the expressions' fields has a field of the same name",
+          "2026-10-17T04:31:37.8651480Z    |",
+          "2026-10-17T04:31:37.8653360Z 71 |             + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:31:37.8655240Z    |                                      ++++++++"
+        ],
+        "additional_msbuild_diagnostic": [],
+        "not_a_test_failure": true
+      },
+      "actual_rust_completed_targets": 0,
+      "actual_rust_test_results": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered_out": 0,
+        "executed": 0
+      },
+      "actual_managed_test_results": {
+        "total": 0,
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "trx_files": 0,
+        "reason": "Managed test steps skipped after Rust compile prerequisite failure."
+      },
+      "rust_test_terminal_summaries": 0,
+      "rust_test_start_lines": 0,
+      "managed_test_terminal_summaries": 0,
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-9be8474-agent/logs/osx-x64-final.log",
+        "sha256": "7D6D6B8F2145571BD37FE8CB5032B0B036F41672E8FA3D283F0BBF8667BF546F",
+        "bytes": 55561
+      }
+    },
+    {
+      "rid": "linux-x64",
+      "job": {
+        "completedAt": "2026-10-17T04:27:48Z",
+        "conclusion": "failure",
+        "databaseId": 117308393143,
+        "name": "verify-and-package (ubuntu-latest, linux-x64)",
+        "startedAt": "2026-10-17T04:26:25Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completedAt": "2026-10-17T04:26:26Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "startedAt": "2026-10-17T04:26:25Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:28Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "startedAt": "2026-10-17T04:26:26Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:37Z",
+            "conclusion": "success",
+            "name": "Run dtolnay/rust-toolchain@stable",
+            "number": 3,
+            "startedAt": "2026-10-17T04:26:28Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:26:46Z",
+            "conclusion": "success",
+            "name": "Run actions/setup-dotnet@v4",
+            "number": 4,
+            "startedAt": "2026-10-17T04:26:37Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "failure",
+            "name": "Test Rust workspace",
+            "number": 5,
+            "startedAt": "2026-10-17T04:26:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "skipped",
+            "name": "Test desktop core",
+            "number": 6,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "skipped",
+            "name": "Test rendered desktop controls",
+            "number": 7,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "success",
+            "name": "Preserve rendered control receipts",
+            "number": 8,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "skipped",
+            "name": "Publish desktop package",
+            "number": 9,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "skipped",
+            "name": "Smoke test published desktop package",
+            "number": 10,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "skipped",
+            "name": "Run actions/upload-artifact@v4",
+            "number": 11,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:46Z",
+            "conclusion": "skipped",
+            "name": "Post Run actions/setup-dotnet@v4",
+            "number": 21,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:47Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 22,
+            "startedAt": "2026-10-17T04:27:46Z",
+            "status": "completed"
+          },
+          {
+            "completedAt": "2026-10-17T04:27:47Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 23,
+            "startedAt": "2026-10-17T04:27:47Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/BobertNeek/Darwinbots-Modern/actions/runs/39002567275/job/117308393143"
+      },
+      "compile_boundary": {
+        "code": "E0609",
+        "source_file": "modern/engine/src/world/native_shots.rs",
+        "source_line": 71,
+        "reason": "EngineConfig has no direct max_velocity field; the field is under config.physics.",
+        "diagnostic_context": [
+          "2026-10-17T04:27:41.1597664Z error[E0609]: no field `max_velocity` on type `config::EngineConfig`",
+          "2026-10-17T04:27:41.1599515Z   --> modern/engine/src/world/native_shots.rs:71:38",
+          "2026-10-17T04:27:41.1600309Z    |",
+          "2026-10-17T04:27:41.1601577Z 71 |             + (f64::from(self.config.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:27:41.1602978Z    |                                      ^^^^^^^^^^^^ unknown field",
+          "2026-10-17T04:27:41.1603936Z    |",
+          "2026-10-17T04:27:41.1604922Z help: one of the expressions' fields has a field of the same name",
+          "2026-10-17T04:27:41.1605846Z    |",
+          "2026-10-17T04:27:41.1607179Z 71 |             + (f64::from(self.config.physics.max_velocity) * 2.0 + 40.0).powi(2))",
+          "2026-10-17T04:27:41.1608860Z    |                                      ++++++++"
+        ],
+        "additional_msbuild_diagnostic": [],
+        "not_a_test_failure": true
+      },
+      "actual_rust_completed_targets": 0,
+      "actual_rust_test_results": {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "filtered_out": 0,
+        "executed": 0
+      },
+      "actual_managed_test_results": {
+        "total": 0,
+        "executed": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "trx_files": 0,
+        "reason": "Managed test steps skipped after Rust compile prerequisite failure."
+      },
+      "rust_test_terminal_summaries": 0,
+      "rust_test_start_lines": 0,
+      "managed_test_terminal_summaries": 0,
+      "not_run_after_failure": [
+        {
+          "name": "Test desktop core",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Test rendered desktop controls",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Publish desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Smoke test published desktop package",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        },
+        {
+          "name": "Post Run actions/setup-dotnet@v4",
+          "reason": "not_run_after_preceding_compile_failure"
+        }
+      ],
+      "log": {
+        "file": "output/hosted-main-9be8474-agent/logs/linux-x64-final.log",
+        "sha256": "54D73E683E175D81CB09F57233EEF5BC7F8715BC420AA6697E6DA1A3F99EF528",
+        "bytes": 48871
+      }
+    }
+  ],
+  "artifacts": {
+    "api_available_count": 0,
+    "downloaded_count": 0,
+    "metadata": [],
+    "actual_trx_files": 0,
+    "gui_frames": 0,
+    "published_packages": [],
+    "reason": "Compile failure occurred before test result or GUI artifacts and package creation; always-run preservation steps found no files."
+  },
+  "evidence": {
+    "initial_run": {
+      "file": "output/hosted-main-9be8474-agent/initial-run.json",
+      "sha256": "F6F0FDF495EC49FB0620101ADB6305B9299044CBF383169633F748763EB5FF9D",
+      "bytes": 14689
+    },
+    "final_run": {
+      "file": "output/hosted-main-9be8474-agent/final-run.json",
+      "sha256": "477F909BA4B0CE6E954AEA19AF175A1348661DE43EA0F9264EB25E4A2E6B13AD",
+      "bytes": 16270
+    },
+    "artifacts_api": {
+      "file": "output/hosted-main-9be8474-agent/artifacts-api.json",
+      "sha256": "F7417E1FB877D3F5934F143CC38AD9E2905476E8F5AC6776507D09441EFCD6F6",
+      "bytes": 42
+    },
+    "job_logs": [
+      {
+        "file": "output/hosted-main-9be8474-agent/logs/win-x64-final.log",
+        "sha256": "24340E5AE18CFC1A7B7A2681846DE42D7278FAA60181234584EA9D623726673C",
+        "bytes": 50716
+      },
+      {
+        "file": "output/hosted-main-9be8474-agent/logs/osx-arm64-final.log",
+        "sha256": "2A632FF336549FE15ABC7FD63F827076E1DE04FBA78F295B0635EE565868062E",
+        "bytes": 49486
+      },
+      {
+        "file": "output/hosted-main-9be8474-agent/logs/osx-x64-final.log",
+        "sha256": "7D6D6B8F2145571BD37FE8CB5032B0B036F41672E8FA3D283F0BBF8667BF546F",
+        "bytes": 55561
+      },
+      {
+        "file": "output/hosted-main-9be8474-agent/logs/linux-x64-final.log",
+        "sha256": "54D73E683E175D81CB09F57233EEF5BC7F8715BC420AA6697E6DA1A3F99EF528",
+        "bytes": 48871
+      }
+    ],
+    "capture_method": "Completed-job GitHub logs API via gh api --allow-escape-sequences, saved as UTF8 text with native ANSI content retained. Hashes identify these saved text captures, not a reconstructed ZIP archive."
+  },
+  "execution_boundary": {
+    "manual_workflow_dispatch": false,
+    "workflow_retries": false,
+    "source_or_head_edits": false,
+    "git_mutations": false,
+    "local_product_build_or_test": false,
+    "computer_use_or_gpu": false,
+    "previous_receipts_modified": false
+  },
+  "claim_boundary": "This is failed exact-source56 hosted qualification. Job failures are compile failures, not executed test failures. Zero executed tests is not a passing suite. No historical source55/54 test counts, stale native DLL, package, original-executable, or hardware result is promoted to this source.",
+  "all_four_normal_outcomes_collected": true,
+  "aggregate": {
+    "rust": {
+      "actual_workspace_command_invocations": 4,
+      "successful_workspace_invocations": 0,
+      "completed_targets": 0,
+      "executed_tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "filtered_out": 0,
+      "compile_failed_platforms": 4,
+      "scope": "cargo test --release --workspace invoked on four clean hosted platforms, but engine compilation failed before any Rust target executed."
+    },
+    "core": {
+      "command_invocations": 0,
+      "total": 0,
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "platforms_without_execution": 4,
+      "scope": "not_run_after_rust_compile_failure on all four platforms"
+    },
+    "desktop": {
+      "command_invocations": 0,
+      "total": 0,
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "actual_trx_files": 0,
+      "platforms_without_execution": 4,
+      "scope": "not_run_after_rust_compile_failure on all four platforms"
+    },
+    "package": {
+      "publish_invocations": 0,
+      "smoke_invocations": 0,
+      "published": 0,
+      "not_run_platforms": 4
+    },
+    "gui_frames": 0
+  }
+}

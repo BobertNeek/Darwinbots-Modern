@@ -2,8 +2,18 @@ use darwinbots_engine::{Engine, EngineConfig, LegacyDna, SaveFile};
 
 #[test]
 fn bounded_historical_records_are_sampled_and_preserved_by_saves() {
-    let mut engine = Engine::new(EngineConfig { metabolism_cost: 0, ..EngineConfig::testing() }).unwrap();
-    engine.spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0]).unwrap();
+    let mut engine = Engine::new(EngineConfig {
+        metabolism_cost: 0,
+        recording: darwinbots_engine::RecordingSettings {
+            sampling_interval: 100,
+            ..Default::default()
+        },
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    engine
+        .spawn_at(LegacyDna::parse("start\nstop").unwrap(), [100.0, 100.0])
+        .unwrap();
 
     engine.tick_many(250).unwrap();
 

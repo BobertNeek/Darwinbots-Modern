@@ -1,0 +1,9 @@
+{
+  "batch": 60,
+  "utc": "2026-10-17T09:23:04.6582586Z",
+  "format_exit": 0,
+  "format_log": "output/pass60-format-final.log",
+  "workspace_metadata": "output/pass60-workspace-metadata.json",
+  "powershell_parse_errors": [],
+  "all_code_and_tests_applied_before_checks": true
+}

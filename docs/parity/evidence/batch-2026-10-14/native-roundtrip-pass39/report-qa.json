@@ -1,0 +1,26 @@
+{
+  "state": "passed",
+  "report": "../../../db24832-parity-report-2026-10-14.html",
+  "source_qualification": "summary.json",
+  "mode": "headless Chrome; GPU disabled; loopback preview only; no window focus",
+  "rows": 25,
+  "cells_per_row": 3,
+  "malformed_rows": 0,
+  "simulation_filter": "5 of 25 items",
+  "persistence_filter": "5 of 25 items",
+  "manual_insertion_search": "1 of 25 items",
+  "empty_search": "0 of 25 items",
+  "reset": "25 of 25 items",
+  "cards": [
+    "181 / 0",
+    "133 / 0",
+    "48 / 48"
+  ],
+  "mobile_viewport": 390,
+  "mobile_document_width": 390,
+  "visual_review": "Desktop1440x1000 andmobile390x844 header and full-page captures inspected; legible, nooverlap orhorizontalpageoverflow",
+  "console_javascript_errors": 0,
+  "preview_only_missing_resource": "favicon.ico404",
+  "artifacts_directory": "output/playwright/db24832-report",
+  "temporary_browser_and_loopback_server_closed": true
+}
