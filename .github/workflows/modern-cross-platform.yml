@@ -68,8 +68,40 @@ jobs:
         run: |
           $package = Join-Path $PWD "artifacts/${{ matrix.rid }}"
           $name = if ($env:RUNNER_OS -eq "Windows") { "Darwinbots.Desktop.exe" } else { "Darwinbots.Desktop" }
-          & (Join-Path $package $name) --smoke-test
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $package $name))
+          $start.ArgumentList.Add("--smoke-test")
+          $start.WorkingDirectory = $package
+          $start.UseShellExecute = $false
+          $start.CreateNoWindow = $true
+          $start.RedirectStandardOutput = $true
+          $start.RedirectStandardError = $true
+          $process = [Diagnostics.Process]::new()
+          $process.StartInfo = $start
+          try {
+            if (!$process.Start()) { throw "Published package did not start." }
+            $stdout = $process.StandardOutput.ReadToEndAsync()
+            $stderr = $process.StandardError.ReadToEndAsync()
+            if (!$process.WaitForExit(120000)) {
+              $process.Kill($true)
+              $process.WaitForExit()
+              throw "Published package smoke timed out."
+            }
+            $resultText = $stdout.GetAwaiter().GetResult()
+            $errorText = $stderr.GetAwaiter().GetResult()
+            Write-Output $resultText
+            if ($errorText) { Write-Output $errorText }
+            if ($process.ExitCode -ne 0) { throw "Published package smoke exited $($process.ExitCode)." }
+            $result = $resultText | ConvertFrom-Json -ErrorAction Stop
+            if ($result.status -ne "passed" -or $result.backend -ne "CPU" -or
+                $result.movement -ne $true -or $result.save_resume -ne $true -or
+                $result.persistent_save_bytes_equal -ne $true -or
+                $result.inspection_history_boundary -ne $true -or
+                $result.species_settings -ne $true -or $result.bundled_bots -ne 48) {
+              throw "Published package did not report every smoke contract."
+            }
+          } finally {
+            $process.Dispose()
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: darwinbots-${{ matrix.rid }}
