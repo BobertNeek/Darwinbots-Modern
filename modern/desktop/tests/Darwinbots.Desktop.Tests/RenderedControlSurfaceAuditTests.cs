@@ -1481,11 +1481,11 @@ public sealed class RenderedControlSurfaceAuditTests
                 await WaitFor(() => window.OwnedWindows.OfType<SetupWindow>().Any());
                 editor = Assert.Single(window.OwnedWindows.OfType<SetupWindow>());
                 editor.Species[0].Name = "Edited source";
-                StabilizeForInput(editor);
+                StabilizeForInput(editor, Named<ItemsControl>(editor, "SpeciesList"));
                 var count = Named<ItemsControl>(editor, "SpeciesList").GetVisualDescendants()
                     .OfType<NumericUpDown>().First(control => ReferenceEquals(control.DataContext, editor.Species[0]));
                 count.Value = 0;
-                StabilizeForInput(editor);
+                StabilizeForInput(editor, count);
                 Assert.Equal(0m, count.Value);
                 Assert.Equal(0, editor.Species[0].InitialCount);
                 editor.Species[0].InitialEnergy = 777;
@@ -1503,7 +1503,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 await WaitFor(() => window.OwnedWindows.OfType<SetupWindow>().Any());
                 editor = Assert.Single(window.OwnedWindows.OfType<SetupWindow>());
                 Assert.Equal(source.SpeciesId, editor.Species[0].SpeciesId);
-                StabilizeForInput(editor);
+                StabilizeForInput(editor, Named<ItemsControl>(editor, "SpeciesList"));
                 Assert.Equal(0, editor.Species[0].InitialCount);
                 Assert.Equal(0m, Named<ItemsControl>(editor, "SpeciesList").GetVisualDescendants()
                     .OfType<NumericUpDown>().First(control => ReferenceEquals(control.DataContext, editor.Species[0])).Value);
