@@ -1262,6 +1262,7 @@ public sealed class RuntimeControlSurfaceTests
         var (storage, storageState) = OrganismRouteStorage.Create(fixture);
         var setup = new WorldSetupOptions
         {
+            Backend = "Cpu", PopulationCapacity = 64,
             CorpseDecay = new Db2CorpseDecayOptions(Mode: Db2CorpseDecayMode.None),
         };
         var engine = NativeEngineClientFactory.Instance.Create(setup);
@@ -1369,6 +1370,7 @@ public sealed class RuntimeControlSurfaceTests
         var (storage, storageState) = OrganismRouteStorage.Create(fixture);
         var setup = new WorldSetupOptions
         {
+            Backend = "Cpu", PopulationCapacity = 64,
             CorpseDecay = new Db2CorpseDecayOptions(Mode: Db2CorpseDecayMode.None),
         };
 
