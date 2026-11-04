@@ -20,7 +20,9 @@ public sealed class CustomSimulationCostsTests
     {
         await DesktopTestApplication.Session.Dispatch(() =>
         {
-            var main = new MainWindow([], new WorldSetupOptions());
+            // Keep this dialog test on a small CPU world. Physical backends
+            // are exercised by the explicit hardware qualification.
+            var main = new MainWindow([], new WorldSetupOptions { Backend = "Cpu", PopulationCapacity = 64 });
             main.Show();
 
             try
