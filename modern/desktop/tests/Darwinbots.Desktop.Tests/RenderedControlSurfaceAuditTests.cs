@@ -83,7 +83,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     engine.SpeciesTemplateDna[1] = template;
                     await session.RefreshSnapshotAsync();
                     await WaitFor(() => Named<Button>(window, "ExportPopulationSeedsButton").IsEnabled);
-                    Assert.Equal("POPULATION SCORES Â· Audit Species: 0", Named<TextBlock>(window, "PopulationSeedScores").Text);
+                    Assert.Equal("POPULATION SCORES · Audit Species: 0", Named<TextBlock>(window, "PopulationSeedScores").Text);
                     var model = Field<MainWindowViewModel>(window, "_viewModel");
                     Assert.Contains("CLASSIC TOURNAMENT", model.LocalMode.SeriesLabel);
                     Assert.NotEmpty(ContestResultSnapshot.FromSnapshot(session.LatestSnapshot).Competitors);
@@ -815,7 +815,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.True(panel.IsVisible);
                     Assert.Equal("SAFE MODE RECOVERY READY", title.Text);
                     Assert.Contains("FAULT WINDOW", faultWindow.Text, StringComparison.Ordinal);
-                    Assert.Equal($"RECOVERY ARTIFACT Â· {Path.GetFileName(artifactPath)}", artifact.Text);
+                    Assert.Equal($"RECOVERY ARTIFACT · {Path.GetFileName(artifactPath)}", artifact.Text);
                     Assert.True(recover.IsVisible);
                     Assert.True(ignore.IsVisible);
                     Assert.Contains("RECOVERY READY", viewModel.Status, StringComparison.Ordinal);
@@ -832,9 +832,9 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes.Take(8));
 
                     Click(window, recover);
-                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED Â·", StringComparison.Ordinal));
+                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED ·", StringComparison.Ordinal));
                     Assert.False(panel.IsVisible);
-                    Assert.Equal($"RECOVERED Â· {Path.GetFileName(artifactPath)}", viewModel.Status);
+                    Assert.Equal($"RECOVERED · {Path.GetFileName(artifactPath)}", viewModel.Status);
                 }
                 finally
                 {
@@ -1118,7 +1118,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 var toolbar = load.GetVisualAncestors().OfType<ScrollViewer>().First();
                 foreach (var button in toolbar.GetVisualDescendants().OfType<Button>())
                     button.FontSize = 16;
-                Named<Button>(window, "BackendButton").Content = "GPU Â· INTEGRATED / METAL";
+                Named<Button>(window, "BackendButton").Content = "GPU · INTEGRATED / METAL";
                 Capture(window, $"runtime-header-wide-{width}.png");
                 Click(window, load);
                 await WaitFor(() => factory.Clients.Any(client => client.Calls.Contains("Load")));
@@ -1445,6 +1445,68 @@ public sealed class RenderedControlSurfaceAuditTests
 
         var callbackFailure = await callbackResult.Task.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Null(callbackFailure);
+    }
+
+    [Fact]
+    public async Task SpeciesMenuEditsTheNativeRosterWithoutRestartingTheWorld()
+    {
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var setup = new WorldSetupOptions
+            {
+                Backend = "Cpu", PopulationCapacity = 64,
+                Species = [new SpeciesImport("Editor source", "start stop", false, 0xff239ac0, 2, 1000, 0, false, 0)],
+                GlobalSettings = new GlobalSettings { Main = new GlobalMainSettings { NewSeed = false } },
+            };
+            var window = new MainWindow([], setup, NativeEngineClientFactory.Instance, new AuditStorageService());
+            try
+            {
+                ShowForInteraction(window, 1280, 900);
+                await WaitFor(() => Field<MainWindowViewModel>(window, "_viewModel").Status.Contains("WORLD READY", StringComparison.Ordinal));
+                var session = Field<SimulationSession>(window, "_session");
+                var tick = session.LatestSnapshot.Tick;
+                var keys = session.LatestSnapshot.Organisms.Select(robot => new OrganismKey(robot.Slot, robot.Generation)).ToArray();
+                var router = Field<Core.LegacyMenus.LegacyCommandRouter>(window, "_legacyCommands");
+                var cancelled = router.ExecuteAsync(Core.LegacyMenus.LegacyCommandId.EditSpecies);
+                await WaitFor(() => window.OwnedWindows.OfType<SetupWindow>().Any());
+                var editor = Assert.Single(window.OwnedWindows.OfType<SetupWindow>());
+                Assert.Empty(window.OwnedWindows.OfType<AdvancedSettingsWindow>());
+                Assert.Equal("Editor source", Assert.Single(editor.Species).Name);
+                editor.Species[0].Name = "Discard me";
+                Named<Button>(editor, "SpeciesCancelButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await cancelled;
+                Assert.Equal("Editor source", Assert.Single((await session.ReadConfigurationAsync())!.Species).Name);
+
+                var applied = router.ExecuteAsync(Core.LegacyMenus.LegacyCommandId.EditSpecies);
+                await WaitFor(() => window.OwnedWindows.OfType<SetupWindow>().Any());
+                editor = Assert.Single(window.OwnedWindows.OfType<SetupWindow>());
+                editor.Species[0].Name = "Edited source";
+                editor.Species[0].InitialCount = 4;
+                editor.Species[0].InitialEnergy = 777;
+                Capture(editor, "species-live-editor.png");
+                Named<Button>(editor, "SpeciesApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Contains("APPLIED", (await applied).Status, StringComparison.Ordinal);
+                var source = Assert.Single((await session.ReadConfigurationAsync())!.Species);
+                Assert.Equal("Edited source", source.Name);
+                Assert.Equal(4, source.InitialCount);
+                Assert.Equal(777, source.InitialEnergy);
+                Assert.Equal(tick, session.LatestSnapshot.Tick);
+                Assert.Equal(keys, session.LatestSnapshot.Organisms.Select(robot => new OrganismKey(robot.Slot, robot.Generation)));
+
+                var reopened = router.ExecuteAsync(Core.LegacyMenus.LegacyCommandId.EditSpecies);
+                await WaitFor(() => window.OwnedWindows.OfType<SetupWindow>().Any());
+                editor = Assert.Single(window.OwnedWindows.OfType<SetupWindow>());
+                Assert.Equal(source.SpeciesId, editor.Species[0].SpeciesId);
+                Assert.Equal(4, editor.Species[0].InitialCount);
+                Named<Button>(editor, "SpeciesCancelButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await reopened;
+            }
+            finally
+            {
+                foreach (var owned in window.OwnedWindows.ToArray()) owned.Close();
+                window.Close();
+            }
+        }, CancellationToken.None);
     }
 
     [Fact]

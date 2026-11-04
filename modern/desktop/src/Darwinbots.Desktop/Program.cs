@@ -34,6 +34,12 @@ internal static class Program
             engine.Tick(10);
             if (engine.Snapshot().Population != 1 || engine.Snapshot().Organisms[0].Position[0] <= 500)
                 throw new InvalidDataException("Packaged engine did not move the imported bot.");
+            var roster = engine.ReadConfiguration()?.Species ?? throw new InvalidDataException("Packaged species configuration is unavailable.");
+            if (roster.Count == 0 || roster.Any(species => species.SpeciesId is null))
+                throw new InvalidDataException("Packaged species configuration omitted stable identities.");
+            engine.UpdateSpeciesSettings(roster);
+            if (!engine.ReadConfiguration()!.Species.Select(species => species.SpeciesId).SequenceEqual(roster.Select(species => species.SpeciesId)))
+                throw new InvalidDataException("Packaged species editing changed stable identities.");
             var historyBeforeSave = engine.Snapshot().Organisms[0].ActivationHistory;
             if (!historyBeforeSave.Select(frame => frame.Tick).SequenceEqual(Enumerable.Range(1, 10).Select(tick => (ulong)tick)))
                 throw new InvalidDataException("Packaged inspector did not retain the current session's activation history.");
@@ -67,7 +73,7 @@ internal static class Program
             {
                 status = "passed", backend = engine.Backend, ticks = engine.Snapshot().Tick,
                 population = engine.Snapshot().Population, movement = true, save_resume = true,
-                persistent_save_bytes_equal = true, inspection_history_boundary = true,
+                persistent_save_bytes_equal = true, inspection_history_boundary = true, species_settings = true,
                 bundled_bots = Directory.GetFiles(bots, "*.txt", SearchOption.AllDirectories).Length,
             }));
             return 0;

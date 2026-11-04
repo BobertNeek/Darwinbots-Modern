@@ -258,6 +258,9 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task SetTiesEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetTiesEnabled(enabled), cancellationToken);
 
+    public Task UpdateSpeciesSettingsAsync(IReadOnlyList<SpeciesImport> species, CancellationToken cancellationToken = default) =>
+        Enqueue(engine => engine.UpdateSpeciesSettings(species), cancellationToken);
+
     public Task SetSpeciesColorAsync(uint species, uint color, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.SetSpeciesColor(species, color), cancellationToken);
 

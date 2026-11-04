@@ -6,7 +6,7 @@
         Width="1280" Height="820" MinWidth="1080" MinHeight="720"
         WindowStartupLocation="CenterScreen" WindowState="Maximized"
         KeyDown="SetupWindow_KeyDown">
-  <Grid RowDefinitions="64,*,34" ColumnDefinitions="210,*,290">
+  <Grid x:Name="SetupSurfaceGrid" RowDefinitions="64,*,34" ColumnDefinitions="210,*,290">
     <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#FBF9F2" BorderBrush="#BEBBB2" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="210,*" Margin="18,0">
         <TextBlock Text="DARWINBOTS" FontFamily="Bahnschrift" FontWeight="Bold" FontSize="27" VerticalAlignment="Center" />
@@ -42,8 +42,8 @@
 
     <ScrollViewer Grid.Row="1" Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="36,28" Spacing="18">
-        <TextBlock Classes="section" Text="STARTING MODE" FontSize="15"/>
-        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+        <TextBlock x:Name="StartingModeTitle" Classes="section" Text="STARTING MODE" FontSize="15"/>
+        <Grid x:Name="StartingModeChoices" ColumnDefinitions="*,*,*" ColumnSpacing="16">
           <RadioButton x:Name="StarterMode" GroupName="Mode" IsChecked="True" Click="Mode_Checked" HorizontalContentAlignment="Center" Padding="18" MinHeight="112">
             <StackPanel HorizontalAlignment="Center" Spacing="12"><TextBlock Text="◉ + ♧" FontSize="30" HorizontalAlignment="Center" Foreground="#3E7336"/><TextBlock Text="STARTER BOTS + VEGETABLES" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
           </RadioButton>
@@ -115,10 +115,15 @@
         </Border>
         </ScrollViewer>
         <StackPanel Orientation="Horizontal" Spacing="10"><Button x:Name="AddDnaButton" Content="＋ ADD DNA FILE" Click="AddDna_Click"/><Button x:Name="DuplicateSpeciesButton" Content="DUPLICATE SPECIES" Click="DuplicateSpecies_Click"/><TextBlock x:Name="SetupStatus" VerticalAlignment="Center" Foreground="#A65A23"/></StackPanel>
+        <StackPanel x:Name="SpeciesEditActions" IsVisible="False" Orientation="Horizontal" Spacing="10">
+          <Button x:Name="SpeciesApplyButton" Content="APPLY SPECIES SETTINGS" Click="Change_Click"/>
+          <Button x:Name="SpeciesStartNewButton" Content="START NEW WITH THIS ROSTER" Click="StartNew_Click"/>
+          <Button x:Name="SpeciesCancelButton" Content="CANCEL" Click="Cancel_Click"/>
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
 
-    <Border Grid.Row="1" Grid.Column="2" Background="#F8F5ED" BorderBrush="#C8C5BB" BorderThickness="1,0,0,0">
+    <Border x:Name="WorldSettingsPanel" Grid.Row="1" Grid.Column="2" Background="#F8F5ED" BorderBrush="#C8C5BB" BorderThickness="1,0,0,0">
       <ScrollViewer><StackPanel Margin="24,28" Spacing="10">
         <TextBlock Classes="section" Text="WORLD SETTINGS" FontSize="15" Margin="0,0,0,8"/>
         <TextBlock Text="BACKEND" FontWeight="Bold"/><ComboBox x:Name="Backend" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Cpu"/><ComboBoxItem Content="Gpu"/></ComboBox>

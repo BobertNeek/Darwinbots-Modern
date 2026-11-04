@@ -73,6 +73,7 @@ mod player_insertion;
 
 #[path = "world/file_teleporters.rs"]
 mod file_teleporters;
+mod species_settings;
 
 #[path = "world/file_transfer_transaction.rs"]
 mod file_transfer_transaction;
@@ -645,12 +646,20 @@ impl PartialEq for Snapshot {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct SpeciesTemplate {
+    #[serde(default, skip_serializing_if = "is_false")]
+    retired: bool,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    comment: String,
     dna: LegacyDna,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     source_text: Option<String>,
     initial_energy: i32,
     #[serde(default = "default_initial_population")]
     initial_population: usize,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 fn default_initial_population() -> usize {
@@ -1348,6 +1357,8 @@ struct Db3sV2SpeciesTemplate {
 impl From<Db3sV2SpeciesTemplate> for SpeciesTemplate {
     fn from(value: Db3sV2SpeciesTemplate) -> Self {
         Self {
+            retired: false,
+            comment: String::new(),
             dna: value.dna.into(),
             source_text: None,
             initial_energy: value.initial_energy,
@@ -3009,6 +3020,13 @@ impl Engine {
             .species
             .iter()
             .enumerate()
+            .filter(|(index, _)| {
+                !self
+                    .species_templates
+                    .get(*index)
+                    .and_then(Option::as_ref)
+                    .is_some_and(|template| template.retired)
+            })
             .map(|(index, definition)| {
                 let mut value = serde_json::to_value(definition)?;
                 let template = self.species_templates.get(index).and_then(Option::as_ref);
@@ -3022,10 +3040,23 @@ impl Engine {
                         .map(|robot| &robot.program.dna)
                 });
                 let fields = value.as_object_mut().unwrap();
+                fields.insert("species_id".into(), serde_json::json!(index));
+                fields.insert(
+                    "comment".into(),
+                    serde_json::json!(
+                        template
+                            .map(|value| value.comment.as_str())
+                            .unwrap_or_default()
+                    ),
+                );
                 fields.insert(
                     "dna".into(),
                     dna.map_or(serde_json::Value::Null, |dna| {
-                        serde_json::Value::String(dna.to_source())
+                        serde_json::Value::String(
+                            template
+                                .and_then(|value| value.source_text.clone())
+                                .unwrap_or_else(|| dna.to_source()),
+                        )
                     }),
                 );
                 fields.insert(
@@ -4592,6 +4623,8 @@ impl Engine {
         }
         let energy = initial_energy.max(1);
         self.species_templates[species.0 as usize] = Some(SpeciesTemplate {
+            retired: false,
+            comment: String::new(),
             dna: dna.clone(),
             source_text: None,
             initial_energy: energy,
@@ -5212,6 +5245,16 @@ impl Engine {
     }
 
     /// Retain exact startup file text for source-faithful reload and export.
+    pub(crate) fn retain_species_template_comment(&mut self, species: SpeciesId, comment: String) {
+        if let Some(template) = self
+            .species_templates
+            .get_mut(species.0 as usize)
+            .and_then(Option::as_mut)
+        {
+            template.comment = comment;
+        }
+    }
+
     pub fn retain_species_template_source(
         &mut self,
         species: SpeciesId,

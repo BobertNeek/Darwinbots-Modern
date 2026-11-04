@@ -237,6 +237,8 @@ impl Engine {
                 })
             {
                 self.species_templates[index] = Some(SpeciesTemplate {
+                    retired: false,
+                    comment: String::new(),
                     dna: robot.program.dna.clone(),
                     source_text: None,
                     initial_energy: resource_readback(robot.materials.energy).max(1),

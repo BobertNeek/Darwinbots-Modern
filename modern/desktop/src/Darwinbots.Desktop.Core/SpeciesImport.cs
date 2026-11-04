@@ -43,6 +43,8 @@ public sealed record SpeciesImport(
     bool Reseed,
     float MutationRate)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public uint? SpeciesId { get; init; }
     public string Comment { get; init; } = string.Empty;
     public string? DnaPath { get; init; }
     public MutationProfileUpdate? MutationProfile { get; init; }
@@ -52,6 +54,7 @@ public sealed record SpeciesImport(
 
     public SpeciesImport Duplicate(string? name = null) => this with
     {
+        SpeciesId = null,
         Name = string.IsNullOrWhiteSpace(name) ? $"{Name} Copy" : name,
         Skin = Skin.ToArray(),
         Restrictions = Restrictions with { },

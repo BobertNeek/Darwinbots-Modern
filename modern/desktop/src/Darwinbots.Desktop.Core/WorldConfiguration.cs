@@ -93,7 +93,10 @@ internal static class NativeConfigurationParser
             {
                 var species = value.Deserialize<SpeciesImport>(Options)
                     ?? throw new InvalidDataException("Missing native species template.");
-                return species with { Restrictions = species.Restrictions ?? new(), Skin = species.Skin ?? SpeciesImport.DefaultSkin() };
+                var placement = species.Placement;
+                if (value.TryGetProperty("placement_bounds", out var bounds) && bounds.GetArrayLength() == 4)
+                    placement = placement with { Left = bounds[0].GetSingle(), Right = bounds[1].GetSingle(), Top = bounds[2].GetSingle(), Bottom = bounds[3].GetSingle() };
+                return species with { Placement = placement, Restrictions = species.Restrictions ?? new(), Skin = species.Skin ?? SpeciesImport.DefaultSkin() };
             })
             .ToArray();
         return new WorldConfiguration(environment,

@@ -1,5 +1,49 @@
 # Darwinbots Modern Verification Ledger
 
+## Current offline assessment — 2026-11-04
+
+Target: functional Darwinbots 2.48.32 offline behavior on native Windows, with Windows/Linux/Intel macOS/Apple silicon CI. Internet Mode is removed from menus, toolbar, setup, advanced/global settings and teleporter choices. Local and file teleporters remain supported. Historical VB6/helper sources remain reference material.
+
+Baseline: `9dc4c91`, plus documentation corrections from `181821d`. The current work also fixes a real route gap: **Edit → Species previously opened mutation settings**. The repaired editor applies an atomic startup/repopulation roster without replacing living robots, preserves stable IDs, supports cancellation and restart with the edited roster, and retains source DNA, comments and placement bounds. Removed species retain their living identities and export source while repopulation is disabled. Their retirement survives modern save/resume.
+
+Other current repairs: Internet-marked legacy gateways cannot become active local gateways even when an old local flag remains set; hidden Internet metadata remains readable and round-trippable; event diagnostics scroll and wrap at normal window sizes; corrupted status text and stale six-tab expectations are corrected. Surviving menu command identifiers keep their numeric values. No ABI or snapshot version is changed; the JSON command protocol gains `update_species_settings`, and configuration entries expose their world-local `species_id`. Optional template metadata uses backward-compatible defaults when reading older modern saves.
+
+### Fresh feature checklist
+
+The checklist maps the pinned original behavior to production paths and executable checks. A passing domain means its covered scenarios passed; it does not imply universal historical-file or arbitrary-program equivalence. Qualification is currently in progress; final results and package identity will be recorded below before merge.
+
+| Feature contract | Production boundary | Behavioral checks required for closure |
+| --- | --- | --- |
+| Cycle/state timing | Canonical scheduler and slot-ordered native robot pipeline | `canonical_cycle_248`, `core_state_contracts`, `native_continuation_qualification` |
+| DNA, stacks, flow, costs and sysvars | DNA parser/VM and native sysvar lifecycle | `dna_runtime_248`, `sysvar_lifecycle_248`, `vm`, shipped DNA corpus probes |
+| Physics, topology and nine-eye/touch/taste senses | Native physics, sensing, collisions and vision | `db2_physics`, `native_reference_senses_248`, `touch_taste_248`, `toroidal_world` |
+| Shots, feeding, defenses, viruses and sperm | Native projectile and toxin pipelines | `db2_projectiles`, `shot_state`, native genuine-feeding controls, virus/sexual cases |
+| Ties, multibots and resource/information sharing | Native tie creation, physics, sharing and readback | `ties_multibot`, ordered cycle fixtures, native organism interchange |
+| Reproduction and genealogy | Native birth/heredity and lineage bookkeeping | `reproduction_heredity_248`, `robot_state_248`, rendered phylogeny/details tools |
+| Mutation and speciation | Standard/advanced mutation, lifelong scheduling and native speciation | `db2_mutation_248`, `mutation_advanced_248`, mutation-enabled save/continuation |
+| Ecology, corpses, waste and energy | Native biology, feeding, vegetation and corpse decay | `db2_vegetation`, `corpses_collisions`, genuine chloroplast/body/feeding fixtures, ecological soaks |
+| World objects and local exchange | Obstacles/mazes, local relocation and transactional file gateways | `environment_world`, `legacy_transport`, native file-transfer tests and rendered teleporter workflows |
+| Modern and original file boundaries | DB3S migrations, native `.sim`/`.dbo`, `.set`/`.gset`, DNA export | `final_state_persistence_248`, `LegacySettingsNativeTests`, native robot/organism round trips |
+| Species working copy and policy | Dedicated species mode, stable identities and atomic roster command | Species-menu apply/cancel/reopen test, `SpeciesSettingsNativeTests`, native atomicity/save-resume tests |
+| Leagues, contests and evolution | Offline mode authority, classic tournament orchestration and staged evolution | `local_modes`, `zerobot_progression`, community league and rendered mode workflows |
+| Graphs, recording and recovery | Native graph metrics/history, snapshots, safe-mode and autosave controllers | `history_records`, rendered graph/export and recovery tests, native Windows walkthrough |
+| Robot tools and display controls | Live details/console/activations/phylogeny, PlayerBot, eye/RGB/color tools | Dedicated rendered/causal tool tests and display-only state invariants |
+| Offline interface and accessibility | Menu catalog/router, settings, viewport, keyboard and tray | Internet-absence tests, 139-ID inventory, layout checks and native Windows tray checks |
+| CPU/GPU execution and continuity | Physical backend, explicit failure/fallback policy and complete state saves | Six strict physical GPU groups, including 10,000-cycle native-world CPU/GPU/save-resume comparison |
+| Distribution | Published application folder and bundled robot assets | Four-platform tests/publish/smoke and local Windows package smoke, including species editing |
+
+### Current qualification
+
+Pending final local workspace/Core/Desktop/package qualification, physical GPU qualification, native Windows walkthrough and repaired cross-platform CI. The initial CI run at `7a3db6b` passed Rust and Core on Windows, Linux and Apple silicon but failed desktop checks on stale six-tab and corrupted-text expectations; those failures are retained as failures, not counted as current acceptance.
+
+### Scope and evidence limits
+
+The original source and pinned genuine executable captures define behavior. Current tests can recheck retained original oracles without claiming new original-GUI observations. Identical arbitrary random trajectories, every historical file/version, public hosting and a public release are outside this target. Native Linux/macOS tray and window-manager interaction is outside the selected acceptance boundary. Raw user saves, profile backups and private desktop diagnostics remain local.
+
+---
+
+## Historical October 2026 qualification
+
 Last reconciled: 2026-10-25, against completion checkpoint `0225101343367cbe297d4d23afda598cfa9f679a` and its saved qualification. This update changes documentation only; it is not a new engine, GPU or desktop qualification.
 
 The agreed functional offline work was completed on October 21. No known required code repair remains in that scope. The [completion report](../../docs/parity/db24832-completion-report-2026-10-21.html) and [structured receipt](../../output/native-ui65-20261021/completion.json) separate actual native observations, automated coverage and remaining limits. The July Phase 0 ledger below is retained as history, not the current backlog.

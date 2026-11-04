@@ -411,6 +411,8 @@ impl Engine {
             if engine.species_templates[species_index].is_none() {
                 let p = format!("species[{species_index}].");
                 engine.species_templates[species_index] = Some(SpeciesTemplate {
+                    retired: false,
+                    comment: String::new(),
                     source_text: None,
                     dna: state.program.dna.clone(),
                     initial_energy: tail.integer(&(p.clone() + "start_energy"))?,

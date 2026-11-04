@@ -33,8 +33,10 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         SkinPointSnapshot[]? skin = null,
         SpeciesRestrictionSettings? restrictions = null,
         MutationProfileUpdate? mutationProfile = null,
-        string? dnaPath = null)
+        string? dnaPath = null,
+        uint? speciesId = null)
     {
+        SpeciesId = speciesId;
         _name = name;
         Dna = dna;
         _vegetable = vegetable;
@@ -53,6 +55,7 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public uint? SpeciesId { get; }
     public string Name { get => _name; set => Set(ref _name, value); }
     public string Comment { get => _comment; set => Set(ref _comment, value); }
     public string Dna { get; }
@@ -104,6 +107,7 @@ public sealed class SetupSpeciesRow : INotifyPropertyChanged
         Name, Dna, Vegetable, Color, InitialCount, InitialEnergy,
         MinimumPopulation, Reseed, (float)MutationRate)
     {
+        SpeciesId = SpeciesId,
         Comment = Comment,
         Placement = _placement,
         Skin = _skin.ToArray(),

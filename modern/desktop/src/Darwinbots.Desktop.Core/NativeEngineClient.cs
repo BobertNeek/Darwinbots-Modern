@@ -153,6 +153,7 @@ public sealed partial class NativeEngineClient : IEngineClient
                 new
                 {
                     type = "import_species",
+                    comment = species.Comment,
                     dna = species.Dna,
                     name = species.Name,
                     vegetable = species.Vegetable,
@@ -178,6 +179,33 @@ public sealed partial class NativeEngineClient : IEngineClient
             },
         }, "import species");
         return ReadImportReport(result.GetProperty("results")[0]);
+    }
+
+    public void UpdateSpeciesSettings(IReadOnlyList<SpeciesImport> species)
+    {
+        ArgumentNullException.ThrowIfNull(species);
+        foreach (var entry in species) entry.Validate();
+        ExecuteBatch(new
+        {
+            version = 1,
+            commands = new[] { new
+            {
+                type = "update_species_settings",
+                species = species.Select(entry => new
+                {
+                    species_id = entry.SpeciesId, comment = entry.Comment,
+                    name = entry.Name, dna = entry.Dna, vegetable = entry.Vegetable,
+                    color = entry.Color, minimum_population = entry.MinimumPopulation,
+                    reseed = entry.Reseed, mutation_rate = entry.MutationRate,
+                    mutation_profile = entry.MutationProfile is null ? null : NativeCommandSerializer.MutationProfile(entry.MutationProfile),
+                    initial_energy = entry.InitialEnergy, initial_count = entry.InitialCount,
+                    placement_bounds = new[] { entry.Placement.Left, entry.Placement.Right, entry.Placement.Top, entry.Placement.Bottom },
+                    skin = entry.Skin.Select(point => new { radius = point.Radius, angle = point.Angle }).ToArray(),
+                    custom_skin = true,
+                    restrictions = SpeciesRestrictions(entry.Restrictions),
+                }).ToArray(),
+            } },
+        }, "update species settings");
     }
 
     public DnaImportReport InsertSpeciesAt(SpeciesImport species, float[] position)

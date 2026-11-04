@@ -50,6 +50,8 @@ public interface IEngineClient : IDisposable
     void UpdateOrganismMutationProfile(uint slot, uint generation, MutationProfileUpdate profile) =>
         throw new NotSupportedException("This engine client does not support per-organism mutation profiles.");
     void SetTiesEnabled(bool enabled);
+    void UpdateSpeciesSettings(IReadOnlyList<SpeciesImport> species) =>
+        throw new NotSupportedException("Species settings are unavailable in this engine client.");
     void SetSpeciesColor(uint species, uint color);
     void MakeNewSpecies(uint slot, uint generation, string name, uint color);
     void UpdateLegacyRestrictions(bool robotFixingAllowed, bool asexualReproductionAllowed);

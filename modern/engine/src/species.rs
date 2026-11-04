@@ -68,3 +68,17 @@ impl SpeciesDefinition {
         Ok(())
     }
 }
+
+/// A startup/repopulation template edited without replacing living organisms.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SpeciesSettings {
+    #[serde(default)]
+    pub species_id: Option<SpeciesId>,
+    #[serde(flatten)]
+    pub definition: SpeciesDefinition,
+    pub dna: String,
+    pub initial_energy: i32,
+    pub initial_count: usize,
+    #[serde(default)]
+    pub comment: String,
+}

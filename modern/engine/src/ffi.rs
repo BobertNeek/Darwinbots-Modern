@@ -126,6 +126,8 @@ enum EngineCommand {
         enabled: bool,
     },
     ImportSpecies {
+        #[serde(default)]
+        comment: String,
         dna: String,
         name: String,
         vegetable: bool,
@@ -146,6 +148,9 @@ enum EngineCommand {
         #[serde(default)]
         restrictions: Option<crate::RestrictionColumn>,
         positions: Vec<[f32; 2]>,
+    },
+    UpdateSpeciesSettings {
+        species: Vec<crate::SpeciesSettings>,
     },
     InsertSpecies {
         name: String,
@@ -765,6 +770,7 @@ fn db_engine_command_batch_impl(
                     .map(|_| serde_json::Value::Null)
             }
             EngineCommand::ImportSpecies {
+                comment,
                 dna,
                 name,
                 vegetable,
@@ -853,6 +859,7 @@ fn db_engine_command_batch_impl(
                     };
                     ids.and_then(|ids| {
                         engine.retain_species_template_source(species, source_text)?;
+                        engine.retain_species_template_comment(species, comment);
                         Ok(serde_json::json!({
                             "species": species.0,
                             "count": ids.len(),
@@ -861,6 +868,9 @@ fn db_engine_command_batch_impl(
                     })
                 })
             }
+            EngineCommand::UpdateSpeciesSettings { species } => engine
+                .update_species_settings(species)
+                .map(|()| serde_json::json!({ "updated": true })),
             EngineCommand::InsertSpecies {
                 name,
                 dna,

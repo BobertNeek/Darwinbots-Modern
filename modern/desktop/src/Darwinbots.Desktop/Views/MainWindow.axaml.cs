@@ -62,7 +62,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _runTimer;
     private readonly IReadOnlyList<string> _startupArguments;
     private readonly IReadOnlyList<StartupDnaImport> _startupBots;
-    private readonly WorldSetupOptions _setup;
+    private WorldSetupOptions _setup;
     private float? _initialNativeGaussianSpare;
     private byte? _initialNativeSunChange;
     private NativeProcessCachesSnapshot? _initialNativeProcessCaches;
@@ -669,14 +669,7 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.EditRestrictionOverwrites] = Handler(
             EngineState,
             async _ => await ShowRestrictionOverridesAsync());
-        foreach (var command in new[]
-                 {
-                      LegacyCommandId.EditSpecies,
-                     LegacyCommandId.EditGlobalSettings,
-                     LegacyCommandId.EditGlobalMutationRates,
-                     LegacyCommandId.RobotMutationRates,
-                 })
-            handlers[command] = Handler(EngineState, async _ => await OpenAdvancedSettingsCommandAsync());
+        handlers[LegacyCommandId.EditSpecies] = Handler(EngineState, _ => OpenSpeciesSettingsCommandAsync());
         handlers[LegacyCommandId.EditGlobalSettings] = Handler(
             () => LegacyCommandState.Available,
             async _ => await OpenGlobalSettingsCommandAsync());
@@ -992,7 +985,7 @@ public sealed partial class MainWindow : Window
 
     private Task<LegacyCommandResult> OpenNewSimulationSetupAsync() => ReplaceSimulationAsync(openSetup: true);
 
-    private async Task<LegacyCommandResult> ReplaceSimulationAsync(bool openSetup)
+    private async Task<LegacyCommandResult> ReplaceSimulationAsync(bool openSetup, WorldSetupOptions? editedSetup = null)
     {
         if (_navigationInFlight) return LegacyCommandResult.Failure("NEW SIMULATION ALREADY OPENING");
         _navigationInFlight = true;
@@ -1028,7 +1021,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 var replacement = new MainWindow(_startupArguments,
-                    CreateNextWorldSetup() with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
+                    (editedSetup ?? CreateNextWorldSetup()) with { NativeGaussianSpare = spare, NativeSunChange = sunChange, NativeProcessCaches = caches }, _engineFactory, _storage);
                 SetApplicationMainWindow(replacement);
                 replacement.Show();
             }
@@ -1443,6 +1436,37 @@ public sealed partial class MainWindow : Window
         var window = _toolWindows.ShowOrActivate(key, () => new LegacyDocumentWindow(title, section, content));
         window.SetDocument(title, section, content);
         return Task.FromResult(LegacyCommandResult.Success(title.ToUpperInvariant()));
+    }
+
+    private async Task<LegacyCommandResult> OpenSpeciesSettingsCommandAsync()
+    {
+        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var running = _runTimer.IsEnabled;
+        _runTimer.Stop();
+        WorldSetupOptions? startNew = null;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            var configuration = await _session.ReadConfigurationAsync();
+            if (configuration is null) return LegacyCommandResult.Failure("SPECIES SETTINGS UNAVAILABLE");
+            var dialog = new SetupWindow(_storage, speciesEditor: CreateNextWorldSetup() with { Species = configuration.Species });
+            await dialog.ShowDialog(this);
+            if (dialog.EditedOptions is not { } edited) return LegacyCommandResult.Cancel();
+            if (dialog.StartNewRequested) startNew = edited;
+            else
+            {
+                await _session.UpdateSpeciesSettingsAsync(edited.Species);
+                _setup = _setup with { Species = edited.Species };
+                await SynchronizeLoadedWorldAsync();
+                return LegacyCommandResult.Success("SPECIES SETTINGS APPLIED");
+            }
+        }
+        finally
+        {
+            _advanceGate.Release();
+            if (running && startNew is null) _runTimer.Start();
+        }
+        return await ReplaceSimulationAsync(false, startNew);
     }
 
     private async Task<LegacyCommandResult> OpenAdvancedSettingsCommandAsync(int selectedTab = 0)

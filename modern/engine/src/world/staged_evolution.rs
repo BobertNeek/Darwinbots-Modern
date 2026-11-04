@@ -292,6 +292,8 @@ impl Engine {
                     self.species[species.0 as usize].mutation_profile =
                         Some(genome.mutation_profile.clone());
                     self.species_templates[species.0 as usize] = Some(SpeciesTemplate {
+                        retired: false,
+                        comment: String::new(),
                         source_text: None,
                         dna: genome.dna.clone(),
                         initial_energy: 3_000,

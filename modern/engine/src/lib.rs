@@ -97,7 +97,7 @@ pub(crate) use shot::{
 };
 pub use simulation_cycle::{CycleEvent, CyclePhase, CycleTrace, QueueChangeKind};
 pub use spatial::SpatialIndex;
-pub use species::{SpeciesDefinition, SpeciesId};
+pub use species::{SpeciesDefinition, SpeciesId, SpeciesSettings};
 pub use stats::SimulationStats;
 pub use sysvar_runtime::{
     AimCommands, CommandOutcome, ContactReadbacks, CoreReadbacks, MaterialCommands,

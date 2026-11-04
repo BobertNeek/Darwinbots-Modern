@@ -10,7 +10,7 @@ namespace Darwinbots.Desktop.Tests;
 public sealed class ScopedWorkflowTests
 {
     [Fact]
-    public async Task SetupExposesSixTabWorkingCopyAndCommitControls()
+    public async Task SetupExposesFiveOfflineTabsAndCommitControls()
     {
         await DesktopTestApplication.Session.Dispatch(() =>
         {
@@ -19,7 +19,7 @@ public sealed class ScopedWorkflowTests
             {
                 var tabs = window.FindControl<TabControl>("SimulationSettingsTabs");
                 Assert.NotNull(tabs);
-                Assert.Equal(6, tabs!.Items.Count);
+                Assert.Equal(5, tabs!.Items.Count);
                 Assert.NotNull(window.FindControl<Button>("StartNewButton"));
                 Assert.NotNull(window.FindControl<Button>("ChangeButton"));
                 Assert.NotNull(window.FindControl<Button>("CancelButton"));

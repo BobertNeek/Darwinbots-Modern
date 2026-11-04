@@ -10,6 +10,9 @@ namespace Darwinbots.Desktop.Views;
 public sealed partial class SetupWindow : Window
 {
     private bool _controlsReady;
+    private readonly bool _speciesEditor;
+    public WorldSetupOptions? EditedOptions { get; private set; }
+    public bool StartNewRequested { get; private set; }
     private readonly IDesktopStorageService _storage;
     private readonly float? _nativeGaussianSpare;
     private readonly byte? _nativeSunChange;
@@ -30,8 +33,9 @@ public sealed partial class SetupWindow : Window
     {
     }
 
-    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null)
+    public SetupWindow(IDesktopStorageService storage, float? nativeGaussianSpare = null, byte? nativeSunChange = null, NativeProcessCachesSnapshot? nativeProcessCaches = null, WorldSetupOptions? speciesEditor = null)
     {
+        _speciesEditor = speciesEditor is not null;
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _nativeGaussianSpare = nativeGaussianSpare;
         _nativeSunChange = nativeSunChange;
@@ -42,7 +46,22 @@ public sealed partial class SetupWindow : Window
         _controlsReady = true;
         LoadMode(StartingMode.StarterBotsAndVegetables);
         _workflow.Reset(ReadSetupOptions());
-        OnboardingPanel.IsVisible = _storage.IsFirstRun;
+        OnboardingPanel.IsVisible = !_speciesEditor && _storage.IsFirstRun;
+        if (speciesEditor is not null)
+        {
+            ApplySetupOptions(speciesEditor);
+            _workflow.Reset(speciesEditor);
+            Title = "Species settings";
+            WindowState = WindowState.Normal;
+            SetupSurfaceGrid.ColumnDefinitions = new ColumnDefinitions("0,*,0");
+            WorldSettingsPanel.IsVisible = false;
+            StartingModeTitle.IsVisible = false;
+            StartingModeChoices.IsVisible = false;
+            SimulationSettingsTabs.IsEnabled = false;
+            FileMenu.IsVisible = FileMenu.IsEnabled = false;
+            ViewMenu.IsVisible = ViewMenu.IsEnabled = false;
+            SpeciesEditActions.IsVisible = true;
+        }
     }
 
     private void Mode_Checked(object? sender, RoutedEventArgs e)
@@ -125,18 +144,23 @@ public sealed partial class SetupWindow : Window
     {
         if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
-        PublishWorld(_workflow.StartNew());
+        var options = _workflow.StartNew();
+        if (_speciesEditor) { EditedOptions = options; StartNewRequested = true; Close(); }
+        else PublishWorld(options);
     }
 
     private void Change_Click(object? sender, RoutedEventArgs e)
     {
         if (Species.Count == 0) { SetupStatus.Text = "Add at least one species."; return; }
         _workflow.UpdateWorkingCopy(_ => ReadSetupOptions());
-        PublishWorld(_workflow.Change());
+        var options = _workflow.Change();
+        if (_speciesEditor) { EditedOptions = options; Close(); }
+        else PublishWorld(options);
     }
 
     private void Cancel_Click(object? sender, RoutedEventArgs e)
     {
+        if (_speciesEditor) { Close(); return; }
         _workflow.Cancel();
         ApplySetupOptions(_workflow.WorkingCopy);
         SetupStatus.Text = "WORKING COPY CANCELLED";
@@ -149,7 +173,7 @@ public sealed partial class SetupWindow : Window
     {
         var sustenance = (ZerobotSustenance)Math.Max(0, Sustenance.SelectedIndex);
         var species = Species.Select((row, index) => row.ToImport(index)).ToList();
-        if (CurrentMode() != StartingMode.StarterBotsAndVegetables)
+        if (!_speciesEditor && CurrentMode() != StartingMode.StarterBotsAndVegetables)
         {
             if (sustenance == ZerobotSustenance.PhotosyntheticZerobots)
                 species[0] = species[0] with { Vegetable = true };
@@ -367,7 +391,7 @@ public sealed partial class SetupWindow : Window
                 Species.Add(new(species.Name, species.Dna, species.Vegetable, species.Color,
                     species.InitialCount, species.InitialEnergy, species.MutationRate, species.Reseed,
                     species.MinimumPopulation, species.Comment, species.Placement, species.Skin, species.Restrictions,
-                    species.MutationProfile, species.DnaPath));
+                    species.MutationProfile, species.DnaPath, species.SpeciesId));
         }
         _controlsReady = true;
     }
@@ -438,6 +462,11 @@ public sealed partial class SetupWindow : Window
 
     private void SetupWindow_KeyDown(object? sender, KeyEventArgs e)
     {
+        if (_speciesEditor)
+        {
+            if (e.Key == Key.Escape) { Close(); e.Handled = true; }
+            return;
+        }
         if (e.Key == Key.F1)
         {
             About_Click(sender, new RoutedEventArgs());
