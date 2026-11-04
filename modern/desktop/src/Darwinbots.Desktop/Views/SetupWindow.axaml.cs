@@ -42,6 +42,8 @@ public sealed partial class SetupWindow : Window
         _nativeProcessCaches = nativeProcessCaches;
         _workflow = new(new WorldSetupOptions());
         InitializeComponent();
+        if (!_speciesEditor)
+            CreateWorldButton.HotKey = new KeyGesture(Key.Enter, KeyModifiers.Control);
         DataContext = this;
         _controlsReady = true;
         LoadMode(StartingMode.StarterBotsAndVegetables);

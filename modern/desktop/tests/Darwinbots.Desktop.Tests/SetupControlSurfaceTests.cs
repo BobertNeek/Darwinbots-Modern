@@ -289,6 +289,7 @@ public sealed class SetupControlSurfaceTests
                 Assert.Equal(70_000f, created[0].WorldWidth);
 
                 window.FindControl<NumericUpDown>("WorldWidth")!.Value = 71_000;
+                Assert.True(window.FindControl<Button>("LoadSettingsButton")!.Focus());
                 window.KeyPress(Key.Enter, RawInputModifiers.Control, PhysicalKey.Enter, null);
                 window.KeyRelease(Key.Enter, RawInputModifiers.Control, PhysicalKey.Enter, null);
                 Assert.Equal(2, created.Count);
