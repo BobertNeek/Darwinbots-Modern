@@ -69,7 +69,7 @@
                   <Grid ColumnDefinitions="2*,90,135,145,135,80,105,44" Margin="6,5">
                     <TextBox Text="{Binding Name}"/>
                     <CheckBox Grid.Column="1" IsChecked="{Binding Vegetable}" Content="VEG" VerticalAlignment="Center"/>
-                    <NumericUpDown Grid.Column="2" Value="{Binding InitialCount}" Minimum="1" Maximum="100000"/>
+                    <NumericUpDown Grid.Column="2" Value="{Binding InitialCount}" Minimum="0" Maximum="100000"/>
                     <NumericUpDown Grid.Column="3" Value="{Binding InitialEnergy}" Minimum="1" Maximum="32000"/>
                     <Grid Grid.Column="4" ColumnDefinitions="*,48" Margin="4,0">
                       <Slider Minimum="0" Maximum="100" Value="{Binding MutationRate, Mode=TwoWay}" TickFrequency="0.1"/>
@@ -155,7 +155,7 @@
       <StackPanel Spacing="16">
         <TextBlock Text="GETTING STARTED" Classes="section" FontSize="22"/>
         <TextBlock Text="Please select your first simulation." FontSize="24" FontWeight="SemiBold"/>
-        <TextBlock Text="Choose starter bots or Zerobots, then use the six settings tabs to review the working copy before starting." TextWrapping="Wrap" Foreground="#59615D"/>
+        <TextBlock Text="Choose starter bots or Zerobots, then use the five offline settings tabs to review the working copy before starting." TextWrapping="Wrap" Foreground="#59615D"/>
         <Button x:Name="OnboardingGotItButton" Content="GOT IT" HorizontalAlignment="Right" Click="OnboardingGotIt_Click"/>
       </StackPanel>
     </Border>

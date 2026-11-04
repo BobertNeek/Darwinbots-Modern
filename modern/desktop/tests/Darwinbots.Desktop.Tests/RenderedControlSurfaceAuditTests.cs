@@ -1481,14 +1481,20 @@ public sealed class RenderedControlSurfaceAuditTests
                 await WaitFor(() => window.OwnedWindows.OfType<SetupWindow>().Any());
                 editor = Assert.Single(window.OwnedWindows.OfType<SetupWindow>());
                 editor.Species[0].Name = "Edited source";
-                editor.Species[0].InitialCount = 4;
+                StabilizeForInput(editor);
+                var count = Named<ItemsControl>(editor, "SpeciesList").GetVisualDescendants()
+                    .OfType<NumericUpDown>().First(control => ReferenceEquals(control.DataContext, editor.Species[0]));
+                count.Value = 0;
+                StabilizeForInput(editor);
+                Assert.Equal(0m, count.Value);
+                Assert.Equal(0, editor.Species[0].InitialCount);
                 editor.Species[0].InitialEnergy = 777;
                 Capture(editor, "species-live-editor.png");
                 Named<Button>(editor, "SpeciesApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.Contains("APPLIED", (await applied).Status, StringComparison.Ordinal);
                 var source = Assert.Single((await session.ReadConfigurationAsync())!.Species);
                 Assert.Equal("Edited source", source.Name);
-                Assert.Equal(4, source.InitialCount);
+                Assert.Equal(0, source.InitialCount);
                 Assert.Equal(777, source.InitialEnergy);
                 Assert.Equal(tick, session.LatestSnapshot.Tick);
                 Assert.Equal(keys, session.LatestSnapshot.Organisms.Select(robot => new OrganismKey(robot.Slot, robot.Generation)));
@@ -1497,7 +1503,10 @@ public sealed class RenderedControlSurfaceAuditTests
                 await WaitFor(() => window.OwnedWindows.OfType<SetupWindow>().Any());
                 editor = Assert.Single(window.OwnedWindows.OfType<SetupWindow>());
                 Assert.Equal(source.SpeciesId, editor.Species[0].SpeciesId);
-                Assert.Equal(4, editor.Species[0].InitialCount);
+                StabilizeForInput(editor);
+                Assert.Equal(0, editor.Species[0].InitialCount);
+                Assert.Equal(0m, Named<ItemsControl>(editor, "SpeciesList").GetVisualDescendants()
+                    .OfType<NumericUpDown>().First(control => ReferenceEquals(control.DataContext, editor.Species[0])).Value);
                 Named<Button>(editor, "SpeciesCancelButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await reopened;
             }
