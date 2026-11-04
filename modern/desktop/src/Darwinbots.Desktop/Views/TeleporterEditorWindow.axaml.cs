@@ -15,6 +15,8 @@ public sealed partial class TeleporterEditorWindow : Window
     public TeleporterEditorWindow(TeleporterSnapshot teleporter)
     {
         _original = teleporter ?? throw new ArgumentNullException(nameof(teleporter));
+        if (teleporter.Internet || string.Equals(teleporter.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("This legacy teleporter cannot be edited.", nameof(teleporter));
         InitializeComponent();
         Mode.SelectedIndex = ModeIndex(teleporter.Mode);
         CenterX.Value = (decimal)teleporter.Center.ElementAtOrDefault(0);
@@ -33,7 +35,7 @@ public sealed partial class TeleporterEditorWindow : Window
         Path.Text = teleporter.Path;
         InboundPath.Text = teleporter.InboundPath;
         OutboundPath.Text = teleporter.OutboundPath;
-        Statistics.Text = $"Sent {teleporter.Sent:N0} · received {teleporter.Received:N0}";
+        Statistics.Text = $"Sent {teleporter.Sent:N0} Â· received {teleporter.Received:N0}";
     }
 
     public TeleporterSnapshot? Result { get; private set; }
@@ -42,17 +44,11 @@ public sealed partial class TeleporterEditorWindow : Window
     {
         "inbound" => 1,
         "outbound" => 2,
-        "internet" => 3,
         _ => 0,
     };
 
     private void Apply_Click(object? sender, RoutedEventArgs e)
     {
-        if (Mode.SelectedIndex == 3)
-        {
-            Statistics.Text = "Internet teleporters are disabled in offline mode.";
-            return;
-        }
         Result = ObjectEditorPolicy.BuildTeleporterPayload(
             _original,
             Mode.SelectedIndex switch

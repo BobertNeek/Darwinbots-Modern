@@ -72,11 +72,8 @@ public sealed class AccessibilityRouteRenderedTests
                 Assert.Contains("OFF", skinToggle.Content?.ToString(), StringComparison.Ordinal);
                 Assert.Contains("OFF", AutomationProperties.GetName(skinToggle), StringComparison.Ordinal);
 
-                var offlineOverlay = window.FindControl<Border>("InternetOfflineOverlay")!;
-                Assert.True(offlineOverlay.IsVisible);
-                Assert.Contains("offline", AutomationProperties.GetName(offlineOverlay), StringComparison.OrdinalIgnoreCase);
-                Assert.Contains("disabled", AutomationProperties.GetHelpText(offlineOverlay), StringComparison.OrdinalIgnoreCase);
-                Assert.Contains("OFFLINE", offlineOverlay.GetVisualDescendants().OfType<TextBlock>().Single().Text, StringComparison.Ordinal);
+                Assert.Null(window.FindControl<Border>("InternetOfflineOverlay"));
+                Assert.Null(window.FindControl<Button>("InternetButton"));
 
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame = Assert.IsAssignableFrom<Bitmap>(window.CaptureRenderedFrame());

@@ -31,8 +31,7 @@
           <Border x:Name="ToolbarSlot08" Width="1" Margin="4,3" Background="#C8C5BA" AutomationProperties.Name="Toolbar separator 2" AutomationProperties.HelpText="Toolbar separator" />
           <Button x:Name="SunButton" Content="SUN ON" ToolTip.Tip="Toggle the simulation sun" AutomationProperties.Name="SUN ON" AutomationProperties.HelpText="Toggle daytime sunlight in the local simulation." KeyboardNavigation.TabIndex="11" Click="Sun_Click" />
           <Button x:Name="GraphsButton" Content="GRAPHS" ToolTip.Tip="Open graph suite" AutomationProperties.Name="OPEN GRAPHS" AutomationProperties.HelpText="Open the nonmodal local graph suite." KeyboardNavigation.TabIndex="12" Click="Graphs_Click" />
-          <Button x:Name="ContestResultsButton" Content="CONTEST RESULTS" ToolTip.Tip="Open local contest results" AutomationProperties.Name="CONTEST RESULTS" AutomationProperties.HelpText="Open local contest results. Online play is disabled." KeyboardNavigation.TabIndex="13" Click="ContestResults_Click" />
-          <Button x:Name="InternetButton" Content="INTERNET OFFLINE" IsEnabled="False" ToolTip.Tip="Online play is disabled in this local-only build." AutomationProperties.Name="INTERNET OFFLINE" AutomationProperties.HelpText="Historical internet controls remain visible but disabled and inert." KeyboardNavigation.TabIndex="14" />
+          <Button x:Name="ContestResultsButton" Content="CONTEST RESULTS" ToolTip.Tip="Open local contest results" AutomationProperties.Name="CONTEST RESULTS" AutomationProperties.HelpText="Open local contest results." KeyboardNavigation.TabIndex="13" Click="ContestResults_Click" />
           <Button x:Name="TrayButton" Content="TRAY" ToolTip.Tip="Hide the window to the tray" AutomationProperties.Name="STEALTH TRAY MODE" AutomationProperties.HelpText="Hide the shell while the local simulation continues." KeyboardNavigation.TabIndex="15" Click="HideToTray_Click" />
           <CheckBox x:Name="IgnoreErrorsToggle" Content="IGNORE ERRORS" VerticalContentAlignment="Center" AutomationProperties.Name="IGNORE ERRORS OFF" AutomationProperties.HelpText="Toggle the offline engine error recovery mode." KeyboardNavigation.TabIndex="16" IsCheckedChanged="IgnoreErrors_Changed" />
           <Button x:Name="ToolbarSlot09" Content="15 CPS OFF" ToolTip.Tip="Limit speed to 15 cycles per second" AutomationProperties.Name="15 CPS LIMIT OFF" AutomationProperties.HelpText="Toggle the legacy 15 cycles per second limit." KeyboardNavigation.TabIndex="17" Click="ToolbarLimit_Click" />
@@ -215,9 +214,6 @@
           <Border x:Name="RuntimeOverlay" IsVisible="False" Background="#EAF7E6" BorderBrush="#3E7B36" BorderThickness="1" Padding="8,4">
             <TextBlock x:Name="OverlayText" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#1C4F28" />
           </Border>
-          <Border x:Name="InternetOfflineOverlay" IsVisible="True" Background="#F5EBDD" BorderBrush="#B46A27" BorderThickness="1" Padding="8,3" AutomationProperties.Name="Internet offline mode" AutomationProperties.HelpText="Online play and internet controls are disabled in this local-only build.">
-            <TextBlock Text="OFFLINE · INTERNET DISABLED" FontSize="10" FontWeight="SemiBold" Foreground="#794A1D" />
-          </Border>
         </StackPanel>
         <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Orientation="Horizontal" Margin="0,12,12,0" Spacing="4">
           <Button x:Name="ZoomInButton" Content="ZOOM +" ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" Click="ZoomIn_Click" />
@@ -311,14 +307,16 @@
       <Border Grid.Column="2" Classes="panel" Margin="4,0,0,0" Padding="14">
         <Grid RowDefinitions="Auto,*">
           <TextBlock Classes="section" Text="EVENT LOG" />
-          <StackPanel Grid.Row="1" Margin="0,14,0,0" Spacing="8">
-            <TextBlock Text="SYSTEM   Modern engine initialized" />
-            <TextBlock Text="{Binding LifecycleSummary}" Foreground="#2D826F" />
-            <TextBlock Text="{Binding CombatSummary}" Foreground="#A65A23" />
-            <TextBlock Text="{Binding PlantSummary}" Foreground="#3E8E36" />
-            <TextBlock Text="{Binding MutationSummary}" />
-            <TextBlock Text="{Binding LimitingPhase}" Foreground="#69716D" />
+          <ScrollViewer x:Name="EventLogScroller" Grid.Row="1" Margin="0,14,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="8">
+            <TextBlock TextWrapping="Wrap" Text="SYSTEM   Modern engine initialized" />
+            <TextBlock TextWrapping="Wrap" Text="{Binding LifecycleSummary}" Foreground="#2D826F" />
+            <TextBlock TextWrapping="Wrap" Text="{Binding CombatSummary}" Foreground="#A65A23" />
+            <TextBlock TextWrapping="Wrap" Text="{Binding PlantSummary}" Foreground="#3E8E36" />
+            <TextBlock TextWrapping="Wrap" x:Name="EventLogMutationSummary" Text="{Binding MutationSummary}" />
+            <TextBlock TextWrapping="Wrap" Text="{Binding LimitingPhase}" Foreground="#69716D" />
           </StackPanel>
+          </ScrollViewer>
         </Grid>
       </Border>
     </Grid>

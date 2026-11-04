@@ -12,7 +12,6 @@
       <Border Grid.Column="1" Background="#E8F0E1" Padding="10,7" VerticalAlignment="Top">
         <StackPanel Spacing="2">
           <TextBlock Text="LOCAL ONLY" FontWeight="SemiBold" HorizontalAlignment="Center" />
-          <TextBlock Text="ONLINE PLAY DISABLED" FontSize="10" Foreground="#52605A" />
         </StackPanel>
       </Border>
     </Grid>

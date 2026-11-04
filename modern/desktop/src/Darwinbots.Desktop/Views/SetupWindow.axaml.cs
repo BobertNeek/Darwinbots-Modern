@@ -201,7 +201,6 @@ public sealed partial class SetupWindow : Window
         if (!_controlsReady || !ReferenceEquals(e.Source, SimulationSettingsTabs)) return;
         var section = SimulationSettingsTabs.SelectedIndex;
         if (section == 1) { WorldWidth.BringIntoView(); WorldWidth.Focus(); return; }
-        if (section == 5) return; // Internet Mode remains inert.
         if (section == 2) await EditAdvancedSettingsAsync(2);
         else if (section == 3) await EditAdvancedSettingsAsync(0);
         else if (section == 4) await EditGlobalSettingsAsync(2);

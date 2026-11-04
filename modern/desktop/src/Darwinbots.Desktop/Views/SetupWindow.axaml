@@ -37,7 +37,6 @@
         <TabItem Header="PHYSICS AND COSTS"><TextBlock Text="Physics, energy, and shot costs" TextWrapping="Wrap" Margin="8"/></TabItem>
         <TabItem Header="MUTATIONS"><TextBlock Text="Mutation and speciation controls" TextWrapping="Wrap" Margin="8"/></TabItem>
         <TabItem Header="RESTART AND LEAGUE"><TextBlock Text="Restart, Zerobot, and local league controls" TextWrapping="Wrap" Margin="8"/></TabItem>
-        <TabItem Header="INTERNET"><TextBlock Text="Internet play is disabled in this offline build" TextWrapping="Wrap" Margin="8"/></TabItem>
       </TabControl>
     </Border>
 

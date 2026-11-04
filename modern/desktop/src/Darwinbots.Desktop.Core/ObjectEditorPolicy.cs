@@ -97,6 +97,8 @@ public static class ObjectEditorPolicy
         string outboundPath)
     {
         ArgumentNullException.ThrowIfNull(original);
+        if (original.Internet || string.Equals(original.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("This legacy teleporter cannot be edited.", nameof(original));
         ValidateVector(center, nameof(center));
         ValidateVector(destination, nameof(destination));
         if (!float.IsFinite(radius) || radius <= 0f)
@@ -112,7 +114,7 @@ public static class ObjectEditorPolicy
 
         var normalizedMode = mode.Trim().ToLowerInvariant();
         if (normalizedMode is not ("intrasim" or "inbound" or "outbound"))
-            throw new ArgumentException("Internet teleporters are disabled in offline mode.", nameof(mode));
+            throw new ArgumentException("Choose an intrasim, inbound file, or outbound file teleporter.", nameof(mode));
 
         return original with
         {

@@ -37,7 +37,6 @@ public static class LegacyMenuCatalog
             L("Global Settings...", LegacyCommandId.EditGlobalSettings, "settings"),
             L("Global Mutation Rates...", LegacyCommandId.EditGlobalMutationRates, "mutation", "Ctrl+G"),
             L("Restart and Leagues...", LegacyCommandId.EditRestartAndLeagues, "restart", "Ctrl+F"),
-            L("Internet Options...", LegacyCommandId.EditInternetOptions, "internet"),
             S(),
             L("Disallow robot from fixing or unfixing", LegacyCommandId.EditDisallowFixing, "lock", check: LegacyMenuCheckKind.Check),
             L("Disable asexual reproduction for non-repopulating robots", LegacyCommandId.EditDisableAsexualReproduction, "reproduction", check: LegacyMenuCheckKind.Check),
@@ -114,10 +113,6 @@ public static class LegacyMenuCatalog
                 L("Large", LegacyCommandId.EGridLarge, "size-large", check: LegacyMenuCheckKind.Radio),
                 L("Medium", LegacyCommandId.EGridMedium, "size-medium", check: LegacyMenuCheckKind.Radio),
                 L("Small", LegacyCommandId.EGridSmall, "size-small", check: LegacyMenuCheckKind.Radio))),
-
-        LegacyMenuItem.Top("Internet",
-            L("Enabled", LegacyCommandId.InternetEnabled, "internet", check: LegacyMenuCheckKind.Check),
-            L("Internet Teleporter...", LegacyCommandId.InternetTeleporter, "internet-teleporter")),
 
         LegacyMenuItem.Top("Recording",
             L("Safemode Backup", LegacyCommandId.RecordingSafemodeBackup, "backup", check: LegacyMenuCheckKind.Check),

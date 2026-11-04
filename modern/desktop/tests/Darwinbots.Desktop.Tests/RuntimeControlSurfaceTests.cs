@@ -274,7 +274,7 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
-    public async Task HistoricMenuDispatchesRuntimeCommandsAndExposesUnavailableOnlineState()
+    public async Task HistoricMenuDispatchesRuntimeCommandsWithoutInternetCommands()
     {
         var engine = new RecordingEngineClient();
         await using var simulation = new SimulationSession(engine);
@@ -337,9 +337,7 @@ public sealed class RuntimeControlSurfaceTests
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.RobotKill)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-            var internet = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!;
-            Assert.False(internet.IsEnabled);
-            Assert.Contains("online", ToolTip.GetTip(internet)!.ToString()!, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(menu.TopLevelItems, item => Equals(item.Header, "Internet"));
             await WaitFor(() =>
                 engine.Calls.Contains("Remove:3:2")
                 && engine.Calls.Count(call => call.StartsWith("AddObstacle:", StringComparison.Ordinal)) >= 4
@@ -477,7 +475,7 @@ public sealed class RuntimeControlSurfaceTests
     }
 
     [Fact]
-    public async Task HistoricSettingsRoutesKeepDistinctWorkflowsPublishPhysicsAndLeaveOnlineControlsInert()
+    public async Task HistoricSettingsRoutesKeepDistinctWorkflowsPublishPhysicsWithoutInternetControls()
     {
         var engine = new RecordingEngineClient();
         await using var simulation = new SimulationSession(engine);
@@ -534,9 +532,7 @@ public sealed class RuntimeControlSurfaceTests
 
                 var timer = Field<DispatcherTimer>(window, "_runTimer");
                 window.FindControl<Button>("ToolbarSlot09")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!
-                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                Assert.False(menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!.IsEnabled);
+                Assert.DoesNotContain(menu.TopLevelItems, item => Equals(item.Header, "Internet"));
                 Assert.Equal(TimeSpan.FromMilliseconds(67), timer.Interval);
                 Assert.DoesNotContain("Internet", engine.Calls);
             }

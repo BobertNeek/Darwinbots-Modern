@@ -28,7 +28,7 @@ public sealed class SettingsDomainWorkflowTests
     }
 
     [Fact]
-    public void SixTabWorkingCopyCommitsAndSerializesTheNativeSettingsPayload()
+    public void OfflineWorkingCopyCommitsAndSerializesTheNativeSettingsPayload()
     {
         var initial = new WorldSetupOptions
         {

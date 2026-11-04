@@ -7,7 +7,6 @@ public enum SimulationSettingsTab
     PhysicsAndCosts,
     Mutations,
     RestartAndLeague,
-    Internet,
 }
 
 public sealed record SimulationSettingsTabDefinition(
@@ -23,7 +22,6 @@ public sealed class SimulationSettingsWorkflow
         new(SimulationSettingsTab.PhysicsAndCosts, "PHYSICS AND COSTS"),
         new(SimulationSettingsTab.Mutations, "MUTATIONS"),
         new(SimulationSettingsTab.RestartAndLeague, "RESTART AND LEAGUE"),
-        new(SimulationSettingsTab.Internet, "INTERNET"),
     ];
 
     public WorldSetupOptions Live { get; private set; }

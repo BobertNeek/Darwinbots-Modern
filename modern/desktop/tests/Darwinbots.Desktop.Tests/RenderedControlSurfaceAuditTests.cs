@@ -83,7 +83,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     engine.SpeciesTemplateDna[1] = template;
                     await session.RefreshSnapshotAsync();
                     await WaitFor(() => Named<Button>(window, "ExportPopulationSeedsButton").IsEnabled);
-                    Assert.Equal("POPULATION SCORES · Audit Species: 0", Named<TextBlock>(window, "PopulationSeedScores").Text);
+                    Assert.Equal("POPULATION SCORES Â· Audit Species: 0", Named<TextBlock>(window, "PopulationSeedScores").Text);
                     var model = Field<MainWindowViewModel>(window, "_viewModel");
                     Assert.Contains("CLASSIC TOURNAMENT", model.LocalMode.SeriesLabel);
                     Assert.NotEmpty(ContestResultSnapshot.FromSnapshot(session.LatestSnapshot).Competitors);
@@ -815,7 +815,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.True(panel.IsVisible);
                     Assert.Equal("SAFE MODE RECOVERY READY", title.Text);
                     Assert.Contains("FAULT WINDOW", faultWindow.Text, StringComparison.Ordinal);
-                    Assert.Equal($"RECOVERY ARTIFACT · {Path.GetFileName(artifactPath)}", artifact.Text);
+                    Assert.Equal($"RECOVERY ARTIFACT Â· {Path.GetFileName(artifactPath)}", artifact.Text);
                     Assert.True(recover.IsVisible);
                     Assert.True(ignore.IsVisible);
                     Assert.Contains("RECOVERY READY", viewModel.Status, StringComparison.Ordinal);
@@ -832,9 +832,9 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes.Take(8));
 
                     Click(window, recover);
-                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED ·", StringComparison.Ordinal));
+                    await WaitFor(() => viewModel.Status.StartsWith("RECOVERED Â·", StringComparison.Ordinal));
                     Assert.False(panel.IsVisible);
-                    Assert.Equal($"RECOVERED · {Path.GetFileName(artifactPath)}", viewModel.Status);
+                    Assert.Equal($"RECOVERED Â· {Path.GetFileName(artifactPath)}", viewModel.Status);
                 }
                 finally
                 {
@@ -1118,7 +1118,7 @@ public sealed class RenderedControlSurfaceAuditTests
                 var toolbar = load.GetVisualAncestors().OfType<ScrollViewer>().First();
                 foreach (var button in toolbar.GetVisualDescendants().OfType<Button>())
                     button.FontSize = 16;
-                Named<Button>(window, "BackendButton").Content = "GPU · INTEGRATED / METAL";
+                Named<Button>(window, "BackendButton").Content = "GPU Â· INTEGRATED / METAL";
                 Capture(window, $"runtime-header-wide-{width}.png");
                 Click(window, load);
                 await WaitFor(() => factory.Clients.Any(client => client.Calls.Contains("Load")));
@@ -1394,7 +1394,7 @@ public sealed class RenderedControlSurfaceAuditTests
                     Assert.True(viewport.Focusable);
                     Assert.Equal("Simulation playfield", AutomationProperties.GetName(viewport));
                     Assert.Contains("click", AutomationProperties.GetHelpText(viewport), StringComparison.OrdinalIgnoreCase);
-                    Assert.True(Named<Border>(window, "InternetOfflineOverlay").IsVisible);
+                    Assert.Null(window.FindControl<Border>("InternetOfflineOverlay"));
 
                     var engine = factory.Clients.First();
                     Capture(window, "toolbar-1280x900.png");
@@ -1448,112 +1448,71 @@ public sealed class RenderedControlSurfaceAuditTests
     }
 
     [Fact]
-    public async Task Online01RealPlayerSetupRouteKeepsHistoricalControlsVisibleDisabledAndInert()
+    public async Task OfflinePlayerSetupAndSettingsHaveNoInternetSurfaces()
     {
-        var factory = new AuditEngineClientFactory();
-        var setup = new WorldSetupOptions
+        await DesktopTestApplication.Session.Dispatch(() =>
         {
-            Species = [new SpeciesImport("Luna", "start\nstop", false, 0xff239ac0, 1, 1_000, 0, false, 1)],
-        };
-
-        await DesktopTestApplication.Session.Dispatch(async () =>
-        {
-            var window = new MainWindow([], setup, factory, new AuditStorageService());
-            SetupWindow? setupWindow = null;
+            var window = new MainWindow([], new WorldSetupOptions(), new AuditEngineClientFactory(), new AuditStorageService());
+            var setup = new SetupWindow(new AuditStorageService());
+            var advanced = new AdvancedSettingsWindow(EnvironmentUpdate.Default, EngineSnapshot.Empty);
+            var global = new GlobalSettingsWindow(new GlobalSettings
+            {
+                Main = new GlobalMainSettings { RandomizedInternetPictures = true },
+                Evolution = new GlobalEvolutionSettings { OptionalInternetStartup = true },
+            });
+            var teleporter = new TeleporterEditorWindow();
             try
             {
-                ShowForInteraction(window, 1_280, 900);
-                await WaitFor(
-                    () => factory.Clients.TryPeek(out var client) && client.Calls.Contains("ImportSpecies:Luna"),
-                    () => factory.Clients.TryPeek(out var client) ? string.Join(", ", client.Calls) : "Audit engine was not created.");
-
-                var engine = factory.Clients.First();
-                var viewModel = Field<MainWindowViewModel>(window, "_viewModel");
-                var session = Field<SimulationSession>(window, "_session");
-                // Import dispatch precedes the final startup UI presentation.
-                // Capture the inert-control baseline only after both are ready.
-                await WaitFor(() => viewModel.Status == "WORLD READY · 1 SPECIES"
-                    && viewModel.Tick == session.LatestSnapshot.Tick
-                    && viewModel.Population == session.LatestSnapshot.Population,
-                    () => viewModel.Status);
+                ShowAndCapture(window, 1280, 900, "offline-main.png");
+                Assert.Null(window.FindControl<Button>("InternetButton"));
+                Assert.Null(window.FindControl<Border>("InternetOfflineOverlay"));
                 var menu = Named<LegacyMenuBar>(window, "HistoricMenuBar");
-                var onlineButton = Named<Button>(window, "InternetButton");
-                var offlineOverlay = Named<Border>(window, "InternetOfflineOverlay");
-                var onlineCommands = new[]
+                Assert.DoesNotContain(menu.TopLevelItems, item => Equals(item.Header, "Internet"));
+                Assert.DoesNotContain(Core.LegacyMenus.LegacyMenuCatalog.FlattenLeaves(),
+                    item => item.Label.Contains("internet", StringComparison.OrdinalIgnoreCase));
+                var router = Field<Core.LegacyMenus.LegacyCommandRouter>(window, "_legacyCommands");
+                foreach (var retired in new[] { 15, 67, 68 })
                 {
-                    Core.LegacyMenus.LegacyCommandId.InternetEnabled,
-                    Core.LegacyMenus.LegacyCommandId.InternetTeleporter,
-                    Core.LegacyMenus.LegacyCommandId.EditInternetOptions,
-                };
-
-                Assert.True(offlineOverlay.IsVisible);
-                Assert.Contains("disabled", AutomationProperties.GetHelpText(offlineOverlay), StringComparison.OrdinalIgnoreCase);
-                Assert.False(onlineButton.IsEnabled);
-                Assert.Equal("INTERNET OFFLINE", onlineButton.Content?.ToString());
-                Assert.Contains("disabled", AutomationProperties.GetHelpText(onlineButton), StringComparison.OrdinalIgnoreCase);
-
-                var statusBefore = viewModel.Status;
-                var callsBefore = engine.Calls.ToArray();
-                onlineButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                ClickAt(window, onlineButton, 0.5, 0.5);
-                onlineButton.Focus();
-                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                Assert.Equal(statusBefore, viewModel.Status);
-                Assert.Equal(callsBefore, engine.Calls.ToArray());
-
-                foreach (var command in onlineCommands)
-                {
-                    var item = menu.FindCommandItem(command)!;
-                    Assert.True(item.IsVisible, $"Historical command {command} disappeared from the player menu.");
-                    Assert.False(item.IsEnabled, $"Historical command {command} must remain disabled in offline mode.");
-                    Assert.Contains("online", ToolTip.GetTip(item)?.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
-                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-                    Assert.Equal(statusBefore, viewModel.Status);
-                    Assert.Equal(callsBefore, engine.Calls.ToArray());
+                    Assert.Null(menu.FindCommandItem((Core.LegacyMenus.LegacyCommandId)retired));
+                    Assert.Throws<ArgumentOutOfRangeException>(() => router.GetState((Core.LegacyMenus.LegacyCommandId)retired));
                 }
 
-                setupWindow = new SetupWindow(new AuditStorageService());
-                ShowForInteraction(setupWindow, 1_280, 820);
-                var tabs = Named<TabControl>(setupWindow, "SimulationSettingsTabs");
-                var internetTab = tabs.Items.OfType<TabItem>().Single(tab => Equals(tab.Header?.ToString(), "INTERNET"));
-                Assert.True(internetTab.IsVisible);
-                Assert.Contains("disabled", string.Join(" ", setupWindow.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text)), StringComparison.OrdinalIgnoreCase);
-                var setupStateBefore = setupWindow.Species.Select(species => species.Name).ToArray();
-                Click(setupWindow, internetTab);
-                internetTab.Focus();
-                setupWindow.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                setupWindow.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                Assert.Equal(setupStateBefore, setupWindow.Species.Select(species => species.Name).ToArray());
-
-                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                using var frame = setupWindow.CaptureRenderedFrame();
-                Assert.True(frame.PixelSize.Width >= 1_000);
-                Assert.True(frame.PixelSize.Height >= 600);
-                Assert.True(offlineOverlay.Bounds.Width > 0);
-                Assert.True(offlineOverlay.Bounds.Bottom <= window.Bounds.Height);
-                Assert.True(internetTab.Bounds.Width > 0);
-                Assert.True(internetTab.Bounds.Height > 0);
+                ShowAndCapture(setup, 1280, 820, "offline-setup.png");
+                Assert.Equal(Core.SimulationSettingsWorkflow.Tabs.Select(tab => tab.Header),
+                    Named<TabControl>(setup, "SimulationSettingsTabs").Items.OfType<TabItem>().Select(tab => tab.Header?.ToString()));
+                ShowAndCapture(advanced, 1120, 820, "offline-advanced.png");
+                Assert.DoesNotContain(Named<TabControl>(advanced, "SettingsTabs").Items.OfType<TabItem>(),
+                    tab => Equals(tab.Header, "INTERNET"));
+                ShowAndCapture(global, 1120, 820, "offline-global.png");
+                Assert.Null(global.FindControl<CheckBox>("OptionalInternetStartup"));
+                Named<Button>(global, "ApplyButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var roundTrip = GlobalSettings.FromJson(global.Settings.ToJson());
+                Assert.True(roundTrip.Main.RandomizedInternetPictures);
+                Assert.True(roundTrip.Evolution.OptionalInternetStartup);
+                ShowAndCapture(teleporter, 560, 780, "offline-teleporter.png");
+                Assert.Equal(new[] { "Intrasim", "Inbound file", "Outbound file" },
+                    Named<ComboBox>(teleporter, "Mode").Items.OfType<ComboBoxItem>().Select(item => item.Content?.ToString()));
             }
             finally
             {
-                setupWindow?.Close();
-                foreach (var ownedWindow in window.OwnedWindows.ToArray()) ownedWindow.Close();
-                window.Close();
+                teleporter.Close(); global.Close(); advanced.Close(); setup.Close(); window.Close();
             }
+            return 0;
         }, CancellationToken.None);
     }
 
-    [Fact]
-    public async Task MainWindowKeepsBottomDashboardVisibleAndUsableAt1500x900()
+    [Theory]
+    [InlineData(1280)]
+    [InlineData(1500)]
+    public async Task MainWindowKeepsDashboardAndEventLogReachableAtNormalSizes(int width)
     {
         await DesktopTestApplication.Session.Dispatch(() =>
         {
             var window = new MainWindow([], new WorldSetupOptions());
-            ShowForInteraction(window, 1500, 900);
+            ShowForInteraction(window, width, 900);
             try
             {
-                Capture(window, "shell-dashboard-1500x900.png");
+                Capture(window, $"shell-dashboard-{width}x900.png");
                 var surface = Named<Grid>(window, "MainSurfaceGrid");
                 var dashboard = Named<ItemsControl>(window, "StatusInstrument");
                 var theme = Named<ComboBox>(window, "ThemeSelector");
@@ -1566,6 +1525,13 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.InRange(culture.Bounds.Bottom, 0, surface.Bounds.Height);
                 Assert.True(theme.Bounds.Width >= 90);
                 Assert.True(culture.Bounds.Width >= 120);
+                var eventLog = Named<ScrollViewer>(window, "EventLogScroller");
+                var mutations = Named<TextBlock>(window, "EventLogMutationSummary");
+                StabilizeForInput(window, mutations);
+                var position = mutations.TranslatePoint(default, eventLog)!.Value;
+                Assert.InRange(position.Y, 0, eventLog.Bounds.Height);
+                Assert.InRange(position.Y + mutations.Bounds.Height, 0, eventLog.Bounds.Height + 1);
+                Capture(window, $"shell-event-log-{width}x900.png");
             }
             finally
             {
@@ -1604,17 +1570,9 @@ public sealed class RenderedControlSurfaceAuditTests
                 Assert.True(surface.IsVisible);
                 Assert.True(dashboard.IsVisible);
                 await WaitFor(() => viewModel.Status.Contains("WORLD READY", StringComparison.Ordinal), () => viewModel.Status);
-                Assert.True(Named<Border>(window, "InternetOfflineOverlay").IsVisible);
+                Assert.Null(window.FindControl<Border>("InternetOfflineOverlay"));
 
-                var onlineButton = Named<Button>(window, "InternetButton");
-                var statusBeforeOnlineInput = viewModel.Status;
-                var callsBeforeOnlineInput = engine.Calls.ToArray();
-                Assert.False(onlineButton.IsEnabled);
-                ClickAt(window, onlineButton, 0.5, 0.5);
-                Assert.Equal(statusBeforeOnlineInput, viewModel.Status);
-                Assert.Equal(callsBeforeOnlineInput, engine.Calls.ToArray());
-                var onlineCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.InternetEnabled)!;
-                Assert.False(onlineCommand.IsEnabled);
+                Assert.Null(window.FindControl<Button>("InternetButton"));
 
                 var generalSettingsCommand = menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.EditGeneralSettings)!;
                 ActivateMenu(generalSettingsCommand);

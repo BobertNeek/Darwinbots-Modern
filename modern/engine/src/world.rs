@@ -10772,7 +10772,8 @@ impl Engine {
             };
             let connected = self.hardened_teleporter_group(seed, &alive);
             for (teleporter_index, teleporter) in self.teleporters.iter().enumerate() {
-                if !teleporter.local
+                if teleporter.internet
+                    || !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
                     || !inside_teleporter(teleporter, positions[seed])
                     || !teleporter
@@ -10841,7 +10842,8 @@ impl Engine {
                 ..state
             });
             for (teleporter_index, teleporter) in self.teleporters.iter().enumerate() {
-                if !teleporter.local
+                if teleporter.internet
+                    || !teleporter.local
                     || used_capacity[teleporter_index] >= teleporter.capacity.max(1)
                     || !inside_teleporter(teleporter, corpse.position)
                     || !teleporter.filters.accepts(false, true)

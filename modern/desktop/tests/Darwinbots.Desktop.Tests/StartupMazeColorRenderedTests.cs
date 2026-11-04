@@ -51,7 +51,7 @@ public sealed class StartupMazeColorRenderedTests
                     var session = Session(player)!;
                     Assert.NotEmpty(session.LatestSnapshot.Organisms);
                     Assert.True(player.FindControl<WorldViewport>("Viewport")!.IsVisible);
-                    Assert.True(player.FindControl<Border>("InternetOfflineOverlay")!.IsVisible);
+                    Assert.Null(player.FindControl<Border>("InternetOfflineOverlay"));
 
                     var organism = session.LatestSnapshot.Organisms[0];
                     var key = new OrganismKey(organism.Slot, organism.Generation);

@@ -13,7 +13,6 @@
           <ComboBoxItem Content="Intrasim" />
           <ComboBoxItem Content="Inbound file" />
           <ComboBoxItem Content="Outbound file" />
-          <ComboBoxItem Content="Internet (disabled)" IsEnabled="False" />
         </ComboBox></Grid>
         <TextBlock Text="GEOMETRY" FontWeight="Bold" Margin="0,8,0,0" />
         <Grid ColumnDefinitions="*,200"><TextBlock Text="Center X" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" x:Name="CenterX" Minimum="0" Maximum="1000000" Increment="1" /></Grid>

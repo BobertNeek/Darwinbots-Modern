@@ -1,5 +1,7 @@
 # Darwinbots Modern Control Surface Matrix
 
+The current offline application removes Internet Mode menus, settings tabs, startup options and status controls. Their absence is checked by `OfflinePlayerSetupAndSettingsHaveNoInternetSurfaces`; surviving command identifiers are preserved.
+
 This matrix records the original 109-control Avalonia audit baseline. The later historical-menu restoration adds 74 DB2 menu leaf commands across File, Edit, View, Robot, Objects, E-Grid, Internet, Recording, and Help; those commands are catalogued and validated directly by `LegacyMenuCatalog` and `RuntimeControlSurfaceTests` rather than duplicated into this older row-oriented inventory.
 
 `source-parity` means the modern command preserves the original user-facing intent; `intentional-difference` records an approved modern-only surface such as GPU selection, turbo rendering suspension, autosave recovery, or integrated navigation. See `docs/parity/historic-menu-parity-report.md` for the current menu-specific acceptance record.
@@ -117,3 +119,40 @@ Baseline verified: 2026-07-18. Historical menu layer verified: 2026-07-23. Gener
 | dna.save | DnaEditorWindow | SAVE BOT | Button | Save_Click | Export selected bot as species file | DB2 robot DNA inspect, save-DNA, or make-new-species command with the same user intent. | source-parity | pass | docs/verification/control-surface-audit/modern/dna-exercised.png |
 | dna.clone | DnaEditorWindow | APPLY + CLONE | Button | Clone_Click | Apply DNA and clone | DB2 robot DNA inspect, save-DNA, or make-new-species command with the same user intent. | source-parity | pass | docs/verification/control-surface-audit/modern/dna-exercised.png |
 | dna.apply | DnaEditorWindow | APPLY DNA | Button | Apply_Click | Apply DNA to selected organism | DB2 robot DNA inspect, save-DNA, or make-new-species command with the same user intent. | source-parity | pass | docs/verification/control-surface-audit/modern/dna-exercised.png |
+
+## Current inventory additions (2026-11-04)
+
+The machine-readable matrix now covers all 139 IDs in the rendered test inventory, including 20 local-mode controls, three feeding controls and seven global-settings controls omitted from the old 109-row export. Internet controls are absent from the current product.
+
+| ID | Surface | Control |
+| --- | --- | --- |
+| `live.expander.league` | MainWindow | League / Local modes |
+| `live.local_mode.kind` | MainWindow | LocalModeKindSelector |
+| `live.local_mode.preset` | MainWindow | LocalModePreset |
+| `live.local_mode.minimum_rounds` | MainWindow | ModeMinimumRounds |
+| `live.local_mode.maximum_rounds` | MainWindow | ModeMaximumRounds |
+| `live.local_mode.maximum_cycles` | MainWindow | ModeMaximumCycles |
+| `live.local_mode.population_cap` | MainWindow | ModePopulationCap |
+| `live.local_mode.restart` | MainWindow | RESTART AFTER EXTINCTION |
+| `live.local_mode.info` | MainWindow | PROHIBIT INFORMATION SHOTS |
+| `live.local_mode.viruses` | MainWindow | PROHIBIT VIRUSES |
+| `live.local_mode.sexual` | MainWindow | PROHIBIT SEXUAL REPRODUCTION |
+| `live.local_mode.configure` | MainWindow | CONFIGURE |
+| `live.local_mode.start` | MainWindow | START |
+| `live.local_mode.restart_button` | MainWindow | RESTART |
+| `live.local_mode.adjudicate` | MainWindow | ADJUDICATE |
+| `live.local_mode.reason` | MainWindow | LocalModeReason |
+| `live.local_mode.workflow` | MainWindow | LocalModeWorkflow |
+| `live.local_mode.finish_with_ladder` | MainWindow | FINISH AS STEP LADDER BELOW 32 ENTRANTS |
+| `live.local_mode.export_population_seeds` | MainWindow | EXPORT POPULATION SEEDS |
+| `live.local_mode.export_classic_dna` | MainWindow | Export classic tournament DNA… |
+| `advanced.feedingproportional` | AdvancedSettingsWindow | Scale feeding power with remaining shot energy |
+| `advanced.feedingfixedpower` | AdvancedSettingsWindow | FeedingFixedPower |
+| `advanced.feedingproportion` | AdvancedSettingsWindow | FeedingProportion |
+| `global.main` | GlobalSettingsWindow | MAIN |
+| `global.advanced_mutation` | GlobalSettingsWindow | ADVANCED MUTATION |
+| `global.league` | GlobalSettingsWindow | LEAGUE |
+| `global.evolution` | GlobalSettingsWindow | EVOLUTION |
+| `global.recognition_fudging` | GlobalSettingsWindow | RecognitionFudging |
+| `global.cancel` | GlobalSettingsWindow | CANCEL |
+| `global.apply` | GlobalSettingsWindow | SAVE SETTINGS |

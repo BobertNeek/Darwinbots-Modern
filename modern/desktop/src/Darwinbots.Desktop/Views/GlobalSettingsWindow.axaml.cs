@@ -110,14 +110,13 @@ public sealed partial class GlobalSettingsWindow : Window
         StageLength.Value = (decimal)evolution.StageLength;
         CycleLength.Value = evolution.CycleLength;
         AutoGraphs.IsChecked = evolution.AutoGraphs;
-        OptionalInternetStartup.IsChecked = evolution.OptionalInternetStartup;
         NormalizeDnaSize.IsChecked = evolution.NormalizeDnaSize;
         ZerobotInitialDnaLength.Value = evolution.ZerobotInitialDnaLength;
     }
 
     private GlobalSettings ReadSettings() => new()
     {
-        Main = new GlobalMainSettings
+        Main = Settings.Main with
         {
             FixedRatio = FixedRatio.IsChecked == true,
             OldColors = OldColors.IsChecked == true,
@@ -207,7 +206,7 @@ public sealed partial class GlobalSettingsWindow : Window
             DynamicUpperReinstateThreshold = (double)(DynamicUpperReinstateThreshold.Value ?? 0),
         },
         League = new GlobalLeagueSettings { OwnedByOfflineModes = true, DisqualificationRule = Math.Max(0, DisqualificationRule.SelectedIndex), RecognitionFudging = Math.Max(0, RecognitionFudging.SelectedIndex) },
-        Evolution = new GlobalEvolutionSettings
+        Evolution = Settings.Evolution with
         {
             Enabled = EnableStagedEvolution.IsChecked == true,
             Mode = (EvolutionMode)(EvolutionMode.SelectedIndex < 0 ? 0 : EvolutionMode.SelectedIndex),
@@ -216,7 +215,6 @@ public sealed partial class GlobalSettingsWindow : Window
             CycleLength = (int)(CycleLength.Value ?? 100),
             ReducePopulationOscillation = Settings.Evolution.ReducePopulationOscillation,
             AutoGraphs = AutoGraphs.IsChecked == true,
-            OptionalInternetStartup = OptionalInternetStartup.IsChecked == true,
             NormalizeDnaSize = NormalizeDnaSize.IsChecked == true,
             ZerobotInitialDnaLength = (int)(ZerobotInitialDnaLength.Value ?? 32_000),
             RestrictMutation = Settings.Evolution.RestrictMutation,

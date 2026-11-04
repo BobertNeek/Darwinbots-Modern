@@ -4,7 +4,7 @@ Darwinbots Modern is a cross-platform artificial-life simulator inspired by Darw
 
 The modern application combines a Rust simulation engine, portable `wgpu` compute acceleration, a permanent CPU fallback, a headless CLI, and a .NET 10/Avalonia desktop interface. Windows 10 is the primary usability target; CI also builds and tests Linux x64, Intel macOS, and Apple silicon macOS packages.
 
-> **Completion-branch status:** All known required code gaps in the agreed functional offline scope were closed on October 21, 2026. Critical Windows workflows, original-file comparisons, physical GPU checks and hosted platform tests have recorded evidence. See the [October 21 completion report](docs/parity/db24832-completion-report-2026-10-21.html) and [verification ledger](modern/docs/verification.md) for exact revisions and observation limits. This work remains separate from `master`; a modern application release has not been published.
+> **Product scope:** An offline Darwinbots 2.48.32 port, including local modes and legacy file interchange. Internet Mode has been removed from the application interface. See the [verification ledger](modern/docs/verification.md) for tested revisions, behavior checks and observation limits.
 
 ## Current capabilities
 
@@ -24,7 +24,7 @@ Plain-text Darwinbots robot DNA remains a supported legacy interchange format. T
 
 Modern saves use `DB3S` version 4, preserving native single-precision resource stores. Versions 2 and 3 still load; pending fractional carries are migrated into the stores once. Snapshot and C ABI version numbers remain unchanged. Native `.set` and `.gset` settings interchange and DB2 2.48.32 `.sim`/`.dbo` import/export are implemented. The recorded checks include genuine original simulations, original continuation of a port export, native organism interchange and modern save/resume. These finite fixtures do not establish compatibility with every historical file or version; see the [compatibility evidence and limits](modern/docs/verification.md#compatibility-and-observation-limits).
 
-Internet Mode is excluded from the agreed scope; its three menu actions remain disabled. Offline exchange and local league/mode workflows are included. The original ActiveX/VB6 runtime infrastructure is not required by the modern application.
+Internet Mode is removed from menus, setup, global settings and teleporter choices. Local/file exchange and local league/mode workflows remain included. Legacy Internet fields are retained for file compatibility and cannot activate networking or local transfers. The original ActiveX/VB6 runtime infrastructure is not required by the modern application.
 
 The VB6 source under `Darwinbots2/` is the behavioral authority when the modern engine and DarwinbotsC disagree. Compatibility means comparable user-facing behavior, not identical random sequences or cycle-for-cycle reproduction of DB2.
 
@@ -36,7 +36,7 @@ Requirements:
 - Rust 1.96 or newer
 - A graphics driver supported by `wgpu`; GPU-less and unsupported systems can use the CPU backend
 
-From the repository root on the completion branch:
+From the repository root:
 
 ```powershell
 dotnet run --project modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.csproj
@@ -44,7 +44,7 @@ dotnet run --project modern/desktop/src/Darwinbots.Desktop/Darwinbots.Desktop.cs
 
 The desktop project builds and copies the native Rust engine automatically.
 
-On the Windows qualification machine, an already-built application is available in the original completion worktree at `artifacts/win-x64-native-ui66-final/Darwinbots.Desktop.exe`. It uses the .NET 10 runtime. That generated folder is local qualification output, not a committed package or published download; the [ledger](modern/docs/verification.md#existing-windows-package) records its identity.
+Cross-platform packages are produced by the [Modern cross-platform workflow](https://github.com/BobertNeek/Darwinbots-Modern/actions/workflows/modern-cross-platform.yml). The verification ledger records the qualified Windows package and its hashes.
 
 To inspect the headless runner:
 

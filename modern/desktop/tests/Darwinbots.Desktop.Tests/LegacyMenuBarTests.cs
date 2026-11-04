@@ -53,15 +53,15 @@ public sealed class LegacyMenuBarTests
             menu.RefreshStates(command => command switch
             {
                 LegacyCommandId.ViewShowVisionGrid => new LegacyCommandState(true, true),
-                LegacyCommandId.InternetEnabled => new LegacyCommandState(false, false, "Online play is outside the compatibility scope."),
+                LegacyCommandId.RobotKill => new LegacyCommandState(false, false, "Select a robot first."),
                 LegacyCommandId.HelpSurvivalInfo => new LegacyCommandState(true, false, Visible: false),
                 _ => LegacyCommandState.Available,
             });
 
             Assert.True(vision.IsChecked);
-            var internet = menu.FindCommandItem(LegacyCommandId.InternetEnabled)!;
-            Assert.False(internet.IsEnabled);
-            Assert.Equal("Online play is outside the compatibility scope.", ToolTip.GetTip(internet));
+            var kill = menu.FindCommandItem(LegacyCommandId.RobotKill)!;
+            Assert.False(kill.IsEnabled);
+            Assert.Equal("Select a robot first.", ToolTip.GetTip(kill));
             Assert.False(menu.FindCommandItem(LegacyCommandId.HelpSurvivalInfo)!.IsVisible);
         }, CancellationToken.None);
     }

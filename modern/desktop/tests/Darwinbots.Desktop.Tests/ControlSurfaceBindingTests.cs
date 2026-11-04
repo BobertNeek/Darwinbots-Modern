@@ -48,12 +48,7 @@ public sealed class ControlSurfaceBindingTests
             foreach (Match control in Regex.Matches(xaml, "<(?:Button|RadioButton)\\b(?<attributes>[^>]*)>"))
             {
                 var attributes = control.Groups["attributes"].Value;
-                if (attributes.Contains("x:Name=\"InternetButton\"", StringComparison.Ordinal))
-                {
-                    Assert.Contains("IsEnabled=\"False\"", attributes, StringComparison.Ordinal);
-                    Assert.Contains("disabled and inert", attributes, StringComparison.Ordinal);
-                }
-                else Assert.Contains("Click=\"", attributes, StringComparison.Ordinal);
+                Assert.Contains("Click=\"", attributes, StringComparison.Ordinal);
             }
             foreach (Match item in Regex.Matches(xaml, "<MenuItem\\b(?<attributes>[^>]*)/>"))
                 Assert.Contains("Click=\"", item.Groups["attributes"].Value, StringComparison.Ordinal);

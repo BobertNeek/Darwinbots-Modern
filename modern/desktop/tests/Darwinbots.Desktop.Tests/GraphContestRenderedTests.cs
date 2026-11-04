@@ -312,7 +312,7 @@ public sealed class GraphContestRenderedTests
     }
 
     [Fact]
-    public async Task MainWindowRoutesToRustBackedGraphAndContestResultsWithOnlineCommandsDisabled()
+    public async Task MainWindowRoutesToRustBackedGraphAndContestResultsWithoutInternetCommands()
     {
         var dna = new[] { "start\nstop", "start\n1\nstop", "start\n2\nstop", "start\n3\nstop", "start\n4\nstop" };
         var setup = new WorldSetupOptions
@@ -479,21 +479,7 @@ public sealed class GraphContestRenderedTests
                 Assert.Contains(contestWindow.ViewModel.Competitors, competitor => competitor.Wins > 0);
 
                 var historicMenu = window.FindControl<LegacyMenuBar>("HistoricMenuBar")!;
-                var onlineCommands = new[]
-                {
-                    LegacyCommandId.InternetEnabled,
-                    LegacyCommandId.InternetTeleporter,
-                    LegacyCommandId.EditInternetOptions,
-                };
-                var ownedWindowCount = window.OwnedWindows.Count;
-                foreach (var command in onlineCommands)
-                {
-                    var item = historicMenu.FindCommandItem(command)!;
-                    Assert.True(item.IsVisible);
-                    Assert.False(item.IsEnabled);
-                    Assert.Contains("online", ToolTip.GetTip(item)?.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
-                }
-                Assert.Equal(ownedWindowCount, window.OwnedWindows.Count);
+                Assert.DoesNotContain(historicMenu.TopLevelItems, item => Equals(item.Header, "Internet"));
 
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var frame = window.CaptureRenderedFrame();

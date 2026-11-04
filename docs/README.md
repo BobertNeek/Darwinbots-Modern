@@ -11,7 +11,7 @@ This directory separates current product evidence from historical design records
 | [Completion receipt](../output/native-ui65-20261021/completion.json) | Structured native observations, focused repairs, hosted results and package hashes |
 | [Detailed October parity audit](parity/db24832-parity-report-2026-10-14.html) | Detailed feature evidence and preserved earlier checkpoints; follow its link to the October 21 conclusion |
 
-The completed work is on `codex/db24832-completion`, separate from `master`. The only published release currently contains legacy reference inputs. Completion of the agreed offline work is not a claim of universal historical-file compatibility, identical arbitrary trajectories or a manual walkthrough of every menu on every operating system.
+The current product removes Internet Mode from the interface and retains local file exchange. Follow the verification ledger for the current feature checklist and qualification. Older reports describe their dated revisions; they do not establish universal historical-file compatibility, identical arbitrary trajectories or native interaction on every operating system.
 
 ## Earlier audits
 

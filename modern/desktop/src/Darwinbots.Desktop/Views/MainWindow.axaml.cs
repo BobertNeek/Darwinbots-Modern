@@ -611,7 +611,6 @@ public sealed partial class MainWindow : Window
     private LegacyCommandRouter CreateLegacyCommandRouter()
     {
         const string pending = "This historical command is not implemented in the modern runtime yet.";
-        const string offline = "Online play is outside the modern compatibility scope.";
         var handlers = LegacyMenuCatalog.FlattenLeaves().ToDictionary(
             item => item.Command!.Value,
             _ => (ILegacyCommandHandler)DelegateLegacyCommandHandler.Disabled(pending));
@@ -824,9 +823,6 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.EGridLarge] = EnergyGridSizeHandler(EnergyGridSize.Large);
         handlers[LegacyCommandId.EGridMedium] = EnergyGridSizeHandler(EnergyGridSize.Medium);
         handlers[LegacyCommandId.EGridSmall] = EnergyGridSizeHandler(EnergyGridSize.Small);
-        handlers[LegacyCommandId.InternetEnabled] = DelegateLegacyCommandHandler.Disabled(offline);
-        handlers[LegacyCommandId.InternetTeleporter] = DelegateLegacyCommandHandler.Disabled(offline);
-        handlers[LegacyCommandId.EditInternetOptions] = DelegateLegacyCommandHandler.Disabled(offline);
         handlers[LegacyCommandId.HelpDna] = HelpHandler(LegacyCommandId.HelpDna);
         handlers[LegacyCommandId.HelpRobotTagInformation] = HelpHandler(LegacyCommandId.HelpRobotTagInformation);
         handlers[LegacyCommandId.HelpSurvivalInfo] = HelpHandler(LegacyCommandId.HelpSurvivalInfo);
@@ -2415,6 +2411,7 @@ public sealed partial class MainWindow : Window
         var localTeleporter = _session.LatestSnapshot.Teleporters.FirstOrDefault(value => value.Id == feature.Id);
         if (localTeleporter is not null)
         {
+            if (localTeleporter.Internet || string.Equals(localTeleporter.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase)) return;
             var dialog = new TeleporterEditorWindow(localTeleporter);
             await dialog.ShowDialog(this);
             if (dialog.Result is not { } result) return;
@@ -2464,7 +2461,8 @@ public sealed partial class MainWindow : Window
             && _session?.LatestSnapshot.Obstacles.Any(value => value.Id == obstacle.Id) == true;
         var selectedTeleporter = _selectedFeature is { Kind: WorldFeatureKind.Teleporter } feature
             && ObjectEditorPolicy.CanEdit(ObjectEditorKind.Teleporter, SelectedObject())
-            && (_session?.LatestSnapshot.Teleporters.Any(value => value.Id == feature.Id) == true
+            && (_session?.LatestSnapshot.Teleporters.Any(value => value.Id == feature.Id && !value.Internet
+                    && !string.Equals(value.Mode.Trim(), "internet", StringComparison.OrdinalIgnoreCase)) == true
                 || _session?.LatestSnapshot.FileTeleporters.Any(value => value.Id == feature.Id) == true);
         EditShapeButton.IsEnabled = selectedObstacle;
         EditTeleporterButton.IsEnabled = selectedTeleporter;

@@ -6,6 +6,19 @@ namespace Darwinbots.Desktop.Core.Tests;
 
 public sealed class ObjectEditorPolicyTests
 {
+    [Theory]
+    [InlineData("internet", false)]
+    [InlineData("intrasim", true)]
+    public void LegacyInternetGatewaysCannotBeConvertedByAnEditor(string mode, bool internet)
+    {
+        var legacy = new TeleporterSnapshot(8, [10f, 20f], 12f, [30f, 40f]) { Mode = mode, Internet = internet };
+        Assert.Throws<ArgumentException>(() => ObjectEditorPolicy.BuildTeleporterPayload(
+            legacy, "intrasim", [10f, 20f], 12f, [30f, 40f], 1, 1, 0,
+            true, true, true, true, false, "", "", ""));
+        Assert.Equal(mode, legacy.Mode);
+        Assert.Equal(internet, legacy.Internet);
+    }
+
     [Fact]
     public void RoutesObjectMenuCommandsToEditorPayloadsAndAllowsOnlyMatchingSelection()
     {

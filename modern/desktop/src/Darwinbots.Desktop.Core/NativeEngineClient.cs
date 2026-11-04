@@ -443,8 +443,8 @@ public sealed partial class NativeEngineClient : IEngineClient
             throw new ArgumentOutOfRangeException(nameof(teleporter));
         if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(teleporter));
-        if (teleporter.Mode.Trim().ToLowerInvariant() is not ("intrasim" or "inbound" or "outbound"))
-            throw new ArgumentException("Online teleporters are disabled in offline mode.", nameof(teleporter));
+        if (teleporter.Internet || teleporter.Mode.Trim().ToLowerInvariant() is not ("intrasim" or "inbound" or "outbound"))
+            throw new ArgumentException("Only local and file teleporters can be edited.", nameof(teleporter));
     }
 
     public void AddFileTeleporter(FileTeleporterSnapshot teleporter)

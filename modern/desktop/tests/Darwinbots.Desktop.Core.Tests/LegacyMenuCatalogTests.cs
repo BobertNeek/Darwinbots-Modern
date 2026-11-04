@@ -6,10 +6,24 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class LegacyMenuCatalogTests
 {
     [Fact]
+    public void RemovedInternetCommandsDoNotShiftSurvivingIdentifiers()
+    {
+        Assert.Equal(16, (int)LegacyCommandId.EditDisallowFixing);
+        Assert.Equal(66, (int)LegacyCommandId.EGridSmall);
+        Assert.Equal(69, (int)LegacyCommandId.RecordingSafemodeBackup);
+        foreach (var retired in new[] { 15, 67, 68 })
+            Assert.False(Enum.IsDefined(typeof(LegacyCommandId), retired));
+        Assert.DoesNotContain(LegacyMenuCatalog.FlattenLeaves(),
+            item => item.Label.Contains("internet", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(new[] { "SPECIES", "GENERAL", "PHYSICS AND COSTS", "MUTATIONS", "RESTART AND LEAGUE" },
+            SimulationSettingsWorkflow.Tabs.Select(tab => tab.Header));
+    }
+
+    [Fact]
     public void CatalogMatchesHistoricalTopLevelOrder()
     {
         Assert.Equal(
-            ["File", "Edit", "View", "Robot", "Objects", "E-Grid", "Internet", "Recording", "Help"],
+            ["File", "Edit", "View", "Robot", "Objects", "E-Grid", "Recording", "Help"],
             LegacyMenuCatalog.TopLevel.Select(item => item.Label));
     }
 
@@ -50,7 +64,6 @@ public sealed class LegacyMenuCatalogTests
     public void CheckAndRadioStateMatchesHistoricalBehavior()
     {
         Assert.Equal(LegacyMenuCheckKind.Check, FindLeaf("View", "Show Vision Grid").CheckKind);
-        Assert.Equal(LegacyMenuCheckKind.Check, FindLeaf("Internet", "Enabled").CheckKind);
         Assert.Equal(LegacyMenuCheckKind.Radio, FindLeaf("E-Grid", "Grid Size", "Large").CheckKind);
         Assert.Equal(LegacyMenuCheckKind.Radio, FindLeaf("E-Grid", "Grid Size", "Medium").CheckKind);
         Assert.Equal(LegacyMenuCheckKind.Radio, FindLeaf("E-Grid", "Grid Size", "Small").CheckKind);

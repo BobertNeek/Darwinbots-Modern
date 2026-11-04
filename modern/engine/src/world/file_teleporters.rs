@@ -306,6 +306,33 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    fn legacy_internet_metadata_roundtrips_without_local_relocation_or_file_exchange() {
+        let root = tempdir().unwrap();
+        let mut world = Engine::new(EngineConfig::testing()).unwrap();
+        let id = world
+            .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
+            .unwrap();
+        // Old saves can retain local/inbound/outbound defaults alongside Internet.
+        let mut gateway = Teleporter::new(7, [500.0; 2], 100.0, [900.0; 2]);
+        gateway.internet = true;
+        gateway.local = true;
+        gateway.inbound = true;
+        gateway.outbound = true;
+        gateway.inbound_path = root.path().to_path_buf();
+        gateway.outbound_path = root.path().to_path_buf();
+        world.add_teleporter(gateway.clone()).unwrap();
+        let saved = SaveFile::encode(&world).unwrap();
+        let mut resumed = SaveFile::decode(&saved).unwrap();
+        assert_eq!(SaveFile::encode(&resumed).unwrap(), saved);
+        resumed.apply_teleporter_relocation();
+        resumed.apply_file_teleporters().unwrap();
+        assert_eq!(resumed.organism(id).unwrap().position, [500.0; 2]);
+        assert_eq!(resumed.teleporters[0], gateway);
+        assert_eq!(fs::read_dir(root.path()).unwrap().count(), 0);
+        assert_eq!(SaveFile::encode(&resumed).unwrap(), saved);
+    }
+
+    #[test]
     fn output_collision_preserves_existing_file_and_departing_robot() {
         let root = tempdir().unwrap();
         let mut world = Engine::new(EngineConfig::testing()).unwrap();
