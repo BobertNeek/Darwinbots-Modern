@@ -57,7 +57,7 @@ public sealed class GlobalSettingsProfileTests
                     await WaitFor(() => model.Status == "GLOBAL SETTINGS SAVED");
                     Assert.True(Named<WorldViewport>(runtime, "Viewport").IsVisible);
                 }
-                finally { Close(runtime); }
+                finally { await CloseRuntimeAsync(runtime); }
 
                 var reopenedStorage = new AvaloniaDesktopStorageService(profile.FullName);
                 var reopened = new SetupWindow(reopenedStorage);
@@ -93,7 +93,7 @@ public sealed class GlobalSettingsProfileTests
                     Click(next, "TurboButton");
                     Assert.True(Named<WorldViewport>(next, "Viewport").IsVisible);
                 }
-                finally { Close(next); }
+                finally { await CloseRuntimeAsync(next); }
             }, CancellationToken.None);
         }
         finally { profile.Delete(recursive: true); }
@@ -148,5 +148,11 @@ public sealed class GlobalSettingsProfileTests
     {
         foreach (var dialog in owner.OwnedWindows.ToArray()) dialog.Close();
         owner.Close();
+    }
+
+    private static async Task CloseRuntimeAsync(MainWindow owner)
+    {
+        Close(owner);
+        await WaitFor(() => !owner.IsVisible);
     }
 }
