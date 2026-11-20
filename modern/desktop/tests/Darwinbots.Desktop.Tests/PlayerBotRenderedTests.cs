@@ -79,9 +79,23 @@ public sealed class PlayerBotRenderedTests
                 fields[1].Text = "52";
                 fields[2].Text = "9";
                 add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.Equal("KEY ALREADY MAPPED", status.Text);
-                Assert.Equal(2, dialog.Bindings.Count);
-                AssertKeyMapSurface(dialog, "KEY ALREADY MAPPED");
+                Assert.Equal("BINDING ADDED", status.Text);
+                Assert.Equal(3, dialog.Bindings.Count);
+
+                const string originalPreset = " 87 \r\n 50 \r\n 123 \r\nFalse\r\n 32 \r\n 51 \r\n-77 \r\nFalse\r\n 87 \r\n 52 \r\n 9 \r\nFalse\r\n";
+                var encodePreset = typeof(PlayerBotSettingsWindow).GetMethod("EncodePreset", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var loadPreset = typeof(PlayerBotSettingsWindow).GetMethod("LoadPreset", BindingFlags.Instance | BindingFlags.NonPublic)!;
+                var expectedBindings = dialog.Bindings;
+                Assert.Equal((originalPreset, true), encodePreset.Invoke(dialog, null));
+                const string earlierModernPreset = "65535\r\n50\r\n123\r\nFalse\r\n";
+                loadPreset.Invoke(dialog, [earlierModernPreset]);
+                Assert.Equal((earlierModernPreset, false), encodePreset.Invoke(dialog, null));
+                loadPreset.Invoke(dialog, [originalPreset]);
+                Assert.Equal(expectedBindings, dialog.Bindings);
+                Assert.IsType<InvalidDataException>(
+                    Assert.Throws<TargetInvocationException>(() => loadPreset.Invoke(dialog, [originalPreset + " 87 \r\n"])).InnerException);
+                Assert.Equal(expectedBindings, dialog.Bindings);
+                AssertKeyMapSurface(dialog, "BINDING ADDED");
 
                 dialog.GetVisualDescendants().OfType<Button>()
                     .Single(button => button.Content?.ToString() == "APPLY")
@@ -91,6 +105,7 @@ public sealed class PlayerBotRenderedTests
                     [
                         new PlayerBotBinding((int)Key.W, 50, 123),
                         new PlayerBotBinding((int)Key.Space, 51, -77),
+                        new PlayerBotBinding((int)Key.W, 52, 9),
                     ],
                     factory.Client.Configurations.Single().Bindings);
 
@@ -107,6 +122,7 @@ public sealed class PlayerBotRenderedTests
 
                 await session.StepAsync(1);
                 await WaitFor(() => MemoryValue(session.LatestSnapshot, 50) == 123);
+                Assert.Equal(9, MemoryValue(session.LatestSnapshot, 52));
                 Assert.Equal("Tick:1", factory.Client.LastCommand);
 
                 window.KeyRelease(Key.W, RawInputModifiers.None, PhysicalKey.W, null);

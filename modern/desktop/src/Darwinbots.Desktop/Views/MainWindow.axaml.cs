@@ -663,7 +663,7 @@ public sealed partial class MainWindow : Window
             () => new LegacyCommandState(_session is not null, _liveEnvironment.AutoSpeciation, _session is null ? "Start a simulation first." : null),
             async _ => await ToggleAutomaticForkingAsync());
         handlers[LegacyCommandId.EditPlayerBotSettings] = Handler(
-            SelectedRobotState,
+            EngineState,
             async _ => await OpenPlayerBotSettingsAsync());
         handlers[LegacyCommandId.EditEnablePlayerBot] = Handler(
             () => SelectedRobotState() with { Checked = _playerBotEnabled },

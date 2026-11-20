@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Darwinbots.Desktop.Core;
 
 public sealed record PlayerBotBinding(int KeyCode, ushort MemoryAddress, int Value, bool Invert = false)
@@ -57,39 +59,64 @@ public static class PlayerBotKeyMapFile
     public static void Save(string path, IEnumerable<PlayerBotBinding> bindings)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        File.WriteAllText(path, Encode(bindings));
+    }
+
+    public static string Encode(IEnumerable<PlayerBotBinding> bindings, bool useWindowsVirtualKeys = false)
+    {
         ArgumentNullException.ThrowIfNull(bindings);
         var values = bindings.ToArray();
-        foreach (var binding in values) binding.Validate();
+        foreach (var binding in values)
+        {
+            binding.Validate();
+            if (useWindowsVirtualKeys && binding.KeyCode > byte.MaxValue)
+                throw new InvalidDataException("Darwinbots 2 PlayerBot keys must fit in a byte.");
+        }
         var lines = values.SelectMany(binding => new[]
         {
-            binding.KeyCode.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            binding.MemoryAddress.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            binding.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            FormatNumber(binding.KeyCode),
+            FormatNumber(binding.MemoryAddress),
+            FormatNumber(binding.Value),
             binding.Invert ? "True" : "False",
         });
-        File.WriteAllText(path, string.Concat(lines.Select(line => line + "\r\n")));
+        return string.Concat(lines.Select(line => line + "\r\n"));
+
+        string FormatNumber(int value)
+        {
+            var number = value.ToString(CultureInfo.InvariantCulture);
+            if (!useWindowsVirtualKeys) return number;
+            // VB6 Print # pads nonnegative numbers at both ends.
+            return (value < 0 ? "" : " ") + number + " ";
+        }
     }
 
     public static IReadOnlyList<PlayerBotBinding> Load(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var lines = File.ReadAllLines(path)
-            .Select(line => line.Trim())
-            .Where(line => line.Length > 0)
-            .ToArray();
+        return Decode(File.ReadAllText(path), out _);
+    }
+
+    public static IReadOnlyList<PlayerBotBinding> Decode(string text, out bool usesWindowsVirtualKeys)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var lines = text.ReplaceLineEndings("\n").Split('\n')
+            .Where(line => !string.IsNullOrWhiteSpace(line)).ToArray();
         if (lines.Length % 4 != 0)
             throw new InvalidDataException("PlayerBot key-map files must contain four lines per binding.");
 
+        // Earlier Modern files write unpadded Avalonia key numbers in the same four-line layout.
+        usesWindowsVirtualKeys = lines.Length > 0 && lines[0].StartsWith(' ') && lines[0].EndsWith(' ');
         var result = new List<PlayerBotBinding>(lines.Length / 4);
         for (var index = 0; index < lines.Length; index += 4)
         {
-            if (!int.TryParse(lines[index], out var key)
-                || !ushort.TryParse(lines[index + 1], out var address)
-                || !int.TryParse(lines[index + 2], out var value))
+            if (!int.TryParse(lines[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out var key)
+                || !ushort.TryParse(lines[index + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var address)
+                || !int.TryParse(lines[index + 2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+                || (usesWindowsVirtualKeys && key is < 0 or > byte.MaxValue))
             {
                 throw new InvalidDataException($"Invalid PlayerBot binding at line {index + 1}.");
             }
-            var binding = new PlayerBotBinding(key, address, value, ParseBoolean(lines[index + 3]));
+            var binding = new PlayerBotBinding(key, address, value, ParseBoolean(lines[index + 3].Trim()));
             binding.Validate();
             result.Add(binding);
         }
