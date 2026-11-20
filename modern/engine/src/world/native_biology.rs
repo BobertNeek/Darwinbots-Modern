@@ -182,6 +182,9 @@ mod tests {
                 Engine::new(config)
             }
             .unwrap();
+            if !native {
+                engine.native_random = None;
+            }
             let id = engine
                 .spawn_at(LegacyDna::parse("stop").unwrap(), [500.0; 2])
                 .unwrap();
