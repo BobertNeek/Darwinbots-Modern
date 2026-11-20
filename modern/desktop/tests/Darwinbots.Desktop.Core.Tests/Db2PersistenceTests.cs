@@ -185,8 +185,41 @@ public sealed class Db2PersistenceTests
             includeHeader: true);
 
         Assert.False(restoredSettings.CorpseDecay.Enabled);
-        Assert.Contains("7003,0,Fixture,3,0,19,12,3,2,0,0,127,127,0\r\nstart\nstop\r\n", living);
+        Assert.Contains("7003,0,Fixture,3,0,19,12,3,2,0,0,127,127,0\r\nstart\r\nstop\r\n", living);
         Assert.Contains("99,0,Fixture,0,0,4,11,2,1,0,0,120,120,0\r\nstop\r\n", dead);
+    }
+
+    [Fact]
+    public void SnapshotSearchReadsLivingRowsAndSuccessiveDeadRecordingBatches()
+    {
+        const string separator = "\r\n\r\n\r\n";
+        const string firstDna = "start\n\n1 .up store\nstop";
+        const string secondDna = "start\r\nstop\r\n";
+        var first = new OrganismSnapshot(0, 1, [0, 0], [0, 0], 10, 2) { UniqueId = 17 };
+        var second = first with { Slot = 1, UniqueId = 29 };
+        var snapshot = new EngineSnapshot(7, 2, "CPU", [first, second]);
+        var dna = new Dictionary<OrganismKey, string>
+        {
+            [new OrganismKey(first.Slot, first.Generation)] = firstDna,
+            [new OrganismKey(second.Slot, second.Generation)] = secondDna,
+        };
+        var living = Db2GenomeRecordFile.EncodeLiving(snapshot, dna);
+        var manual = LegacyRecordingSerializer.SerializeRemoved(snapshot with { Organisms = [first] },
+            dna, includeHeader: true, LegacyRecordingFormat.Db2GenomeRecords);
+        var final = new DeathRecordSnapshot(7, 29, 17, "Fixture", 0, 0, 2, 0, 0, 2, 0, 0, 10, 0, secondDna, []);
+        var dead = manual + Db2GenomeRecordFile.EncodeDead([final], includeHeader: false);
+
+        foreach (var text in new[] { living, dead })
+        {
+            var sections = text.Split(separator, StringSplitOptions.None);
+            Assert.Equal(3, sections.Length);
+            Assert.Equal(Db2GenomeRecordFile.Header, sections[0]);
+            Assert.StartsWith("17,", sections[1]);
+            Assert.StartsWith("29,", sections[2]);
+            Assert.EndsWith("start\r\n\r\n1 .up store\r\nstop", sections[1]);
+            Assert.EndsWith("start\r\nstop\r\n", sections[2]);
+            Assert.Equal([firstDna, "start\nstop"], Db2GenomeRecordFile.Decode(text).Select(row => row.Dna));
+        }
     }
 
     [Fact]
