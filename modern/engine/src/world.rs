@@ -9668,17 +9668,19 @@ impl Engine {
                 .map(|species| species.name.clone());
             let owner_id = OrganismId::new(slot as u32, self.slots[slot].generation);
             let owner_virtual_body = self.virtual_body_for(owner_id);
-            let (toxin_memory_location, toxin_memory_value) = match request.kind {
-                -3 => (
-                    owner.program.memory.read(835),
-                    owner.program.memory.read(836),
-                ),
-                -5 => (
-                    owner.program.memory.read(834),
-                    owner.program.memory.read(839),
-                ),
-                _ => (0, 0),
-            };
+            // Shots.newshot stores the shooter's venom cells for every shot kind.
+            let (toxin_memory_location, toxin_memory_value) =
+                match (self.native_random.is_some(), request.kind) {
+                    (true, _) | (false, -3) => (
+                        owner.program.memory.read(835),
+                        owner.program.memory.read(836),
+                    ),
+                    (false, -5) => (
+                        owner.program.memory.read(834),
+                        owner.program.memory.read(839),
+                    ),
+                    _ => (0, 0),
+                };
             self.projectiles.try_spawn(
                 ProjectileSpawn {
                     owner: OrganismId::new(slot as u32, self.slots[slot].generation),

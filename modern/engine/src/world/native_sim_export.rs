@@ -773,6 +773,62 @@ mod tests {
     use super::*;
 
     #[test]
+    fn native_feeding_shot_exports_the_shooters_raw_venom_cells() {
+        let dna =
+            LegacyDna::parse("start 1201 .vloc store -311 .venval store -1 .shoot store stop")
+                .unwrap();
+        for (native, expected) in [(true, (1201, -311)), (false, (0, 0))] {
+            let mut engine = Engine::new(EngineConfig::testing()).unwrap();
+            if !native {
+                engine.native_random = None;
+            }
+            engine.spawn_at(dna.clone(), [500.0; 2]).unwrap();
+            engine.tick().unwrap();
+
+            let file = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+            let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+            let shot = (0..tail.integer("shot_count").unwrap())
+                .find(|slot| tail.integer(&format!("shot[{slot}].exists")).unwrap() != 0)
+                .unwrap();
+            let field = |name| tail.integer(&format!("shot[{shot}].{name}")).unwrap();
+            assert_eq!((field("kind"), field("age")), (-1, 0));
+            assert_eq!((field("memory_location"), field("memory_value")), expected);
+        }
+    }
+
+    #[test]
+    fn genuine_cycle_282_feeding_shots_match_captured_venom_cells() {
+        // Original 2.48.32 cycle-282 capture SHA-256
+        // c49c002f66898a52db81645b78b11ecbb2ed1941dbeea03fe7d53dd3b24b9e91.
+        let input = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
+        let mut engine = Engine::from_native_sim(input).unwrap();
+        engine.tick().unwrap();
+
+        let file = NativeRecordFile::decode(&engine.export_native_sim().unwrap()).unwrap();
+        let tail = NativeSimulationTail::decode(&file.tail).unwrap();
+        assert_eq!(tail.integer("total_cycles").unwrap(), 282);
+        let captured_shooters = [
+            222, 202, 132, 223, 143, 236, 102, 104, 267, 139, 156, 275, 288, 216, 232, 268, 263,
+            290, 286,
+        ];
+        for (slot, shooter) in (141..=159).zip(captured_shooters) {
+            let field = |name| tail.integer(&format!("shot[{slot}].{name}")).unwrap();
+            let parent_slot = field("parent") as i16;
+            let parent = file
+                .robots
+                .iter()
+                .find(|robot| robot.word("old_slot").unwrap() == parent_slot)
+                .unwrap();
+            assert_eq!(parent.long("absolute_id").unwrap(), shooter);
+            assert_eq!((field("exists"), field("kind"), field("age")), (-1, -1, 0));
+            assert_eq!(
+                (field("memory_location"), field("memory_value")),
+                (822, -100)
+            );
+        }
+    }
+
+    #[test]
     fn live_native_sim_export_updates_resources_memory_world_and_shots() {
         let original = include_bytes!("../../tests/fixtures/db24832-original-user.sim");
         let mut engine = Engine::from_native_sim(original).unwrap();
