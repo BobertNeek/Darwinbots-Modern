@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Darwinbots.Desktop;
@@ -822,7 +823,7 @@ public sealed partial class MainWindow : Window
         handlers[LegacyCommandId.EGridMedium] = EnergyGridSizeHandler(EnergyGridSize.Medium);
         handlers[LegacyCommandId.EGridSmall] = EnergyGridSizeHandler(EnergyGridSize.Small);
         handlers[LegacyCommandId.HelpDna] = HelpHandler(LegacyCommandId.HelpDna);
-        handlers[LegacyCommandId.HelpRobotTagInformation] = HelpHandler(LegacyCommandId.HelpRobotTagInformation);
+        handlers[LegacyCommandId.HelpRobotTagInformation] = Handler(EngineState, _ => CopyRobotTagReportAsync());
         handlers[LegacyCommandId.HelpSurvivalInfo] = HelpHandler(LegacyCommandId.HelpSurvivalInfo);
         handlers[LegacyCommandId.HelpAbout] = HelpHandler(LegacyCommandId.HelpAbout);
 
@@ -1444,6 +1445,15 @@ public sealed partial class MainWindow : Window
         var window = _toolWindows.ShowOrActivate(key, () => new LegacyDocumentWindow(title, section, content));
         window.SetDocument(title, section, content);
         return Task.FromResult(LegacyCommandResult.Success(title.ToUpperInvariant()));
+    }
+
+    private async Task<LegacyCommandResult> CopyRobotTagReportAsync()
+    {
+        if (_session is not { } session) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        if (Clipboard is not { } clipboard) return LegacyCommandResult.Failure("CLIPBOARD UNAVAILABLE");
+
+        await clipboard.SetTextAsync(await session.ReadRobotTagReportAsync());
+        return LegacyCommandResult.Success("ROBOT TAG INFORMATION COPIED");
     }
 
     private async Task<LegacyCommandResult> OpenSpeciesSettingsCommandAsync()

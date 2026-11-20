@@ -91,4 +91,5 @@ public interface IEngineClient : IDisposable
     float? ReadNativeGaussianSpare() => null;
     byte ReadNativeSunChange() => 0;
     NativeProcessCachesSnapshot ReadNativeProcessCaches() => NativeProcessCachesSnapshot.Empty;
+    string ReadRobotTagReport() => throw new NotSupportedException("Robot tag information is unavailable in this engine client.");
 }

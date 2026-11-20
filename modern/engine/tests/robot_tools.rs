@@ -180,3 +180,76 @@ fn robot_tools_commands_round_trip_through_native_batch_and_snapshot() {
     assert_eq!(db_buffer_free(&mut snapshot), DbStatus::Ok);
     assert_eq!(db_engine_destroy(engine), DbStatus::Ok);
 }
+
+#[test]
+fn robot_tag_report_copies_distinct_native_rows_in_live_slot_order() {
+    use darwinbots_engine::{
+        SaveFile,
+        native_binary::{NativeRecordFile, NativeValue},
+    };
+
+    let mut file =
+        NativeRecordFile::decode(include_bytes!("fixtures/db24832-movement-start-48032.sim"))
+            .unwrap();
+    let template = file.robots.pop().unwrap();
+    let founder = std::str::from_utf8(template.bytes("species_name").unwrap()).unwrap();
+    let full_tag = "A".repeat(45);
+    for (index, (tag, owner, exists, is_corpse)) in [
+        (format!("{full_tag}12345"), "Original user", true, false),
+        (format!("{full_tag}67890"), "Original user", true, false),
+        (String::new(), "Corpse keeper", true, true),
+        ("Inactive slot".into(), "Other user", false, false),
+        (format!("{full_tag}12345"), "Other user", true, false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut record = template.clone();
+        let slot = (index + 1) as i16;
+        record
+            .set_value("old_slot", NativeValue::Word(slot))
+            .unwrap();
+        record
+            .set_value("absolute_id", NativeValue::Long(i32::from(slot)))
+            .unwrap();
+        record
+            .set_value("exists", NativeValue::Word(if exists { -1 } else { 0 }))
+            .unwrap();
+        record
+            .set_value("owner_length", NativeValue::Word(owner.len() as i16))
+            .unwrap();
+        record
+            .set_value("owner", NativeValue::Bytes(owner.as_bytes().to_vec()))
+            .unwrap();
+        let mut tag = tag.into_bytes();
+        tag.resize(50, b' ');
+        record.set_value("tag", NativeValue::Bytes(tag)).unwrap();
+        if is_corpse {
+            record.set_value("corpse", NativeValue::Word(-1)).unwrap();
+            record
+                .set_value("species_name_length", NativeValue::Word(6))
+                .unwrap();
+            record
+                .set_value("species_name", NativeValue::Bytes(b"Corpse".to_vec()))
+                .unwrap();
+        }
+        file.robots.push(record);
+    }
+
+    let engine = Engine::from_native_sim(&file.encode().unwrap()).unwrap();
+    let before = SaveFile::encode(&engine).unwrap();
+    assert_eq!(
+        engine.robot_tag_report(),
+        format!(
+            "Tag:FileName:User\r\n~~~\r\n\r\n{full_tag}:{founder}:Original user\r\n{}:Corpse:Corpse keeper\r\n{full_tag}:{founder}:Other user",
+            " ".repeat(45),
+        )
+    );
+    assert_eq!(SaveFile::encode(&engine).unwrap(), before);
+    assert_eq!(
+        Engine::new(EngineConfig::testing())
+            .unwrap()
+            .robot_tag_report(),
+        "Tag:FileName:User\r\n~~~\r\n"
+    );
+}
