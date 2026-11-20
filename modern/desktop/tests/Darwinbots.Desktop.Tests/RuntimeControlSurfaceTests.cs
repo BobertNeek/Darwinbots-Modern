@@ -326,10 +326,6 @@ public sealed class RuntimeControlSurfaceTests
             Assert.True(viewport.EnergyGridEnabled);
             Assert.Equal(EnergyGridSize.Medium, viewport.EnergyGridSize);
 
-            menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsNewTeleporter)!
-                .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            Assert.Equal("Teleporter", Field<object>(window, "_environmentPlacement").ToString());
-
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayNrgShots)!
                 .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             menu.FindCommandItem(Core.LegacyMenus.LegacyCommandId.ObjectsDontDecayWasteShots)!

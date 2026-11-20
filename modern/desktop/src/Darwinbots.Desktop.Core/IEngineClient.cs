@@ -40,6 +40,8 @@ public interface IEngineClient : IDisposable
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);
+    void AddNativeTeleporter(NativeTeleporterOptions options) =>
+        throw new NotSupportedException("Original teleporter creation is unavailable in this engine client.");
     void UpdateTeleporter(TeleporterSnapshot teleporter);
     void RemoveTeleporter(uint id);
     void AddFileTeleporter(FileTeleporterSnapshot teleporter);

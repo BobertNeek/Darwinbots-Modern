@@ -184,6 +184,25 @@ pub struct TeleporterFilters {
     pub teleport_heterotrophs: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NativeTeleporterKind {
+    Intrasim,
+    Inbound,
+    Outbound,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct NativeTeleporterOptions {
+    pub kind: NativeTeleporterKind,
+    pub size: u32,
+    pub path: PathBuf,
+    pub fixed_position: bool,
+    pub filters: TeleporterFilters,
+    pub poll_interval: u32,
+    pub capacity: u32,
+}
+
 impl TeleporterFilters {
     pub(crate) fn accepts(&self, vegetable: bool, corpse: bool) -> bool {
         if corpse {

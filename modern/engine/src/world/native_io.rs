@@ -937,6 +937,7 @@ impl Engine {
             tele.random_destination = tele.local && !tele.outbound && !tele.internet;
             tele.drift_horizontal = w("horizontal")? != 0;
             tele.drift_vertical = w("vertical")? != 0;
+            tele.fixed_position = !tele.drift_horizontal && !tele.drift_vertical;
             tele.highlight = w("highlight")? != 0;
             tele.respect_shapes = w("respect_shapes")? != 0;
             tele.filters.teleport_vegetables = w("vegetables")? != 0;
