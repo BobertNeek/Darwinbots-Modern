@@ -119,6 +119,26 @@ mod tests {
     }
 
     #[test]
+    fn native_energy_steal_preserves_previous_cycle_energy_for_pain_and_pleasure() {
+        let mut world = world();
+        let thief = bot(&mut world, [1000.0, 1000.0], 100.0);
+        let victim = bot(&mut world, [1500.0, 1000.0], 100.0);
+        // LoadRobotBody leaves the previous-cycle energy at zero on load.
+        for (id, energy) in [(thief, 1000), (victim, 200)] {
+            world.set_organism_energy(id, energy).unwrap();
+            world.slots.get_mut(id).unwrap().materials.previous_energy = 0.0;
+        }
+        request_energy_steal(&mut world, thief, victim, 100);
+
+        world.tie_exchange_phase(&mut CycleRecorder::disabled(0));
+        world.publish_core_senses_phase();
+        for (id, energy) in [(thief, 1070), (victim, 100)] {
+            assert_eq!(world.memory_at(id, 203).unwrap(), -energy);
+            assert_eq!(world.memory_at(id, 204).unwrap(), energy);
+        }
+    }
+
+    #[test]
     fn equal_integer_eye_strength_uses_bucket_order_before_slot_order() {
         let mut world = world();
         let observer = bot(&mut world, [3990.0, 3999.0], 100.0);

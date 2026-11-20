@@ -13215,8 +13215,11 @@ fn apply_tie_resource(
     };
     if result.is_some() {
         let native_energy_transfer = native.is_some() && location == -1;
-        source.materials.previous_energy = source.materials.energy;
-        target.materials.previous_energy = target.materials.energy;
+        // In the native energy path, WriteSenses refreshes the prior-cycle energy.
+        if !native_energy_transfer {
+            source.materials.previous_energy = source.materials.energy;
+            target.materials.previous_energy = target.materials.energy;
+        }
         source
             .materials
             .publish_for_profile(&mut source.program.memory, native.is_some());
