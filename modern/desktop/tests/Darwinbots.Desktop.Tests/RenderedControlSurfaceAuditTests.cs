@@ -761,7 +761,20 @@ public sealed class RenderedControlSurfaceAuditTests
 
             var exitWindow = new SetupWindow(storage);
             ShowForInteraction(exitWindow, 1280, 820);
-            ActivateMenu(Named<MenuItem>(exitWindow, "ExitMenuItem"));
+            var width = Named<NumericUpDown>(exitWindow, "WorldWidth");
+            width.Value = 18_000;
+            var exit = Named<MenuItem>(exitWindow, "ExitMenuItem");
+            ActivateMenu(exit);
+            var quit = Assert.Single(exitWindow.OwnedWindows.OfType<QuitConfirmationWindow>());
+            Assert.Equal("Are you sure you want to quit?", Named<TextBlock>(quit, "QuitMessage").Text);
+            Click(quit, Named<Button>(quit, "NoButton"));
+            Assert.True(exitWindow.IsVisible);
+            Assert.Equal(18_000m, width.Value);
+            Assert.Empty(exitWindow.OwnedWindows);
+
+            ActivateMenu(exit);
+            quit = Assert.Single(exitWindow.OwnedWindows.OfType<QuitConfirmationWindow>());
+            Click(quit, Named<Button>(quit, "YesButton"));
             Assert.False(exitWindow.IsVisible);
         }, CancellationToken.None);
     }
