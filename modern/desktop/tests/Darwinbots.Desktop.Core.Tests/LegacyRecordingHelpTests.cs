@@ -6,6 +6,28 @@ namespace Darwinbots.Desktop.Core.Tests;
 public sealed class LegacyRecordingHelpTests
 {
     [Fact]
+    public void GenomeRecordsKeepQuotesInDetokenizedDnaComments()
+    {
+        const string dna = "start stop end\n\n  '#hash: abc\"def";
+        var text = $"{Db2GenomeRecordFile.Header}\n1,0,Fixture,0,0,0,0,0,1,0,0,0,0,0\n{dna}\n2,0,Fixture,0,0,0,0,0,1,0,0,0,0,0\nend\n";
+
+        var records = Db2GenomeRecordFile.Decode(text);
+
+        Assert.Equal(new ulong[] { 1, 2 }, records.Select(record => record.Id));
+        Assert.Equal(dna, records[0].Dna);
+    }
+
+    [Fact]
+    public void GenomeRecordsStillRejectUnterminatedMetadata()
+    {
+        var text = $"{Db2GenomeRecordFile.Header}\n1,0,Fixture,0,0,0,0,0,1,0,0,0,0,0\nend\n2,0,\"Unterminated\n";
+
+        var error = Assert.Throws<InvalidDataException>(() => Db2GenomeRecordFile.Decode(text));
+
+        Assert.Contains("CSV is unterminated", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LegacyRecordingFormatAndLocalHelpRoutesResolveWithoutBrowserAccess()
     {
         var organism = new OrganismSnapshot(7, 3, [12.5f, 34.5f], [1f, -2f], 875, 19, Body: 1)
