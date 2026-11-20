@@ -670,6 +670,8 @@ public sealed class WorldViewport : Control
     {
         var scaleX = ScaleX * _zoom;
         var scaleY = ScaleY * _zoom;
+        var visibleWorldWidth = Math.Max(1.0, _snapshot.WorldSize[0] / _zoom);
+        var nativeDrawWidth = Math.Clamp(Math.Floor(50.0 / (visibleWorldWidth / 120.0) + 1.0), 1.0, 2.0);
         if (_snapshot.Ties.Count > 0)
         {
             var positions = _snapshot.Organisms.ToDictionary(
@@ -717,10 +719,8 @@ public sealed class WorldViewport : Control
             {
                 // Native saved-color shots use source PSet, with DrawWidth capped at two pixels.
                 // Creation policy never hides a particle already present in the world.
-                var visibleWorldWidth = Math.Max(1.0, _snapshot.WorldSize[0] / _zoom);
-                var width = Math.Clamp(Math.Floor(50.0 / (visibleWorldWidth / 120.0) + 1.0), 1.0, 2.0);
                 context.FillRectangle(new SolidColorBrush(color),
-                    new Rect(Math.Floor(end.X), Math.Floor(end.Y), width, width));
+                    new Rect(Math.Floor(end.X), Math.Floor(end.Y), nativeDrawWidth, nativeDrawWidth));
                 continue;
             }
             var pen = new Pen(new SolidColorBrush(color), drawFlash ? 1.2 : 1.0);
@@ -746,8 +746,20 @@ public sealed class WorldViewport : Control
                 obstacle.Minimum[1] * scaleY + _pan.Y,
                 (obstacle.Maximum[0] - obstacle.Minimum[0]) * scaleX,
                 (obstacle.Maximum[1] - obstacle.Minimum[1]) * scaleY);
-            context.FillRectangle(new SolidColorBrush(Color.FromUInt32(obstacle.Color), Math.Clamp(obstacle.Opacity, 0f, 1f)), rectangle);
+            var color = Color.FromUInt32(obstacle.Color);
             var selected = _selectedFeature is { Kind: WorldFeatureKind.Obstacle } feature && feature.Id == obstacle.Id;
+            if (color.A == byte.MaxValue && obstacle.Opacity is 0f or 1f)
+            {
+                // VB6 DrawObstacles uses each shape's color and the previous DrawShots pen width.
+                var brush = new SolidColorBrush(color);
+                var stroke = nativeDrawWidth / RenderScale;
+                context.DrawRectangle(obstacle.Opacity == 0f ? null : brush, new Pen(brush, stroke), rectangle);
+                if (selected)
+                    context.DrawRectangle(null, new Pen(Brushes.White, stroke),
+                        rectangle.Inflate(new Thickness(2 * scaleX, 2 * scaleY)));
+                continue;
+            }
+            context.FillRectangle(new SolidColorBrush(color, Math.Clamp(obstacle.Opacity, 0f, 1f)), rectangle);
             context.DrawRectangle(null, new Pen(new SolidColorBrush(Color.Parse(selected ? "#202725" : "#69716D")), selected ? 2.4 : 1.2), rectangle);
         }
         foreach (var teleporter in _snapshot.Teleporters)
