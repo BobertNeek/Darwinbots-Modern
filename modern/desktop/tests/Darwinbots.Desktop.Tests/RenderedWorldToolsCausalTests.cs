@@ -338,20 +338,30 @@ public sealed class RenderedWorldToolsCausalTests
                     Assert.InRange(shape.Color & 0xff, 0u, 1u);
                 });
 
-                menu.FindCommandItem(LegacyCommandId.ObjectsTrashCompactor)!
-                    .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                var compactor = menu.FindCommandItem(LegacyCommandId.ObjectsTrashCompactor)!;
+                compactor.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                 await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 22,
                     () => "The trash compactor command did not add two walls.");
                 var walls = session.LatestSnapshot.Obstacles.Skip(20).ToArray();
                 Assert.Equal([-999f, -80f], walls[0].Minimum);
                 Assert.Equal([1_099f, -80f], walls[1].Minimum);
-                Assert.Equal([2f, 0f], walls[0].Drift);
-                Assert.Equal([-2f, 0f], walls[1].Drift);
+                Assert.All(walls, wall => Assert.Equal([0f, 0f], wall.Drift));
+                Assert.All(walls, wall => Assert.InRange(wall.Color & 0xff, 0u, 1u));
                 Assert.Equal(tick, session.LatestSnapshot.Tick);
                 await session.StepAsync(1);
-                var movedWalls = session.LatestSnapshot.Obstacles.Skip(20).ToArray();
-                Assert.Equal([-997f, -80f], movedWalls[0].Minimum);
-                Assert.Equal([1_097f, -80f], movedWalls[1].Minimum);
+                Assert.Equal([-999f, -80f], session.LatestSnapshot.Obstacles[20].Minimum);
+                Assert.Equal([1_099f, -80f], session.LatestSnapshot.Obstacles[21].Minimum);
+
+                Assert.Equal(new Db2ShapeDriftOptions(false, false, 37), await session.SetShapeDriftAsync(null, null, 37));
+                compactor.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                await WaitFor(() => session.LatestSnapshot.Obstacles.Count == 24,
+                    () => "The trash compactor did not use the edited live rate.");
+                var newWalls = session.LatestSnapshot.Obstacles.Skip(22).ToArray();
+                Assert.Equal([3.7f, 0f], newWalls[0].Drift);
+                Assert.Equal([-3.7f, 0f], newWalls[1].Drift);
+                await session.StepAsync(1);
+                Assert.Equal([-995.3f, -80f], session.LatestSnapshot.Obstacles[22].Minimum);
+                Assert.Equal([1095.3f, -80f], session.LatestSnapshot.Obstacles[23].Minimum);
             }
             finally { window.Close(); }
         }, CancellationToken.None);

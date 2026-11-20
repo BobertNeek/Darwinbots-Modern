@@ -64,6 +64,12 @@ pub(crate) struct TrashCompactor {
     pub(crate) left: u32,
     pub(crate) right: u32,
     pub(crate) speed: f32,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub(crate) native_created: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 impl TrashCompactor {

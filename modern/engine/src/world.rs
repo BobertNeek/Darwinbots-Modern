@@ -39,6 +39,7 @@ use std::fs;
 use std::time::Instant;
 
 pub(crate) const DEFAULT_NATIVE_SHAPE_DIMENSIONS: [u16; 2] = [200; 2];
+const MAX_NATIVE_SHAPES: usize = 1000;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -6289,6 +6290,10 @@ impl Engine {
                 "maze dimensions are outside the Shapes slider ranges".into(),
             ));
         }
+        self.native_field_dimensions()
+    }
+
+    fn native_field_dimensions(&self) -> Result<Option<[f64; 2]>, EngineError> {
         if self.native_random.is_none() {
             return Ok(None);
         }
@@ -6299,7 +6304,7 @@ impl Engine {
             .any(|extent| !(1.0..=f64::from(i32::MAX)).contains(extent))
         {
             return Err(EngineError::Invariant(
-                "native mazes require valid field dimensions".into(),
+                "native shape creation requires valid field dimensions".into(),
             ));
         }
         Ok(Some(field))
@@ -6406,7 +6411,7 @@ impl Engine {
         let Some(random) = self.native_random.as_mut() else {
             return Ok(None);
         };
-        let capacity = maximum.min(1000_usize.saturating_sub(self.obstacles.len()));
+        let capacity = maximum.min(MAX_NATIVE_SHAPES.saturating_sub(self.obstacles.len()));
         let last_id = self
             .obstacles
             .iter()
@@ -6580,6 +6585,7 @@ impl Engine {
             left: left.id,
             right: right.id,
             speed,
+            native_created: false,
         });
         if self.config.shape_drift.is_some() && self.native_random.is_some() {
             self.native_obstacle_extents.insert(left.id, left.extents());
@@ -6589,6 +6595,39 @@ impl Engine {
         self.obstacles.extend([left, right]);
         self.publish_snapshot();
         Ok(())
+    }
+
+    pub(crate) fn add_native_trash_compactor(&mut self) -> Result<Option<usize>, EngineError> {
+        let Some([width, height]) = self.native_field_dimensions()? else {
+            return Ok(None);
+        };
+        // A pair needs two slots. VB6 could index -1 after a failed NewObstacle.
+        if MAX_NATIVE_SHAPES.saturating_sub(self.obstacles.len()) < 2 {
+            return Ok(Some(0));
+        }
+        // The original unsuffixed multipliers are Double before storage as Single.
+        let y = (height * -0.1) as f32;
+        let wall_height = (height * 1.2) as f32;
+        let rate = self.config.shape_drift.map_or(0, |drift| drift.rate);
+        let speed = (f64::from(rate) * 0.1) as f32;
+        let start = self.obstacles.len();
+        let added = self.append_native_shapes(2, |shapes| {
+            shapes.add([(-999.0, 1000.0), (y, wall_height)]);
+            shapes.add([((width - 1.0) as f32, 1000.0), (y, wall_height)]);
+        })?;
+        let [left, right] = &mut self.obstacles[start..] else {
+            unreachable!("native compactor walls appended together")
+        };
+        left.drift[0] = speed;
+        right.drift[0] = if rate == 0 { 0.0 } else { -speed };
+        self.trash_compactor = Some(TrashCompactor {
+            left: left.id,
+            right: right.id,
+            speed,
+            native_created: true,
+        });
+        self.publish_snapshot();
+        Ok(added)
     }
 
     pub fn update_obstacle(&mut self, obstacle: Obstacle) -> Result<(), EngineError> {
@@ -13619,7 +13658,8 @@ impl Engine {
     pub(crate) fn restore(mut engine: Self) -> Result<Self, EngineError> {
         if engine.trash_compactor.is_some_and(|compactor| {
             !compactor.speed.is_finite()
-                || compactor.speed <= 0.0
+                || (!compactor.native_created && compactor.speed <= 0.0)
+                || (compactor.native_created && engine.native_random.is_none())
                 || compactor.wall_indices(&engine.obstacles).is_none()
         }) {
             return Err(EngineError::InvalidSave(
@@ -14629,6 +14669,94 @@ const fn default_snapshot_schema_version() -> u32 {
 mod tests {
     use super::*;
     use crate::SaveFile;
+
+    #[test]
+    fn native_trash_compactor_uses_current_rate_appearance_and_exact_wall_extents() {
+        for (rate, speed) in [
+            (None, 0.0_f32),
+            (Some(0), 0.0),
+            (Some(37), 3.7),
+            (Some(-13), -1.3),
+        ] {
+            let mut world = Engine::new_native(EngineConfig {
+                world_width: 16_000.0,
+                world_height: 12_000.0,
+                shape_creation: Some(crate::ShapeCreationSettings {
+                    black: false,
+                    transparent: true,
+                    see_through: true,
+                    absorb_shots: false,
+                }),
+                shape_drift: rate.map(|rate| crate::ShapeDriftSettings {
+                    rate,
+                    ..Default::default()
+                }),
+                ..EngineConfig::testing()
+            })
+            .unwrap();
+            world.native_random = Some(Default::default());
+            assert_eq!(world.add_native_trash_compactor().unwrap(), Some(2));
+            let [left, right] = world.obstacles.as_slice() else {
+                panic!("expected two walls")
+            };
+            assert_eq!(
+                (left.minimum, left.maximum, left.color),
+                ([-999.0, -1200.0], [1.0, 13200.0], 0xff27_b500)
+            );
+            assert_eq!(
+                (right.minimum, right.maximum, right.color),
+                ([15999.0, -1200.0], [16999.0, 13200.0], 0xff6f_4a00)
+            );
+            assert_eq!(left.drift, [speed, 0.0]);
+            assert_eq!(
+                right.drift[0].to_bits(),
+                (if speed == 0.0 { 0.0 } else { -speed }).to_bits()
+            );
+            for wall in [left, right] {
+                assert_eq!(world.native_obstacle_extents[&wall.id], [1000.0, 14400.0]);
+                assert_eq!(wall.opacity, 0.0);
+                assert_eq!(wall.vision_policy, ShapeVisionPolicy::SeeThrough);
+                assert_eq!(wall.shot_policy, ShapeShotPolicy::Reflect);
+            }
+            assert_eq!(world.native_random.as_ref().unwrap().state(), 0xc6_555e);
+            let mut restored = SaveFile::decode(&SaveFile::encode(&world).unwrap()).unwrap();
+            assert_eq!(restored.trash_compactor.unwrap().speed, speed);
+            assert_eq!(restored.obstacles, world.obstacles);
+            restored.move_obstacles();
+            world.move_obstacles();
+            assert_eq!(restored.obstacles, world.obstacles);
+        }
+    }
+
+    #[test]
+    fn native_trash_compactor_requires_two_slots_without_disturbing_existing_pair() {
+        let mut world = Engine::new_native(EngineConfig::testing()).unwrap();
+        let mut left = Obstacle::new(1, [0.0; 2], [10.0; 2]);
+        let mut right = Obstacle::new(2, [20.0, 0.0], [30.0, 10.0]);
+        assert!(
+            world
+                .add_trash_compactor(left.clone(), right.clone())
+                .is_err()
+        );
+        left.drift[0] = 2.0;
+        right.drift[0] = -2.0;
+        world.add_trash_compactor(left, right).unwrap();
+        world
+            .obstacles
+            .extend((3..=999).map(|id| Obstacle::new(id, [0.0; 2], [1.0; 2])));
+        let before = SaveFile::encode(&world).unwrap();
+        assert_eq!(world.add_native_trash_compactor().unwrap(), Some(0));
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+
+        world.remove_obstacle(999).unwrap();
+        assert_eq!(world.add_native_trash_compactor().unwrap(), Some(2));
+        let pair = world.trash_compactor.unwrap();
+        assert_eq!((pair.left, pair.right), (999, 1000));
+        assert!(pair.native_created);
+        let before = SaveFile::encode(&world).unwrap();
+        assert_eq!(world.add_native_trash_compactor().unwrap(), Some(0));
+        assert_eq!(SaveFile::encode(&world).unwrap(), before);
+    }
 
     #[test]
     fn native_spiral_preserves_wall_order_and_signed_last_wall() {

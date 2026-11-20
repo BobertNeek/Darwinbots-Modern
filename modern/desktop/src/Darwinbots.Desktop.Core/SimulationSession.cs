@@ -240,6 +240,13 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task AddTrashCompactorAsync(ObstacleSnapshot left, ObstacleSnapshot right, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddTrashCompactor(left, right), cancellationToken);
 
+    public async Task<int?> AddNativeTrashCompactorAsync(CancellationToken cancellationToken = default)
+    {
+        int? added = null;
+        await Enqueue(engine => added = engine.AddNativeTrashCompactor(), cancellationToken).ConfigureAwait(false);
+        return added;
+    }
+
     public async Task<(int Added, Db2ShapeDriftOptions Drift)?> AddNativePolarIceAsync(CancellationToken cancellationToken = default)
     {
         (int Added, Db2ShapeDriftOptions Drift)? result = null;
