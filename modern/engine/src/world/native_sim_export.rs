@@ -692,6 +692,11 @@ impl Engine {
 
     fn write_native_objects(&self, t: &mut NativeSimulationTail) -> Result<(), EngineError> {
         flag(t, "shapes_visible", self.config.shapes_visible)?;
+        if let Some(drift) = self.config.shape_drift {
+            flag(t, "shapes_horizontal", drift.horizontal)?;
+            flag(t, "shapes_vertical", drift.vertical)?;
+            number(t, "shape_drift", f64::from(drift.rate))?;
+        }
         if let Some(first) = self.obstacles.first() {
             if self.obstacles.iter().any(|o| {
                 o.vision_policy != first.vision_policy || o.shot_policy != first.shot_policy
@@ -713,12 +718,13 @@ impl Engine {
         }
         for (i, o) in self.obstacles.iter().enumerate() {
             let p = format!("obstacle[{i}].");
+            let [width, height] = self.obstacle_extents(o);
             flag(t, &(p.clone() + "exists"), true)?;
             for (name, value) in [
                 ("x", o.minimum[0] as f64),
                 ("y", o.minimum[1] as f64),
-                ("width", (o.maximum[0] - o.minimum[0]) as f64),
-                ("height", (o.maximum[1] - o.minimum[1]) as f64),
+                ("width", f64::from(width)),
+                ("height", f64::from(height)),
                 ("color", bgr(o.color)),
                 ("vx", o.drift[0] as f64),
                 ("vy", o.drift[1] as f64),

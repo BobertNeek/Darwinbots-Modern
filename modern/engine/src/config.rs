@@ -223,6 +223,13 @@ impl Default for VegetationSettings {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShapeDriftSettings {
+    pub horizontal: bool,
+    pub vertical: bool,
+    pub rate: i16,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EngineConfig {
     pub seed: u64,
@@ -241,6 +248,8 @@ pub struct EngineConfig {
     pub fixed_bot_radii: bool,
     #[serde(default)]
     pub shapes_visible: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape_drift: Option<ShapeDriftSettings>,
     #[serde(default)]
     pub axis_topology: Option<[bool; 2]>,
     pub backend: BackendPreference,
@@ -307,6 +316,7 @@ impl Default for EngineConfig {
             toroidal_world: default_toroidal_world(),
             fixed_bot_radii: false,
             shapes_visible: false,
+            shape_drift: None,
             axis_topology: None,
             backend: BackendPreference::Auto,
             allow_cpu_fallback: true,
