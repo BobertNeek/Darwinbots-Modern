@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Darwinbots.Desktop.Views.ShapesWindow"
+        Title="Shapes"
+        Width="400"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="20" Spacing="12">
+        <TextBlock Text="Dimensions" FontWeight="SemiBold"/>
+        <Grid ColumnDefinitions="70,*,60" RowDefinitions="Auto,Auto" RowSpacing="12" ColumnSpacing="8">
+            <TextBlock Text="Height" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" x:Name="ShapeHeightSlider"
+                    AutomationProperties.Name="Shape height"
+                    Minimum="1" Maximum="1000" Value="200" TickFrequency="1"
+                    SmallChange="1" LargeChange="50" IsSnapToTickEnabled="True"/>
+            <TextBlock Grid.Column="2" x:Name="ShapeHeightValue"
+                       VerticalAlignment="Center" HorizontalAlignment="Right"/>
+            <TextBlock Grid.Row="1" Text="Width" VerticalAlignment="Center"/>
+            <Slider Grid.Row="1" Grid.Column="1" x:Name="ShapeWidthSlider"
+                    AutomationProperties.Name="Shape width"
+                    Minimum="1" Maximum="1000" Value="200" TickFrequency="1"
+                    SmallChange="1" LargeChange="50" IsSnapToTickEnabled="True"/>
+            <TextBlock Grid.Row="1" Grid.Column="2" x:Name="ShapeWidthValue"
+                       VerticalAlignment="Center" HorizontalAlignment="Right"/>
+        </Grid>
+        <TextBlock Text="Movement" FontWeight="SemiBold"/>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <CheckBox x:Name="HorizontalDriftCheck" Content="Allow Horizontal Drift"/>
+            <CheckBox x:Name="VerticalDriftCheck" Content="Allow Vertical Drift"/>
+        </StackPanel>
+        <Grid ColumnDefinitions="70,*,60" ColumnSpacing="8">
+            <TextBlock Text="Drift Rate" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" x:Name="DriftRateSlider"
+                    AutomationProperties.Name="Shape drift rate"
+                    Minimum="1" Maximum="1000" Value="1" TickFrequency="1"
+                    SmallChange="1" LargeChange="50" IsSnapToTickEnabled="True"/>
+            <TextBlock Grid.Column="2" x:Name="DriftRateValue"
+                       VerticalAlignment="Center" HorizontalAlignment="Right"/>
+        </Grid>
+        <TextBlock x:Name="ShapeStatus" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="AddShapeButton" Content="Add Shape" Click="AddShape_Click"/>
+            <Button x:Name="CloseButton" Content="OK" Click="Close_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

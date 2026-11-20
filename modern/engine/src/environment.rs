@@ -83,24 +83,31 @@ impl TrashCompactor {
         right: &mut Obstacle,
         world_size: [f32; 2],
         wall_extents: [[f32; 2]; 2],
+        native_rate: Option<i16>,
     ) {
+        let (speed, rebound) = native_rate.map_or((self.speed, self.speed * 0.1), |rate| {
+            (
+                (f64::from(rate) * 0.1) as f32,
+                (f64::from(rate) * 0.01) as f32,
+            )
+        });
         // Obstacles.bas applies the coupled rules before the ordinary movement.
         if left.minimum[0] > right.minimum[0] + 400.0 {
             left.drift[0] = -left.drift[0];
             right.drift[0] = -right.drift[0];
         }
         if left.minimum[0] <= -wall_extents[0][0] {
-            left.drift[0] = self.speed;
-            right.drift[0] = -self.speed;
+            left.drift[0] = speed;
+            right.drift[0] = if speed == 0.0 { 0.0 } else { -speed };
         }
         for (wall, extents) in [left, right].into_iter().zip(wall_extents) {
             for (axis, extent) in world_size.into_iter().enumerate() {
                 let span = extents[axis];
                 let minimum = wall.minimum[axis] + wall.drift[axis];
                 if minimum < -span {
-                    wall.drift[axis] = self.speed * 0.1;
+                    wall.drift[axis] = rebound;
                 } else if minimum > extent {
-                    wall.drift[axis] = -self.speed * 0.1;
+                    wall.drift[axis] = if rebound == 0.0 { 0.0 } else { -rebound };
                 }
                 wall.minimum[axis] = minimum.clamp(-span, extent);
                 wall.maximum[axis] = wall.minimum[axis] + span;

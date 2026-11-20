@@ -218,8 +218,35 @@ public sealed class SimulationSession : IAsyncDisposable
     public Task AddObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddObstacle(obstacle), cancellationToken);
 
+    public async Task<int?> AddNativeRandomObstaclesAsync(
+        int count,
+        ShapeCreationDimensions dimensions,
+        CancellationToken cancellationToken = default)
+    {
+        int? added = null;
+        await Enqueue(engine => added = engine.AddNativeRandomObstacles(count, dimensions), cancellationToken).ConfigureAwait(false);
+        return added;
+    }
+
+    public async Task<int?> AddNativeCenteredObstacleAsync(
+        ShapeCreationDimensions dimensions,
+        CancellationToken cancellationToken = default)
+    {
+        int? added = null;
+        await Enqueue(engine => added = engine.AddNativeCenteredObstacle(dimensions), cancellationToken).ConfigureAwait(false);
+        return added;
+    }
+
     public Task AddTrashCompactorAsync(ObstacleSnapshot left, ObstacleSnapshot right, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.AddTrashCompactor(left, right), cancellationToken);
+
+    public async Task<Db2ShapeDriftOptions?> SetShapeDriftAsync(
+        bool? horizontal, bool? vertical, short? rate, CancellationToken cancellationToken = default)
+    {
+        Db2ShapeDriftOptions? settings = null;
+        await Enqueue(engine => settings = engine.SetShapeDrift(horizontal, vertical, rate), cancellationToken).ConfigureAwait(false);
+        return settings;
+    }
 
     public Task UpdateObstacleAsync(ObstacleSnapshot obstacle, CancellationToken cancellationToken = default) =>
         Enqueue(engine => engine.UpdateObstacle(obstacle), cancellationToken);

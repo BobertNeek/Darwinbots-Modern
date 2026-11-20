@@ -16,6 +16,8 @@ public enum ZerobotSustenance
     None,
 }
 
+public sealed record Db2ShapeCreationOptions(bool Black, bool Transparent, bool SeeThrough, bool AbsorbShots);
+
 public sealed record WorldSetupOptions
 {
     public StartingMode StartingMode { get; init; } = StartingMode.StarterBotsAndVegetables;
@@ -51,6 +53,8 @@ public sealed record WorldSetupOptions
     public float SpeciationGeneticDistancePercent { get; init; } = 20f;
     public bool ToroidalWorld { get; init; } = true;
     public bool ShapesVisible { get; init; }
+    public Db2ShapeCreationOptions? ShapeCreation { get; init; }
+    public Db2ShapeDriftOptions? ShapeDrift { get; init; }
     public bool FixedBotRadii { get; init; }
     public bool TiesEnabled { get; init; } = true;
     public bool RobotFixingAllowed { get; init; } = true;

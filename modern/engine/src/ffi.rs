@@ -206,9 +206,25 @@ enum EngineCommand {
         minimum: [f32; 2],
         maximum: [f32; 2],
     },
+    AddNativeRandomObstacles {
+        count: usize,
+        #[serde(default)]
+        dimensions_permille: Option<[u16; 2]>,
+    },
+    AddNativeCenteredObstacle {
+        dimensions_permille: [u16; 2],
+    },
     AddTrashCompactor {
         left: crate::Obstacle,
         right: crate::Obstacle,
+    },
+    SetShapeDrift {
+        #[serde(default)]
+        horizontal: Option<bool>,
+        #[serde(default)]
+        vertical: Option<bool>,
+        #[serde(default)]
+        rate: Option<i16>,
     },
     UpdateObstacle {
         obstacle: crate::Obstacle,
@@ -981,9 +997,30 @@ fn db_engine_command_batch_impl(
             } => engine
                 .add_obstacle(crate::Obstacle::new(id, minimum, maximum))
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::AddNativeRandomObstacles {
+                count,
+                dimensions_permille,
+            } => engine
+                .add_native_random_obstacles(
+                    count,
+                    dimensions_permille.unwrap_or(crate::world::DEFAULT_NATIVE_SHAPE_DIMENSIONS),
+                )
+                .map(|added| serde_json::json!(added)),
+            EngineCommand::AddNativeCenteredObstacle {
+                dimensions_permille,
+            } => engine
+                .add_native_centered_obstacle(dimensions_permille)
+                .map(|added| serde_json::json!(added)),
             EngineCommand::AddTrashCompactor { left, right } => engine
                 .add_trash_compactor(left, right)
                 .map(|_| serde_json::Value::Null),
+            EngineCommand::SetShapeDrift {
+                horizontal,
+                vertical,
+                rate,
+            } => engine
+                .set_shape_drift(horizontal, vertical, rate)
+                .map(|settings| serde_json::json!(settings)),
             EngineCommand::UpdateObstacle { obstacle } => engine
                 .update_obstacle(obstacle)
                 .map(|_| serde_json::Value::Null),

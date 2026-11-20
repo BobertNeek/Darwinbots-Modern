@@ -119,6 +119,10 @@ public sealed partial class MainWindow : Window
     private const string RgbMonitorToolKey = "rgb-memory-monitor";
     private readonly PersistentToolWindowRegistry _toolWindows;
     private readonly SeededSpawnPlacement _randomShapePlacement;
+    private ShapeCreationDimensions _shapeDimensions = ShapeCreationDimensions.Default;
+    private Db2ShapeDriftOptions? _shapeDrift;
+    private int _shapeWorldGeneration;
+    private ShapesWindow? _shapesWindow;
     private readonly Stopwatch _runtimeClock = new();
     private double _activeCostMultiplier;
     private TrayIcon? _trayIcon;
@@ -141,6 +145,7 @@ public sealed partial class MainWindow : Window
     {
         _startupArguments = arguments.ToArray();
         _setup = setup with { NativeGaussianSpare = null, NativeSunChange = null, NativeProcessCaches = null };
+        _shapeDrift = setup.ShapeDrift;
         _randomShapePlacement = new SeededSpawnPlacement(setup.Seed ^ 0x4d42UL);
         _initialNativeGaussianSpare = setup.NativeGaussianSpare;
         _initialNativeSunChange = setup.NativeSunChange;
@@ -743,7 +748,7 @@ public sealed partial class MainWindow : Window
             async _ => await ToggleTiesAsync());
         handlers[LegacyCommandId.ObjectsNewShape] = Handler(
             () => LegacyCommandState.Available,
-            _ => Task.FromResult(BeginObjectPlacementCommand(LegacyCommandId.ObjectsNewShape)));
+            _ => OpenShapesWindowAsync());
         handlers[LegacyCommandId.ObjectsDeleteShape] = Handler(
             () => FeatureState(WorldFeatureKind.Obstacle),
             async _ => await RemoveSelectedFeatureCommandAsync());
@@ -1577,6 +1582,7 @@ public sealed partial class MainWindow : Window
         GlobalSettings = _globalSettings,
         Recording = _liveEnvironment.Recording ?? new(),
         ShapesVisible = _liveEnvironment.ShapesVisible ?? _setup.ShapesVisible,
+        ShapeDrift = _shapeDrift,
     };
 
     private async Task<LegacyCommandResult> ShowSelectedRobotInfoAsync()
@@ -1809,13 +1815,79 @@ public sealed partial class MainWindow : Window
         return LegacyCommandResult.Success($"DELETED {obstacles.Length} SHAPE(S)");
     }
 
-    private async Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count)
+    private async Task<LegacyCommandResult> OpenShapesWindowAsync()
     {
-        if (_session is null) return LegacyCommandResult.Failure("ENGINE IS NOT READY");
-        var size = _session.LatestSnapshot.WorldSize;
-        var shapes = _randomShapePlacement.NextObstacles(count, size[0], size[1]);
-        await AddObstaclesAsync(shapes);
-        return LegacyCommandResult.Success($"ADDED {count} RANDOM SHAPES");
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is { } session)
+                _shapeDrift = (await session.ReadConfigurationAsync())?.ShapeDrift;
+            _shapesWindow = _toolWindows.ShowOrActivate("shapes", () =>
+            {
+                var window = new ShapesWindow(
+                    _shapeDimensions,
+                    dimensions => _shapeDimensions = dimensions,
+                    () => AddGeneratedShapesAsync(1, centered: true),
+                    _shapeDrift,
+                    SetShapeDriftAsync);
+                window.Closed += (_, _) => _shapesWindow = null;
+                return window;
+            });
+            return LegacyCommandResult.Success("SHAPES OPENED");
+        }
+        finally { _advanceGate.Release(); }
+    }
+
+    private async Task<LegacyCommandResult> SetShapeDriftAsync(bool? horizontal, bool? vertical, short? rate)
+    {
+        if (_session is not { } session || _loadingSimulation)
+            return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+        var generation = _shapeWorldGeneration;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_loadingSimulation || _navigationInFlight || !IsVisible || _session != session
+                || generation != _shapeWorldGeneration)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+            if (await session.SetShapeDriftAsync(horizontal, vertical, rate) is not { } settings)
+                return LegacyCommandResult.Failure("SHAPE MOVEMENT SETTINGS UNAVAILABLE");
+            _shapeDrift = settings;
+            return LegacyCommandResult.Success(string.Empty);
+        }
+        finally { _advanceGate.Release(); }
+    }
+
+    private Task<LegacyCommandResult> AddRandomObstaclesCommandAsync(int count) =>
+        AddGeneratedShapesAsync(count, centered: false);
+
+    private async Task<LegacyCommandResult> AddGeneratedShapesAsync(int count, bool centered)
+    {
+        var dimensions = _shapeDimensions;
+        await _advanceGate.WaitAsync();
+        try
+        {
+            if (_session is not { } session || _navigationInFlight || !IsVisible)
+                return LegacyCommandResult.Failure("ENGINE IS NOT READY");
+
+            var added = centered
+                ? await session.AddNativeCenteredObstacleAsync(dimensions)
+                : await session.AddNativeRandomObstaclesAsync(count, dimensions);
+            if (added is null)
+            {
+                var size = session.LatestSnapshot.WorldSize;
+                (float[] Minimum, float[] Maximum)[] shapes = centered
+                    ? [_randomShapePlacement.NextCenteredObstacle(size[0], size[1], dimensions)]
+                    : _randomShapePlacement.NextObstacles(count, size[0], size[1], dimensions);
+                await AddObstaclesAsync(shapes);
+                added = count;
+            }
+
+            if (!centered) return LegacyCommandResult.Success($"ADDED {added} RANDOM SHAPES");
+            return added == 1
+                ? LegacyCommandResult.Success("ADDED SHAPE")
+                : LegacyCommandResult.Failure("SHAPE LIMIT REACHED");
+        }
+        finally { _advanceGate.Release(); }
     }
 
     private async Task<LegacyCommandResult> DeleteRandomObstaclesCommandAsync(int count)
@@ -2126,6 +2198,8 @@ public sealed partial class MainWindow : Window
         try
         {
             _liveEnvironment = configuration.Environment;
+            _shapeDrift = configuration.ShapeDrift;
+            _shapesWindow?.SetDrift(_shapeDrift);
             SynchronizeRecordingPreferences(resetCorpseCursor: true);
             _lastAutomaticSaveTick = _session.LatestSnapshot.Tick;
             _activeCostMultiplier = configuration.GlobalCostMultiplier;
@@ -2952,6 +3026,9 @@ public sealed partial class MainWindow : Window
             if (_session is null) return;
             _loadingSimulation = true;
             await _session.LoadAsync(save);
+            _shapeWorldGeneration++;
+            _shapeDimensions = ShapeCreationDimensions.Default;
+            _shapesWindow?.SetDimensions(_shapeDimensions);
             // A rejected load publishes no snapshot and must keep user-closed
             // graphs closed. Loading publications defer this until success.
             _automaticEvolutionGraphBoundary = null;

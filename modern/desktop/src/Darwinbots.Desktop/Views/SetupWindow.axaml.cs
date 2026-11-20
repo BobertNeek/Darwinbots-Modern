@@ -23,6 +23,9 @@ public sealed partial class SetupWindow : Window
     private GlobalSettings _profileSettings = new();
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
+    private Db2ShapeCreationOptions? _shapeCreation;
+    private Db2ShapeDriftOptions? _shapeDrift;
+    private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
     private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -201,6 +204,8 @@ public sealed partial class SetupWindow : Window
             }
         }
         var speed = Speed.SelectedIndex switch { 0 => 1u, 1 => 5u, 2 => 20u, _ => 100u };
+        float fieldWidth = (float)(WorldWidth.Value ?? 16_000);
+        float fieldHeight = (float)(WorldHeight.Value ?? 12_000);
         return new WorldSetupOptions
         {
             StartingMode = CurrentMode(),
@@ -210,8 +215,8 @@ public sealed partial class SetupWindow : Window
             Seed = (ulong)(Seed.Value ?? 1),
             PopulationCapacity = (int)(PopulationCap.Value ?? 25_000),
             VegetablePopulationCap = (int)(VegetablePopulationCap.Value ?? 500),
-            WorldWidth = (float)(WorldWidth.Value ?? 16_000),
-            WorldHeight = (float)(WorldHeight.Value ?? 12_000),
+            WorldWidth = fieldWidth,
+            WorldHeight = fieldHeight,
             MetabolismCost = _environment.MetabolismCost,
             VegetableEnergyPerTick = _environment.VegetableEnergyPerTick,
             SunlightEnergy = _environment.SunlightEnergy,
@@ -233,6 +238,10 @@ public sealed partial class SetupWindow : Window
             Species = species,
             GlobalSettings = _globalSettings,
             MutationSettings = _mutationSettings,
+            ShapesVisible = _environment.ShapesVisible ?? false,
+            ShapeCreation = _shapeCreation,
+            ShapeDrift = _shapeDrift,
+            Obstacles = _obstacles.Select(obstacle => obstacle.ResolveSetupBounds(fieldWidth, fieldHeight)).ToArray(),
             LegacySettingsFields = _legacySettingsFields,
         };
     }
@@ -403,6 +412,9 @@ public sealed partial class SetupWindow : Window
             Main = _globalSettings.Main with { SafeMode = _environment.Recording?.SafeModeBackup ?? false },
         };
         _mutationSettings = setup.MutationSettings;
+        _shapeCreation = setup.ShapeCreation;
+        _shapeDrift = setup.ShapeDrift;
+        _obstacles = setup.Obstacles;
         _legacySettingsFields = setup.LegacySettingsFields;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
@@ -423,6 +435,10 @@ public sealed partial class SetupWindow : Window
     private void NewWorld_Click(object? sender, RoutedEventArgs e)
     {
         _environment = EnvironmentUpdate.Default;
+        _shapeCreation = null;
+        _shapeDrift = null;
+        _obstacles = [];
+        _legacySettingsFields = null;
         ApplyGlobalSettings(_profileSettings);
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;

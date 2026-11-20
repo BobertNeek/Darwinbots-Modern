@@ -37,11 +37,14 @@ public interface IEngineClient : IDisposable
             request.Position);
     void SwitchBackend(string backend);
     void AddObstacle(ObstacleSnapshot obstacle);
+    int? AddNativeRandomObstacles(int count, ShapeCreationDimensions? dimensions = null) => null;
+    int? AddNativeCenteredObstacle(ShapeCreationDimensions dimensions) => null;
     void AddTrashCompactor(ObstacleSnapshot left, ObstacleSnapshot right)
     {
         AddObstacle(left);
         AddObstacle(right);
     }
+    Db2ShapeDriftOptions? SetShapeDrift(bool? horizontal, bool? vertical, short? rate) => null;
     void UpdateObstacle(ObstacleSnapshot obstacle);
     void RemoveObstacle(uint id);
     void AddTeleporter(TeleporterSnapshot teleporter);

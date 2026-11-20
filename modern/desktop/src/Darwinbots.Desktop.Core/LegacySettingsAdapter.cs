@@ -8,7 +8,9 @@ internal static class LegacySettingsAdapter
     internal static List<string> Encode(DesktopSettings settings)
     {
         // Original SaveSett has one shared shapesAbsorbShots Boolean.
-        string shotPolicy = settings.Obstacles.FirstOrDefault()?.ShotPolicy ?? "absorb";
+        var shapeCreation = settings.ShapeCreation;
+        string shotPolicy = settings.Obstacles.FirstOrDefault()?.ShotPolicy
+            ?? (shapeCreation?.AbsorbShots == false ? "reflect" : "absorb");
         if (settings.Obstacles.Any(o => o.ShotPolicy is not ("absorb" or "reflect"))
             || settings.Obstacles.Any(o => o.ShotPolicy != shotPolicy))
             throw new InvalidDataException("Original DB2 .set files support one global Absorb or Reflect shape shot policy; PassThrough, unknown policies, and mixed policies cannot be represented.");
@@ -142,10 +144,15 @@ internal static class LegacySettingsAdapter
         Number(tail + 10, vegetation.SunDownThreshold); Flag(tail + 11, vegetation.SunDownEnabled); Number(tail + 15, vegetation.SunThresholdMode);
         Flag(tail + 17 + 5 * count, settings.Shots.WasteShotsDoNotDecay);
         Flag(tail + 14, settings.FixedBotRadii); Flag(tail + 16, !settings.AsexualReproductionAllowed);
-        Flag(shapes, settings.Obstacles.All(o => o.Opacity == 0));
-        Flag(shapes + 1, false); Flag(shapes + 3, settings.Obstacles.Any(o => o.Drift[0] != 0));
-        Flag(shapes + 4, settings.Obstacles.Any(o => o.Drift[1] != 0));
-        Flag(shapes + 5, settings.Obstacles.All(o => o.VisionPolicy == "see_through"));
+        bool hasObstacles = settings.Obstacles.Count > 0;
+        if (hasObstacles) RequireShapeFieldSize(settings.WorldWidth, settings.WorldHeight);
+        Flag(shapes, hasObstacles ? settings.Obstacles.All(o => o.Opacity == 0) : shapeCreation?.Transparent == true);
+        Flag(shapes + 1, shapeCreation?.Black ?? false);
+        // Global random acceleration settings are independent of the row velocities.
+        Number(shapes + 2, settings.ShapeDrift?.Rate ?? 0);
+        Flag(shapes + 3, settings.ShapeDrift?.Horizontal ?? false);
+        Flag(shapes + 4, settings.ShapeDrift?.Vertical ?? false);
+        Flag(shapes + 5, hasObstacles ? settings.Obstacles.All(o => o.VisionPolicy == "see_through") : shapeCreation?.SeeThrough == true);
         Flag(shapes + 6, shotPolicy == "absorb");
         Flag(shapes + 7, settings.ShapesVisible); Number(shapes + 8, settings.Obstacles.Count);
         for (int i = 0; i < settings.Obstacles.Count; i++)
@@ -153,10 +160,12 @@ internal static class LegacySettingsAdapter
             var obstacle = settings.Obstacles[i];
             int o = shapes + 9 + i * 7;
             Number(o, ToVbColor(obstacle.Color));
-            Number(o + 1, obstacle.Maximum[0] - obstacle.Minimum[0]);
-            Number(o + 2, obstacle.Maximum[1] - obstacle.Minimum[1]);
+            // Original .set rows store field-relative position and extents.
+            Number(o + 1, (obstacle.Maximum[0] - obstacle.Minimum[0]) / settings.WorldWidth);
+            Number(o + 2, (obstacle.Maximum[1] - obstacle.Minimum[1]) / settings.WorldHeight);
             Number(o + 3, obstacle.Drift[0]); Number(o + 4, obstacle.Drift[1]);
-            Number(o + 5, obstacle.Minimum[0]); Number(o + 6, obstacle.Minimum[1]);
+            Number(o + 5, obstacle.Minimum[0] / settings.WorldWidth);
+            Number(o + 6, obstacle.Minimum[1] / settings.WorldHeight);
         }
         for (int i = 0; i < count; i++)
         {
@@ -172,6 +181,45 @@ internal static class LegacySettingsAdapter
 
     private static uint ToVbColor(uint color) => ((color & 0xff) << 16) | (color & 0xff00) | ((color >> 16) & 0xff);
     private static uint FromVbColor(int color) => 0xff000000 | ToVbColor(unchecked((uint)color));
+
+    private static void RequireShapeFieldSize(float width, float height)
+    {
+        if (!float.IsFinite(width) || !float.IsFinite(height) || width <= 0 || height <= 0)
+            throw new InvalidDataException("Original DB2 .set shape rows require positive finite field dimensions.");
+    }
+
+    internal static Db2ShapeDriftOptions? ReadRetainedShapeDrift(IReadOnlyList<string>? fields)
+    {
+        if (fields is not { Count: > 1 }
+            || !int.TryParse(fields[1]?.Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out int lastSpecies)
+            || lastSpecies is < -1 or > 999)
+            return null;
+        // Native shape settings follow 189 fixed and 101 fields per original species.
+        return ReadShapeDrift(fields, 189 + 101 * (lastSpecies + 1), strict: false);
+    }
+
+    private static Db2ShapeDriftOptions? ReadShapeDrift(IReadOnlyList<string> fields, int shapes, bool strict)
+    {
+        string Field(int offset) =>
+            shapes + offset < fields.Count ? fields[shapes + offset]?.Trim().Trim('"').Trim() ?? "" : "";
+        static double? Number(string value) => value.Length == 0 ? 0 :
+            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
+            && double.IsFinite(number) ? number : null;
+        static bool? Flag(string value)
+        {
+            if (bool.TryParse(value.Trim('#'), out bool flag)) return flag;
+            return Number(value) is double number ? number != 0 : null;
+        }
+
+        string rateField = Field(2), horizontalField = Field(3), verticalField = Field(4);
+        if (rateField.Length == 0 && horizontalField.Length == 0 && verticalField.Length == 0) return null;
+        if (Number(rateField) is double rate && rate is >= short.MinValue and <= short.MaxValue
+            && Math.Truncate(rate) == rate && Flag(horizontalField) is bool horizontal
+            && Flag(verticalField) is bool vertical)
+            return new(horizontal, vertical, (short)rate);
+        if (strict) throw new InvalidDataException("Legacy settings shape drift requires a signed 16-bit rate and valid axis flags.");
+        return null;
+    }
 
     internal static DesktopSettings Decode(string[] lines, int count, int global)
     {
@@ -205,19 +253,28 @@ internal static class LegacySettingsAdapter
         int tail = placement + 4 * count;
         var species = new List<SpeciesImport>();
         int shapes = tail + 18 + 5 * count;
+        Db2ShapeCreationOptions? shapeCreation = !string.IsNullOrWhiteSpace(Text(shapes))
+            ? new(Flag(shapes + 1), Flag(shapes), Flag(shapes + 5), Flag(shapes + 6))
+            : null;
+        var shapeDrift = ReadShapeDrift(lines, shapes, strict: true);
         int obstacleCount = Integer(shapes + 8);
         if (obstacleCount is < 0 or > 32000 || obstacleCount > 0 && shapes + 9 + 7 * obstacleCount > lines.Length)
             throw new InvalidDataException("Legacy settings obstacles are invalid or truncated.");
+        float worldWidth = Float(3), worldHeight = Float(4);
+        if (obstacleCount > 0) RequireShapeFieldSize(worldWidth, worldHeight);
         var obstacles = new List<ObstacleSnapshot>();
         for (int index = 0; index < obstacleCount; index++)
         {
             int o = shapes + 9 + 7 * index;
-            float x = (float)Number(o + 5), y = (float)Number(o + 6);
-            obstacles.Add(new((uint)(index + 1), [x, y], [x + (float)Number(o + 1), y + (float)Number(o + 2)])
+            var bounds = new LegacySettingsObstacleBounds(
+                (float)Number(o + 5), (float)Number(o + 6), (float)Number(o + 1), (float)Number(o + 2));
+            var (minimum, maximum) = bounds.InField(worldWidth, worldHeight);
+            obstacles.Add(new((uint)(index + 1), minimum, maximum)
             {
-                Color = Flag(shapes + 1) ? 0xff000000 : FromVbColor(Integer(o)),
+                LegacySettingsBounds = bounds,
+                Color = FromVbColor(Integer(o)),
                 Opacity = Flag(shapes) ? 0 : 1,
-                Drift = [Flag(shapes + 3) ? (float)Number(o + 3) : 0, Flag(shapes + 4) ? (float)Number(o + 4) : 0],
+                Drift = [(float)Number(o + 3), (float)Number(o + 4)],
                 VisionPolicy = Flag(shapes + 5) ? "see_through" : "opaque",
                 ShotPolicy = Flag(shapes + 6) ? "absorb" : "reflect",
             });
@@ -303,14 +360,15 @@ internal static class LegacySettingsAdapter
         var wasteThreshold = Integer(tail + 1, -1);
         return new DesktopSettings
         {
-            OrganismCapacity = 32000, WorldWidth = Float(3), WorldHeight = Float(4),
+            OrganismCapacity = 32000, WorldWidth = worldWidth, WorldHeight = worldHeight,
             Seed = NativeSeed(global + 89), LegacySettingsFields = lines.TakeWhile(line => !line.StartsWith("#DARWINBOTS_MODERN_SETTINGS", StringComparison.Ordinal)).ToArray(),
             MutationSettings = MutationSettingsUpdate.Default with { GlobalMultiplier = Float(27, 1) },
             VegetablePopulationCap = Math.Max(0, Integer(global + 5)), SunlightEnergy = vegetation.MaxEnergyPerTick,
             Gravity = [0, Float(18)], BrownianMotion = Float(20), Species = species,
             FixedBotRadii = Flag(tail + 14), TiesEnabled = !Flag(global + 7),
             AsexualReproductionAllowed = !Flag(tail + 16), RobotFixingAllowed = !Flag(footer + 9 + 3 * count),
-            Obstacles = obstacles, ShapesVisible = Flag(shapes + 7),
+            Obstacles = obstacles, ShapesVisible = Flag(shapes + 7), ShapeCreation = shapeCreation,
+            ShapeDrift = shapeDrift,
             ToroidalWorld = Flag(global + 9), WrapX = Flag(global + 83, Flag(global + 9)),
             WrapY = Flag(global + 84, Flag(global + 9)), Vegetation = vegetation,
             Physics = Db2PhysicsOptions.Default with

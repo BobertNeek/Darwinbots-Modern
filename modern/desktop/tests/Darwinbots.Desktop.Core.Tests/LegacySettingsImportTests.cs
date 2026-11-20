@@ -177,6 +177,114 @@ public sealed class LegacySettingsImportTests
         Assert.Equal(settings.Species.Count, actual.Species.Count);
     }
 
+    [Fact]
+    public void OriginalWallsScaleToFieldUnitsAndKeepVelocityWhenDriftIsDisabled()
+    {
+        var fields = File.ReadAllLines(Path.Combine(RepositoryRoot(), "Installer", "sets", "Walls and Waste.set"));
+        // Original settings have two species. Shape settings begin at field 391.
+        fields[394] = "#FALSE#";
+        fields[395] = "#FALSE#";
+        fields[400] = "5649426"; // Stored color &H563412 while global Black is true.
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields)));
+
+        Assert.Equal(32_000f, imported.WorldWidth);
+        Assert.Equal(24_000f, imported.WorldHeight);
+        Assert.Equal(18, imported.Obstacles.Count);
+        var first = imported.Obstacles[0];
+        Assert.Equal(4005.00, first.Minimum[0], 2);
+        Assert.Equal(3025.19, first.Minimum[1], 2);
+        Assert.Equal(4505.00, first.Maximum[0], 2);
+        Assert.Equal(14806.19, first.Maximum[1], 2);
+        Assert.Equal(0xff123456u, first.Color);
+        Assert.Equal([0.5954616f, 0.6160923f], first.Drift);
+        Assert.True(imported.ShapeCreation!.Black);
+        Assert.Equal(new Db2ShapeDriftOptions(Rate: 1), imported.ShapeDrift);
+
+        var exported = NativeFields(Db2SettingsCodec.Encode(imported with { Species = [] }));
+        double Number(int i) => double.Parse(exported[i], CultureInfo.InvariantCulture);
+        // Removing both species moves the shape settings to field 189 and the first row to 198.
+        Assert.Equal("1", exported[191]);
+        Assert.Equal("#FALSE#", exported[192]);
+        Assert.Equal("#FALSE#", exported[193]);
+        Assert.Equal("18", exported[197]);
+        Assert.Equal(fields[400], exported[198]);
+        Assert.Equal(0.015625, Number(199), 7);
+        Assert.Equal(0.490875, Number(200), 7);
+        Assert.Equal(0.5954616, Number(201), 7);
+        Assert.Equal(0.6160923, Number(202), 7);
+        Assert.Equal(0.1251562, Number(203), 7);
+        Assert.Equal(0.1260494, Number(204), 7);
+    }
+
+    [Fact]
+    public void EarlierModernSettingsTrailerRestoresAbsoluteShapes()
+    {
+        var settings = new DesktopSettings
+        {
+            Obstacles = [new(1, [-25, 35], [250, 450]) { Drift = [2, 3] }],
+        };
+        var fields = LegacyDnaText.Decode(Db2SettingsCodec.Encode(settings)).Split("\r\n");
+        // Older Modern writers emitted absolute values in the native prefix and the trailer.
+        fields[199] = "275";
+        fields[200] = "415";
+        fields[203] = "-25";
+        fields[204] = "35";
+        var bytes = LegacyDnaText.Encode(string.Join("\r\n", fields));
+        var restored = Db2SettingsCodec.Decode(bytes);
+        Assert.Equal(settings.ToJson(), restored.ToJson());
+    }
+
+    [Theory]
+    [InlineData(short.MinValue)]
+    [InlineData(0)]
+    [InlineData(short.MaxValue)]
+    public void OriginalShapeDriftRateAndFlagsRoundTripWithoutShapeRows(int rate)
+    {
+        var fields = NativeFields(Db2SettingsCodec.Encode(new DesktopSettings()));
+        fields[191] = rate.ToString(CultureInfo.InvariantCulture);
+        fields[192] = "#FALSE#";
+        fields[193] = "#TRUE#";
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields)));
+        var expected = new Db2ShapeDriftOptions(Vertical: true, Rate: (short)rate);
+        Assert.Empty(imported.Obstacles);
+        Assert.Equal(expected, imported.ShapeDrift);
+        var saved = DesktopSettings.FromWorldSetup(imported.ToWorldSetup());
+        var output = Db2SettingsCodec.Encode(saved);
+        Assert.Equal(fields[191..194], NativeFields(output)[191..194]);
+        Assert.Equal(expected, Db2SettingsCodec.Decode(output).ShapeDrift);
+    }
+
+    [Fact]
+    public void OlderModernSettingsUseRetainedOriginalDriftFields()
+    {
+        var path = Path.Combine(RepositoryRoot(), "Installer", "sets", "Walls and Waste.set");
+        var original = Db2SettingsCodec.Decode(File.ReadAllBytes(path));
+        var older = original with { ShapeDrift = null, Species = [] };
+        var expected = new Db2ShapeDriftOptions(Horizontal: true, Vertical: true, Rate: 1);
+        Assert.Equal(expected, DesktopSettings.FromJson(older.ToJson()).ShapeDrift);
+        Assert.Equal(expected, Db2SettingsCodec.Decode(Db2SettingsCodec.Encode(older)).ShapeDrift);
+
+        var updated = older with { ShapeDrift = new Db2ShapeDriftOptions(Vertical: true, Rate: -7) };
+        Assert.Equal(updated.ShapeDrift, DesktopSettings.FromJson(updated.ToJson()).ShapeDrift);
+        Assert.Equal(updated.ShapeDrift, Db2SettingsCodec.Decode(Db2SettingsCodec.Encode(updated)).ShapeDrift);
+    }
+
+    [Fact]
+    public void EarlierModernTrailerDoesNotInferDriftFromRowsOrItsNativePrefix()
+    {
+        var settings = new DesktopSettings { Obstacles = [new(1, [25, 35], [250, 450]) { Drift = [2, 3] }] };
+        var encoded = Db2SettingsCodec.Encode(settings);
+        var fields = LegacyDnaText.Decode(encoded).Split("\r\n");
+        Assert.Equal("#FALSE#", fields[192]);
+        Assert.Equal("#FALSE#", fields[193]);
+        fields[192] = fields[193] = "#TRUE#"; // Older .set writers inferred these from row velocity.
+        var legacyTrailer = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields)));
+        Assert.Null(legacyTrailer.ShapeDrift);
+        Assert.Null(legacyTrailer.ToWorldSetup().ShapeDrift);
+        Assert.Equal([2f, 3f], Assert.Single(legacyTrailer.Obstacles).Drift);
+        Assert.Null(DesktopSettings.FromJson(settings.ToJson()).ShapeDrift);
+    }
+
     [Theory]
     [InlineData(null, -1)]
     [InlineData("0", 400)]

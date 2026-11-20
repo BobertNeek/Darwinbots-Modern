@@ -1,4 +1,6 @@
-use crate::{AdvancedMutationSettings, BackendPreference, DnaCosts};
+use crate::{
+    AdvancedMutationSettings, BackendPreference, DnaCosts, ShapeShotPolicy, ShapeVisionPolicy,
+};
 use serde::{Deserialize, Serialize};
 
 pub const MAX_ROBOTS: usize = 32_000;
@@ -223,7 +225,33 @@ impl Default for VegetationSettings {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct ShapeCreationSettings {
+    pub black: bool,
+    pub transparent: bool,
+    pub see_through: bool,
+    pub absorb_shots: bool,
+}
+
+impl ShapeCreationSettings {
+    pub(crate) fn vision_policy(self) -> ShapeVisionPolicy {
+        if self.see_through {
+            ShapeVisionPolicy::SeeThrough
+        } else {
+            ShapeVisionPolicy::Opaque
+        }
+    }
+
+    pub(crate) fn shot_policy(self) -> ShapeShotPolicy {
+        if self.absorb_shots {
+            ShapeShotPolicy::Absorb
+        } else {
+            ShapeShotPolicy::Reflect
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShapeDriftSettings {
     pub horizontal: bool,
     pub vertical: bool,
@@ -248,6 +276,8 @@ pub struct EngineConfig {
     pub fixed_bot_radii: bool,
     #[serde(default)]
     pub shapes_visible: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape_creation: Option<ShapeCreationSettings>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape_drift: Option<ShapeDriftSettings>,
     #[serde(default)]
@@ -316,6 +346,7 @@ impl Default for EngineConfig {
             toroidal_world: default_toroidal_world(),
             fixed_bot_radii: false,
             shapes_visible: false,
+            shape_creation: None,
             shape_drift: None,
             axis_topology: None,
             backend: BackendPreference::Auto,
