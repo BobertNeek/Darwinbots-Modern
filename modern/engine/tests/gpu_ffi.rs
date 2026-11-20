@@ -13,6 +13,22 @@ const TOXIN_SOURCE_POSITION: [f32; 2] = [250.0, 500.0];
 const TOXIN_TARGET_POSITION: [f32; 2] = [500.0, 500.0];
 const DEFAULT_ROBOT_RADII_SUM: f32 = 228.56;
 
+fn create_cpu_ffi_engine() -> *mut Engine {
+    // Auto probes the GPU before selecting CPU. Keep these ABI fixtures on CPU.
+    let config = serde_json::to_vec(&EngineConfig {
+        backend: BackendPreference::Cpu,
+        ..EngineConfig::default()
+    })
+    .unwrap();
+    let mut engine = std::ptr::null_mut();
+    assert_eq!(
+        db_engine_create(config.as_ptr(), config.len(), &mut engine),
+        DbStatus::Ok
+    );
+    assert_eq!(db_engine_backend(engine), 0);
+    engine
+}
+
 #[test]
 fn ffi_loads_genuine_native_sim_and_preserves_the_world_after_rejected_load() {
     let config = serde_json::to_vec(&EngineConfig::testing()).unwrap();
@@ -1268,11 +1284,7 @@ fn ffi_v1_consumers_accept_the_additive_snapshot() {
 
 #[test]
 fn ffi_executes_versioned_command_batches_and_reports_capabilities() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[{"type":"import_dna","dna":"start\nstop","position":[12.0,34.0]},{"type":"tick","count":2}]}"#;
     let mut result = DbBuffer::default();
     assert_eq!(
@@ -1304,11 +1316,7 @@ fn ffi_executes_versioned_command_batches_and_reports_capabilities() {
 
 #[test]
 fn ffi_imports_a_configured_species_as_one_command() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[{"type":"import_species","dna":"start\nstop","name":"Alga","vegetable":true,"color":4283213371,"minimum_population":10,"reseed":true,"initial_energy":2500,"positions":[[100.0,100.0],[200.0,200.0]]}]}"#;
     let mut result = DbBuffer::default();
 
@@ -1333,11 +1341,7 @@ fn ffi_imports_a_configured_species_as_one_command() {
 
 #[test]
 fn ffi_import_accepts_known_sysvars_without_inert_warnings() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[{"type":"import_dna","dna":"start\n10 .mkvirus store\nstop","position":[10.0,20.0]}]}"#;
     let mut result = DbBuffer::default();
 
@@ -1358,11 +1362,7 @@ fn ffi_import_accepts_known_sysvars_without_inert_warnings() {
 
 #[test]
 fn ffi_adds_and_removes_live_environment_features() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
     let add = br#"{"version":1,"commands":[{"type":"add_obstacle","id":7,"minimum":[10.0,20.0],"maximum":[30.0,40.0]},{"type":"update_obstacle","obstacle":{"id":7,"minimum":[10.0,20.0],"maximum":[30.0,40.0],"color":4279312947,"opacity":0.35,"drift":[2.0,-3.0],"vision_policy":"see_through","shot_policy":"pass_through"}},{"type":"add_teleporter","id":8,"center":[50.0,60.0],"radius":15.0,"destination":[500.0,600.0]},{"type":"add_file_teleporter","teleporter":{"id":9,"center":[70.0,80.0],"radius":20.0,"inbound_path":"in","outbound_path":"out","poll_interval":3,"poll_countdown":1,"capacity":4,"filters":{"teleport_vegetables":false,"teleport_corpses":true,"teleport_heterotrophs":true},"sent":8,"received":5}},{"type":"update_file_teleporter","teleporter":{"id":9,"center":[70.0,80.0],"radius":20.0,"inbound_path":"in2","outbound_path":"out2","poll_interval":4,"poll_countdown":2,"capacity":5,"filters":{"teleport_vegetables":true,"teleport_corpses":false,"teleport_heterotrophs":false},"sent":9,"received":6}}]}"#;
     let mut result = DbBuffer::default();
     assert_eq!(
@@ -1404,11 +1404,7 @@ fn ffi_adds_and_removes_live_environment_features() {
 
 #[test]
 fn ffi_manual_tools_return_ids_and_exported_dna() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":1,"commands":[
       {"type":"import_dna","dna":"start\n10 .up store\nstop","position":[10.0,10.0]},
       {"type":"move_organism","slot":0,"generation":0,"position":[40.0,50.0]},
@@ -1437,11 +1433,7 @@ fn ffi_manual_tools_return_ids_and_exported_dna() {
 
 #[test]
 fn ffi_rejects_unknown_batch_versions_with_owned_structured_error() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
     let batch = br#"{"version":99,"commands":[]}"#;
     let mut result = DbBuffer::default();
     assert_eq!(
@@ -1460,11 +1452,7 @@ fn ffi_rejects_unknown_batch_versions_with_owned_structured_error() {
 
 #[test]
 fn ffi_binary_save_load_round_trip_replaces_engine_atomically() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
     let dna = b"start\nstop";
     assert_eq!(
         db_engine_import_dna(engine, dna.as_ptr(), dna.len()),
@@ -1510,11 +1498,7 @@ fn ffi_binary_save_load_round_trip_replaces_engine_atomically() {
 }
 #[test]
 fn ffi_environment_updates_preserve_optional_db2_settings() {
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
 
     let update = br#"{"version":1,"commands":[{"type":"update_environment","metabolism_cost":2,"vegetable_energy_per_tick":3,"sunlight_energy":4,"gravity":[1.0,2.0],"drag":0.1,"brownian_motion":0.2,"physics":{"max_velocity":42.0,"movement_efficiency":0.5,"surface_gravity":0.3,"static_friction":0.4,"kinetic_friction":0.2,"density":0.000001,"viscosity":0.00002,"elasticity":0.8},"shots":{"speed":35.0,"range_multiplier":1.5,"decay":20.0,"energy_shots_do_not_decay":true,"waste_shots_do_not_decay":true},"vegetation":{"start_chloroplasts":12000,"max_energy_per_tick":80,"minimum_chloroplast_equivalents":40,"repopulation_amount":7,"repopulation_cooldown":12,"feeding_to_body":0.6,"daytime":false,"day_night_enabled":true,"cycle_length":5000}},{"type":"update_environment","metabolism_cost":5,"vegetable_energy_per_tick":6,"sunlight_energy":7,"gravity":[0.0,0.0],"drag":0.0,"brownian_motion":0.0}]}"#;
     let mut result = DbBuffer::default();
@@ -1572,11 +1556,7 @@ fn ffi_versioned_public_abi_failures_are_atomic_and_valid_batch_commits_once() {
         value
     };
 
-    let mut engine = std::ptr::null_mut();
-    assert_eq!(
-        db_engine_create(std::ptr::null(), 0, &mut engine),
-        DbStatus::Ok
-    );
+    let engine = create_cpu_ffi_engine();
 
     let failures: [(&str, &[u8], DbStatus); 4] = [
         ("future version", br#"{"version":99,"commands":[]}"#, DbStatus::InvalidCommand),
