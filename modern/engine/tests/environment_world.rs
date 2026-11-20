@@ -17,6 +17,67 @@ fn legacy_profile(config: EngineConfig) -> Engine {
 }
 
 #[test]
+fn trash_compactor_reverses_resumes_and_releases_wall_identity() {
+    let mut engine = Engine::new(EngineConfig {
+        world_width: 1_100.0,
+        world_height: 800.0,
+        ..EngineConfig::testing()
+    })
+    .unwrap();
+    let mut loose = Obstacle::new(1, [20.0; 2], [25.0; 2]);
+    loose.drift = [0.5, 0.0];
+    engine.add_obstacle(loose).unwrap();
+    let mut left = Obstacle::new(2, [-999.0, -80.0], [1.0, 880.0]);
+    let mut right = Obstacle::new(3, [1099.0, -80.0], [2099.0, 880.0]);
+    left.drift = [2.0, 0.0];
+    right.drift = [-2.0, 0.0];
+    let before = SaveFile::encode(&engine).unwrap();
+    assert!(
+        engine
+            .add_trash_compactor(left.clone(), left.clone())
+            .is_err()
+    );
+    assert_eq!(before, SaveFile::encode(&engine).unwrap());
+    engine.add_trash_compactor(left, right).unwrap();
+    engine.tick_many(625).unwrap();
+    assert_eq!(engine.snapshot().obstacles[1].minimum, [251.0, -80.0]);
+    assert_eq!(engine.snapshot().obstacles[2].minimum, [-151.0, -80.0]);
+
+    let mut resumed = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    engine.tick().unwrap();
+    resumed.tick().unwrap();
+    assert_eq!(
+        SaveFile::encode(&resumed).unwrap(),
+        SaveFile::encode(&engine).unwrap()
+    );
+    assert_eq!(engine.snapshot().obstacles[1].drift, [-2.0, 0.0]);
+    assert_eq!(engine.snapshot().obstacles[2].drift, [2.0, 0.0]);
+    assert_eq!(engine.snapshot().obstacles[0].minimum, [333.0, 20.0]);
+
+    engine.tick_many(625).unwrap();
+    assert_eq!(engine.snapshot().obstacles[1].minimum, [-1000.0, -80.0]);
+    assert_eq!(engine.snapshot().obstacles[2].minimum, [1100.0, -80.0]);
+    engine.tick().unwrap();
+    assert_eq!(engine.snapshot().obstacles[1].minimum, [-998.0, -80.0]);
+    assert_eq!(engine.snapshot().obstacles[2].minimum, [1098.0, -80.0]);
+
+    // Deleting a wall releases the coupling before its identity is reused.
+    engine.remove_obstacle(2).unwrap();
+    let mut replacement = Obstacle::new(2, [50.0, 60.0], [55.0, 70.0]);
+    replacement.drift = [0.25, 0.5];
+    engine.add_obstacle(replacement).unwrap();
+    let mut after_removal = SaveFile::decode(&SaveFile::encode(&engine).unwrap()).unwrap();
+    after_removal.tick().unwrap();
+    let replacement = after_removal
+        .snapshot()
+        .obstacles
+        .iter()
+        .find(|wall| wall.id == 2)
+        .unwrap();
+    assert_eq!(replacement.minimum, [50.25, 60.5]);
+}
+
+#[test]
 fn gravity_and_drag_affect_motion() {
     let mut config = EngineConfig::testing();
     config.gravity = [0.0, 2.0];
