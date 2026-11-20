@@ -432,8 +432,8 @@ public sealed partial class NativeEngineClient : IEngineClient
             radius = teleporter.Radius,
             destination = teleporter.Destination,
             random_destination = teleporter.RandomDestination,
-            width = teleporter.Radius * 2f,
-            height = teleporter.Radius * 2f,
+            width = teleporter.Width ?? teleporter.Radius * 2f,
+            height = teleporter.Height ?? teleporter.Radius * 2f,
             color = teleporter.Color,
             velocity = teleporter.Velocity,
             path = teleporter.Path,
@@ -470,6 +470,9 @@ public sealed partial class NativeEngineClient : IEngineClient
         ValidatePosition(teleporter.Destination);
         if (!float.IsFinite(teleporter.Radius) || teleporter.Radius <= 0)
             throw new ArgumentOutOfRangeException(nameof(teleporter));
+        if (teleporter.Width is { } width && (!float.IsFinite(width) || width <= 0)
+            || teleporter.Height is { } height && (!float.IsFinite(height) || height <= 0))
+            throw new ArgumentOutOfRangeException(nameof(teleporter), "Teleporter dimensions must be finite and positive.");
         if (teleporter.PollInterval == 0 || teleporter.Capacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(teleporter));
         if (teleporter.Internet || teleporter.Mode.Trim().ToLowerInvariant() is not ("intrasim" or "inbound" or "outbound"))
