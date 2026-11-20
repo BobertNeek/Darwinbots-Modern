@@ -345,10 +345,7 @@ public sealed class SetupControlSurfaceTests
     [Fact]
     public void StandaloneLegacySetImportRoundTripsLegacyPhysicsThroughThePublicSettingsWorkflow()
     {
-        var fixture = Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..", "..", "..", "..", "..", "..", "..",
-            "Installer", "sets", "Ledge Island.set"));
+        var fixture = OriginalSettingsFixture("Ledge Island.set");
 
         var imported = SetupStorageService.DecodeSettings(fixture, File.ReadAllBytes(fixture));
         var roundTripped = SetupStorageService.DecodeSettings(
@@ -568,6 +565,66 @@ public sealed class SetupControlSurfaceTests
                 window.Close();
             }
         }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task OriginalWallRowsSurviveSetupSaveStartAndModernResume()
+    {
+        var fixture = OriginalSettingsFixture("Walls and Waste.set");
+        var imported = SetupStorageService.DecodeSettings(fixture, File.ReadAllBytes(fixture));
+        var storage = new SettingsWorkflowStorage { SettingsToOpen = imported };
+        await DesktopTestApplication.Session.Dispatch(async () =>
+        {
+            var window = new SetupWindow(storage);
+            WorldSetupOptions? created = null;
+            window.WorldCreated += options => created = options;
+            window.Show();
+            try
+            {
+                window.FindControl<Button>("LoadSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => window.FindControl<TextBlock>("SetupStatus")!.Text == "SETTINGS LOADED");
+                window.FindControl<Button>("SaveSettingsButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await WaitFor(() => storage.SavedSettings is not null);
+                var saved = storage.SavedSettings!;
+                Assert.Equal(18, saved.Obstacles.Count);
+                Assert.Equal(4005.00, saved.Obstacles[0].Minimum[0], 2);
+                Assert.Equal(14806.19, saved.Obstacles[0].Maximum[1], 2);
+
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.NotNull(created);
+                Assert.Equal(18, created.Obstacles.Count);
+                using var engine = new NativeEngineClient(created with { Backend = "Cpu" });
+                var active = engine.Snapshot().Obstacles;
+                Assert.Equal(18, active.Count);
+                Assert.Equal(saved.Obstacles[0].Minimum, active[0].Minimum);
+                Assert.Equal(saved.Obstacles[0].Maximum, active[0].Maximum);
+                Assert.Equal([0.5954616f, 0.6160923f], active[0].Drift);
+                engine.Load(engine.Save());
+                var restored = engine.Snapshot().Obstacles;
+                Assert.Equal(18, restored.Count);
+                Assert.Equal(active[0].Minimum, restored[0].Minimum);
+                Assert.Equal(active[0].Maximum, restored[0].Maximum);
+                Assert.Equal(active[0].Drift, restored[0].Drift);
+
+                window.FindControl<MenuItem>("NewWorldMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                window.FindControl<Button>("StartNewButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Empty(created!.Obstacles);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    private static string OriginalSettingsFixture(string name)
+    {
+        for (DirectoryInfo? directory = new(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            var path = Path.Combine(directory.FullName, "Installer", "sets", name);
+            if (File.Exists(path)) return path;
+        }
+        throw new FileNotFoundException($"Original settings fixture '{name}' was not found.");
     }
 
     private static void Select(SetupWindow window, RadioButton radio, string modeName)

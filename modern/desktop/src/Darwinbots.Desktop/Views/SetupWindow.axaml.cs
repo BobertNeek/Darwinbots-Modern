@@ -24,6 +24,7 @@ public sealed partial class SetupWindow : Window
     private GlobalSettings _globalSettings = new();
     private MutationSettingsUpdate _mutationSettings = MutationSettingsUpdate.Default;
     private Db2ShapeCreationOptions? _shapeCreation;
+    private IReadOnlyList<ObstacleSnapshot> _obstacles = [];
     private IReadOnlyList<string>? _legacySettingsFields;
     private const string ZerobotDna = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
     private const string FeederDna = "cond\r\nstart\r\n-2 .shoot store\r\n50 .shootval store\r\n314 rnd .aimdx store\r\nstop";
@@ -236,6 +237,7 @@ public sealed partial class SetupWindow : Window
             MutationSettings = _mutationSettings,
             ShapesVisible = _environment.ShapesVisible ?? false,
             ShapeCreation = _shapeCreation,
+            Obstacles = _obstacles,
             LegacySettingsFields = _legacySettingsFields,
         };
     }
@@ -407,6 +409,7 @@ public sealed partial class SetupWindow : Window
         };
         _mutationSettings = setup.MutationSettings;
         _shapeCreation = setup.ShapeCreation;
+        _obstacles = setup.Obstacles;
         _legacySettingsFields = setup.LegacySettingsFields;
         StarterMode.IsChecked = setup.StartingMode == StartingMode.StarterBotsAndVegetables;
         ZerobotMode.IsChecked = setup.StartingMode == StartingMode.Zerobots;
@@ -428,6 +431,8 @@ public sealed partial class SetupWindow : Window
     {
         _environment = EnvironmentUpdate.Default;
         _shapeCreation = null;
+        _obstacles = [];
+        _legacySettingsFields = null;
         ApplyGlobalSettings(_profileSettings);
         Backend.SelectedIndex = 0;
         WorldWidth.Value = 16_000;

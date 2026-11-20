@@ -177,6 +177,61 @@ public sealed class LegacySettingsImportTests
         Assert.Equal(settings.Species.Count, actual.Species.Count);
     }
 
+    [Fact]
+    public void OriginalWallsScaleToFieldUnitsAndKeepVelocityWhenDriftIsDisabled()
+    {
+        var fields = File.ReadAllLines(Path.Combine(RepositoryRoot(), "Installer", "sets", "Walls and Waste.set"));
+        // Original settings have two species. Shape settings begin at field 391.
+        fields[394] = "#FALSE#";
+        fields[395] = "#FALSE#";
+        fields[400] = "5649426"; // Stored color &H563412 while global Black is true.
+        var imported = Db2SettingsCodec.Decode(LegacyDnaText.Encode(string.Join("\r\n", fields)));
+
+        Assert.Equal(32_000f, imported.WorldWidth);
+        Assert.Equal(24_000f, imported.WorldHeight);
+        Assert.Equal(18, imported.Obstacles.Count);
+        var first = imported.Obstacles[0];
+        Assert.Equal(4005.00, first.Minimum[0], 2);
+        Assert.Equal(3025.19, first.Minimum[1], 2);
+        Assert.Equal(4505.00, first.Maximum[0], 2);
+        Assert.Equal(14806.19, first.Maximum[1], 2);
+        Assert.Equal(0xff123456u, first.Color);
+        Assert.Equal([0.5954616f, 0.6160923f], first.Drift);
+        Assert.True(imported.ShapeCreation!.Black);
+
+        var exported = NativeFields(Db2SettingsCodec.Encode(imported with { Species = [] }));
+        double Number(int i) => double.Parse(exported[i], CultureInfo.InvariantCulture);
+        // Removing both species moves the shape settings to field 189 and the first row to 198.
+        Assert.Equal("#FALSE#", exported[192]);
+        Assert.Equal("#FALSE#", exported[193]);
+        Assert.Equal("18", exported[197]);
+        Assert.Equal(fields[400], exported[198]);
+        Assert.Equal(0.015625, Number(199), 7);
+        Assert.Equal(0.490875, Number(200), 7);
+        Assert.Equal(0.5954616, Number(201), 7);
+        Assert.Equal(0.6160923, Number(202), 7);
+        Assert.Equal(0.1251562, Number(203), 7);
+        Assert.Equal(0.1260494, Number(204), 7);
+    }
+
+    [Fact]
+    public void EarlierModernSettingsTrailerRestoresAbsoluteShapes()
+    {
+        var settings = new DesktopSettings
+        {
+            Obstacles = [new(1, [-25, 35], [250, 450]) { Drift = [2, 3] }],
+        };
+        var fields = LegacyDnaText.Decode(Db2SettingsCodec.Encode(settings)).Split("\r\n");
+        // Older Modern writers emitted absolute values in the native prefix and the trailer.
+        fields[199] = "275";
+        fields[200] = "415";
+        fields[203] = "-25";
+        fields[204] = "35";
+        var bytes = LegacyDnaText.Encode(string.Join("\r\n", fields));
+        var restored = Db2SettingsCodec.Decode(bytes);
+        Assert.Equal(settings.ToJson(), restored.ToJson());
+    }
+
     [Theory]
     [InlineData(null, -1)]
     [InlineData("0", 400)]
